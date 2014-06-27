@@ -1,0 +1,61 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2014, Alexey Kramarenko
+    All rights reserved.
+*/
+
+#ifndef SYS_CALLS_H
+#define SYS_CALLS_H
+
+/*
+    List of all sys calls
+    Hight eight bit is sys call group. All sys-calls are 16 bit long.
+ */
+
+typedef enum {
+    SYS_CALL_THREAD = 0x0,
+    SYS_CALL_THREAD_CREATE,
+    SYS_CALL_THREAD_UNFREEZE,
+    SYS_CALL_THREAD_FREEZE,
+    SYS_CALL_THREAD_GET_PRIORITY,
+    SYS_CALL_THREAD_SET_PRIORITY,
+    SYS_CALL_THREAD_DESTROY,
+    SYS_CALL_THREAD_SLEEP,
+    //profiling
+    SYS_CALL_THREAD_SWITCH_TEST,
+    SYS_CALL_THREAD_STAT,
+    SYS_CALL_STACK_STAT,
+
+    SYS_CALL_MUTEX = 0x100,
+    SYS_CALL_MUTEX_CREATE,
+    SYS_CALL_MUTEX_LOCK,
+    SYS_CALL_MUTEX_UNLOCK,
+    SYS_CALL_MUTEX_DESTROY,
+
+    SYS_CALL_EVENT = 0x200,
+    SYS_CALL_EVENT_CREATE,
+    SYS_CALL_EVENT_PULSE,
+    SYS_CALL_EVENT_SET,
+    SYS_CALL_EVENT_IS_SET,
+    SYS_CALL_EVENT_CLEAR,
+    SYS_CALL_EVENT_WAIT,
+    SYS_CALL_EVENT_DESTROY,
+
+    SYS_CALL_SEM = 0x300,
+    SYS_CALL_SEM_CREATE,
+    SYS_CALL_SEM_WAIT,
+    SYS_CALL_SEM_SIGNAL,
+    SYS_CALL_SEM_DESTROY,
+
+    SYS_CALL_MEM = 0x400,
+    SYS_CALL_MEM_ALLOCATE,
+    SYS_CALL_MEM_FREE,
+    //profiling
+    SYS_CALL_MEM_STAT,
+
+    SYS_CALL_DBG = 0x500,
+    SYS_CALL_DBG_WRITE,
+    SYS_CALL_DBG_PUSH
+}SYS_CALLS;
+
+#endif // SYS_CALLS_H
