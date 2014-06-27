@@ -123,7 +123,7 @@ extern void pend_switch_context(void);
     \param fn: thread start point
     \retval none
 */
-extern void thread_setup_context(THREAD* thread, THREAD_FUNCTION fn);
+extern void thread_setup_context(THREAD* thread, void (*fn)(void));
 
 /**
     \brief reset system core.

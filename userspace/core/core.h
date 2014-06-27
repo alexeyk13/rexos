@@ -59,6 +59,7 @@ typedef struct {
 /** \addtogroup core_porting core porting
     \{
  */
+
 /**
     \brief core-dependent interrupt disabler
     \details Save interrupt state and disable interrupts

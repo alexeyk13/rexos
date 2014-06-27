@@ -6,7 +6,7 @@
 
 #include "rand.h"
 #include "../userspace/timer.h"
-#include "../userspace/thread.h"
+#include "../userspace/process.h"
 
 unsigned int srand()
 {

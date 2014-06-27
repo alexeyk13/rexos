@@ -42,8 +42,6 @@
 extern void svc_stack_stat();
 #endif //KERNEL_PROFILING
 
-#define IDLE_PRIORITY                                           ((unsigned int)-1)
-
 void svc_thread_timeout(void* param)
 {
     CRITICAL_ENTER;
@@ -72,30 +70,32 @@ void svc_thread_timeout(void* param)
     CRITICAL_LEAVE;
 }
 
-void svc_thread_create(THREAD_CALL* tc, THREAD** thread)
+extern void init(void);
+
+void svc_thread_create(const REX* rex, THREAD** thread)
 {
     *thread = sys_alloc(sizeof(THREAD));
     memset((*thread), 0, sizeof(THREAD));
     //allocate thread object
     if (*thread != NULL)
     {
-        (*thread)->heap = stack_alloc(tc->heap_size * sizeof(unsigned int));
+        (*thread)->heap = stack_alloc(rex->size);
         if ((*thread)->heap)
         {
             DO_MAGIC((*thread), MAGIC_THREAD);
-            (*thread)->base_priority = (*thread)->current_priority = tc->priority;
-            (*thread)->sp = (void*)((unsigned int)(*thread)->heap + tc->heap_size * sizeof(unsigned int));
+            (*thread)->base_priority = (*thread)->current_priority = rex->priority;
+            (*thread)->sp = (void*)((unsigned int)(*thread)->heap + rex->size);
             (*thread)->timer.callback = svc_thread_timeout;
             (*thread)->timer.param = (*thread);
 
 #if (KERNEL_PROFILING)
-            (*thread)->heap_size = tc->heap_size;
-            memset((*thread)->heap, MAGIC_UNINITIALIZED_BYTE, (*thread)->heap_size * sizeof(unsigned int));
+            (*thread)->heap_size = rex->size;
+            memset((*thread)->heap, MAGIC_UNINITIALIZED_BYTE, (*thread)->heap_size);
 #endif //KERNEL_PROFILING
             (*thread)->heap->handle = (HANDLE)(*thread);
-            if (tc->name)
+            if (rex->name)
             {
-                strncpy(PROCESS_NAME((*thread)->heap), tc->name, MAX_PROCESS_NAME_SIZE);
+                strncpy(PROCESS_NAME((*thread)->heap), rex->name, MAX_PROCESS_NAME_SIZE);
                 PROCESS_NAME((*thread)->heap)[MAX_PROCESS_NAME_SIZE] = 0;
             }
             else
@@ -103,7 +103,7 @@ void svc_thread_create(THREAD_CALL* tc, THREAD** thread)
             (*thread)->heap->struct_size = sizeof(HEAP) + strlen(PROCESS_NAME((*thread)->heap)) + 1;
             pool_init(&(*thread)->heap->pool, (void*)(*thread)->heap + (*thread)->heap->struct_size);
 
-            thread_setup_context((*thread), tc->fn);
+            thread_setup_context((*thread), rex->fn);
         }
         else
         {
@@ -498,88 +498,6 @@ static inline void svc_thread_switch_test()
     pend_switch_context();
     //next thread is now same as active thread, it will simulate context switching
 }
-
-static inline unsigned int stack_used_max(unsigned int top, unsigned int cur)
-{
-    unsigned int i;
-    unsigned int last = cur;
-    for (i = cur - sizeof(unsigned int); i >= top; i -= 4)
-        if (*(unsigned int*)i != MAGIC_UNINITIALIZED)
-            last = i;
-    return last;
-}
-
-void thread_print_stat(THREAD* thread)
-{
-    char thread_name[THREAD_NAME_PRINT_SIZE + 1];
-    TIME thread_uptime;
-    //format name
-    int i;
-    thread_name[THREAD_NAME_PRINT_SIZE] = 0;
-    memset(thread_name, ' ', THREAD_NAME_PRINT_SIZE);
-    strncpy(thread_name, PROCESS_NAME(thread->heap), THREAD_NAME_PRINT_SIZE);
-    for (i = 0; i < THREAD_NAME_PRINT_SIZE; ++i)
-        if (thread_name[i] == 0)
-            thread_name[i] = ' ';
-    printf("%s ", thread_name);
-
-    //format priority
-    if (thread->current_priority == IDLE_PRIORITY)
-        printf("-idle-   ");
-    else
-        printf("%2d(%2d)   ", thread->current_priority, thread->base_priority);
-
-    //stack size
-    unsigned int current_stack, max_stack;
-    current_stack = thread->heap_size - ((unsigned int)thread->sp - (unsigned int)thread->heap) / sizeof(unsigned int);
-    max_stack = thread->heap_size - (stack_used_max((unsigned int)thread->heap, (unsigned int)thread->sp) - (unsigned int)thread->heap) / sizeof(unsigned int);
-    printf("%3d/%3d/%3d   ", current_stack, max_stack, thread->heap_size);
-
-    //uptime, including time for current thread
-    if (thread == __KERNEL->current_thread)
-    {
-//        get_uptime(&thread_uptime);
-        time_sub(&thread->uptime_start, &thread_uptime, &thread_uptime);
-        time_add(&thread_uptime, &thread->uptime, &thread_uptime);
-    }
-    else
-    {
-        thread_uptime.sec = thread->uptime.sec;
-        thread_uptime.usec = thread->uptime.usec;
-    }
-    printf("%3d:%02d.%03d\n\r", thread_uptime.sec / 60, thread_uptime.sec % 60, thread->uptime.usec / 1000);
-}
-
-static inline void svc_thread_stat()
-{
-    int active_threads_count = 0;
-    int i;
-    DLIST_ENUM de;
-    THREAD* cur;
-    printf("    name        priority      stack        uptime\n\r");
-    printf("----------------------------------------------------\n\r");
-    //current
-    thread_print_stat(__KERNEL->current_thread);
-    ++active_threads_count;
-    //in cache
-    for (i = 0; i < __KERNEL->thread_list_size; ++i)
-    {
-        dlist_enum_start((DLIST**)&__KERNEL->active_threads[i], &de);
-        while (dlist_enum(&de, (DLIST**)&cur))
-        {
-            thread_print_stat(cur);
-            ++active_threads_count;
-        }
-    }
-    //out of cache
-    dlist_enum_start((DLIST**)&__KERNEL->threads_uncached, &de);
-    while (dlist_enum(&de, (DLIST**)&cur))
-    {
-        thread_print_stat(cur);
-        ++active_threads_count;
-    }
-    printf("total %d threads active\n\r", active_threads_count);
-}
 #endif //KERNEL_PROFILING
 
 void svc_thread_handler(unsigned int num, unsigned int param1, unsigned int param2)
@@ -589,7 +507,7 @@ void svc_thread_handler(unsigned int num, unsigned int param1, unsigned int para
     switch (num)
     {
     case SVC_THREAD_CREATE:
-        svc_thread_create((THREAD_CALL*)param1, (THREAD**)param2);
+        svc_thread_create((REX*)param1, (THREAD**)param2);
         break;
     case SVC_THREAD_UNFREEZE:
         svc_thread_unfreeze((THREAD*)param1);
@@ -611,13 +529,13 @@ void svc_thread_handler(unsigned int num, unsigned int param1, unsigned int para
         break;
 #if (KERNEL_PROFILING)
     case SVC_THREAD_SWITCH_TEST:
-        svc_thread_switch_test();
+//        svc_thread_switch_test();
         break;
     case SVC_THREAD_STAT:
-        svc_thread_stat();
+//        svc_thread_stat();
         break;
     case SVC_STACK_STAT:
-        svc_stack_stat();
+//        svc_stack_stat();
         break;
 #endif //KERNEL_PROFILING
     default:
@@ -626,29 +544,23 @@ void svc_thread_handler(unsigned int num, unsigned int param1, unsigned int para
     CRITICAL_LEAVE;
 }
 
-void thread_init()
+void svc_thread_init(const REX* rex)
 {
-    THREAD_CALL tc;
-    tc.name = "IDLE THREAD";
-    tc.priority = IDLE_PRIORITY;
-    tc.heap_size = THREAD_IDLE_STACK_SIZE;
-    tc.fn = (THREAD_FUNCTION)idle_task;
-    svc_thread_create(&tc, &__KERNEL->idle_thread);
+    svc_thread_create(rex, &__KERNEL->idle_thread);
 
     //activate idle_thread
     __KERNEL->idle_thread->flags = THREAD_MODE_RUNNING;
-    __KERNEL->current_thread = __KERNEL->idle_thread;
+    __KERNEL->next_thread = __KERNEL->current_thread = __KERNEL->idle_thread;
     __GLOBAL->heap = __KERNEL->current_thread->heap;
-    __KERNEL->next_thread = __KERNEL->current_thread;
     pend_switch_context();
 }
 
 void abnormal_exit()
 {
-    register THREAD* thread;
-    thread = (THREAD*)thread_get_current();
+    THREAD* process;
+    process = (THREAD*)process_get_current();
 #if (KERNEL_DEBUG)
-    printf("Warning: abnormal thread termination: %s\n\r", PROCESS_NAME(thread->heap));
+    printf("Warning: abnormal process termination: %s\n\r", PROCESS_NAME(process->heap));
 #endif
-    svc_thread_destroy(thread);
+    svc_thread_destroy(process);
 }

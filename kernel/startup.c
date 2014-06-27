@@ -11,6 +11,8 @@
 #include "kernel.h"
 #include "../lib/pool.h"
 
+extern const REX INIT;
+
 void startup()
 {
     //setup __GLOBAL
@@ -32,5 +34,6 @@ void startup()
 #endif //NVIC_PRESENT
 
     //initialize thread subsystem, create idle task
-    thread_init();
+    svc_thread_init(&INIT);
+
 }

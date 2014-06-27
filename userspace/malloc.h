@@ -10,7 +10,7 @@
 #include "cc_macro.h"
 #include "../lib/pool.h"
 #include "core/core.h"
-#include "thread.h"
+#include "process.h"
 
 /** \addtogroup memory dynamic memory management
     RExOS has embedded dynamic memory manager

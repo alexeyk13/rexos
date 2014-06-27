@@ -8,6 +8,7 @@
 #include "../userspace/core/core.h"
 #include "../userspace/core/sys_calls.h"
 #include "../userspace/error.h"
+#include "../kernel/kernel.h"
 
 #include "dbg.h"
 #include "thread_kernel.h"
@@ -41,7 +42,19 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         svc_timer_handler(num, param1, param2);
         break;
     case (SVC_DBG):
-        svc_dbg_handler(num, param1, param2);
+        switch (num)
+        {
+        case  SVC_DBG_WRITE:
+            if (__KERNEL->dbg_console)
+                console_write(__KERNEL->dbg_console, (char*)param1, (int)param2);
+            break;
+        case SVC_DBG_PUSH:
+            if (__KERNEL->dbg_console)
+                console_push(__KERNEL->dbg_console);
+            break;
+        default:
+            error(ERROR_INVALID_SVC);
+        }
         break;
     default:
         error(ERROR_INVALID_SVC);

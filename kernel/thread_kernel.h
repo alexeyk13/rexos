@@ -7,7 +7,7 @@
 #ifndef TASK_KERNEL_H
 #define TASK_KERNEL_H
 
-#include "../userspace/thread.h"
+#include "../userspace/process.h"
 #include "../userspace/cc_macro.h"
 #include "svc_timer.h"
 #include "kernel_config.h"
@@ -40,7 +40,7 @@ typedef struct {
 }THREAD;
 
 void svc_thread_handler(unsigned int num, unsigned int param1, unsigned int param2);
-void thread_init();
+void svc_thread_init(const REX *rex);
 
 //for sync-object internal calls (usually mutexes)
 void svc_thread_set_current_priority(THREAD* thread, unsigned int priority);

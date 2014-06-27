@@ -109,7 +109,52 @@ __STATIC_INLINE void dbg_push()
 
 /** \} */ // end of debug group
 
-void svc_dbg_handler(unsigned int num, unsigned int param1, unsigned int param2);
+//TODO: move to core dbg
+#if (KERNEL_PROFILING)
+/** \addtogroup profiling profiling
+  \ref KERNEL_PROFILING option should be set to 1
+    \{
+ */
 
+/**
+    \brief thread switch test
+    \details simulate thread switching. This function can be used for
+    perfomance measurement
+    \retval none
+*/
+__STATIC_INLINE void thread_switch_test()
+{
+    sys_call(SVC_THREAD_SWITCH_TEST, 0, 0, 0);
+}
+
+/**
+    \brief thread statistics
+    \details print statistics over debug console for all active threads:
+    - names
+    - priority, active priority (can be temporally raised for sync objects)
+    - stack usage: current/max/defined
+    \retval none
+*/
+__STATIC_INLINE void thread_stat()
+{
+    sys_call(SVC_THREAD_STAT, 0, 0, 0);
+}
+
+/**
+    \brief system stacks statistics
+    \details list of stacks depends on architecture.
+    print statistics over debug console for all active threads:
+    - names
+    - stack usage: current/max/defined
+    \retval none
+*/
+__STATIC_INLINE void stack_stat()
+{
+    sys_call(SVC_STACK_STAT, 0, 0, 0);
+}
+
+/** \} */ // end of profiling group
+
+#endif //(KERNEL_PROFILING)
 
 #endif // DBG_H

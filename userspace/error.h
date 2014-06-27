@@ -12,7 +12,7 @@
 */
 
 #include "cc_macro.h"
-#include "thread.h"
+#include "process.h"
 
 typedef enum {
     ERROR_OK = 0,
