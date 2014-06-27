@@ -224,16 +224,16 @@ static inline void setup_buses(uint32_t core_freq)
 #if defined(STM32F1)
 static inline void tune_flash_latency(uint32_t ahb_freq)
 {
-#ifdef UNSTUCK_FLASH
+//#ifdef UNSTUCK_FLASH
     FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY_2;
-#else
+//#else
     if (ahb_freq > 48000000)
         FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY_2;
     else     if (ahb_freq > 24000000)
         FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY_1;
     else
         FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY_0;
-#endif
+//#endif
 }
 
 #elif defined(STM32F2)
@@ -296,6 +296,17 @@ unsigned long set_core_freq(unsigned long desired_freq)
     ahb3 = RCC->AHB3ENR;
     RCC->AHB3ENR = 0;
 #endif
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
 
     __KERNEL->core_freq = desired_freq == 0 || desired_freq > MAX_CORE_FREQ ? MAX_CORE_FREQ : desired_freq;
 
@@ -309,13 +320,75 @@ unsigned long set_core_freq(unsigned long desired_freq)
                                                         RCC_CFGR_PLLSRC_HSE : RCC_CFGR_PLLSRC_HSI_Div2;
 #endif //STM32F2
 
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
 
     switch_to_source(RCC_CFGR_SW_HSI);
     __KERNEL->core_freq = setup_pll(pll_source, __KERNEL->core_freq);
+
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+
     setup_buses(__KERNEL->core_freq);
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+
     tune_flash_latency(__KERNEL->core_freq);
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+
     switch_to_source(RCC_CFGR_SW_PLL);
 
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
     //restore all periphery
 #if defined(STM32F2)
     RCC->AHB1ENR = ahb1;
@@ -325,8 +398,17 @@ unsigned long set_core_freq(unsigned long desired_freq)
     RCC->APB1ENR = apb1;
     RCC->APB2ENR = apb2;
 
-    __KERNEL->core_cycles_us = __KERNEL->core_freq / 1250000;
-    __KERNEL->core_cycles_ms = __KERNEL->core_freq / 1250;
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
 
     return __KERNEL->core_freq;
 }

@@ -35,8 +35,7 @@ typedef enum {
 // will be aligned to pass MPU requirements
 typedef struct {
     void* heap;
-    void (*sys_handler_direct)(unsigned int, unsigned int, unsigned int, unsigned int);
-    time_t uptime;
+    void (*svc_irq)(unsigned int, unsigned int, unsigned int, unsigned int);
 } GLOBAL;
 
 #define __GLOBAL                                            ((GLOBAL*)(SRAM_BASE))

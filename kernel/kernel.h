@@ -51,18 +51,15 @@ typedef struct {
     THREAD* current_thread;
     THREAD* idle_thread;
 
-    //----------------------- sys timer specific -----------------------
+    //------------------------- timer specific -------------------------
     TIME uptime;
 
     //refactor me later
     CB_SVC_TIMER cb_svc_timer;
 
-    TIMER* timers[SYS_TIMER_CACHE_SIZE];
-    TIMER* timers_uncached;
-    unsigned int timers_count;
+    TIMER* timers;
     volatile bool timer_inside_isr;
     unsigned int hpet_value;
-
     //----------------------- paged memory related ---------------------
     POOL paged;
 

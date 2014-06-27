@@ -9,60 +9,15 @@
 	 .equ IRQ_CONTEXT,                                                  0x8
 
 /* exported global constant and functions */
-    .global delay_us
-    .global delay_ms
     .global get_context
     .global do_sys_call
 
 /* imported global constant and functions */
-#    .extern _core_cycles_us
-#    .extern _core_cycles_ms
-	 .equ _core_cycles_us,		0
-	 .equ _core_cycles_ms,		0
 
     .section    .text, "ax"
     .syntax unified
     .cpu cortex-m3
     .thumb
-
-/*
-    void delay_us(unsinged int us)
- */
-
-    .thumb_func
-delay_us:
-    ldr    r1, =_core_cycles_us
-    ldr    r1, [r1]
-    mul    r1, r1, r0
-    @2 cycles - calling and return, 4 instructions
-    mov    r0, #6
-us_loop:
-    add    r1, r1, #3
-    cmp    r1, r0
-    blo    us_loop
-
-    bx        lr
-
-    .thumb_func
-delay_ms:
-    ldr    r2, =_core_cycles_ms
-    ldr    r2, [r2]
-    mov    r1, #7
-
-ms_loop:
-    nop
-    add    r1, r1, #4
-    cmp    r1, r2
-    blo    ms_loop
-
-    sub    r0, r0, #1
-    mov    r1, #4
-    cmp    r0, #0
-    bne    ms_loop
-
-    bx        lr
-
-
 
 /*
         CONTEXT get_context();

@@ -55,7 +55,7 @@
     .extern on_mem_manage
     .extern on_bus_fault
     .extern on_usage_fault
-    .extern sys_handler
+	 .extern svc
     .extern startup
     .extern abnormal_exit
 
@@ -103,27 +103,6 @@ int_vectors:
 Reset_Handler:
     cpsid    i
 
-    /* initialize memory */
-	 @ zero GLOBAL and KERNEL areas
-	 mov    r0, #0
-	 ldr    r1, =SRAM_BASE
-	 ldr    r2, =KERNEL_BASE
-	 add	  r2, r2, sizeof_KERNEL
-bss_loop:
-	 cmp    r1, r2
-	 itt    lo
-	 strlo  r0, [r1], #4
-	 blo    bss_loop
-#if (KERNEL_PROFILING)
-	 ldr    r0, =MAGIC_UNINITIALIZED
-	 ldr    r2, =(SRAM_BASE + KERNEL_SIZE)
-svc_stack_fill:
-	 cmp    r1, r2
-	 itt    lo
-	 strlo  r0, [r1], #4
-	 blo    svc_stack_fill
-#endif //KERNEL_PROFILING
-
     @setup system and fault handlers priority
     ldr    r1, =SHPR1
     ldr    r0, =SHPR1_VALUE
@@ -145,7 +124,18 @@ svc_stack_fill:
     orr    r0, r0, r2
     str    r0, [r1]
 
-    bl    startup                           @ to high-level initialization
+#if (KERNEL_PROFILING)
+	 ldr    r0, =MAGIC_UNINITIALIZED
+	 ldr    r1, =SRAM_BASE
+	 ldr    r2, =(SRAM_BASE + KERNEL_SIZE)
+fill:
+	 cmp    r1, r2
+	 itt    lo
+	 strlo  r0, [r1], #4
+	 blo    fill
+#endif //KERNEL_PROFILING
+
+	 bl    startup                           @ to high-level initialization
 
     @make context and sp switch
     cpsie    i
@@ -195,7 +185,7 @@ UsageFault_Handler:
 SVC_Handler:
     mrs    r12, psp
     ldmia    r12, {r0-r3}
-	 bl     sys_handler                            @ call c handler
+	 bl     svc					                            @ call c handler
 
     @patch registers in minimal context
     mrs    r12, psp

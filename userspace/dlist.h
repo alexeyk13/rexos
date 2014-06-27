@@ -165,8 +165,8 @@ __STATIC_INLINE void dlist_remove_head(DLIST** dlist)
         *dlist = NULL;
     else
     {
-        (*dlist)->prev->next = (*dlist)->next;
         (*dlist)->next->prev = (*dlist)->prev;
+        (*dlist)->prev->next = (*dlist)->next;
         *dlist = (*dlist)->next;
     }
 }

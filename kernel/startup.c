@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "sys_call.h"
+#include "svc.h"
 #include <string.h>
 #include "thread_kernel.h"
 #include "kernel_config.h"
@@ -14,9 +14,10 @@
 void startup()
 {
     //setup __GLOBAL
-    __GLOBAL->sys_handler_direct = sys_handler_direct;
+    __GLOBAL->svc_irq = svc_irq;
 
     //setup __KERNEL
+    memset(__KERNEL, 0, sizeof(KERNEL));
     strcpy(__KERNEL_NAME, "RExOS");
     __KERNEL->struct_size = sizeof(KERNEL) + strlen(__KERNEL_NAME) + 1;
 

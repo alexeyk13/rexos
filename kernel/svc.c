@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "sys_call.h"
+#include "svc.h"
 #include "../userspace/core/core.h"
 #include "../userspace/core/sys_calls.h"
 #include "../userspace/error.h"
@@ -17,7 +17,7 @@
 #include "mem_kernel.h"
 #include "svc_timer.h"
 
-void sys_handler_direct(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
+void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     clear_error();
     switch (num & 0x0000ff00)
@@ -48,9 +48,9 @@ void sys_handler_direct(unsigned int num, unsigned int param1, unsigned int para
     }
 }
 
-void sys_handler(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
+void svc_irq(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     ///TODO: CONTEXT_PUSH(SVC); really need this shit?
-    sys_handler_direct(num, param1, param2, param3);
+    svc(num, param1, param2, param3);
     ///TODO: CONTEXT_POP();
 }

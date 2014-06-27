@@ -465,12 +465,14 @@ unsigned int timer_elapsed(TIMER_CLASS timer)
 
 void second_pulse_isr(TIMER_CLASS timer)
 {
-    timer_second_pulse();
+    if (__KERNEL->killme == 0)
+        timer_second_pulse();
 }
 
 void hpet_isr(TIMER_CLASS timer)
 {
-    timer_hpet_timeout();
+    if (__KERNEL->killme == 0)
+        timer_hpet_timeout();
 }
 
 void hpet_start(unsigned int value)
@@ -490,16 +492,18 @@ unsigned int hpet_elapsed()
 
 void timer_init_hw()
 {
-#if (SYS_TIMER_SOFT_RTC)
-    timer_enable(SYS_TIMER_SOFT_RTC, second_pulse_isr, SYS_TIMER_PRIORITY, 0);
-    timer_start(SYS_TIMER_SOFT_RTC, 1000000);
-#else
-    rtc_enable_second_tick(SYS_TIMER_RTC, timer_second_pulse, SYS_TIMER_PRIORITY);
-#endif //SYS_TIMER_SOFT_RTC
+    __KERNEL->killme = 1;
     timer_enable(SYS_TIMER_HPET, hpet_isr, SYS_TIMER_PRIORITY, TIMER_FLAG_ONE_PULSE_MODE);
     CB_SVC_TIMER cb_svc_timer;
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
     timer_init(&cb_svc_timer);
+#if (SYS_TIMER_SOFT_RTC)
+    timer_enable(SYS_TIMER_SOFT_RTC, second_pulse_isr, SYS_TIMER_PRIORITY, 0);
+    timer_start(SYS_TIMER_SOFT_RTC, 1000000);
+#else
+    rtc_enable_second_tick(SYS_TIMER_RTC, timer_second_pulse, SYS_TIMER_PRIORITY);
+#endif //SYS_TIMER_SOFT_RTC
+    __KERNEL->killme = 0;
 }
