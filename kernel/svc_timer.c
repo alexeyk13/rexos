@@ -4,20 +4,25 @@
     All rights reserved.
 */
 
-#include "sys_timer.h"
+#include "svc_timer.h"
 #include "kernel_config.h"
-#include "timer.h"
 #include "dbg.h"
-#include "core/core_kernel.h"
-#include "sys_calls.h"
-#include "sys_call.h"
+#include "kernel.h"
+#include "../userspace/core/sys_calls.h"
 #include <string.h>
-#if (SYS_TIMER_SOFT_RTC == 0)
-#include "rtc.h"
-#endif //SYS_TIMER_SOFT_RTC
 
-#define TIMER_ONE_SECOND                                                                                    1000000
-#define TIMER_FREE_RUN                                                                                        (TIMER_ONE_SECOND * 2)
+#define FREE_RUN                                        2000000
+
+void svc_timer_get_uptime(TIME* res)
+{
+    res->sec = __KERNEL->uptime.sec;
+    res->usec = __KERNEL->uptime.usec + __KERNEL->cb_svc_timer.elapsed();
+    while (res->usec >= 1000000)
+    {
+        res->sec++;
+        res->usec -= 1000000;
+    }
+}
 
 static inline TIMER* pop_timer()
 {
@@ -34,20 +39,25 @@ static inline TIMER* pop_timer()
 static inline void find_shoot_next()
 {
     TIMER* to_shoot;
+    TIME uptime;
 
     do {
         to_shoot = NULL;
         CRITICAL_ENTER;
         if (__KERNEL->timers_count)
         {
-            if (__KERNEL->timers[0]->time.sec < get_uptime() || ((__KERNEL->timers[0]->time.sec == get_uptime()) && (__KERNEL->timers[0]->time.usec <= __KERNEL->uptime_usec)))
+            //ignore seconds adjustment
+            uptime.sec = __KERNEL->uptime.sec;
+            uptime.usec = __KERNEL->uptime.usec + __KERNEL->cb_svc_timer.elapsed();
+            if (time_compare(&__KERNEL->timers[0]->time, &uptime) >= 0)
                 to_shoot = pop_timer();
-            else if (__KERNEL->timers[0]->time.sec == get_uptime())
+            //add to this second events
+            else if (__KERNEL->timers[0]->time.sec == uptime.sec)
             {
-                __KERNEL->uptime_usec += timer_elapsed(SYS_TIMER_HPET);
-                timer_stop(SYS_TIMER_HPET);
-                __KERNEL->hpet_value = __KERNEL->timers[0]->time.usec - __KERNEL->uptime_usec;
-                timer_start(SYS_TIMER_HPET, __KERNEL->hpet_value);
+                __KERNEL->uptime.usec += __KERNEL->cb_svc_timer.elapsed();
+                __KERNEL->cb_svc_timer.stop();
+                __KERNEL->hpet_value = __KERNEL->timers[0]->time.usec - __KERNEL->uptime.usec;
+                __KERNEL->cb_svc_timer.start(__KERNEL->hpet_value);
             }
         }
         CRITICAL_LEAVE;
@@ -60,47 +70,40 @@ static inline void find_shoot_next()
     } while (to_shoot);
 }
 
-void hpet_on_isr(TIMER_CLASS timer)
-{
-    __KERNEL->uptime_usec += __KERNEL->hpet_value;
-    __KERNEL->hpet_value = 0;
-    timer_start(SYS_TIMER_HPET, TIMER_FREE_RUN);
-    find_shoot_next();
-}
-
-#if (SYS_TIMER_SOFT_RTC)
-void rtc_on_isr(TIMER_CLASS timer)
-#else
-void rtc_on_isr(RTC_CLASS rtc)
-#endif //SYS_TIMER_SOFT_RTC
+static inline void svc_timer_second_pulse()
 {
     __KERNEL->hpet_value = 0;
-    timer_stop(SYS_TIMER_HPET);
-    timer_start(SYS_TIMER_HPET, TIMER_FREE_RUN);
-    ++__GLOBAL->uptime;
-    __KERNEL->uptime_usec = 0;
+    __KERNEL->cb_svc_timer.stop();
+    __KERNEL->cb_svc_timer.start(FREE_RUN);
+    ++__KERNEL->uptime.sec;
+    __KERNEL->uptime.usec = 0;
 
     find_shoot_next();
 }
 
-void sys_timer_init()
+void svc_timer_hpet_timeout()
 {
-#if (SYS_TIMER_SOFT_RTC)
-    timer_enable(SYS_TIMER_SOFT_RTC, rtc_on_isr, SYS_TIMER_PRIORITY, 0);
-    timer_start(SYS_TIMER_SOFT_RTC, 1000000);
-#else
-    rtc_enable_second_tick(SYS_TIMER_RTC, rtc_on_isr, SYS_TIMER_PRIORITY);
-#endif //SYS_TIMER_SOFT_RTC
-    timer_enable(SYS_TIMER_HPET, hpet_on_isr, SYS_TIMER_PRIORITY, TIMER_FLAG_ONE_PULSE_MODE);
-    timer_start(SYS_TIMER_HPET, TIMER_FREE_RUN);
+    __KERNEL->uptime.usec += __KERNEL->hpet_value;
+    __KERNEL->hpet_value = 0;
+    __KERNEL->cb_svc_timer.start(FREE_RUN);
+    find_shoot_next();
 }
 
-void svc_sys_timer_create(TIMER* timer)
+void svc_timer_init(CB_SVC_TIMER* cb_svc_timer)
+{
+    memcpy(&__KERNEL->cb_svc_timer, cb_svc_timer, sizeof(CB_SVC_TIMER));
+    //refactor me
+    __KERNEL->cb_svc_timer.start(FREE_RUN);
+}
+
+void svc_timer_start(TIMER* timer)
 {
     CHECK_CONTEXT(SUPERVISOR_CONTEXT | IRQ_CONTEXT);
     TIME uptime;
-    uptime.sec = get_uptime();
-    uptime.usec = __KERNEL->uptime_usec + timer_elapsed(SYS_TIMER_HPET);
+    DLIST_ENUM de;
+    TIMER* cur;
+    bool found = false;
+    svc_timer_get_uptime(&uptime);
     time_add(&uptime, &timer->time, &timer->time);
     CRITICAL_ENTER;
     //adjust time, according current uptime
@@ -142,14 +145,9 @@ void svc_sys_timer_create(TIMER* timer)
         //top
         if (__KERNEL->timers_uncached == NULL || time_compare(&__KERNEL->timers_uncached->time, &timer->time) < 0)
             dlist_add_head((DLIST**)&__KERNEL->timers_uncached, (DLIST*)timer);
-        //bottom
-        else if (time_compare(&((TIMER*)__KERNEL->timers_uncached->list.prev)->time, &timer->time) > 0)
-            dlist_add_tail((DLIST**)&__KERNEL->timers_uncached, (DLIST*)timer);
         //in the middle
         else
         {
-            DLIST_ENUM de;
-            TIMER* cur;
             dlist_enum_start((DLIST**)&__KERNEL->timers_uncached, &de);
             while (dlist_enum(&de, (DLIST**)&cur))
                 if (time_compare(&cur->time, &timer->time) < 0)
@@ -166,7 +164,7 @@ void svc_sys_timer_create(TIMER* timer)
         find_shoot_next();
 }
 
-void svc_sys_timer_destroy(TIMER* timer)
+void svc_timer_stop(TIMER* timer)
 {
     CHECK_CONTEXT(SUPERVISOR_CONTEXT | IRQ_CONTEXT);
     CRITICAL_ENTER;
@@ -215,4 +213,25 @@ void svc_sys_timer_destroy(TIMER* timer)
     }
     --__KERNEL->timers_count;
     CRITICAL_LEAVE;
+}
+
+void svc_timer_handler(unsigned int num, unsigned int param1, unsigned int param2)
+{
+    switch (num)
+    {
+    case SVC_TIMER_HPET_TIMEOUT:
+        svc_timer_hpet_timeout();
+        break;
+    case SVC_TIMER_SECOND_PULSE:
+        svc_timer_second_pulse();
+        break;
+    case SVC_TIMER_GET_UPTIME:
+        svc_timer_get_uptime((TIME*)param1);
+        break;
+    case SVC_TIMER_INIT:
+        svc_timer_init((CB_SVC_TIMER*)param1);
+        break;
+    default:
+        error(ERROR_INVALID_SVC);
+    }
 }

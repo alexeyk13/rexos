@@ -4,20 +4,10 @@
     All rights reserved.
 */
 
-#include "core_kernel.h"
+#include "kernel.h"
 #include "kernel_config.h"
-#include "../dbg.h"
+#include "dbg.h"
 
-/** \addtogroup core_kernel kernel part of core-related functionality
-    \{
- */
-
-/**
-    \brief default handler for irq
-    \details This function should be called on unhandled irq exception
-    \param vector: vector number
-    \retval none
-*/
 void default_irq_handler(int vector)
 {
 #if (KERNEL_DEBUG)
@@ -25,11 +15,6 @@ void default_irq_handler(int vector)
 #endif
 }
 
-/**
-    \brief kernel panic. reset core or halt, depending on kernel_config
-    \param none
-    \retval none
-*/
 void panic()
 {
 #if (KERNEL_DEBUG)
@@ -44,4 +29,3 @@ void panic()
 #endif //KERNEL_HALT_ON_FATAL_ERROR
 }
 
-/** \} */ // end of core_kernel group

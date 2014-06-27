@@ -6,7 +6,7 @@
 
 #include "core_kernel_cortexm.h"
 #include "kernel_config.h"
-#include "../core_kernel.h"
+#include "../../kernel.h"
 #include "../../thread_kernel.h"
 #include "../../dbg.h"
 

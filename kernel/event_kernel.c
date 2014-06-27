@@ -92,29 +92,29 @@ void svc_event_handler(unsigned int num, unsigned int param1, unsigned int param
     CRITICAL_ENTER;
     switch (num)
     {
-    case SYS_CALL_EVENT_CREATE:
+    case SVC_EVENT_CREATE:
         svc_event_create((EVENT**)param1);
         break;
-    case SYS_CALL_EVENT_PULSE:
+    case SVC_EVENT_PULSE:
         svc_event_pulse((EVENT*)param1);
         break;
-    case SYS_CALL_EVENT_SET:
+    case SVC_EVENT_SET:
         svc_event_set((EVENT*)param1);
         break;
-    case SYS_CALL_EVENT_IS_SET:
+    case SVC_EVENT_IS_SET:
         svc_event_is_set((EVENT*)param1, (bool*)param2);
         break;
-    case SYS_CALL_EVENT_CLEAR:
+    case SVC_EVENT_CLEAR:
         svc_event_clear((EVENT*)param1);
         break;
-    case SYS_CALL_EVENT_WAIT:
+    case SVC_EVENT_WAIT:
         svc_event_wait((EVENT*)param1, (TIME*)param2);
         break;
-    case SYS_CALL_EVENT_DESTROY:
+    case SVC_EVENT_DESTROY:
         svc_event_destroy((EVENT*)param1);
         break;
     default:
-        error(ERROR_INVALID_SYS_CALL);
+        error(ERROR_INVALID_SVC);
     }
     CRITICAL_LEAVE;
 }

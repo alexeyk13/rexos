@@ -9,7 +9,7 @@
 
 #include "../userspace/thread.h"
 #include "../userspace/cc_macro.h"
-#include "sys_timer.h"
+#include "svc_timer.h"
 #include "kernel_config.h"
 #include "dbg.h"
 

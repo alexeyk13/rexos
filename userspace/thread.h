@@ -76,7 +76,7 @@ __STATIC_INLINE HANDLE thread_create(const char* name, unsigned int heap_size, u
     tc.heap_size = heap_size;
     tc.fn = fn;
     HANDLE handle;
-    sys_call(SYS_CALL_THREAD_CREATE, (unsigned int)&tc, (unsigned int)&handle, 0);
+    sys_call(SVC_THREAD_CREATE, (unsigned int)&tc, (unsigned int)&handle, 0);
     return handle;
 }
 
@@ -87,7 +87,7 @@ __STATIC_INLINE HANDLE thread_create(const char* name, unsigned int heap_size, u
 */
 __STATIC_INLINE void thread_unfreeze(HANDLE thread)
 {
-    sys_call(SYS_CALL_THREAD_UNFREEZE, (unsigned int)thread, 0, 0);
+    sys_call(SVC_THREAD_UNFREEZE, (unsigned int)thread, 0, 0);
 }
 
 /**
@@ -97,7 +97,7 @@ __STATIC_INLINE void thread_unfreeze(HANDLE thread)
 */
 __STATIC_INLINE void thread_freeze(HANDLE thread)
 {
-    sys_call(SYS_CALL_THREAD_FREEZE, (unsigned int)thread, 0, 0);
+    sys_call(SVC_THREAD_FREEZE, (unsigned int)thread, 0, 0);
 }
 
 /**
@@ -128,7 +128,7 @@ __STATIC_INLINE HANDLE thread_get_current()
 __STATIC_INLINE unsigned int thread_get_priority(HANDLE thread)
 {
     unsigned int priority;
-    sys_call(SYS_CALL_THREAD_GET_PRIORITY, (unsigned int)thread, (unsigned int)&priority, 0);
+    sys_call(SVC_THREAD_GET_PRIORITY, (unsigned int)thread, (unsigned int)&priority, 0);
     return priority;
 }
 
@@ -150,7 +150,7 @@ __STATIC_INLINE unsigned int thread_get_current_priority()
 */
 __STATIC_INLINE void thread_set_priority(HANDLE thread, unsigned int priority)
 {
-    sys_call(SYS_CALL_THREAD_SET_PRIORITY, (unsigned int)thread, priority, 0);
+    sys_call(SVC_THREAD_SET_PRIORITY, (unsigned int)thread, priority, 0);
 }
 
 /**
@@ -170,7 +170,7 @@ __STATIC_INLINE void thread_set_current_priority(unsigned int priority)
 */
 __STATIC_INLINE void thread_destroy(HANDLE thread)
 {
-    sys_call(SYS_CALL_THREAD_DESTROY, (unsigned int)thread, 0, 0);
+    sys_call(SVC_THREAD_DESTROY, (unsigned int)thread, 0, 0);
 }
 
 /**
@@ -190,7 +190,7 @@ __STATIC_INLINE void thread_exit()
 */
 __STATIC_INLINE void sleep(TIME* time)
 {
-    sys_call(SYS_CALL_THREAD_SLEEP, (unsigned int)time, 0, 0);
+    sys_call(SVC_THREAD_SLEEP, (unsigned int)time, 0, 0);
 }
 
 /**
@@ -234,7 +234,7 @@ __STATIC_INLINE void sleep_us(unsigned int us)
 */
 __STATIC_INLINE void thread_switch_test()
 {
-    sys_call(SYS_CALL_THREAD_SWITCH_TEST, 0, 0, 0);
+    sys_call(SVC_THREAD_SWITCH_TEST, 0, 0, 0);
 }
 
 /**
@@ -247,7 +247,7 @@ __STATIC_INLINE void thread_switch_test()
 */
 __STATIC_INLINE void thread_stat()
 {
-    sys_call(SYS_CALL_THREAD_STAT, 0, 0, 0);
+    sys_call(SVC_THREAD_STAT, 0, 0, 0);
 }
 
 /**
@@ -260,8 +260,10 @@ __STATIC_INLINE void thread_stat()
 */
 __STATIC_INLINE void stack_stat()
 {
-    sys_call(SYS_CALL_STACK_STAT, 0, 0, 0);
+    sys_call(SVC_STACK_STAT, 0, 0, 0);
 }
+
+/** \} */ // end of profiling group
 
 #endif //(KERNEL_PROFILING)
 

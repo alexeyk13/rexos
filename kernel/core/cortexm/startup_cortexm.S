@@ -12,7 +12,7 @@
 #include "kernel_config.h"
 #include "magic.h"
 #include "vectors_cortex_m3.h"
-#include "../core_kernel.h"
+#include "../../kernel.h"
 #include "asm_defines.h"
 
 /* Define constants used in low-level initialization.  */

@@ -7,7 +7,7 @@
 #ifndef EVENT_H
 #define EVENT_H
 
-#include "time.h"
+#include "../lib/time.h"
 #include "types.h"
 #include "cc_macro.h"
 #include "core/core.h"
@@ -37,7 +37,7 @@
 __STATIC_INLINE HANDLE event_create()
 {
     HANDLE res;
-    sys_call(SYS_CALL_EVENT_CREATE, (unsigned int)&res, 0, 0);
+    sys_call(SVC_EVENT_CREATE, (unsigned int)&res, 0, 0);
     return res;
 }
 
@@ -48,7 +48,7 @@ __STATIC_INLINE HANDLE event_create()
 */
 __STATIC_INLINE void event_pulse(HANDLE event)
 {
-    sys_call(SYS_CALL_EVENT_PULSE, (unsigned int)event, 0, 0);
+    sys_call(SVC_EVENT_PULSE, (unsigned int)event, 0, 0);
 }
 
 /**
@@ -58,7 +58,7 @@ __STATIC_INLINE void event_pulse(HANDLE event)
 */
 __STATIC_INLINE void event_set(HANDLE event)
 {
-    sys_call(SYS_CALL_EVENT_SET, (unsigned int)event, 0, 0);
+    sys_call(SVC_EVENT_SET, (unsigned int)event, 0, 0);
 }
 
 /**
@@ -69,7 +69,7 @@ __STATIC_INLINE void event_set(HANDLE event)
 __STATIC_INLINE bool event_is_set(HANDLE event)
 {
     bool res;
-    sys_call(SYS_CALL_EVENT_IS_SET, (unsigned int)event, (unsigned int)&res, 0);
+    sys_call(SVC_EVENT_IS_SET, (unsigned int)event, (unsigned int)&res, 0);
     return res;
 }
 
@@ -80,7 +80,7 @@ __STATIC_INLINE bool event_is_set(HANDLE event)
 */
 __STATIC_INLINE void event_clear(HANDLE event)
 {
-    sys_call(SYS_CALL_EVENT_CLEAR, (unsigned int)event, 0, 0);
+    sys_call(SVC_EVENT_CLEAR, (unsigned int)event, 0, 0);
 }
 
 /**
@@ -91,7 +91,7 @@ __STATIC_INLINE void event_clear(HANDLE event)
 */
 __STATIC_INLINE bool event_wait(HANDLE event, TIME* timeout)
 {
-    sys_call(SYS_CALL_EVENT_WAIT, (unsigned int)event, (unsigned int)timeout, 0);
+    sys_call(SVC_EVENT_WAIT, (unsigned int)event, (unsigned int)timeout, 0);
     return get_last_error() == ERROR_OK;
 }
 
@@ -128,7 +128,7 @@ __STATIC_INLINE bool event_wait_us(HANDLE event, unsigned int timeout_us)
 */
 __STATIC_INLINE void event_destroy(HANDLE event)
 {
-    sys_call(SYS_CALL_EVENT_DESTROY, (unsigned int)event, 0, 0);
+    sys_call(SVC_EVENT_DESTROY, (unsigned int)event, 0, 0);
 }
 
 /** \} */ // end of event group

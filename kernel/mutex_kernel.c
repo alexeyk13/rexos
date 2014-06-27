@@ -119,20 +119,20 @@ void svc_mutex_handler(unsigned int num, unsigned int param1, unsigned int param
     CRITICAL_ENTER;
     switch (num)
     {
-    case SYS_CALL_MUTEX_CREATE:
+    case SVC_MUTEX_CREATE:
         svc_mutex_create((MUTEX**)param1);
         break;
-    case SYS_CALL_MUTEX_LOCK:
+    case SVC_MUTEX_LOCK:
         svc_mutex_lock((MUTEX*)param1, (TIME*)param2);
         break;
-    case SYS_CALL_MUTEX_UNLOCK:
+    case SVC_MUTEX_UNLOCK:
         svc_mutex_unlock((MUTEX*)param1);
         break;
-    case SYS_CALL_MUTEX_DESTROY:
+    case SVC_MUTEX_DESTROY:
         svc_mutex_destroy((MUTEX*)param1);
         break;
     default:
-        error(ERROR_INVALID_SYS_CALL);
+        error(ERROR_INVALID_SVC);
     }
     CRITICAL_LEAVE;
 }

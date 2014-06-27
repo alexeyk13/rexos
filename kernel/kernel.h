@@ -4,27 +4,28 @@
     All rights reserved.
 */
 
-#ifndef CORE_KERNEL_H
-#define CORE_KERNEL_H
+#ifndef KERNEL_H
+#define KERNEL_H
 
 /*
     core_kernel.h - MCU core specific functions. Kernel part
 */
 
-#include "../../userspace/core/core.h"
+#include "../userspace/core/core.h"
 #include "kernel_config.h"
 
 #define KERNEL_BASE                                         (SRAM_BASE + KERNEL_GLOBAL_SIZE)
 
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
-#include "../thread_kernel.h"
-#include "../../lib/pool.h"
+#include "thread_kernel.h"
+#include "../lib/pool.h"
 
-#include "../../mod/console/console.h"
-#include "../../drv_if/uart.h"
-#include "../../drv_if/gpio.h"
-#include "../../drv_if/timer.h"
+#include "../mod/console/console.h"
+#include "../drv_if/uart.h"
+#include "../drv_if/gpio.h"
+#include "../arch/cortex_m3/stm/timer_stm32.h"
+#include "../userspace/timer.h"
 
 // will be aligned to pass MPU requirements
 typedef struct {
@@ -51,7 +52,10 @@ typedef struct {
     THREAD* idle_thread;
 
     //----------------------- sys timer specific -----------------------
-    unsigned int uptime_usec;
+    TIME uptime;
+
+    //refactor me later
+    CB_SVC_TIMER cb_svc_timer;
 
     TIMER* timers[SYS_TIMER_CACHE_SIZE];
     TIMER* timers_uncached;
@@ -83,7 +87,7 @@ typedef struct {
 
     char shared1;
     char shared8;
-    TIMER_HANDLER timer_handlers[15];
+    UTIMER_HANDLER timer_handlers[15];
     unsigned int rand;
 
     int killme;
@@ -133,9 +137,29 @@ extern void reset();
 
 /** \} */ // end of arch_porting group
 
+
+/** \addtogroup kernel kernel part of core-related functionality
+    \{
+ */
+
+/**
+    \brief default handler for irq
+    \details This function should be called on unhandled irq exception
+    \param vector: vector number
+    \retval none
+*/
 void default_irq_handler(int vector);
+
+
+/**
+    \brief kernel panic. reset core or halt, depending on kernel_config
+    \param none
+    \retval none
+*/
 void panic();
+
+/** \} */ // end of core_kernel group
 
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)
 
-#endif // CORE_KERNEL_H
+#endif // KERNEL_H

@@ -6,11 +6,9 @@
 
 #include "sys_call.h"
 #include <string.h>
-#include "sys_timer.h"
-#include "rcc.h"
 #include "thread_kernel.h"
 #include "kernel_config.h"
-#include "core/core_kernel.h"
+#include "kernel.h"
 #include "../lib/pool.h"
 
 void startup()
@@ -34,10 +32,4 @@ void startup()
 
     //initialize thread subsystem, create idle task
     thread_init();
-
-    //move me userspace
-    set_core_freq(0);
-
-    //initialize system timers
-    sys_timer_init();
 }

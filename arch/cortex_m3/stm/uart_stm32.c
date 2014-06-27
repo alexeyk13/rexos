@@ -9,11 +9,10 @@
 #include "hw_config.h"
 #include "gpio.h"
 #include "rcc.h"
-#include "../../../userspace/core/core.h"
 #include "dbg.h"
 #include "mem_kernel.h"
 #include "error.h"
-#include "../../../kernel/core/core_kernel.h"
+#include "../../../kernel/kernel.h"
 
 #include "gpio_stm32.h"
 #if defined(STM32F1)

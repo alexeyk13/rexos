@@ -15,32 +15,36 @@
 #include "event_kernel.h"
 #include "sem_kernel.h"
 #include "mem_kernel.h"
+#include "svc_timer.h"
 
 void sys_handler_direct(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     clear_error();
     switch (num & 0x0000ff00)
     {
-    case SYS_CALL_THREAD:
+    case SVC_THREAD:
         svc_thread_handler(num, param1, param2);
         break;
-    case SYS_CALL_MUTEX:
+    case SVC_MUTEX:
         svc_mutex_handler(num, param1, param2);
         break;
-    case SYS_CALL_EVENT:
+    case SVC_EVENT:
         svc_event_handler(num, param1, param2);
         break;
-    case SYS_CALL_SEM:
+    case SVC_SEM:
         svc_sem_handler(num, param1, param2);
         break;
-    case SYS_CALL_MEM:
+    case SVC_MEM:
         svc_mem_handler(num);
         break;
-    case (SYS_CALL_DBG):
+    case (SVC_TIMER):
+        svc_timer_handler(num, param1, param2);
+        break;
+    case (SVC_DBG):
         svc_dbg_handler(num, param1, param2);
         break;
     default:
-        error(ERROR_INVALID_SYS_CALL);
+        error(ERROR_INVALID_SVC);
     }
 }
 

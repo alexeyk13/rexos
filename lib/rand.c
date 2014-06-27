@@ -5,29 +5,28 @@
 */
 
 #include "rand.h"
-#include "delay.h"
-#include "../lib/time.h"
-#include "hw_config.h"
-#include "memmap.h"
-#include "../kernel/core/core_kernel.h"
+#include "../userspace/timer.h"
+#include "../userspace/thread.h"
 
-#ifndef HW_RAND
-
-void srand()
+unsigned int srand()
 {
-    __KERNEL->rand = 0x30d02149;
+    unsigned int seed;
+    TIME uptime;
+    seed = 0x30d02149;
 	int i;
-	for (i = 0; i < 0x100; ++i)
-        __KERNEL->rand ^=  *((unsigned int *)(__HEAP + i));
-    __KERNEL->rand ^= get_uptime();
-    rand();
+    for (i = 0; i < 0x80; ++i)
+        seed ^=  *((unsigned int *)(__HEAP + i));
+
+    get_uptime(&uptime);
+    seed ^= uptime.usec;
+    return rand(&seed);
 }
 
-unsigned int rand()
+unsigned int rand(unsigned int* seed)
 {
-    __KERNEL->rand = __KERNEL->rand * 0x1b8365e9 + 0x6071d;
-    __KERNEL->rand ^= get_uptime();
-    return __KERNEL->rand;
+    TIME uptime;
+    get_uptime(&uptime);
+    (*seed) = (*seed) * 0x1b8365e9 + 0x6071d;
+    (*seed) ^= uptime.usec;
+    return (*seed);
 }
-
-#endif

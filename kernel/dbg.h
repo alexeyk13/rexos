@@ -28,12 +28,12 @@
 
 __STATIC_INLINE void dbg_write(const char* const buf, int size)
 {
-        sys_call(SYS_CALL_DBG_WRITE, (unsigned int)buf, (unsigned int)size, 0);
+        sys_call(SVC_DBG_WRITE, (unsigned int)buf, (unsigned int)size, 0);
 }
 
 __STATIC_INLINE void dbg_push()
 {
-    sys_call(SYS_CALL_DBG_PUSH, 0, 0, 0);
+    sys_call(SVC_DBG_PUSH, 0, 0, 0);
 }
 
 

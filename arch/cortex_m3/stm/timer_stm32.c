@@ -4,11 +4,12 @@
     All rights reserved.
 */
 
-#include "timer.h"
+#include "timer_stm32.h"
 #include "arch.h"
 #include "error.h"
 #include "types.h"
-#include "../../../kernel/core/core_kernel.h"
+#include "../../../kernel/kernel.h"
+#include "../../../userspace/timer.h"
 
 #if defined(STM32F1)
 #include "rcc_stm32f2.h"
@@ -309,7 +310,7 @@ void TIM1_TRG_COM_TIM17_IRQHandler(void)
 }
 #endif
 
-void timer_enable(TIMER_CLASS timer, TIMER_HANDLER handler, int priority, unsigned int flags)
+void timer_enable(TIMER_CLASS timer, UTIMER_HANDLER handler, int priority, unsigned int flags)
 {
     if ((1 << timer) & TIMERS_MASK)
     {
@@ -460,4 +461,45 @@ unsigned int timer_elapsed(TIMER_CLASS timer)
     if (timer_freq !=__KERNEL->ahb_freq)
         timer_freq = timer_freq * 2;
     return (((_TIMER[timer]->PSC) + 1)/ (timer_freq / 1000000)) * ((_TIMER[timer]->CNT) + 1);
+}
+
+void second_pulse_isr(TIMER_CLASS timer)
+{
+    timer_second_pulse();
+}
+
+void hpet_isr(TIMER_CLASS timer)
+{
+    timer_hpet_timeout();
+}
+
+void hpet_start(unsigned int value)
+{
+    timer_start(SYS_TIMER_HPET, value);
+}
+
+void hpet_stop()
+{
+    timer_stop(SYS_TIMER_HPET);
+}
+
+unsigned int hpet_elapsed()
+{
+    return timer_elapsed(SYS_TIMER_HPET);
+}
+
+void timer_init_hw()
+{
+#if (SYS_TIMER_SOFT_RTC)
+    timer_enable(SYS_TIMER_SOFT_RTC, second_pulse_isr, SYS_TIMER_PRIORITY, 0);
+    timer_start(SYS_TIMER_SOFT_RTC, 1000000);
+#else
+    rtc_enable_second_tick(SYS_TIMER_RTC, timer_second_pulse, SYS_TIMER_PRIORITY);
+#endif //SYS_TIMER_SOFT_RTC
+    timer_enable(SYS_TIMER_HPET, hpet_isr, SYS_TIMER_PRIORITY, TIMER_FLAG_ONE_PULSE_MODE);
+    CB_SVC_TIMER cb_svc_timer;
+    cb_svc_timer.start = hpet_start;
+    cb_svc_timer.stop = hpet_stop;
+    cb_svc_timer.elapsed = hpet_elapsed;
+    timer_init(&cb_svc_timer);
 }

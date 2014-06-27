@@ -7,7 +7,7 @@
 #include "gpio_stm32.h"
 #include "arch.h"
 #include "error.h"
-#include "../../../kernel/core/core_kernel.h"
+#include "../../../kernel/kernel.h"
 
 #define PORT(pin)																																(pin / 32)
 #define PIN(pin)																																(pin & 31)

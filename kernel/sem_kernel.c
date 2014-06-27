@@ -78,20 +78,20 @@ void svc_sem_handler(unsigned int num, unsigned int param1, unsigned int param2)
     CRITICAL_ENTER;
     switch (num)
     {
-    case SYS_CALL_SEM_CREATE:
+    case SVC_SEM_CREATE:
         svc_sem_create((SEM**)param1);
         break;
-    case SYS_CALL_SEM_SIGNAL:
+    case SVC_SEM_SIGNAL:
         svc_sem_signal((SEM*)param1);
         break;
-    case SYS_CALL_SEM_WAIT:
+    case SVC_SEM_WAIT:
         svc_sem_wait((SEM*)param1, (TIME*)param2);
         break;
-    case SYS_CALL_SEM_DESTROY:
+    case SVC_SEM_DESTROY:
         svc_sem_destroy((SEM*)param1);
         break;
     default:
-        error(ERROR_INVALID_SYS_CALL);
+        error(ERROR_INVALID_SVC);
     }
     CRITICAL_LEAVE;
 }

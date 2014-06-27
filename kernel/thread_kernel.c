@@ -12,7 +12,7 @@
 #include "mutex_kernel.h"
 #include "event_kernel.h"
 #include "sem_kernel.h"
-#include "core/core_kernel.h"
+#include "kernel.h"
 #include "../userspace/core/sys_calls.h"
 #include "../userspace/core/core.h"
 #include "../userspace/error.h"
@@ -397,7 +397,7 @@ static void svc_thread_destroy(THREAD* thread)
     {
         //if timer is still active, kill him
         if (thread->flags & THREAD_TIMER_ACTIVE)
-            svc_sys_timer_destroy(&thread->timer);
+            svc_timer_stop(&thread->timer);
         //say sync object to release us
         switch (thread->flags & THREAD_SYNC_MASK)
         {
@@ -456,7 +456,7 @@ void svc_thread_sleep(TIME* time, THREAD_SYNC_TYPE sync_type, void *sync_object)
         thread->flags |= THREAD_TIMER_ACTIVE;
         thread->timer.time.sec = time->sec;
         thread->timer.time.usec = time->usec;
-        svc_sys_timer_create(&thread->timer);
+        svc_timer_start(&thread->timer);
     }
 }
 
@@ -468,7 +468,7 @@ void svc_thread_wakeup(THREAD* thread)
     {
         //if timer is still active, kill him
         if (thread->flags & THREAD_TIMER_ACTIVE)
-            svc_sys_timer_destroy(&thread->timer);
+            svc_timer_stop(&thread->timer);
         thread->flags &= ~(THREAD_TIMER_ACTIVE | THREAD_SYNC_MASK);
         thread->sync_object = NULL;
 
@@ -588,40 +588,40 @@ void svc_thread_handler(unsigned int num, unsigned int param1, unsigned int para
     CRITICAL_ENTER;
     switch (num)
     {
-    case SYS_CALL_THREAD_CREATE:
+    case SVC_THREAD_CREATE:
         svc_thread_create((THREAD_CALL*)param1, (THREAD**)param2);
         break;
-    case SYS_CALL_THREAD_UNFREEZE:
+    case SVC_THREAD_UNFREEZE:
         svc_thread_unfreeze((THREAD*)param1);
         break;
-    case SYS_CALL_THREAD_FREEZE:
+    case SVC_THREAD_FREEZE:
         svc_thread_freeze((THREAD*)param1);
         break;
-    case SYS_CALL_THREAD_GET_PRIORITY:
+    case SVC_THREAD_GET_PRIORITY:
         svc_thread_get_priority((THREAD*)param1, (unsigned int*)param2);
         break;
-    case SYS_CALL_THREAD_SET_PRIORITY:
+    case SVC_THREAD_SET_PRIORITY:
         svc_thread_set_priority((THREAD*)param1, (unsigned int)param2);
         break;
-    case SYS_CALL_THREAD_DESTROY:
+    case SVC_THREAD_DESTROY:
         svc_thread_destroy((THREAD*)param1);
         break;
-    case SYS_CALL_THREAD_SLEEP:
+    case SVC_THREAD_SLEEP:
         svc_thread_sleep((TIME*)param1, THREAD_SYNC_TIMER_ONLY, NULL);
         break;
 #if (KERNEL_PROFILING)
-    case SYS_CALL_THREAD_SWITCH_TEST:
+    case SVC_THREAD_SWITCH_TEST:
         svc_thread_switch_test();
         break;
-    case SYS_CALL_THREAD_STAT:
+    case SVC_THREAD_STAT:
         svc_thread_stat();
         break;
-    case SYS_CALL_STACK_STAT:
+    case SVC_STACK_STAT:
         svc_stack_stat();
         break;
 #endif //KERNEL_PROFILING
     default:
-        error(ERROR_INVALID_SYS_CALL);
+        error(ERROR_INVALID_SVC);
     }
     CRITICAL_LEAVE;
 }

@@ -7,7 +7,6 @@
 #ifndef MALLOC_H
 #define MALLOC_H
 
-#include "kernel_config.h"
 #include "cc_macro.h"
 #include "../lib/pool.h"
 #include "core/core.h"
@@ -78,7 +77,7 @@ __STATIC_INLINE void free(void* ptr)
 */
 __STATIC_INLINE void mem_stat()
 {
-    sys_call(SYS_CALL_MEM_STAT, 0, 0, 0);
+    sys_call(SVC_MEM_STAT, 0, 0, 0);
 }
 
 /** \} */ // end of profiling group

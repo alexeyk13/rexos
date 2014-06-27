@@ -7,7 +7,7 @@
 #include "mem_kernel.h"
 #include "sys_calls.h"
 #include "memmap.h"
-#include "core/core_kernel.h"
+#include "kernel.h"
 #include "../userspace/error.h"
 #include "dbg.h"
 #include "mutex.h"
@@ -112,11 +112,11 @@ void svc_mem_handler(unsigned int num)
     switch (num)
     {
 #if (KERNEL_PROFILING)
-    case SYS_CALL_MEM_STAT:
+    case SVC_MEM_STAT:
         svc_mem_stat();
         break;
 #endif //KERNEL_PROFILING
     default:
-        error(ERROR_INVALID_SYS_CALL);
+        error(ERROR_INVALID_SVC);
     }
 }

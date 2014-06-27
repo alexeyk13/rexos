@@ -39,9 +39,9 @@ struct tm* gmtime(time_t time, struct tm* ts);
     \brief compare time.
     \param from: time from
     \param to: time to
-    \retval if "to" > "from", return 1, \n
-    if "to" < "from", return -1, \n
-    if "to" == "from", return 0
+    \retval if "from" < "to", return 1, \n
+    if "from" > "to", return -1, \n
+    if "from" == "t", return 0
 */
 int time_compare(TIME* from, TIME* to);
 
@@ -93,13 +93,6 @@ int time_to_us(TIME* time);
 */
 int time_to_ms(TIME* time);
 
-/**
-    \brief get uptime
-    \retval uptime in seconds from system start
-*/
-__STATIC_INLINE time_t get_uptime()
-{
-    return __GLOBAL->uptime;
-}
+/** \} */ // end of time group
 
 #endif /*_TIME_H_*/
