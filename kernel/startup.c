@@ -6,7 +6,7 @@
 
 #include "svc.h"
 #include <string.h>
-#include "thread_kernel.h"
+#include "svc_process.h"
 #include "kernel_config.h"
 #include "kernel.h"
 #include "../lib/pool.h"
@@ -38,6 +38,6 @@ void startup()
     svc_timer_init();
 
     //initialize thread subsystem, create idle task
-    svc_thread_init(&INIT);
+    svc_process_init(&INIT);
 
 }

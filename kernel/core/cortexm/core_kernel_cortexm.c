@@ -7,7 +7,7 @@
 #include "core_kernel_cortexm.h"
 #include "kernel_config.h"
 #include "../../kernel.h"
-#include "../../thread_kernel.h"
+#include "../../svc_process.h"
 #include "../../dbg.h"
 
 #define PSP_IN_LR                                   0xfffffffd
@@ -45,7 +45,7 @@ static void process_fault(unsigned int ret_value)
     //from thread context, just killing thread
     if (ret_value == PSP_IN_LR)
     {
-        svc_thread_destroy_current();
+        svc_process_destroy_current();
         SCB_CFSR = 0;
     }
     else

@@ -6,11 +6,10 @@
 
 //if you've got error in this line, than this file is compiled wrong
 
+#include "kernel_config.h"
 #include "arch.h"
 #include "memmap.h"
-#include "hw_config.h"
-#include "kernel_config.h"
-#include "magic.h"
+#include "dbg.h"
 #include "vectors_cortex_m3.h"
 #include "../../kernel.h"
 #include "asm_defines.h"
@@ -34,7 +33,7 @@
 	 .equ    PSR_OFFSET_IN_CONTEXT,			(15 * 4)
 
     .equ    LR_TO_HANDLER,                0xfffffff1
-	 .equ    LR_TO_THREAD_PSP,             0xfffffffd
+	 .equ    LR_TO_PROCESS_PSP,            0xfffffffd
 	 .equ    INITIAL_PSP_VALUE,				0x01000000
     .equ    SVC_PSP_VALUE,                0x0100000b
 
@@ -57,12 +56,12 @@
     .extern on_usage_fault
 	 .extern svc
     .extern startup
-    .extern abnormal_exit
+	 .extern svc_process_abnormal_exit
 
 /* exported global constant and functions */
     .global do_sys_call
     .global pend_switch_context
-    .global thread_setup_context
+	 .global process_setup_context
 
 /* data segment */
 
@@ -199,25 +198,25 @@ PendSV_Handler:
     /*save*/
     cpsid    i
 	 ldr	  r1, =KERNEL_BASE
-	 ldr    r2, [r1, offsetof_KERNEL_next_thread]
+	 ldr    r2, [r1, offsetof_KERNEL_next_process]
 	 cmp    r2, #0													@late arrival of pendSV can cause double-calling
     beq    context_exit
-	 ldr    r3, [r1, offsetof_KERNEL_active_thread]		@_active_thread will be NULL on startup/task destroy
+	 ldr    r3, [r1, offsetof_KERNEL_active_process]		@_active_process will be NULL on startup/task destroy
     cmp    r3, #0
     beq    load_context
 
     mrs    r0, psp
 	 stmdb  r0!, {r4-r11}										@save other context on stack
-	 str    r0, [r3, offsetof_THREAD_sp]					@save sp on thread->sp
+	 str    r0, [r3, offsetof_PROCESS_sp]					@save sp on process->sp
 
 load_context:
-	 ldr    r0, [r2, offsetof_THREAD_sp]					@load sp from thread->sp
+	 ldr    r0, [r2, offsetof_PROCESS_sp]					@load sp from process->sp
 	 ldmia  r0!, {r4-r11}										@load other context from stack
     msr    psp, r0
 
-	 str    r2, [r1, offsetof_KERNEL_active_thread]
+	 str    r2, [r1, offsetof_KERNEL_active_process]
     mov    r2, #0
-	 str    r2, [r1, offsetof_KERNEL_next_thread]
+	 str    r2, [r1, offsetof_KERNEL_next_process]
 
 context_exit:
     cpsie i
@@ -243,20 +242,20 @@ pend_switch_context:
     bx        lr
 
 /*
-	 void thread_setup_context(THREAD* thread, THREAD_FUNCTION fn);
+	 void process_setup_context(PROCESS* process, PROCESS_FUNCTION fn);
 */
     .thumb_func
-thread_setup_context:
-	 ldr    r12, [r0, offsetof_THREAD_sp]
+process_setup_context:
+	 ldr    r12, [r0, offsetof_PROCESS_sp]
 	 lsr    r12, r12, #3                                 @8 byte stack align
     lsl    r12, r12, #3
     sub    r12,    r12, #CONTEXT_SIZE
-    ldr    r3, =abnormal_exit
-	 str    r3, [r12, #LR_OFFSET_IN_CONTEXT]             @abnormal thread exit
+	 ldr    r3, =svc_process_abnormal_exit
+	 str    r3, [r12, #LR_OFFSET_IN_CONTEXT]             @abnormal process exit
 	 str    r1, [r12, #PC_OFFSET_IN_CONTEXT]             @entry point
 	 mov    r3, #INITIAL_PSP_VALUE                       @T-Bit only
     str    r3, [r12, #PSR_OFFSET_IN_CONTEXT]            @run in system context, interrupts are enabled
-	 str    r12, [r0, offsetof_THREAD_sp]
+	 str    r12, [r0, offsetof_PROCESS_sp]
 
     bx        lr
 

@@ -28,12 +28,12 @@ void svc_sem_signal(SEM* sem)
 
     sem->value++;
     //release all waiters
-    THREAD* thread;
+    PROCESS* process;
     while (sem->value && sem->waiters)
     {
-        thread = sem->waiters;
+        process = sem->waiters;
         dlist_remove_head((DLIST**)&sem->waiters);
-        svc_thread_wakeup(thread);
+        svc_process_wakeup(process);
         sem->value--;
     }
 }
@@ -42,32 +42,32 @@ static inline void svc_sem_wait(SEM* sem, TIME* time)
 {
     CHECK_MAGIC(sem, MAGIC_SEM);
 
-    THREAD* thread = svc_thread_get_current();
+    PROCESS* process = svc_process_get_current();
     if (sem->value == 0)
     {
         //first - remove from active list
-        //if called from IRQ context, thread_private.c will raise error
-        svc_thread_sleep(time, THREAD_SYNC_SEM, sem);
-        dlist_add_tail((DLIST**)&sem->waiters, (DLIST*)thread);
+        //if called from IRQ context, process_private.c will raise error
+        svc_process_sleep(time, PROCESS_SYNC_SEM, sem);
+        dlist_add_tail((DLIST**)&sem->waiters, (DLIST*)process);
     }
 }
 
-void svc_sem_lock_release(SEM* sem, THREAD* thread)
+void svc_sem_lock_release(SEM* sem, PROCESS* process)
 {
     CHECK_CONTEXT(SUPERVISOR_CONTEXT | IRQ_CONTEXT);
     CHECK_MAGIC(sem, MAGIC_SEM);
-    dlist_remove((DLIST**)&sem->waiters, (DLIST*)thread);
+    dlist_remove((DLIST**)&sem->waiters, (DLIST*)process);
 }
 
 static inline void svc_sem_destroy(SEM* sem)
 {
-    THREAD* thread;
+    PROCESS* process;
     while (sem->waiters)
     {
-        thread = sem->waiters;
+        process = sem->waiters;
         dlist_remove_head((DLIST**)&sem->waiters);
-        svc_thread_wakeup(thread);
-        svc_thread_error(thread, ERROR_SYNC_OBJECT_DESTROYED);
+        svc_process_wakeup(process);
+        svc_process_error(process, ERROR_SYNC_OBJECT_DESTROYED);
     }
     sys_free(sem);
 }

@@ -61,7 +61,7 @@ typedef struct {
 __STATIC_INLINE HANDLE process_create(const REX* rex)
 {
     HANDLE handle;
-    sys_call(SVC_THREAD_CREATE, (unsigned int)rex, (unsigned int)&handle, 0);
+    sys_call(SVC_PROCESS_CREATE, (unsigned int)rex, (unsigned int)&handle, 0);
     return handle;
 }
 
@@ -72,7 +72,7 @@ __STATIC_INLINE HANDLE process_create(const REX* rex)
 */
 __STATIC_INLINE void process_unfreeze(HANDLE process)
 {
-    sys_call(SVC_THREAD_UNFREEZE, (unsigned int)process, 0, 0);
+    sys_call(SVC_PROCESS_UNFREEZE, (unsigned int)process, 0, 0);
 }
 
 /**
@@ -82,7 +82,7 @@ __STATIC_INLINE void process_unfreeze(HANDLE process)
 */
 __STATIC_INLINE void process_freeze(HANDLE process)
 {
-    sys_call(SVC_THREAD_FREEZE, (unsigned int)process, 0, 0);
+    sys_call(SVC_PROCESS_FREEZE, (unsigned int)process, 0, 0);
 }
 
 /**
@@ -113,7 +113,7 @@ __STATIC_INLINE HANDLE process_get_current()
 __STATIC_INLINE unsigned int process_get_priority(HANDLE process)
 {
     unsigned int priority;
-    sys_call(SVC_THREAD_GET_PRIORITY, (unsigned int)process, (unsigned int)&priority, 0);
+    sys_call(SVC_PROCESS_GET_PRIORITY, (unsigned int)process, (unsigned int)&priority, 0);
     return priority;
 }
 
@@ -135,7 +135,7 @@ __STATIC_INLINE unsigned int process_get_current_priority()
 */
 __STATIC_INLINE void process_set_priority(HANDLE process, unsigned int priority)
 {
-    sys_call(SVC_THREAD_SET_PRIORITY, (unsigned int)process, priority, 0);
+    sys_call(SVC_PROCESS_SET_PRIORITY, (unsigned int)process, priority, 0);
 }
 
 /**
@@ -155,7 +155,7 @@ __STATIC_INLINE void process_set_current_priority(unsigned int priority)
 */
 __STATIC_INLINE void process_destroy(HANDLE process)
 {
-    sys_call(SVC_THREAD_DESTROY, (unsigned int)process, 0, 0);
+    sys_call(SVC_PROCESS_DESTROY, (unsigned int)process, 0, 0);
 }
 
 /**
@@ -175,7 +175,7 @@ __STATIC_INLINE void process_exit()
 */
 __STATIC_INLINE void sleep(TIME* time)
 {
-    sys_call(SVC_THREAD_SLEEP, (unsigned int)time, 0, 0);
+    sys_call(SVC_PROCESS_SLEEP, (unsigned int)time, 0, 0);
 }
 
 /**

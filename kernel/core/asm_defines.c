@@ -1,6 +1,6 @@
-#include "../thread_kernel.h"
+#include "../svc_process.h"
 #include "../../userspace/core/core.h"
-#include "core_kernel.h"
+#include "../kernel.h"
 
 #include <stdint.h>
 
@@ -13,9 +13,9 @@
 
 void foo()
 {
-    OFFSETOF(THREAD, sp);
+    OFFSETOF(PROCESS, sp);
     SIZEOF(GLOBAL);
-    OFFSETOF(KERNEL, active_thread);
-    OFFSETOF(KERNEL, next_thread);
+    OFFSETOF(KERNEL, active_process);
+    OFFSETOF(KERNEL, next_process);
     SIZEOF(KERNEL);
 }

@@ -18,7 +18,7 @@
 
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
-#include "thread_kernel.h"
+#include "svc_process.h"
 #include "../lib/pool.h"
 
 #include "../mod/console/console.h"
@@ -38,18 +38,18 @@ typedef struct {
     //----------------------process specific-----------------------------
     //for context-switching
     //This values are used in asm context switching. Don't place them more than 128 bytes from start of KERNEL
-    //now running thread. (Active context).
-    volatile THREAD* active_thread;
-    //next thread to run, after leave. For context switch. If NULL - no context switch is required
-    volatile THREAD* next_thread;
+    //now running process. (Active context).
+    volatile PROCESS* active_process;
+    //next process to run, after leave. For context switch. If NULL - no context switch is required
+    volatile PROCESS* next_process;
 
-    THREAD* active_threads[THREAD_CACHE_SIZE];
-    THREAD* threads_uncached;
-    int thread_list_size;
+    PROCESS* active_processes[PROCESS_CACHE_SIZE];
+    PROCESS* processes_uncached;
+    int process_list_size;
 
-    //Current thread. If there is no active tasks, idle_task will be run
-    THREAD* current_thread;
-    THREAD* idle_thread;
+    //Current process. If there is no active tasks, idle_task will be run
+    PROCESS* current_process;
+    PROCESS* init;
 
     //------------------------- timer specific -------------------------
     TIME uptime;
@@ -108,22 +108,22 @@ typedef struct {
 
     On SVC/IRQ leaving, function implementation is called and do following:
 
-    - if (_active_thread) is not NULL, save current thread context on _active_thread stack
-    - load current thread context from _next_thread stack
-    - adjust stack pointer with _next_thread.cur_sp
-    - move _next_thread - > _active_thread, _next_thread = NULL
+    - if (_active_process) is not NULL, save current process context on _active_process stack
+    - load current process context from _next_process stack
+    - adjust stack pointer with _next_process.cur_sp
+    - move _next_process - > _active_process, _next_process = NULL
     \retval none
 */
 extern void pend_switch_context(void);
 /**
     \brief setup initial context
     \details Just setup context. Real switching will be performed on pend_switch_context, when
-    _next_thread == thread.
-    \param thread: thread handle
-    \param fn: thread start point
+    _next_process == process.
+    \param process: process handle
+    \param fn: process start point
     \retval none
 */
-extern void thread_setup_context(THREAD* thread, void (*fn)(void));
+extern void process_setup_context(PROCESS* process, void (*fn)(void));
 
 /**
     \brief reset system core.

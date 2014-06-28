@@ -7,17 +7,17 @@
 #ifndef EVENT_KERNEL_H
 #define EVENT_KERNEL_H
 
-#include "thread_kernel.h"
+#include "svc_process.h"
 #include "dbg.h"
 
 typedef struct {
     MAGIC;
     bool set;
-    THREAD* waiters;
+    PROCESS* waiters;
 }EVENT;
 
-//called from thread_private.c on destroy or timeout
-void svc_event_lock_release(EVENT* event, THREAD* thread);
+//called from process_private.c on destroy or timeout
+void svc_event_lock_release(EVENT* event, PROCESS* process);
 
 void svc_event_handler(unsigned int num, unsigned int param1, unsigned int param2);
 

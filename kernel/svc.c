@@ -11,7 +11,7 @@
 #include "../kernel/kernel.h"
 
 #include "dbg.h"
-#include "thread_kernel.h"
+#include "svc_process.h"
 #include "mutex_kernel.h"
 #include "event_kernel.h"
 #include "sem_kernel.h"
@@ -23,8 +23,8 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     clear_error();
     switch (num & 0x0000ff00)
     {
-    case SVC_THREAD:
-        svc_thread_handler(num, param1, param2);
+    case SVC_PROCESS:
+        svc_process_handler(num, param1, param2);
         break;
     case SVC_MUTEX:
         svc_mutex_handler(num, param1, param2);

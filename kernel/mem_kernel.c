@@ -12,7 +12,7 @@
 #include "dbg.h"
 #include "mutex.h"
 #include "kernel_config.h"
-#include "thread_kernel.h"
+#include "svc_process.h"
 #if (KERNEL_PROFILING)
 #include "string.h"
 #endif //KERNEL_PROFILING

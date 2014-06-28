@@ -27,12 +27,12 @@ void svc_event_pulse(EVENT* event)
     CHECK_MAGIC(event, MAGIC_EVENT);
 
     //release all waiters
-    THREAD* thread;
+    PROCESS* process;
     while (event->waiters)
     {
-        thread = event->waiters;
+        process = event->waiters;
         dlist_remove_head((DLIST**)&event->waiters);
-        svc_thread_wakeup(thread);
+        svc_process_wakeup(process);
     }
 }
 
@@ -57,31 +57,31 @@ static inline void svc_event_wait(EVENT* event, TIME* time)
 {
     CHECK_MAGIC(event, MAGIC_EVENT);
 
-    THREAD* thread = svc_thread_get_current();
+    PROCESS* process = svc_process_get_current();
     if (!event->set)
     {
         //first - remove from active list
-        //if called from IRQ context, thread_private.c will raise error
-        svc_thread_sleep(time, THREAD_SYNC_EVENT, event);
-        dlist_add_tail((DLIST**)&event->waiters, (DLIST*)thread);
+        //if called from IRQ context, process_private.c will raise error
+        svc_process_sleep(time, PROCESS_SYNC_EVENT, event);
+        dlist_add_tail((DLIST**)&event->waiters, (DLIST*)process);
     }
 }
 
-void svc_event_lock_release(EVENT* event, THREAD* thread)
+void svc_event_lock_release(EVENT* event, PROCESS* process)
 {
     CHECK_CONTEXT(SUPERVISOR_CONTEXT | IRQ_CONTEXT);
     CHECK_MAGIC(event, MAGIC_EVENT);
-    dlist_remove((DLIST**)&event->waiters, (DLIST*)thread);
+    dlist_remove((DLIST**)&event->waiters, (DLIST*)process);
 }
 
 static inline void svc_event_destroy(EVENT* event)
 {
-    THREAD* thread;
+    PROCESS* process;
     while (event->waiters)
     {
-        thread = event->waiters;
+        process = event->waiters;
         dlist_remove_head((DLIST**)&event->waiters);
-        svc_thread_error(thread, ERROR_SYNC_OBJECT_DESTROYED);
+        svc_process_error(process, ERROR_SYNC_OBJECT_DESTROYED);
     }
     sys_free(event);
 }

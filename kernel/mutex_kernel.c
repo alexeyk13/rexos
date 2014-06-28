@@ -22,19 +22,19 @@ static inline void svc_mutex_create(MUTEX** mutex)
         error(ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
-unsigned int svc_mutex_calculate_owner_priority(THREAD* thread)
+unsigned int svc_mutex_calculate_owner_priority(PROCESS *process)
 {
-    unsigned int priority = thread->base_priority;
-    DLIST_ENUM owned_mutexes, thread_waiters;
+    unsigned int priority = process->base_priority;
+    DLIST_ENUM owned_mutexes, process_waiters;
     MUTEX* current_mutex;
-    THREAD* current_thread;
-    dlist_enum_start(&thread->owned_mutexes, &owned_mutexes);
+    PROCESS* current_process;
+    dlist_enum_start(&process->owned_mutexes, &owned_mutexes);
     while (dlist_enum(&owned_mutexes, (DLIST**)&current_mutex))
     {
-        dlist_enum_start((DLIST**)&current_mutex->waiters, &thread_waiters);
-        while (dlist_enum(&thread_waiters, (DLIST**)&current_thread))
-            if (current_thread->current_priority < priority)
-                priority = current_thread->current_priority;
+        dlist_enum_start((DLIST**)&current_mutex->waiters, &process_waiters);
+        while (dlist_enum(&process_waiters, (DLIST**)&current_process))
+            if (current_process->current_priority < priority)
+                priority = current_process->current_priority;
     }
     return priority;
 }
@@ -42,34 +42,34 @@ unsigned int svc_mutex_calculate_owner_priority(THREAD* thread)
 static inline void svc_mutex_lock(MUTEX* mutex, TIME* time)
 {
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
-    THREAD* thread = svc_thread_get_current();
+    PROCESS* process = svc_process_get_current();
     if (mutex->owner != NULL)
     {
-        ASSERT(mutex->owner != thread);
+        ASSERT(mutex->owner != process);
         //first - remove from active list
-        svc_thread_sleep(time, THREAD_SYNC_MUTEX, mutex);
+        svc_process_sleep(time, PROCESS_SYNC_MUTEX, mutex);
         //add to mutex watiers list
-        dlist_add_tail((DLIST**)&mutex->waiters, (DLIST*)thread);
+        dlist_add_tail((DLIST**)&mutex->waiters, (DLIST*)process);
     }
     //we are first. just lock and add to owned
     else
     {
-        mutex->owner = thread;
+        mutex->owner = process;
         dlist_add_tail((DLIST**)&mutex->owner->owned_mutexes, (DLIST*)mutex);
     }
 }
 
-void svc_mutex_lock_release(MUTEX* mutex, THREAD* thread)
+void svc_mutex_lock_release(MUTEX* mutex, PROCESS* process)
 {
-    //it's the only mutex call, that can be made in irq context - on sys_timer timeout call from thread_private.c
+    //it's the only mutex call, that can be made in irq context - on sys_timer timeout call from process_private.c
     CHECK_CONTEXT(SUPERVISOR_CONTEXT | IRQ_CONTEXT);
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
     //release mutex owner
-    if (thread == mutex->owner)
+    if (process == mutex->owner)
     {
-        //thread now is not owning mutex, remove it from owned list and calculate new priority (he is still can own nested mutexes)
-        dlist_remove((DLIST**)&thread->owned_mutexes, (DLIST*)mutex);
-        svc_thread_set_current_priority(thread, svc_mutex_calculate_owner_priority(thread));
+        //process now is not owning mutex, remove it from owned list and calculate new priority (he is still can own nested mutexes)
+        dlist_remove((DLIST**)&process->owned_mutexes, (DLIST*)mutex);
+        svc_process_set_current_priority(process, svc_mutex_calculate_owner_priority(process));
 
         mutex->owner = mutex->waiters;
         if (mutex->owner)
@@ -77,36 +77,36 @@ void svc_mutex_lock_release(MUTEX* mutex, THREAD* thread)
             dlist_remove_head((DLIST**)&mutex->waiters);
             dlist_add_tail((DLIST**)&mutex->owner->owned_mutexes, (DLIST*)mutex);
             //owner can still depends on some waiters
-            svc_thread_set_current_priority(mutex->owner, svc_mutex_calculate_owner_priority(mutex->owner));
-            svc_thread_wakeup(mutex->owner);
+            svc_process_set_current_priority(mutex->owner, svc_mutex_calculate_owner_priority(mutex->owner));
+            svc_process_wakeup(mutex->owner);
         }
     }
     //remove item from waiters list
     else
     {
-        dlist_remove((DLIST**)&mutex->waiters, (DLIST*)thread);
+        dlist_remove((DLIST**)&mutex->waiters, (DLIST*)process);
         //this can affect on owner priority
-        svc_thread_set_current_priority(mutex->owner, svc_mutex_calculate_owner_priority(mutex->owner));
-        //it's up to caller to decide, wake up thread (timeout, mutex destroy) or not (thread terminate) owned process
+        svc_process_set_current_priority(mutex->owner, svc_mutex_calculate_owner_priority(mutex->owner));
+        //it's up to caller to decide, wake up process (timeout, mutex destroy) or not (process terminate) owned process
     }
 }
 
 static inline void svc_mutex_unlock(MUTEX* mutex)
 {
-    THREAD* thread = svc_thread_get_current();
-    ASSERT(mutex->owner == thread);
-    svc_mutex_lock_release(mutex, thread);
+    PROCESS* process = svc_process_get_current();
+    ASSERT(mutex->owner == process);
+    svc_mutex_lock_release(mutex, process);
 }
 
 static inline void svc_mutex_destroy(MUTEX* mutex)
 {
-    THREAD* thread;
+    PROCESS* process;
     while (mutex->waiters)
     {
-        thread = mutex->waiters;
+        process = mutex->waiters;
         svc_mutex_lock_release(mutex, mutex->waiters);
-        svc_thread_wakeup(thread);
-        svc_thread_error(thread, ERROR_SYNC_OBJECT_DESTROYED);
+        svc_process_wakeup(process);
+        svc_process_error(process, ERROR_SYNC_OBJECT_DESTROYED);
     }
     if (mutex->owner)
         svc_mutex_lock_release(mutex, mutex->owner);

@@ -16,15 +16,23 @@
         dbg.h: debug-specific
   */
 
+
+#define MAGIC_TIMER                                    0xbecafcf5
+#define MAGIC_PROCESS                                  0x7de32076
+#define MAGIC_MUTEX                                    0xd0cc6e26
+#define MAGIC_EVENT                                    0x57e198c7
+#define MAGIC_SEM                                      0xabfd92d9
+
+#define MAGIC_UNINITIALIZED                            0xcdcdcdcd
+#define MAGIC_UNINITIALIZED_BYTE                       0xcd
+
+#if !defined(LDS) && !defined(__ASSEMBLER__)
+
 #include "kernel_config.h"
 #include "../userspace/types.h"
 #include "../userspace/cc_macro.h"
 #include "../lib/printf.h"
 #include "../mod/console/console.h"
-
-#if (KERNEL_MARKS)
-#include "magic.h"
-#endif
 
 __STATIC_INLINE void dbg_write(const char* const buf, int size)
 {
@@ -79,6 +87,7 @@ __STATIC_INLINE void dbg_push()
 #endif
 
 #if (KERNEL_MARKS)
+
 /**
     \brief check, if object mark is right (object is valid)
     \details only works, if \ref KERNEL_DEBUG and \ref KERNEL_MARKS are set.
@@ -95,11 +104,11 @@ __STATIC_INLINE void dbg_push()
     \param magic_value: value to set. check \ref magic.h for details
     \retval none
 */
-#define DO_MAGIC(obj, magic_value)                (obj)->magic = (magic_value)
+#define DO_MAGIC(obj, magic_value)                    (obj)->magic = (magic_value)
 /**
     \brief this macro must be put in object structure
 */
-#define MAGIC                                            unsigned int magic
+#define MAGIC                                          unsigned int magic
 
 #else
 #define CHECK_MAGIC(obj, magic_vale)
@@ -111,6 +120,7 @@ __STATIC_INLINE void dbg_push()
 
 //TODO: move to core dbg
 #if (KERNEL_PROFILING)
+
 /** \addtogroup profiling profiling
   \ref KERNEL_PROFILING option should be set to 1
     \{
@@ -124,7 +134,7 @@ __STATIC_INLINE void dbg_push()
 */
 __STATIC_INLINE void thread_switch_test()
 {
-    sys_call(SVC_THREAD_SWITCH_TEST, 0, 0, 0);
+    sys_call(SVC_PROCESS_SWITCH_TEST, 0, 0, 0);
 }
 
 /**
@@ -137,7 +147,7 @@ __STATIC_INLINE void thread_switch_test()
 */
 __STATIC_INLINE void thread_stat()
 {
-    sys_call(SVC_THREAD_STAT, 0, 0, 0);
+    sys_call(SVC_PROCESS_STAT, 0, 0, 0);
 }
 
 /**
@@ -156,5 +166,8 @@ __STATIC_INLINE void stack_stat()
 /** \} */ // end of profiling group
 
 #endif //(KERNEL_PROFILING)
+
+#endif // !defined(LDS) && !defined(__ASSEMBLER__)
+
 
 #endif // DBG_H
