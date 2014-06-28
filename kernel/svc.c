@@ -20,11 +20,45 @@
 
 void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
+    CRITICAL_ENTER;
     clear_error();
     switch (num & 0x0000ff00)
     {
     case SVC_PROCESS:
-        svc_process_handler(num, param1, param2);
+        switch (num)
+        {
+        case SVC_PROCESS_CREATE:
+            svc_process_create((REX*)param1, (PROCESS**)param2);
+            break;
+        case SVC_PROCESS_GET_FLAGS:
+            svc_process_get_flags((PROCESS*)param1, (unsigned int*)param2);
+            break;
+        case SVC_PROCESS_SET_FLAGS:
+            svc_process_set_flags((PROCESS*)param1, (unsigned int)param2);
+            break;
+        case SVC_PROCESS_GET_PRIORITY:
+            svc_process_get_priority((PROCESS*)param1, (unsigned int*)param2);
+            break;
+        case SVC_PROCESS_SET_PRIORITY:
+            svc_process_set_priority((PROCESS*)param1, (unsigned int)param2);
+            break;
+        case SVC_PROCESS_DESTROY:
+            svc_process_destroy((PROCESS*)param1);
+            break;
+        case SVC_PROCESS_SLEEP:
+            svc_process_sleep((TIME*)param1, PROCESS_SYNC_TIMER_ONLY, NULL);
+            break;
+    #if (KERNEL_PROFILING)
+        case SVC_PROCESS_SWITCH_TEST:
+            svc_process_switch_test();
+            break;
+        case SVC_PROCESS_INFO:
+            svc_process_info();
+            break;
+    #endif //KERNEL_PROFILING
+        default:
+            error(ERROR_INVALID_SVC);
+        }
         break;
     case SVC_MUTEX:
         svc_mutex_handler(num, param1, param2);
@@ -75,6 +109,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     default:
         error(ERROR_INVALID_SVC);
     }
+    CRITICAL_LEAVE;
 }
 
 void svc_irq(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)

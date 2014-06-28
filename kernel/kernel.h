@@ -54,7 +54,7 @@ typedef struct {
     CB_SVC_TIMER cb_svc_timer;
 
     TIMER* timers;
-    volatile bool timer_inside_isr;
+    volatile bool timer_executed;
     //HPET value, set before call
     unsigned int hpet_value;
     //----------------------- paged memory related ---------------------
@@ -85,7 +85,6 @@ typedef struct {
     unsigned int rand;
 
     int killme;
-    int killme2;
 
     //name is following
 } KERNEL;

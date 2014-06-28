@@ -93,6 +93,28 @@ int time_to_us(TIME* time);
 */
 int time_to_ms(TIME* time);
 
+/**
+    \brief time, elapsed between "from" and now
+    \param from: pointer to provided structure, containing base \ref TIME
+    \param res: pointer to provided structure, containing result \ref TIME
+    \retval same as res parameter
+*/
+TIME* time_elapsed(TIME* from, TIME* res);
+
+/**
+    \brief time, elapsed between "from" and now in milliseconds
+    \param from: pointer to provided structure, containing base \ref TIME
+    \retval elapsed time in milliseconds
+*/
+unsigned int time_elapsed_ms(TIME* from);
+
+/**
+    \brief time, elapsed between "from" and now in microseconds
+    \param from: pointer to provided structure, containing base \ref TIME
+    \retval elapsed time in microseconds
+*/
+unsigned int time_elapsed_us(TIME* from);
+
 /** \} */ // end of time group
 
 #endif /*_TIME_H_*/

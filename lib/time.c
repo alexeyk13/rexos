@@ -5,6 +5,7 @@
 */
 
 #include "time.h"
+#include "../userspace/timer.h"
 
 //time_t = 0
 #define EPOCH_YEAR                        1970
@@ -137,6 +138,35 @@ int time_to_us(TIME* time)
 int time_to_ms(TIME* time)
 {
     return time->sec <= MAX_MS_DELTA ? (int)(time->sec * MSEC_1S + time->usec / USEC_1MS) : (int)(MAX_MS_DELTA * MSEC_1S);
+}
+
+TIME* time_elapsed(TIME* from, TIME* res)
+{
+    TIME to;
+    get_uptime(&to);
+    time_sub(from, &to, res);
+    return res;
+}
+
+unsigned int time_elapsed_ms(TIME* from)
+{
+    TIME to;
+    get_uptime(&to);
+    time_sub(from, &to, &to);
+    return time_to_ms(&to);
+}
+
+/**
+    \brief time, elapsed between "from" and now in microseconds
+    \param from: pointer to provided structure, containing base \ref TIME
+    \retval elapsed time in microseconds
+*/
+unsigned int time_elapsed_us(TIME* from)
+{
+    TIME to;
+    get_uptime(&to);
+    time_sub(from, &to, &to);
+    return time_to_us(&to);
 }
 
 /** \} */ // end of lib_time group

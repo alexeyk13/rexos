@@ -58,7 +58,6 @@ static inline void find_shoot_next()
 
     do {
         to_shoot = NULL;
-        CRITICAL_ENTER;
         if (__KERNEL->timers)
         {
             //ignore seconds adjustment
@@ -77,13 +76,12 @@ static inline void find_shoot_next()
                 __KERNEL->hpet_value = __KERNEL->timers->time.usec - __KERNEL->uptime.usec;
                 __KERNEL->cb_svc_timer.start(__KERNEL->hpet_value);
             }
-        }
-        CRITICAL_LEAVE;
-        if (to_shoot)
-        {
-            __KERNEL->timer_inside_isr = true;
-            to_shoot->callback(to_shoot->param);
-            __KERNEL->timer_inside_isr = false;
+            if (to_shoot)
+            {
+                __KERNEL->timer_executed = true;
+                to_shoot->callback(to_shoot->param);
+                __KERNEL->timer_executed = false;
+            }
         }
     } while (to_shoot);
 }
@@ -126,7 +124,6 @@ void svc_timer_start(TIMER* timer)
     bool found = false;
     svc_timer_get_uptime(&uptime);
     time_add(&uptime, &timer->time, &timer->time);
-    CRITICAL_ENTER;
     dlist_enum_start((DLIST**)&__KERNEL->timers, &de);
     while (dlist_enum(&de, (DLIST**)&cur))
         if (time_compare(&cur->time, &timer->time) < 0)
@@ -137,16 +134,13 @@ void svc_timer_start(TIMER* timer)
         }
     if (!found)
         dlist_add_tail((DLIST**)&__KERNEL->timers, (DLIST*)timer);
-    CRITICAL_LEAVE;
-    if (!__KERNEL->timer_inside_isr)
+    if (!__KERNEL->timer_executed)
         find_shoot_next();
 }
 
 void svc_timer_stop(TIMER* timer)
 {
-    CRITICAL_ENTER;
     dlist_remove((DLIST**)&__KERNEL->timers, (DLIST*)timer);
-    CRITICAL_LEAVE;
 }
 
 void svc_timer_init()
