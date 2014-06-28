@@ -9,20 +9,27 @@
 
 #include "../lib/time.h"
 #include "../userspace/dlist.h"
-
-typedef void (*TIMER_HANDLER)(void*);
+#include "../userspace/timer.h"
 
 typedef struct {
     DLIST list;
     TIME time;
-    TIMER_HANDLER callback;
+    void (*callback)(void*);
     void* param;
 }TIMER;
 
+//called from process handler
 void svc_timer_start(TIMER* timer);
 void svc_timer_stop(TIMER* timer);
 
 //called from svc handler
-void svc_timer_handler(unsigned int num, unsigned int param1, unsigned int param2);
+void svc_timer_hpet_timeout();
+void svc_timer_second_pulse();
+void svc_timer_get_uptime(TIME* res);
+void svc_timer_setup(const CB_SVC_TIMER* cb_svc_timer);
+
+//called from startup
+void svc_timer_init();
+
 
 #endif // SVC_TIMER_H

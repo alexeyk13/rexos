@@ -39,7 +39,23 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         svc_mem_handler(num);
         break;
     case (SVC_TIMER):
-        svc_timer_handler(num, param1, param2);
+        switch (num)
+        {
+        case SVC_TIMER_HPET_TIMEOUT:
+            svc_timer_hpet_timeout();
+            break;
+        case SVC_TIMER_SECOND_PULSE:
+            svc_timer_second_pulse();
+            break;
+        case SVC_TIMER_GET_UPTIME:
+            svc_timer_get_uptime((TIME*)param1);
+            break;
+        case SVC_TIMER_SETUP:
+            svc_timer_setup((CB_SVC_TIMER*)param1);
+            break;
+        default:
+            error(ERROR_INVALID_SVC);
+        }
         break;
     case (SVC_DBG):
         switch (num)

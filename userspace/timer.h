@@ -11,11 +11,15 @@
     \{
  */
 
-//temporaily solution until msg will be ready
+/** Callback, provided to kernel, for HPET functionality
+ *  It's the only kernel exception of calling something directly outside of
+ *  kernel. This exception is required for realtime functionality. Please return from
+ *  callbacks ASAP and don't make any heavy stack load, cause you will use here kernel stack
+  */
 typedef struct {
-    void (*start) (unsigned int us);
-    void (*stop) (void);
-    unsigned int (*elapsed) (void);
+    void (*start) (unsigned int us);                                //!< start HPET timer with us value timeout
+    void (*stop) (void);                                            //!< stop HPET timer
+    unsigned int (*elapsed) (void);                                 //!< return elapsed time from last start in us
 } CB_SVC_TIMER;
 
 
@@ -34,9 +38,9 @@ __STATIC_INLINE void get_uptime(TIME* uptime)
     \param sb_svc_timer pointer to init structure
     \retval none
 */
-__STATIC_INLINE void timer_init(CB_SVC_TIMER* cb_svc_timer)
+__STATIC_INLINE void timer_setup(CB_SVC_TIMER* cb_svc_timer)
 {
-    sys_call(SVC_TIMER_INIT, (unsigned int)cb_svc_timer, 0, 0);
+    sys_call(SVC_TIMER_SETUP, (unsigned int)cb_svc_timer, 0, 0);
 }
 
 /**

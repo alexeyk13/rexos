@@ -118,6 +118,12 @@ const uint32_t     RCC_TIMER[] =                        {RCC_APB2ENR_TIM1EN, RCC
                                                             RCC_APB2ENR_TIM8EN, RCC_APB2ENR_TIM9EN, RCC_APB2ENR_TIM10EN, RCC_APB2ENR_TIM11EN, RCC_APB1ENR_TIM12EN, RCC_APB1ENR_TIM13EN, RCC_APB1ENR_TIM14EN,
                                                             RCC_APB2ENR_TIM15EN, RCC_APB2ENR_TIM16EN, RCC_APB2ENR_TIM17EN};
 
+#define SYS_TIMER_RTC                            RTC_0
+#define SYS_TIMER_HPET                            TIM_4
+#define SYS_TIMER_PRIORITY                        10
+#define SYS_TIMER_SOFT_RTC                        1
+#define SYS_TIMER_SOFT_RTC_TIMER                TIM_7
+
 #if defined(STM32F10X_LD_VL) || defined(STM32F10X_MD_VL) || defined(STM32F10X_HD_VL)
 void TIM1_UP_TIM16_IRQHandler(void)
 {
@@ -498,7 +504,7 @@ void timer_init_hw()
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
-    timer_init(&cb_svc_timer);
+    timer_setup(&cb_svc_timer);
 #if (SYS_TIMER_SOFT_RTC)
     timer_enable(SYS_TIMER_SOFT_RTC, second_pulse_isr, SYS_TIMER_PRIORITY, 0);
     timer_start(SYS_TIMER_SOFT_RTC, 1000000);

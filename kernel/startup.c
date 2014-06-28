@@ -10,6 +10,7 @@
 #include "kernel_config.h"
 #include "kernel.h"
 #include "../lib/pool.h"
+#include "svc_timer.h"
 
 extern const REX INIT;
 
@@ -32,6 +33,9 @@ void startup()
 #ifndef NVIC_PRESENT
     irq_init();
 #endif //NVIC_PRESENT
+
+    //initilize timer
+    svc_timer_init();
 
     //initialize thread subsystem, create idle task
     svc_thread_init(&INIT);

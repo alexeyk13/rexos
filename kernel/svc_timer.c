@@ -8,10 +8,37 @@
 #include "kernel_config.h"
 #include "dbg.h"
 #include "kernel.h"
-#include "../userspace/core/sys_calls.h"
 #include <string.h>
 
 #define FREE_RUN                                        2000000
+
+void hpet_start_stub(unsigned int value)
+{
+#if (KERNEL_DEBUG)
+    printf("Warning: HPET start stub called\n\r");
+#endif //KERNEL_DEBUG
+}
+
+void hpet_stop_stub()
+{
+#if (KERNEL_DEBUG)
+    printf("Warning: HPET stop stub called\n\r");
+#endif //KERNEL_DEBUG
+}
+
+unsigned int hpet_elapsed_stud()
+{
+#if (KERNEL_DEBUG)
+    printf("Warning: HPET elapsed stub called\n\r");
+#endif //KERNEL_DEBUG
+    return 0;
+}
+
+const CB_SVC_TIMER cb_svc_timer_stub = {
+    hpet_start_stub,
+    hpet_stop_stub,
+    hpet_elapsed_stud
+};
 
 void svc_timer_get_uptime(TIME* res)
 {
@@ -61,7 +88,7 @@ static inline void find_shoot_next()
     } while (to_shoot);
 }
 
-static inline void svc_timer_second_pulse()
+void svc_timer_second_pulse()
 {
     __KERNEL->hpet_value = 0;
     __KERNEL->cb_svc_timer.stop();
@@ -74,6 +101,10 @@ static inline void svc_timer_second_pulse()
 
 void svc_timer_hpet_timeout()
 {
+#if (KERNEL_TIMER_DEBUG)
+    if (__KERNEL->hpet_value == 0)
+        printf("Warning: HPET timeout on FREE RUN mode: second pulse is inactive or HPET configured improperly");
+#endif
     __KERNEL->uptime.usec += __KERNEL->hpet_value;
     __KERNEL->hpet_value = 0;
     __KERNEL->cb_svc_timer.start(FREE_RUN);
@@ -81,7 +112,7 @@ void svc_timer_hpet_timeout()
     find_shoot_next();
 }
 
-void svc_timer_init(CB_SVC_TIMER* cb_svc_timer)
+void svc_timer_setup(const CB_SVC_TIMER *cb_svc_timer)
 {
     memcpy(&__KERNEL->cb_svc_timer, cb_svc_timer, sizeof(CB_SVC_TIMER));
     __KERNEL->cb_svc_timer.start(FREE_RUN);
@@ -93,7 +124,6 @@ void svc_timer_start(TIMER* timer)
     DLIST_ENUM de;
     TIMER* cur;
     bool found = false;
-    CHECK_CONTEXT(SUPERVISOR_CONTEXT | IRQ_CONTEXT);
     svc_timer_get_uptime(&uptime);
     time_add(&uptime, &timer->time, &timer->time);
     CRITICAL_ENTER;
@@ -114,29 +144,12 @@ void svc_timer_start(TIMER* timer)
 
 void svc_timer_stop(TIMER* timer)
 {
-    CHECK_CONTEXT(SUPERVISOR_CONTEXT | IRQ_CONTEXT);
     CRITICAL_ENTER;
     dlist_remove((DLIST**)&__KERNEL->timers, (DLIST*)timer);
     CRITICAL_LEAVE;
 }
 
-void svc_timer_handler(unsigned int num, unsigned int param1, unsigned int param2)
+void svc_timer_init()
 {
-    switch (num)
-    {
-    case SVC_TIMER_HPET_TIMEOUT:
-        svc_timer_hpet_timeout();
-        break;
-    case SVC_TIMER_SECOND_PULSE:
-        svc_timer_second_pulse();
-        break;
-    case SVC_TIMER_GET_UPTIME:
-        svc_timer_get_uptime((TIME*)param1);
-        break;
-    case SVC_TIMER_INIT:
-        svc_timer_init((CB_SVC_TIMER*)param1);
-        break;
-    default:
-        error(ERROR_INVALID_SVC);
-    }
+    memcpy(&__KERNEL->cb_svc_timer, &cb_svc_timer_stub, sizeof(CB_SVC_TIMER));
 }
