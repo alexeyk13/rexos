@@ -14,6 +14,7 @@
 void foo()
 {
     OFFSETOF(PROCESS, sp);
+    OFFSETOF(PROCESS, heap);
     SIZEOF(GLOBAL);
     OFFSETOF(KERNEL, active_process);
     OFFSETOF(KERNEL, next_process);

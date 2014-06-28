@@ -60,8 +60,6 @@ static inline void svc_event_wait(EVENT* event, TIME* time)
     PROCESS* process = svc_process_get_current();
     if (!event->set)
     {
-        //first - remove from active list
-        //if called from IRQ context, process_private.c will raise error
         svc_process_sleep(time, PROCESS_SYNC_EVENT, event);
         dlist_add_tail((DLIST**)&event->waiters, (DLIST*)process);
     }

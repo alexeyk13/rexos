@@ -45,8 +45,6 @@ static inline void svc_sem_wait(SEM* sem, TIME* time)
     PROCESS* process = svc_process_get_current();
     if (sem->value == 0)
     {
-        //first - remove from active list
-        //if called from IRQ context, process_private.c will raise error
         svc_process_sleep(time, PROCESS_SYNC_SEM, sem);
         dlist_add_tail((DLIST**)&sem->waiters, (DLIST*)process);
     }

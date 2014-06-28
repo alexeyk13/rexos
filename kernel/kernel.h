@@ -43,22 +43,19 @@ typedef struct {
     //next process to run, after leave. For context switch. If NULL - no context switch is required
     volatile PROCESS* next_process;
 
-    PROCESS* active_processes[PROCESS_CACHE_SIZE];
-    PROCESS* processes_uncached;
-    int process_list_size;
-
-    //Current process. If there is no active tasks, idle_task will be run
-    PROCESS* current_process;
+    PROCESS* processes;
+    //init process. Always active.
     PROCESS* init;
 
     //------------------------- timer specific -------------------------
     TIME uptime;
 
-    //refactor me later
+    //callback for HPET timer
     CB_SVC_TIMER cb_svc_timer;
 
     TIMER* timers;
     volatile bool timer_inside_isr;
+    //HPET value, set before call
     unsigned int hpet_value;
     //----------------------- paged memory related ---------------------
     POOL paged;
@@ -88,7 +85,7 @@ typedef struct {
     unsigned int rand;
 
     int killme;
-    POOL killme_pool;
+    int killme2;
 
     //name is following
 } KERNEL;

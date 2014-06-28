@@ -201,7 +201,7 @@ PendSV_Handler:
 	 ldr    r2, [r1, offsetof_KERNEL_next_process]
 	 cmp    r2, #0													@late arrival of pendSV can cause double-calling
     beq    context_exit
-	 ldr    r3, [r1, offsetof_KERNEL_active_process]		@_active_process will be NULL on startup/task destroy
+	 ldr    r3, [r1, offsetof_KERNEL_active_process]	@active_process will be NULL on startup/task destroy
     cmp    r3, #0
     beq    load_context
 
@@ -215,8 +215,12 @@ load_context:
     msr    psp, r0
 
 	 str    r2, [r1, offsetof_KERNEL_active_process]
-    mov    r2, #0
-	 str    r2, [r1, offsetof_KERNEL_next_process]
+	 mov    r0, #0
+	 str    r0, [r1, offsetof_KERNEL_next_process]
+
+	 ldr	  r2, [r2, offsetof_PROCESS_heap]			   @ save heap in GLOBAL
+	 ldr	  r1, =SRAM_BASE
+	 str	  r2, [r1]
 
 context_exit:
     cpsie i

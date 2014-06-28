@@ -14,10 +14,8 @@
 #include "sem_kernel.h"
 #include "kernel.h"
 #include "../userspace/core/sys_calls.h"
-#include "../userspace/core/core.h"
 #include "../userspace/error.h"
 #include "../lib/pool.h"
-#include "magic.h"
 //remove this
 #if (KERNEL_PROFILING)
 #include "memmap.h"
@@ -70,8 +68,6 @@ void svc_process_timeout(void* param)
     CRITICAL_LEAVE;
 }
 
-extern void init(void);
-
 void svc_process_create(const REX* rex, PROCESS** process)
 {
     *process = sys_alloc(sizeof(PROCESS));
@@ -116,47 +112,14 @@ void svc_process_create(const REX* rex, PROCESS** process)
         error(ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
-static inline void push_last_in_list()
-{
-    if (__KERNEL->process_list_size == PROCESS_CACHE_SIZE)
-    {
-        DLIST* cur;
-        while (__KERNEL->active_processes[PROCESS_CACHE_SIZE - 1] != NULL)
-        {
-            cur = __KERNEL->active_processes[PROCESS_CACHE_SIZE - 1]->list.prev;
-            dlist_remove_tail((DLIST**)&(__KERNEL->active_processes[PROCESS_CACHE_SIZE - 1]));
-            dlist_add_head((DLIST**)&__KERNEL->processes_uncached, cur);
-        }
-    }
-    else
-        ++__KERNEL->process_list_size;
-}
-
-static inline void pop_last_from_list()
-{
-    if (__KERNEL->processes_uncached != NULL)
-    {
-        __KERNEL->active_processes[PROCESS_CACHE_SIZE - 1] = NULL;
-        int priority = __KERNEL->processes_uncached->current_priority;
-        PROCESS* cur;
-        while (__KERNEL->processes_uncached != NULL && __KERNEL->processes_uncached->current_priority == priority)
-        {
-            cur = __KERNEL->processes_uncached;
-            dlist_remove_head((DLIST**)&__KERNEL->processes_uncached);
-            dlist_add_tail((DLIST**)&(__KERNEL->active_processes[__KERNEL->process_list_size]), (DLIST*)cur);
-        }
-    }
-    else
-    {
-        --__KERNEL->process_list_size;
-    }
-}
-
 void process_add_to_active_list(PROCESS* process)
 {
+    bool found = false;
     PROCESS* process_to_save = process;
+    DLIST_ENUM de;
+    PROCESS* cur;
     //process priority is less, than active, activate him
-    if (process->current_priority < __KERNEL->current_process->current_priority)
+    if (process->current_priority < __KERNEL->processes->current_priority)
     {
 #if (KERNEL_PROFILING)
 //        svc_get_uptime(&process->uptime_start);
@@ -164,118 +127,42 @@ void process_add_to_active_list(PROCESS* process)
 //        time_add(&_current_process->uptime_start, &_current_process->uptime, &_current_process->uptime);
 #endif //KERNEL_PROFILING
 
-        process_to_save = __KERNEL->current_process;
-        __KERNEL->current_process = process;
-        __GLOBAL->heap = __KERNEL->current_process->heap;
-        __KERNEL->next_process = __KERNEL->current_process;
-    }
-    //first - look at cache
-    int pos = 0;
-    if (__KERNEL->process_list_size)
-    {
-        int first = 0;
-        int last = __KERNEL->process_list_size - 1;
-        int mid;
-        while (first < last)
-        {
-            mid = (first + last) >> 1;
-            if (__KERNEL->active_processes[mid]->current_priority < process_to_save->current_priority)
-                first = mid + 1;
-            else
-                last = mid;
-        }
-        pos = first;
-        if (__KERNEL->active_processes[pos]->current_priority < process_to_save->current_priority)
-            ++pos;
+        process_to_save = __KERNEL->processes;
+        dlist_remove_head((DLIST**)&__KERNEL->processes);
+        dlist_add_head((DLIST**)&__KERNEL->processes, (DLIST*)process);
+        __KERNEL->next_process = process;
+        pend_switch_context();
     }
 
-    //we have space in cache?
-    if (pos < PROCESS_CACHE_SIZE)
-    {
-        //does we have active process with same priority?
-        if (!(__KERNEL->active_processes[pos] != NULL && __KERNEL->active_processes[pos]->current_priority == process_to_save->current_priority))
+    dlist_enum_start((DLIST**)&__KERNEL->processes, &de);
+    while (dlist_enum(&de, (DLIST**)&cur))
+        if (process_to_save->current_priority < cur->current_priority)
         {
-            //last list is going out ouf cache
-            push_last_in_list();
-            memmove(__KERNEL->active_processes + pos + 1, __KERNEL->active_processes + pos, (__KERNEL->process_list_size - pos - 1) * sizeof(void*));
-            __KERNEL->active_processes[pos] = NULL;
+            dlist_add_before((DLIST**)&__KERNEL->processes, (DLIST*)cur, (DLIST*)process_to_save);
+            found = true;
+            break;
         }
-        dlist_add_tail((DLIST**)&__KERNEL->active_processes[pos], (DLIST*)process_to_save);
-    }
-    //find and allocate timer on uncached list
-    else
-    {
-        //top
-        if (__KERNEL->processes_uncached == NULL || process_to_save->current_priority < __KERNEL->processes_uncached->current_priority)
-            dlist_add_head((DLIST**)&__KERNEL->processes_uncached, (DLIST*)process_to_save);
-        //bottom
-        else if (process_to_save->current_priority >= ((PROCESS*)__KERNEL->processes_uncached->list.prev)->current_priority)
-            dlist_add_tail((DLIST**)&__KERNEL->processes_uncached, (DLIST*)process_to_save);
-        //in the middle
-        else
-        {
-            DLIST_ENUM de;
-            PROCESS* cur;
-            dlist_enum_start((DLIST**)&__KERNEL->processes_uncached, &de);
-            while (dlist_enum(&de, (DLIST**)&cur))
-                if (cur->current_priority < process_to_save->current_priority)
-                {
-                    dlist_add_before((DLIST**)&__KERNEL->processes_uncached, (DLIST*)cur, (DLIST*)process_to_save);
-                    break;
-                }
-        }
-    }
+    if (!found)
+        dlist_add_tail((DLIST**)&__KERNEL->processes, (DLIST*)process_to_save);
 }
 
 void process_remove_from_active_list(PROCESS* process)
 {
-    int pos = 0;
     //freeze active task
-    if (process == __KERNEL->current_process)
+    if (process == __KERNEL->processes)
     {
 #if (KERNEL_PROFILING)
 ///        svc_get_uptime(&_active_processes[0]->uptime_start);
 ///        time_sub(&_current_process->uptime_start, &_active_processes[0]->uptime_start, &_current_process->uptime_start);
 ///        time_add(&_current_process->uptime_start, &_current_process->uptime, &_current_process->uptime);
 #endif //KERNEL_PROFILING
-        __KERNEL->current_process = __KERNEL->active_processes[0];
-        __GLOBAL->heap = __KERNEL->current_process->heap;
-        __KERNEL->next_process = __KERNEL->current_process;
+        dlist_remove_head((DLIST**)&__KERNEL->processes);
+        __KERNEL->next_process = __KERNEL->processes;
+        pend_switch_context();
     }
-    //try to search in cache
     else
-    {
-        int first = 0;
-        int last = __KERNEL->process_list_size - 1;
-        int mid;
-        while (first < last)
-        {
-            mid = (first + last) >> 1;
-            if (__KERNEL->active_processes[mid]->current_priority < process->current_priority)
-                first = mid + 1;
-            else
-                last = mid;
-        }
-        pos = first;
-        if (__KERNEL->active_processes[pos]->current_priority < process->current_priority)
-            ++pos;
-    }
-
-    if (pos < PROCESS_CACHE_SIZE)
-    {
-        dlist_remove_head((DLIST**)&(__KERNEL->active_processes[pos]));
-
-        //removed all at current priority level
-        if (__KERNEL->active_processes[pos] == NULL)
-        {
-            memmove(__KERNEL->active_processes + pos, __KERNEL->active_processes + pos + 1, (__KERNEL->process_list_size - pos - 1) * sizeof(void*));
-            //restore to cache from list
-            pop_last_from_list();
-        }
-    }
-    //remove from uncached
-    else
-        dlist_remove((DLIST**)&__KERNEL->processes_uncached, (DLIST*)process);
+        dlist_remove((DLIST**)&__KERNEL->processes, (DLIST*)process);
+    //TODO: add here to waiting list
 }
 
 static inline void svc_process_unfreeze(PROCESS* process)
@@ -285,8 +172,6 @@ static inline void svc_process_unfreeze(PROCESS* process)
     {
     case PROCESS_MODE_FROZEN:
         process_add_to_active_list(process);
-        if (__KERNEL->next_process)
-            pend_switch_context();
     case PROCESS_MODE_WAITING_FROZEN:
         process->flags |= PROCESS_MODE_ACTIVE;
         break;
@@ -300,8 +185,6 @@ static inline void svc_process_freeze(PROCESS* process)
     {
     case PROCESS_MODE_ACTIVE:
         process_remove_from_active_list(process);
-        if (__KERNEL->next_process)
-            pend_switch_context();
     case PROCESS_MODE_WAITING:
         process->flags &= ~PROCESS_MODE_ACTIVE;
         break;
@@ -315,7 +198,7 @@ void svc_process_error(PROCESS* process, int error)
 
 PROCESS* svc_process_get_current()
 {
-    return __KERNEL->current_process;
+    return __KERNEL->processes;
 }
 
 void svc_process_set_current_priority(PROCESS* process, unsigned int priority)
@@ -329,8 +212,6 @@ void svc_process_set_current_priority(PROCESS* process, unsigned int priority)
             process_remove_from_active_list(process);
             process->current_priority = priority;
             process_add_to_active_list(process);
-            if (__KERNEL->next_process)
-                pend_switch_context();
             break;
         //if we are waiting for mutex, adjusting priority can affect on mutex owner
         case PROCESS_MODE_WAITING:
@@ -379,8 +260,6 @@ static void svc_process_destroy(PROCESS* process)
         //we don't need to save context on exit
         if (__KERNEL->active_process == process)
             __KERNEL->active_process = NULL;
-        if (__KERNEL->next_process)
-            pend_switch_context();
     }
     //if process is owned by any sync object, release them
     if  (process->flags & PROCESS_FLAGS_WAITING)
@@ -413,12 +292,12 @@ static void svc_process_destroy(PROCESS* process)
 
 void svc_process_destroy_current()
 {
-    svc_process_destroy(__KERNEL->current_process);
+    svc_process_destroy(__KERNEL->processes);
 }
 
 void svc_process_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
 {
-    PROCESS* process = __KERNEL->current_process;
+    PROCESS* process = __KERNEL->processes;
     CHECK_MAGIC(process, MAGIC_PROCESS);
     //init process cannot sleep or be locked by mutex
     if (process == __KERNEL->init)
@@ -428,9 +307,7 @@ void svc_process_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_objec
 #endif
         panic();
     }
-
     process_remove_from_active_list(process);
-    pend_switch_context();
     process->flags |= PROCESS_MODE_WAITING | sync_type;
     process->sync_object = sync_object;
 
@@ -464,8 +341,6 @@ void svc_process_wakeup(PROCESS* process)
             process->flags &= ~PROCESS_FLAGS_WAITING;
         case PROCESS_MODE_WAITING:
             process_add_to_active_list(process);
-            if (__KERNEL->next_process)
-                pend_switch_context();
             break;
         }
     }
@@ -474,7 +349,7 @@ void svc_process_wakeup(PROCESS* process)
 #if (KERNEL_PROFILING)
 static inline void svc_process_switch_test()
 {
-    PROCESS* process = __KERNEL->current_process;
+    PROCESS* process = __KERNEL->processes;
     process_remove_from_active_list(process);
     process_add_to_active_list(process);
     pend_switch_context();
@@ -493,6 +368,8 @@ void svc_process_handler(unsigned int num, unsigned int param1, unsigned int par
         break;
     case SVC_PROCESS_UNFREEZE:
         svc_process_unfreeze((PROCESS*)param1);
+        if (__KERNEL->init)
+            __KERNEL->killme2 = 1;
         break;
     case SVC_PROCESS_FREEZE:
         svc_process_freeze((PROCESS*)param1);
@@ -532,8 +409,8 @@ void svc_process_init(const REX* rex)
 
     //activate init
     __KERNEL->init->flags = PROCESS_MODE_ACTIVE;
-    __KERNEL->next_process = __KERNEL->current_process = __KERNEL->init;
-    __GLOBAL->heap = __KERNEL->current_process->heap;
+    dlist_add_head((DLIST**)&__KERNEL->processes, (DLIST*)__KERNEL->init);
+    __KERNEL->next_process =__KERNEL->processes;
     pend_switch_context();
 }
 
