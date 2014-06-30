@@ -6,7 +6,6 @@
 
 #include "printf.h"
 #include <string.h>
-#include "dbg_console.h"
 #include "dbg.h"
 #include "../userspace/process.h"
 
@@ -66,7 +65,7 @@ static inline void pad_zeroes(int count, STDOUT write_handler, void *write_param
     \param size: size of buf in bytes
     \retval integer result. 0 on error
 */
-unsigned long atou(char* buf, int size)
+unsigned long atou(const char *const buf, int size)
 {
     int i;
     unsigned long res = 0;
@@ -124,22 +123,6 @@ int size_in_bytes(unsigned int value, char* buf)
     return size;
 }
 
-/**
-    \brief print size in bytes
-    \param value: value in bytes
-    \param size: size of outer string. Free space will be left-padded with spaces
-    \retval none
-*/
-void print_size_in_bytes(unsigned int value, int size)
-{
-    char buf[6];
-    int sz_out;
-    sz_out = size_in_bytes(value, buf);
-    if (size > sz_out)
-        pad_spaces(size - sz_out, __HEAP->stdout, __HEAP->stdout_param);
-    printf(buf);
-}
-
 /** \} */ // end of lib_printf group
 
 /** \addtogroup lib_printf embedded stdio
@@ -154,7 +137,7 @@ void print_size_in_bytes(unsigned int value, int size)
     \param va: va_list of arguments
     \retval none
 */
-void format(char *fmt, va_list va, STDOUT write_handler, void* write_param)
+void format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param)
 {
     char buf[PRINTF_BUF_SIZE];
     unsigned char flags;
@@ -346,6 +329,18 @@ void format(char *fmt, va_list va, STDOUT write_handler, void* write_param)
                     if (buf_size < precision)
                         d += precision - buf_size;
                     break;
+                case 'b':
+                    u = va_arg(va, unsigned long);
+                    if (flags & FLAGS_SHORT_INT)
+                        u = (unsigned short)u;
+                    if (u > 0)
+                    {
+                        buf_size = size_in_bytes(u, buf);
+                        d = buf_size;
+                    }
+                    if (buf_size < precision)
+                        d += precision - buf_size;
+                    break;
                 }
 
                 //right justify
@@ -364,6 +359,7 @@ void format(char *fmt, va_list va, STDOUT write_handler, void* write_param)
                 case 'i':
                 case 'd':
                 case 'u':
+                case 'b':
                     //sign processing
                     if (flags & FLAGS_SIGN_MINUS)
                         write_handler("-", 1, write_param);
@@ -421,7 +417,7 @@ void format(char *fmt, va_list va, STDOUT write_handler, void* write_param)
     \param ...: list of arguments
     \retval none
 */
-void printf(char *fmt, ...)
+void printf(const char *const fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
@@ -437,7 +433,7 @@ void printf(char *fmt, ...)
     \param ...: list of arguments
     \retval none
 */
-void sprintf(char* str, char *fmt, ...)
+void sprintf(char* str, const char * const fmt, ...)
 {
     va_list va;
     va_start(va, fmt);

@@ -16,11 +16,13 @@
 
 #define MAX_PROCESS_NAME_SIZE                                    128
 
-
 #if (KERNEL_PROFILING)
-#define PROCESS_NAME_PRINT_SIZE                                  16
-extern void svc_stack_stat();
-#endif //KERNEL_PROFILING
+#if (KERNEL_PROCESS_STAT)
+const char *const STAT_LINE="--------------------------------------------------------------------------\n\r";
+#else
+const char *const STAT_LINE="----------------------------------------------------------------\n\r";
+#endif
+#endif
 
 void svc_process_add_to_active_list(PROCESS* process)
 {
@@ -28,6 +30,9 @@ void svc_process_add_to_active_list(PROCESS* process)
     PROCESS* process_to_save = process;
     DLIST_ENUM de;
     PROCESS* cur;
+#if (KERNEL_PROCESS_STAT)
+    dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
+#endif
     //process priority is less, than active, activate him
     if (process->current_priority < __KERNEL->processes->current_priority)
     {
@@ -72,7 +77,9 @@ void svc_process_remove_from_active_list(PROCESS* process)
     }
     else
         dlist_remove((DLIST**)&__KERNEL->processes, (DLIST*)process);
-    //TODO: add here to waiting list
+#if (KERNEL_PROCESS_STAT)
+    dlist_add_tail((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
+#endif
 }
 
 void svc_process_timeout(void* param)
@@ -127,11 +134,7 @@ void svc_process_create(const REX* rex, PROCESS** process)
             (*process)->sp = (void*)((unsigned int)(*process)->heap + rex->size);
             (*process)->timer.callback = svc_process_timeout;
             (*process)->timer.param = (*process);
-
-#if (KERNEL_PROFILING)
             (*process)->size = rex->size;
-            memset((*process)->heap, MAGIC_UNINITIALIZED_BYTE, (*process)->size);
-#endif //KERNEL_PROFILING
             (*process)->heap->handle = (HANDLE)(*process);
             (*process)->heap->stdout = __KERNEL->stdout_global;
             (*process)->heap->stdout_param = __KERNEL->stdout_global_param;
@@ -149,6 +152,9 @@ void svc_process_create(const REX* rex, PROCESS** process)
 
             process_setup_context((*process), rex->fn);
 
+#if (KERNEL_PROCESS_STAT)
+            dlist_add_tail((DLIST**)&__KERNEL->wait_processes, (DLIST*)(*process));
+#endif
             if ((rex->flags & 1) == PROCESS_FLAGS_ACTIVE)
             {
                 (*process)->flags |= PROCESS_MODE_ACTIVE;
@@ -256,6 +262,9 @@ void svc_process_destroy(PROCESS* process)
             ASSERT(false);
         }
     }
+#if (KERNEL_PROCESS_STAT)
+    dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
+#endif
     //release memory, occupied by process
     stack_free(process->heap);
     sys_free(process);
@@ -364,6 +373,9 @@ void svc_process_init(const REX* rex)
     __KERNEL->init->flags = PROCESS_MODE_ACTIVE;
     dlist_add_head((DLIST**)&__KERNEL->processes, (DLIST*)__KERNEL->init);
     __KERNEL->next_process =__KERNEL->processes;
+#if (KERNEL_PROCESS_STAT)
+    dlist_clear((DLIST**)&__KERNEL->wait_processes);
+#endif
     pend_switch_context();
 }
 
@@ -377,41 +389,53 @@ void svc_process_switch_test()
     //next process is now same as active process, it will simulate context switching
 }
 
-void process_print_stat(PROCESS* process)
+void process_stat(PROCESS* process)
 {
-    char buf[PROCESS_NAME_PRINT_SIZE + 1];
-    TIME uptime;
-    int i;
-    //name
+    POOL_STAT stat;
+    //TODO refactor for check
+    pool_stat(&process->heap->pool, &stat, process->sp);
+
     printk("%-16.16s ", PROCESS_NAME(process->heap));
 
-    //priority
-    //format priority
     if (process->current_priority == (unsigned int)(-1))
-        printk("-init- ");
+        printk(" -init- ");
     else
-        printk("%2.2d(%2.2d) ", process->current_priority, process->base_priority);
+        printk("%03d(%03d)", process->current_priority, process->base_priority);
 
-    printk("|\n\r");
-    //stack size
-/*    unsigned int current_stack, max_stack;
-    current_stack = thread->heap_size - ((unsigned int)thread->sp - (unsigned int)thread->heap) / sizeof(unsigned int);
-    max_stack = thread->heap_size - (stack_used_max((unsigned int)thread->heap, (unsigned int)thread->sp) - (unsigned int)thread->heap) / sizeof(unsigned int);
-    printk("%3d/%3d/%3d   ", current_stack, max_stack, thread->heap_size);
+    printk("  %4b   ", (unsigned int)process->heap + process->size - (unsigned int)process->sp);
+    printk("%4b ", process->size);
 
-    //uptime, including time for current thread
-    if (thread == __KERNEL->current_thread)
-    {
-//        get_uptime(&thread_uptime);
-        time_sub(&thread->uptime_start, &thread_uptime, &thread_uptime);
-        time_add(&thread_uptime, &thread->uptime, &thread_uptime);
-    }
-    else
-    {
-        thread_uptime.sec = thread->uptime.sec;
-        thread_uptime.usec = thread->uptime.usec;
-    }
-    printk("%3d:%02d.%03d\n\r", thread_uptime.sec / 60, thread_uptime.sec % 60, thread->uptime.usec / 1000);*/
+    printk("%4b(%02d)  ", stat.used, stat.used_slots);
+    printk("%4b/%4b(%02d)", stat.free, stat.largest_free, stat.free_slots);
+
+#if (KERNEL_PROCESS_STAT)
+    printk("%3d:%02d.%03d", process->uptime.sec / 60, process->uptime.sec % 60, process->uptime.usec / 1000);
+#endif
+    printk("\n\r");
+}
+
+static inline void kernel_stat()
+{
+#if (KERNEL_PROCESS_STAT)
+    TIME uptime;
+#endif
+    POOL_STAT stat;
+    //TODO refactor for check
+    pool_stat(&__KERNEL->pool, &stat, get_sp());
+
+    printk("%-16.16s         ", __KERNEL_NAME);
+
+    printk("  %4b   ", KERNEL_BASE + KERNEL_SIZE - (unsigned int)get_sp());
+    printk("%4b ", KERNEL_SIZE);
+
+    printk("%4b(%02d)  ", stat.used, stat.used_slots);
+    printk("%4b/%4b(%02d)", stat.free, stat.largest_free, stat.free_slots);
+
+    svc_timer_get_uptime(&uptime);
+#if (KERNEL_PROCESS_STAT)
+    printk("%3d:%02d.%03d", uptime.sec / 60, uptime.sec % 60, uptime.usec / 1000);
+#endif
+    printk("\n\r");
 }
 
 void svc_process_info()
@@ -419,14 +443,32 @@ void svc_process_info()
     int cnt = 0;
     DLIST_ENUM de;
     PROCESS* cur;
-    printk("    name        priority      stack        uptime\n\r");
-    printk("----------------------------------------------------\n\r");
+#if (KERNEL_PROCESS_STAT)
+    printk("    name         priority  stack  size   used         free       uptime\n\r");
+#else
+    printk("    name         priority  stack  size   used         free\n\r");
+#endif
+    printk(STAT_LINE);
     dlist_enum_start((DLIST**)&__KERNEL->processes, &de);
     while (dlist_enum(&de, (DLIST**)&cur))
     {
-        process_print_stat(cur);
+        process_stat(cur);
         ++cnt;
     }
-    printk("total %d processess active\n\r", cnt);
+#if (KERNEL_PROCESS_STAT)
+    dlist_enum_start((DLIST**)&__KERNEL->wait_processes, &de);
+    while (dlist_enum(&de, (DLIST**)&cur))
+    {
+        process_stat(cur);
+        ++cnt;
+    }
+    printk("total %d processess\n\r", cnt);
+#else
+    printk("total %d active processess\n\r", cnt);
+#endif
+    printk(STAT_LINE);
+
+    kernel_stat();
+    printk(STAT_LINE);
 }
 #endif //KERNEL_PROFILING

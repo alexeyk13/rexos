@@ -35,7 +35,7 @@ void startup()
     memset(__KERNEL, 0, sizeof(KERNEL));
     __KERNEL->stdout = __KERNEL->stdout_global = stdout_stub;
     __KERNEL->stdin_global = stdin_stub;
-    strcpy(__KERNEL_NAME, "RExOS");
+    strcpy(__KERNEL_NAME, "RExOS 0.1");
     __KERNEL->struct_size = sizeof(KERNEL) + strlen(__KERNEL_NAME) + 1;
 
     //initialize system memory pool

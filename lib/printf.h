@@ -51,6 +51,7 @@
     \b o            Unsigned octal\n
     \b s            String of characters    sample\n
     \b u            Unsigned decimal integer\n
+    \b b            Size in bytes
     \b x            Unsigned hexadecimal integer\n
     \b X            Unsigned hexadecimal integer (capital letters)\n
     \b %            A \b % followed by another \b % character will write \b % to stdout.
@@ -60,14 +61,12 @@
 #include <stdarg.h>
 #include "../userspace/types.h"
 
-unsigned long atou(char* buf, int size);
+unsigned long atou(const char *const buf, int size);
 int utoa(char* buf, unsigned long value, int radix, bool uppercase);
-int size_in_bytes(unsigned int value, char* buf);
-void print_size_in_bytes(unsigned int value, int size);
 
-void format(char *fmt, va_list va, STDOUT write_handler, void* write_param);
+void format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param);
 
-void printf(char *fmt, ...);
-void sprintf(char* str, char *fmt, ...);
+void printf(const char *const fmt, ...);
+void sprintf(char* str, const char *const fmt, ...);
 
 #endif // PRINTF_H

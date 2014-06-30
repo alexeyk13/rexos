@@ -50,7 +50,11 @@ typedef struct {
     //next process to run, after leave. For context switch. If NULL - no context switch is required
     volatile PROCESS* next_process;
 
+    //active processes
     PROCESS* processes;
+#if (KERNEL_PROCESS_STAT)
+    PROCESS* wait_processes;
+#endif //(KERNEL_PROCESS_STAT)
     //init process. Always active.
     PROCESS* init;
 
@@ -68,8 +72,6 @@ typedef struct {
     POOL paged;
 
     //--- move this shit later to userspace
-    unsigned long core_cycles_us;
-    unsigned long core_cycles_ms;
     unsigned long core_freq;
     unsigned long fs_freq;
     unsigned long ahb_freq;

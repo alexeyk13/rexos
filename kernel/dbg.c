@@ -20,7 +20,7 @@ static inline unsigned int stack_used_max(unsigned int top, unsigned int cur)
     return last;
 }
 
-void printk(char *fmt, ...)
+void printk(const char *const fmt, ...)
 {
     va_list va;
     va_start(va, fmt);

@@ -109,7 +109,7 @@
     \param ...: list of arguments
     \retval none
 */
-void printk(char *fmt, ...);
+void printk(const char *const fmt, ...);
 
 /**
     \brief print minidump

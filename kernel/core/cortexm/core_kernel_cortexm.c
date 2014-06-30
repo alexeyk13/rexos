@@ -15,31 +15,6 @@
 
 #define CALLER_ADDRESS                              6
 
-
-#if (KERNEL_PROFILING)
-//TODO: move to dbg
-unsigned int stack_used_max(unsigned int top, unsigned int cur)
-{
-    unsigned int i;
-    unsigned int last = cur;
-    for (i = cur - sizeof(unsigned int); i >= top; i -= 4)
-        if (*(unsigned int*)i != MAGIC_UNINITIALIZED)
-            last = i;
-    return last;
-}
-
-void svc_stack_stat()
-{
-/*    unsigned int sp, current_stack, max_stack;
-    printk("    type       stack        top\n\r");
-    printk("-----------------------------------\n\r");
-    sp = (unsigned int)__get_MSP();
-    current_stack = (SVC_STACK_END - sp) / sizeof(unsigned int);
-    max_stack = (SVC_STACK_END - stack_used_max(SVC_STACK_TOP, sp)) / sizeof(unsigned int);
-    printk("Supervisor %3d/%3d/%3d   0x%08x\n\r", current_stack, max_stack, SVC_STACK_SIZE, SVC_STACK_TOP);*/
-}
-#endif //KERNEL_PROFILING
-
 static void process_fault(unsigned int ret_value)
 {
     //from thread context, just killing thread

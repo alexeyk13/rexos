@@ -123,17 +123,6 @@ Reset_Handler:
     orr    r0, r0, r2
     str    r0, [r1]
 
-#if (KERNEL_PROFILING)
-	 ldr    r0, =MAGIC_UNINITIALIZED
-	 ldr    r1, =SRAM_BASE
-	 ldr    r2, =(SRAM_BASE + KERNEL_SIZE)
-fill:
-	 cmp    r1, r2
-	 itt    lo
-	 strlo  r0, [r1], #4
-	 blo    fill
-#endif //KERNEL_PROFILING
-
 	 bl    startup                           @ to high-level initialization
 
     @make context and sp switch

@@ -8,9 +8,8 @@
 #include "../userspace/error.h"
 #include <string.h>
 #include "../userspace/core/core.h"
-#include "config.h"
 
-#if (RANGE_CHECKING)
+#if (KERNEL_RANGE_CHECKING)
 
 #define SLOT_HEADER_SIZE                                        (sizeof(void*) + sizeof(unsigned int))
 #define SLOT_FOOTER_SIZE                                        (sizeof (unsigned int))
@@ -20,7 +19,7 @@
 #define SLOT_HEADER_SIZE                                        (sizeof(void*))
 #define SLOT_FOOTER_SIZE                                        (0)
 
-#endif //(RANGE_CHECKING)
+#endif //(KERNEL_RANGE_CHECKING)
 
 #define MIN_SLOT_FULL_SIZE                                        (SLOT_HEADER_SIZE + sizeof(int) + SLOT_FOOTER_SIZE)
 
@@ -30,7 +29,7 @@
 #define ALIGN_SIZE                                                (sizeof(int))
 #define ALIGN(var)                                                (((var) + (ALIGN_SIZE - 1)) & ~(ALIGN_SIZE - 1))
 
-#if (RANGE_CHECKING)
+#if (KERNEL_RANGE_CHECKING)
 
 static const unsigned int RANGE_MARK =                            0xcdcdcdcd;
 static const unsigned int RANGE_MARK_END =                        0xdcdcdcdc;
@@ -52,7 +51,7 @@ static const unsigned int RANGE_MARK_POOL_END =                   0xeeeeeeee;
 #define SET_MARK(ptr)
 #define CLEAR_MARK(ptr)
 
-#endif //(RANGE_CHECKING)
+#endif //(KERNEL_RANGE_CHECKING)
 
 
 /*
@@ -80,103 +79,6 @@ void pool_init(POOL* pool, void* data)
     NEXT_SLOT(pool->first_slot) = NULL;
     SET_MARK(pool->first_slot);
     pool->free_slot = NULL;
-}
-
-bool pool_check_ex(POOL* pool, void* sp)
-{
-    register void *before, *cur;
-    //basic check
-    if (pool->first_slot == NULL || pool->last_slot == NULL ||
-         NUM(pool->first_slot) > NUM(pool->last_slot) ||
-         NUM(pool->free_slot) > NUM(pool->last_slot) || NEXT_SLOT(pool->last_slot) != NULL)
-    {
-        error(ERROR_POOL_CORRUPTED);
-        return false;
-    }
-    if (NUM(sp) < NUM(pool->last_slot))
-    {
-        error(ERROR_OUT_OF_MEMORY);
-        return false;
-    }
-    //check all slots first
-    for (before = NULL, cur = pool->first_slot; cur != NULL; before = cur, cur = NEXT_SLOT(cur))
-    {
-        if (NUM(cur) < NUM(before) || NUM(cur) > NUM(pool->last_slot))
-        {
-            error(ERROR_POOL_CORRUPTED);
-            return false;
-        }
-#if (RANGE_CHECKING)
-        //check header
-        if (*((unsigned int*)(cur) - 1) != RANGE_MARK)
-        {
-            error(ERROR_POOL_RANGE_CHECK_FAILED);
-            return false;
-        }
-
-        if (NEXT_SLOT(cur))
-        {
-            //check footer
-            if (*(unsigned int*)((unsigned int)NEXT_SLOT(cur) - SLOT_HEADER_SIZE - SLOT_FOOTER_SIZE) != RANGE_MARK_END)
-            {
-                error(ERROR_POOL_RANGE_CHECK_FAILED);
-                return false;
-            }
-        }
-        //last slot
-        else
-        {
-            if (*(unsigned int*)(cur) != RANGE_MARK_POOL_END)
-            {
-                error(ERROR_POOL_RANGE_CHECK_FAILED);
-                return false;
-            }
-        }
-#endif //(RANGE_CHECKING)
-    }
-
-    //check free slots
-    for (before = NULL, cur = pool->free_slot; cur != NULL; before = cur, cur = NEXT_FREE(cur))
-    {
-        if (NUM(cur) < NUM(before) || NUM(cur) > NUM(pool->last_slot))
-        {
-            error(ERROR_POOL_CORRUPTED);
-            return false;
-        }
-#if (RANGE_CHECKING)
-        //check header
-        if (*((unsigned int*)(cur) - 1) != RANGE_MARK)
-        {
-            error(ERROR_POOL_RANGE_CHECK_FAILED);
-            return false;
-        }
-
-        if (NEXT_SLOT(cur))
-        {
-            //check footer
-            if (*(unsigned int*)((unsigned int)NEXT_SLOT(cur) - SLOT_HEADER_SIZE - SLOT_FOOTER_SIZE) != RANGE_MARK_END)
-            {
-                error(ERROR_POOL_RANGE_CHECK_FAILED);
-                return false;
-            }
-        }
-        //last slot
-        else
-        {
-            if (*(unsigned int*)(cur) != RANGE_MARK_POOL_END)
-            {
-                error(ERROR_POOL_RANGE_CHECK_FAILED);
-                return false;
-            }
-        }
-#endif //(RANGE_CHECKING)
-    }
-    return true;
-}
-
-bool poll_check(POOL* pool)
-{
-    return pool_check_ex(pool, get_sp());
 }
 
 static inline bool grow(POOL* pool, size_t size)
@@ -389,12 +291,104 @@ void pool_free(POOL* pool, void* ptr)
 
 #if (KERNEL_PROFILING)
 
-void pool_stat_ex(POOL* pool, POOL_STAT* stat, void* sp)
+bool pool_check(POOL* pool, void* sp)
+{
+    register void *before, *cur;
+    //basic check
+    if (pool->first_slot == NULL || pool->last_slot == NULL ||
+         NUM(pool->first_slot) > NUM(pool->last_slot) ||
+         NUM(pool->free_slot) > NUM(pool->last_slot) || NEXT_SLOT(pool->last_slot) != NULL)
+    {
+        error(ERROR_POOL_CORRUPTED);
+        return false;
+    }
+    if (NUM(sp) < NUM(pool->last_slot))
+    {
+        error(ERROR_OUT_OF_MEMORY);
+        return false;
+    }
+    //check all slots first
+    for (before = NULL, cur = pool->first_slot; cur != NULL; before = cur, cur = NEXT_SLOT(cur))
+    {
+        if (NUM(cur) < NUM(before) || NUM(cur) > NUM(pool->last_slot))
+        {
+            error(ERROR_POOL_CORRUPTED);
+            return false;
+        }
+#if (KERNEL_RANGE_CHECKING)
+        //check header
+        if (*((unsigned int*)(cur) - 1) != RANGE_MARK)
+        {
+            error(ERROR_POOL_RANGE_CHECK_FAILED);
+            return false;
+        }
+
+        if (NEXT_SLOT(cur))
+        {
+            //check footer
+            if (*(unsigned int*)((unsigned int)NEXT_SLOT(cur) - SLOT_HEADER_SIZE - SLOT_FOOTER_SIZE) != RANGE_MARK_END)
+            {
+                error(ERROR_POOL_RANGE_CHECK_FAILED);
+                return false;
+            }
+        }
+        //last slot
+        else
+        {
+            if (*(unsigned int*)(cur) != RANGE_MARK_POOL_END)
+            {
+                error(ERROR_POOL_RANGE_CHECK_FAILED);
+                return false;
+            }
+        }
+#endif //(KERNEL_RANGE_CHECKING)
+    }
+
+    //check free slots
+    for (before = NULL, cur = pool->free_slot; cur != NULL; before = cur, cur = NEXT_FREE(cur))
+    {
+        if (NUM(cur) < NUM(before) || NUM(cur) > NUM(pool->last_slot))
+        {
+            error(ERROR_POOL_CORRUPTED);
+            return false;
+        }
+#if (KERNEL_RANGE_CHECKING)
+        //check header
+        if (*((unsigned int*)(cur) - 1) != RANGE_MARK)
+        {
+            error(ERROR_POOL_RANGE_CHECK_FAILED);
+            return false;
+        }
+
+        if (NEXT_SLOT(cur))
+        {
+            //check footer
+            if (*(unsigned int*)((unsigned int)NEXT_SLOT(cur) - SLOT_HEADER_SIZE - SLOT_FOOTER_SIZE) != RANGE_MARK_END)
+            {
+                error(ERROR_POOL_RANGE_CHECK_FAILED);
+                return false;
+            }
+        }
+        //last slot
+        else
+        {
+            if (*(unsigned int*)(cur) != RANGE_MARK_POOL_END)
+            {
+                error(ERROR_POOL_RANGE_CHECK_FAILED);
+                return false;
+            }
+        }
+#endif //(KERNEL_RANGE_CHECKING)
+    }
+    return true;
+}
+
+void pool_stat(POOL* pool, POOL_STAT* stat, void* sp)
 {
     void *cur, *cur_free;
     unsigned int size;
     memset(stat, 0, sizeof(POOL_STAT));
-    if (pool_check_ex(pool, sp))
+    if (pool_check(pool, sp))
     {
         cur_free = pool->free_slot;
         for (cur = pool->first_slot; cur != pool->last_slot; cur = NEXT_SLOT(cur))
@@ -425,11 +419,6 @@ void pool_stat_ex(POOL* pool, POOL_STAT* stat, void* sp)
             stat->largest_free = size;
         stat->free += size;
     }
-}
-
-void pool_stat(POOL* pool, POOL_STAT* stat)
-{
-    pool_stat_ex(pool, stat, get_sp());
 }
 
 #endif //KERNEL_PROFILING
