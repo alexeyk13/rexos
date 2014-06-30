@@ -58,5 +58,7 @@ typedef struct {
 
 /** \} */ // end of lib_time group
 
+typedef void (*STDOUT)(const char *const buf, unsigned int size, void* param);
+typedef void (*STDIN)(char* buf, unsigned int size, void* param);
 
 #endif /*_TYPES_H_*/

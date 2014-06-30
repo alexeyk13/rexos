@@ -104,7 +104,7 @@ void svc_process_timeout(void* param)
 void svc_process_abnormal_exit()
 {
 #if (KERNEL_DEBUG)
-    printf("Warning: abnormal process termination: %s\n\r", PROCESS_NAME(__KERNEL->processes->heap));
+    printk("Warning: abnormal process termination: %s\n\r", PROCESS_NAME(__KERNEL->processes->heap));
 #endif
     if (__KERNEL->processes == __KERNEL->init)
         panic();
@@ -133,6 +133,10 @@ void svc_process_create(const REX* rex, PROCESS** process)
             memset((*process)->heap, MAGIC_UNINITIALIZED_BYTE, (*process)->size);
 #endif //KERNEL_PROFILING
             (*process)->heap->handle = (HANDLE)(*process);
+            (*process)->heap->stdout = __KERNEL->stdout_global;
+            (*process)->heap->stdout_param = __KERNEL->stdout_global_param;
+            (*process)->heap->stdin = __KERNEL->stdin_global;
+            (*process)->heap->stdin_param = __KERNEL->stdin_global_param;
             if (rex->name)
             {
                 strncpy(PROCESS_NAME((*process)->heap), rex->name, MAX_PROCESS_NAME_SIZE);
@@ -215,7 +219,7 @@ void svc_process_destroy(PROCESS* process)
     if (process == __KERNEL->init)
     {
 #if (KERNEL_DEBUG)
-        printf("Init process cannot be destroyed\n\r");
+        printk("Init process cannot be destroyed\n\r");
 #endif
         error(ERROR_RESTRICTED_FOR_INIT);
         return;
@@ -265,7 +269,7 @@ void svc_process_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_objec
     if (process == __KERNEL->init)
     {
 #if (KERNEL_DEBUG)
-        printf("init process cannot sleep\n\r");
+        printk("init process cannot sleep\n\r");
 #endif
         process->flags |= sync_type;
         svc_process_timeout(sync_object);
@@ -373,31 +377,27 @@ void svc_process_switch_test()
     //next process is now same as active process, it will simulate context switching
 }
 
-void thread_print_stat(PROCESS* process)
+void process_print_stat(PROCESS* process)
 {
-/*    char thread_name[THREAD_NAME_PRINT_SIZE + 1];
-    TIME thread_uptime;
-    //format name
+    char buf[PROCESS_NAME_PRINT_SIZE + 1];
+    TIME uptime;
     int i;
-    thread_name[THREAD_NAME_PRINT_SIZE] = 0;
-    memset(thread_name, ' ', THREAD_NAME_PRINT_SIZE);
-    strncpy(thread_name, PROCESS_NAME(thread->heap), THREAD_NAME_PRINT_SIZE);
-    for (i = 0; i < THREAD_NAME_PRINT_SIZE; ++i)
-        if (thread_name[i] == 0)
-            thread_name[i] = ' ';
-    printf("%s ", thread_name);
+    //name
+    printk("%-16.16s ", PROCESS_NAME(process->heap));
 
+    //priority
     //format priority
-    if (thread->current_priority == IDLE_PRIORITY)
-        printf("-idle-   ");
+    if (process->current_priority == (unsigned int)(-1))
+        printk("-init- ");
     else
-        printf("%2d(%2d)   ", thread->current_priority, thread->base_priority);
+        printk("%2.2d(%2.2d) ", process->current_priority, process->base_priority);
 
+    printk("|\n\r");
     //stack size
-    unsigned int current_stack, max_stack;
+/*    unsigned int current_stack, max_stack;
     current_stack = thread->heap_size - ((unsigned int)thread->sp - (unsigned int)thread->heap) / sizeof(unsigned int);
     max_stack = thread->heap_size - (stack_used_max((unsigned int)thread->heap, (unsigned int)thread->sp) - (unsigned int)thread->heap) / sizeof(unsigned int);
-    printf("%3d/%3d/%3d   ", current_stack, max_stack, thread->heap_size);
+    printk("%3d/%3d/%3d   ", current_stack, max_stack, thread->heap_size);
 
     //uptime, including time for current thread
     if (thread == __KERNEL->current_thread)
@@ -411,37 +411,22 @@ void thread_print_stat(PROCESS* process)
         thread_uptime.sec = thread->uptime.sec;
         thread_uptime.usec = thread->uptime.usec;
     }
-    printf("%3d:%02d.%03d\n\r", thread_uptime.sec / 60, thread_uptime.sec % 60, thread->uptime.usec / 1000);*/
+    printk("%3d:%02d.%03d\n\r", thread_uptime.sec / 60, thread_uptime.sec % 60, thread->uptime.usec / 1000);*/
 }
 
 void svc_process_info()
 {
- /*   int active_threads_count = 0;
-    int i;
+    int cnt = 0;
     DLIST_ENUM de;
-    THREAD* cur;*/
-    printf("    name        priority      stack        uptime\n\r");
-    printf("----------------------------------------------------\n\r");
-    //current
-/*    thread_print_stat(__KERNEL->current_thread);
-    ++active_threads_count;
-    //in cache
-    for (i = 0; i < __KERNEL->thread_list_size; ++i)
-    {
-        dlist_enum_start((DLIST**)&__KERNEL->active_threads[i], &de);
-        while (dlist_enum(&de, (DLIST**)&cur))
-        {
-            thread_print_stat(cur);
-            ++active_threads_count;
-        }
-    }
-    //out of cache
-    dlist_enum_start((DLIST**)&__KERNEL->threads_uncached, &de);
+    PROCESS* cur;
+    printk("    name        priority      stack        uptime\n\r");
+    printk("----------------------------------------------------\n\r");
+    dlist_enum_start((DLIST**)&__KERNEL->processes, &de);
     while (dlist_enum(&de, (DLIST**)&cur))
     {
-        thread_print_stat(cur);
-        ++active_threads_count;
+        process_print_stat(cur);
+        ++cnt;
     }
-    printf("total %d threads active\n\r", active_threads_count);*/
+    printk("total %d processess active\n\r", cnt);
 }
 #endif //KERNEL_PROFILING

@@ -4,7 +4,6 @@
 #include "types.h"
 #include "cc_macro.h"
 #include "core/core.h"
-#include "core/sys_calls.h"
 
 /** \addtogroup timer timer
     interface to system timer

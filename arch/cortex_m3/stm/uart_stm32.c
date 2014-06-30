@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "uart.h"
+#include "uart_stm32.h"
 #include "arch.h"
 #include "hw_config.h"
 #include "gpio.h"
@@ -66,8 +66,8 @@ void uart_on_isr(UART_CLASS port)
             if (__KERNEL->uart_handlers[port]->write_size == 0)
             {
                 __KERNEL->uart_handlers[port]->write_buf = NULL;
-                if (__KERNEL->uart_handlers[port]->cb->on_write_complete)
-                    __KERNEL->uart_handlers[port]->cb->on_write_complete(__KERNEL->uart_handlers[port]->param);
+//                if (__KERNEL->uart_handlers[port]->cb->on_write_complete)
+//                    __KERNEL->uart_handlers[port]->cb->on_write_complete(__KERNEL->uart_handlers[port]->param);
             }
             //no more
             if (__KERNEL->uart_handlers[port]->write_size == 0)
@@ -82,21 +82,21 @@ void uart_on_isr(UART_CLASS port)
         //decode error, if any
         if ((sr & UART_ERROR_MASK))
         {
-            UART_ERROR error = UART_ERROR_OK;
-            if (sr & USART_SR_ORE)
-                error = UART_ERROR_OVERRUN;
-            else
-            {
+//            UART_ERROR error = UART_ERROR_OK;
+//            if (sr & USART_SR_ORE)
+//                error = UART_ERROR_OVERRUN;
+//            else
+//            {
                 __REG_RC32(USART[port]->DR);
-                if (sr & USART_SR_FE)
-                    error = UART_ERROR_FRAME;
-                else if (sr & USART_SR_PE)
-                    error = UART_ERROR_PARITY;
-                else if  (sr & USART_SR_NE)
-                    error = UART_ERROR_NOISE;
-            }
-            if (__KERNEL->uart_handlers[port]->cb->on_error)
-                __KERNEL->uart_handlers[port]->cb->on_error(__KERNEL->uart_handlers[port]->param, error);
+//                if (sr & USART_SR_FE)
+//                    error = UART_ERROR_FRAME;
+//                else if (sr & USART_SR_PE)
+//                    error = UART_ERROR_PARITY;
+//                else if  (sr & USART_SR_NE)
+//                    error = UART_ERROR_NOISE;
+//            }
+//            if (__KERNEL->uart_handlers[port]->cb->on_error)
+//                __KERNEL->uart_handlers[port]->cb->on_error(__KERNEL->uart_handlers[port]->param, error);
         }
         //slave: receive data
         if (sr & USART_SR_RXNE && __KERNEL->uart_handlers[port]->read_size)
@@ -106,8 +106,8 @@ void uart_on_isr(UART_CLASS port)
             if (--__KERNEL->uart_handlers[port]->read_size == 0)
             {
                 __KERNEL->uart_handlers[port]->read_buf = NULL;
-                if (__KERNEL->uart_handlers[port]->cb->on_read_complete)
-                    __KERNEL->uart_handlers[port]->cb->on_read_complete(__KERNEL->uart_handlers[port]->param);
+//                if (__KERNEL->uart_handlers[port]->cb->on_read_complete)
+//                    __KERNEL->uart_handlers[port]->cb->on_read_complete(__KERNEL->uart_handlers[port]->param);
             }
             //no more, disable receiver
             if (__KERNEL->uart_handlers[port]->read_size == 0)
@@ -204,6 +204,20 @@ void uart_write_wait(UART_CLASS port)
 //            CRITICAL_LEAVE;
         }
     }
+    CRITICAL_LEAVE;
+}
+
+void uart_write_svc(const char *const buf, unsigned int size, void* param)
+{
+    int i;
+    CRITICAL_ENTER;
+    USART[(UART_CLASS)param]->CR1 |= USART_CR1_TE;
+    for(i = 0; i < size; ++i)
+    {
+        while ((USART[(UART_CLASS)param]->SR & USART_SR_TXE) == 0) {}
+        USART[(UART_CLASS)param]->DR = buf[i];
+    }
+    //transmitter will be disabled int next IRQ TC
     CRITICAL_LEAVE;
 }
 

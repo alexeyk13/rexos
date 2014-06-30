@@ -9,28 +9,32 @@
 #include "dbg.h"
 #include "kernel.h"
 #include <string.h>
+#include "../userspace/error.h"
 
 #define FREE_RUN                                        2000000
 
 void hpet_start_stub(unsigned int value)
 {
 #if (KERNEL_DEBUG)
-    printf("Warning: HPET start stub called\n\r");
+    printk("Warning: HPET start stub called\n\r");
 #endif //KERNEL_DEBUG
+    error(ERROR_STUB_CALLED);
 }
 
 void hpet_stop_stub()
 {
 #if (KERNEL_DEBUG)
-    printf("Warning: HPET stop stub called\n\r");
+    printk("Warning: HPET stop stub called\n\r");
 #endif //KERNEL_DEBUG
+    error(ERROR_STUB_CALLED);
 }
 
 unsigned int hpet_elapsed_stud()
 {
 #if (KERNEL_DEBUG)
-    printf("Warning: HPET elapsed stub called\n\r");
+    printk("Warning: HPET elapsed stub called\n\r");
 #endif //KERNEL_DEBUG
+    error(ERROR_STUB_CALLED);
     return 0;
 }
 
@@ -101,7 +105,7 @@ void svc_timer_hpet_timeout()
 {
 #if (KERNEL_TIMER_DEBUG)
     if (__KERNEL->hpet_value == 0)
-        printf("Warning: HPET timeout on FREE RUN mode: second pulse is inactive or HPET configured improperly");
+        printk("Warning: HPET timeout on FREE RUN mode: second pulse is inactive or HPET configured improperly");
 #endif
     __KERNEL->uptime.usec += __KERNEL->hpet_value;
     __KERNEL->hpet_value = 0;

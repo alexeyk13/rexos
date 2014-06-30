@@ -11,7 +11,6 @@
 #include "types.h"
 #include "cc_macro.h"
 #include "core/core.h"
-#include "core/sys_calls.h"
 #include "error.h"
 
 /** \addtogroup event event

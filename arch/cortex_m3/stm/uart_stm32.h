@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef UART_H
-#define UART_H
+#ifndef UART_STM32_H
+#define UART_STM32_H
 
 /*
         UART driver. Hardware-independent part
@@ -62,4 +62,6 @@ extern void uart_write_wait(UART_CLASS port);
 extern void uart_read(UART_CLASS port, char* buf, int size);
 extern void uart_read_cancel(UART_CLASS port);
 
-#endif // UART_H
+void uart_write_svc(const char *const buf, unsigned int size, void* param);
+
+#endif // UART_STM32_H

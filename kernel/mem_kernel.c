@@ -70,11 +70,11 @@ void stack_free(void* ptr)
 void print_value(unsigned int value)
 {
     if (value < 1024)
-        printf(" %3d", value);
+        printk(" %3d", value);
     else if (value / 1024 < 1024)
-        printf("%3dK", value / 1024);
+        printk("%3dK", value / 1024);
     else
-        printf("%3dM", value / 1024 / 1024);
+        printk("%3dM", value / 1024 / 1024);
 }
 
 /*void print_pool_stat(MEM_POOL* pool)
@@ -82,23 +82,23 @@ void print_value(unsigned int value)
     int i;
     MEM_POOL_STAT stat;
     mem_pool_stat(pool, &stat);
-    printf("%s ", pool->name);
+    printk("%s ", pool->name);
     for (i = strlen(pool->name); i <= 16; ++i)
-        printf(" ");
+        printk(" ");
     print_value(pool->size);
-    printf("   ");
+    printk("   ");
     print_value(stat.total_used);
-    printf("(%d)   ", stat.used_blocks_count);
+    printk("(%d)   ", stat.used_blocks_count);
     print_value(stat.total_free);
-    printf("(%d)\n\r", stat.free_blocks_count);
+    printk("(%d)\n\r", stat.free_blocks_count);
 }
 */
 static inline void svc_mem_stat()
 {
     //just to see all text right
     CRITICAL_ENTER;
-    printf("name              size     used     free  \n\r");
-    printf("---------------------------------------------\n\r");
+    printk("name              size     used     free  \n\r");
+    printk("---------------------------------------------\n\r");
 //    print_pool_stat(&__KERNEL->sys_pool);
 //    print_pool_stat(&__KERNEL->stack_pool);
 //    print_pool_stat(&__KERNEL->data_pool);
@@ -106,17 +106,3 @@ static inline void svc_mem_stat()
 }
 
 #endif //KERNEL_PROFILING
-
-void svc_mem_handler(unsigned int num)
-{
-    switch (num)
-    {
-#if (KERNEL_PROFILING)
-    case SVC_MEM_STAT:
-        svc_mem_stat();
-        break;
-#endif //KERNEL_PROFILING
-    default:
-        error(ERROR_INVALID_SVC);
-    }
-}

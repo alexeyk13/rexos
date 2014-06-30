@@ -8,6 +8,7 @@
 #include <string.h>
 #include "dbg_console.h"
 #include "dbg.h"
+#include "../userspace/process.h"
 
 #define PRINTF_BUF_SIZE                                         10
 
@@ -26,33 +27,33 @@ const char spaces[PRINTF_BUF_SIZE] =                            "          ";
 const char zeroes[PRINTF_BUF_SIZE] =                            "0000000000";
 const char* const DIM =                                              "KMG";
 
-void sprintf_handler(void* param, const char *const buf, unsigned int size)
+void sprintf_handler(const char *const buf, unsigned int size, void* param)
 {
     char** str = (char**)param;
     memcpy(*str, buf, size);
     *str += size;
 }
 
-static void pad_spaces(WRITE_HANDLER write_handler, void *write_param, int count)
+static void pad_spaces(int count, STDOUT write_handler, void *write_param)
 {
     while (count > PRINTF_BUF_SIZE)
     {
-        write_handler(write_param, spaces, PRINTF_BUF_SIZE);
+        write_handler(spaces, PRINTF_BUF_SIZE, write_param);
         count -= PRINTF_BUF_SIZE;
     }
-    if (count)
-        write_handler(write_param, spaces, count);
+    if (count > 0)
+        write_handler(spaces, count, write_param);
 }
 
-static inline void pad_zeroes(WRITE_HANDLER write_handler, void *write_param, int count)
+static inline void pad_zeroes(int count, STDOUT write_handler, void *write_param)
 {
     while (count > PRINTF_BUF_SIZE)
     {
-        write_handler(write_param, zeroes, PRINTF_BUF_SIZE);
+        write_handler(zeroes, PRINTF_BUF_SIZE, write_param);
         count -= PRINTF_BUF_SIZE;
     }
-    if (count)
-        write_handler(write_param, zeroes, count);
+    if (count > 0)
+        write_handler(zeroes, count, write_param);
 }
 
 /** \addtogroup lib_printf embedded stdio
@@ -135,30 +136,8 @@ void print_size_in_bytes(unsigned int value, int size)
     int sz_out;
     sz_out = size_in_bytes(value, buf);
     if (size > sz_out)
-        pad_spaces(printf_handler, NULL, size - sz_out);
+        pad_spaces(size - sz_out, __HEAP->stdout, __HEAP->stdout_param);
     printf(buf);
-}
-
-/**
-    \brief print minidump
-    \param addr: starting address
-    \param size: size of dump
-    \retval none
-*/
-void dump(unsigned int addr, unsigned int size)
-{
-    printf("memory dump 0x%08x-0x%08x\n\r", addr, addr + size);
-    unsigned int i = 0;
-    for (i = 0; i < size; ++i)
-    {
-        if ((i % 0x10) == 0)
-            printf("0x%08x: ", addr + i);
-        printf("%02X ", ((unsigned char*)addr)[i]);
-        if ((i % 0x10) == 0xf)
-            printf("\n\r");
-    }
-    if (size % 0x10)
-        printf("\n\r");
 }
 
 /** \} */ // end of lib_printf group
@@ -175,7 +154,7 @@ void dump(unsigned int addr, unsigned int size)
     \param va: va_list of arguments
     \retval none
 */
-void format(WRITE_HANDLER write_handler, void *write_param, char *fmt, va_list va)
+void format(char *fmt, va_list va, STDOUT write_handler, void* write_param)
 {
     char buf[PRINTF_BUF_SIZE];
     unsigned char flags;
@@ -195,14 +174,14 @@ void format(WRITE_HANDLER write_handler, void *write_param, char *fmt, va_list v
             if (fmt[cur + 1] == '%')
             {
                 ++cur;
-                write_handler(write_param, fmt + start, cur - start);
+                write_handler(fmt + start, cur - start, write_param);
                 ++cur;
                 start = cur;
             }
             else
             {
                 if (cur > start)
-                    write_handler(write_param, fmt + start, cur - start);
+                    write_handler(fmt + start, cur - start, write_param);
                 ++cur;
                 //1. decode flags
                 flags = FLAGS_PROCESSING;
@@ -371,60 +350,60 @@ void format(WRITE_HANDLER write_handler, void *write_param, char *fmt, va_list v
 
                 //right justify
                 if ((flags & FLAGS_LEFT_JUSTIFY) == 0)
-                    pad_spaces(write_handler, write_param, width - d);
+                    pad_spaces(width - d, write_handler, write_param);
 
                 //b) output
                 switch (fmt[cur++])
                 {
                 case 'c':
-                    write_handler(write_param, &c, 1);
+                    write_handler(&c, 1, write_param);
                     break;
                 case 's':
-                    write_handler(write_param, str, d);
+                    write_handler(str, d, write_param);
                     break;
                 case 'i':
                 case 'd':
                 case 'u':
                     //sign processing
                     if (flags & FLAGS_SIGN_MINUS)
-                        write_handler(write_param, "-", 1);
+                        write_handler("-", 1, write_param);
                     else if (buf_size)
                     {
                         if (flags & FLAGS_FORCE_PLUS)
-                            write_handler(write_param, "+", 1);
+                            write_handler("+", 1, write_param);
                         else if (flags & FLAGS_SPACE_FOR_SIGN)
-                            write_handler(write_param, " ", 1);
+                            write_handler(" ", 1, write_param);
                     }
                     //zero padding
                     if (buf_size < precision)
-                        pad_zeroes(write_handler, write_param, precision - buf_size);
+                        pad_zeroes(precision - buf_size, write_handler, write_param);
                     //data
-                    write_handler(write_param, buf, buf_size);
+                    write_handler(buf, buf_size, write_param);
                     break;
                 case 'x':
                 case 'X':
                     if (buf_size && (flags & FLAGS_RADIX_PREFIX))
-                        write_handler(write_param, "0x", 2);
+                        write_handler("0x", 2, write_param);
                     //zero padding
                     if (buf_size < precision)
-                        pad_zeroes(write_handler, write_param, precision - buf_size);
+                        pad_zeroes(precision - buf_size, write_handler, write_param);
                     //data
-                    write_handler(write_param, buf, buf_size);
+                    write_handler(buf, buf_size, write_param);
                     break;
                 case 'o':
                     if (buf_size && (flags & FLAGS_RADIX_PREFIX))
-                        write_handler(write_param, "O", 1);
+                        write_handler("O", 1, write_param);
                     //zero padding
                     if (buf_size < precision)
-                        pad_zeroes(write_handler, write_param, precision - buf_size);
+                        pad_zeroes(precision - buf_size, write_handler, write_param);
                     //data
-                    write_handler(write_param, buf, buf_size);
+                    write_handler(buf, buf_size, write_param);
                     break;
                 }
 
                 //left justify
                 if (flags & FLAGS_LEFT_JUSTIFY)
-                    pad_spaces(write_handler, write_param, width - d);
+                    pad_spaces(width - d, write_handler, write_param);
 
                 start = cur;
             }
@@ -433,7 +412,7 @@ void format(WRITE_HANDLER write_handler, void *write_param, char *fmt, va_list v
             ++cur;
     }
     if (cur > start)
-        write_handler(write_param, fmt + start, cur - start);
+        write_handler(fmt + start, cur - start, write_param);
 }
 
 /**
@@ -446,7 +425,8 @@ void printf(char *fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
-    format(printf_handler, NULL, fmt, va);
+    format(fmt, va, __HEAP->stdout, __HEAP->stdout_param);
+//    format(fmt, va, printf_handler, NULL);
     va_end(va);
 }
 
@@ -462,7 +442,7 @@ void sprintf(char* str, char *fmt, ...)
     va_list va;
     va_start(va, fmt);
     char* str_cur = str;
-    format(sprintf_handler, &str_cur, fmt, va);
+    format(fmt, va, sprintf_handler, &str_cur);
     *str_cur = 0;
     va_end(va);
 }

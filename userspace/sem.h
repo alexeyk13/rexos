@@ -26,7 +26,6 @@
  */
 
 #include "core/core.h"
-#include "core/sys_calls.h"
 #include "error.h"
 
 /**

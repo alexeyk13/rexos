@@ -11,16 +11,15 @@
 void default_irq_handler(int vector)
 {
 #if (KERNEL_DEBUG)
-    printf("Warning: irq vector %d without handler\n\r", vector);
+    printk("Warning: irq vector %d without handler\n\r", vector);
 #endif
 }
 
 void panic()
 {
 #if (KERNEL_DEBUG)
-    printf("Kernel panic\n\r");
+    printk("Kernel panic\n\r");
     dump(SRAM_BASE, 0x200);
-    dbg_push();
 #endif
 #if (KERNEL_HALT_ON_FATAL_ERROR)
     HALT();
@@ -28,4 +27,3 @@ void panic()
     reset();
 #endif //KERNEL_HALT_ON_FATAL_ERROR
 }
-

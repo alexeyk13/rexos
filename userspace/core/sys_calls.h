@@ -56,10 +56,10 @@ typedef enum {
     SVC_TIMER_HPET_TIMEOUT,
     SVC_TIMER_SETUP,
 
-
-    SVC_DBG = 0x600,
-    SVC_DBG_WRITE,
-    SVC_DBG_PUSH
+    SVC_OTHER = 0x700,
+    SVC_SETUP_STDOUT,
+    SVC_SETUP_STDIN,
+    SVC_SETUP_DBG
 }SYS_CALLS;
 
 #endif // SYS_CALLS_H

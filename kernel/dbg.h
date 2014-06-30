@@ -31,19 +31,6 @@
 #include "kernel_config.h"
 #include "../userspace/types.h"
 #include "../userspace/cc_macro.h"
-#include "../lib/printf.h"
-#include "../mod/console/console.h"
-
-__STATIC_INLINE void dbg_write(const char* const buf, int size)
-{
-        sys_call(SVC_DBG_WRITE, (unsigned int)buf, (unsigned int)size, 0);
-}
-
-__STATIC_INLINE void dbg_push()
-{
-    sys_call(SVC_DBG_PUSH, 0, 0, 0);
-}
-
 
 #if (KERNEL_DEBUG)
 
@@ -53,7 +40,7 @@ __STATIC_INLINE void dbg_push()
     \details only works, if \ref KERNEL_DEBUG is set
     \retval no return
 */
-#define HALT()                                           {dbg_push(); for (;;) {}}
+#define HALT()                                           {for (;;) {}}
 
 /**
     \brief debug assertion
@@ -63,7 +50,7 @@ __STATIC_INLINE void dbg_push()
     \param cond: assertion made if \b cond is \b false
     \retval no return if not \b cond, else none
 */
-#define ASSERT(cond)                                    if (!(cond))    {printf("ASSERT at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+#define ASSERT(cond)                                    if (!(cond))    {printk("ASSERT at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
 
 #else
 
@@ -81,7 +68,7 @@ __STATIC_INLINE void dbg_push()
     \param value: \ref CONTEXT to check
     \retval no return if wrong context, else none
 */
-#define CHECK_CONTEXT(value)                        if ((get_context() & (value)) == 0) {printf("WRONG CONTEXT at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+#define CHECK_CONTEXT(value)                        if ((get_context() & (value)) == 0) {printk("WRONG CONTEXT at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
 #else
 #define CHECK_CONTEXT(value)
 #endif
@@ -96,7 +83,7 @@ __STATIC_INLINE void dbg_push()
     \param name: object text to display in case of wrong magic
     \retval no return if wrong magic, else none
 */
-#define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {printf("INVALID MAGIC at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+#define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {printk("INVALID MAGIC at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
 /**
     \brief apply object magic on object creation
     \details only works, if \ref KERNEL_DEBUG and \ref KERNEL_MARKS are set.
@@ -116,7 +103,23 @@ __STATIC_INLINE void dbg_push()
 #define MAGIC
 #endif
 
-#endif // !defined(LDS) && !defined(__ASSEMBLER__)
+/**
+    \brief format string, using kernel stdio as handler
+    \param fmt: format (see global description)
+    \param ...: list of arguments
+    \retval none
+*/
+void printk(char *fmt, ...);
 
+/**
+    \brief print minidump
+    \param addr: starting address
+    \param size: size of dump
+    \retval none
+*/
+void dump(unsigned int addr, unsigned int size);
+
+
+#endif // !defined(LDS) && !defined(__ASSEMBLER__)
 
 #endif // DBG_H

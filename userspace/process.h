@@ -27,7 +27,6 @@
 
 #include "kernel_config.h"
 #include "core/core.h"
-#include "core/sys_calls.h"
 #include "../lib/pool.h"
 #include "../lib/time.h"
 
@@ -57,6 +56,10 @@ typedef struct {
     int error;
     //self handle
     HANDLE handle;
+    STDOUT stdout;
+    void* stdout_param;
+    STDIN stdin;
+    void* stdin_param;
     //name is following
 } HEAP;
 

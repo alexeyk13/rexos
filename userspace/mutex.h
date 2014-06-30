@@ -34,7 +34,6 @@
  */
 
 #include "core/core.h"
-#include "core/sys_calls.h"
 #include "../lib/time.h"
 #include "error.h"
 

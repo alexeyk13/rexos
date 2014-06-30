@@ -5,7 +5,6 @@
 */
 
 #include "core.h"
-#include "sys_calls.h"
 
 //TODO: refactor this
 void sys_call(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)

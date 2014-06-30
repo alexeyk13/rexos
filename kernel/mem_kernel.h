@@ -16,6 +16,4 @@ void sys_free(void* ptr);
 void* stack_alloc(int size);
 void stack_free(void* ptr);
 
-void svc_mem_handler(unsigned int num);
-
 #endif // MEM_KERNEL_H

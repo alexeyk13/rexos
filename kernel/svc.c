@@ -6,7 +6,6 @@
 
 #include "svc.h"
 #include "../userspace/core/core.h"
-#include "../userspace/core/sys_calls.h"
 #include "../userspace/error.h"
 #include "../kernel/kernel.h"
 
@@ -69,9 +68,6 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_SEM:
         svc_sem_handler(num, param1, param2);
         break;
-    case SVC_MEM:
-        svc_mem_handler(num);
-        break;
     case (SVC_TIMER):
         switch (num)
         {
@@ -91,21 +87,30 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
             error(ERROR_INVALID_SVC);
         }
         break;
-    case (SVC_DBG):
+    case SVC_OTHER:
         switch (num)
         {
-        case  SVC_DBG_WRITE:
-            if (__KERNEL->dbg_console)
-                console_write(__KERNEL->dbg_console, (char*)param1, (int)param2);
+        case SVC_SETUP_STDOUT:
+            __KERNEL->stdout_global = (STDOUT)param1;
+            __KERNEL->stdout_global_param = (void*)param2;
             break;
-        case SVC_DBG_PUSH:
-            if (__KERNEL->dbg_console)
-                console_push(__KERNEL->dbg_console);
+        case SVC_SETUP_STDIN:
+            __KERNEL->stdin_global = (STDIN)param1;
+            __KERNEL->stdin_global_param = (void*)param2;
+            break;
+        case SVC_SETUP_DBG:
+            if (__KERNEL->dbg_locked)
+                error(ERROR_INVALID_SVC);
+            else
+            {
+                __KERNEL->stdout = (STDOUT)param1;
+                __KERNEL->stdout_param = (void*)param2;
+                __KERNEL->dbg_locked = true;
+            }
             break;
         default:
             error(ERROR_INVALID_SVC);
         }
-        break;
     default:
         error(ERROR_INVALID_SVC);
     }

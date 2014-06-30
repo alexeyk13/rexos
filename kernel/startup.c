@@ -11,8 +11,20 @@
 #include "kernel.h"
 #include "../lib/pool.h"
 #include "svc_timer.h"
+#include "../userspace/error.h"
 
 extern const REX INIT;
+
+void stdout_stub(const char *const buf, unsigned int size, void* param)
+{
+    //what can we say in stdout stub? :)
+    error(ERROR_STUB_CALLED);
+}
+
+void stdin_stub(char *buf, unsigned int size, void* param)
+{
+    error(ERROR_STUB_CALLED);
+}
 
 void startup()
 {
@@ -21,6 +33,8 @@ void startup()
 
     //setup __KERNEL
     memset(__KERNEL, 0, sizeof(KERNEL));
+    __KERNEL->stdout = __KERNEL->stdout_global = stdout_stub;
+    __KERNEL->stdin_global = stdin_stub;
     strcpy(__KERNEL_NAME, "RExOS");
     __KERNEL->struct_size = sizeof(KERNEL) + strlen(__KERNEL_NAME) + 1;
 

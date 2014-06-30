@@ -21,19 +21,26 @@
 #include "svc_process.h"
 #include "../lib/pool.h"
 
-#include "../mod/console/console.h"
-#include "../drv_if/uart.h"
+#include "../arch/cortex_m3/stm/uart_stm32.h"
 #include "../drv_if/gpio.h"
 #include "../arch/cortex_m3/stm/timer_stm32.h"
 #include "../userspace/timer.h"
 
 // will be aligned to pass MPU requirements
 typedef struct {
-    //first 3 params same as userspace for library calls error handling
+    //first 5 params same as userspace for library calls error handling
     //header size including name
     int struct_size;
     POOL pool;
     int error;
+    STDOUT stdout;
+    void* stdout_param;
+    bool dbg_locked;
+
+    STDOUT stdout_global;
+    void* stdout_global_param;
+    STDIN stdin_global;
+    void* stdin_global_param;
 
     //----------------------process specific-----------------------------
     //for context-switching
@@ -68,7 +75,6 @@ typedef struct {
     unsigned long ahb_freq;
     unsigned long apb1_freq;
     unsigned long apb2_freq;
-    CONSOLE* dbg_console;
     UART_HW* uart_handlers[6];
 
     char used_pins[8];

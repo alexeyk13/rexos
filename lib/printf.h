@@ -60,29 +60,14 @@
 #include <stdarg.h>
 #include "../userspace/types.h"
 
-/**
-    \brief handler for custom \ref format handler
-    \param param: param to send on callback
-    \param buf: data buf
-    \param size: data buf size in bytes
-    \retval none
-*/
-//write handler prototype for custom printf implementation
-typedef void (*WRITE_HANDLER)(void* param, const char *const buf, unsigned int size);
-/** \} */ // end of lib_printf group
-
 unsigned long atou(char* buf, int size);
 int utoa(char* buf, unsigned long value, int radix, bool uppercase);
 int size_in_bytes(unsigned int value, char* buf);
 void print_size_in_bytes(unsigned int value, int size);
-void dump(unsigned int addr, unsigned int size);
 
-void format(WRITE_HANDLER write_handler, void* write_param, char *fmt, va_list va);
+void format(char *fmt, va_list va, STDOUT write_handler, void* write_param);
 
 void printf(char *fmt, ...);
 void sprintf(char* str, char *fmt, ...);
-
-//before calling printf, printf_handler must be declared
-extern void printf_handler(void* param, const char *const buf, unsigned int size);
 
 #endif // PRINTF_H
