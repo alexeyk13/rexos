@@ -9,7 +9,7 @@
 
 #include "cc_macro.h"
 #include "../lib/pool.h"
-#include "core/core.h"
+#include "sys.h"
 #include "process.h"
 
 /** \addtogroup memory dynamic memory management

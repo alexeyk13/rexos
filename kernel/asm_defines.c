@@ -1,6 +1,6 @@
-#include "../svc_process.h"
-#include "../../userspace/core/core.h"
-#include "../kernel.h"
+#include "svc_process.h"
+#include "../userspace/sys.h"
+#include "kernel.h"
 
 #include <stdint.h>
 

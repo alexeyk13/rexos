@@ -3,7 +3,7 @@
 
 #include "types.h"
 #include "cc_macro.h"
-#include "core/core.h"
+#include "sys.h"
 
 /** \addtogroup timer timer
     interface to system timer

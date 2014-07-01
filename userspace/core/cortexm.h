@@ -11,19 +11,9 @@
 #define SRAM_BASE                                           0x20000000
 #endif
 
-#if !defined(FLASH_BASE)
-#if defined(STM)
-#define FLASH_BASE                                          0x08000000
-#elif defined(NXP)
-#define FLASH_BASE                                          0x00000000
-#else
-#error Vendor unknown, flash base address is unknown
-#endif
-#endif //FLASH_BASE
-
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
-#include "../../cc_macro.h"
+#include "../cc_macro.h"
 
 __STATIC_INLINE int disable_interrupts(void)
 {

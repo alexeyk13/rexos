@@ -4,18 +4,18 @@
     All rights reserved.
 */
 
-#include "svc_sem.h"
-#include "svc_malloc.h"
-#include "../userspace/core/sys_calls.h"
+#include "ksem.h"
+#include "kmalloc.h"
+#include "../userspace/sys.h"
 #include "../userspace/error.h"
 
-void svc_sem_lock_release(SEM* sem, PROCESS* process)
+void ksem_lock_release(SEM* sem, PROCESS* process)
 {
     CHECK_MAGIC(sem, MAGIC_SEM);
     dlist_remove((DLIST**)&sem->waiters, (DLIST*)process);
 }
 
-void svc_sem_create(SEM** sem)
+void ksem_create(SEM** sem)
 {
     *sem = kmalloc(sizeof(SEM));
     if (*sem != NULL)
@@ -28,7 +28,7 @@ void svc_sem_create(SEM** sem)
         error(ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
-void svc_sem_signal(SEM* sem)
+void ksem_signal(SEM* sem)
 {
     CHECK_MAGIC(sem, MAGIC_SEM);
 
@@ -39,24 +39,24 @@ void svc_sem_signal(SEM* sem)
     {
         process = sem->waiters;
         dlist_remove_head((DLIST**)&sem->waiters);
-        svc_process_wakeup(process);
+        kprocess_wakeup(process);
         sem->value--;
     }
 }
 
-void svc_sem_wait(SEM* sem, TIME* time)
+void ksem_wait(SEM* sem, TIME* time)
 {
     CHECK_MAGIC(sem, MAGIC_SEM);
 
-    PROCESS* process = svc_process_get_current();
+    PROCESS* process = kprocess_get_current();
     if (sem->value == 0)
     {
-        svc_process_sleep(time, PROCESS_SYNC_SEM, sem);
+        kprocess_sleep(time, PROCESS_SYNC_SEM, sem);
         dlist_add_tail((DLIST**)&sem->waiters, (DLIST*)process);
     }
 }
 
-void svc_sem_destroy(SEM* sem)
+void ksem_destroy(SEM* sem)
 {
     CHECK_MAGIC(sem, MAGIC_SEM);
 
@@ -65,8 +65,8 @@ void svc_sem_destroy(SEM* sem)
     {
         process = sem->waiters;
         dlist_remove_head((DLIST**)&sem->waiters);
-        svc_process_wakeup(process);
-        svc_process_error(process, ERROR_SYNC_OBJECT_DESTROYED);
+        kprocess_wakeup(process);
+        kprocess_error(process, ERROR_SYNC_OBJECT_DESTROYED);
     }
     kfree(sem);
 }

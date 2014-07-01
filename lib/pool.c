@@ -7,7 +7,7 @@
 #include "pool.h"
 #include "../userspace/error.h"
 #include <string.h>
-#include "../userspace/core/core.h"
+#include "../userspace/sys.h"
 
 #if (KERNEL_RANGE_CHECKING)
 

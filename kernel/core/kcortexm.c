@@ -4,11 +4,11 @@
     All rights reserved.
 */
 
-#include "core_kernel_cortexm.h"
+#include "kcortexm.h"
 #include "kernel_config.h"
-#include "../../kernel.h"
-#include "../../svc_process.h"
-#include "../../dbg.h"
+#include "../kernel.h"
+#include "../kprocess.h"
+#include "../dbg.h"
 
 #define PSP_IN_LR                                   0xfffffffd
 #define SVC_12                                      0xdf12
@@ -20,7 +20,7 @@ static void process_fault(unsigned int ret_value)
     //from thread context, just killing thread
     if (ret_value == PSP_IN_LR)
     {
-        svc_process_destroy_current();
+        kprocess_destroy_current();
         SCB_CFSR = 0;
     }
     else

@@ -9,7 +9,6 @@
 
 #include "types.h"
 #include "dev.h"
-#include "arch.h"
 
 #ifdef CUSTOM_GPIO
 #include "gpio_custom.h"

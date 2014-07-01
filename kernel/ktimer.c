@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "svc_timer.h"
+#include "ktimer.h"
 #include "kernel_config.h"
 #include "dbg.h"
 #include "kernel.h"
@@ -38,16 +38,16 @@ unsigned int hpet_elapsed_stud()
     return 0;
 }
 
-const CB_SVC_TIMER cb_svc_timer_stub = {
+const CB_SVC_TIMER cb_ktimer_stub = {
     hpet_start_stub,
     hpet_stop_stub,
     hpet_elapsed_stud
 };
 
-void svc_timer_get_uptime(TIME* res)
+void ktimer_get_uptime(TIME* res)
 {
     res->sec = __KERNEL->uptime.sec;
-    res->usec = __KERNEL->uptime.usec + __KERNEL->cb_svc_timer.elapsed();
+    res->usec = __KERNEL->uptime.usec + __KERNEL->cb_ktimer.elapsed();
     while (res->usec >= 1000000)
     {
         res->sec++;
@@ -66,7 +66,7 @@ static inline void find_shoot_next()
         {
             //ignore seconds adjustment
             uptime.sec = __KERNEL->uptime.sec;
-            uptime.usec = __KERNEL->uptime.usec + __KERNEL->cb_svc_timer.elapsed();
+            uptime.usec = __KERNEL->uptime.usec + __KERNEL->cb_ktimer.elapsed();
             if (time_compare(&__KERNEL->timers->time, &uptime) >= 0)
             {
                 to_shoot = __KERNEL->timers;
@@ -75,10 +75,10 @@ static inline void find_shoot_next()
             //add to this second events
             else if (__KERNEL->timers->time.sec == uptime.sec)
             {
-                __KERNEL->uptime.usec += __KERNEL->cb_svc_timer.elapsed();
-                __KERNEL->cb_svc_timer.stop();
+                __KERNEL->uptime.usec += __KERNEL->cb_ktimer.elapsed();
+                __KERNEL->cb_ktimer.stop();
                 __KERNEL->hpet_value = __KERNEL->timers->time.usec - __KERNEL->uptime.usec;
-                __KERNEL->cb_svc_timer.start(__KERNEL->hpet_value);
+                __KERNEL->cb_ktimer.start(__KERNEL->hpet_value);
             }
             if (to_shoot)
             {
@@ -90,18 +90,18 @@ static inline void find_shoot_next()
     } while (to_shoot);
 }
 
-void svc_timer_second_pulse()
+void ktimer_second_pulse()
 {
     __KERNEL->hpet_value = 0;
-    __KERNEL->cb_svc_timer.stop();
-    __KERNEL->cb_svc_timer.start(FREE_RUN);
+    __KERNEL->cb_ktimer.stop();
+    __KERNEL->cb_ktimer.start(FREE_RUN);
     ++__KERNEL->uptime.sec;
     __KERNEL->uptime.usec = 0;
 
     find_shoot_next();
 }
 
-void svc_timer_hpet_timeout()
+void ktimer_hpet_timeout()
 {
 #if (KERNEL_TIMER_DEBUG)
     if (__KERNEL->hpet_value == 0)
@@ -109,30 +109,30 @@ void svc_timer_hpet_timeout()
 #endif
     __KERNEL->uptime.usec += __KERNEL->hpet_value;
     __KERNEL->hpet_value = 0;
-    __KERNEL->cb_svc_timer.start(FREE_RUN);
+    __KERNEL->cb_ktimer.start(FREE_RUN);
 
     find_shoot_next();
 }
 
-void svc_timer_setup(const CB_SVC_TIMER *cb_svc_timer)
+void ktimer_setup(const CB_SVC_TIMER *cb_ktimer)
 {
     if (!__KERNEL->timer_locked)
     {
-        memcpy(&__KERNEL->cb_svc_timer, cb_svc_timer, sizeof(CB_SVC_TIMER));
-        __KERNEL->cb_svc_timer.start(FREE_RUN);
+        memcpy(&__KERNEL->cb_ktimer, cb_ktimer, sizeof(CB_SVC_TIMER));
+        __KERNEL->cb_ktimer.start(FREE_RUN);
         __KERNEL->timer_locked = true;
     }
     else
         error(ERROR_INVALID_SVC);
 }
 
-void svc_timer_start(TIMER* timer)
+void ktimer_start(TIMER* timer)
 {
     TIME uptime;
     DLIST_ENUM de;
     TIMER* cur;
     bool found = false;
-    svc_timer_get_uptime(&uptime);
+    ktimer_get_uptime(&uptime);
     time_add(&uptime, &timer->time, &timer->time);
     dlist_enum_start((DLIST**)&__KERNEL->timers, &de);
     while (dlist_enum(&de, (DLIST**)&cur))
@@ -148,12 +148,12 @@ void svc_timer_start(TIMER* timer)
         find_shoot_next();
 }
 
-void svc_timer_stop(TIMER* timer)
+void ktimer_stop(TIMER* timer)
 {
     dlist_remove((DLIST**)&__KERNEL->timers, (DLIST*)timer);
 }
 
-void svc_timer_init()
+void ktimer_init()
 {
-    memcpy(&__KERNEL->cb_svc_timer, &cb_svc_timer_stub, sizeof(CB_SVC_TIMER));
+    memcpy(&__KERNEL->cb_ktimer, &cb_ktimer_stub, sizeof(CB_SVC_TIMER));
 }

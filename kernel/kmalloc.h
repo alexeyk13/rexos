@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef MEM_KERNEL_H
-#define MEM_KERNEL_H
+#ifndef KMALLOC_H
+#define KMALLOC_H
 
 #include "../userspace/cc_macro.h"
 #include "kernel.h"
@@ -57,4 +57,4 @@ __STATIC_INLINE void stack_free(void* ptr)
     pool_free(&__KERNEL->paged, ptr);
 }
 
-#endif // MEM_KERNEL_H
+#endif // KMALLOC_H

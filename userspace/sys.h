@@ -11,27 +11,70 @@
     core.h - MCU core specific functions
 */
 
+#include "core/stm32.h"
+
 #ifdef ARM7
-#include "arm7/core_arm7.h"
+#include "core/arm7/core_arm7.h"
 #elif defined(CORTEX_M3) || defined(CORTEX_M0) || defined(CORTEX_M1) || defined(CORTEX_M4)
-#define CORTEXM
-#define NVIC_PRESENT
-#include "cortexm/core_cortexm.h"
+#include "core/cortexm.h"
 #else
 #error MCU core is not defined or not supported
 #endif
 
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
-#include "../cc_macro.h"
-#include "../types.h"
-#include "sys_calls.h"
+#include "cc_macro.h"
+#include "types.h"
+
+/*
+    List of all calls to supervisor
+ */
 
 typedef enum {
-    USER_CONTEXT =                                          0x1,
-    SUPERVISOR_CONTEXT =                                    0x4,
-    IRQ_CONTEXT =                                           0x8
-} CONTEXT;
+    SVC_PROCESS = 0x0,
+    SVC_PROCESS_CREATE,
+    SVC_PROCESS_GET_FLAGS,
+    SVC_PROCESS_SET_FLAGS,
+    SVC_PROCESS_GET_PRIORITY,
+    SVC_PROCESS_SET_PRIORITY,
+    SVC_PROCESS_DESTROY,
+    SVC_PROCESS_SLEEP,
+    //profiling
+    SVC_PROCESS_SWITCH_TEST,
+    SVC_PROCESS_INFO,
+
+    SVC_MUTEX = 0x100,
+    SVC_MUTEX_CREATE,
+    SVC_MUTEX_LOCK,
+    SVC_MUTEX_UNLOCK,
+    SVC_MUTEX_DESTROY,
+
+    SVC_EVENT = 0x200,
+    SVC_EVENT_CREATE,
+    SVC_EVENT_PULSE,
+    SVC_EVENT_SET,
+    SVC_EVENT_IS_SET,
+    SVC_EVENT_CLEAR,
+    SVC_EVENT_WAIT,
+    SVC_EVENT_DESTROY,
+
+    SVC_SEM = 0x300,
+    SVC_SEM_CREATE,
+    SVC_SEM_WAIT,
+    SVC_SEM_SIGNAL,
+    SVC_SEM_DESTROY,
+
+    SVC_TIMER = 0x500,
+    SVC_TIMER_GET_UPTIME,
+    SVC_TIMER_SECOND_PULSE,
+    SVC_TIMER_HPET_TIMEOUT,
+    SVC_TIMER_SETUP,
+
+    SVC_OTHER = 0x700,
+    SVC_SETUP_STDOUT,
+    SVC_SETUP_STDIN,
+    SVC_SETUP_DBG
+}SVC;
 
 // will be aligned to pass MPU requirements
 typedef struct {

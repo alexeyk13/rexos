@@ -4,11 +4,11 @@
     All rights reserved.
 */
 
-#include "svc_mutex.h"
-#include "svc_malloc.h"
+#include "kmutex.h"
+#include "kmalloc.h"
 #include "../userspace/error.h"
 
-unsigned int svc_mutex_calculate_owner_priority(PROCESS *process)
+unsigned int kmutex_calculate_owner_priority(PROCESS *process)
 {
     unsigned int priority = process->base_priority;
     DLIST_ENUM owned_mutexes, process_waiters;
@@ -25,7 +25,7 @@ unsigned int svc_mutex_calculate_owner_priority(PROCESS *process)
     return priority;
 }
 
-void svc_mutex_lock_release(MUTEX* mutex, PROCESS* process)
+void kmutex_lock_release(MUTEX* mutex, PROCESS* process)
 {
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
     //release mutex owner
@@ -33,7 +33,7 @@ void svc_mutex_lock_release(MUTEX* mutex, PROCESS* process)
     {
         //process now is not owning mutex, remove it from owned list and calculate new priority (he is still can own nested mutexes)
         dlist_remove((DLIST**)&process->owned_mutexes, (DLIST*)mutex);
-        svc_process_set_current_priority(process, svc_mutex_calculate_owner_priority(process));
+        kprocess_set_current_priority(process, kmutex_calculate_owner_priority(process));
 
         mutex->owner = mutex->waiters;
         if (mutex->owner)
@@ -41,8 +41,8 @@ void svc_mutex_lock_release(MUTEX* mutex, PROCESS* process)
             dlist_remove_head((DLIST**)&mutex->waiters);
             dlist_add_tail((DLIST**)&mutex->owner->owned_mutexes, (DLIST*)mutex);
             //owner can still depends on some waiters
-            svc_process_set_current_priority(mutex->owner, svc_mutex_calculate_owner_priority(mutex->owner));
-            svc_process_wakeup(mutex->owner);
+            kprocess_set_current_priority(mutex->owner, kmutex_calculate_owner_priority(mutex->owner));
+            kprocess_wakeup(mutex->owner);
         }
     }
     //remove item from waiters list
@@ -50,12 +50,12 @@ void svc_mutex_lock_release(MUTEX* mutex, PROCESS* process)
     {
         dlist_remove((DLIST**)&mutex->waiters, (DLIST*)process);
         //this can affect on owner priority
-        svc_process_set_current_priority(mutex->owner, svc_mutex_calculate_owner_priority(mutex->owner));
+        kprocess_set_current_priority(mutex->owner, kmutex_calculate_owner_priority(mutex->owner));
         //it's up to caller to decide, wake up process (timeout, mutex destroy) or not (process terminate) owned process
     }
 }
 
-void svc_mutex_create(MUTEX** mutex)
+void kmutex_create(MUTEX** mutex)
 {
     *mutex = kmalloc(sizeof(MUTEX));
     if (*mutex != NULL)
@@ -68,15 +68,15 @@ void svc_mutex_create(MUTEX** mutex)
         error(ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
-void svc_mutex_lock(MUTEX* mutex, TIME* time)
+void kmutex_lock(MUTEX* mutex, TIME* time)
 {
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
-    PROCESS* process = svc_process_get_current();
+    PROCESS* process = kprocess_get_current();
     if (mutex->owner != NULL)
     {
         ASSERT(mutex->owner != process);
         //first - remove from active list
-        svc_process_sleep(time, PROCESS_SYNC_MUTEX, mutex);
+        kprocess_sleep(time, PROCESS_SYNC_MUTEX, mutex);
         //add to mutex watiers list
         dlist_add_tail((DLIST**)&mutex->waiters, (DLIST*)process);
     }
@@ -88,16 +88,16 @@ void svc_mutex_lock(MUTEX* mutex, TIME* time)
     }
 }
 
-void svc_mutex_unlock(MUTEX* mutex)
+void kmutex_unlock(MUTEX* mutex)
 {
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
 
-    PROCESS* process = svc_process_get_current();
+    PROCESS* process = kprocess_get_current();
     ASSERT(mutex->owner == process);
-    svc_mutex_lock_release(mutex, process);
+    kmutex_lock_release(mutex, process);
 }
 
-void svc_mutex_destroy(MUTEX* mutex)
+void kmutex_destroy(MUTEX* mutex)
 {
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
 
@@ -105,11 +105,11 @@ void svc_mutex_destroy(MUTEX* mutex)
     while (mutex->waiters)
     {
         process = mutex->waiters;
-        svc_mutex_lock_release(mutex, mutex->waiters);
-        svc_process_wakeup(process);
-        svc_process_error(process, ERROR_SYNC_OBJECT_DESTROYED);
+        kmutex_lock_release(mutex, mutex->waiters);
+        kprocess_wakeup(process);
+        kprocess_error(process, ERROR_SYNC_OBJECT_DESTROYED);
     }
     if (mutex->owner)
-        svc_mutex_lock_release(mutex, mutex->owner);
+        kmutex_lock_release(mutex, mutex->owner);
     kfree(mutex);
 }

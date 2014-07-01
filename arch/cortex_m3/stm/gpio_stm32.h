@@ -12,7 +12,6 @@
  */
 
 #include "dev.h"
-#include "arch.h"
 #include "gpio.h"
 
 typedef enum {

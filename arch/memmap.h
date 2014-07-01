@@ -13,12 +13,6 @@ extern unsigned int    _end;
 #endif //__ASSEMBLER__
 
 #include "arch.h"
-#include "../userspace/core/core.h"
-#ifdef CUSTOM_ARCH
-#include "memmap_custom.h"
-#endif
-#ifdef CORTEX_M3
-#include "memmap_cortex_m3.h"
-#endif
+#include "../userspace/sys.h"
 
 #endif // MEMMAP_H

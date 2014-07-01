@@ -6,13 +6,10 @@
 
 //if you've got error in this line, than this file is compiled wrong
 
-#include "kernel_config.h"
-#include "arch.h"
-#include "memmap.h"
-#include "dbg.h"
 #include "vectors_cortex_m3.h"
-#include "../../kernel.h"
+#include "../kernel.h"
 #include "asm_defines.h"
+#include "../../userspace/sys.h"
 
 /* Define constants used in low-level initialization.  */
 
@@ -56,7 +53,7 @@
     .extern on_usage_fault
 	 .extern svc
     .extern startup
-	 .extern svc_process_abnormal_exit
+	 .extern kprocess_abnormal_exit
 
 /* exported global constant and functions */
     .global do_sys_call
@@ -243,7 +240,7 @@ process_setup_context:
 	 lsr    r12, r12, #3                                 @8 byte stack align
     lsl    r12, r12, #3
     sub    r12,    r12, #CONTEXT_SIZE
-	 ldr    r3, =svc_process_abnormal_exit
+	 ldr    r3, =kprocess_abnormal_exit
 	 str    r3, [r12, #LR_OFFSET_IN_CONTEXT]             @abnormal process exit
 	 str    r1, [r12, #PC_OFFSET_IN_CONTEXT]             @entry point
 	 mov    r3, #INITIAL_PSP_VALUE                       @T-Bit only

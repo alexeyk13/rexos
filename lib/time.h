@@ -13,7 +13,7 @@
 
 #include "../userspace/types.h"
 #include "../userspace/cc_macro.h"
-#include "../userspace/core/core.h"
+#include "../sys.h"
 
 /** \addtogroup lib_time time
     time routines

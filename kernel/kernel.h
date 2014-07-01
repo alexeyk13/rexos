@@ -8,23 +8,32 @@
 #define KERNEL_H
 
 /*
-    core_kernel.h - MCU core specific functions. Kernel part
+    kernel.h - MCU core specific functions. Kernel part
 */
 
-#include "../userspace/core/core.h"
+#include "../userspace/sys.h"
 #include "kernel_config.h"
 
 #define KERNEL_BASE                                         (SRAM_BASE + KERNEL_GLOBAL_SIZE)
 
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
-#include "svc_process.h"
+#include "kprocess.h"
 #include "../lib/pool.h"
 
+#ifdef ARM7
+#include "core/arm7/core_arm7.h"
+#elif defined(CORTEX_M3) || defined(CORTEX_M0) || defined(CORTEX_M1) || defined(CORTEX_M4)
+#include "kcortexm.h"
+#else
+#error MCU core is not defined or not supported
+#endif
+
+//remove this shit later
 #include "../arch/cortex_m3/stm/uart_stm32.h"
 #include "../drv_if/gpio.h"
 #include "../arch/cortex_m3/stm/timer_stm32.h"
-#include "../userspace/timer.h"
+// endof shit
 
 // will be aligned to pass MPU requirements
 typedef struct {
@@ -62,7 +71,7 @@ typedef struct {
     TIME uptime;
 
     //callback for HPET timer
-    CB_SVC_TIMER cb_svc_timer;
+    CB_SVC_TIMER cb_ktimer;
     //lock timer callbacks after first setup
     bool timer_locked;
 
@@ -166,6 +175,25 @@ void default_irq_handler(int vector);
     \retval none
 */
 void panic();
+
+/**
+    \brief main supervisor routine
+    \details All calls to supervisor are implmented by this function
+
+    \param num: sys-call number
+    \param param1: parameter 1. num-specific
+    \param param2: parameter 2. num-specific
+    \param param3: parameter 3. num-specific
+    \retval none
+*/
+void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3);
+
+/**
+    \brief start point of kernel, that must be called after low-level initialization
+    \param none
+    \retval none
+*/
+void startup();
 
 /** \} */ // end of core_kernel group
 

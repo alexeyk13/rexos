@@ -10,7 +10,7 @@
 #include "../lib/time.h"
 #include "types.h"
 #include "cc_macro.h"
-#include "core/core.h"
+#include "sys.h"
 #include "error.h"
 
 /** \addtogroup event event

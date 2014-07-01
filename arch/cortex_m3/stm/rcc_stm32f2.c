@@ -5,8 +5,8 @@
 */
 
 #include "rcc.h"
-#include "arch.h"
 #include "hw_config.h"
+#undef FLASH_BASE
 #include "../../../kernel/kernel.h"
 
 static inline bool turn_hse_on()

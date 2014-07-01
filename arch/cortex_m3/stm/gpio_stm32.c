@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#include "gpio_stm32.h"
 #include "arch.h"
+#include "gpio_stm32.h"
 #include "error.h"
 #include "../../../kernel/kernel.h"
 

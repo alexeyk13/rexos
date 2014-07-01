@@ -26,7 +26,7 @@
  */
 
 #include "kernel_config.h"
-#include "core/core.h"
+#include "sys.h"
 #include "../lib/pool.h"
 #include "../lib/time.h"
 

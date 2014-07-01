@@ -4,12 +4,12 @@
     All rights reserved.
 */
 
-#include "svc_process.h"
-#include "svc_malloc.h"
+#include "kprocess.h"
+#include "kmalloc.h"
 #include "string.h"
-#include "svc_mutex.h"
-#include "svc_event.h"
-#include "svc_sem.h"
+#include "kmutex.h"
+#include "kevent.h"
+#include "ksem.h"
 #include "kernel.h"
 #include "../userspace/error.h"
 #include "../lib/pool.h"
@@ -25,7 +25,7 @@ const char *const STAT_LINE="---------------------------------------------------
 const char *const DAMAGED="     !!!DAMAGED!!!     ";
 #endif //(KERNEL_PROFILING)
 
-void svc_process_add_to_active_list(PROCESS* process)
+void kprocess_add_to_active_list(PROCESS* process)
 {
     bool found = false;
     PROCESS* process_to_save = process;
@@ -38,7 +38,7 @@ void svc_process_add_to_active_list(PROCESS* process)
     if (process->current_priority < __KERNEL->processes->current_priority)
     {
 #if (KERNEL_PROCESS_STAT)
-        svc_timer_get_uptime(&process->uptime_start);
+        ktimer_get_uptime(&process->uptime_start);
         time_sub(&__KERNEL->processes->uptime_start, &process->uptime_start, &__KERNEL->processes->uptime_start);
         time_add(&__KERNEL->processes->uptime_start, &__KERNEL->processes->uptime, &__KERNEL->processes->uptime);
 #endif //KERNEL_PROCESS_STAT
@@ -62,13 +62,13 @@ void svc_process_add_to_active_list(PROCESS* process)
         dlist_add_tail((DLIST**)&__KERNEL->processes, (DLIST*)process_to_save);
 }
 
-void svc_process_remove_from_active_list(PROCESS* process)
+void kprocess_remove_from_active_list(PROCESS* process)
 {
     //freeze active task
     if (process == __KERNEL->processes)
     {
 #if (KERNEL_PROCESS_STAT)
-        svc_timer_get_uptime(&((PROCESS*)(((DLIST*)__KERNEL->processes)->next))->uptime_start);
+        ktimer_get_uptime(&((PROCESS*)(((DLIST*)__KERNEL->processes)->next))->uptime_start);
         time_sub(&__KERNEL->processes->uptime_start, &((PROCESS*)(((DLIST*)__KERNEL->processes)->next))->uptime_start, &__KERNEL->processes->uptime_start);
         time_add(&__KERNEL->processes->uptime_start, &__KERNEL->processes->uptime, &__KERNEL->processes->uptime);
 #endif //KERNEL_PROCESS_STAT
@@ -83,7 +83,7 @@ void svc_process_remove_from_active_list(PROCESS* process)
 #endif
 }
 
-void svc_process_timeout(void* param)
+void kprocess_timeout(void* param)
 {
     PROCESS* process = param;
     process->flags &= ~PROCESS_FLAGS_TIMER_ACTIVE;
@@ -93,23 +93,23 @@ void svc_process_timeout(void* param)
     case PROCESS_SYNC_TIMER_ONLY:
         break;
     case PROCESS_SYNC_MUTEX:
-        svc_mutex_lock_release((MUTEX*)process->sync_object, process);
+        kmutex_lock_release((MUTEX*)process->sync_object, process);
         break;
     case PROCESS_SYNC_EVENT:
-        svc_event_lock_release((EVENT*)process->sync_object, process);
+        kevent_lock_release((EVENT*)process->sync_object, process);
         break;
     case PROCESS_SYNC_SEM:
-        svc_sem_lock_release((SEM*)process->sync_object, process);
+        ksem_lock_release((SEM*)process->sync_object, process);
         break;
     default:
         ASSERT(false);
     }
     if ((process->flags & PROCESS_SYNC_MASK) != PROCESS_SYNC_TIMER_ONLY)
         process->heap->error =  ERROR_TIMEOUT;
-    svc_process_wakeup(process);
+    kprocess_wakeup(process);
 }
 
-void svc_process_abnormal_exit()
+void kprocess_abnormal_exit()
 {
 #if (KERNEL_DEBUG)
     printk("Warning: abnormal process termination: %s\n\r", PROCESS_NAME(__KERNEL->processes->heap));
@@ -117,10 +117,10 @@ void svc_process_abnormal_exit()
     if (__KERNEL->processes == __KERNEL->init)
         panic();
     else
-        svc_process_destroy(__KERNEL->processes);
+        kprocess_destroy(__KERNEL->processes);
 }
 
-void svc_process_create(const REX* rex, PROCESS** process)
+void kprocess_create(const REX* rex, PROCESS** process)
 {
     *process = kmalloc(sizeof(PROCESS));
     memset((*process), 0, sizeof(PROCESS));
@@ -133,7 +133,7 @@ void svc_process_create(const REX* rex, PROCESS** process)
             DO_MAGIC((*process), MAGIC_PROCESS);
             (*process)->base_priority = (*process)->current_priority = rex->priority;
             (*process)->sp = (void*)((unsigned int)(*process)->heap + rex->size);
-            (*process)->timer.callback = svc_process_timeout;
+            (*process)->timer.callback = kprocess_timeout;
             (*process)->timer.param = (*process);
             (*process)->size = rex->size;
             (*process)->heap->handle = (HANDLE)(*process);
@@ -159,7 +159,7 @@ void svc_process_create(const REX* rex, PROCESS** process)
             if ((rex->flags & 1) == PROCESS_FLAGS_ACTIVE)
             {
                 (*process)->flags |= PROCESS_MODE_ACTIVE;
-                svc_process_add_to_active_list(*process);
+                kprocess_add_to_active_list(*process);
             }
         }
         else
@@ -173,13 +173,13 @@ void svc_process_create(const REX* rex, PROCESS** process)
         error(ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
-void svc_process_get_flags(PROCESS* process, unsigned int* flags)
+void kprocess_get_flags(PROCESS* process, unsigned int* flags)
 {
     CHECK_MAGIC(process, MAGIC_PROCESS);
     (*flags) = process->flags;
 }
 
-void svc_process_set_flags(PROCESS* process, unsigned int flags)
+void kprocess_set_flags(PROCESS* process, unsigned int flags)
 {
     CHECK_MAGIC(process, MAGIC_PROCESS);
     if ((flags & 1) == PROCESS_FLAGS_ACTIVE)
@@ -187,7 +187,7 @@ void svc_process_set_flags(PROCESS* process, unsigned int flags)
         switch (process->flags & PROCESS_MODE_MASK)
         {
         case PROCESS_MODE_FROZEN:
-            svc_process_add_to_active_list(process);
+            kprocess_add_to_active_list(process);
         case PROCESS_MODE_WAITING_FROZEN:
             process->flags |= PROCESS_MODE_ACTIVE;
             break;
@@ -198,7 +198,7 @@ void svc_process_set_flags(PROCESS* process, unsigned int flags)
         switch (process->flags & PROCESS_MODE_MASK)
         {
         case PROCESS_MODE_ACTIVE:
-            svc_process_remove_from_active_list(process);
+            kprocess_remove_from_active_list(process);
         case PROCESS_MODE_WAITING:
             process->flags &= ~PROCESS_MODE_ACTIVE;
             break;
@@ -206,20 +206,20 @@ void svc_process_set_flags(PROCESS* process, unsigned int flags)
     }
 }
 
-void svc_process_set_priority(PROCESS* process, unsigned int priority)
+void kprocess_set_priority(PROCESS* process, unsigned int priority)
 {
     CHECK_MAGIC(process, MAGIC_PROCESS);
     process->base_priority = priority;
-    svc_process_set_current_priority(process, svc_mutex_calculate_owner_priority(process));
+    kprocess_set_current_priority(process, kmutex_calculate_owner_priority(process));
 }
 
-void svc_process_get_priority(PROCESS* process, unsigned int* priority)
+void kprocess_get_priority(PROCESS* process, unsigned int* priority)
 {
     CHECK_MAGIC(process, MAGIC_PROCESS);
     *priority = process->base_priority;
 }
 
-void svc_process_destroy(PROCESS* process)
+void kprocess_destroy(PROCESS* process)
 {
     CHECK_MAGIC(process, MAGIC_PROCESS);
     //we cannot destroy init process
@@ -234,7 +234,7 @@ void svc_process_destroy(PROCESS* process)
     //if process is running, freeze it first
     if ((process->flags & PROCESS_MODE_MASK) == PROCESS_MODE_ACTIVE)
     {
-        svc_process_remove_from_active_list(process);
+        kprocess_remove_from_active_list(process);
         //we don't need to save context on exit
         if (__KERNEL->active_process == process)
             __KERNEL->active_process = NULL;
@@ -244,20 +244,20 @@ void svc_process_destroy(PROCESS* process)
     {
         //if timer is still active, kill him
         if (process->flags & PROCESS_FLAGS_TIMER_ACTIVE)
-            svc_timer_stop(&process->timer);
+            ktimer_stop(&process->timer);
         //say sync object to release us
         switch (process->flags & PROCESS_SYNC_MASK)
         {
         case PROCESS_SYNC_TIMER_ONLY:
             break;
         case PROCESS_SYNC_MUTEX:
-            svc_mutex_lock_release((MUTEX*)process->sync_object, process);
+            kmutex_lock_release((MUTEX*)process->sync_object, process);
             break;
         case PROCESS_SYNC_EVENT:
-            svc_event_lock_release((EVENT*)process->sync_object, process);
+            kevent_lock_release((EVENT*)process->sync_object, process);
             break;
         case PROCESS_SYNC_SEM:
-            svc_sem_lock_release((SEM*)process->sync_object, process);
+            ksem_lock_release((SEM*)process->sync_object, process);
             break;
         default:
             ASSERT(false);
@@ -271,7 +271,7 @@ void svc_process_destroy(PROCESS* process)
     kfree(process);
 }
 
-void svc_process_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
+void kprocess_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
 {
     PROCESS* process = __KERNEL->processes;
     CHECK_MAGIC(process, MAGIC_PROCESS);
@@ -282,17 +282,17 @@ void svc_process_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_objec
         printk("init process cannot sleep\n\r");
 #endif
         process->flags |= sync_type;
-        svc_process_timeout(sync_object);
+        kprocess_timeout(sync_object);
         error(ERROR_RESTRICTED_FOR_INIT);
         return;
     }
-    svc_process_remove_from_active_list(process);
+    kprocess_remove_from_active_list(process);
     process->flags |= PROCESS_MODE_WAITING | sync_type;
     process->sync_object = sync_object;
 
     //adjust owner priority
     if (sync_type == PROCESS_SYNC_MUTEX && ((MUTEX*)sync_object)->owner->current_priority > process->current_priority)
-        svc_process_set_current_priority(((MUTEX*)sync_object)->owner, process->current_priority);
+        kprocess_set_current_priority(((MUTEX*)sync_object)->owner, process->current_priority);
 
     //create timer if not infinite
     if (time->sec || time->usec)
@@ -300,18 +300,18 @@ void svc_process_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_objec
         process->flags |= PROCESS_FLAGS_TIMER_ACTIVE;
         process->timer.time.sec = time->sec;
         process->timer.time.usec = time->usec;
-        svc_timer_start(&process->timer);
+        ktimer_start(&process->timer);
     }
 }
 
-void svc_process_wakeup(PROCESS* process)
+void kprocess_wakeup(PROCESS* process)
 {
     CHECK_MAGIC(process, MAGIC_PROCESS);
     if  (process->flags & PROCESS_FLAGS_WAITING)
     {
         //if timer is still active, kill him
         if (process->flags & PROCESS_FLAGS_TIMER_ACTIVE)
-            svc_timer_stop(&process->timer);
+            ktimer_stop(&process->timer);
         process->flags &= ~(PROCESS_FLAGS_TIMER_ACTIVE | PROCESS_SYNC_MASK);
 
         switch (process->flags & PROCESS_MODE_MASK)
@@ -319,13 +319,13 @@ void svc_process_wakeup(PROCESS* process)
         case PROCESS_MODE_WAITING_FROZEN:
             process->flags &= ~PROCESS_FLAGS_WAITING;
         case PROCESS_MODE_WAITING:
-            svc_process_add_to_active_list(process);
+            kprocess_add_to_active_list(process);
             break;
         }
     }
 }
 
-void svc_process_set_current_priority(PROCESS* process, unsigned int priority)
+void kprocess_set_current_priority(PROCESS* process, unsigned int priority)
 {
     CHECK_MAGIC(process, MAGIC_PROCESS);
     if (process->current_priority != priority)
@@ -333,16 +333,16 @@ void svc_process_set_current_priority(PROCESS* process, unsigned int priority)
         switch (process->flags & PROCESS_MODE_MASK)
         {
         case PROCESS_MODE_ACTIVE:
-            svc_process_remove_from_active_list(process);
+            kprocess_remove_from_active_list(process);
             process->current_priority = priority;
-            svc_process_add_to_active_list(process);
+            kprocess_add_to_active_list(process);
             break;
         //if we are waiting for mutex, adjusting priority can affect on mutex owner
         case PROCESS_MODE_WAITING:
         case PROCESS_MODE_WAITING_FROZEN:
             process->current_priority = priority;
             if ((process->flags & PROCESS_SYNC_MASK) == PROCESS_SYNC_MUTEX)
-                svc_process_set_current_priority(((MUTEX*)process->sync_object)->owner, svc_mutex_calculate_owner_priority(((MUTEX*)process->sync_object)->owner));
+                kprocess_set_current_priority(((MUTEX*)process->sync_object)->owner, kmutex_calculate_owner_priority(((MUTEX*)process->sync_object)->owner));
             break;
         default:
             process->current_priority = priority;
@@ -350,25 +350,25 @@ void svc_process_set_current_priority(PROCESS* process, unsigned int priority)
     }
 }
 
-void svc_process_error(PROCESS* process, int error)
+void kprocess_error(PROCESS* process, int error)
 {
     CHECK_MAGIC(process, MAGIC_PROCESS);
     process->heap->error = error;
 }
 
-void svc_process_destroy_current()
+void kprocess_destroy_current()
 {
-    svc_process_destroy(__KERNEL->processes);
+    kprocess_destroy(__KERNEL->processes);
 }
 
-PROCESS* svc_process_get_current()
+PROCESS* kprocess_get_current()
 {
     return __KERNEL->processes;
 }
 
-void svc_process_init(const REX* rex)
+void kprocess_init(const REX* rex)
 {
-    svc_process_create(rex, &__KERNEL->init);
+    kprocess_create(rex, &__KERNEL->init);
 
     //activate init
     __KERNEL->init->flags = PROCESS_MODE_ACTIVE;
@@ -381,11 +381,11 @@ void svc_process_init(const REX* rex)
 }
 
 #if (KERNEL_PROFILING)
-void svc_process_switch_test()
+void kprocess_switch_test()
 {
     PROCESS* process = __KERNEL->processes;
-    svc_process_remove_from_active_list(process);
-    svc_process_add_to_active_list(process);
+    kprocess_remove_from_active_list(process);
+    kprocess_add_to_active_list(process);
     pend_switch_context();
     //next process is now same as active process, it will simulate context switching
 }
@@ -451,13 +451,13 @@ static inline void kernel_stat()
     }
 
 #if (KERNEL_PROCESS_STAT)
-    svc_timer_get_uptime(&uptime);
+    ktimer_get_uptime(&uptime);
     printk("%3d:%02d.%03d", uptime.sec / 60, uptime.sec % 60, uptime.usec / 1000);
 #endif
     printk("\n\r");
 }
 
-void svc_process_info()
+void kprocess_info()
 {
     int cnt = 0;
     DLIST_ENUM de;

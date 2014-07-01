@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef SVC_TIMER_H
-#define SVC_TIMER_H
+#ifndef KTIMER_H
+#define KTIMER_H
 
 #include "../lib/time.h"
 #include "../userspace/dlist.h"
@@ -19,17 +19,17 @@ typedef struct {
 }TIMER;
 
 //called from process handler
-void svc_timer_start(TIMER* timer);
-void svc_timer_stop(TIMER* timer);
+void ktimer_start(TIMER* timer);
+void ktimer_stop(TIMER* timer);
 
 //called from svc handler
-void svc_timer_hpet_timeout();
-void svc_timer_second_pulse();
-void svc_timer_get_uptime(TIME* res);
-void svc_timer_setup(const CB_SVC_TIMER* cb_svc_timer);
+void ktimer_hpet_timeout();
+void ktimer_second_pulse();
+void ktimer_get_uptime(TIME* res);
+void ktimer_setup(const CB_SVC_TIMER* cb_ktimer);
 
 //called from startup
-void svc_timer_init();
+void ktimer_init();
 
 
-#endif // SVC_TIMER_H
+#endif // KTIMER_H

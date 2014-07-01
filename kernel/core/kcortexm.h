@@ -4,10 +4,13 @@
     All rights reserved.
 */
 
-#ifndef CORE_KERNEL_CORTEXM_H
-#define CORE_KERNEL_CORTEXM_H
+#ifndef KCORTEXM_H
+#define KCORTEXM_H
 
-#include "../../../userspace/cc_macro.h"
+#define NVIC_PRESENT
+
+#include "../../userspace/core/cortexm.h"
+#include "../../userspace/cc_macro.h"
 
 //Application Interrupt and Reset Control Register
 #define SCB_AIRCR                        (*(unsigned int*)0xE000ED0C)
@@ -55,4 +58,4 @@ __STATIC_INLINE void reset()
     __ASM volatile ("dsb");
 }
 
-#endif // CORE_KERNEL_CORTEXM_H
+#endif // KCORTEXM_H

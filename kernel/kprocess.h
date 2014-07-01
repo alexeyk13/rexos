@@ -4,11 +4,11 @@
     All rights reserved.
 */
 
-#ifndef SVC_PROCESS_H
-#define SVC_PROCESS_H
+#ifndef KPROCESS_H
+#define KPROCESS_H
 
 #include "../userspace/process.h"
-#include "svc_timer.h"
+#include "ktimer.h"
 #include "kernel_config.h"
 #include "dbg.h"
 
@@ -31,32 +31,32 @@ typedef struct {
 }PROCESS;
 
 //called from svc
-void svc_process_create(const REX* rex, PROCESS** process);
-void svc_process_get_flags(PROCESS* process, unsigned int* flags);
-void svc_process_set_flags(PROCESS* process, unsigned int flags);
-void svc_process_unfreeze(PROCESS* process);
-void svc_process_freeze(PROCESS* process);
-void svc_process_set_priority(PROCESS* process, unsigned int priority);
-void svc_process_get_priority(PROCESS* process, unsigned int* priority);
-void svc_process_destroy(PROCESS* process);
+void kprocess_create(const REX* rex, PROCESS** process);
+void kprocess_get_flags(PROCESS* process, unsigned int* flags);
+void kprocess_set_flags(PROCESS* process, unsigned int flags);
+void kprocess_unfreeze(PROCESS* process);
+void kprocess_freeze(PROCESS* process);
+void kprocess_set_priority(PROCESS* process, unsigned int priority);
+void kprocess_get_priority(PROCESS* process, unsigned int* priority);
+void kprocess_destroy(PROCESS* process);
 //cannot be called from init task, because init task is only task running, while other tasks are waiting or frozen
 //this function can be call indirectly from any sync object.
 //also called from sync objects
-void svc_process_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
+void kprocess_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
 
 //called from other places in kernel
-void svc_process_wakeup(PROCESS* process);
-void svc_process_set_current_priority(PROCESS* process, unsigned int priority);
-void svc_process_error(PROCESS* process, int error);
-PROCESS* svc_process_get_current();
-void svc_process_destroy_current();
+void kprocess_wakeup(PROCESS* process);
+void kprocess_set_current_priority(PROCESS* process, unsigned int priority);
+void kprocess_error(PROCESS* process, int error);
+PROCESS* kprocess_get_current();
+void kprocess_destroy_current();
 
 //called from startup
-void svc_process_init(const REX *rex);
+void kprocess_init(const REX *rex);
 
 #if (KERNEL_PROFILING)
-void svc_process_switch_test();
-void svc_process_info();
+void kprocess_switch_test();
+void kprocess_info();
 #endif //(KERNEL_PROFILING)
 
-#endif // SVC_PROCESS_H
+#endif // KPROCESS_H

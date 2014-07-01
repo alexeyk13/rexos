@@ -9,8 +9,7 @@
  */
 //if you've got error on this line, than this file is not preprocessed
 
-#include "memmap.h"
-#include "core.h"
+#include "../userspace/sys.h"
 
 MEMORY
 {
