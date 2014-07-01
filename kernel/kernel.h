@@ -117,6 +117,8 @@ typedef struct {
 
 #define LIB_EXIT                                            __GLOBAL->heap = __saved_heap;
 
+extern const REX __INIT;
+extern const LIB __LIB;
 
 /** \addtogroup arch_porting architecture porting
         For architecture support, all these functions must be implemented.

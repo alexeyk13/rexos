@@ -7,8 +7,7 @@
 #include "dbg.h"
 #include "../userspace/error.h"
 #include "kernel.h"
-#include <stdarg.h>
-#include "../lib/printf.h"
+#include "../lib/lib.h"
 
 static inline unsigned int stack_used_max(unsigned int top, unsigned int cur)
 {
@@ -24,7 +23,7 @@ void printk(const char *const fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
-    format(fmt, va, __KERNEL->stdout, __KERNEL->stdout_param);
+    __GLOBAL->lib->format(fmt, va, __KERNEL->stdout, __KERNEL->stdout_param);
     va_end(va);
 }
 

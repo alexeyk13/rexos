@@ -24,7 +24,8 @@
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
 #include "cc_macro.h"
-#include "types.h"
+#include "lib/types.h"
+#include "../lib/lib.h"
 
 /*
     List of all calls to supervisor
@@ -80,6 +81,7 @@ typedef enum {
 typedef struct {
     void* heap;
     void (*svc_irq)(unsigned int, unsigned int, unsigned int, unsigned int);
+    const LIB* lib;
 } GLOBAL;
 
 #define __GLOBAL                                            ((GLOBAL*)(SRAM_BASE))

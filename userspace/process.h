@@ -27,8 +27,8 @@
 
 #include "kernel_config.h"
 #include "sys.h"
-#include "../lib/pool.h"
-#include "../lib/time.h"
+#include "lib/time.h"
+
 
 #define PROCESS_FLAGS_ACTIVE                                     (1 << 0)
 #define PROCESS_FLAGS_WAITING                                    (1 << 1)
@@ -220,7 +220,7 @@ __STATIC_INLINE void sleep(TIME* time)
 __STATIC_INLINE void sleep_ms(unsigned int ms)
 {
     TIME time;
-    ms_to_time(ms, &time);
+    __GLOBAL->lib->ms_to_time(ms, &time);
     sleep(&time);
 }
 
@@ -232,7 +232,7 @@ __STATIC_INLINE void sleep_ms(unsigned int ms)
 __STATIC_INLINE void sleep_us(unsigned int us)
 {
     TIME time;
-    us_to_time(us, &time);
+    __GLOBAL->lib->us_to_time(us, &time);
     sleep(&time);
 }
 

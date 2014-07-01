@@ -127,7 +127,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
     //allocate process object
     if (*process != NULL)
     {
-        (*process)->heap = stack_alloc(rex->size);
+        (*process)->heap = paged_alloc(rex->size);
         if ((*process)->heap)
         {
             DO_MAGIC((*process), MAGIC_PROCESS);
@@ -267,7 +267,7 @@ void kprocess_destroy(PROCESS* process)
     dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
 #endif
     //release memory, occupied by process
-    stack_free(process->heap);
+    paged_free(process->heap);
     kfree(process);
 }
 
@@ -394,7 +394,7 @@ void process_stat(PROCESS* process)
 {
     POOL_STAT stat;
     LIB_ENTER;
-    pool_stat(&process->heap->pool, &stat, process->sp);
+    __GLOBAL->lib->pool_stat(&process->heap->pool, &stat, process->sp);
     LIB_EXIT;
 
     printk("%-16.16s ", PROCESS_NAME(process->heap));
@@ -431,7 +431,7 @@ static inline void kernel_stat()
 #endif
     POOL_STAT stat;
     LIB_ENTER;
-    pool_stat(&__KERNEL->pool, &stat, get_sp());
+    __GLOBAL->lib->pool_stat(&__KERNEL->pool, &stat, get_sp());
     LIB_EXIT;
 
     printk("%-16.16s         ", __KERNEL_NAME);

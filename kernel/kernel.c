@@ -12,9 +12,8 @@
 #include "ksem.h"
 #include "kprocess.h"
 #include "../userspace/error.h"
+#include "../userspace/lib/lib.h"
 #include <string.h>
-
-extern const REX INIT;
 
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {
@@ -173,6 +172,7 @@ void startup()
 {
     //setup __GLOBAL
     __GLOBAL->svc_irq = svc;
+    __GLOBAL->lib = &__LIB;
 
     //setup __KERNEL
     memset(__KERNEL, 0, sizeof(KERNEL));
@@ -195,6 +195,6 @@ void startup()
     ktimer_init();
 
     //initialize thread subsystem, create idle task
-    kprocess_init(&INIT);
+    kprocess_init(&__INIT);
 
 }

@@ -29,7 +29,7 @@
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
 #include "kernel_config.h"
-#include "../userspace/types.h"
+#include "../userspace/lib/stdlib.h"
 #include "../userspace/cc_macro.h"
 
 #if (KERNEL_DEBUG)

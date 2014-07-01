@@ -7,22 +7,8 @@
 #ifndef POOL_H
 #define POOL_H
 
-#include "../userspace/types.h"
+#include "../userspace/lib/types.h"
 #include "kernel_config.h"
-
-typedef struct {
-    void* free_slot;
-    void* first_slot;
-    void* last_slot;
-} POOL;
-
-typedef struct {
-    unsigned int free_slots;
-    unsigned int used_slots;
-    unsigned int free;
-    unsigned int used;
-    unsigned int largest_free;
-} POOL_STAT;
 
 void pool_init(POOL* pool, void* data);
 void* pool_malloc(POOL* pool, size_t size);

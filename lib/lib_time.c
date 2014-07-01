@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "time.h"
+#include "lib_time.h"
 #include "../userspace/timer.h"
 
 //time_t = 0
@@ -30,7 +30,7 @@ const unsigned short YDAY[2][12] =    {{  0, 31, 59, 90, 120, 151, 181, 212, 243
 #define MAX_US_DELTA                        2146
 #define MAX_MS_DELTA                        2147482
 
-time_t mktime(struct tm* ts)
+time_t __mktime(struct tm* ts)
 {
     register time_t days_from_epoch;
     days_from_epoch = (ts->tm_year - EPOCH_YEAR) * 365;
@@ -42,7 +42,7 @@ time_t mktime(struct tm* ts)
     return days_from_epoch * SECS_IN_DAY + (ts->tm_hour * 60 + ts->tm_min) * 60 + ts->tm_sec;
 }
 
-struct tm* gmtime(time_t time, struct tm* ts)
+struct tm* __gmtime(time_t time, struct tm* ts)
 {
     register time_t val = time;
     //first - decode time
@@ -72,7 +72,7 @@ struct tm* gmtime(time_t time, struct tm* ts)
     return ts;
 }
 
-int time_compare(TIME* from, TIME* to)
+int __time_compare(TIME* from, TIME* to)
 {
     int res = -1;
     if (to->sec > from->sec)
@@ -88,7 +88,7 @@ int time_compare(TIME* from, TIME* to)
     return res;
 }
 
-void time_add(TIME* from, TIME* to, TIME* res)
+void __time_add(TIME* from, TIME* to, TIME* res)
 {
     res->sec = to->sec + from->sec;
     res->usec = to->usec + from->usec;
@@ -100,9 +100,9 @@ void time_add(TIME* from, TIME* to, TIME* res)
     }
 }
 
-void time_sub(TIME* from, TIME* to, TIME* res)
+void __time_sub(TIME* from, TIME* to, TIME* res)
 {
-    if (time_compare(from, to) > 0)
+    if (__time_compare(from, to) > 0)
     {
         res->sec = to->sec - from->sec;
         //borrow
@@ -118,55 +118,48 @@ void time_sub(TIME* from, TIME* to, TIME* res)
         res->sec = res->usec = 0;
 }
 
-void us_to_time(int us, TIME* time)
+void __us_to_time(int us, TIME* time)
 {
     time->sec = us / USEC_1S;
     time->usec = us % USEC_1S;
 }
 
-void ms_to_time(int ms, TIME* time)
+void __ms_to_time(int ms, TIME* time)
 {
     time->sec = ms / MSEC_1S;
     time->usec = (ms % MSEC_1S) * USEC_1MS;
 }
 
-int time_to_us(TIME* time)
+int __time_to_us(TIME* time)
 {
     return time->sec <= MAX_US_DELTA ? (int)(time->sec * USEC_1S + time->usec) : (int)(MAX_US_DELTA * USEC_1S);
 }
 
-int time_to_ms(TIME* time)
+int __time_to_ms(TIME* time)
 {
     return time->sec <= MAX_MS_DELTA ? (int)(time->sec * MSEC_1S + time->usec / USEC_1MS) : (int)(MAX_MS_DELTA * MSEC_1S);
 }
 
-TIME* time_elapsed(TIME* from, TIME* res)
+TIME* __time_elapsed(TIME* from, TIME* res)
 {
     TIME to;
     get_uptime(&to);
-    time_sub(from, &to, res);
+    __time_sub(from, &to, res);
     return res;
 }
 
-unsigned int time_elapsed_ms(TIME* from)
+unsigned int __time_elapsed_ms(TIME* from)
 {
     TIME to;
     get_uptime(&to);
-    time_sub(from, &to, &to);
-    return time_to_ms(&to);
+    __time_sub(from, &to, &to);
+    return __time_to_ms(&to);
 }
 
-/**
-    \brief time, elapsed between "from" and now in microseconds
-    \param from: pointer to provided structure, containing base \ref TIME
-    \retval elapsed time in microseconds
-*/
-unsigned int time_elapsed_us(TIME* from)
+unsigned int __time_elapsed_us(TIME* from)
 {
     TIME to;
     get_uptime(&to);
-    time_sub(from, &to, &to);
-    return time_to_us(&to);
+    __time_sub(from, &to, &to);
+    return __time_to_us(&to);
 }
-
-/** \} */ // end of lib_time group

@@ -12,7 +12,7 @@
 #include "dbg.h"
 #include "error.h"
 #include "../../../kernel/kernel.h"
-#include "../../../userspace/malloc.h"
+#include "../../../userspace/lib/stdlib.h"
 
 #include "gpio_stm32.h"
 #if defined(STM32F1)

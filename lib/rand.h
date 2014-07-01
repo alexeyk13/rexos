@@ -7,7 +7,7 @@
 #ifndef RAND_H
 #define RAND_H
 
-unsigned int srand();
-unsigned int rand(unsigned int* seed);
+unsigned int __srand();
+unsigned int __rand(unsigned int* seed);
 
 #endif // RAND_H

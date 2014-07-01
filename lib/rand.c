@@ -8,7 +8,7 @@
 #include "../userspace/timer.h"
 #include "../userspace/process.h"
 
-unsigned int srand()
+unsigned int __srand()
 {
     unsigned int seed;
     TIME uptime;
@@ -19,10 +19,10 @@ unsigned int srand()
 
     get_uptime(&uptime);
     seed ^= uptime.usec;
-    return rand(&seed);
+    return __rand(&seed);
 }
 
-unsigned int rand(unsigned int* seed)
+unsigned int __rand(unsigned int* seed)
 {
     TIME uptime;
     get_uptime(&uptime);

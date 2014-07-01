@@ -6,7 +6,6 @@
 
 #include "printf.h"
 #include <string.h>
-#include "dbg.h"
 #include "../userspace/process.h"
 
 #define PRINTF_BUF_SIZE                                         10
@@ -24,7 +23,7 @@
 
 const char spaces[PRINTF_BUF_SIZE] =                            "          ";
 const char zeroes[PRINTF_BUF_SIZE] =                            "0000000000";
-const char* const DIM =                                              "KMG";
+const char* const DIM =                                         "KMG";
 
 void sprintf_handler(const char *const buf, unsigned int size, void* param)
 {
@@ -59,13 +58,7 @@ static inline void pad_zeroes(int count, STDOUT write_handler, void *write_param
     \{
  */
 
-/**
-    \brief string to unsigned int
-    \param buf: untruncated strings
-    \param size: size of buf in bytes
-    \retval integer result. 0 on error
-*/
-unsigned long atou(const char *const buf, int size)
+unsigned long __atou(const char *const buf, int size)
 {
     int i;
     unsigned long res = 0;
@@ -74,15 +67,7 @@ unsigned long atou(const char *const buf, int size)
     return res;
 }
 
-/**
-    \brief unsigned int to string. Used internally in printf
-    \param buf: out buffer
-    \param value: in value
-    \param radix: radix of original value
-    \param uppercase: upper/lower case of result for radix 16
-    \retval size of resulting string. 0 on error
-*/
-int utoa(char* buf, unsigned long value, int radix, bool uppercase)
+int __utoa(char* buf, unsigned long value, int radix, bool uppercase)
 {
     int size = 0;
     char c;
@@ -114,7 +99,7 @@ int size_in_bytes(unsigned int value, char* buf)
     int i, size;
     for(i = 0; i < 3 && value >= 1024; ++i)
         value /= 1024;
-    size = utoa(buf, value, 10, false);
+    size = __utoa(buf, value, 10, false);
     if (i)
         buf[size++] = DIM[i - 1];
     buf[size++] = 'B';
@@ -209,7 +194,7 @@ void format(const char *const fmt, va_list va, STDOUT write_handler, void* write
                     while (fmt[cur] >= '0' && fmt[cur] <= '9')
                         ++cur;
                     if (cur > start)
-                        width = atou(fmt + start, cur - start);
+                        width = __atou(fmt + start, cur - start);
                 }
                 //3. precision
                 precision = 1;
@@ -227,7 +212,7 @@ void format(const char *const fmt, va_list va, STDOUT write_handler, void* write
                         while (fmt[cur] >= '0' && fmt[cur] <= '9')
                             ++cur;
                         if (cur > start)
-                            precision = atou(fmt + start, cur - start);
+                            precision = __atou(fmt + start, cur - start);
                     }
                 }
                 //4. int length
@@ -268,13 +253,13 @@ void format(const char *const fmt, va_list va, STDOUT write_handler, void* write
                         d = (long)u;
                     if (d < 0)
                     {
-                        buf_size = utoa(buf, -d, 10, false);
+                        buf_size = __utoa(buf, -d, 10, false);
                         d = buf_size + 1;
                         flags |= FLAGS_SIGN_MINUS;
                     }
                     else if (d > 0)
                     {
-                        buf_size = utoa(buf, d, 10, false);
+                        buf_size = __utoa(buf, d, 10, false);
                         d = buf_size;
                         if (flags & (FLAGS_FORCE_PLUS | FLAGS_SPACE_FOR_SIGN))
                             ++d;
@@ -290,7 +275,7 @@ void format(const char *const fmt, va_list va, STDOUT write_handler, void* write
                         u = (unsigned short)u;
                     if (u > 0)
                     {
-                        buf_size = utoa(buf, u, 10, false);
+                        buf_size = __utoa(buf, u, 10, false);
                         d = buf_size;
                     }
                     if (buf_size < precision)
@@ -305,7 +290,7 @@ void format(const char *const fmt, va_list va, STDOUT write_handler, void* write
                         u = (unsigned short)u;
                     if (u > 0)
                     {
-                        buf_size = utoa(buf, u, 16, fmt[cur] == 'X');
+                        buf_size = __utoa(buf, u, 16, fmt[cur] == 'X');
                         d = buf_size;
                         if (flags & (FLAGS_RADIX_PREFIX))
                             d += 2;
@@ -321,7 +306,7 @@ void format(const char *const fmt, va_list va, STDOUT write_handler, void* write
                         u = (unsigned short)u;
                     if (u > 0)
                     {
-                        buf_size = utoa(buf, u, 8, false);
+                        buf_size = __utoa(buf, u, 8, false);
                         d = buf_size;
                         if (flags & (FLAGS_RADIX_PREFIX))
                             d += 1;
@@ -411,36 +396,11 @@ void format(const char *const fmt, va_list va, STDOUT write_handler, void* write
         write_handler(fmt + start, cur - start, write_param);
 }
 
-/**
-    \brief format string, using \ref dbg_write as handler
-    \param fmt: format (see global description)
-    \param ...: list of arguments
-    \retval none
-*/
-void printf(const char *const fmt, ...)
+void sformat(char* str, const char *const fmt, va_list va)
 {
-    va_list va;
-    va_start(va, fmt);
-    format(fmt, va, __HEAP->stdout, __HEAP->stdout_param);
-//    format(fmt, va, printf_handler, NULL);
-    va_end(va);
-}
-
-/**
-    \brief format string to \b str
-    \param str: resulting string
-    \param fmt: format (see global description)
-    \param ...: list of arguments
-    \retval none
-*/
-void sprintf(char* str, const char * const fmt, ...)
-{
-    va_list va;
-    va_start(va, fmt);
     char* str_cur = str;
     format(fmt, va, sprintf_handler, &str_cur);
     *str_cur = 0;
-    va_end(va);
 }
 
 /** \} */ // end of lib_printf group
