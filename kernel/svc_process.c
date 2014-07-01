@@ -5,11 +5,11 @@
 */
 
 #include "svc_process.h"
-#include "mem_kernel.h"
+#include "svc_malloc.h"
 #include "string.h"
-#include "mutex_kernel.h"
-#include "event_kernel.h"
-#include "sem_kernel.h"
+#include "svc_mutex.h"
+#include "svc_event.h"
+#include "svc_sem.h"
 #include "kernel.h"
 #include "../userspace/error.h"
 #include "../lib/pool.h"
@@ -122,7 +122,7 @@ void svc_process_abnormal_exit()
 
 void svc_process_create(const REX* rex, PROCESS** process)
 {
-    *process = sys_alloc(sizeof(PROCESS));
+    *process = kmalloc(sizeof(PROCESS));
     memset((*process), 0, sizeof(PROCESS));
     //allocate process object
     if (*process != NULL)
@@ -164,7 +164,7 @@ void svc_process_create(const REX* rex, PROCESS** process)
         }
         else
         {
-            sys_free(*process);
+            kfree(*process);
             (*process) = NULL;
             error(ERROR_OUT_OF_PAGED_MEMORY);
         }
@@ -268,7 +268,7 @@ void svc_process_destroy(PROCESS* process)
 #endif
     //release memory, occupied by process
     stack_free(process->heap);
-    sys_free(process);
+    kfree(process);
 }
 
 void svc_process_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)

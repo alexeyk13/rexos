@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef MUTEX_KERNEL_H
-#define MUTEX_KERNEL_H
+#ifndef SVC_MUTEX_H
+#define SVC_MUTEX_H
 
 #include "../userspace/dlist.h"
 #include "svc_process.h"
@@ -28,6 +28,10 @@ unsigned int svc_mutex_calculate_owner_priority(PROCESS* process);
 //locked object - by timeout or process termination. also can be called on normal release
 void svc_mutex_lock_release(MUTEX* mutex, PROCESS* process);
 
-void svc_mutex_handler(unsigned int num, unsigned int param1, unsigned int param2);
+//called from svc
+void svc_mutex_create(MUTEX** mutex);
+void svc_mutex_lock(MUTEX* mutex, TIME* time);
+void svc_mutex_unlock(MUTEX* mutex);
+void svc_mutex_destroy(MUTEX* mutex);
 
-#endif // MUTEX_KERNEL_H
+#endif // SVC_MUTEX_H

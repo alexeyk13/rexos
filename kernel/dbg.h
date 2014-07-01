@@ -59,20 +59,6 @@
 
 #endif
 
-#if (KERNEL_CHECK_CONTEXT)
-/**
-    \brief context assertion
-    \details only works, if \ref KERNEL_DEBUG and \ref KERNEL_CHECK_CONTEXT are set.
-
-    prints over debug console file name and line, caused assertion
-    \param value: \ref CONTEXT to check
-    \retval no return if wrong context, else none
-*/
-#define CHECK_CONTEXT(value)                        if ((get_context() & (value)) == 0) {printk("WRONG CONTEXT at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
-#else
-#define CHECK_CONTEXT(value)
-#endif
-
 #if (KERNEL_MARKS)
 
 /**

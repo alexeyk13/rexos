@@ -29,20 +29,13 @@ static void process_fault(unsigned int ret_value)
 
 void on_hard_fault(unsigned int ret_value, unsigned int* stack_value)
 {
-//    gpio_set_pin(GPIO_B9, true);
 #if (KERNEL_DEBUG)
-///        printk("HARD FAULT: ");
+        printk("HARD FAULT: ");
         if (SCB_HFSR & HFSR_VECTTBL)
-        {
-//            gpio_set_pin(GPIO_B9, true);
-        }
-//            printk("Vector table read fault at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
+            printk("Vector table read fault at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
         //wrong sys call
         else if (*(uint16_t*)(stack_value[CALLER_ADDRESS] - 2) == SVC_12)
-        {
-//            gpio_set_pin(GPIO_B9, true);
-        }
-//            printk("SYS call while disabled interrupts at %#.08x\n\r", stack_value[5] & 0xfffffffe);
+            printk("SYS call while disabled interrupts at %#.08x\n\r", stack_value[5] & 0xfffffffe);
         else
             printk("General hard fault at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
 #endif

@@ -34,6 +34,7 @@
 */
 __STATIC_INLINE HANDLE sem_create()
 {
+    HANDLE sem = 0;
     sys_call(SVC_SEM_CREATE, (unsigned int)&res, 0, 0);
     return res;
 }
@@ -46,6 +47,17 @@ __STATIC_INLINE HANDLE sem_create()
 __STATIC_INLINE void sem_signal(HANDLE sem)
 {
     sys_call(SVC_SEM_SIGNAL, (unsigned int)sem, 0, 0);
+}
+
+/**
+    \brief increments counter
+    \details This version must be called for IRQ context
+    \param sem: SEM handle
+    \retval none
+*/
+__STATIC_INLINE void sem_isignal(HANDLE sem)
+{
+    __GLOBAL->svc_irq(SVC_SEM_SIGNAL, (unsigned int)sem, 0, 0);
 }
 
 /**

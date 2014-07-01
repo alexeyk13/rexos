@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef SEM_KERNEL_H
-#define SEM_KERNEL_H
+#ifndef SVC_SEM_H
+#define SVC_SEM_H
 
 #include "svc_process.h"
 #include "dbg.h"
@@ -19,7 +19,10 @@ typedef struct {
 //called from process_private.c on destroy or timeout
 void svc_sem_lock_release(SEM* sem, PROCESS* process);
 
-void svc_sem_handler(unsigned int num, unsigned int param1, unsigned int param2);
-
+//called from svc
+void svc_sem_create(SEM** sem);
+void svc_sem_signal(SEM* sem);
+void svc_sem_wait(SEM* sem, TIME* time);
+void svc_sem_destroy(SEM* sem);
 
 #endif // SEM_KERNEL_H

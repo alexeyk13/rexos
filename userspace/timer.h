@@ -44,20 +44,22 @@ __STATIC_INLINE void timer_setup(CB_SVC_TIMER* cb_svc_timer)
 
 /**
     \brief produce kernel second pulse
+    \details Must be called in IRQ context, or call will fail
     \retval none
 */
 __STATIC_INLINE void timer_second_pulse()
 {
-    sys_call(SVC_TIMER_SECOND_PULSE, 0, 0, 0);
+    __GLOBAL->svc_irq(SVC_TIMER_SECOND_PULSE, 0, 0, 0);
 }
 
 /**
     \brief produce kernel signal of HPET timeout
+    \details Must be called in IRQ context, or call will fail
     \retval none
 */
 __STATIC_INLINE void timer_hpet_timeout()
 {
-    sys_call(SVC_TIMER_HPET_TIMEOUT, 0, 0, 0);
+    __GLOBAL->svc_irq(SVC_TIMER_HPET_TIMEOUT, 0, 0, 0);
 }
 
 /** \} */ // end of timer group

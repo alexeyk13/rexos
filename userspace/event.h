@@ -51,6 +51,17 @@ __STATIC_INLINE void event_pulse(HANDLE event)
 }
 
 /**
+    \brief make event active, release all waiters, go inactive state
+    \details This version must be called for IRQ context
+    \param event: event handle
+    \retval none
+*/
+__STATIC_INLINE void event_ipulse(HANDLE event)
+{
+    __GLOBAL->svc_irq(SVC_EVENT_PULSE, (unsigned int)event, 0, 0);
+}
+
+/**
     \brief make event active, release all waiters, stay in active state
     \param event: event handle
     \retval none
@@ -58,6 +69,17 @@ __STATIC_INLINE void event_pulse(HANDLE event)
 __STATIC_INLINE void event_set(HANDLE event)
 {
     sys_call(SVC_EVENT_SET, (unsigned int)event, 0, 0);
+}
+
+/**
+    \brief make event active, release all waiters, stay in active state
+    \details This version must be called for IRQ context
+    \param event: event handle
+    \retval none
+*/
+__STATIC_INLINE void event_iset(HANDLE event)
+{
+    __GLOBAL->svc_irq(SVC_EVENT_SET, (unsigned int)event, 0, 0);
 }
 
 /**
@@ -80,6 +102,17 @@ __STATIC_INLINE bool event_is_set(HANDLE event)
 __STATIC_INLINE void event_clear(HANDLE event)
 {
     sys_call(SVC_EVENT_CLEAR, (unsigned int)event, 0, 0);
+}
+
+/**
+    \brief make event inactive
+    \details This version must be called for IRQ context
+    \param event: event handle
+    \retval none
+*/
+__STATIC_INLINE void event_iclear(HANDLE event)
+{
+    __GLOBAL->svc_irq(SVC_EVENT_CLEAR, (unsigned int)event, 0, 0);
 }
 
 /**

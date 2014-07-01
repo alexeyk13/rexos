@@ -46,10 +46,6 @@ typedef enum {
     SVC_SEM_SIGNAL,
     SVC_SEM_DESTROY,
 
-    SVC_MEM = 0x400,
-    //profiling
-    SVC_MEM_STAT,
-
     SVC_TIMER = 0x500,
     SVC_TIMER_GET_UPTIME,
     SVC_TIMER_SECOND_PULSE,

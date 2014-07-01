@@ -70,7 +70,7 @@ void sdio_enable(SDIO_CLASS port, SDIO_CB *cb, void *param, int priority)
 {
     if (port < 1)
 	{
-		SDIO_HW* sdio_hw = (SDIO_HW*)sys_alloc(sizeof(SDIO_HW));
+        SDIO_HW* sdio_hw = (SDIO_HW*)malloc(sizeof(SDIO_HW));
 		if (sdio_hw)
 		{
 			sdio_hw->cb = cb;
@@ -121,7 +121,7 @@ void sdio_disable(SDIO_CLASS port)
 		gpio_disable_pin(SDIO_D3_PIN);
 		gpio_disable_pin(SDIO_CLK_PIN);
 		gpio_disable_pin(SDIO_CMD_PIN);
-		sys_free(_sdio_hw[port]);
+        free(_sdio_hw[port]);
 		_sdio_hw[port] = NULL;
 	}
 	else

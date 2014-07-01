@@ -230,7 +230,7 @@ void usb_enable_device(USB_CLASS idx, USB_ENABLE_DEVICE_PARAMS *params, int prio
 {
 	if (idx < USB_COUNT)
 	{
-		_usb_handlers[idx] = (USBD_HW*)sys_alloc(sizeof(USBD_HW));
+        _usb_handlers[idx] = (USBD_HW*)malloc(sizeof(USBD_HW));
 		if (_usb_handlers[idx])
 		{
 			_usb_handlers[idx]->cb = params->cb;
@@ -355,7 +355,7 @@ void usb_disable(USB_CLASS idx)
 		//disable clocks
 		RCC->AHB1ENR &= ~(RCC_AHB1ENR_OTGHSEN | RCC_AHB1ENR_OTGHSULPIEN);
 
-		sys_free(_usb_handlers[idx]);
+        free(_usb_handlers[idx]);
 		_usb_handlers[idx] = NULL;
 
 		//disable pins

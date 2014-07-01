@@ -79,18 +79,6 @@ extern int disable_interrupts();
 extern void restore_interrupts(int state);
 
 /**
-    \brief core-dependent context query
-    \details Return value of current context.
-
-    USER_CONTEXT =                                          0x1,
-    SUPERVISOR_CONTEXT =                                    0x4,
-    IRQ_CONTEXT =                                           0x8
-
-    \retval result context
-*/
-extern CONTEXT get_context();
-
-/**
     \brief arch-dependent stack pointer query
     \details Same for every ARM, so defined here
     \retval stack pointer
@@ -105,7 +93,7 @@ __STATIC_INLINE void* get_sp()
 /**
     \brief core-dependent context raiser
     \details If current contex is not enough during sys_call, context is raised, using
-    this core-specific function. After calling, return value is provided.
+    this core-specific function.
 
     For example, for cortex-m3 "svc 0x12" instruction is used.
 
@@ -113,12 +101,11 @@ __STATIC_INLINE void* get_sp()
     \param param1: parameter 1. num-specific
     \param param2: parameter 2. num-specific
     \param param3: parameter 3. num-specific
-    \retval result value. num-specific
+    \retval none
 */
-void do_sys_call(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3);
-/** \} */ // end of core_porting group
+extern void sys_call(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3);
 
-void sys_call(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3);
+/** \} */ // end of core_porting group
 
 /** \addtogroup sys sys
     \{

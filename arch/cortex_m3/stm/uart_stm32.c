@@ -10,9 +10,9 @@
 #include "gpio.h"
 #include "rcc.h"
 #include "dbg.h"
-#include "mem_kernel.h"
 #include "error.h"
 #include "../../../kernel/kernel.h"
+#include "../../../userspace/malloc.h"
 
 #include "gpio_stm32.h"
 #if defined(STM32F1)
@@ -235,7 +235,7 @@ extern void uart_enable(UART_CLASS port, UART_CB *cb, void *param, int priority)
 {
     if (port < UARTS_COUNT)
     {
-        UART_HW* uart = (UART_HW*)sys_alloc(sizeof(UART_HW));
+        UART_HW* uart = (UART_HW*)malloc(sizeof(UART_HW));
         if (uart)
         {
             __KERNEL->uart_handlers[port] = uart;
@@ -311,7 +311,7 @@ void uart_disable(UART_CLASS port)
             afio_unmap();
 #endif //USART_REMAP_MASK
 
-        sys_free(__KERNEL->uart_handlers[port]);
+        free(__KERNEL->uart_handlers[port]);
         __KERNEL->uart_handlers[port] = NULL;
     }
     else

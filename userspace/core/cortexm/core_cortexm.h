@@ -27,15 +27,15 @@
 
 __STATIC_INLINE int disable_interrupts(void)
 {
-  int result;
-  __ASM volatile ("MRS %0, primask\n\t"
+    int result;
+    __ASM volatile ("MRS %0, primask\n\t"
                         "cpsid i" : "=r" (result) );
-  return(result);
+    return(result);
 }
 
 __STATIC_INLINE void restore_interrupts(int state)
 {
-  __ASM volatile ("MSR primask, %0" : : "r" (state) );
+    __ASM volatile ("MSR primask, %0" : : "r" (state) );
 }
 
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)

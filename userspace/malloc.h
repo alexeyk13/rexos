@@ -62,26 +62,4 @@ __STATIC_INLINE void free(void* ptr)
 
 /** \} */ // end of memory group
 
-#if (KERNEL_PROFILING)
-/** \addtogroup profiling profiling
-    \{
- */
-
-/**
-    \brief display memory statistics
-    \details display info about all global memory pools
-    and thread local memory pool (if selected): total size,
-    used size, free size in bytes and objects count. Also
-    displays free blocks fragmentation.
-    \retval none
-*/
-__STATIC_INLINE void mem_stat()
-{
-    sys_call(SVC_MEM_STAT, 0, 0, 0);
-}
-
-/** \} */ // end of profiling group
-#endif //KERNEL_PROFILING
-
-
 #endif // MALLOC_H
