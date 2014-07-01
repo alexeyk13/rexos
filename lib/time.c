@@ -93,7 +93,7 @@ void time_add(TIME* from, TIME* to, TIME* res)
     res->sec = to->sec + from->sec;
     res->usec = to->usec + from->usec;
     //loan
-    if (res->usec >= USEC_1S)
+    while (res->usec >= USEC_1S)
     {
         ++res->sec;
         res->usec -= USEC_1S;

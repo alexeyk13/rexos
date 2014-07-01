@@ -63,6 +63,8 @@ typedef struct {
 
     //callback for HPET timer
     CB_SVC_TIMER cb_svc_timer;
+    //lock timer callbacks after first setup
+    bool timer_locked;
 
     TIMER* timers;
     volatile bool timer_executed;
@@ -99,6 +101,12 @@ typedef struct {
 
 #define __KERNEL                                            ((KERNEL*)(KERNEL_BASE))
 #define __KERNEL_NAME                                       ((char*)(KERNEL_BASE + sizeof(KERNEL)))
+
+#define LIB_ENTER                                           void* __saved_heap = __GLOBAL->heap;\
+                                                            __GLOBAL->heap = __KERNEL; \
+                                                            __KERNEL->error = ERROR_OK;
+
+#define LIB_EXIT                                            __GLOBAL->heap = __saved_heap;
 
 
 /** \addtogroup arch_porting architecture porting

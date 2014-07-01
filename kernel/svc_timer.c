@@ -116,8 +116,14 @@ void svc_timer_hpet_timeout()
 
 void svc_timer_setup(const CB_SVC_TIMER *cb_svc_timer)
 {
-    memcpy(&__KERNEL->cb_svc_timer, cb_svc_timer, sizeof(CB_SVC_TIMER));
-    __KERNEL->cb_svc_timer.start(FREE_RUN);
+    if (!__KERNEL->timer_locked)
+    {
+        memcpy(&__KERNEL->cb_svc_timer, cb_svc_timer, sizeof(CB_SVC_TIMER));
+        __KERNEL->cb_svc_timer.start(FREE_RUN);
+        __KERNEL->timer_locked = true;
+    }
+    else
+        error(ERROR_INVALID_SVC);
 }
 
 void svc_timer_start(TIMER* timer)

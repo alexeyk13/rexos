@@ -22,7 +22,8 @@ const char *const STAT_LINE="---------------------------------------------------
 #else
 const char *const STAT_LINE="----------------------------------------------------------------\n\r";
 #endif
-#endif
+const char *const DAMAGED="     !!!DAMAGED!!!     ";
+#endif //(KERNEL_PROFILING)
 
 void svc_process_add_to_active_list(PROCESS* process)
 {
@@ -392,8 +393,9 @@ void svc_process_switch_test()
 void process_stat(PROCESS* process)
 {
     POOL_STAT stat;
-    //TODO refactor for check
+    LIB_ENTER;
     pool_stat(&process->heap->pool, &stat, process->sp);
+    LIB_EXIT;
 
     printk("%-16.16s ", PROCESS_NAME(process->heap));
 
@@ -405,8 +407,16 @@ void process_stat(PROCESS* process)
     printk("  %4b   ", (unsigned int)process->heap + process->size - (unsigned int)process->sp);
     printk("%4b ", process->size);
 
-    printk("%4b(%02d)  ", stat.used, stat.used_slots);
-    printk("%4b/%4b(%02d)", stat.free, stat.largest_free, stat.free_slots);
+    if (__KERNEL->error != ERROR_OK)
+    {
+        printk(DAMAGED);
+        __KERNEL->error = ERROR_OK;
+    }
+    else
+    {
+        printk("%4b(%02d)  ", stat.used, stat.used_slots);
+        printk("%4b/%4b(%02d)", stat.free, stat.largest_free, stat.free_slots);
+    }
 
 #if (KERNEL_PROCESS_STAT)
     printk("%3d:%02d.%03d", process->uptime.sec / 60, process->uptime.sec % 60, process->uptime.usec / 1000);
@@ -420,19 +430,28 @@ static inline void kernel_stat()
     TIME uptime;
 #endif
     POOL_STAT stat;
-    //TODO refactor for check
+    LIB_ENTER;
     pool_stat(&__KERNEL->pool, &stat, get_sp());
+    LIB_EXIT;
 
     printk("%-16.16s         ", __KERNEL_NAME);
 
     printk("  %4b   ", KERNEL_BASE + KERNEL_SIZE - (unsigned int)get_sp());
     printk("%4b ", KERNEL_SIZE);
 
-    printk("%4b(%02d)  ", stat.used, stat.used_slots);
-    printk("%4b/%4b(%02d)", stat.free, stat.largest_free, stat.free_slots);
+    if (__KERNEL->error != ERROR_OK)
+    {
+        printk(DAMAGED);
+        __KERNEL->error = ERROR_OK;
+    }
+    else
+    {
+        printk("%4b(%02d)  ", stat.used, stat.used_slots);
+        printk("%4b/%4b(%02d)", stat.free, stat.largest_free, stat.free_slots);
+    }
 
-    svc_timer_get_uptime(&uptime);
 #if (KERNEL_PROCESS_STAT)
+    svc_timer_get_uptime(&uptime);
     printk("%3d:%02d.%03d", uptime.sec / 60, uptime.sec % 60, uptime.usec / 1000);
 #endif
     printk("\n\r");
