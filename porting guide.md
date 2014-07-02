@@ -5,23 +5,20 @@ Depends on core (now supported on ARM7 and cortex-m3):
 functions, that must be defined:
 int disable_interrupts(); //disable interrupts and return prior interrupts state
 void restore_interrupts(int state); //restore interrupts to prior state
-CONTEXT get_context(); //get current context
-unsigned int do_sys_call(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3); //call to kernel
+void reset(); // reset core. Infinite loop if not supported
+unsigned int sys_call(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3); //call to kernel
 void pend_switch_context() //pend switching on supervisor exit
-void thread_setup_context(THREAD* thread, THREAD_FUNCTION fn, void* param); //setup thread context on stack
-void thread_patch_context(THREAD* thread, unsigned int res); //patch thread return value
+void process_setup_context(PROCESS* process, PROCESS_FUNCTION fn); //setup thread context on stack
 
-defines, that must be provided:
+defines, that must be provided for mcu, if not decoded
 
-SYS_RAM_BASE //	base address of system RAM. Provided for Cortex-M because of arch, but must be set for any other core.
+SRAM_BASE // base address of system RAM. Provided for Cortex-M because of arch, but must be set for any other core.
+SRAM_SIZE // size of system RAM. Provided for STM32(F1, F2, F4)
+FLASH_BASE //base address of flash area. Provided for STM32
+
 
 callbacks provided:
 
-unsigned int sys_handler(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3); // sys_call implementation
-void startup(); //call from startup script before enabling interrupts
-void abnormal_exit(); //abnormal thread exit
+REX __INIT // userspace init thread.
 
 global variables provided:
-
-_active_thread //thread, that is running now
-_next_thread //thread to switch to. If NULL, no switch is required

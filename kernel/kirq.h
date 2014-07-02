@@ -8,11 +8,12 @@
 #define KIRQ_H
 
 #include "../userspace/lib/types.h"
+#include "kprocess.h"
 
 typedef struct {
     IRQ handler;
     void* param;
-    void* heap;
+    PROCESS* process;
 }KIRQ;
 
 void kirq_init();

@@ -16,15 +16,11 @@
 #include "types.h"
 #include "../cc_macro.h"
 
-#define RB_ROUND(rb, pos)                                (pos >= rb->header.size ? 0 : pos)
+#define RB_ROUND(rb, pos)                                ((pos) >= ((rb)->size) ? 0 : (pos))
+#define RB_ROUND_BACK(rb, pos)                           ((pos) < 0 ? ((rb)->size) - 1 : (pos))
 
 typedef struct {
-    unsigned int head, tail, size;
-}RB_HEADER;
-
-typedef struct {
-    RB_HEADER header;
-    char data[((unsigned int)-1) >> 1];
+    int head, tail, size;
 }RB;
 
 /** \addtogroup lib_rb ring buffer
@@ -37,10 +33,10 @@ typedef struct {
     \param size: ring buffer size in bytes
     \retval none
 */
-__STATIC_INLINE void rb_init(RB* rb, unsigned int size)
+__STATIC_INLINE void rb_init(RB* rb, int size)
 {
-    rb->header.head = rb->header.tail = 0;
-    rb->header.size = size;
+    rb->head = rb->tail = 0;
+    rb->size = size;
 }
 
 
@@ -51,7 +47,7 @@ __STATIC_INLINE void rb_init(RB* rb, unsigned int size)
 */
 __STATIC_INLINE bool rb_is_empty(RB* rb)
 {
-    return rb->header.head == rb->header.tail;
+    return rb->head == rb->tail;
 }
 
 /**
@@ -61,31 +57,31 @@ __STATIC_INLINE bool rb_is_empty(RB* rb)
 */
 __STATIC_INLINE bool rb_is_full(RB* rb)
 {
-    return RB_ROUND(rb, rb->header.head + 1) == rb->header.tail;
+    return RB_ROUND(rb, rb->head + 1) == rb->tail;
 }
 
 /**
     \brief put item in ring buffer
     \param rb: pointer to initialized \ref RB structure
-    \param c: item to put
-    \retval none
+    \retval index of element from start, where need to put data
 */
-__STATIC_INLINE void rb_put(RB* rb, char c)
+__STATIC_INLINE int rb_put(RB* rb)
 {
-    rb->data[rb->header.head] = c;
-    rb->header.head = RB_ROUND(rb, rb->header.head + 1);
+    register int offset = rb->head;
+    rb->head = RB_ROUND(rb, rb->head + 1);
+    return offset;
 }
 
 /**
     \brief get item from ring buffer
     \param rb: pointer to initialized \ref RB structure
-    \retval received item
+    \retval index of element from where we can get data
 */
-__STATIC_INLINE char rb_get(RB* rb)
+__STATIC_INLINE int rb_get(RB* rb)
 {
-    register char c = rb->data[rb->header.tail];
-    rb->header.tail = RB_ROUND(rb, rb->header.tail + 1);
-    return c;
+    register int offset = rb->tail;
+    rb->tail = RB_ROUND(rb, rb->tail + 1);
+    return offset;
 }
 
 /**

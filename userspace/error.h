@@ -15,6 +15,7 @@
 #include "process.h"
 
 typedef enum {
+    //kernel-specific
     ERROR_OK = 0,
     ERROR_IN_PROGRESS,
     ERROR_NOT_SUPPORTED,
@@ -25,6 +26,9 @@ typedef enum {
     ERROR_STUB_CALLED,
     ERROR_OUT_OF_RANGE,
     ERROR_ACCESS_DENIED,
+    ERROR_IPC_NOT_FOUND,
+    ERROR_IPC_OVERFLOW,
+    ERROR_IPC_RECEIVER_OVERFLOW,
 
     ERROR_FILE = 0x20,
     ERROR_FILE_PATH_NOT_FOUND,

@@ -73,6 +73,7 @@ typedef struct {
     PROCESS* init;
 
     //----------------------- IRQ related ------------------------------
+    int context;
     //This values are used in asm. Don't place them more than 128 bytes from start of KERNEL
     KIRQ irqs[IRQ_VECTORS_COUNT];
 

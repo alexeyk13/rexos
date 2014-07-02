@@ -11,6 +11,7 @@
 #include "kmutex.h"
 #include "kevent.h"
 #include "ksem.h"
+#include "kipc.h"
 #include "kprocess.h"
 #include "../userspace/error.h"
 #include "../userspace/lib/lib.h"
@@ -143,6 +144,19 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         break;
     case SVC_TIMER_SETUP:
         ktimer_setup((CB_SVC_TIMER*)param1);
+        break;
+    //ipc related
+    case SVC_IPC_POST:
+        kipc_post((IPC*)param1);
+        break;
+    case SVC_IPC_PEEK:
+        kipc_peek((IPC*)param1, param2);
+        break;
+    case SVC_IPC_WAIT:
+        kipc_wait((TIME*)param1, param2);
+        break;
+    case SVC_IPC_POST_WAIT:
+        kipc_post_wait((IPC*)param1, (TIME*)param2);
         break;
     //other - dbg, stdout/in
     case SVC_SETUP_STDOUT:

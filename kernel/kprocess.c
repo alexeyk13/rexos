@@ -13,6 +13,7 @@
 #include "kernel.h"
 #include "../userspace/error.h"
 #include "../lib/pool.h"
+#include "../userspace/ipc.h"
 
 #define MAX_PROCESS_NAME_SIZE                                    128
 
@@ -91,6 +92,7 @@ void kprocess_timeout(void* param)
     switch (process->flags & PROCESS_SYNC_MASK)
     {
     case PROCESS_SYNC_TIMER_ONLY:
+    case PROCESS_SYNC_IPC:
         break;
     case PROCESS_SYNC_MUTEX:
         kmutex_lock_release((MUTEX*)process->sync_object, process);
@@ -122,8 +124,8 @@ void kprocess_abnormal_exit()
 
 void kprocess_create(const REX* rex, PROCESS** process)
 {
-    *process = kmalloc(sizeof(PROCESS));
-    memset((*process), 0, sizeof(PROCESS));
+    *process = kmalloc(sizeof(PROCESS) + rex->ipc_size * sizeof(IPC));
+    memset((*process), 0, sizeof(PROCESS) + rex->ipc_size * sizeof(IPC));
     //allocate process object
     if (*process != NULL)
     {
@@ -136,6 +138,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->timer.callback = kprocess_timeout;
             (*process)->timer.param = (*process);
             (*process)->size = rex->size;
+            rb_init(&((*process)->kipc.rb), rex->ipc_size);
             (*process)->heap->handle = (HANDLE)(*process);
             (*process)->heap->stdout = __KERNEL->stdout_global;
             (*process)->heap->stdout_param = __KERNEL->stdout_global_param;
@@ -249,6 +252,7 @@ void kprocess_destroy(PROCESS* process)
         switch (process->flags & PROCESS_SYNC_MASK)
         {
         case PROCESS_SYNC_TIMER_ONLY:
+        case PROCESS_SYNC_IPC:
             break;
         case PROCESS_SYNC_MUTEX:
             kmutex_lock_release((MUTEX*)process->sync_object, process);
@@ -363,7 +367,7 @@ void kprocess_destroy_current()
 
 PROCESS* kprocess_get_current()
 {
-    return __KERNEL->processes;
+    return (__KERNEL->context >= 0) ?  __KERNEL->irqs[__KERNEL->context].process : __KERNEL->processes;
 }
 
 void kprocess_init(const REX* rex)

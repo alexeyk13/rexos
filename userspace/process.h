@@ -46,7 +46,8 @@ typedef enum {
     PROCESS_SYNC_TIMER_ONLY =    (0x0 << 4),
     PROCESS_SYNC_MUTEX =         (0x1 << 4),
     PROCESS_SYNC_EVENT =         (0x2 << 4),
-    PROCESS_SYNC_SEM =           (0x3 << 4)
+    PROCESS_SYNC_SEM =           (0x3 << 4),
+    PROCESS_SYNC_IPC =           (0x4 << 4)
 }PROCESS_SYNC_TYPE;
 
 typedef struct {
@@ -72,6 +73,7 @@ typedef struct {
     unsigned int size;
     unsigned int priority;
     unsigned int flags;
+    unsigned int ipc_size;
     void (*fn) (void);
 }REX;
 

@@ -11,6 +11,7 @@
 #include "ktimer.h"
 #include "kernel_config.h"
 #include "dbg.h"
+#include "kipc.h"
 
 typedef struct {
     DLIST list;                                                        //list of processes - active, frozen, or owned by sync object
@@ -28,6 +29,8 @@ typedef struct {
     TIME uptime;
     TIME uptime_start;
 #endif //KERNEL_PROCESS_STAT
+    KIPC kipc;
+    //IPC is following
 }PROCESS;
 
 //called from svc
