@@ -7,8 +7,8 @@
 #ifndef EVENT_H
 #define EVENT_H
 
-#include "../lib/time.h"
-#include "types.h"
+#include "lib/time.h"
+#include "lib/types.h"
 #include "cc_macro.h"
 #include "sys.h"
 #include "error.h"

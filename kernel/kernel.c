@@ -7,6 +7,7 @@
 #include "kernel.h"
 #include "kernel_config.h"
 #include "dbg.h"
+#include "kirq.h"
 #include "kmutex.h"
 #include "kevent.h"
 #include "ksem.h"
@@ -17,20 +18,13 @@
 
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {
-    //what can we say in stdout stub? :)
+    //what can we debug in debug stub? :)
     error(ERROR_STUB_CALLED);
 }
 
 void stdin_stub(char *buf, unsigned int size, void* param)
 {
     error(ERROR_STUB_CALLED);
-}
-
-void default_irq_handler(int vector)
-{
-#if (KERNEL_DEBUG)
-    printk("Warning: irq vector %d without handler\n\r", vector);
-#endif
 }
 
 void panic()
@@ -130,6 +124,13 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_SEM_DESTROY:
         ksem_destroy((SEM*)param1);
         break;
+    //irq related
+    case SVC_IRQ_REGISTER:
+        kirq_register((int)param1, (IRQ)param2, (void*)param3);
+        break;
+    case SVC_IRQ_UNREGISTER:
+        kirq_unregister((int)param1);
+        break;
     //system timer related
     case SVC_TIMER_HPET_TIMEOUT:
         ktimer_hpet_timeout();
@@ -181,15 +182,14 @@ void startup()
     strcpy(__KERNEL_NAME, "RExOS 0.1");
     __KERNEL->struct_size = sizeof(KERNEL) + strlen(__KERNEL_NAME) + 1;
 
+    //initialize irq subsystem
+    kirq_init();
+
     //initialize system memory pool
     pool_init(&__KERNEL->pool, (void*)(KERNEL_BASE + __KERNEL->struct_size));
 
     //initialize paged area
     pool_init(&__KERNEL->paged, (void*)(SRAM_BASE + KERNEL_SIZE));
-
-#ifndef NVIC_PRESENT
-    irq_init();
-#endif //NVIC_PRESENT
 
     //initilize timer
     ktimer_init();

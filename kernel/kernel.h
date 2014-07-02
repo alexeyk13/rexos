@@ -19,7 +19,12 @@
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
 #include "kprocess.h"
+#include "kirq.h"
 #include "../lib/pool.h"
+
+#ifndef IRQ_VECTORS_COUNT
+#error IRQ_VECTORS_COUNT is not decoded. Please specify it manually in Makefile
+#endif
 
 #ifdef ARM7
 #include "core/arm7/core_arm7.h"
@@ -67,6 +72,10 @@ typedef struct {
     //init process. Always active.
     PROCESS* init;
 
+    //----------------------- IRQ related ------------------------------
+    //This values are used in asm. Don't place them more than 128 bytes from start of KERNEL
+    KIRQ irqs[IRQ_VECTORS_COUNT];
+
     //------------------------- timer specific -------------------------
     TIME uptime;
 
@@ -100,10 +109,8 @@ typedef struct {
 
     char shared1;
     char shared8;
-    UTIMER_HANDLER timer_handlers[15];
-    unsigned int rand;
-
     int killme;
+    int killme2;
 
     //name is following
 } KERNEL;
@@ -161,15 +168,6 @@ extern void reset();
 /** \addtogroup kernel kernel part of core-related functionality
     \{
  */
-
-/**
-    \brief default handler for irq
-    \details This function should be called on unhandled irq exception
-    \param vector: vector number
-    \retval none
-*/
-void default_irq_handler(int vector);
-
 
 /**
     \brief kernel panic. reset core or halt, depending on kernel_config

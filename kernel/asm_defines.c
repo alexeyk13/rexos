@@ -1,4 +1,5 @@
-#include "svc_process.h"
+#include "kprocess.h"
+#include "kirq.h"
 #include "../userspace/sys.h"
 #include "kernel.h"
 

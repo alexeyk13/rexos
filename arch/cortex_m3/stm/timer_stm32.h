@@ -15,9 +15,7 @@
 
 #define TIMER_FLAG_ONE_PULSE_MODE                (1 << 0)
 
-typedef void (*UTIMER_HANDLER)(TIMER_CLASS);
-
-void timer_enable(TIMER_CLASS timer, UTIMER_HANDLER handler, int priority, unsigned int flags);
+void timer_enable(TIMER_CLASS timer, int priority, unsigned int flags);
 void timer_disable(TIMER_CLASS timer);
 void timer_start(TIMER_CLASS timer, unsigned int time_us);
 void timer_stop(TIMER_CLASS timer);

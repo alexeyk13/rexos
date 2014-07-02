@@ -145,6 +145,18 @@
 #define STM32F10X_XL
 #endif //1m XL
 
+#if defined(STM32F10X_LD) || defined(STM32F10X_MD)
+#define IRQ_VECTORS_COUNT   43
+#elif defined(STM32F10X_LD_VL) || defined(STM32F10X_MD_VL)
+#define IRQ_VECTORS_COUNT   56
+#elif defined(STM32F10X_HD) || defined(STM32F10X_XL)
+#define IRQ_VECTORS_COUNT   60
+#elif defined(STM32F10X_HD_VL)
+#define IRQ_VECTORS_COUNT   61
+#elif defined(STM32F10X_CL)
+#define IRQ_VECTORS_COUNT   68
+#endif
+
 #if defined(STM32F100)
 #if defined(STM32F10X_LD_VL)
 #define SRAM_SIZE        0x1000
@@ -219,6 +231,7 @@
 
 #if defined(STM32F205) || defined(STM32F207) || defined(STM32F215) || defined(STM32F217)
 #define STM32F2
+#define IRQ_VECTORS_COUNT   81
 
 #if defined(STM32F205RB) || defined(STM32F205VB)
 #define FLASH_SIZE        0x20000
@@ -250,6 +263,124 @@
 #define SRAM_SIZE        0x18000
 #endif
 #endif //defined(STM32F205) || defined(STM32F207) || defined(STM32F215) || defined(STM32F217)
+
+//---------------------------------------------------------------------------- stm 32 F4 ----------------------------------------------------------------------------------------------------------
+#if defined(STM32F401CB) || defined(STM32F401CC) || defined(STM32F401CE) || defined(STM32F401RB) || defined(STM32F401RC) || defined(STM32F401RE) \
+ || defined(STM32F401VB) || defined(STM32F401VC) || defined(STM32F401VE)
+#define STM32F401
+
+#if defined(STM32F401CE) || defined(STM32F401RE) || defined(STM32F401VE)
+//96K
+#define SRAM_SIZE           0x18000
+#else
+//64K
+#define SRAM_SIZE           0x10000
+#endif
+#endif
+
+#if defined(STM32F405OE) || defined(STM32F405OG) || defined(STM32F405RG) || defined(STM32F405VG) || defined(STM32F405ZG)
+#define STM32F405
+//192K
+#define SRAM_SIZE           0x30000
+#endif
+
+#if defined(STM32F407IE) || defined(STM32F407IG) || defined(STM32F407VE) || defined(STM32F407VG) || defined(STM32F407ZE) || defined(STM32F407ZG)
+#define STM32F407
+//192K
+#define SRAM_SIZE           0x30000
+#endif
+
+#if defined(STM32F411CC) || defined(STM32F411CE) || defined(STM32F411RC) || defined(STM32F411RE) || defined(STM32F411VC) || defined(STM32F411VE)
+#define STM32F411
+//128K
+#define SRAM_SIZE           0x20000
+#endif
+
+#if defined(STM32F415OG) || defined(STM32F415RG) || defined(STM32F415VG) || defined(STM32F415ZG)
+#define STM32F415
+//192K
+#define SRAM_SIZE           0x30000
+#endif
+
+#if defined(STM32F417IE) || defined(STM32F417IG) || defined(STM32F417VE) || defined(STM32F417VG) || defined(STM32F417ZE) || defined(STM32F417ZG)
+#define STM32F417
+//192K
+#define SRAM_SIZE           0x30000
+#endif
+
+#if defined(STM32F427IG) || defined(STM32F427II) || defined(STM32F427VG) || defined(STM32F427VI) || defined(STM32F427ZG) || defined(STM32F427ZI)
+#define STM32F427
+//256K
+#define SRAM_SIZE           0x40000
+#endif
+
+#if defined(STM32F429BE) || defined(STM32F429BG) || defined(STM32F429BI) || defined(STM32F429IE) || defined(STM32F429IG) || defined(STM32F429II) \
+ || defined(STM32F429NE) || defined(STM32F429NG) || defined(STM32F429NI) || defined(STM32F429VE) || defined(STM32F429VG) || defined(STM32F429VI) \
+ || defined(STM32F429ZE) || defined(STM32F429ZG) || defined(STM32F429ZI)
+#define STM32F429
+//256K
+#define SRAM_SIZE           0x40000
+#endif
+
+#if defined(STM32F439BG) || defined(STM32F439BI) || defined(STM32F439IG) || defined(STM32F439II) || defined(STM32F439NG) || defined(STM32F439NI) \
+ || defined(STM32F439VG) || defined(STM32F439VI) || defined(STM32F439ZG) || defined(STM32F439ZI)
+#define STM32F439
+//256K
+#define SRAM_SIZE           0x40000
+#endif
+
+#if defined(STM32F437IG) || defined(STM32F437II) || defined(STM32F437VG) || defined(STM32F437VI) || defined(STM32F437ZG) || defined(STM32F437ZI)
+#define STM32F437
+//256K
+#define SRAM_SIZE           0x40000
+#endif
+
+#if defined(STM32F401CB) || defined(STM32F401RB) || defined(STM32F401VB)
+//128K
+#define FLASH_SIZE          0x20000
+#endif
+
+#if defined(STM32F401CC) || defined(STM32F401RC) || defined(STM32F401VC) \
+ || defined(STM32F411CC) || defined(STM32F411RC) || defined(STM32F411VC)
+//256K
+#define FLASH_SIZE          0x40000
+#endif
+
+#if defined(STM32F401CE) || defined(STM32F401RE) || defined(STM32F401VE) \
+|| defined(STM32F405OE) \
+|| defined(STM32F407IE) || defined(STM32F407VE) || defined(STM32F407ZE) \
+|| defined(STM32F411CE) || defined(STM32F411RE) || defined(STM32F411VE) \
+|| defined(STM32F417IE) || defined(STM32F417VE) || defined(STM32F417ZE) \
+|| defined(STM32F429BE) || defined(STM32F429IE) || defined(STM32F429NE) || defined(STM32F429VE) || defined(STM32F429ZE)
+//512K
+#define FLASH_SIZE          0x80000
+#endif
+
+#if defined(STM32F405OG) || defined(STM32F405RG) || defined(STM32F405VG) || defined(STM32F405ZG) \
+|| defined(STM32F407IG) || defined(STM32F407VG) || defined(STM32F407ZG) \
+|| defined(STM32F415OG) || defined(STM32F415RG) || defined(STM32F415VG) || defined(STM32F415ZG) \
+|| defined(STM32F417IG) || defined(STM32F417VG) || defined(STM32F417ZG) \
+|| defined(STM32F427IG) || defined(STM32F427VG) || defined(STM32F427ZG) \
+|| defined(STM32F429BG) || defined(STM32F429IG) || defined(STM32F429NG) || defined(STM32F429VG) || defined(STM32F429ZG) \
+|| defined(STM32F437IG) || defined(STM32F437VG) || defined(STM32F437ZG) \
+|| defined(STM32F439BG) || defined(STM32F439IG) || defined(STM32F439NG) || defined(STM32F439VG) || defined(STM32F439ZG)
+//1M
+#define FLASH_SIZE          0x100000
+#endif
+
+#if defined(STM32F427II) || defined(STM32F427VI) || defined(STM32F427ZI) \
+ || defined(STM32F429BI) || defined(STM32F429II) || defined(STM32F429NI) || defined(STM32F429VI) || defined(STM32F429ZI) \
+ || defined(STM32F437II) || defined(STM32F437VI) || defined(STM32F437ZI) \
+ || defined(STM32F439BI) || defined(STM32F439II) || defined(STM32F439NI) || defined(STM32F439VI) || defined(STM32F439ZI)
+//2M
+#define FLASH_SIZE          0x200000
+#endif
+
+#if defined(STM32F401) || defined(STM32F405) || defined(STM32F407) ||defined(STM32F411) || defined(STM32F415) || defined(STM32F417) || defined(STM32F427) || defined(STM32F429)  \
+ || defined(STM32F437) || defined(STM32F439)
+#define STM32F4
+#define IRQ_VECTORS_COUNT   82
+#endif
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)

@@ -25,7 +25,7 @@
 
 #include "cc_macro.h"
 #include "lib/types.h"
-#include "../lib/lib.h"
+#include "../userspace/lib/lib.h"
 
 /*
     List of all calls to supervisor
@@ -64,6 +64,10 @@ typedef enum {
     SVC_SEM_WAIT,
     SVC_SEM_SIGNAL,
     SVC_SEM_DESTROY,
+
+    SVC_IRQ = 0x400,
+    SVC_IRQ_REGISTER,
+    SVC_IRQ_UNREGISTER,
 
     SVC_TIMER = 0x500,
     SVC_TIMER_GET_UPTIME,

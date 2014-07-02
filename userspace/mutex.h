@@ -33,8 +33,8 @@
     \{
  */
 
-#include "core/core.h"
-#include "../lib/time.h"
+#include "sys.h"
+#include "lib/time.h"
 #include "error.h"
 
 /**

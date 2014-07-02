@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2014, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #ifndef TYPES_H
 #define TYPES_H
 
@@ -68,5 +74,7 @@ typedef struct {
 
 typedef void (*STDOUT)(const char *const buf, unsigned int size, void* param);
 typedef void (*STDIN)(char* buf, unsigned int size, void* param);
+
+typedef void (*IRQ)(int vector, void* param);
 
 #endif // TYPES_H
