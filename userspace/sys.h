@@ -8,7 +8,7 @@
 #define CORE_H
 
 /*
-    core.h - MCU core specific functions
+    sys.h - supervisor and core related part in userspace
 */
 
 #include "core/stm32.h"
@@ -25,7 +25,7 @@
 
 #include "cc_macro.h"
 #include "lib/types.h"
-#include "../userspace/lib/lib.h"
+#include "lib/lib.h"
 
 /*
     List of all calls to supervisor
@@ -81,7 +81,20 @@ typedef enum {
     SVC_IPC_WAIT,
     SVC_IPC_POST_WAIT,
 
-    SVC_OTHER = 0x700,
+    SVC_STREAM = 0x700,
+    SVC_STREAM_CREATE,
+    SVC_STREAM_OPEN,
+    SVC_STREAM_CLOSE,
+    SVC_STREAM_GET_SIZE,
+    SVC_STREAM_GET_FREE,
+    SVC_STREAM_START_LISTEN,
+    SVC_STREAM_STOP_LISTEN,
+    SVC_STREAM_WRITE,
+    SVC_STREAM_READ,
+    SVC_STREAM_FLUSH,
+    SVC_STREAM_DESTROY,
+
+    SVC_OTHER = 0x800,
     SVC_SETUP_STDOUT,
     SVC_SETUP_STDIN,
     SVC_SETUP_DBG

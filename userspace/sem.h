@@ -25,7 +25,7 @@
     \{
  */
 
-#include "core/core.h"
+#include "sys.h"
 #include "error.h"
 
 /**

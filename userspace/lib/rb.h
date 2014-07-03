@@ -41,6 +41,16 @@ __STATIC_INLINE void rb_init(RB* rb, int size)
 
 
 /**
+    \brief clear ring buffer
+    \param rb: pointer to allocated \ref RB structure
+    \retval none
+*/
+__STATIC_INLINE void rb_clear(RB* rb)
+{
+    rb->head = rb->tail;
+}
+
+/**
     \brief check, if ring buffer is empty
     \param rb: pointer to initialized \ref RB structure
     \retval \b true if empty
@@ -82,6 +92,26 @@ __STATIC_INLINE int rb_get(RB* rb)
     register int offset = rb->tail;
     rb->tail = RB_ROUND(rb, rb->tail + 1);
     return offset;
+}
+
+/**
+    \brief get rb used size
+    \param rb: pointer to initialized \ref RB structure
+    \retval used items
+*/
+__STATIC_INLINE int rb_size(RB* rb)
+{
+    return rb->head > rb->tail ? rb->size - rb->head + rb->tail : rb->tail - rb->head;
+}
+
+/**
+    \brief get rb free size
+    \param rb: pointer to initialized \ref RB structure
+    \retval free items
+*/
+__STATIC_INLINE int rb_free(RB* rb)
+{
+    return rb->head > rb->tail ? rb->head - rb->tail - 1 : rb->size - rb->tail + rb->head - 1;
 }
 
 /**

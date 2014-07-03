@@ -10,6 +10,7 @@
 #include "kmutex.h"
 #include "kevent.h"
 #include "ksem.h"
+#include "kstream.h"
 #include "kernel.h"
 #include "../userspace/error.h"
 #include "../lib/pool.h"
@@ -102,6 +103,9 @@ void kprocess_timeout(void* param)
         break;
     case PROCESS_SYNC_SEM:
         ksem_lock_release((SEM*)process->sync_object, process);
+        break;
+    case PROCESS_SYNC_STREAM:
+        kstream_lock_release((STREAM_HANDLE*)process->sync_object, process);
         break;
     default:
         ASSERT(false);
@@ -262,6 +266,9 @@ void kprocess_destroy(PROCESS* process)
             break;
         case PROCESS_SYNC_SEM:
             ksem_lock_release((SEM*)process->sync_object, process);
+            break;
+        case PROCESS_SYNC_STREAM:
+            kstream_lock_release((STREAM_HANDLE*)process->sync_object, process);
             break;
         default:
             ASSERT(false);

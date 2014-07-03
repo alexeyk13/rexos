@@ -9,6 +9,12 @@
 
 #include "lib/types.h"
 
+typedef enum {
+    IPC_STREAM_WRITE = 0x0,                             //!< Sent by kernel when stream write is complete. Param1: write size, Param2: none
+    IPC_SYSTEM = 0x1000,
+    IPC_USER = 0x10000
+} IPCS;
+
 typedef struct {
     HANDLE process;
     unsigned int cmd;

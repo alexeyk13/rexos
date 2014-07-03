@@ -22,6 +22,8 @@
 #define MAGIC_MUTEX                                    0xd0cc6e26
 #define MAGIC_EVENT                                    0x57e198c7
 #define MAGIC_SEM                                      0xabfd92d9
+#define MAGIC_STREAM                                   0xf4eb741c
+#define MAGIC_STREAM_HANDLE                            0x250b73c2
 
 #define MAGIC_UNINITIALIZED                            0xcdcdcdcd
 #define MAGIC_UNINITIALIZED_BYTE                       0xcd

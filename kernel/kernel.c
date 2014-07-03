@@ -12,6 +12,7 @@
 #include "kevent.h"
 #include "ksem.h"
 #include "kipc.h"
+#include "kstream.h"
 #include "kprocess.h"
 #include "../userspace/error.h"
 #include "../userspace/lib/lib.h"
@@ -157,6 +158,40 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         break;
     case SVC_IPC_POST_WAIT:
         kipc_post_wait((IPC*)param1, (TIME*)param2);
+        break;
+    //stream related
+    case SVC_STREAM_CREATE:
+        kstream_create((STREAM**)param1, param2);
+        break;
+    case SVC_STREAM_OPEN:
+        kstream_open((STREAM*)param1, (STREAM_HANDLE**)param2);
+        break;
+    case SVC_STREAM_CLOSE:
+        kstream_close((STREAM_HANDLE*)param1);
+        break;
+    case SVC_STREAM_GET_SIZE:
+        kstream_get_size((STREAM*)param1, (int*)param2);
+        break;
+    case SVC_STREAM_GET_FREE:
+        kstream_get_free((STREAM*)param1, (int*)param2);
+        break;
+    case SVC_STREAM_START_LISTEN:
+        kstream_start_listen((STREAM*)param1);
+        break;
+    case SVC_STREAM_STOP_LISTEN:
+        kstream_stop_listen((STREAM*)param1);
+        break;
+    case SVC_STREAM_WRITE:
+        kstream_write((STREAM_HANDLE*)param1, (char*)param2, param3);
+        break;
+    case SVC_STREAM_READ:
+        kstream_read((STREAM_HANDLE*)param1, (char*)param2, param3);
+        break;
+    case SVC_STREAM_FLUSH:
+        kstream_flush((STREAM*)param1);
+        break;
+    case SVC_STREAM_DESTROY:
+        kstream_destroy((STREAM*)param1);
         break;
     //other - dbg, stdout/in
     case SVC_SETUP_STDOUT:

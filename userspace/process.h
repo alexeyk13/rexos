@@ -47,7 +47,8 @@ typedef enum {
     PROCESS_SYNC_MUTEX =         (0x1 << 4),
     PROCESS_SYNC_EVENT =         (0x2 << 4),
     PROCESS_SYNC_SEM =           (0x3 << 4),
-    PROCESS_SYNC_IPC =           (0x4 << 4)
+    PROCESS_SYNC_IPC =           (0x4 << 4),
+    PROCESS_SYNC_STREAM =        (0x5 << 4)
 }PROCESS_SYNC_TYPE;
 
 typedef struct {
