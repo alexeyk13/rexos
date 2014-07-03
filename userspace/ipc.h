@@ -84,7 +84,6 @@ __STATIC_INLINE bool ipc_wait_ms(unsigned int ms, HANDLE wait_process)
     return ipc_wait(&timeout, wait_process);
 }
 
-
 /**
     \brief wait for IPC in us units
     \param us: timeout in us
@@ -99,6 +98,49 @@ __STATIC_INLINE bool ipc_wait_us(unsigned int us, HANDLE wait_process)
 }
 
 /**
+    \brief wait for IPC, than peek message
+    \param ipc: out ipc
+    \param timeout: pointer to TIME structure
+    \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
+    \retval true on success
+*/
+__STATIC_INLINE bool ipc_wait_peek(IPC* ipc, TIME* timeout, HANDLE wait_process)
+{
+    sys_call(SVC_IPC_WAIT, (unsigned int)timeout, wait_process, 0);
+    if (get_last_error() == ERROR_OK)
+        ipc_peek(ipc, wait_process);
+    return get_last_error() == ERROR_OK;
+}
+
+/**
+    \brief wait for IPC, than peek message in ms units
+    \param ipc: out ipc
+    \param ms: timeout in ms
+    \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
+    \retval true on success
+*/
+__STATIC_INLINE bool ipc_wait_peek_ms(IPC* ipc, unsigned int ms, HANDLE wait_process)
+{
+    TIME timeout;
+    ms_to_time(ms, &timeout);
+    return ipc_wait_peek(ipc, &timeout, wait_process);
+}
+
+/**
+    \brief wait for IPC, than peek message in us units
+    \param ipc: out ipc
+    \param us: timeout in us
+    \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
+    \retval true on success
+*/
+__STATIC_INLINE bool ipc_wait_peek_us(IPC* ipc, unsigned int us, HANDLE wait_process)
+{
+    TIME timeout;
+    us_to_time(us, &timeout);
+    return ipc_wait_peek(ipc, &timeout, wait_process);
+}
+
+/**
     \brief post IPC, wait for IPC, peek IPC
     \param ipc: IPC structure to send and receive
     \param timeout: pointer to TIME structure
@@ -109,7 +151,7 @@ __STATIC_INLINE bool ipc_read(IPC* ipc, TIME* timeout)
     HANDLE wait_process = ipc->process;
     sys_call(SVC_IPC_POST_WAIT, (unsigned int)ipc, (unsigned int)timeout, 0);
     if (get_last_error() == ERROR_OK)
-        sys_call(SVC_IPC_PEEK, (unsigned int)ipc, wait_process, 0);
+        ipc_peek(ipc, wait_process);
     return get_last_error() == ERROR_OK;
 }
 
