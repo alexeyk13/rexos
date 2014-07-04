@@ -25,7 +25,7 @@
     \{
  */
 
-#include "sys.h"
+#include "svc.h"
 #include "error.h"
 
 /**
@@ -35,7 +35,7 @@
 __STATIC_INLINE HANDLE sem_create()
 {
     HANDLE sem = 0;
-    sys_call(SVC_SEM_CREATE, (unsigned int)&res, 0, 0);
+    svc_call(SVC_SEM_CREATE, (unsigned int)&res, 0, 0);
     return res;
 }
 
@@ -46,7 +46,7 @@ __STATIC_INLINE HANDLE sem_create()
 */
 __STATIC_INLINE void sem_signal(HANDLE sem)
 {
-    sys_call(SVC_SEM_SIGNAL, (unsigned int)sem, 0, 0);
+    svc_call(SVC_SEM_SIGNAL, (unsigned int)sem, 0, 0);
 }
 
 /**
@@ -68,7 +68,7 @@ __STATIC_INLINE void sem_isignal(HANDLE sem)
 */
 __STATIC_INLINE bool sem_wait(HANDLE sem, TIME* timeout)
 {
-    sys_call(SVC_SEM_WAIT, (unsigned int)sem, (unsigned int)timeout, 0);
+    svc_call(SVC_SEM_WAIT, (unsigned int)sem, (unsigned int)timeout, 0);
     return get_last_error() == ERROR_OK;
 }
 
@@ -105,7 +105,7 @@ __STATIC_INLINE bool sem_wait_us(HANDLE sem, unsigned int timeout_us)
 */
 __STATIC_INLINE void sem_destroy(HANDLE sem)
 {
-    sys_call(SVC_SEM_DESTROY, (unsigned int)sem, 0, 0);
+    svc_call(SVC_SEM_DESTROY, (unsigned int)sem, 0, 0);
 }
 
 /** \} */ // end of sem group

@@ -7,7 +7,7 @@
 #include "dbg.h"
 #include "../userspace/error.h"
 #include "kernel.h"
-#include "../lib/lib.h"
+#include "../userspace/lib/lib.h"
 
 static inline unsigned int stack_used_max(unsigned int top, unsigned int cur)
 {

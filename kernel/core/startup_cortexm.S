@@ -8,7 +8,7 @@
 
 #include "../kernel.h"
 #include "asm_defines.h"
-#include "../../userspace/sys.h"
+#include "../../userspace/svc.h"
 
 /* Define constants used in low-level initialization.  */
 

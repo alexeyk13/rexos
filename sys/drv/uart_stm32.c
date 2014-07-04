@@ -8,7 +8,6 @@
 #include "arch.h"
 #include "hw_config.h"
 #include "gpio.h"
-#include "rcc.h"
 #include "dbg.h"
 #include "error.h"
 #include "../../../kernel/kernel.h"

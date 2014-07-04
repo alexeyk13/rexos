@@ -12,7 +12,7 @@
 #include "dma_stm32.h"
 #include "sd_card.h"
 #include "hw_config.h"
-#include "../../../userspace/sys.h"
+#include "../../../userspace/svc.h"
 #include "error_private.h"
 #include "dbg.h"
 #include "mem_private.h"

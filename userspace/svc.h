@@ -4,22 +4,14 @@
     All rights reserved.
 */
 
-#ifndef CORE_H
-#define CORE_H
+#ifndef SVC_H
+#define SVC_H
 
 /*
-    sys.h - supervisor and core related part in userspace
+    svc.h - supervisor and core related part in userspace
 */
 
-#include "core/stm32.h"
-
-#ifdef ARM7
-#include "core/arm7/core_arm7.h"
-#elif defined(CORTEX_M3) || defined(CORTEX_M0) || defined(CORTEX_M1) || defined(CORTEX_M4)
-#include "core/cortexm.h"
-#else
-#error MCU core is not defined or not supported
-#endif
+#include "core/core.h"
 
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
@@ -95,6 +87,7 @@ typedef enum {
     SVC_STREAM_DESTROY,
 
     SVC_OTHER = 0x800,
+    SVC_SETUP_SYSTEM,
     SVC_SETUP_STDOUT,
     SVC_SETUP_STDIN,
     SVC_SETUP_DBG
@@ -160,7 +153,7 @@ __STATIC_INLINE void* get_sp()
 
 /**
     \brief core-dependent context raiser
-    \details If current contex is not enough during sys_call, context is raised, using
+    \details If current contex is not enough during svc_call, context is raised, using
     this core-specific function.
 
     For example, for cortex-m3 "svc 0x12" instruction is used.
@@ -171,7 +164,7 @@ __STATIC_INLINE void* get_sp()
     \param param3: parameter 3. num-specific
     \retval none
 */
-extern void sys_call(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3);
+extern void svc_call(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /** \} */ // end of core_porting group
 
@@ -180,8 +173,21 @@ extern void sys_call(unsigned int num, unsigned int param1, unsigned int param2,
  */
 
 /**
+    \brief setup system process handle.
+    \details Using system process handle you can communicate with system directly (in userspace).
+     Implementation of protocol is system-based. All created processes will have __HEAP->system param setted up.
+     For security reasons can be called only once after startup.
+    \retval none
+*/
+__STATIC_INLINE void setup_system()
+{
+    svc_call(SVC_SETUP_SYSTEM, 0, 0, 0);
+}
+
+
+/**
     \brief setup kernel stdout for debug reasons
-    \details It's seconde exception, where kernel make direct call to userspace. Make sure call is safe.
+    \details It's second exception, where kernel make direct call to userspace. Make sure call is safe.
      For security reasons can be called only once after startup.
     \param stdout: pointer to function, called on printf/putc
     \param param: param, sended during calll
@@ -189,7 +195,7 @@ extern void sys_call(unsigned int num, unsigned int param1, unsigned int param2,
 */
 __STATIC_INLINE void setup_dbg(STDOUT stdout, void* param)
 {
-    sys_call(SVC_SETUP_DBG, (unsigned int)stdout, (unsigned int)param, 0);
+    svc_call(SVC_SETUP_DBG, (unsigned int)stdout, (unsigned int)param, 0);
 }
 
 
@@ -202,7 +208,7 @@ __STATIC_INLINE void setup_dbg(STDOUT stdout, void* param)
 */
 __STATIC_INLINE void setup_stdout(STDOUT stdout, void* param)
 {
-    sys_call(SVC_SETUP_STDOUT, (unsigned int)stdout, (unsigned int)param, 0);
+    svc_call(SVC_SETUP_STDOUT, (unsigned int)stdout, (unsigned int)param, 0);
 }
 
 /**
@@ -214,11 +220,11 @@ __STATIC_INLINE void setup_stdout(STDOUT stdout, void* param)
 */
 __STATIC_INLINE void setup_stdin(STDIN stdin, void* param)
 {
-    sys_call(SVC_SETUP_STDIN, (unsigned int)stdin, (unsigned int)param, 0);
+    svc_call(SVC_SETUP_STDIN, (unsigned int)stdin, (unsigned int)param, 0);
 }
 
 /** \} */ // end of sys group
 
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)
 
-#endif // CORE_H
+#endif // SVC_H

@@ -26,7 +26,7 @@
  */
 
 #include "kernel_config.h"
-#include "sys.h"
+#include "svc.h"
 #include "lib/time.h"
 
 
@@ -58,6 +58,9 @@ typedef struct {
     int error;
     //self handle
     HANDLE handle;
+    //system process
+    HANDLE system;
+    //stdout. Refactor later
     STDOUT stdout;
     void* stdout_param;
     STDIN stdin;
@@ -86,7 +89,7 @@ typedef struct {
 __STATIC_INLINE HANDLE process_create(const REX* rex)
 {
     HANDLE handle;
-    sys_call(SVC_PROCESS_CREATE, (unsigned int)rex, (unsigned int)&handle, 0);
+    svc_call(SVC_PROCESS_CREATE, (unsigned int)rex, (unsigned int)&handle, 0);
     return handle;
 }
 
@@ -98,7 +101,7 @@ __STATIC_INLINE HANDLE process_create(const REX* rex)
 __STATIC_INLINE unsigned int process_get_flags(HANDLE process)
 {
     unsigned int flags;
-    sys_call(SVC_PROCESS_GET_FLAGS, (unsigned int)process, (unsigned int)&flags, 0);
+    svc_call(SVC_PROCESS_GET_FLAGS, (unsigned int)process, (unsigned int)&flags, 0);
     return flags;
 }
 
@@ -110,7 +113,7 @@ __STATIC_INLINE unsigned int process_get_flags(HANDLE process)
 */
 __STATIC_INLINE void process_set_flags(HANDLE process, unsigned int flags)
 {
-    sys_call(SVC_PROCESS_SET_FLAGS, (unsigned int)process, flags, 0);
+    svc_call(SVC_PROCESS_SET_FLAGS, (unsigned int)process, flags, 0);
 }
 
 /**
@@ -150,7 +153,7 @@ __STATIC_INLINE HANDLE process_get_current()
 __STATIC_INLINE unsigned int process_get_priority(HANDLE process)
 {
     unsigned int priority;
-    sys_call(SVC_PROCESS_GET_PRIORITY, (unsigned int)process, (unsigned int)&priority, 0);
+    svc_call(SVC_PROCESS_GET_PRIORITY, (unsigned int)process, (unsigned int)&priority, 0);
     return priority;
 }
 
@@ -172,7 +175,7 @@ __STATIC_INLINE unsigned int process_get_current_priority()
 */
 __STATIC_INLINE void process_set_priority(HANDLE process, unsigned int priority)
 {
-    sys_call(SVC_PROCESS_SET_PRIORITY, (unsigned int)process, priority, 0);
+    svc_call(SVC_PROCESS_SET_PRIORITY, (unsigned int)process, priority, 0);
 }
 
 /**
@@ -192,7 +195,7 @@ __STATIC_INLINE void process_set_current_priority(unsigned int priority)
 */
 __STATIC_INLINE void process_destroy(HANDLE process)
 {
-    sys_call(SVC_PROCESS_DESTROY, (unsigned int)process, 0, 0);
+    svc_call(SVC_PROCESS_DESTROY, (unsigned int)process, 0, 0);
 }
 
 /**
@@ -212,7 +215,7 @@ __STATIC_INLINE void process_exit()
 */
 __STATIC_INLINE void sleep(TIME* time)
 {
-    sys_call(SVC_PROCESS_SLEEP, (unsigned int)time, 0, 0);
+    svc_call(SVC_PROCESS_SLEEP, (unsigned int)time, 0, 0);
 }
 
 /**
@@ -246,7 +249,7 @@ __STATIC_INLINE void sleep_us(unsigned int us)
 */
 __STATIC_INLINE void process_switch_test()
 {
-    sys_call(SVC_PROCESS_SWITCH_TEST, 0, 0, 0);
+    svc_call(SVC_PROCESS_SWITCH_TEST, 0, 0, 0);
 }
 
 /**
@@ -255,7 +258,7 @@ __STATIC_INLINE void process_switch_test()
 */
 __STATIC_INLINE void process_info()
 {
-    sys_call(SVC_PROCESS_INFO, 0, 0, 0);
+    svc_call(SVC_PROCESS_INFO, 0, 0, 0);
 }
 
 /** \} */ // end of process group

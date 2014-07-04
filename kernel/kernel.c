@@ -194,6 +194,12 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kstream_destroy((STREAM*)param1);
         break;
     //other - dbg, stdout/in
+    case SVC_SETUP_SYSTEM:
+        if (__KERNEL->system == NULL)
+            __KERNEL->system = kprocess_get_current();
+        else
+            error(ERROR_INVALID_SVC);
+        break;
     case SVC_SETUP_STDOUT:
         __KERNEL->stdout_global = (STDOUT)param1;
         __KERNEL->stdout_global_param = (void*)param2;
@@ -210,6 +216,9 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
             __KERNEL->stdout = (STDOUT)param1;
             __KERNEL->stdout_param = (void*)param2;
             __KERNEL->dbg_locked = true;
+#if KERNEL_DEBUG
+            printk("%s\n\r", __KERNEL_NAME);
+#endif
         }
         break;
     default:
@@ -228,7 +237,7 @@ void startup()
     memset(__KERNEL, 0, sizeof(KERNEL));
     __KERNEL->stdout = __KERNEL->stdout_global = stdout_stub;
     __KERNEL->stdin_global = stdin_stub;
-    strcpy(__KERNEL_NAME, "RExOS 0.1");
+    strcpy(__KERNEL_NAME, "RExOS 0.0.2");
     __KERNEL->struct_size = sizeof(KERNEL) + strlen(__KERNEL_NAME) + 1;
 
     //initialize irq subsystem

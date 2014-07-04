@@ -8,7 +8,7 @@
 #define IRQ_H
 
 #include "lib/types.h"
-#include "sys.h"
+#include "svc.h"
 #include "cc_macro.h"
 #include "error.h"
 
@@ -27,7 +27,7 @@
 */
 __STATIC_INLINE void irq_register(int vector, IRQ handler, void* param)
 {
-    sys_call(SVC_IRQ_REGISTER, (unsigned int)vector, (unsigned int)handler, (unsigned int)param);
+    svc_call(SVC_IRQ_REGISTER, (unsigned int)vector, (unsigned int)handler, (unsigned int)param);
 }
 
 /**
@@ -37,7 +37,7 @@ __STATIC_INLINE void irq_register(int vector, IRQ handler, void* param)
 */
 __STATIC_INLINE void irq_unregister(int vector)
 {
-    sys_call(SVC_IRQ_UNREGISTER, (unsigned int)vector, 0, 0);
+    svc_call(SVC_IRQ_UNREGISTER, (unsigned int)vector, 0, 0);
 }
 
 /** \} */ // end of irq group

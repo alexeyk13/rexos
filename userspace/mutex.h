@@ -33,7 +33,7 @@
     \{
  */
 
-#include "sys.h"
+#include "svc.h"
 #include "lib/time.h"
 #include "error.h"
 
@@ -44,7 +44,7 @@
 __STATIC_INLINE HANDLE mutex_create()
 {
     HANDLE res;
-    sys_call(SVC_MUTEX_CREATE, (unsigned int)&res, 0, 0);
+    svc_call(SVC_MUTEX_CREATE, (unsigned int)&res, 0, 0);
     return res;
 }
 
@@ -57,7 +57,7 @@ __STATIC_INLINE HANDLE mutex_create()
 */
 __STATIC_INLINE bool mutex_lock(HANDLE mutex, TIME* timeout)
 {
-    sys_call(SVC_MUTEX_LOCK, (unsigned int)mutex, (unsigned int)timeout, 0);
+    svc_call(SVC_MUTEX_LOCK, (unsigned int)mutex, (unsigned int)timeout, 0);
     return get_last_error() == ERROR_OK;
 }
 
@@ -96,7 +96,7 @@ __STATIC_INLINE bool mutex_lock_us(HANDLE mutex, unsigned int timeout_us)
 */
 __STATIC_INLINE void mutex_unlock(HANDLE mutex)
 {
-    sys_call(SVC_MUTEX_UNLOCK, (unsigned int)mutex, 0, 0);
+    svc_call(SVC_MUTEX_UNLOCK, (unsigned int)mutex, 0, 0);
 }
 
 /**
@@ -106,7 +106,7 @@ __STATIC_INLINE void mutex_unlock(HANDLE mutex)
 */
 __STATIC_INLINE void mutex_destroy(HANDLE mutex)
 {
-    sys_call(SVC_MUTEX_DESTROY, (unsigned int)mutex, 0, 0);
+    svc_call(SVC_MUTEX_DESTROY, (unsigned int)mutex, 0, 0);
 }
 
 /** \} */ // end of mutex group

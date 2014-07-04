@@ -40,6 +40,7 @@ void kstream_create(STREAM** stream, int size)
         if (((*stream)->data = paged_alloc(size)) == NULL)
         {
             kfree(*stream);
+            (*stream) = NULL;
             error(ERROR_OUT_OF_PAGED_MEMORY);
         }
     }

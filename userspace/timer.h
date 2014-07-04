@@ -3,7 +3,7 @@
 
 #include "lib/types.h"
 #include "cc_macro.h"
-#include "sys.h"
+#include "svc.h"
 
 /** \addtogroup timer timer
     interface to system timer
@@ -29,7 +29,7 @@ typedef struct {
 */
 __STATIC_INLINE void get_uptime(TIME* uptime)
 {
-    sys_call(SVC_TIMER_GET_UPTIME, (unsigned int)uptime, 0, 0);
+    svc_call(SVC_TIMER_GET_UPTIME, (unsigned int)uptime, 0, 0);
 }
 
 /**
@@ -39,7 +39,7 @@ __STATIC_INLINE void get_uptime(TIME* uptime)
 */
 __STATIC_INLINE void timer_setup(CB_SVC_TIMER* cb_svc_timer)
 {
-    sys_call(SVC_TIMER_SETUP, (unsigned int)cb_svc_timer, 0, 0);
+    svc_call(SVC_TIMER_SETUP, (unsigned int)cb_svc_timer, 0, 0);
 }
 
 /**

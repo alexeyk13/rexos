@@ -8,7 +8,7 @@
 #define STREAM_H
 
 #include "lib/types.h"
-#include "sys.h"
+#include "svc.h"
 #include "error.h"
 
 
@@ -26,7 +26,7 @@
 __STATIC_INLINE HANDLE stream_create(int size)
 {
     HANDLE stream = 0;
-    sys_call(SVC_STREAM_CREATE, (unsigned int)&stream, size, 0);
+    svc_call(SVC_STREAM_CREATE, (unsigned int)&stream, size, 0);
     return stream;
 }
 
@@ -38,7 +38,7 @@ __STATIC_INLINE HANDLE stream_create(int size)
 __STATIC_INLINE HANDLE stream_open(HANDLE stream)
 {
     HANDLE handle = 0;
-    sys_call(SVC_STREAM_OPEN, (unsigned int)stream, (unsigned int)&handle, 0);
+    svc_call(SVC_STREAM_OPEN, (unsigned int)stream, (unsigned int)&handle, 0);
     return handle;
 }
 
@@ -49,7 +49,7 @@ __STATIC_INLINE HANDLE stream_open(HANDLE stream)
 */
 __STATIC_INLINE void stream_close(HANDLE handle)
 {
-    sys_call(SVC_STREAM_CLOSE, (unsigned int)handle, 0, 0);
+    svc_call(SVC_STREAM_CLOSE, (unsigned int)handle, 0, 0);
 }
 
 /**
@@ -60,7 +60,7 @@ __STATIC_INLINE void stream_close(HANDLE handle)
 __STATIC_INLINE int stream_get_size(HANDLE stream)
 {
     int size;
-    sys_call(SVC_STREAM_GET_SIZE, (unsigned int)stream, (unsigned int)&size, 0);
+    svc_call(SVC_STREAM_GET_SIZE, (unsigned int)stream, (unsigned int)&size, 0);
     return size;
 }
 
@@ -72,7 +72,7 @@ __STATIC_INLINE int stream_get_size(HANDLE stream)
 __STATIC_INLINE int stream_get_free(HANDLE stream)
 {
     int size;
-    sys_call(SVC_STREAM_GET_FREE, (unsigned int)stream, (unsigned int)&size, 0);
+    svc_call(SVC_STREAM_GET_FREE, (unsigned int)stream, (unsigned int)&size, 0);
     return size;
 }
 
@@ -83,7 +83,7 @@ __STATIC_INLINE int stream_get_free(HANDLE stream)
 */
 __STATIC_INLINE bool stream_start_listen(HANDLE stream)
 {
-    sys_call(SVC_STREAM_START_LISTEN, (unsigned int)stream, 0, 0);
+    svc_call(SVC_STREAM_START_LISTEN, (unsigned int)stream, 0, 0);
     return get_last_error() == ERROR_OK;
 }
 
@@ -94,7 +94,7 @@ __STATIC_INLINE bool stream_start_listen(HANDLE stream)
 */
 __STATIC_INLINE bool stream_stop_listen(HANDLE stream)
 {
-    sys_call(SVC_STREAM_STOP_LISTEN, (unsigned int)stream, 0, 0);
+    svc_call(SVC_STREAM_STOP_LISTEN, (unsigned int)stream, 0, 0);
     return get_last_error() == ERROR_OK;
 }
 
@@ -107,7 +107,7 @@ __STATIC_INLINE bool stream_stop_listen(HANDLE stream)
 */
 __STATIC_INLINE bool stream_write(HANDLE handle, char* buf, int size)
 {
-    sys_call(SVC_STREAM_WRITE, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);
+    svc_call(SVC_STREAM_WRITE, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);
     return get_last_error() == ERROR_OK;
 }
 
@@ -120,7 +120,7 @@ __STATIC_INLINE bool stream_write(HANDLE handle, char* buf, int size)
 */
 __STATIC_INLINE bool stream_read(HANDLE handle, char* buf, int size)
 {
-    sys_call(SVC_STREAM_READ, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);
+    svc_call(SVC_STREAM_READ, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);
     return get_last_error() == ERROR_OK;
 }
 
@@ -131,7 +131,7 @@ __STATIC_INLINE bool stream_read(HANDLE handle, char* buf, int size)
 */
 __STATIC_INLINE void stream_flush(HANDLE stream)
 {
-    sys_call(SVC_STREAM_FLUSH, (unsigned int)stream, 0, 0);
+    svc_call(SVC_STREAM_FLUSH, (unsigned int)stream, 0, 0);
 }
 
 /**
@@ -141,7 +141,7 @@ __STATIC_INLINE void stream_flush(HANDLE stream)
 */
 __STATIC_INLINE void stream_destroy(HANDLE stream)
 {
-    sys_call(SVC_STREAM_DESTROY, (unsigned int)stream, 0, 0);
+    svc_call(SVC_STREAM_DESTROY, (unsigned int)stream, 0, 0);
 }
 
 /** \} */ // end of strean group

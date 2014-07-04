@@ -1,6 +1,6 @@
 #include "kprocess.h"
 #include "kirq.h"
-#include "../userspace/sys.h"
+#include "../userspace/svc.h"
 #include "kernel.h"
 
 #include <stdint.h>

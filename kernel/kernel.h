@@ -11,7 +11,7 @@
     kernel.h - MCU core specific functions. Kernel part
 */
 
-#include "../userspace/sys.h"
+#include "../userspace/svc.h"
 #include "kernel_config.h"
 
 #define KERNEL_BASE                                         (SRAM_BASE + KERNEL_GLOBAL_SIZE)
@@ -35,7 +35,7 @@
 #endif
 
 //remove this shit later
-#include "../arch/cortex_m3/stm/uart_stm32.h"
+#include "../sys/drv/uart_stm32.h"
 #include "../drv_if/gpio.h"
 #include "../arch/cortex_m3/stm/timer_stm32.h"
 // endof shit
@@ -71,7 +71,8 @@ typedef struct {
 #endif //(KERNEL_PROCESS_STAT)
     //init process. Always active.
     PROCESS* init;
-
+    //system process (if present)
+    PROCESS* system;
     //----------------------- IRQ related ------------------------------
     int context;
     //This values are used in asm. Don't place them more than 128 bytes from start of KERNEL

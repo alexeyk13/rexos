@@ -10,7 +10,12 @@
 #include "lib/types.h"
 
 typedef enum {
-    IPC_STREAM_WRITE = 0x0,                             //!< Sent by kernel when stream write is complete. Param1: write size, Param2: none
+    IPC_COMMON = 0x0,
+    IPC_UNKNOWN,                                        //!< NEVER respond to this message, or you will get infinite ping-pong
+    IPC_PING,
+    IPC_PONG,
+    IPC_STREAM_WRITE,                                   //!< Sent by kernel when stream write is complete. Param1: write size, Param2: none
+
     IPC_SYSTEM = 0x1000,
     IPC_USER = 0x10000
 } IPCS;
@@ -28,7 +33,7 @@ typedef struct {
     \{
  */
 
-#include "sys.h"
+#include "svc.h"
 #include "error.h"
 
 /**
@@ -38,7 +43,7 @@ typedef struct {
 */
 __STATIC_INLINE bool ipc_post(IPC* ipc)
 {
-    sys_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
+    svc_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
     return get_last_error() == ERROR_OK;
 }
 
@@ -61,7 +66,7 @@ __STATIC_INLINE void ipc_ipost(IPC* ipc)
 */
 __STATIC_INLINE bool ipc_peek(IPC* ipc, HANDLE wait_process)
 {
-    sys_call(SVC_IPC_PEEK, (unsigned int)ipc, wait_process, 0);
+    svc_call(SVC_IPC_PEEK, (unsigned int)ipc, wait_process, 0);
     return get_last_error() == ERROR_OK;
 }
 
@@ -73,7 +78,7 @@ __STATIC_INLINE bool ipc_peek(IPC* ipc, HANDLE wait_process)
 */
 __STATIC_INLINE bool ipc_wait(TIME* timeout, HANDLE wait_process)
 {
-    sys_call(SVC_IPC_WAIT, (unsigned int)timeout, wait_process, 0);
+    svc_call(SVC_IPC_WAIT, (unsigned int)timeout, wait_process, 0);
     return get_last_error() == ERROR_OK;
 }
 
@@ -112,7 +117,7 @@ __STATIC_INLINE bool ipc_wait_us(unsigned int us, HANDLE wait_process)
 */
 __STATIC_INLINE bool ipc_wait_peek(IPC* ipc, TIME* timeout, HANDLE wait_process)
 {
-    sys_call(SVC_IPC_WAIT, (unsigned int)timeout, wait_process, 0);
+    svc_call(SVC_IPC_WAIT, (unsigned int)timeout, wait_process, 0);
     if (get_last_error() == ERROR_OK)
         ipc_peek(ipc, wait_process);
     return get_last_error() == ERROR_OK;
@@ -155,7 +160,7 @@ __STATIC_INLINE bool ipc_wait_peek_us(IPC* ipc, unsigned int us, HANDLE wait_pro
 __STATIC_INLINE bool ipc_read(IPC* ipc, TIME* timeout)
 {
     HANDLE wait_process = ipc->process;
-    sys_call(SVC_IPC_POST_WAIT, (unsigned int)ipc, (unsigned int)timeout, 0);
+    svc_call(SVC_IPC_POST_WAIT, (unsigned int)ipc, (unsigned int)timeout, 0);
     if (get_last_error() == ERROR_OK)
         ipc_peek(ipc, wait_process);
     return get_last_error() == ERROR_OK;

@@ -6,7 +6,7 @@
 
 #include "ksem.h"
 #include "kmalloc.h"
-#include "../userspace/sys.h"
+#include "../userspace/svc.h"
 #include "../userspace/error.h"
 
 void ksem_lock_release(SEM* sem, PROCESS* process)

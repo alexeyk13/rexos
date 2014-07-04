@@ -148,6 +148,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->heap->stdout_param = __KERNEL->stdout_global_param;
             (*process)->heap->stdin = __KERNEL->stdin_global;
             (*process)->heap->stdin_param = __KERNEL->stdin_global_param;
+            (*process)->heap->system = (HANDLE)__KERNEL->system;
             if (rex->name)
             {
                 strncpy(PROCESS_NAME((*process)->heap), rex->name, MAX_PROCESS_NAME_SIZE);
