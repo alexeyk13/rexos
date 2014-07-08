@@ -21,12 +21,12 @@
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {
     //what can we debug in debug stub? :)
-    error(ERROR_STUB_CALLED);
+    kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 void stdin_stub(char *buf, unsigned int size, void* param)
 {
-    error(ERROR_STUB_CALLED);
+    kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 void panic()
@@ -45,7 +45,7 @@ void panic()
 void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     CRITICAL_ENTER;
-    clear_error();
+    kprocess_error_current(ERROR_OK);
     switch (num)
     {
     //process related
@@ -68,7 +68,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kprocess_destroy((PROCESS*)param1);
         break;
     case SVC_PROCESS_SLEEP:
-        kprocess_sleep((TIME*)param1, PROCESS_SYNC_TIMER_ONLY, NULL);
+        kprocess_sleep_current((TIME*)param1, PROCESS_SYNC_TIMER_ONLY, NULL);
         break;
 #if (KERNEL_PROFILING)
     case SVC_PROCESS_SWITCH_TEST:
@@ -198,7 +198,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         if (__KERNEL->system == NULL)
             __KERNEL->system = kprocess_get_current();
         else
-            error(ERROR_INVALID_SVC);
+            kprocess_error_current(ERROR_INVALID_SVC);
         break;
     case SVC_SETUP_STDOUT:
         __KERNEL->stdout_global = (STDOUT)param1;
@@ -210,7 +210,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         break;
     case SVC_SETUP_DBG:
         if (__KERNEL->dbg_locked)
-            error(ERROR_INVALID_SVC);
+            kprocess_error_current(ERROR_INVALID_SVC);
         else
         {
             __KERNEL->stdout = (STDOUT)param1;
@@ -222,7 +222,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         }
         break;
     default:
-        error(ERROR_INVALID_SVC);
+        kprocess_error_current(ERROR_INVALID_SVC);
     }
     CRITICAL_LEAVE;
 }

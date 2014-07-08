@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef UART_STM32_H
-#define UART_STM32_H
+#ifndef STM32_UART_H
+#define STM32_UART_H
 
 /*
         UART driver. Hardware-independent part
@@ -13,6 +13,7 @@
 
 #include "types.h"
 #include "dev.h"
+#include "../../userspace/process.h"
 
 //UART line status
 typedef enum {
@@ -64,4 +65,6 @@ extern void uart_read_cancel(UART_CLASS port);
 
 void uart_write_svc(const char *const buf, unsigned int size, void* param);
 
-#endif // UART_STM32_H
+extern const REX __STM32_UART;
+
+#endif // STM32_UART_H

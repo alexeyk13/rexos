@@ -118,12 +118,12 @@ void kprocess_timeout(void* param)
 void kprocess_abnormal_exit()
 {
 #if (KERNEL_DEBUG)
-    printk("Warning: abnormal process termination: %s\n\r", PROCESS_NAME(__KERNEL->processes->heap));
+    printk("Warning: abnormal process termination: %s\n\r", PROCESS_NAME(kprocess_get_current()->heap));
 #endif
-    if (__KERNEL->processes == __KERNEL->init)
+    if (kprocess_get_current() == __KERNEL->init)
         panic();
     else
-        kprocess_destroy(__KERNEL->processes);
+        kprocess_destroy_current();
 }
 
 void kprocess_create(const REX* rex, PROCESS** process)
@@ -143,6 +143,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->timer.param = (*process);
             (*process)->size = rex->size;
             rb_init(&((*process)->kipc.rb), rex->ipc_size);
+            (*process)->kipc.wait_process = (unsigned int)-1;
             (*process)->heap->handle = (HANDLE)(*process);
             (*process)->heap->stdout = __KERNEL->stdout_global;
             (*process)->heap->stdout_param = __KERNEL->stdout_global_param;
@@ -283,9 +284,8 @@ void kprocess_destroy(PROCESS* process)
     kfree(process);
 }
 
-void kprocess_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
+void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
 {
-    PROCESS* process = __KERNEL->processes;
     CHECK_MAGIC(process, MAGIC_PROCESS);
     //init process cannot sleep or be locked by mutex
     if (process == __KERNEL->init)
@@ -314,6 +314,11 @@ void kprocess_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
         process->timer.time.usec = time->usec;
         ktimer_start(&process->timer);
     }
+}
+
+void kprocess_sleep_current(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
+{
+    kprocess_sleep(kprocess_get_current(), time, sync_type, sync_object);
 }
 
 void kprocess_wakeup(PROCESS* process)
@@ -368,9 +373,14 @@ void kprocess_error(PROCESS* process, int error)
     process->heap->error = error;
 }
 
+void kprocess_error_current(int error)
+{
+    kprocess_error(kprocess_get_current(), error);
+}
+
 void kprocess_destroy_current()
 {
-    kprocess_destroy(__KERNEL->processes);
+    kprocess_destroy(kprocess_get_current());
 }
 
 PROCESS* kprocess_get_current()
@@ -395,7 +405,7 @@ void kprocess_init(const REX* rex)
 #if (KERNEL_PROFILING)
 void kprocess_switch_test()
 {
-    PROCESS* process = __KERNEL->processes;
+    PROCESS* process = kprocess_get_current();
     kprocess_remove_from_active_list(process);
     kprocess_add_to_active_list(process);
     pend_switch_context();

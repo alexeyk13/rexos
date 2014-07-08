@@ -45,12 +45,14 @@ void kprocess_destroy(PROCESS* process);
 //cannot be called from init task, because init task is only task running, while other tasks are waiting or frozen
 //this function can be call indirectly from any sync object.
 //also called from sync objects
-void kprocess_sleep(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
+void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
+void kprocess_sleep_current(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
 
 //called from other places in kernel
 void kprocess_wakeup(PROCESS* process);
 void kprocess_set_current_priority(PROCESS* process, unsigned int priority);
 void kprocess_error(PROCESS* process, int error);
+void kprocess_error_current(int error);
 PROCESS* kprocess_get_current();
 void kprocess_destroy_current();
 

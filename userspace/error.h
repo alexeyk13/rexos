@@ -59,9 +59,4 @@ __STATIC_INLINE void error(ERROR_CODE error)
     __HEAP->error = error;
 }
 
-__STATIC_INLINE void clear_error()
-{
-    __HEAP->error = ERROR_OK;
-}
-
 #endif // ERROR_H

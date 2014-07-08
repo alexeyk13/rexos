@@ -10,13 +10,18 @@
 
 #include "sys_config.h"
 #include "../userspace/process.h"
-#include "../userspace/core/core.h"
+
+#if defined (STM32)
+#include "drv/stm32_power.h"
+#include "drv/stm32_uart.h"
+#include "drv/stm32_systimer.h"
+#endif
+
+extern const REX __SYS;
 
 #if (SYS_APP)
 extern const REX __APP;
 #endif
-extern const REX __SYS;
-
 
 void init(void);
 
@@ -40,6 +45,14 @@ void init()
     //start the system
     process_create(&__SYS);
 
+#if defined(STM32)
+    process_create(&__STM32_POWER);
+    timer_init_hw();
+    process_create(&__STM32_UART);
+#else
+#warning No drivers loaded. System is abstract!
+#endif
+
     //start user application, if required
 #if (SYS_APP)
     process_create(&__APP);
@@ -47,6 +60,6 @@ void init()
 
     for (;;)
     {
-        //TODO WFE here
+        //TODO WFI here
     }
 }

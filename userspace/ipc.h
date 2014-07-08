@@ -12,6 +12,7 @@
 typedef enum {
     IPC_COMMON = 0x0,
     IPC_UNKNOWN,                                        //!< NEVER respond to this message, or you will get infinite ping-pong
+    IPC_INVALID_PARAM,
     IPC_PING,
     IPC_PONG,
     IPC_STREAM_WRITE,                                   //!< Sent by kernel when stream write is complete. Param1: write size, Param2: none
@@ -23,8 +24,9 @@ typedef enum {
 typedef struct {
     HANDLE process;
     unsigned int cmd;
-    int param1;
-    int param2;
+    unsigned int param1;
+    unsigned int param2;
+    unsigned int param3;
 } IPC;
 
 /** \addtogroup IPC IPC

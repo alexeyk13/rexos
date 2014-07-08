@@ -4,11 +4,11 @@
     All rights reserved.
 */
 
-#ifndef TIMER_STM32_H
-#define TIMER_STM32_H
+#ifndef STM32_SYS_TIMER_H
+#define STM32_SYS_TIMER_H
 
 /*
-        hw delay timer
+        system timer for STM32
   */
 
 #include "dev.h"
@@ -22,4 +22,4 @@ void timer_stop(TIMER_CLASS timer);
 unsigned int timer_elapsed(TIMER_CLASS timer);
 void timer_init_hw();
 
-#endif // TIMER_STM32_H
+#endif // STM32_SYS_TIMER_H

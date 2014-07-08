@@ -28,11 +28,28 @@ __STATIC_INLINE bool sys_call(IPC* ipc)
     ipc->process = __HEAP->system;
     if (ipc_read_ms(ipc, 0))
     {
-        if (ipc->cmd == IPC_UNKNOWN)
+        if (ipc->cmd == IPC_UNKNOWN || ipc->cmd == IPC_INVALID_PARAM)
             error(ERROR_NOT_SUPPORTED);
     }
     return get_last_error() == ERROR_OK;
 }
+
+/**
+    \brief call to process.
+    \param ipc: \ref ipc to post/read.
+    \retval true on success
+*/
+
+__STATIC_INLINE bool call(IPC* ipc)
+{
+    if (ipc_read_ms(ipc, 0))
+    {
+        if (ipc->cmd == IPC_UNKNOWN || ipc->cmd == IPC_INVALID_PARAM)
+            error(ERROR_NOT_SUPPORTED);
+    }
+    return get_last_error() == ERROR_OK;
+}
+
 
 /** \} */ // end of sys group
 

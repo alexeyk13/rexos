@@ -393,4 +393,24 @@
 #endif
 #endif //STM32F1 || STM32F2 || STM32F4
 
+#if !defined(LDS) && !defined(__ASSEMBLER__)
+
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+
+//fucking morons in ST forgot to check if variable is already defined
+#undef SRAM_BASE
+#undef FLASH_BASE
+
+#include "stm32_config.h"
+#if defined(STM32F1)
+#include "stm32f10x.h"
+#elif defined(STM32F2)
+#include "stm32f2xx.h"
+#elif defined(STM32F4)
+#include "stm32f4xx.h"
+#endif
+#endif //!defined(LDS) && !defined(__ASSEMBLER__)
+
+#endif //STM32F1 || STM32F2 || STM32F4
+
 #endif //STM32_H

@@ -7,13 +7,10 @@
 #include "sys_config.h"
 #include "sys.h"
 #include "../userspace/svc.h"
-#include "../userspace/process.h"
+#include "../userspace/core/core.h"
 #include "../userspace/lib/stdio.h"
 
-//TODO refactor all this shit
-#include "../arch/cortex_m3/stm/timer_stm32.h"
-#include "drv/rcc_stm32f2.h"
-#include "drv/uart_stm32.h"
+#include "drv/stm32_uart.h"
 
 void sys();
 
@@ -32,53 +29,49 @@ const REX __SYS = {
     sys
 };
 
-static inline void sys_loop ()
+void sys ()
 {
+    SYS_OBJECT sys_object = {0};
     IPC ipc;
+    setup_system();
+
     for (;;)
     {
         ipc_wait_peek_ms(&ipc, 0, 0);
+        if (ipc.cmd == IPC_UNKNOWN)
+            continue;
         switch (ipc.cmd)
         {
         case IPC_PING:
             ipc.cmd = IPC_PONG;
-            ipc_post(&ipc);
             break;
-        case IPC_UNKNOWN:
-            //ignore unknown IPC
+        //TODO remove after FS will be ready
+        case SYS_GET_POWER:
+            ipc.param1 = sys_object.power;
+            break;
+        case SYS_GET_TIMER:
+            ipc.param1 = sys_object.timer;
+            break;
+        case SYS_GET_UART:
+            ipc.param1 = sys_object.uart;
+            break;
+        case SYS_SET_POWER:
+            sys_object.power = ipc.process;
+            break;
+        case SYS_SET_TIMER:
+            sys_object.timer = ipc.process;
+        case SYS_SET_UART:
+            sys_object.timer = ipc.process;
+            __HEAP->stdout = uart_write_svc;
+            __HEAP->stdout_param = (void*)1;
+#if (SYS_DEBUG)
+            printf("RExOS system v. 0.0.2 started\n\r");
+
+#endif
             break;
         default:
             ipc.cmd = IPC_UNKNOWN;
-            ipc_post(&ipc);
         }
+        ipc_post(&ipc);
     }
-}
-
-void sys ()
-{
-    setup_system();
-    //TODO too much refactoring
-    set_core_freq(0);
-
-    uart_enable(UART_2, (P_UART_CB)NULL, NULL, 2);
-    UART_BAUD baud;
-    baud.data_bits = 8;
-    baud.parity = 'N';
-    baud.stop_bits = 1;
-    baud.baud = 115200;
-    uart_set_baudrate(UART_2, &baud);
-
-    setup_dbg(uart_write_svc, (void*)UART_2);
-    //refactor me later
-    setup_stdout(uart_write_svc, (void*)UART_2);
-    __HEAP->stdout = uart_write_svc;
-    __HEAP->stdout_param = (void*)UART_2;
-
-    timer_init_hw();
-
-
-#if (SYS_DEBUG)
-    printf("RExOS system v. 0.0.1 started\n\r");
-#endif
-    sys_loop();
 }

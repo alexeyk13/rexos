@@ -9,6 +9,8 @@
 #include "kprocess.h"
 #include "../userspace/error.h"
 #include <string.h>
+#include "kernel.h"
+
 
 #define IPC_ITEM(process, num)              ((IPC*)((unsigned int)(process) + sizeof(PROCESS) + (num) * sizeof(IPC)))
 
@@ -19,6 +21,24 @@ int kipc_index(PROCESS* process, HANDLE wait_process)
         if (IPC_ITEM(process, i)->process == wait_process || wait_process == 0)
             return i;
     return -1;
+}
+
+void kipc_wait_process(PROCESS* process, TIME* time, HANDLE wait_process)
+{
+#if (KERNEL_IPC_DEBUG)
+    if (wait_process == (HANDLE)process)
+        printk("Warning: calling wait IPC with receiver same as caller can cause deadlock! process: %s\n\r", PROCESS_NAME(process->heap));
+#endif
+    if (process->kipc.rb.size > 0)
+    {
+        if (kipc_index(process, wait_process) < 0)
+        {
+            process->kipc.wait_process = wait_process;
+            kprocess_sleep(process, time, PROCESS_SYNC_IPC, process);
+        }
+    }
+    else
+        kprocess_error(process, ERROR_NOT_SUPPORTED);
 }
 
 void kipc_post(IPC* ipc)
@@ -35,16 +55,22 @@ void kipc_post(IPC* ipc)
             cur->cmd = ipc->cmd;
             cur->param1 = ipc->param1;
             cur->param2 = ipc->param2;
+            cur->param3 = ipc->param3;
             cur->process = (HANDLE)sender;
-            if (kipc_index(receiver, cur->process) >= 0)
+            if (receiver->kipc.wait_process == (HANDLE)sender || receiver->kipc.wait_process == 0)
+            {
+                receiver->kipc.wait_process = (unsigned int)-1;
                 kprocess_wakeup(receiver);
+            }
         }
         else
         {
             //on overflow set error on both: receiver and sender
             kprocess_error(sender, ERROR_IPC_OVERFLOW);
             kprocess_error(receiver, ERROR_IPC_OVERFLOW);
-            //TODO DBG
+#if (KERNEL_IPC_DEBUG)
+            printk("Error: receiver %s IPC overflow!\n\r", PROCESS_NAME(receiver->heap));
+#endif
         }
 
     }
@@ -72,28 +98,21 @@ void kipc_peek(IPC* ipc, HANDLE wait_process)
             memcpy(ipc, IPC_ITEM(process, rb_get(&process->kipc.rb)), sizeof(IPC));
         }
         else
-            error(ERROR_IPC_NOT_FOUND);
+            kprocess_error(process, ERROR_IPC_NOT_FOUND);
     }
     else
-        error(ERROR_NOT_SUPPORTED);
+        kprocess_error(process, ERROR_NOT_SUPPORTED);
 }
 
 void kipc_wait(TIME* time, HANDLE wait_process)
 {
-    PROCESS* process = kprocess_get_current();
-    if (process->kipc.rb.size > 0)
-    {
-        process->kipc.wait_process = wait_process;
-        if (kipc_index(process, wait_process) < 0)
-            kprocess_sleep(time, PROCESS_SYNC_IPC, process);
-    }
-    else
-        error(ERROR_NOT_SUPPORTED);
+    kipc_wait_process(kprocess_get_current(), time, wait_process);
 }
 
 void kipc_post_wait(IPC* ipc, TIME* time)
 {
+    PROCESS* process = kprocess_get_current();
+    HANDLE wait_process = (HANDLE)ipc->process;
     kipc_post(ipc);
-    if (kprocess_get_current()->heap->error == ERROR_OK)
-        kipc_wait(time, ipc->process);
+    kipc_wait_process(process, time, wait_process);
 }

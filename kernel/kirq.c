@@ -13,7 +13,7 @@ void kirq_stub(int vector, void* param)
 #if (KERNEL_DEBUG)
     printk("Warning: irq vector %d stub called\n\r", vector);
 #endif
-    error(ERROR_STUB_CALLED);
+    kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 void kirq_init()
@@ -38,9 +38,9 @@ void kirq_enter(int vector)
 void kirq_register(int vector, IRQ handler, void* param)
 {
     if (vector >= IRQ_VECTORS_COUNT)
-        error(ERROR_OUT_OF_RANGE);
+        kprocess_error_current(ERROR_OUT_OF_RANGE);
     else if (__KERNEL->irqs[vector].handler != kirq_stub)
-        error(ERROR_ACCESS_DENIED);
+        kprocess_error_current(ERROR_ACCESS_DENIED);
     else
     {
         __KERNEL->irqs[vector].handler = handler;
@@ -58,5 +58,5 @@ void kirq_unregister(int vector)
         __KERNEL->irqs[vector].param = NULL;
     }
     else
-        error(ERROR_ACCESS_DENIED);
+        kprocess_error_current(ERROR_ACCESS_DENIED);
 }

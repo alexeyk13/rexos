@@ -4,21 +4,13 @@
     All rights reserved.
 */
 
-#include "timer_stm32.h"
+#include "stm32_systimer.h"
 #include "arch.h"
 #include "error.h"
 #include "types.h"
 #include "../../../kernel/kernel.h"
 #include "../../../userspace/timer.h"
 #include "../../../userspace/irq.h"
-
-#if defined(STM32F1)
-#include "rcc_stm32f2.h"
-#elif defined(STM32F2)
-#include "rcc_stm32f2.h"
-#elif defined(STM32F4)
-#include "rcc_stm32f4.h"
-#endif
 
 typedef TIM_TypeDef* TIM_TypeDef_P;
 

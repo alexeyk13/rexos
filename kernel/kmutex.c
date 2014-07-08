@@ -65,7 +65,7 @@ void kmutex_create(MUTEX** mutex)
         DO_MAGIC((*mutex), MAGIC_MUTEX);
     }
     else
-        error(ERROR_OUT_OF_SYSTEM_MEMORY);
+        kprocess_error_current(ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
 void kmutex_lock(MUTEX* mutex, TIME* time)
@@ -76,7 +76,7 @@ void kmutex_lock(MUTEX* mutex, TIME* time)
     {
         ASSERT(mutex->owner != process);
         //first - remove from active list
-        kprocess_sleep(time, PROCESS_SYNC_MUTEX, mutex);
+        kprocess_sleep_current(time, PROCESS_SYNC_MUTEX, mutex);
         //add to mutex watiers list
         dlist_add_tail((DLIST**)&mutex->waiters, (DLIST*)process);
     }

@@ -24,7 +24,7 @@ void kevent_create(EVENT** event)
         DO_MAGIC((*event), MAGIC_EVENT);
     }
     else
-        error(ERROR_OUT_OF_SYSTEM_MEMORY);
+        kprocess_error_current(ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
 void kevent_pulse(EVENT* event)
@@ -68,7 +68,7 @@ void kevent_wait(EVENT* event, TIME* time)
     PROCESS* process = kprocess_get_current();
     if (!event->set)
     {
-        kprocess_sleep(time, PROCESS_SYNC_EVENT, event);
+        kprocess_sleep_current(time, PROCESS_SYNC_EVENT, event);
         dlist_add_tail((DLIST**)&event->waiters, (DLIST*)process);
     }
 }

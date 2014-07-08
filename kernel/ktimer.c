@@ -18,7 +18,7 @@ void hpet_start_stub(unsigned int value)
 #if (KERNEL_DEBUG)
     printk("Warning: HPET start stub called\n\r");
 #endif //KERNEL_DEBUG
-    error(ERROR_STUB_CALLED);
+    kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 void hpet_stop_stub()
@@ -26,7 +26,7 @@ void hpet_stop_stub()
 #if (KERNEL_DEBUG)
     printk("Warning: HPET stop stub called\n\r");
 #endif //KERNEL_DEBUG
-    error(ERROR_STUB_CALLED);
+    kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 unsigned int hpet_elapsed_stud()
@@ -34,7 +34,7 @@ unsigned int hpet_elapsed_stud()
 #if (KERNEL_DEBUG)
     printk("Warning: HPET elapsed stub called\n\r");
 #endif //KERNEL_DEBUG
-    error(ERROR_STUB_CALLED);
+    kprocess_error_current(ERROR_STUB_CALLED);
     return 0;
 }
 
@@ -123,7 +123,7 @@ void ktimer_setup(const CB_SVC_TIMER *cb_ktimer)
         __KERNEL->timer_locked = true;
     }
     else
-        error(ERROR_INVALID_SVC);
+        kprocess_error_current(ERROR_INVALID_SVC);
 }
 
 void ktimer_start(TIMER* timer)

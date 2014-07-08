@@ -4,7 +4,9 @@
     All rights reserved.
 */
 
-#include "uart_stm32.h"
+#include "stm32_uart.h"
+#include "stm32_power.h"
+#include "../sys_call.h"
 #include "arch.h"
 #include "hw_config.h"
 #include "gpio.h"
@@ -16,12 +18,25 @@
 #include "gpio_stm32.h"
 #if defined(STM32F1)
 #include "hw_config_stm32f1.h"
-#include "rcc_stm32f2.h"
-#elif defined(STM32F2)
-#include "rcc_stm32f2.h"
-#elif defined(STM32F4)
-#include "rcc_stm32f4.h"
 #endif
+
+void stm32_uart();
+
+const REX __STM32_UART = {
+    //name
+    "STM32 uart",
+    //size
+    512,
+    //priority - driver priority
+    91,
+    //flags
+    PROCESS_FLAGS_ACTIVE,
+    //ipc size
+    10,
+    //function
+    stm32_uart
+};
+
 
 typedef USART_TypeDef* USART_TypeDef_P;
 
@@ -319,6 +334,7 @@ void uart_disable(UART_CLASS port)
 
 void uart_set_baudrate(UART_CLASS port, const UART_BAUD* config)
 {
+    IPC ipc;
     if (port < UARTS_COUNT)
     {
         USART[port]->CR1 &= ~USART_CR1_UE;
@@ -342,14 +358,26 @@ void uart_set_baudrate(UART_CLASS port, const UART_BAUD* config)
         USART[port]->CR2 = (config->stop_bits == 1 ? 0 : 2) << 12;
         USART[port]->CR3 = 0;
 
+        //will be refactored on uart ready
+        ipc.cmd = SYS_GET_POWER;
+        if (!sys_call(&ipc))
+            return;
 
-        unsigned int bus_freq;
+        ipc.process = ipc.param1;
+        __KERNEL->apb2_freq = ipc.process;
+//        __KERNEL->apb1_freq = ipc.param1;
+//        ipc.cmd = IPC_GET_CLOCK;
+        ipc.cmd = IPC_POWER_TEST;
         if (port == UART_1 || port == UART_6)
-            bus_freq = __KERNEL->apb2_freq;
+            ipc.param1 = STM32_CLOCK_APB2;
         else
-            bus_freq = __KERNEL->apb1_freq;
+            ipc.param1 = STM32_CLOCK_APB1;
+//        if (!call(&ipc))
+//            return;
+        call(&ipc);
+        ipc.param1 = 35000000;
         unsigned int mantissa, fraction;
-        mantissa = (25 * bus_freq) / (4 * (config->baud));
+        mantissa = (25 * ipc.param1) / (4 * (config->baud));
         fraction = ((mantissa % 100) * 8 + 25)  / 50;
         mantissa = mantissa / 100;
         USART[port]->BRR = (mantissa << 4) | fraction;
@@ -361,4 +389,27 @@ void uart_set_baudrate(UART_CLASS port, const UART_BAUD* config)
     }
     else
         error(ERROR_NOT_SUPPORTED);
+}
+
+void stm32_uart()
+{
+    IPC ipc;
+    uart_enable(UART_2, (P_UART_CB)NULL, NULL, 2);
+    UART_BAUD baud;
+    baud.data_bits = 8;
+    baud.parity = 'N';
+    baud.stop_bits = 1;
+    baud.baud = 115200;
+    uart_set_baudrate(UART_2, &baud);
+
+    setup_dbg(uart_write_svc, (void*)UART_2);
+    //refactor me later
+    setup_stdout(uart_write_svc, (void*)UART_2);
+
+    ipc.cmd = SYS_SET_UART;
+    sys_call(&ipc);
+    for (;;)
+    {
+        sleep_ms(0);
+    }
 }

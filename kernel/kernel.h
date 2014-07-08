@@ -35,9 +35,9 @@
 #endif
 
 //remove this shit later
-#include "../sys/drv/uart_stm32.h"
+#include "../sys/drv/stm32_uart.h"
+#include "../sys/drv/stm32_systimer.h"
 #include "../drv_if/gpio.h"
-#include "../arch/cortex_m3/stm/timer_stm32.h"
 // endof shit
 
 // will be aligned to pass MPU requirements
@@ -94,8 +94,6 @@ typedef struct {
     POOL paged;
 
     //--- move this shit later to userspace
-    unsigned long core_freq;
-    unsigned long fs_freq;
     unsigned long ahb_freq;
     unsigned long apb1_freq;
     unsigned long apb2_freq;

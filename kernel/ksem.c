@@ -25,7 +25,7 @@ void ksem_create(SEM** sem)
         DO_MAGIC((*sem), MAGIC_SEM);
     }
     else
-        error(ERROR_OUT_OF_SYSTEM_MEMORY);
+        kprocess_error_current(ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
 void ksem_signal(SEM* sem)
@@ -51,7 +51,7 @@ void ksem_wait(SEM* sem, TIME* time)
     PROCESS* process = kprocess_get_current();
     if (sem->value == 0)
     {
-        kprocess_sleep(time, PROCESS_SYNC_SEM, sem);
+        kprocess_sleep_current(time, PROCESS_SYNC_SEM, sem);
         dlist_add_tail((DLIST**)&sem->waiters, (DLIST*)process);
     }
 }
