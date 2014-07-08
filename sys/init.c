@@ -8,8 +8,12 @@
     init.c - default init file for RExOS SYS. Kernel can be compiled independently, thus totally rewritting following file
  */
 
+#include "sys.h"
+#include "sys_call.h"
 #include "sys_config.h"
 #include "../userspace/process.h"
+#include "../userspace/lib/stdio.h"
+#include "../userspace/ipc.h"
 
 #if defined (STM32)
 #include "drv/stm32_power.h"
@@ -42,16 +46,27 @@ const REX __INIT = {
 
 void init()
 {
+    HANDLE power, uart;
     //start the system
-    process_create(&__SYS);
+    __HEAP->system = process_create(&__SYS);
 
 #if defined(STM32)
-    process_create(&__STM32_POWER);
+    power = process_create(&__STM32_POWER);
+    sys_post(SYS_SET_POWER, power, 0, 0);
+    //TODO: gpio here
     timer_init_hw();
-    process_create(&__STM32_UART);
+    uart = process_create(&__STM32_UART);
+    sys_post(SYS_SET_UART, uart, 0, 0);
+
 #else
 #warning No drivers loaded. System is abstract!
 #endif
+
+    //say early processes, that STDOUT is setted up
+    __HEAP->stdout = (STDOUT)uart_write_svc;
+    __HEAP->stdout_param = (void*)1;
+    sys_post(SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)1, 0);
+    post(power, SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)1, 0);
 
     //start user application, if required
 #if (SYS_APP)
@@ -60,6 +75,11 @@ void init()
 
     for (;;)
     {
+#if (SYS_POWERSAVE)
+#if defined(CORTEX_M)
+        __WFI();
         //TODO WFI here
+#endif //CORTEX_M
+#endif
     }
 }

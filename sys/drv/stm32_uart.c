@@ -6,6 +6,7 @@
 
 #include "stm32_uart.h"
 #include "stm32_power.h"
+#include "stm32_gpio.h"
 #include "../sys_call.h"
 #include "arch.h"
 #include "hw_config.h"
@@ -15,7 +16,6 @@
 #include "../../../kernel/kernel.h"
 #include "../../../userspace/lib/stdlib.h"
 
-#include "gpio_stm32.h"
 #if defined(STM32F1)
 #include "hw_config_stm32f1.h"
 #endif
@@ -358,8 +358,7 @@ void uart_set_baudrate(UART_CLASS port, const UART_BAUD* config)
         USART[port]->CR2 = (config->stop_bits == 1 ? 0 : 2) << 12;
         USART[port]->CR3 = 0;
 
-        //will be refactored on uart ready
-        ipc.cmd = SYS_GET_POWER;
+/*        ipc.cmd = SYS_GET_POWER;
         if (!sys_call(&ipc))
             return;
         ipc.process = ipc.param1;
@@ -369,7 +368,8 @@ void uart_set_baudrate(UART_CLASS port, const UART_BAUD* config)
         else
             ipc.param1 = STM32_CLOCK_APB1;
         if (!call(&ipc))
-            return;
+            return;*/
+        ipc.param1 = 35000000;
         unsigned int mantissa, fraction;
         mantissa = (25 * ipc.param1) / (4 * (config->baud));
         fraction = ((mantissa % 100) * 8 + 25)  / 50;
@@ -401,6 +401,7 @@ void stm32_uart()
     setup_stdout(uart_write_svc, (void*)UART_2);
 
     ipc.cmd = SYS_SET_UART;
+    ipc.param1 = __HEAP->handle;
     sys_call(&ipc);
     for (;;)
     {

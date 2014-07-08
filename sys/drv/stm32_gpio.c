@@ -5,7 +5,7 @@
 */
 
 #include "arch.h"
-#include "gpio_stm32.h"
+#include "stm32_gpio.h"
 #include "error.h"
 #include "../../../kernel/kernel.h"
 
@@ -122,7 +122,7 @@ void EXTI15_10_IRQHandler(void)
 
 void gpio_enable_pin_power(GPIO_CLASS pin)
 {
-    if (__KERNEL->used_pins[PORT(pin)]++ == 0)
+//    if (__KERNEL->used_pins[PORT(pin)]++ == 0)
 		RCC_PORT |= RCC_GPIO[PORT(pin)];
 }
 

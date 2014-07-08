@@ -53,7 +53,7 @@ const REX __STM32_POWER = {
     //name
     "STM32 power",
     //size
-    512,
+    256,
     //priority - driver priority
     90,
     //flags
@@ -384,13 +384,11 @@ static inline void stm32_power_loop()
     for (;;)
     {
         ipc_wait_peek_ms(&ipc, 0, 0);
-        //avoid infinite loop
-        if (ipc.cmd == IPC_UNKNOWN)
-            continue;
         switch (ipc.cmd)
         {
         case IPC_PING:
             ipc.cmd = IPC_PONG;
+            ipc_post(&ipc);
             break;
         case SYS_SET_STDOUT:
             __HEAP->stdout = (STDOUT)ipc.param1;
@@ -419,23 +417,21 @@ static inline void stm32_power_loop()
             default:
                 ipc.cmd = IPC_INVALID_PARAM;
             }
+            ipc_post(&ipc);
             break;
         case IPC_UPDATE_CLOCK:
             update_clock(ipc.param1, ipc.param2, ipc.param3);
             break;
         case IPC_GET_RESET_REASON:
             ipc.param1 = get_reset_reason();
+            ipc_post(&ipc);
             break;
-        default:
-            ipc.cmd = IPC_UNKNOWN;
         }
-        ipc_post(&ipc);
     }
 }
 
 void stm32_power()
 {
-    IPC ipc;
     RCC->APB1ENR = 0;
     RCC->APB2ENR = 0;
 
@@ -460,7 +456,5 @@ void stm32_power()
     setup_clock(PLL_M, PLL_N, PLL_P);
 #endif
 
-    ipc.cmd = SYS_SET_POWER;
-    sys_call(&ipc);
     stm32_power_loop();
 }

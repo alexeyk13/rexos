@@ -15,7 +15,7 @@
 
 #ifdef ARM7
 #include "arm7/core_arm7.h"
-#elif defined(CORTEX_M3) || defined(CORTEX_M0) || defined(CORTEX_M1) || defined(CORTEX_M4)
+#elif defined(CORTEX_M)
 #include "cortexm.h"
 #else
 #error MCU core is not defined or not supported

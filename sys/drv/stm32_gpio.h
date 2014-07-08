@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef GPIO_STM32_H
-#define GPIO_STM32_H
+#ifndef STM32_GPIO_H
+#define STM32_GPIO_H
 
 /*
 	stm32fxxx-specific hardware configuration
@@ -53,4 +53,4 @@ void afio_remap();
 void afio_unmap();
 #endif
 
-#endif // GPIO_STM32_H
+#endif // STM32_GPIO_H

@@ -19,7 +19,7 @@ const REX __SYS = {
     //name
     "RExOS SYS",
     //size
-    512,
+    256,
     //priority - sys priority
     101,
     //flags
@@ -35,55 +35,45 @@ void sys ()
     SYS_OBJECT sys_object = {0};
     IPC ipc;
     setup_system();
-
     for (;;)
     {
         ipc_wait_peek_ms(&ipc, 0, 0);
-        if (ipc.cmd == IPC_UNKNOWN)
-            continue;
         //processing before send response
         switch (ipc.cmd)
         {
         case IPC_PING:
             ipc.cmd = IPC_PONG;
+            ipc_post(&ipc);
             break;
         //TODO remove after FS will be ready
         case SYS_GET_POWER:
             ipc.param1 = sys_object.power;
+            ipc_post(&ipc);
             break;
         case SYS_GET_TIMER:
             ipc.param1 = sys_object.timer;
+            ipc_post(&ipc);
             break;
         case SYS_GET_UART:
             ipc.param1 = sys_object.uart;
+            ipc_post(&ipc);
             break;
         case SYS_SET_POWER:
-            sys_object.power = ipc.process;
+            sys_object.power = ipc.param1;
             break;
         case SYS_SET_TIMER:
-            sys_object.timer = ipc.process;
-        case SYS_SET_UART:
-            sys_object.uart = ipc.process;
-            __HEAP->stdout = uart_write_svc;
-            __HEAP->stdout_param = (void*)1;
+            sys_object.timer = ipc.param1;
             break;
-        default:
-            ipc.cmd = IPC_UNKNOWN;
-        }
-        ipc_post(&ipc);
-        //processing after response is sent
-        //system is started. Inform all objects, created before, about global STDOUT is set
-        if (ipc.cmd == SYS_SET_UART)
-        {
+        case SYS_SET_UART:
+            sys_object.uart = ipc.param1;
+            break;
+        case SYS_SET_STDOUT:
+            __HEAP->stdout = (STDOUT)ipc.param1;
+            __HEAP->stdout_param = (void*)ipc.param2;
 #if (SYS_DEBUG)
             printf("RExOS system v. 0.0.2 started\n\r");
-
 #endif
-            ipc.cmd = SYS_SET_STDOUT;
-            ipc.process = sys_object.power;
-            ipc.param1 = (int)uart_write_svc;
-            ipc.param2 = (int)1;
-            call(&ipc);
+            break;
         }
     }
 }

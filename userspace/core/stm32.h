@@ -391,6 +391,9 @@
 #ifndef CORTEX_M3
 #define CORTEX_M3
 #endif
+#ifndef CORTEX_M
+#define CORTEX_M
+#endif
 #endif //STM32F1 || STM32F2 || STM32F4
 
 #if !defined(LDS) && !defined(__ASSEMBLER__)

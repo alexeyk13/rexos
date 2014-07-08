@@ -290,9 +290,6 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
     //init process cannot sleep or be locked by mutex
     if (process == __KERNEL->init)
     {
-#if (KERNEL_DEBUG)
-        printk("init process cannot sleep\n\r");
-#endif
         process->flags |= sync_type;
         kprocess_timeout(sync_object);
         error(ERROR_RESTRICTED_FOR_INIT);
