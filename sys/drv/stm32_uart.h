@@ -12,7 +12,6 @@
   */
 
 #include "types.h"
-#include "dev.h"
 #include "../../userspace/process.h"
 
 //UART line status
@@ -54,9 +53,15 @@ typedef struct {
     bool isr_active;
 }UART_HW;
 
-extern void uart_enable(UART_CLASS port, UART_CB* cb, void* param, int priority);
-extern void uart_disable(UART_CLASS port);
-extern void uart_set_baudrate(UART_CLASS port, const UART_BAUD* config);
+typedef enum {
+    UART_1 = 0,
+    UART_2,
+    UART_3,
+    UART_4,
+    UART_5,
+    UART_6,
+    UART_7
+}UART_CLASS;
 
 extern void uart_write(UART_CLASS port, char* buf, int size);
 extern void uart_write_wait(UART_CLASS port);

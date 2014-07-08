@@ -11,6 +11,30 @@
     kernel.h - MCU core specific functions. Kernel part
 */
 
+/*! \mainpage Main index
+ \tableofcontents
+ RExOS documentation
+
+    - \ref about
+    - \ref gettingstarted
+    - kernel
+        - \ref process
+        - \ref mutex
+        - \ref event
+        - \ref sem
+        - \ref ipc
+        - \ref stream
+    - library
+        - \ref lib_stdlib
+        - \ref lib_stdio
+        - \ref lib_slist
+        - \ref lib_dlist
+        - \ref lib_rb
+        - \ref lib_rb_block
+    - userspace
+        - \ref error
+*/
+
 #include "../userspace/svc.h"
 #include "kernel_config.h"
 
@@ -36,8 +60,7 @@
 
 //remove this shit later
 #include "../sys/drv/stm32_uart.h"
-#include "../sys/drv/stm32_systimer.h"
-#include "../drv_if/gpio.h"
+#include "../sys/drv/stm32_timer.h"
 // endof shit
 
 // will be aligned to pass MPU requirements
@@ -100,9 +123,6 @@ typedef struct {
     UART_HW* uart_handlers[6];
 
     char used_pins[8];
-    char exti_5_9_active;
-    char exti_10_15_active;
-    EXTI_HANDLER exti_handlers[15];
 
     char afio_remap_count;
     char syscfg_count;

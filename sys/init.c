@@ -18,7 +18,7 @@
 #if defined (STM32)
 #include "drv/stm32_power.h"
 #include "drv/stm32_uart.h"
-#include "drv/stm32_systimer.h"
+#include "drv/stm32_timer.h"
 #endif
 
 extern const REX __SYS;
@@ -78,7 +78,6 @@ void init()
 #if (SYS_POWERSAVE)
 #if defined(CORTEX_M)
         __WFI();
-        //TODO WFI here
 #endif //CORTEX_M
 #endif
     }

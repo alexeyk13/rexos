@@ -4,13 +4,12 @@
     All rights reserved.
 */
 
-#include "stm32_systimer.h"
-#include "arch.h"
+#include "stm32_timer.h"
 #include "error.h"
 #include "types.h"
-#include "../../../kernel/kernel.h"
-#include "../../../userspace/timer.h"
-#include "../../../userspace/irq.h"
+#include "../../kernel/kernel.h"
+#include "../../userspace/timer.h"
+#include "../../userspace/irq.h"
 
 typedef TIM_TypeDef* TIM_TypeDef_P;
 
@@ -110,6 +109,8 @@ const IRQn_Type TIMER_VECTORS[] =                {TIM1_UP_TIM10_IRQn, TIM2_IRQn,
 const uint32_t     RCC_TIMER[] =                        {RCC_APB2ENR_TIM1EN, RCC_APB1ENR_TIM2EN, RCC_APB1ENR_TIM3EN, RCC_APB1ENR_TIM4EN, RCC_APB1ENR_TIM5EN, RCC_APB1ENR_TIM6EN, RCC_APB1ENR_TIM7EN,
                                                             RCC_APB2ENR_TIM8EN, RCC_APB2ENR_TIM9EN, RCC_APB2ENR_TIM10EN, RCC_APB2ENR_TIM11EN, RCC_APB1ENR_TIM12EN, RCC_APB1ENR_TIM13EN, RCC_APB1ENR_TIM14EN,
                                                             RCC_APB2ENR_TIM15EN, RCC_APB2ENR_TIM16EN, RCC_APB2ENR_TIM17EN};
+
+#define TIMERS_MASK    (1 << TIM_1)  || (1 << TIM_2)  || (1 << TIM_3)  || (1 << TIM_4) || (1 << TIM_5) || (1 << TIM_6) || (1 << TIM_7)
 
 #define SYS_TIMER_RTC                            RTC_0
 #define SYS_TIMER_HPET                            TIM_4

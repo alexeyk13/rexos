@@ -376,10 +376,27 @@
 #define FLASH_SIZE          0x200000
 #endif
 
-#if defined(STM32F401) || defined(STM32F405) || defined(STM32F407) ||defined(STM32F411) || defined(STM32F415) || defined(STM32F417) || defined(STM32F427) || defined(STM32F429)  \
+#if defined(STM32F401) || defined(STM32F405) || defined(STM32F407) || defined(STM32F411) || defined(STM32F415) || defined(STM32F417) || defined(STM32F427) || defined(STM32F429)  \
  || defined(STM32F437) || defined(STM32F439)
 #define STM32F4
+
+#if defined(STM32F401) || defined(STM32F405) || defined(STM32F407) || defined(STM32F411) || defined(STM32F415) || defined(STM32F417)
+#define STM32F40_41xxx
+#if defined(STM32F401)
+#define
+#define STM32F401xx
+#define IRQ_VECTORS_COUNT   85
+#else
 #define IRQ_VECTORS_COUNT   82
+#endif
+#elif defined(STM32F427) || defined(STM32F437)
+#define STM32F427_437xx
+#define IRQ_VECTORS_COUNT   91
+#elif defined(STM32F429) || defined(STM32F439)
+#define STM32F429_439xx
+#define IRQ_VECTORS_COUNT   91
+#endif
+
 #endif
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

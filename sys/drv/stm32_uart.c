@@ -8,13 +8,9 @@
 #include "stm32_power.h"
 #include "stm32_gpio.h"
 #include "../sys_call.h"
-#include "arch.h"
-#include "hw_config.h"
-#include "gpio.h"
-#include "dbg.h"
 #include "error.h"
-#include "../../../kernel/kernel.h"
-#include "../../../userspace/lib/stdlib.h"
+#include "../../kernel/kernel.h"
+#include "../../userspace/lib/stdlib.h"
 
 #if defined(STM32F1)
 #include "hw_config_stm32f1.h"
@@ -37,22 +33,59 @@ const REX __STM32_UART = {
     stm32_uart
 };
 
+#if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL)
+#define UARTS_COUNT                                         2
+static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38};
+static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {14, 17};
+static const PIN UART_TX_PINS[UARTS_COUNT] =                {A9, A2};
+static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3};
+
+#elif defined(STM32F10X_MD) || defined(STM32F10X_MD_VL)
+#define UARTS_COUNT                                         3
+static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39};
+static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {14, 17, 18};
+static const PIN UART_TX_PINS[UARTS_COUNT] =                {A9, A2, B10};
+static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3, B11};
+
+#elif defined(STM32F1)
+#define UARTS_COUNT                                         5
+static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39, 52, 53};
+static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {14, 17, 18, 19, 20};
+///static const PIN UART_TX_PINS[UARTS_COUNT] =                {A9, A2, B10, C10, C12};
+///static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3, B11, C11, D2};
+
+#elif defined(STM32F2) || defined(STM32F40_41xxx)
+#define UARTS_COUNT                                         6
+static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39, 52, 53, 71};
+static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {4, 17, 18, 19, 20, 5};
+static const PIN UART_TX_PINS[UARTS_COUNT] =                {A9, A2, B10, C10, C12, C6};
+static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3, B11, C11, D2, C7};
+
+#elif defined(STM32F4)
+#define UARTS_COUNT                                         8
+static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39, 52, 53, 71, 82, 83};
+static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {4, 17, 18, 19, 20, 5, 30, 31};
+static const PIN UART_TX_PINS[UARTS_COUNT] =                {A9, A2, B10, C10, C12, C6, F7, F1};
+static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3, B11, C11, D2, C7, F6, E0};
+
+#endif
+
+#define USART_RX_DISABLE_MASK_DEF                (0)
+#define USART_TX_DISABLE_MASK_DEF                (0)
 
 typedef USART_TypeDef* USART_TypeDef_P;
 
 #if defined(STM32F1)
 const USART_TypeDef_P USART[]                            = {USART1, USART2, USART3, UART4, UART5};
-const GPIO_CLASS UART_TX_PINS[]                        = {USART1_TX_PIN, USART2_TX_PIN, USART3_TX_PIN, UART4_TX_PIN, GPIO_C12};
-const GPIO_CLASS UART_RX_PINS[]                        = {USART1_RX_PIN, USART2_RX_PIN, USART3_RX_PIN, UART4_RX_PIN, GPIO_D2};
-const uint32_t RCC_UART[] =                            {RCC_APB2ENR_USART1EN, RCC_APB1ENR_USART2EN, RCC_APB1ENR_USART3EN, RCC_APB1ENR_UART4EN, RCC_APB1ENR_UART5EN};
-const IRQn_Type UART_IRQ_VECTORS[] =                {USART1_IRQn, USART2_IRQn, USART3_IRQn, UART4_IRQn, UART5_IRQn};
+const PIN UART_TX_PINS[]                        = {USART1_TX_PIN, USART2_TX_PIN, USART3_TX_PIN, UART4_TX_PIN, C12};
+const PIN UART_RX_PINS[]                        = {USART1_RX_PIN, USART2_RX_PIN, USART3_RX_PIN, UART4_RX_PIN, D2};
 #elif defined(STM32F2)
 const USART_TypeDef_P USART[]                            = {USART1, USART2, USART3, UART4, UART5, USART6};
-const GPIO_CLASS UART_TX_PINS[]                        = {USART1_TX_PIN, USART2_TX_PIN, USART3_TX_PIN, UART4_TX_PIN, GPIO_C12, USART6_TX_PIN};
-const GPIO_CLASS UART_RX_PINS[]                        = {USART1_RX_PIN, USART2_RX_PIN, USART3_RX_PIN, UART4_RX_PIN, GPIO_D2, USART6_RX_PIN};
-const uint32_t RCC_UART[] =                            {RCC_APB2ENR_USART1EN, RCC_APB1ENR_USART2EN, RCC_APB1ENR_USART3EN, RCC_APB1ENR_UART4EN, RCC_APB1ENR_UART5EN, RCC_APB2ENR_USART6EN};
-const IRQn_Type UART_IRQ_VECTORS[] =                {USART1_IRQn, USART2_IRQn, USART3_IRQn, UART4_IRQn, UART5_IRQn, USART6_IRQn};
+const PIN UART_TX_PINS[]                        = {USART1_TX_PIN, USART2_TX_PIN, USART3_TX_PIN, UART4_TX_PIN, C12, USART6_TX_PIN};
+const PIN UART_RX_PINS[]                        = {USART1_RX_PIN, USART2_RX_PIN, USART3_RX_PIN, UART4_RX_PIN, D2, USART6_RX_PIN};
 #endif
+
+
 
 #define UART_ERROR_MASK                                    0xf
 
@@ -135,36 +168,6 @@ void uart_on_isr(UART_CLASS port)
     }
 }
 
-void USART1_IRQHandler(void)
-{
-    uart_on_isr(UART_1);
-}
-
-void USART2_IRQHandler(void)
-{
-    uart_on_isr(UART_2);
-}
-
-void USART3_IRQHandler(void)
-{
-    uart_on_isr(UART_3);
-}
-
-void UART4_IRQHandler(void)
-{
-    uart_on_isr(UART_4);
-}
-
-void UART5_IRQHandler(void)
-{
-    uart_on_isr(UART_5);
-}
-
-void USART6_IRQHandler(void)
-{
-    uart_on_isr(UART_6);
-}
-
 void uart_read(UART_CLASS port, char* buf, int size)
 {
     //must be handled be upper layer
@@ -245,7 +248,7 @@ void uart_write(UART_CLASS port, char* buf, int size)
 
 }
 
-extern void uart_enable(UART_CLASS port, UART_CB *cb, void *param, int priority)
+extern void uart_enable(UART_CLASS port, int priority)
 {
     if (port < UARTS_COUNT)
     {
@@ -253,8 +256,6 @@ extern void uart_enable(UART_CLASS port, UART_CB *cb, void *param, int priority)
         if (uart)
         {
             __KERNEL->uart_handlers[port] = uart;
-            uart->cb = cb;
-            uart->param = param;
             uart->read_buf = NULL;
             uart->write_buf = NULL;
             uart->read_size = 0;
@@ -262,9 +263,9 @@ extern void uart_enable(UART_CLASS port, UART_CB *cb, void *param, int priority)
             //setup pins
 #if defined(STM32F1)
             if ((USART_TX_DISABLE_MASK & (1 << port)) == 0)
-                gpio_enable_afio(UART_TX_PINS[port], AFIO_MODE_PUSH_PULL);
+                gpio_enable_pin_system(UART_TX_PINS[port], GPIO_MODE_OUTPUT_AF_PUSH_PULL_10MHZ, false);
             if ((USART_RX_DISABLE_MASK & (1 << port)) == 0)
-                gpio_enable_pin(UART_RX_PINS[port], PIN_MODE_IN);
+                gpio_enable_pin_system(UART_RX_PINS[port], GPIO_MODE_INPUT_FLOAT, false);
 //#if (USART_REMAP_MASK)
 //            if ((1 << port) & USART_REMAP_MASK)
             {
@@ -275,20 +276,26 @@ extern void uart_enable(UART_CLASS port, UART_CB *cb, void *param, int priority)
 //#endif //USART_REMAP_MASK
 #elif defined(STM32F2)
             if ((USART_TX_DISABLE_MASK & (1 << port)) == 0)
+            {
+                gpio_enable_pin_power(UART_TX_PINS[port]);
                 gpio_enable_afio(UART_TX_PINS[port], port < UART_4 ? AFIO_MODE_USART1_2_3 : AFIO_MODE_UART_4_5_USART_6);
+            }
             if ((USART_RX_DISABLE_MASK & (1 << port)) == 0)
+            {
+                gpio_enable_pin_power(UART_RX_PINS[port]);
                 gpio_enable_afio(UART_RX_PINS[port], port < UART_4 ? AFIO_MODE_USART1_2_3 : AFIO_MODE_UART_4_5_USART_6);
+            }
 #endif
 
             //power up
             if (port == UART_1 || port == UART_6)
-                RCC->APB2ENR |= RCC_UART[port];
+                RCC->APB2ENR |= 1 << UART_POWER_PINS[port];
             else
-                RCC->APB1ENR |= RCC_UART[port];
+                RCC->APB1ENR |= 1 << UART_POWER_PINS[port];
 
             //enable interrupts
-            NVIC_EnableIRQ(UART_IRQ_VECTORS[port]);
-            NVIC_SetPriority(UART_IRQ_VECTORS[port], priority);
+            NVIC_EnableIRQ(UART_VECTORS[port]);
+            NVIC_SetPriority(UART_VECTORS[port], priority);
 
             USART[port]->CR1 |= USART_CR1_UE;
         }
@@ -304,15 +311,15 @@ void uart_disable(UART_CLASS port)
     if (port < UARTS_COUNT)
     {
         //disable interrupts
-        NVIC_DisableIRQ(UART_IRQ_VECTORS[port]);
+        NVIC_DisableIRQ(UART_VECTORS[port]);
 
         //disable core
         USART[port]->CR1 &= ~USART_CR1_UE;
         //power down
         if (port == UART_1 || port == UART_6)
-            RCC->APB2ENR &= ~RCC_UART[port];
+            RCC->APB2ENR &= ~(1 << UART_POWER_PINS[port]);
         else
-            RCC->APB1ENR &= ~RCC_UART[port];
+            RCC->APB1ENR &= ~(1 << UART_POWER_PINS[port]);
 
         //disable pins
         if ((USART_TX_DISABLE_MASK & (1 << port)) == 0)
@@ -358,7 +365,7 @@ void uart_set_baudrate(UART_CLASS port, const UART_BAUD* config)
         USART[port]->CR2 = (config->stop_bits == 1 ? 0 : 2) << 12;
         USART[port]->CR3 = 0;
 
-/*        ipc.cmd = SYS_GET_POWER;
+        ipc.cmd = SYS_GET_POWER;
         if (!sys_call(&ipc))
             return;
         ipc.process = ipc.param1;
@@ -368,8 +375,7 @@ void uart_set_baudrate(UART_CLASS port, const UART_BAUD* config)
         else
             ipc.param1 = STM32_CLOCK_APB1;
         if (!call(&ipc))
-            return;*/
-        ipc.param1 = 35000000;
+            return;
         unsigned int mantissa, fraction;
         mantissa = (25 * ipc.param1) / (4 * (config->baud));
         fraction = ((mantissa % 100) * 8 + 25)  / 50;
@@ -388,7 +394,7 @@ void uart_set_baudrate(UART_CLASS port, const UART_BAUD* config)
 void stm32_uart()
 {
     IPC ipc;
-    uart_enable(UART_2, (P_UART_CB)NULL, NULL, 2);
+    uart_enable(UART_2, 2);
     UART_BAUD baud;
     baud.data_bits = 8;
     baud.parity = 'N';
