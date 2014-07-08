@@ -16,6 +16,8 @@
 #define KERNEL_TIMER_DEBUG                          0
 //Enabling this you will get stats on each thread uptime, but decreasing context switching up to 2 times
 #define KERNEL_PROCESS_STAT                         0
+//Enable this only if you have problems with IPC oferflow.
+#define KERNEL_IPC_DEBUG                            0
 
 //size of GLOBAL consts. For MPU must be pow of 2, starting from 32
 //you must have good reason to changing this

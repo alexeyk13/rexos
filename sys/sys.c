@@ -6,6 +6,7 @@
 
 #include "sys_config.h"
 #include "sys.h"
+#include "sys_call.h"
 #include "../userspace/svc.h"
 #include "../userspace/core/core.h"
 #include "../userspace/lib/stdio.h"
@@ -40,6 +41,7 @@ void sys ()
         ipc_wait_peek_ms(&ipc, 0, 0);
         if (ipc.cmd == IPC_UNKNOWN)
             continue;
+        //processing before send response
         switch (ipc.cmd)
         {
         case IPC_PING:
@@ -61,17 +63,27 @@ void sys ()
         case SYS_SET_TIMER:
             sys_object.timer = ipc.process;
         case SYS_SET_UART:
-            sys_object.timer = ipc.process;
+            sys_object.uart = ipc.process;
             __HEAP->stdout = uart_write_svc;
             __HEAP->stdout_param = (void*)1;
-#if (SYS_DEBUG)
-            printf("RExOS system v. 0.0.2 started\n\r");
-
-#endif
             break;
         default:
             ipc.cmd = IPC_UNKNOWN;
         }
         ipc_post(&ipc);
+        //processing after response is sent
+        //system is started. Inform all objects, created before, about global STDOUT is set
+        if (ipc.cmd == SYS_SET_UART)
+        {
+#if (SYS_DEBUG)
+            printf("RExOS system v. 0.0.2 started\n\r");
+
+#endif
+            ipc.cmd = SYS_SET_STDOUT;
+            ipc.process = sys_object.power;
+            ipc.param1 = (int)uart_write_svc;
+            ipc.param2 = (int)1;
+            call(&ipc);
+        }
     }
 }

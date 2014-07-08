@@ -362,20 +362,14 @@ void uart_set_baudrate(UART_CLASS port, const UART_BAUD* config)
         ipc.cmd = SYS_GET_POWER;
         if (!sys_call(&ipc))
             return;
-
         ipc.process = ipc.param1;
-        __KERNEL->apb2_freq = ipc.process;
-//        __KERNEL->apb1_freq = ipc.param1;
-//        ipc.cmd = IPC_GET_CLOCK;
-        ipc.cmd = IPC_POWER_TEST;
+        ipc.cmd = IPC_GET_CLOCK;
         if (port == UART_1 || port == UART_6)
             ipc.param1 = STM32_CLOCK_APB2;
         else
             ipc.param1 = STM32_CLOCK_APB1;
-//        if (!call(&ipc))
-//            return;
-        call(&ipc);
-        ipc.param1 = 35000000;
+        if (!call(&ipc))
+            return;
         unsigned int mantissa, fraction;
         mantissa = (25 * ipc.param1) / (4 * (config->baud));
         fraction = ((mantissa % 100) * 8 + 25)  / 50;

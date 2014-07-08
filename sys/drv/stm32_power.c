@@ -7,7 +7,9 @@
 #include "stm32_power.h"
 #include "../../userspace/core/core.h"
 #include "../../userspace/ipc.h"
+#include "../../userspace/lib/stdio.h"
 #include "../../sys/sys_call.h"
+#include "sys_config.h"
 
 //remove me later
 #include "../../kernel/kernel.h"
@@ -35,6 +37,14 @@
 #elif defined(STM32F2) || defined(STM32F4)
 #define PPRE1                                10
 #define PPRE2                                13
+#endif
+
+#ifndef RCC_CSR_WDGRSTF
+#define RCC_CSR_WDGRSTF RCC_CSR_IWDGRSTF
+#endif
+
+#ifndef RCC_CSR_PADRSTF
+#define RCC_CSR_PADRSTF RCC_CSR_PINRSTF
 #endif
 
 void stm32_power();
@@ -213,19 +223,11 @@ int get_apb1_clock()
     return get_ahb_clock() / div;
 }
 
-#ifndef RCC_CSR_WDGRSTF
-#define RCC_CSR_WDGRSTF RCC_CSR_IWDGRSTF
-#endif
-
-#ifndef RCC_CSR_PADRSTF
-#define RCC_CSR_PADRSTF RCC_CSR_PINRSTF
-#endif
-
 RESET_REASON get_reset_reason()
 {
     RESET_REASON res = RESET_REASON_UNKNOWN;
     if (RCC->CSR & RCC_CSR_LPWRRSTF)
-        res = RESET_REASON_STANBY;
+        res = RESET_REASON_LOW_POWER;
     else if (RCC->CSR & (RCC_CSR_WWDGRSTF | RCC_CSR_WDGRSTF))
         res = RESET_REASON_WATCHDOG;
     else if (RCC->CSR & RCC_CSR_SFTRSTF)
@@ -277,11 +279,13 @@ void setup_clock(int param1, int param2, int param3)
     for (i = 1, bus = 0; (i <= 16) && (pll_clock / i > MAX_APB2); i *= 2, ++bus) {}
     if (bus)
         RCC->CFGR |= (4 | (bus - 1)) << PPRE2;
+    //remove this shit later
     __KERNEL->apb2_freq = pll_clock / i;
     //APB1.
     for (; (i <= 16) && (pll_clock / i > MAX_APB1); i *= 2, ++bus) {}
     if (bus)
         RCC->CFGR |= (4 | (bus - 1)) << PPRE1;
+    //remove this shit later
     __KERNEL->apb1_freq = pll_clock / i;
 
     //5. tune flash latency
@@ -294,12 +298,87 @@ void setup_clock(int param1, int param2, int param3)
     RCC->CFGR |= RCC_CFGR_SW_PLL;
     while ((RCC->CFGR & (3 << 2)) != RCC_CFGR_SWS_PLL) {}
 
-
     //remove this shit later
     __KERNEL->ahb_freq = pll_clock;
 }
 
-static void inline stm32_power_loop()
+static void inline update_clock(int param1, int param2, int param3)
+{
+    unsigned int apb1 = RCC->APB1ENR;
+    RCC->APB1ENR = 0;
+    unsigned int apb2 = RCC->APB2ENR;
+    RCC->APB2ENR = 0;
+#if defined(STM32F1)
+    unsigned int ahb = RCC->AHBENR;
+    RCC->AHBENR = 0;
+#elif defined (STM32F2) || defined(STM32F4)
+    unsigned int ahb1 = RCC->AHB1ENR;
+    RCC->AHB1ENR = 0;
+    unsigned int ahb2 = RCC->AHB2ENR;
+    RCC->AHB2ENR = 0;
+    unsigned int ahb3 = RCC->AHB3ENR;
+    RCC->AHB3ENR = 0;
+#endif
+
+    RCC->CFGR = 0;
+#if defined(STM32F10X_CL) || defined(STM32F100)
+    RCC->CFGR2 = 0;
+#endif
+
+#if defined(STM32F10X_CL)
+    setup_clock(PLL_MUL, PLL_DIV, PLL2_MUL | (PLL2_DIV << 16));
+#elif defined(STM32F1)
+    setup_clock(PLL_MUL, PLL_DIV);
+#elif defined(STM32F2) || defined(STM32F4)
+    setup_clock(PLL_M, PLL_N, PLL_P);
+#endif
+
+#if defined(STM32F1)
+    RCC->AHBENR = ahb;
+#elif defined (STM32F2) || defined(STM32F4)
+    RCC->AHB1ENR = ahb1;
+    RCC->AHB2ENR = ahb2;
+    RCC->AHB3ENR = ahb3;
+#endif
+    RCC->APB1ENR = apb1;
+    RCC->APB2ENR = apb2;
+}
+
+#if (SYS_DEBUG)
+static inline void stm32_power_info()
+{
+    printf("STM32 power driver info\n\r\n\r");
+    printf("Core clock: %d\n\r", get_core_clock());
+    printf("AHB clock: %d\n\r", get_ahb_clock());
+    printf("APB1 clock: %d\n\r", get_apb1_clock());
+    printf("APB2 clock: %d\n\r", get_apb2_clock());
+
+    printf("Reset reason: ");
+    switch (get_reset_reason())
+    {
+    case RESET_REASON_LOW_POWER:
+        printf("low power");
+        break;
+    case RESET_REASON_WATCHDOG:
+        printf("watchdog");
+        break;
+    case RESET_REASON_SOFTWARE:
+        printf("software");
+        break;
+    case RESET_REASON_POWERON:
+        printf("power ON");
+        break;
+    case RESET_REASON_PIN_RST:
+        printf("pin reset");
+        break;
+    default:
+        printf("unknown");
+    }
+    printf("\n\r\n\r");
+}
+#endif
+
+static inline void stm32_power_loop()
 {
     IPC ipc;
     for (;;)
@@ -313,6 +392,15 @@ static void inline stm32_power_loop()
         case IPC_PING:
             ipc.cmd = IPC_PONG;
             break;
+        case SYS_SET_STDOUT:
+            __HEAP->stdout = (STDOUT)ipc.param1;
+            __HEAP->stdout_param = (void*)ipc.param2;
+            break;
+#if (SYS_DEBUG)
+        case SYS_GET_INFO:
+            stm32_power_info();
+            break;
+#endif
         case IPC_GET_CLOCK:
             switch (ipc.param1)
             {
@@ -331,10 +419,12 @@ static void inline stm32_power_loop()
             default:
                 ipc.cmd = IPC_INVALID_PARAM;
             }
-
             break;
-        case IPC_POWER_TEST:
-            ipc.param1 = 123456;
+        case IPC_UPDATE_CLOCK:
+            update_clock(ipc.param1, ipc.param2, ipc.param3);
+            break;
+        case IPC_GET_RESET_REASON:
+            ipc.param1 = get_reset_reason();
             break;
         default:
             ipc.cmd = IPC_UNKNOWN;
@@ -351,7 +441,7 @@ void stm32_power()
 
 #if defined(STM32F1)
     RCC->AHBENR = 0;
-#elif defined(STM32F2)
+#elif defined(STM32F2) || defined(STM32F4)
     RCC->AHB1ENR = 0;
     RCC->AHB2ENR = 0;
     RCC->AHB3ENR = 0;

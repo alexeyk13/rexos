@@ -11,7 +11,9 @@
 #include "../userspace/lib/types.h"
 
 typedef enum {
-    SYS_GET_POWER = IPC_SYSTEM + 1,
+    SYS_SET_STDOUT = IPC_SYSTEM + 1,                            //!< Will be called for objects, created before global stdout STREAM is set
+    SYS_GET_INFO,                                               //!< Info about process
+    SYS_GET_POWER,
     SYS_GET_TIMER,
     SYS_GET_UART,
     SYS_SET_POWER,

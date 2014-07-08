@@ -254,5 +254,4 @@ void startup()
 
     //initialize thread subsystem, create idle task
     kprocess_init(&__INIT);
-
 }
