@@ -17,6 +17,7 @@
 
 #if defined (STM32)
 #include "drv/stm32_power.h"
+#include "drv/stm32_gpio.h"
 #include "drv/stm32_uart.h"
 #include "drv/stm32_timer.h"
 #endif
@@ -33,7 +34,7 @@ const REX __INIT = {
     //name
     "INIT",
     //size
-    256,
+    512,
     //priority - init priority
     ((unsigned int)-1),
     //flags - init must be called frozen)
@@ -46,27 +47,19 @@ const REX __INIT = {
 
 void init()
 {
-    HANDLE power, uart;
     //start the system
     __HEAP->system = process_create(&__SYS);
 
 #if defined(STM32)
-    power = process_create(&__STM32_POWER);
-    sys_post(SYS_SET_POWER, power, 0, 0);
-    //TODO: gpio here
+    process_create(&__STM32_POWER);
+    process_create(&__STM32_GPIO);
+    //todo: make process
     timer_init_hw();
-    uart = process_create(&__STM32_UART);
-    sys_post(SYS_SET_UART, uart, 0, 0);
+    process_create(&__STM32_UART);
 
 #else
 #warning No drivers loaded. System is abstract!
 #endif
-
-    //say early processes, that STDOUT is setted up
-    __HEAP->stdout = (STDOUT)uart_write_svc;
-    __HEAP->stdout_param = (void*)1;
-    sys_post(SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)1, 0);
-    post(power, SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)1, 0);
 
     //start user application, if required
 #if (SYS_APP)

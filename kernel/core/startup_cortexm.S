@@ -39,6 +39,7 @@
 	.equ   SHPR2,              0xe000ed1c
 	.equ   SHPR3,              0xe000ed20
 	.equ   SHCSR,              0xe000ed24
+	.equ	 ICSPR0,						0xe000e280
 
 	.equ   PEND_SV_BIT,           (1 << 28)
 	.equ   SHPR1_VALUE,           ((0x02 << 0) | (0x02 << 8) | (0x02 << 16))
@@ -114,6 +115,18 @@ Reset_Handler:
 	ldr   r0, [r1]
 	orr   r0, r0, r2
 	str   r0, [r1]
+
+	@clear all pending interrupts
+	ldr	r0, =0xffffffff
+	ldr	r1, =ICSPR0
+	str	r0, [r1]
+	str	r0, [r1, #0x4]
+	str	r0, [r1, #0x8]
+	str	r0, [r1, #0xc]
+	str	r0, [r1, #0x10]
+	str	r0, [r1, #0x14]
+	str	r0, [r1, #0x18]
+	str	r0, [r1, #0x1c]
 
 	bl   startup                @ to high-level initialization
 

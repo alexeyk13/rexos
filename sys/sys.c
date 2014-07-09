@@ -11,7 +11,13 @@
 #include "../userspace/core/core.h"
 #include "../userspace/lib/stdio.h"
 
-#include "drv/stm32_uart.h"
+//temporaily struct, before root fs will be ready
+typedef struct {
+    HANDLE power;
+    HANDLE gpio;
+    HANDLE timer;
+    HANDLE uart;
+}SYS_OBJECT;
 
 void sys();
 
@@ -19,7 +25,7 @@ const REX __SYS = {
     //name
     "RExOS SYS",
     //size
-    256,
+    512,
     //priority - sys priority
     101,
     //flags
@@ -50,6 +56,10 @@ void sys ()
             ipc.param1 = sys_object.power;
             ipc_post(&ipc);
             break;
+        case SYS_GET_GPIO:
+            ipc.param1 = sys_object.gpio;
+            ipc_post(&ipc);
+            break;
         case SYS_GET_TIMER:
             ipc.param1 = sys_object.timer;
             ipc_post(&ipc);
@@ -59,13 +69,16 @@ void sys ()
             ipc_post(&ipc);
             break;
         case SYS_SET_POWER:
-            sys_object.power = ipc.param1;
+            sys_object.power = ipc.process;
+            break;
+        case SYS_SET_GPIO:
+            sys_object.gpio = ipc.process;
             break;
         case SYS_SET_TIMER:
-            sys_object.timer = ipc.param1;
+            sys_object.timer = ipc.process;
             break;
         case SYS_SET_UART:
-            sys_object.uart = ipc.param1;
+            sys_object.uart = ipc.process;
             break;
         case SYS_SET_STDOUT:
             __HEAP->stdout = (STDOUT)ipc.param1;

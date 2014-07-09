@@ -271,15 +271,13 @@ unsigned int timer_elapsed(TIMER_CLASS timer)
 void second_pulse_isr(int vector, void* param)
 {
     TIM2->SR &= ~TIM_SR_UIF;
-    if (__KERNEL->killme == 0)
-        timer_second_pulse();
+    timer_second_pulse();
 }
 
 void hpet_isr(int vector, void* param)
 {
     TIM4->SR &= ~TIM_SR_UIF;
-    if (__KERNEL->killme == 0)
-        timer_hpet_timeout();
+    timer_hpet_timeout();
 }
 
 void hpet_start(unsigned int value)
@@ -299,8 +297,6 @@ unsigned int hpet_elapsed()
 
 void timer_init_hw()
 {
-    __KERNEL->killme = 1;
-
     irq_register(TIM2_IRQn, second_pulse_isr, NULL);
     irq_register(TIM4_IRQn, hpet_isr, NULL);
 
@@ -316,5 +312,4 @@ void timer_init_hw()
 #else
     rtc_enable_second_tick(SYS_TIMER_RTC, timer_second_pulse, SYS_TIMER_PRIORITY);
 #endif //SYS_TIMER_SOFT_RTC
-    __KERNEL->killme = 0;
 }

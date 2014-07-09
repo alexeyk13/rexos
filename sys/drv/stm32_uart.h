@@ -11,17 +11,7 @@
         UART driver. Hardware-independent part
   */
 
-#include "types.h"
 #include "../../userspace/process.h"
-
-//UART line status
-typedef enum {
-    UART_ERROR_OK = 0,
-    UART_ERROR_OVERRUN,
-    UART_ERROR_NOISE,
-    UART_ERROR_FRAME,
-    UART_ERROR_PARITY
-}UART_ERROR;
 
 #define UART_MODE_RX_ENABLE                (1 << 0)
 #define UART_MODE_TX_ENABLE                (1 << 1)
@@ -38,21 +28,6 @@ typedef struct {
     uint8_t stop_bits;
 }UART_BAUD;
 
-typedef struct {
-    void (*on_read_complete)(void* param);
-    void (*on_write_complete)(void* param);
-    void (*on_error)(void* param, UART_ERROR error);
-}UART_CB, *P_UART_CB;
-
-typedef struct {
-    UART_CB* cb;
-    char* read_buf;
-    char* write_buf;
-    unsigned int read_size, write_size;
-    void* param;
-    bool isr_active;
-}UART_HW;
-
 typedef enum {
     UART_1 = 0,
     UART_2,
@@ -60,13 +35,14 @@ typedef enum {
     UART_4,
     UART_5,
     UART_6,
-    UART_7
-}UART_CLASS;
+    UART_7,
+    UART_8
+}UART_PORT;
 
-extern void uart_write(UART_CLASS port, char* buf, int size);
-extern void uart_write_wait(UART_CLASS port);
-extern void uart_read(UART_CLASS port, char* buf, int size);
-extern void uart_read_cancel(UART_CLASS port);
+extern void uart_write(UART_PORT port, char* buf, int size);
+extern void uart_write_wait(UART_PORT port);
+extern void uart_read(UART_PORT port, char* buf, int size);
+extern void uart_read_cancel(UART_PORT port);
 
 void uart_write_svc(const char *const buf, unsigned int size, void* param);
 

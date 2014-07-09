@@ -120,17 +120,9 @@ typedef struct {
     unsigned long ahb_freq;
     unsigned long apb1_freq;
     unsigned long apb2_freq;
-    UART_HW* uart_handlers[6];
-
-    char used_pins[8];
-
-    char afio_remap_count;
-    char syscfg_count;
 
     char shared1;
     char shared8;
-    int killme;
-    int killme2;
 
     //name is following
 } KERNEL;

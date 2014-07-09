@@ -53,7 +53,7 @@ const REX __STM32_POWER = {
     //name
     "STM32 power",
     //size
-    256,
+    512,
     //priority - driver priority
     90,
     //flags
@@ -456,5 +456,6 @@ void stm32_power()
     setup_clock(PLL_M, PLL_N, PLL_P);
 #endif
 
+    sys_post(SYS_SET_POWER, 0, 0, 0);
     stm32_power_loop();
 }
