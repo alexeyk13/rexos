@@ -70,7 +70,6 @@ typedef enum {
     GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_50MHZ = 0xf
 }GPIO_MODE;
 
-void gpio_enable_pin_system(PIN pin, GPIO_MODE mode, bool pullup);
 #elif defined(STM32F2) || defined(STM32F4)
 
 #define GPIO_MODE_INPUT                         (0x0 << 0)
@@ -109,13 +108,7 @@ typedef enum {
     AF15
 } AF;
 
-void gpio_enable_pin_system(PIN pin, unsigned int mode, AF af);
 #endif
-
-void gpio_enable_pin(PIN pin, PIN_MODE mode);
-void gpio_disable_pin(PIN pin);
-void gpio_set_pin(PIN pin, bool set);
-bool gpio_get_pin(PIN pin);
 
 extern const REX __STM32_GPIO;
 

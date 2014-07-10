@@ -344,7 +344,7 @@ static void inline update_clock(int param1, int param2, int param3)
     RCC->APB2ENR = apb2;
 }
 
-#if (SYS_DEBUG)
+#if (SYS_INFO)
 static inline void stm32_power_info()
 {
     printf("STM32 power driver info\n\r\n\r");
@@ -394,7 +394,7 @@ static inline void stm32_power_loop()
             __HEAP->stdout_param = (void*)ipc.param2;
             ipc_post(&ipc);
             break;
-#if (SYS_DEBUG)
+#if (SYS_INFO)
         case SYS_GET_INFO:
             stm32_power_info();
             ipc_post(&ipc);

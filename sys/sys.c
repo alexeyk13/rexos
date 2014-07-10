@@ -99,7 +99,7 @@ void sys ()
         case SYS_SET_STDOUT:
             __HEAP->stdout = (STDOUT)ipc.param1;
             __HEAP->stdout_param = (void*)ipc.param2;
-#if (SYS_DEBUG)
+#if (SYS_INFO)
             printf("RExOS system v. 0.0.2 started\n\r");
 #endif
             ipc_post(&ipc);
