@@ -14,7 +14,6 @@ typedef enum {
     IPC_UNKNOWN,                                        //!< NEVER respond to this message, or you will get infinite ping-pong
     IPC_INVALID_PARAM,
     IPC_PING,
-    IPC_PONG,
     IPC_STREAM_WRITE,                                   //!< Sent by kernel when stream write is complete. Param1: write size, Param2: none
 
     IPC_SYSTEM = 0x1000,

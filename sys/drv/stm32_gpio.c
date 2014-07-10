@@ -177,19 +177,19 @@ void gpio_disable_jtag()
 void stm32_gpio()
 {
     IPC ipc;
-    sys_post(SYS_SET_GPIO, 0, 0, 0);
+    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_GPIO, 0, 0);
     for (;;)
     {
         ipc_wait_peek_ms(&ipc, 0, 0);
         switch (ipc.cmd)
         {
         case IPC_PING:
-            ipc.cmd = IPC_PONG;
             ipc_post(&ipc);
             break;
         case SYS_SET_STDOUT:
             __HEAP->stdout = (STDOUT)ipc.param1;
             __HEAP->stdout_param = (void*)ipc.param2;
+            ipc_post(&ipc);
             break;
 #if (SYS_DEBUG)
 //        case SYS_GET_INFO:
@@ -198,16 +198,23 @@ void stm32_gpio()
 #endif
         case IPC_ENABLE_PIN:
             gpio_enable_pin((PIN)ipc.param1, (PIN_MODE)ipc.param2);
+            ipc_post(&ipc);
             break;
         case IPC_ENABLE_PIN_SYSTEM:
-            //TODO
-//            gpio_enable_pin((PIN)ipc.param1, (PIN_MODE)ipc.param2);
+#if defined(STM32F1)
+            gpio_enable_pin_system((PIN)ipc.param1, (GPIO_MODE)ipc.param2, ipc.param3);
+#elif defined(STM32F2) || defined(STM32F4)
+            gpio_enable_pin_system((PIN)ipc.param1, ipc.param2, (AF)ipc.param3);
+#endif
+            ipc_post(&ipc);
             break;
         case IPC_DISABLE_PIN:
             gpio_disable_pin((PIN)ipc.param1);
+            ipc_post(&ipc);
             break;
         case IPC_SET_PIN:
             gpio_set_pin((PIN)ipc.param1, (bool)ipc.param2);
+            ipc_post(&ipc);
             break;
         case IPC_GET_PIN:
             ipc.param1 = gpio_get_pin((PIN)ipc.param1);
@@ -215,6 +222,7 @@ void stm32_gpio()
             break;
         case IPC_DISABLE_JTAG:
             gpio_disable_jtag();
+            ipc_post(&ipc);
             break;
         default:
             break;

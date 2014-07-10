@@ -12,15 +12,16 @@
 
 typedef enum {
     SYS_SET_STDOUT = IPC_SYSTEM + 1,                            //!< Will be called for objects, created before global stdout STREAM is set
-    SYS_GET_INFO,                                               //!< Info about process
-    SYS_GET_POWER,
-    SYS_GET_GPIO,
-    SYS_GET_TIMER,
-    SYS_GET_UART,
-    SYS_SET_POWER,
-    SYS_SET_GPIO,
-    SYS_SET_TIMER,
-    SYS_SET_UART
+    SYS_GET_OBJECT,                                             //!< Get system object. Temporaily solution before FS is ready
+    SYS_SET_OBJECT,                                             //!< Set system object. Temporaily solution before FS is ready
+    SYS_GET_INFO
 }SYS_IPCS;
+
+typedef enum {
+    SYS_OBJECT_POWER,
+    SYS_OBJECT_GPIO,
+    SYS_OBJECT_TIMER,
+    SYS_OBJECT_UART
+}SYS_OBJECT;
 
 #endif // SYS_H

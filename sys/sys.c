@@ -17,7 +17,7 @@ typedef struct {
     HANDLE gpio;
     HANDLE timer;
     HANDLE uart;
-}SYS_OBJECT;
+}SYS;
 
 void sys();
 
@@ -38,7 +38,7 @@ const REX __SYS = {
 
 void sys ()
 {
-    SYS_OBJECT sys_object = {0};
+    SYS sys = {0};
     IPC ipc;
     setup_system();
     for (;;)
@@ -48,37 +48,53 @@ void sys ()
         switch (ipc.cmd)
         {
         case IPC_PING:
-            ipc.cmd = IPC_PONG;
             ipc_post(&ipc);
             break;
-        //TODO remove after FS will be ready
-        case SYS_GET_POWER:
-            ipc.param1 = sys_object.power;
+        //Temporaily solution. Remove after FS will be ready
+        case SYS_GET_OBJECT:
+            switch (ipc.param1)
+            {
+            case SYS_OBJECT_POWER:
+                ipc.param1 = sys.power;
+                break;
+            case SYS_OBJECT_GPIO:
+                ipc.param1 = sys.gpio;
+                break;
+            case SYS_OBJECT_TIMER:
+                ipc.param1 = sys.timer;
+                break;
+            case SYS_OBJECT_UART:
+                ipc.param1 = sys.uart;
+                break;
+            default:
+                ipc.param1 = (unsigned int)INVALID_HANDLE;
+                ipc.cmd = IPC_INVALID_PARAM;
+                break;
+
+            }
             ipc_post(&ipc);
             break;
-        case SYS_GET_GPIO:
-            ipc.param1 = sys_object.gpio;
+        case SYS_SET_OBJECT:
+            switch (ipc.param1)
+            {
+            case SYS_OBJECT_POWER:
+                sys.power = ipc.process;
+                break;
+            case SYS_OBJECT_GPIO:
+                sys.gpio = ipc.process;
+                break;
+            case SYS_OBJECT_TIMER:
+                sys.timer = ipc.process;
+                break;
+            case SYS_OBJECT_UART:
+                sys.uart = ipc.process;
+                break;
+            default:
+                ipc.cmd = IPC_INVALID_PARAM;
+                break;
+
+            }
             ipc_post(&ipc);
-            break;
-        case SYS_GET_TIMER:
-            ipc.param1 = sys_object.timer;
-            ipc_post(&ipc);
-            break;
-        case SYS_GET_UART:
-            ipc.param1 = sys_object.uart;
-            ipc_post(&ipc);
-            break;
-        case SYS_SET_POWER:
-            sys_object.power = ipc.process;
-            break;
-        case SYS_SET_GPIO:
-            sys_object.gpio = ipc.process;
-            break;
-        case SYS_SET_TIMER:
-            sys_object.timer = ipc.process;
-            break;
-        case SYS_SET_UART:
-            sys_object.uart = ipc.process;
             break;
         case SYS_SET_STDOUT:
             __HEAP->stdout = (STDOUT)ipc.param1;
@@ -86,6 +102,7 @@ void sys ()
 #if (SYS_DEBUG)
             printf("RExOS system v. 0.0.2 started\n\r");
 #endif
+            ipc_post(&ipc);
             break;
         }
     }

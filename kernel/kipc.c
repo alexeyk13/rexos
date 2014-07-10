@@ -66,8 +66,8 @@ void kipc_post(IPC* ipc)
         else
         {
             //on overflow set error on both: receiver and sender
-            kprocess_error(sender, ERROR_IPC_OVERFLOW);
-            kprocess_error(receiver, ERROR_IPC_OVERFLOW);
+            kprocess_error(sender, ERROR_OVERFLOW);
+            kprocess_error(receiver, ERROR_OVERFLOW);
 #if (KERNEL_IPC_DEBUG)
             printk("Error: receiver %s IPC overflow!\n\r", PROCESS_NAME(receiver->heap));
 #endif
@@ -98,7 +98,7 @@ void kipc_peek(IPC* ipc, HANDLE wait_process)
             memcpy(ipc, IPC_ITEM(process, rb_get(&process->kipc.rb)), sizeof(IPC));
         }
         else
-            kprocess_error(process, ERROR_IPC_NOT_FOUND);
+            kprocess_error(process, ERROR_NOT_FOUND);
     }
     else
         kprocess_error(process, ERROR_NOT_SUPPORTED);

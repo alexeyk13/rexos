@@ -387,16 +387,17 @@ static inline void stm32_power_loop()
         switch (ipc.cmd)
         {
         case IPC_PING:
-            ipc.cmd = IPC_PONG;
             ipc_post(&ipc);
             break;
         case SYS_SET_STDOUT:
             __HEAP->stdout = (STDOUT)ipc.param1;
             __HEAP->stdout_param = (void*)ipc.param2;
+            ipc_post(&ipc);
             break;
 #if (SYS_DEBUG)
         case SYS_GET_INFO:
             stm32_power_info();
+            ipc_post(&ipc);
             break;
 #endif
         case IPC_GET_CLOCK:
@@ -456,6 +457,6 @@ void stm32_power()
     setup_clock(PLL_M, PLL_N, PLL_P);
 #endif
 
-    sys_post(SYS_SET_POWER, 0, 0, 0);
+    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_POWER, 0, 0);
     stm32_power_loop();
 }

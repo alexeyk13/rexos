@@ -12,7 +12,7 @@
 #endif
 
 #define HANDLE								unsigned int
-#define INVALID_HANDLE                      NULL
+#define INVALID_HANDLE                      0
 
 #define INFINITE							0x0
 

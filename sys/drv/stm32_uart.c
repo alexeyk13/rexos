@@ -251,82 +251,94 @@ void uart_write(UART_PORT port, char* buf, int size)
 UART* uart_enable(UART_PORT port, PIN tx, PIN rx)
 {
     UART* uart = NULL;
-    error(ERROR_OK);
-    if (port < UARTS_COUNT)
+    HANDLE gpio = sys_get_object(SYS_OBJECT_GPIO);
+    if (gpio == INVALID_HANDLE)
     {
-        uart = (UART*)malloc(sizeof(UART));
-        if (uart)
-        {
-            uart->port = port;
-            uart->tx_pin = tx;
-            uart->rx_pin = rx;
-            uart->error = ERROR_OK;
-            if (uart->tx_pin == PIN_DEFAULT)
-                uart->tx_pin = UART_TX_PINS[uart->port];
-            if (uart->rx_pin == PIN_DEFAULT)
-                uart->rx_pin = UART_RX_PINS[uart->port];
+        error(ERROR_NOT_FOUND);
+        return NULL;
+    }
+    if (port >= UARTS_COUNT)
+    {
+        error(ERROR_NOT_SUPPORTED);
+        return NULL;
+    }
+    uart = (UART*)malloc(sizeof(UART));
+    if (uart == NULL)
+    {
+        error(ERROR_OUT_OF_SYSTEM_MEMORY);
+        return NULL;
+    }
 
-            //setup pins
+    uart->port = port;
+    uart->tx_pin = tx;
+    uart->rx_pin = rx;
+    uart->error = ERROR_OK;
+    if (uart->tx_pin == PIN_DEFAULT)
+        uart->tx_pin = UART_TX_PINS[uart->port];
+    if (uart->rx_pin == PIN_DEFAULT)
+        uart->rx_pin = UART_RX_PINS[uart->port];
+
+    //setup pins
 #if defined(STM32F1)
-            //turn on remapping
-            if (((uart->tx_pin != UART_TX_PINS[uart->port]) && (uart->tx_pin != PIN_UNUSED)) ||
-                ((uart->rx_pin != UART_RX_PINS[uart->port]) && (uart->rx_pin != PIN_UNUSED)))
-            {
-                RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
-                switch (uart->tx_pin)
-                {
-                case B6:
-                    AFIO->MAPR |= AFIO_MAPR_USART1_REMAP;
-                    break;
-                case D5:
-                    AFIO->MAPR |= AFIO_MAPR_USART2_REMAP;
-                    break;
-                case C10:
-                    AFIO->MAPR |= AFIO_MAPR_USART3_REMAP_PARTIALREMAP;
-                    break;
-                case D8:
-                    AFIO->MAPR |= AFIO_MAPR_USART3_REMAP_FULLREMAP;
-                    break;
-                default:
-                    error(ERROR_NOT_SUPPORTED);
-                    free(uart);
-                    return NULL;
-                }
-            }
-            if (uart->tx_pin != PIN_UNUSED)
-                gpio_enable_pin_system(uart->tx_pin, GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-            if (uart->rx_pin != PIN_UNUSED)
-                gpio_enable_pin_system(uart->rx_pin, GPIO_MODE_INPUT_FLOAT, false);
+    //turn on remapping
+    if (((uart->tx_pin != UART_TX_PINS[uart->port]) && (uart->tx_pin != PIN_UNUSED)) ||
+        ((uart->rx_pin != UART_RX_PINS[uart->port]) && (uart->rx_pin != PIN_UNUSED)))
+    {
+        RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+        switch (uart->tx_pin)
+        {
+        case B6:
+            AFIO->MAPR |= AFIO_MAPR_USART1_REMAP;
+            break;
+        case D5:
+            AFIO->MAPR |= AFIO_MAPR_USART2_REMAP;
+            break;
+        case C10:
+            AFIO->MAPR |= AFIO_MAPR_USART3_REMAP_PARTIALREMAP;
+            break;
+        case D8:
+            AFIO->MAPR |= AFIO_MAPR_USART3_REMAP_FULLREMAP;
+            break;
+        default:
+            error(ERROR_NOT_SUPPORTED);
+            free(uart);
+            return NULL;
+        }
+    }
+    if (uart->tx_pin != PIN_UNUSED)
+        ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    if (uart->rx_pin != PIN_UNUSED)
+        ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->rx_pin, GPIO_MODE_INPUT_FLOAT, false);
 #elif defined(STM32F2) || defined(STM32F4)
-            if (uart->tx_pin != PIN_UNUSED)
-                gpio_enable_pin_system(uart->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
-            if (uart->rx_pin != PIN_UNUSED)
-                gpio_enable_pin_system(uart->rx_pin, , GPIO_MODE_AF | GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
+    if (uart->tx_pin != PIN_UNUSED)
+        ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
+    if (uart->rx_pin != PIN_UNUSED)
+        ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->rx_pin, , GPIO_MODE_AF | GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
 #endif
 
-            //power up
-            if (uart->port == UART_1 || uart->port == UART_6)
-                RCC->APB2ENR |= 1 << UART_POWER_PINS[uart->port];
-            else
-                RCC->APB1ENR |= 1 << UART_POWER_PINS[uart->port];
+    //power up
+    if (uart->port == UART_1 || uart->port == UART_6)
+        RCC->APB2ENR |= 1 << UART_POWER_PINS[uart->port];
+    else
+        RCC->APB1ENR |= 1 << UART_POWER_PINS[uart->port];
 
-            //enable interrupts
+    //enable interrupts
 //            NVIC_EnableIRQ(UART_VECTORS[uart->port]);
 //            NVIC_SetPriority(UART_VECTORS[uart->port], 15);
 //            register_irq();
-            //enable core
-            UART_REGS[uart->port]->CR1 |= USART_CR1_UE;
-        }
-        else
-            error(ERROR_OUT_OF_SYSTEM_MEMORY);
-    }
-    else
-        error(ERROR_NOT_SUPPORTED);
+    //enable core
+    UART_REGS[uart->port]->CR1 |= USART_CR1_UE;
     return uart;
 }
 
-void uart_disable(UART* uart)
+bool uart_disable(UART* uart)
 {
+    HANDLE gpio = sys_get_object(SYS_OBJECT_GPIO);
+    if (gpio == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_FOUND);
+        return false;
+    }
     //disable interrupts
 //        NVIC_DisableIRQ(UART_VECTORS[port]);
 
@@ -340,9 +352,9 @@ void uart_disable(UART* uart)
 
     //disable pins
     if (uart->tx_pin != PIN_UNUSED)
-        gpio_disable_pin(uart->tx_pin);
+        ack(gpio, IPC_DISABLE_PIN, uart->tx_pin, 0, 0);
     if (uart->rx_pin != PIN_UNUSED)
-        gpio_disable_pin(uart->rx_pin);
+        ack(gpio, IPC_DISABLE_PIN, uart->rx_pin, 0, 0);
 
 #if defined(STM32F1)
     //turn off remapping
@@ -372,11 +384,18 @@ void uart_disable(UART* uart)
     }
 #endif
     free(uart);
+    return true;
 }
 
-void uart_set_baudrate(UART* uart, const UART_BAUD* config)
+bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
 {
-    IPC ipc;
+    unsigned int clock;
+    HANDLE power = sys_get_object(SYS_OBJECT_POWER);
+    if (power == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_FOUND);
+        return false;
+    }
     UART_REGS[uart->port]->CR1 &= ~USART_CR1_UE;
 
     if (config->data_bits == 8 && config->parity != 'N')
@@ -398,19 +417,14 @@ void uart_set_baudrate(UART* uart, const UART_BAUD* config)
     UART_REGS[uart->port]->CR2 = (config->stop_bits == 1 ? 0 : 2) << 12;
     UART_REGS[uart->port]->CR3 = 0;
 
-    ipc.cmd = SYS_GET_POWER;
-    if (!sys_call(&ipc))
-        return;
-    ipc.process = ipc.param1;
-    ipc.cmd = IPC_GET_CLOCK;
     if (uart->port == UART_1 || uart->port == UART_6)
-        ipc.param1 = STM32_CLOCK_APB2;
+        clock = get(power, IPC_GET_CLOCK, STM32_CLOCK_APB2, 0, 0);
     else
-        ipc.param1 = STM32_CLOCK_APB1;
-    if (!call(&ipc))
-        return;
+        clock = get(power, IPC_GET_CLOCK, STM32_CLOCK_APB1, 0, 0);
+    if (clock == 0)
+        return false;
     unsigned int mantissa, fraction;
-    mantissa = (25 * ipc.param1) / (4 * (config->baud));
+    mantissa = (25 * clock) / (4 * (config->baud));
     fraction = ((mantissa % 100) * 8 + 25)  / 50;
     mantissa = mantissa / 100;
     UART_REGS[uart->port]->BRR = (mantissa << 4) | fraction;
@@ -419,12 +433,11 @@ void uart_set_baudrate(UART* uart, const UART_BAUD* config)
     UART_REGS[uart->port]->CR3 |= USART_CR3_EIE;
 
     UART_REGS[uart->port]->CR1 |= USART_CR1_TE;
+    return true;
 }
 
 void stm32_uart()
 {
-
-    IPC ipc;
     UART* uarts[UARTS_COUNT] = {0};
     uarts[UART_2] = uart_enable(UART_2, D5, D6);
     UART_BAUD baud;
@@ -434,7 +447,7 @@ void stm32_uart()
     baud.baud = 115200;
     uart_set_baudrate(uarts[UART_2], &baud);
 
-    sys_post(SYS_SET_UART, 0, 0, 0);
+    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_UART, 0, 0);
 
     setup_dbg(uart_write_svc, (void*)UART_2);
     //refactor me later
@@ -443,15 +456,12 @@ void stm32_uart()
     //say early processes, that STDOUT is setted up
     __HEAP->stdout = (STDOUT)uart_write_svc;
     __HEAP->stdout_param = (void*)UART_2;
-    sys_post(SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)UART_2, 0);
+    sys_ack(SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)UART_2, 0);
     //power
-    ipc.cmd = SYS_GET_POWER;
-    sys_call(&ipc);
-    post(ipc.param1, SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)UART_2, 0);
-    //power
-    ipc.cmd = SYS_GET_GPIO;
-    sys_call(&ipc);
-    post(ipc.param1, SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)UART_2, 0);
+    ack(sys_get_object(SYS_OBJECT_POWER), SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)UART_2, 0);
+    //gpio
+    ack(sys_get_object(SYS_OBJECT_GPIO), SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)UART_2, 0);
+    //TODO timer
 
     for (;;)
     {
