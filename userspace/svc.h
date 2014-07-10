@@ -69,9 +69,8 @@ typedef enum {
 
     SVC_IPC = 0x600,
     SVC_IPC_POST,
-    SVC_IPC_PEEK,
-    SVC_IPC_WAIT,
-    SVC_IPC_POST_WAIT,
+    SVC_IPC_READ,
+    SVC_IPC_CALL,
 
     SVC_STREAM = 0x700,
     SVC_STREAM_CREATE,

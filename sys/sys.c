@@ -43,7 +43,7 @@ void sys ()
     setup_system();
     for (;;)
     {
-        ipc_wait_peek_ms(&ipc, 0, 0);
+        ipc_read_ms(&ipc, 0, 0);
         //processing before send response
         switch (ipc.cmd)
         {

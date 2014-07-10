@@ -180,7 +180,7 @@ void stm32_gpio()
     sys_ack(SYS_SET_OBJECT, SYS_OBJECT_GPIO, 0, 0);
     for (;;)
     {
-        ipc_wait_peek_ms(&ipc, 0, 0);
+        ipc_read_ms(&ipc, 0, 0);
         switch (ipc.cmd)
         {
         case IPC_PING:

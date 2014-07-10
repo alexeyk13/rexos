@@ -150,14 +150,11 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_IPC_POST:
         kipc_post((IPC*)param1);
         break;
-    case SVC_IPC_PEEK:
-        kipc_peek((IPC*)param1, param2);
+    case SVC_IPC_READ:
+        kipc_read((IPC*)param1, (TIME*)param2, param3);
         break;
-    case SVC_IPC_WAIT:
-        kipc_wait((TIME*)param1, param2);
-        break;
-    case SVC_IPC_POST_WAIT:
-        kipc_post_wait((IPC*)param1, (TIME*)param2);
+    case SVC_IPC_CALL:
+        kipc_call((IPC*)param1, (TIME*)param2);
         break;
     //stream related
     case SVC_STREAM_CREATE:

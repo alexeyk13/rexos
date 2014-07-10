@@ -23,22 +23,36 @@ int kipc_index(PROCESS* process, HANDLE wait_process)
     return -1;
 }
 
-void kipc_wait_process(PROCESS* process, TIME* time, HANDLE wait_process)
+void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_process)
 {
+    int i;
+    IPC tmp;
+    CHECK_ADDRESS(process, time, sizeof(TIME));
+    CHECK_ADDRESS(process, ipc, sizeof(IPC));
 #if (KERNEL_IPC_DEBUG)
     if (wait_process == (HANDLE)process)
         printk("Warning: calling wait IPC with receiver same as caller can cause deadlock! process: %s\n\r", PROCESS_NAME(process->heap));
 #endif
-    if (process->kipc.rb.size > 0)
+    i = kipc_index(process, wait_process);
+    //maybe already on queue? Peek.
+    if (i >= 0)
     {
-        if (kipc_index(process, wait_process) < 0)
+        for(; i != process->kipc.rb.tail; i= RB_ROUND(&process->kipc.rb, i + 1))
         {
-            process->kipc.wait_process = wait_process;
-            kprocess_sleep(process, time, PROCESS_SYNC_IPC, process);
+            //swap
+            memcpy(&tmp, IPC_ITEM(process, i), sizeof(IPC));
+            memcpy(IPC_ITEM(process, i), IPC_ITEM(process, RB_ROUND(&process->kipc.rb, i + 1)), sizeof(IPC));
+            memcpy(IPC_ITEM(process, RB_ROUND(&process->kipc.rb, i + 1)), &tmp, sizeof(IPC));
         }
+        memcpy(ipc, IPC_ITEM(process, rb_get(&process->kipc.rb)), sizeof(IPC));
     }
+    //no? sleep and wait
     else
-        kprocess_error(process, ERROR_NOT_SUPPORTED);
+    {
+        process->kipc.ipc = ipc;
+        process->kipc.wait_process = wait_process;
+        kprocess_sleep(process, time, PROCESS_SYNC_IPC, process);
+    }
 }
 
 void kipc_post(IPC* ipc)
@@ -49,75 +63,48 @@ void kipc_post(IPC* ipc)
     IPC* cur;
     CHECK_HANDLE(receiver, sizeof(PROCESS));
     CHECK_MAGIC(receiver, MAGIC_PROCESS);
-    if (receiver->kipc.rb.size > 0)
+    //already waiting?
+    if (receiver->kipc.wait_process == (HANDLE)sender || receiver->kipc.wait_process == 0)
     {
-        if (!rb_is_full(&receiver->kipc.rb))
-        {
-            cur = IPC_ITEM(receiver, rb_put(&receiver->kipc.rb));
-            cur->cmd = ipc->cmd;
-            cur->param1 = ipc->param1;
-            cur->param2 = ipc->param2;
-            cur->param3 = ipc->param3;
-            cur->process = (HANDLE)sender;
-            if (receiver->kipc.wait_process == (HANDLE)sender || receiver->kipc.wait_process == 0)
-            {
-                receiver->kipc.wait_process = (unsigned int)-1;
-                kprocess_wakeup(receiver);
-            }
-        }
-        else
-        {
-            //on overflow set error on both: receiver and sender
-            kprocess_error(sender, ERROR_OVERFLOW);
-            kprocess_error(receiver, ERROR_OVERFLOW);
-#if (KERNEL_IPC_DEBUG)
-            printk("Error: receiver %s IPC overflow!\n\r", PROCESS_NAME(receiver->heap));
-#endif
-        }
-
+        receiver->kipc.wait_process = (unsigned int)-1;
+        receiver->kipc.ipc->cmd = ipc->cmd;
+        receiver->kipc.ipc->param1 = ipc->param1;
+        receiver->kipc.ipc->param2 = ipc->param2;
+        receiver->kipc.ipc->param3 = ipc->param3;
+        receiver->kipc.ipc->process = (HANDLE)sender;
+        kprocess_wakeup(receiver);
+    }
+    else if (receiver->kipc.rb.size && !rb_is_full(&receiver->kipc.rb))
+    {
+        cur = IPC_ITEM(receiver, rb_put(&receiver->kipc.rb));
+        cur->cmd = ipc->cmd;
+        cur->param1 = ipc->param1;
+        cur->param2 = ipc->param2;
+        cur->param3 = ipc->param3;
+        cur->process = (HANDLE)sender;
     }
     else
-        kprocess_error(sender, ERROR_NOT_SUPPORTED);
+    {
+        //on overflow set error on both: receiver and sender
+        kprocess_error(sender, ERROR_OVERFLOW);
+        kprocess_error(receiver, ERROR_OVERFLOW);
+#if (KERNEL_IPC_DEBUG)
+        printk("Error: receiver %s IPC overflow!\n\r", PROCESS_NAME(receiver->heap));
+#endif
+    }
 }
 
-void kipc_peek(IPC* ipc, HANDLE wait_process)
+void kipc_read(IPC* ipc, TIME* time, HANDLE wait_process)
 {
-    IPC tmp;
-    int i;
+    PROCESS* process = kprocess_get_current();
+    kipc_read_process(process, ipc, time, wait_process);
+}
+
+void kipc_call(IPC* ipc, TIME* time)
+{
     PROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, ipc, sizeof(IPC));
-    if (process->kipc.rb.size > 0)
-    {
-        i = kipc_index(process, wait_process);
-        if (i >= 0)
-        {
-            for(; i != process->kipc.rb.tail; i= RB_ROUND(&process->kipc.rb, i + 1))
-            {
-                //swap
-                memcpy(&tmp, IPC_ITEM(process, i), sizeof(IPC));
-                memcpy(IPC_ITEM(process, i), IPC_ITEM(process, RB_ROUND(&process->kipc.rb, i + 1)), sizeof(IPC));
-                memcpy(IPC_ITEM(process, RB_ROUND(&process->kipc.rb, i + 1)), &tmp, sizeof(IPC));
-            }
-            memcpy(ipc, IPC_ITEM(process, rb_get(&process->kipc.rb)), sizeof(IPC));
-        }
-        else
-            kprocess_error(process, ERROR_NOT_FOUND);
-    }
-    else
-        kprocess_error(process, ERROR_NOT_SUPPORTED);
-}
-
-void kipc_wait(TIME* time, HANDLE wait_process)
-{
-    PROCESS* process = kprocess_get_current();
-    CHECK_ADDRESS(process, time, sizeof(TIME));
-    kipc_wait_process(process, time, wait_process);
-}
-
-void kipc_post_wait(IPC* ipc, TIME* time)
-{
-    PROCESS* process = kprocess_get_current();
-    HANDLE wait_process = (HANDLE)ipc->process;
+    HANDLE wait_process = (HANDLE)(ipc->process);
     kipc_post(ipc);
-    kipc_wait_process(process, time, wait_process);
+    kipc_read_process(process, ipc, time, wait_process);
 }
