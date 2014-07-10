@@ -8,14 +8,23 @@
 #define STM32_UART_H
 
 /*
-        UART driver. Hardware-independent part
+        STM32 UART driver
   */
 
 #include "../../userspace/process.h"
+#include "stm32_gpio.h"
 
-#define UART_MODE_RX_ENABLE                (1 << 0)
-#define UART_MODE_TX_ENABLE                (1 << 1)
-#define UART_MODE_TX_COMPLETE_ENABLE    (1 << 2)
+typedef enum {
+    IPC_UART_ENABLE = IPC_USER,
+    IPC_UART_DISABLE,
+    IPC_UART_SET_BAUDRATE,
+    IPC_UART_GET_BAUDRATE,
+    IPC_UART_FLUSH,
+    IPC_UART_GET_TX_STREAM,
+    IPC_UART_GET_RX_STREAM,
+    IPC_UART_GET_LAST_ERROR,
+    IPC_UART_CLEAR_ERROR
+} STM32_UART_IPCS;
 
 typedef struct {
     //baudrate
@@ -39,12 +48,10 @@ typedef enum {
     UART_8
 }UART_PORT;
 
-extern void uart_write(UART_PORT port, char* buf, int size);
-extern void uart_write_wait(UART_PORT port);
-extern void uart_read(UART_PORT port, char* buf, int size);
-extern void uart_read_cancel(UART_PORT port);
-
-void uart_write_svc(const char *const buf, unsigned int size, void* param);
+typedef struct {
+    PIN tx, rx;
+    UART_BAUD baud;
+} UART_ENABLE;
 
 extern const REX __STM32_UART;
 

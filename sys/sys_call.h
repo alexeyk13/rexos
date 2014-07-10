@@ -25,12 +25,12 @@
 
 __STATIC_INLINE bool call(IPC* ipc)
 {
-    if (ipc_call_ms(ipc, 0))
-    {
-        if (ipc->cmd == IPC_UNKNOWN || ipc->cmd == IPC_INVALID_PARAM)
-            error(ERROR_NOT_SUPPORTED);
-    }
-    return get_last_error() == ERROR_OK;
+    unsigned int cmd = ipc->cmd;
+    if (ipc_call_ms(ipc, 0) && ipc->cmd == cmd)
+        return true;
+    if (ipc->cmd == IPC_CALL_ERROR)
+        error(ipc->param1);
+    return false;
 }
 
 /**
@@ -51,13 +51,7 @@ __STATIC_INLINE bool ack(HANDLE process, unsigned int cmd, unsigned int param1, 
     ipc.param1 = param1;
     ipc.param2 = param2;
     ipc.param3 = param3;
-    if (ipc_call_ms(&ipc, 0) && ipc.cmd == cmd)
-        return true;
-    if (ipc.cmd == IPC_UNKNOWN)
-        error(ERROR_NOT_SUPPORTED);
-    if (ipc.cmd == IPC_INVALID_PARAM)
-        error(ERROR_NOT_SUPPORTED);
-    return false;
+    return call(&ipc);
 }
 
 /**
@@ -78,12 +72,8 @@ __STATIC_INLINE unsigned int get(HANDLE process, unsigned int cmd, unsigned int 
     ipc.param1 = param1;
     ipc.param2 = param2;
     ipc.param3 = param3;
-    if (ipc_call_ms(&ipc, 0) && ipc.cmd == cmd)
+    if (call(&ipc))
         return ipc.param1;
-    if (ipc.cmd == IPC_UNKNOWN)
-        error(ERROR_NOT_SUPPORTED);
-    if (ipc.cmd == IPC_INVALID_PARAM)
-        error(ERROR_NOT_SUPPORTED);
     return 0;
 }
 

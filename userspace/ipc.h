@@ -11,7 +11,7 @@
 
 typedef enum {
     IPC_COMMON = 0x0,
-    IPC_UNKNOWN,                                        //!< NEVER respond to this message, or you will get infinite ping-pong
+    IPC_CALL_ERROR,                                     //!< IPC caller returned error. Check value in param1. Never answer to this IPC
     IPC_INVALID_PARAM,
     IPC_PING,
     IPC_STREAM_WRITE,                                   //!< Sent by kernel when stream write is complete. Param1: write size, Param2: none
@@ -45,6 +45,22 @@ typedef struct {
 __STATIC_INLINE bool ipc_post(IPC* ipc)
 {
     svc_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
+    return get_last_error() == ERROR_OK;
+}
+
+/**
+    \brief post IPC
+    \param process: IPC receiver
+    \param code: error code
+    \retval true on success
+*/
+__STATIC_INLINE bool ipc_post_error(HANDLE process, int code)
+{
+    IPC ipc;
+    ipc.process = process;
+    ipc.cmd = IPC_CALL_ERROR;
+    ipc.param1 = code;
+    svc_call(SVC_IPC_POST, (unsigned int)&ipc, 0, 0);
     return get_last_error() == ERROR_OK;
 }
 

@@ -24,8 +24,21 @@
 #define PLL_N                                   0
 #define PLL_P                                   0
 //------------------------------ UART ------------------------------------------------
-#define UART1_TX_PORT                           GPIOA
-#define UART1_TX_PIN                            9
+//Use UART as default stdio
+#define UART_STDIO                              1
+//PIN_DEFAULT and PIN_UNUSED can be also set.
+#define UART_STDIO_PORT                         UART_2
+#define UART_STDIO_TX                           D5
+#define UART_STDIO_RX                           D6
+#define UART_STDIO_BAUD                         115200
+#define UART_STDIO_DATA_BITS                    8
+#define UART_STDIO_PARITY                       'N'
+#define UART_STDIO_STOP_BITS                    1
 
+//size of UART process. You will need to increase this, if you have many uarts opened at same time
+#define UART_PROCESS_SIZE                       512
+//size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
+//remember, that process itself requires around 256 bytes
+#define UART_TX_BUF_SIZE                        32
 
 #endif // STM32_CONFIG_H

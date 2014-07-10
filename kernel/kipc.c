@@ -11,7 +11,6 @@
 #include <string.h>
 #include "kernel.h"
 
-
 #define IPC_ITEM(process, num)              ((IPC*)((unsigned int)(process) + sizeof(PROCESS) + (num) * sizeof(IPC)))
 
 int kipc_index(PROCESS* process, HANDLE wait_process)

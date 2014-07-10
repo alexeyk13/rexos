@@ -21,6 +21,7 @@
 #include "drv/stm32_uart.h"
 #include "drv/stm32_timer.h"
 #endif
+#include "sys_config.h"
 
 extern const REX __SYS;
 
@@ -55,7 +56,9 @@ void init()
     process_create(&__STM32_GPIO);
     //todo: make process
     timer_init_hw();
+#if (UART_MODULE)
     process_create(&__STM32_UART);
+#endif
 
 #else
 #warning No drivers loaded. System is abstract!

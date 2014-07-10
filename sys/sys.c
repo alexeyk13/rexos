@@ -50,6 +50,8 @@ void sys ()
         case IPC_PING:
             ipc_post(&ipc);
             break;
+        case IPC_CALL_ERROR:
+            break;
         //Temporaily solution. Remove after FS will be ready
         case SYS_GET_OBJECT:
             switch (ipc.param1)
@@ -104,6 +106,8 @@ void sys ()
 #endif
             ipc_post(&ipc);
             break;
+        default:
+            ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
         }
     }
 }

@@ -6,10 +6,10 @@
 
 #include "stm32_uart.h"
 #include "stm32_power.h"
-#include "stm32_gpio.h"
 #include "../sys_call.h"
 #include "error.h"
 #include "../../userspace/lib/stdlib.h"
+#include "stm32_config.h"
 
 void stm32_uart();
 
@@ -18,13 +18,15 @@ typedef struct {
     PIN tx_pin, rx_pin;
     int flags;
     int error;
+    HANDLE tx_stream, rx_stream;
+    char tx_buf[UART_TX_BUF_SIZE];
 } UART;
 
 const REX __STM32_UART = {
     //name
     "STM32 uart",
     //size
-    512,
+    UART_PROCESS_SIZE,
     //priority - driver priority
     91,
     //flags
@@ -78,20 +80,12 @@ static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3, B11, C11, 
 static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USART3, UART4, UART5, USART6, UART7, UART8};
 #endif
 
-#define USART_RX_DISABLE_MASK_DEF                (0)
-#define USART_TX_DISABLE_MASK_DEF                (0)
-
-typedef USART_TypeDef* USART_TypeDef_P;
-
 #define UART_ERROR_MASK                                    0xf
 
 #define DISABLE_RECEIVER()                                UART_REGS[port]->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE)
 #define ENABLE_RECEIVER()                                UART_REGS[port]->CR1 |= (USART_CR1_RE | USART_CR1_RXNEIE)
 #define ENABLE_TRANSMITTER()                            UART_REGS[port]->CR1 |= USART_CR1_TE
 #define DISABLE_TRANSMITTER()                            UART_REGS[port]->CR1 &= ~(USART_CR1_TE)
-
-const int USART_RX_DISABLE_MASK =                    USART_RX_DISABLE_MASK_DEF;
-const int USART_TX_DISABLE_MASK =                    USART_TX_DISABLE_MASK_DEF;
 
 /*
 void uart_on_isr(UART_PORT port)
@@ -222,7 +216,7 @@ void uart_read_cancel(UART_PORT port)
     CRITICAL_LEAVE;
 }
 */
-void uart_write_svc(const char *const buf, unsigned int size, void* param)
+void uart_write_kernel(const char *const buf, unsigned int size, void* param)
 {
     int i;
     CRITICAL_ENTER;
@@ -248,7 +242,56 @@ void uart_write(UART_PORT port, char* buf, int size)
 }
 */
 
-UART* uart_enable(UART_PORT port, PIN tx, PIN rx)
+bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
+{
+    unsigned int clock;
+    HANDLE power = sys_get_object(SYS_OBJECT_POWER);
+    if (power == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_FOUND);
+        return false;
+    }
+    UART_REGS[uart->port]->CR1 &= ~USART_CR1_UE;
+
+    if (config->data_bits == 8 && config->parity != 'N')
+        UART_REGS[uart->port]->CR1 |= USART_CR1_M;
+    else
+        UART_REGS[uart->port]->CR1 &= ~USART_CR1_M;
+
+    if (config->parity != 'N')
+    {
+        UART_REGS[uart->port]->CR1 |= USART_CR1_PCE;
+        if (config->parity == 'O')
+            UART_REGS[uart->port]->CR1 |= USART_CR1_PS;
+        else
+            UART_REGS[uart->port]->CR1 &= ~USART_CR1_PS;
+    }
+    else
+        UART_REGS[uart->port]->CR1 &= ~USART_CR1_PCE;
+
+    UART_REGS[uart->port]->CR2 = (config->stop_bits == 1 ? 0 : 2) << 12;
+    UART_REGS[uart->port]->CR3 = 0;
+
+    if (uart->port == UART_1 || uart->port == UART_6)
+        clock = get(power, IPC_GET_CLOCK, STM32_CLOCK_APB2, 0, 0);
+    else
+        clock = get(power, IPC_GET_CLOCK, STM32_CLOCK_APB1, 0, 0);
+    if (clock == 0)
+        return false;
+    unsigned int mantissa, fraction;
+    mantissa = (25 * clock) / (4 * (config->baud));
+    fraction = ((mantissa % 100) * 8 + 25)  / 50;
+    mantissa = mantissa / 100;
+    UART_REGS[uart->port]->BRR = (mantissa << 4) | fraction;
+
+    UART_REGS[uart->port]->CR1 |= USART_CR1_UE | USART_CR1_PEIE;
+    UART_REGS[uart->port]->CR3 |= USART_CR3_EIE;
+
+    UART_REGS[uart->port]->CR1 |= USART_CR1_TE;
+    return true;
+}
+
+UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
 {
     UART* uart = NULL;
     HANDLE gpio = sys_get_object(SYS_OBJECT_GPIO);
@@ -270,8 +313,8 @@ UART* uart_enable(UART_PORT port, PIN tx, PIN rx)
     }
 
     uart->port = port;
-    uart->tx_pin = tx;
-    uart->rx_pin = rx;
+    uart->tx_pin = ue->tx;
+    uart->rx_pin = ue->rx;
     uart->error = ERROR_OK;
     if (uart->tx_pin == PIN_DEFAULT)
         uart->tx_pin = UART_TX_PINS[uart->port];
@@ -322,16 +365,18 @@ UART* uart_enable(UART_PORT port, PIN tx, PIN rx)
     else
         RCC->APB1ENR |= 1 << UART_POWER_PINS[uart->port];
 
+    //enable core
+    UART_REGS[uart->port]->CR1 |= USART_CR1_UE;
+
+    uart_set_baudrate(uart, &ue->baud);
     //enable interrupts
 //            NVIC_EnableIRQ(UART_VECTORS[uart->port]);
 //            NVIC_SetPriority(UART_VECTORS[uart->port], 15);
 //            register_irq();
-    //enable core
-    UART_REGS[uart->port]->CR1 |= USART_CR1_UE;
     return uart;
 }
 
-bool uart_disable(UART* uart)
+static inline bool uart_disable(UART* uart)
 {
     HANDLE gpio = sys_get_object(SYS_OBJECT_GPIO);
     if (gpio == INVALID_HANDLE)
@@ -387,84 +432,111 @@ bool uart_disable(UART* uart)
     return true;
 }
 
-bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
+static inline void stm32_uart_loop(UART** uarts)
 {
-    unsigned int clock;
-    HANDLE power = sys_get_object(SYS_OBJECT_POWER);
-    if (power == INVALID_HANDLE)
+    IPC ipc;
+    for (;;)
     {
-        error(ERROR_NOT_FOUND);
-        return false;
+        ipc_read_ms(&ipc, 0, 0);
+        switch (ipc.cmd)
+        {
+        case IPC_PING:
+            ipc_post(&ipc);
+            break;
+        case SYS_SET_STDOUT:
+            __HEAP->stdout = (STDOUT)ipc.param1;
+            __HEAP->stdout_param = (void*)ipc.param2;
+            ipc_post(&ipc);
+            break;
+        case IPC_UART_ENABLE:
+            //TODO need direct IO
+            break;
+        case IPC_UART_DISABLE:
+            if (ipc.param1 < UARTS_COUNT)
+            {
+                if (uart_disable(uarts[ipc.param1]))
+                {
+                    uarts[ipc.param1] = NULL;
+                    ipc_post(&ipc);
+                }
+                else
+                    ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
+            }
+            else
+                ipc_post_error(ipc.process, get_last_error());
+            break;
+        case IPC_UART_SET_BAUDRATE:
+            //TODO need direct IO
+            break;
+        case IPC_UART_GET_BAUDRATE:
+            //TODO need direct IO
+            break;
+        case IPC_UART_FLUSH:
+            //TODO need stream
+            break;
+        case IPC_UART_GET_TX_STREAM:
+            //TODO need stream
+            break;
+        case IPC_UART_GET_RX_STREAM:
+            //TODO need stream
+            break;
+        case IPC_UART_GET_LAST_ERROR:
+            if (ipc.param1 < UARTS_COUNT)
+            {
+                ipc.param1 = uarts[ipc.param1]->error;
+                ipc_post(&ipc);
+            }
+            else
+                ipc_post_error(ipc.process, get_last_error());
+            break;
+        case IPC_UART_CLEAR_ERROR:
+            if (ipc.param1 < UARTS_COUNT)
+            {
+                uarts[ipc.param1]->error = ERROR_OK;
+                ipc_post(&ipc);
+            }
+            else
+                ipc_post_error(ipc.process, get_last_error());
+            break;
+            break;
+//        case LISTENER INFO
+//        case ISR_WRITE_COMPLETE
+//        case ISR_READ_COMPLETE
+        default:
+            ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
+            break;
+        }
     }
-    UART_REGS[uart->port]->CR1 &= ~USART_CR1_UE;
-
-    if (config->data_bits == 8 && config->parity != 'N')
-        UART_REGS[uart->port]->CR1 |= USART_CR1_M;
-    else
-        UART_REGS[uart->port]->CR1 &= ~USART_CR1_M;
-
-    if (config->parity != 'N')
-    {
-        UART_REGS[uart->port]->CR1 |= USART_CR1_PCE;
-        if (config->parity == 'O')
-            UART_REGS[uart->port]->CR1 |= USART_CR1_PS;
-        else
-            UART_REGS[uart->port]->CR1 &= ~USART_CR1_PS;
-    }
-    else
-        UART_REGS[uart->port]->CR1 &= ~USART_CR1_PCE;
-
-    UART_REGS[uart->port]->CR2 = (config->stop_bits == 1 ? 0 : 2) << 12;
-    UART_REGS[uart->port]->CR3 = 0;
-
-    if (uart->port == UART_1 || uart->port == UART_6)
-        clock = get(power, IPC_GET_CLOCK, STM32_CLOCK_APB2, 0, 0);
-    else
-        clock = get(power, IPC_GET_CLOCK, STM32_CLOCK_APB1, 0, 0);
-    if (clock == 0)
-        return false;
-    unsigned int mantissa, fraction;
-    mantissa = (25 * clock) / (4 * (config->baud));
-    fraction = ((mantissa % 100) * 8 + 25)  / 50;
-    mantissa = mantissa / 100;
-    UART_REGS[uart->port]->BRR = (mantissa << 4) | fraction;
-
-    UART_REGS[uart->port]->CR1 |= USART_CR1_UE | USART_CR1_PEIE;
-    UART_REGS[uart->port]->CR3 |= USART_CR3_EIE;
-
-    UART_REGS[uart->port]->CR1 |= USART_CR1_TE;
-    return true;
 }
 
 void stm32_uart()
 {
     UART* uarts[UARTS_COUNT] = {0};
-    uarts[UART_2] = uart_enable(UART_2, D5, D6);
-    UART_BAUD baud;
-    baud.data_bits = 8;
-    baud.parity = 'N';
-    baud.stop_bits = 1;
-    baud.baud = 115200;
-    uart_set_baudrate(uarts[UART_2], &baud);
-
     sys_ack(SYS_SET_OBJECT, SYS_OBJECT_UART, 0, 0);
 
-    setup_dbg(uart_write_svc, (void*)UART_2);
-    //refactor me later
-    setup_stdout(uart_write_svc, (void*)UART_2);
+#if (UART_STDIO)
+    UART_ENABLE ue;
+    ue.tx = UART_STDIO_TX;
+    ue.rx = UART_STDIO_RX;
+    ue.baud.data_bits = UART_STDIO_DATA_BITS;
+    ue.baud.parity = UART_STDIO_PARITY;
+    ue.baud.stop_bits = UART_STDIO_STOP_BITS;
+    ue.baud.baud = UART_STDIO_BAUD;
+    uarts[UART_STDIO_PORT] = uart_enable(UART_STDIO_PORT, &ue);
 
+    setup_dbg(uart_write_kernel, (void*)UART_STDIO_PORT);
+    //set global stdout
+    setup_stdout(uart_write_kernel, (void*)UART_STDIO_PORT);
     //say early processes, that STDOUT is setted up
-    __HEAP->stdout = (STDOUT)uart_write_svc;
-    __HEAP->stdout_param = (void*)UART_2;
-    sys_ack(SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)UART_2, 0);
+    __HEAP->stdout = (STDOUT)uart_write_kernel;
+    __HEAP->stdout_param = (void*)UART_STDIO_PORT;
+    sys_ack(SYS_SET_STDOUT, (unsigned int)uart_write_kernel, (unsigned int)UART_STDIO_PORT, 0);
     //power
-    ack(sys_get_object(SYS_OBJECT_POWER), SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)UART_2, 0);
+    ack(sys_get_object(SYS_OBJECT_POWER), SYS_SET_STDOUT, (unsigned int)uart_write_kernel, (unsigned int)UART_STDIO_PORT, 0);
     //gpio
-    ack(sys_get_object(SYS_OBJECT_GPIO), SYS_SET_STDOUT, (unsigned int)uart_write_svc, (unsigned int)UART_2, 0);
+    ack(sys_get_object(SYS_OBJECT_GPIO), SYS_SET_STDOUT, (unsigned int)uart_write_kernel, (unsigned int)UART_STDIO_PORT, 0);
     //TODO timer
+#endif //UART_STDIO
 
-    for (;;)
-    {
-        sleep_ms(0);
-    }
+    stm32_uart_loop(uarts);
 }

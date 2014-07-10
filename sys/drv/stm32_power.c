@@ -389,6 +389,8 @@ static inline void stm32_power_loop()
         case IPC_PING:
             ipc_post(&ipc);
             break;
+        case IPC_CALL_ERROR:
+            break;
         case SYS_SET_STDOUT:
             __HEAP->stdout = (STDOUT)ipc.param1;
             __HEAP->stdout_param = (void*)ipc.param2;
@@ -426,6 +428,9 @@ static inline void stm32_power_loop()
         case IPC_GET_RESET_REASON:
             ipc.param1 = get_reset_reason();
             ipc_post(&ipc);
+            break;
+        default:
+            ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
             break;
         }
     }

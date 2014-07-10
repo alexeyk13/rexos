@@ -212,6 +212,8 @@ void stm32_gpio()
         case IPC_PING:
             ipc_post(&ipc);
             break;
+        case IPC_CALL_ERROR:
+            break;
         case SYS_SET_STDOUT:
             __HEAP->stdout = (STDOUT)ipc.param1;
             __HEAP->stdout_param = (void*)ipc.param2;
@@ -252,6 +254,7 @@ void stm32_gpio()
             ipc_post(&ipc);
             break;
         default:
+            ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
             break;
         }
     }
