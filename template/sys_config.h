@@ -14,8 +14,12 @@
 //if set, after sys startup, __APP REx will be executed
 #define SYS_APP                                             1
 //add some debug info in SYS
-#define SYS_DEBUG                                           1
+#define SYS_INFO                                            1
 //powersave mode.
-#define SYS_POWERSAVE                                       1
+#define SYS_POWERSAVE                                       0
+
+//------------------------------ modules ---------------------------------------------
+//enable/disable UART module
+#define UART_MODULE                                         1
 
 #endif // SYS_CONFIG_H
