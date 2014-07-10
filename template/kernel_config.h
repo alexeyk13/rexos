@@ -2,14 +2,21 @@
 #define KERNEL_CONFIG_H
 
 //----------------------------------- kernel ------------------------------------------------------------------
-//enable kernel debug. Disabling this you can save some flash size for debug info. Generally doesn't affect on perfomance
-#define KERNEL_DEBUG                                1
+//enable kernel info. Disabling this you can save some flash size, but kernel will be much less verbose, especially on critical errors. Generally doesn't affect on perfomance
+#define KERNEL_INFO                                 1
 //marks objects with magic in headers. Decrease perfomance on few tacts, but very useful for debug if you don't have MPU enabled
 #define KERNEL_MARKS                                1
 //check range of dynamic objects in pools
 #define KERNEL_RANGE_CHECKING                       1
+//check kernel handles. Require few tacts, but making kernel calls much safer
+#define KERNEL_HANDLE_CHECKING                      1
+//check user adresses. Require few tacts, but making kernel calls much safer
+#define KERNEL_ADDRESS_CHECKING                     1
 //some kernel statistics (stack, mem, etc). Decrease perfomance in any object creation.
 #define KERNEL_PROFILING                            1
+//enable kernel assertions. If assertions happens, system will be halted with FILE and LINE, instead of returning error.
+//Doesn't affect on perfomance, but recommended only for debug
+#define KERNEL_ASSERTIONS                           1
 //halt system instead of reset. Only for development. Turn off in production.
 #define KERNEL_HALT_ON_FATAL_ERROR                  1
 //enable this only if you have problems with system timer. May decrease perfomance
