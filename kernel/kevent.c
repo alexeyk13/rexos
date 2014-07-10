@@ -10,6 +10,7 @@
 
 void kevent_lock_release(EVENT* event, PROCESS* process)
 {
+    CHECK_HANDLE(event, sizeof(EVENT));
     CHECK_MAGIC(event, MAGIC_EVENT);
     dlist_remove((DLIST**)&event->waiters, (DLIST*)process);
 }
@@ -29,6 +30,7 @@ void kevent_create(EVENT** event)
 
 void kevent_pulse(EVENT* event)
 {
+    CHECK_HANDLE(event, sizeof(EVENT));
     CHECK_MAGIC(event, MAGIC_EVENT);
 
     //release all waiters
@@ -50,6 +52,7 @@ void kevent_set(EVENT* event)
 
 void kevent_is_set(EVENT* event, bool* is_set)
 {
+    CHECK_HANDLE(event, sizeof(EVENT));
     CHECK_MAGIC(event, MAGIC_EVENT);
 
     *is_set = event->set;
@@ -57,12 +60,14 @@ void kevent_is_set(EVENT* event, bool* is_set)
 
 void kevent_clear(EVENT* event)
 {
+    CHECK_HANDLE(event, sizeof(EVENT));
     CHECK_MAGIC(event, MAGIC_EVENT);
     event->set = false;
 }
 
 void kevent_wait(EVENT* event, TIME* time)
 {
+    CHECK_HANDLE(event, sizeof(EVENT));
     CHECK_MAGIC(event, MAGIC_EVENT);
 
     PROCESS* process = kprocess_get_current();
@@ -75,7 +80,9 @@ void kevent_wait(EVENT* event, TIME* time)
 
 void kevent_destroy(EVENT* event)
 {
+    CHECK_HANDLE(event, sizeof(EVENT));
     CHECK_MAGIC(event, MAGIC_EVENT);
+    CLEAR_MAGIC(event);
 
     PROCESS* process;
     while (event->waiters)

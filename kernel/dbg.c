@@ -9,16 +9,6 @@
 #include "kernel.h"
 #include "../userspace/lib/lib.h"
 
-static inline unsigned int stack_used_max(unsigned int top, unsigned int cur)
-{
-    unsigned int i;
-    unsigned int last = cur;
-    for (i = cur - sizeof(unsigned int); i >= top; i -= 4)
-        if (*(unsigned int*)i != MAGIC_UNINITIALIZED)
-            last = i;
-    return last;
-}
-
 void printk(const char *const fmt, ...)
 {
     va_list va;

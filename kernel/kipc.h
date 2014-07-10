@@ -15,6 +15,7 @@ typedef struct {
     RB rb;
     //process, we are waiting for. Can be INVALID_HANDLE, then waiting from any process
     HANDLE wait_process;
+    IPC* ipc;
 }KIPC;
 
 //called from svc

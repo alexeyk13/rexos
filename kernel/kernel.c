@@ -31,7 +31,7 @@ void stdin_stub(char *buf, unsigned int size, void* param)
 
 void panic()
 {
-#if (KERNEL_DEBUG)
+#if (KERNEL_INFO)
     printk("Kernel panic\n\r");
     dump(SRAM_BASE, 0x200);
 #endif
@@ -216,7 +216,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
             __KERNEL->stdout = (STDOUT)param1;
             __KERNEL->stdout_param = (void*)param2;
             __KERNEL->dbg_locked = true;
-#if KERNEL_DEBUG
+#if KERNEL_INFO
             printk("%s\n\r", __KERNEL_NAME);
 #endif
         }

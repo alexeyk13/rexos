@@ -117,7 +117,7 @@ void kprocess_timeout(void* param)
 
 void kprocess_abnormal_exit()
 {
-#if (KERNEL_DEBUG)
+#if (KERNEL_INFO)
     printk("Warning: abnormal process termination: %s\n\r", PROCESS_NAME(kprocess_get_current()->heap));
 #endif
     if (kprocess_get_current() == __KERNEL->init)
@@ -184,12 +184,15 @@ void kprocess_create(const REX* rex, PROCESS** process)
 
 void kprocess_get_flags(PROCESS* process, unsigned int* flags)
 {
+    CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
+    CHECK_ADDRESS(process, flags, sizeof(unsigned int));
     (*flags) = process->flags;
 }
 
 void kprocess_set_flags(PROCESS* process, unsigned int flags)
 {
+    CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     if ((flags & 1) == PROCESS_FLAGS_ACTIVE)
     {
@@ -217,6 +220,7 @@ void kprocess_set_flags(PROCESS* process, unsigned int flags)
 
 void kprocess_set_priority(PROCESS* process, unsigned int priority)
 {
+    CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     process->base_priority = priority;
     kprocess_set_current_priority(process, kmutex_calculate_owner_priority(process));
@@ -224,17 +228,21 @@ void kprocess_set_priority(PROCESS* process, unsigned int priority)
 
 void kprocess_get_priority(PROCESS* process, unsigned int* priority)
 {
+    CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
+    CHECK_ADDRESS(process, priority, sizeof(unsigned int));
     *priority = process->base_priority;
 }
 
 void kprocess_destroy(PROCESS* process)
 {
+    CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
+    CLEAR_MAGIC(process);
     //we cannot destroy init process
     if (process == __KERNEL->init)
     {
-#if (KERNEL_DEBUG)
+#if (KERNEL_INFO)
         printk("Init process cannot be destroyed\n\r");
 #endif
         error(ERROR_RESTRICTED_FOR_INIT);
@@ -286,6 +294,7 @@ void kprocess_destroy(PROCESS* process)
 
 void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
 {
+    CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     //init process cannot sleep or be locked by mutex
     if (process == __KERNEL->init)
@@ -320,6 +329,7 @@ void kprocess_sleep_current(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_
 
 void kprocess_wakeup(PROCESS* process)
 {
+    CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     if  (process->flags & PROCESS_FLAGS_WAITING)
     {
@@ -341,6 +351,7 @@ void kprocess_wakeup(PROCESS* process)
 
 void kprocess_set_current_priority(PROCESS* process, unsigned int priority)
 {
+    CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     if (process->current_priority != priority)
     {
@@ -366,6 +377,7 @@ void kprocess_set_current_priority(PROCESS* process, unsigned int priority)
 
 void kprocess_error(PROCESS* process, int error)
 {
+    CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     process->heap->error = error;
 }

@@ -29,7 +29,7 @@ static void process_fault(unsigned int ret_value)
 
 void on_hard_fault(unsigned int ret_value, unsigned int* stack_value)
 {
-#if (KERNEL_DEBUG)
+#if (KERNEL_INFO)
         printk("HARD FAULT: ");
         if (SCB_HFSR & HFSR_VECTTBL)
             printk("Vector table read fault at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
@@ -48,7 +48,7 @@ void on_mem_manage(unsigned int ret_value, unsigned int* stack_value)
 {
     if (SCB_CFSR & (CFSR_MSTKERR | CFSR_MUNSTKERR))
     {
-#if (KERNEL_DEBUG)
+#if (KERNEL_INFO)
         printk("MEM MANAGE: ");
         if (SCB_CFSR & CFSR_MSTKERR)
             printk("Stacking failed");
@@ -60,7 +60,7 @@ void on_mem_manage(unsigned int ret_value, unsigned int* stack_value)
     }
     else if (SCB_CFSR & (CFSR_DACCVIOL | CFSR_IACCVIOL))
     {
-#if (KERNEL_DEBUG)
+#if (KERNEL_INFO)
         printk("MEM MANAGE: ");
         if (SCB_CFSR & CFSR_DACCVIOL)
             printk("Data access violation");
@@ -78,7 +78,7 @@ void on_bus_fault(unsigned int ret_value, unsigned int* stack_value)
 {
     if (SCB_CFSR & (CFSR_BSTKERR | CFSR_BUNSTKERR | CFSR_IMPRECISERR | CFSR_PRECISERR | CFSR_IBUSERR))
     {
-#if (KERNEL_DEBUG)
+#if (KERNEL_INFO)
         printk("BUS FAULT: ");
         if (SCB_CFSR & CFSR_BSTKERR)
             printk("Stacking failed at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
@@ -97,7 +97,7 @@ void on_bus_fault(unsigned int ret_value, unsigned int* stack_value)
 
 void on_usage_fault(unsigned int ret_value, unsigned int* stack_value)
 {
-#if (KERNEL_DEBUG)
+#if (KERNEL_INFO)
     printk("USAGE FAULT: ");
     if (SCB_CFSR & CFSR_DIVBYZERO)
         printk("Division by zero");

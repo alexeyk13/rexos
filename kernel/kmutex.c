@@ -27,6 +27,7 @@ unsigned int kmutex_calculate_owner_priority(PROCESS *process)
 
 void kmutex_lock_release(MUTEX* mutex, PROCESS* process)
 {
+    CHECK_HANDLE(mutex, sizeof(MUTEX));
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
     //release mutex owner
     if (process == mutex->owner)
@@ -70,8 +71,10 @@ void kmutex_create(MUTEX** mutex)
 
 void kmutex_lock(MUTEX* mutex, TIME* time)
 {
+    CHECK_HANDLE(mutex, sizeof(MUTEX));
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
     PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, time, sizeof(TIME));
     if (mutex->owner != NULL)
     {
         ASSERT(mutex->owner != process);
@@ -90,6 +93,7 @@ void kmutex_lock(MUTEX* mutex, TIME* time)
 
 void kmutex_unlock(MUTEX* mutex)
 {
+    CHECK_HANDLE(mutex, sizeof(MUTEX));
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
 
     PROCESS* process = kprocess_get_current();
@@ -99,7 +103,9 @@ void kmutex_unlock(MUTEX* mutex)
 
 void kmutex_destroy(MUTEX* mutex)
 {
+    CHECK_HANDLE(mutex, sizeof(MUTEX));
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
+    CLEAR_MAGIC(mutex);
 
     PROCESS* process;
     while (mutex->waiters)

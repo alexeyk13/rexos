@@ -1512,7 +1512,7 @@ INCLUDE_FILE_PATTERNS  =
 # undefined via #undef or recursively expanded use the := operator
 # instead of the = operator.
 
-PREDEFINED             = KERNEL_PROFILING KERNEL_DEBUG KERNEL_MARKS KERNEL_RANGE_CHECKING KERNEL_CHECK_CONTEXT \
+PREDEFINED             = KERNEL_PROFILING KERNEL_INFO KERNEL_MARKS KERNEL_RANGE_CHECKING KERNEL_CHECK_CONTEXT \
                                  CONSOLE_MODULE 
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then

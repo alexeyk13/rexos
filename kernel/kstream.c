@@ -49,6 +49,7 @@ void kstream_push(STREAM* stream)
 
 void kstream_lock_release(STREAM_HANDLE* handle, PROCESS* process)
 {
+    CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     switch (handle->mode)
     {
@@ -66,6 +67,8 @@ void kstream_lock_release(STREAM_HANDLE* handle, PROCESS* process)
 
 void kstream_create(STREAM** stream, int size)
 {
+    PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, stream, sizeof(void*));
     *stream = kmalloc(sizeof(STREAM));
     if (*stream != NULL)
     {
@@ -77,17 +80,19 @@ void kstream_create(STREAM** stream, int size)
         {
             kfree(*stream);
             (*stream) = NULL;
-            kprocess_error_current(ERROR_OUT_OF_PAGED_MEMORY);
+            kprocess_error(process, ERROR_OUT_OF_PAGED_MEMORY);
         }
     }
     else
-        kprocess_error_current(ERROR_OUT_OF_SYSTEM_MEMORY);
+        kprocess_error(process, ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
 void kstream_open(STREAM* stream, STREAM_HANDLE** handle)
 {
+    CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
     PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, handle, sizeof(void*));
     *handle = kmalloc(sizeof(STREAM_HANDLE));
     if (*handle != NULL)
     {
@@ -102,6 +107,7 @@ void kstream_open(STREAM* stream, STREAM_HANDLE** handle)
 
 void kstream_close(STREAM_HANDLE* handle)
 {
+    CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     switch (handle->mode)
     {
@@ -123,18 +129,23 @@ void kstream_close(STREAM_HANDLE* handle)
 
 void kstream_get_size(STREAM* stream, int* size)
 {
+    CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
+    CHECK_ADDRESS(kprocess_get_current(), size, sizeof(int));
     *size = rb_size(&stream->rb);
 }
 
 void kstream_get_free(STREAM *stream, int* size)
 {
+    CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
+    CHECK_ADDRESS(kprocess_get_current(), size, sizeof(int));
     *size = rb_free(&stream->rb);
 }
 
 void kstream_start_listen(STREAM* stream)
 {
+    CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
     PROCESS* process = kprocess_get_current();
     if (stream->listener == NULL)
@@ -145,6 +156,7 @@ void kstream_start_listen(STREAM* stream)
 
 void kstream_stop_listen(STREAM* stream)
 {
+    CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
     PROCESS* process = kprocess_get_current();
     if (stream->listener == process)
@@ -155,12 +167,14 @@ void kstream_stop_listen(STREAM* stream)
 
 void kstream_write(STREAM_HANDLE *handle, char* buf, int size)
 {
+    CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     ASSERT(handle->mode == STREAM_MODE_IDLE);
     TIME time;
     int written = 0;
     STREAM_HANDLE* reader;
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, buf, size);
     handle->size = size;
     //write directly to output
     while (handle->size > 0 && (reader = handle->stream->read_waiters) != NULL)
@@ -205,11 +219,13 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, int size)
 
 void kstream_read(STREAM_HANDLE* handle, char* buf, int size)
 {
+    CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     ASSERT(handle->mode == STREAM_MODE_IDLE);
     register STREAM_HANDLE* writer;
     TIME time;
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, buf, size);
     handle->size = size;
     //read from stream
     for(; handle->size > 0 && !rb_is_empty(&handle->stream->rb); --handle->size)
@@ -252,6 +268,7 @@ void kstream_read(STREAM_HANDLE* handle, char* buf, int size)
 
 void kstream_flush(STREAM* stream)
 {
+    CHECK_HANDLE(stream, sizeof(STREAM));
     STREAM_HANDLE* handle;
     CHECK_MAGIC(stream, MAGIC_STREAM);
     //flush stream
@@ -268,7 +285,9 @@ void kstream_flush(STREAM* stream)
 void kstream_destroy(STREAM* stream)
 {
     STREAM_HANDLE* handle;
+    CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
+    CLEAR_MAGIC(stream);
     while (stream->write_waiters)
     {
         handle = stream->write_waiters;

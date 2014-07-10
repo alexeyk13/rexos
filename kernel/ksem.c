@@ -11,6 +11,7 @@
 
 void ksem_lock_release(SEM* sem, PROCESS* process)
 {
+    CHECK_HANDLE(sem, sizeof(SEM));
     CHECK_MAGIC(sem, MAGIC_SEM);
     dlist_remove((DLIST**)&sem->waiters, (DLIST*)process);
 }
@@ -30,6 +31,7 @@ void ksem_create(SEM** sem)
 
 void ksem_signal(SEM* sem)
 {
+    CHECK_HANDLE(sem, sizeof(SEM));
     CHECK_MAGIC(sem, MAGIC_SEM);
 
     sem->value++;
@@ -46,9 +48,10 @@ void ksem_signal(SEM* sem)
 
 void ksem_wait(SEM* sem, TIME* time)
 {
+    CHECK_HANDLE(sem, sizeof(SEM));
     CHECK_MAGIC(sem, MAGIC_SEM);
-
     PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, time, sizeof(TIME));
     if (sem->value == 0)
     {
         kprocess_sleep_current(time, PROCESS_SYNC_SEM, sem);
@@ -58,7 +61,9 @@ void ksem_wait(SEM* sem, TIME* time)
 
 void ksem_destroy(SEM* sem)
 {
+    CHECK_HANDLE(sem, sizeof(SEM));
     CHECK_MAGIC(sem, MAGIC_SEM);
+    CLEAR_MAGIC(sem);
 
     PROCESS* process;
     while (sem->waiters)

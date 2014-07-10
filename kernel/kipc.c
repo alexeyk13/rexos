@@ -45,7 +45,9 @@ void kipc_post(IPC* ipc)
 {
     PROCESS* receiver = (PROCESS*)ipc->process;
     PROCESS* sender = kprocess_get_current();
+    CHECK_ADDRESS(sender, ipc, sizeof(IPC));
     IPC* cur;
+    CHECK_HANDLE(receiver, sizeof(PROCESS));
     CHECK_MAGIC(receiver, MAGIC_PROCESS);
     if (receiver->kipc.rb.size > 0)
     {
@@ -83,6 +85,7 @@ void kipc_peek(IPC* ipc, HANDLE wait_process)
     IPC tmp;
     int i;
     PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, ipc, sizeof(IPC));
     if (process->kipc.rb.size > 0)
     {
         i = kipc_index(process, wait_process);
@@ -106,7 +109,9 @@ void kipc_peek(IPC* ipc, HANDLE wait_process)
 
 void kipc_wait(TIME* time, HANDLE wait_process)
 {
-    kipc_wait_process(kprocess_get_current(), time, wait_process);
+    PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, time, sizeof(TIME));
+    kipc_wait_process(process, time, wait_process);
 }
 
 void kipc_post_wait(IPC* ipc, TIME* time)

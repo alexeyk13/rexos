@@ -34,19 +34,19 @@
 #include "../userspace/lib/stdlib.h"
 #include "../userspace/cc_macro.h"
 
-#if (KERNEL_DEBUG)
+#if (KERNEL_ASSERTIONS)
 
 
 /**
     \brief halts system macro
-    \details only works, if \ref KERNEL_DEBUG is set
+    \details only works, if \ref KERNEL_INFO is set
     \retval no return
 */
 #define HALT()                                           {for (;;) {}}
 
 /**
     \brief debug assertion
-    \details only works, if \ref KERNEL_DEBUG is set.
+    \details only works, if \ref KERNEL_INFO is set.
 
     prints over debug console file name and line, caused assertion
     \param cond: assertion made if \b cond is \b false
@@ -65,16 +65,20 @@
 
 /**
     \brief check, if object mark is right (object is valid)
-    \details only works, if \ref KERNEL_DEBUG and \ref KERNEL_MARKS are set.
+    \details only works, if \ref KERNEL_INFO and \ref KERNEL_MARKS are set.
     \param obj: object to check
     \param magic_value: value to set. check \ref magic.h for details
     \param name: object text to display in case of wrong magic
     \retval no return if wrong magic, else none
 */
+#if (KERNEL_ASSERTIONS)
 #define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {printk("INVALID MAGIC at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+#else
+#define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {kprocess_error_current(ERROR_INVALID_MAGIC); return;}
+#endif
 /**
     \brief apply object magic on object creation
-    \details only works, if \ref KERNEL_DEBUG and \ref KERNEL_MARKS are set.
+    \details only works, if \ref KERNEL_INFO and \ref KERNEL_MARKS are set.
     \param obj: object to check
     \param magic_value: value to set. check \ref magic.h for details
     \retval none
@@ -83,13 +87,41 @@
 /**
     \brief this macro must be put in object structure
 */
-#define MAGIC                                          unsigned int magic
+
+#define CLEAR_MAGIC(obj)                              (obj)->magic = 0
+/**
+    \brief this macro must be put in object structure
+*/
+#define MAGIC                                         unsigned int magic
 
 #else
 #define CHECK_MAGIC(obj, magic_vale)
 #define DO_MAGIC(obj, magic_value)
+#define CLEAR_MAGIC(obj)
 #define MAGIC
+#endif //KERNEL_MARKS
+
+#if (KERNEL_HANDLE_CHECKING)
+#if (KERNEL_ASSERTIONS)
+#define CHECK_HANDLE(handle, size)     if (((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
+                                       || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (KERNEL_SIZE))) \
+                                          {printk("INVALID HANDLE at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+#else
+#define CHECK_HANDLE(handle, size)     if (((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
+                                       || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (KERNEL_SIZE))) \
+                                          {kprocess_error_current(ERROR_INVALID_MAGIC); return;}
 #endif
+#else
+#define CHECK_HANDLE(handle, size)
+#endif //KERNEL_HANDLE_CHECKING
+
+#if (KERNEL_ADDRESS_CHECKING)
+#define CHECK_ADDRESS(process, address, sz)     if (((unsigned int)(address) < (unsigned int)((process)->heap)) \
+                                                   || ((unsigned int)(address) + (sz) >= (unsigned int)((process)->heap) + (process)->size)) \
+                                                     {printk("INVALID ADDRESS at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+#else
+#define CHECK_ADDRESS(process, address, size)
+#endif //KERNEL_ADDRESS_CHECKING
 
 /**
     \brief format string, using kernel stdio as handler
