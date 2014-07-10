@@ -51,14 +51,14 @@ ARM7 features:
 History
 =======
 0.0.2
-+ new sync objects: ipc, stream
-+ new sys level - userspace system
-! support for STM32F2 fixed (not tested)
+- new sync objects: ipc, stream
+- new sys level - userspace system
+- support for STM32F2 fixed (not tested)
 
 0.0.1
-! Fork from M-Kernel (https://github.com/alexeyk13/mkernel)
-! New dynamic memory pool manager
-+ Process has own heap with own error handling, stack and heap, all inside paged block
+- Fork from M-Kernel (https://github.com/alexeyk13/mkernel)
+- New dynamic memory pool manager
+- Process has own heap with own error handling, stack and heap, all inside paged block
 - support for ARM7 broken
 - support for STM32F2 broken
 - support for softNVIC(ARM7) broken
