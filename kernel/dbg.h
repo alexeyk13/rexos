@@ -116,9 +116,25 @@
 #endif //KERNEL_HANDLE_CHECKING
 
 #if (KERNEL_ADDRESS_CHECKING)
-#define CHECK_ADDRESS(process, address, sz)     if (((unsigned int)(address) < (unsigned int)((process)->heap)) \
-                                                   || ((unsigned int)(address) + (sz) >= (unsigned int)((process)->heap) + (process)->size)) \
+#if (KERNEL_ASSERTIONS)
+#define CHECK_ADDRESS(process, address, sz)     if ((process != INVALID_HANDLE) && (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \
+                                                   || ((unsigned int)(address) + (sz) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
                                                      {printk("INVALID ADDRESS at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+#define CHECK_ADDRESS_FLASH(process, address, sz)     if ((process != INVALID_HANDLE) && !((((unsigned int)(address) >= (unsigned int)(((PROCESS*)(process))->heap)) \
+                                                        && ((unsigned int)(address) + (sz) < (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size)) || \
+                                                        (((unsigned int)(address) >= FLASH_BASE) \
+                                                        && ((unsigned int)(address) + (sz) < FLASH_BASE + FLASH_SIZE)))) \
+                                                            {printk("INVALID ADDRESS at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+#else
+#define CHECK_ADDRESS(process, address, sz)     if ((process != INVALID_HANDLE) && (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \
+                                                   || ((unsigned int)(address) + (sz) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
+                                                      {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
+#define CHECK_ADDRESS_FLASH(process, address, sz)     if ((process != INVALID_HANDLE) && !((((unsigned int)(address) >= (unsigned int)(((PROCESS*)(process))->heap)) \
+                                                        && ((unsigned int)(address) + (sz) < (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size)) || \
+                                                        (((unsigned int)(address) >= FLASH_BASE) \
+                                                        && ((unsigned int)(address) + (sz) < FLASH_BASE + FLASH_SIZE)))) \
+                                                            {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
+#endif //KERNEL_ASSERTIONS
 #else
 #define CHECK_ADDRESS(process, address, size)
 #endif //KERNEL_ADDRESS_CHECKING

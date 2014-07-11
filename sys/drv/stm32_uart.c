@@ -9,7 +9,13 @@
 #include "../sys_call.h"
 #include "error.h"
 #include "../../userspace/lib/stdlib.h"
+#include "../../userspace/lib/stdio.h"
+#include "../../userspace/stream.h"
+#include "../../userspace/irq.h"
 #include "stm32_config.h"
+
+//one page
+#define UART_STREAM_SIZE                                256
 
 void stm32_uart();
 
@@ -18,7 +24,9 @@ typedef struct {
     PIN tx_pin, rx_pin;
     int flags;
     int error;
-    HANDLE tx_stream, rx_stream;
+    HANDLE tx_stream, rx_stream, tx_handle, rx_handle, process;
+    unsigned int tx_total, rx_total;
+    unsigned int tx_chunk_pos, tx_chunk_size;
     char tx_buf[UART_TX_BUF_SIZE];
 } UART;
 
@@ -87,79 +95,80 @@ static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USA
 #define ENABLE_TRANSMITTER()                            UART_REGS[port]->CR1 |= USART_CR1_TE
 #define DISABLE_TRANSMITTER()                            UART_REGS[port]->CR1 &= ~(USART_CR1_TE)
 
-/*
-void uart_on_isr(UART_PORT port)
-{
-    if (__KERNEL->uart_handlers[port])
-    {
-        __KERNEL->uart_handlers[port]->isr_active = true;
-        uint16_t sr = UART_REGS[port]->SR;
 
-        //slave: transmit more
-        if ((sr & USART_SR_TXE) && __KERNEL->uart_handlers[port]->write_size)
+void stm32_uart_on_isr(int vector, void* param)
+{
+    IPC ipc;
+    UART* uart = (UART*)param;
+    uint16_t sr = UART_REGS[uart->port]->SR;
+
+    //transmit more
+    if ((sr & USART_SR_TXE) && uart->tx_chunk_size)
+    {
+        UART_REGS[uart->port]->DR = uart->tx_buf[uart->tx_chunk_pos++];
+        //no more
+        if (uart->tx_chunk_pos >= uart->tx_chunk_size)
         {
-            UART_REGS[port]->DR = __KERNEL->uart_handlers[port]->write_buf[0];
-            __KERNEL->uart_handlers[port]->write_buf++;
-            __KERNEL->uart_handlers[port]->write_size--;
-            if (__KERNEL->uart_handlers[port]->write_size == 0)
-            {
-                __KERNEL->uart_handlers[port]->write_buf = NULL;
-//                if (__KERNEL->uart_handlers[port]->cb->on_write_complete)
-//                    __KERNEL->uart_handlers[port]->cb->on_write_complete(__KERNEL->uart_handlers[port]->param);
-            }
-            //no more
-            if (__KERNEL->uart_handlers[port]->write_size == 0)
-            {
-                UART_REGS[port]->CR1 &= ~USART_CR1_TXEIE;
-                UART_REGS[port]->CR1 |= USART_CR1_TCIE;
-            }
-        }
-        //transmission completed and no more data
-        else if ((sr & USART_SR_TC) && __KERNEL->uart_handlers[port]->write_size == 0)
-            UART_REGS[port]->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
-        //decode error, if any
-        if ((sr & UART_ERROR_MASK))
-        {
-//            UART_ERROR error = UART_ERROR_OK;
-//            if (sr & USART_SR_ORE)
-//                error = UART_ERROR_OVERRUN;
-//            else
-//            {
-                __REG_RC32(UART_REGS[port]->DR);
-//                if (sr & USART_SR_FE)
-//                    error = UART_ERROR_FRAME;
-//                else if (sr & USART_SR_PE)
-//                    error = UART_ERROR_PARITY;
-//                else if  (sr & USART_SR_NE)
-//                    error = UART_ERROR_NOISE;
-//            }
-//            if (__KERNEL->uart_handlers[port]->cb->on_error)
-//                __KERNEL->uart_handlers[port]->cb->on_error(__KERNEL->uart_handlers[port]->param, error);
-        }
-        //slave: receive data
-        if (sr & USART_SR_RXNE && __KERNEL->uart_handlers[port]->read_size)
-        {
-            __KERNEL->uart_handlers[port]->read_buf[0] = UART_REGS[port]->DR;
-            __KERNEL->uart_handlers[port]->read_buf++;
-            if (--__KERNEL->uart_handlers[port]->read_size == 0)
-            {
-                __KERNEL->uart_handlers[port]->read_buf = NULL;
-//                if (__KERNEL->uart_handlers[port]->cb->on_read_complete)
-//                    __KERNEL->uart_handlers[port]->cb->on_read_complete(__KERNEL->uart_handlers[port]->param);
-            }
-            //no more, disable receiver
-            if (__KERNEL->uart_handlers[port]->read_size == 0)
-                UART_REGS[port]->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE);
-        }
-        else if (sr & USART_SR_RXNE)
-        {
-            __REG_RC32(UART_REGS[port]->DR);
-            UART_REGS[port]->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE);
+            uart->tx_chunk_pos = uart->tx_chunk_size = 0;
+            ipc.process = uart->process;
+            ipc.cmd = IPC_UART_ISR_WRITE_CHUNK_COMPLETE;
+            ipc.param1 = (unsigned int)uart;
+//            ipc_ipost(&ipc);
+            UART_REGS[uart->port]->CR1 &= ~USART_CR1_TXEIE;
+            UART_REGS[uart->port]->CR1 |= USART_CR1_TCIE;
+
         }
     }
+    //transmission completed and no more data. Disable transmitter
+    else if (sr & USART_SR_TC)
+        UART_REGS[uart->port]->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
+    //TODO
+    //decode error, if any
+/*
+    if ((sr & UART_ERROR_MASK))
+    {
+            UART_ERROR error = UART_ERROR_OK;
+            if (sr & USART_SR_ORE)
+                error = UART_ERROR_OVERRUN;
+            else
+            {
+            __REG_RC32(UART_REGS[port]->DR);
+                if (sr & USART_SR_FE)
+                    error = UART_ERROR_FRAME;
+                else if (sr & USART_SR_PE)
+                    error = UART_ERROR_PARITY;
+                else if  (sr & USART_SR_NE)
+                    error = UART_ERROR_NOISE;
+            }
+            if (__KERNEL->uart_handlers[port]->cb->on_error)
+                __KERNEL->uart_handlers[port]->cb->on_error(__KERNEL->uart_handlers[port]->param, error);
+    }
+*/
+    //receive data
+/*
+    if (sr & USART_SR_RXNE && __KERNEL->uart_handlers[port]->read_size)
+    {
+        __KERNEL->uart_handlers[port]->read_buf[0] = UART_REGS[port]->DR;
+        __KERNEL->uart_handlers[port]->read_buf++;
+        if (--__KERNEL->uart_handlers[port]->read_size == 0)
+        {
+            __KERNEL->uart_handlers[port]->read_buf = NULL;
+                if (__KERNEL->uart_handlers[port]->cb->on_read_complete)
+                    __KERNEL->uart_handlers[port]->cb->on_read_complete(__KERNEL->uart_handlers[port]->param);
+        }
+        //no more, disable receiver
+        if (__KERNEL->uart_handlers[port]->read_size == 0)
+            UART_REGS[port]->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE);
+    }
+    else if (sr & USART_SR_RXNE)
+    {
+        __REG_RC32(UART_REGS[port]->DR);
+        UART_REGS[port]->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE);
+    }
+    */
 }
 
-void uart_read(UART_PORT port, char* buf, int size)
+/*void uart_read(UART_PORT port, char* buf, int size)
 {
     //must be handled be upper layer
     ASSERT(__KERNEL->uart_handlers[port]->read_size == 0);
@@ -220,7 +229,7 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
 {
     int i;
     CRITICAL_ENTER;
-    UART_REGS[(UART_PORT)param]->CR1 |= USART_CR1_TE;
+    UART_REGS[(UART_PORT)param]->CR1 |= USART_CR1_TE | USART_CR1_TCIE;
     for(i = 0; i < size; ++i)
     {
         while ((UART_REGS[(UART_PORT)param]->SR & USART_SR_TXE) == 0) {}
@@ -316,10 +325,55 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
     uart->tx_pin = ue->tx;
     uart->rx_pin = ue->rx;
     uart->error = ERROR_OK;
+    uart->tx_stream = INVALID_HANDLE;
+    uart->tx_handle = INVALID_HANDLE;
+    uart->rx_stream = INVALID_HANDLE;
+    uart->rx_handle = INVALID_HANDLE;
+    uart->tx_total = uart->rx_total = 0;
+    uart->tx_chunk_pos = uart->tx_chunk_size = 0;
+    uart->process = process_get_current();
     if (uart->tx_pin == PIN_DEFAULT)
         uart->tx_pin = UART_TX_PINS[uart->port];
     if (uart->rx_pin == PIN_DEFAULT)
         uart->rx_pin = UART_RX_PINS[uart->port];
+
+    if (uart->tx_pin != PIN_UNUSED)
+    {
+        uart->tx_stream = stream_create(UART_STREAM_SIZE);
+        if (uart->tx_stream == INVALID_HANDLE)
+        {
+            free(uart);
+            return NULL;
+        }
+        uart->tx_handle = stream_open(uart->tx_stream);
+        if (uart->tx_handle == INVALID_HANDLE)
+        {
+            stream_destroy(uart->tx_stream);
+            free(uart);
+            return NULL;
+        }
+        stream_start_listen(uart->tx_stream, (void*)uart);
+    }
+    if (uart->rx_pin != PIN_UNUSED)
+    {
+        uart->rx_stream = stream_create(UART_STREAM_SIZE);
+        if (uart->rx_stream == INVALID_HANDLE)
+        {
+            stream_close(uart->tx_handle);
+            stream_destroy(uart->tx_stream);
+            free(uart);
+            return NULL;
+        }
+        uart->rx_handle = stream_open(uart->rx_stream);
+        if (uart->rx_handle == INVALID_HANDLE)
+        {
+            stream_destroy(uart->rx_stream);
+            stream_close(uart->tx_handle);
+            stream_destroy(uart->tx_stream);
+            free(uart);
+            return NULL;
+        }
+    }
 
     //setup pins
 #if defined(STM32F1)
@@ -348,17 +402,24 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
             return NULL;
         }
     }
+#endif
     if (uart->tx_pin != PIN_UNUSED)
+    {
+#if defined(STM32F1)
         ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+#elif defined(STM32F2) || defined(STM32F4)
+        ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
+#endif
+    }
+
     if (uart->rx_pin != PIN_UNUSED)
+    {
+#if defined(STM32F1)
         ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->rx_pin, GPIO_MODE_INPUT_FLOAT, false);
 #elif defined(STM32F2) || defined(STM32F4)
-    if (uart->tx_pin != PIN_UNUSED)
-        ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
-    if (uart->rx_pin != PIN_UNUSED)
         ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->rx_pin, , GPIO_MODE_AF | GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
 #endif
-
+    }
     //power up
     if (uart->port == UART_1 || uart->port == UART_6)
         RCC->APB2ENR |= 1 << UART_POWER_PINS[uart->port];
@@ -370,9 +431,9 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
 
     uart_set_baudrate(uart, &ue->baud);
     //enable interrupts
-//            NVIC_EnableIRQ(UART_VECTORS[uart->port]);
-//            NVIC_SetPriority(UART_VECTORS[uart->port], 15);
-//            register_irq();
+    irq_register(UART_VECTORS[uart->port], stm32_uart_on_isr, (void*)uart);
+    NVIC_EnableIRQ(UART_VECTORS[uart->port]);
+    NVIC_SetPriority(UART_VECTORS[uart->port], 15);
     return uart;
 }
 
@@ -385,7 +446,8 @@ static inline bool uart_disable(UART* uart)
         return false;
     }
     //disable interrupts
-//        NVIC_DisableIRQ(UART_VECTORS[port]);
+    NVIC_DisableIRQ(UART_VECTORS[uart->port]);
+    irq_unregister(UART_VECTORS[uart->port]);
 
     //disable core
     UART_REGS[uart->port]->CR1 &= ~USART_CR1_UE;
@@ -397,9 +459,18 @@ static inline bool uart_disable(UART* uart)
 
     //disable pins
     if (uart->tx_pin != PIN_UNUSED)
+    {
+        stream_stop_listen(uart->tx_stream);
+        stream_close(uart->tx_handle);
+        stream_destroy(uart->tx_stream);
         ack(gpio, IPC_DISABLE_PIN, uart->tx_pin, 0, 0);
+    }
     if (uart->rx_pin != PIN_UNUSED)
+    {
+        stream_close(uart->rx_handle);
+        stream_destroy(uart->rx_stream);
         ack(gpio, IPC_DISABLE_PIN, uart->rx_pin, 0, 0);
+    }
 
 #if defined(STM32F1)
     //turn off remapping
@@ -432,6 +503,24 @@ static inline bool uart_disable(UART* uart)
     return true;
 }
 
+static void stm32_uart_write_chunk(UART* uart)
+{
+    unsigned int to_read = UART_TX_BUF_SIZE;
+    if (uart->tx_total < to_read)
+        to_read = uart->tx_total;
+    if (stream_read(uart->tx_handle, uart->tx_buf, to_read))
+    {
+        uart->tx_chunk_pos = 0;
+        uart->tx_chunk_size = to_read;
+        uart->tx_total -= to_read;
+        //START TRANSACTION HERE
+        UART_REGS[uart->port]->CR1 |= USART_CR1_TE | USART_CR1_TXEIE;
+
+//        uart_write_kernel(uart->tx_buf, uart->tx_chunk_size, (void*)(uart->port));
+//        uart->tx_chunk_size = 0;
+    }
+}
+
 static inline void stm32_uart_loop(UART** uarts)
 {
     IPC ipc;
@@ -452,7 +541,7 @@ static inline void stm32_uart_loop(UART** uarts)
             //TODO need direct IO
             break;
         case IPC_UART_DISABLE:
-            if (ipc.param1 < UARTS_COUNT)
+            if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
             {
                 if (uart_disable(uarts[ipc.param1]))
                 {
@@ -460,10 +549,10 @@ static inline void stm32_uart_loop(UART** uarts)
                     ipc_post(&ipc);
                 }
                 else
-                    ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
+                    ipc_post_error(ipc.process, get_last_error());
             }
             else
-                ipc_post_error(ipc.process, get_last_error());
+                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
         case IPC_UART_SET_BAUDRATE:
             //TODO need direct IO
@@ -472,36 +561,71 @@ static inline void stm32_uart_loop(UART** uarts)
             //TODO need direct IO
             break;
         case IPC_UART_FLUSH:
-            //TODO need stream
+            if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
+            {
+                if (uarts[ipc.param1]->tx_stream != INVALID_HANDLE)
+                    stream_flush(uarts[ipc.param1]->tx_stream);
+                if (uarts[ipc.param1]->rx_stream != INVALID_HANDLE)
+                    stream_flush(uarts[ipc.param1]->rx_stream);
+                //TODO: flush internal buffer
+                ipc_post(&ipc);
+            }
+            else
+                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
         case IPC_UART_GET_TX_STREAM:
-            //TODO need stream
+            if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
+            {
+                ipc.param1 = uarts[ipc.param1]->tx_stream;
+                ipc_post(&ipc);
+            }
+            else
+                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
         case IPC_UART_GET_RX_STREAM:
-            //TODO need stream
+            if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
+            {
+                ipc.param1 = uarts[ipc.param1]->rx_stream;
+                ipc_post(&ipc);
+            }
+            else
+                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
         case IPC_UART_GET_LAST_ERROR:
-            if (ipc.param1 < UARTS_COUNT)
+            if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
             {
                 ipc.param1 = uarts[ipc.param1]->error;
                 ipc_post(&ipc);
             }
             else
-                ipc_post_error(ipc.process, get_last_error());
+                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
         case IPC_UART_CLEAR_ERROR:
-            if (ipc.param1 < UARTS_COUNT)
+            if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
             {
                 uarts[ipc.param1]->error = ERROR_OK;
                 ipc_post(&ipc);
             }
             else
-                ipc_post_error(ipc.process, get_last_error());
+                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
+        case IPC_STREAM_WRITE:
+            //read here is safe
+            ((UART*)ipc.param3)->tx_total += ipc.param2;
+            if (((UART*)ipc.param3)->tx_chunk_size == 0)
+                //idle. Can start next transaction.
+                stm32_uart_write_chunk(((UART*)ipc.param3));
+            //message from kernel, no response
             break;
-//        case LISTENER INFO
-//        case ISR_WRITE_COMPLETE
-//        case ISR_READ_COMPLETE
+        case IPC_UART_ISR_WRITE_CHUNK_COMPLETE:
+            if (uarts[ipc.param1]->tx_total)
+                stm32_uart_write_chunk(((UART*)ipc.param1));
+            //message from ISR, no response
+            break;
+        case IPC_UART_ISR_READ_CHUNK_COMPLETE:
+            // TODO
+            //message from ISR, no response
+            break;
         default:
             ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
             break;

@@ -54,23 +54,23 @@ void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_proce
     }
 }
 
-void kipc_post(IPC* ipc)
+void kipc_post_process(IPC* ipc, unsigned int sender)
 {
-    PROCESS* receiver = (PROCESS*)ipc->process;
-    PROCESS* sender = kprocess_get_current();
+    //NULL means kernel
     CHECK_ADDRESS(sender, ipc, sizeof(IPC));
+    PROCESS* receiver = (PROCESS*)ipc->process;
     IPC* cur;
     CHECK_HANDLE(receiver, sizeof(PROCESS));
     CHECK_MAGIC(receiver, MAGIC_PROCESS);
     //already waiting?
-    if (receiver->kipc.wait_process == (HANDLE)sender || receiver->kipc.wait_process == 0)
+    if (receiver->kipc.wait_process == sender || receiver->kipc.wait_process == 0)
     {
         receiver->kipc.wait_process = (unsigned int)-1;
         receiver->kipc.ipc->cmd = ipc->cmd;
         receiver->kipc.ipc->param1 = ipc->param1;
         receiver->kipc.ipc->param2 = ipc->param2;
         receiver->kipc.ipc->param3 = ipc->param3;
-        receiver->kipc.ipc->process = (HANDLE)sender;
+        receiver->kipc.ipc->process = sender;
         kprocess_wakeup(receiver);
     }
     else if (receiver->kipc.rb.size && !rb_is_full(&receiver->kipc.rb))
@@ -80,17 +80,20 @@ void kipc_post(IPC* ipc)
         cur->param1 = ipc->param1;
         cur->param2 = ipc->param2;
         cur->param3 = ipc->param3;
-        cur->process = (HANDLE)sender;
+        cur->process = sender;
     }
     else
     {
-        //on overflow set error on both: receiver and sender
-        kprocess_error(sender, ERROR_OVERFLOW);
         kprocess_error(receiver, ERROR_OVERFLOW);
 #if (KERNEL_IPC_DEBUG)
         printk("Error: receiver %s IPC overflow!\n\r", PROCESS_NAME(receiver->heap));
 #endif
     }
+}
+
+void kipc_post(IPC* ipc)
+{
+    kipc_post_process(ipc, (HANDLE)kprocess_get_current());
 }
 
 void kipc_read(IPC* ipc, TIME* time, HANDLE wait_process)

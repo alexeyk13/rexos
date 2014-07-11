@@ -18,9 +18,10 @@ void kstream_inform_listener(STREAM* stream, int written)
     {
         ipc.process = (HANDLE)stream->listener;
         ipc.cmd = IPC_STREAM_WRITE;
-        ipc.param1 = written;
-        ipc.param2 = 0;
-        ipc_post(&ipc);
+        ipc.param1 = (HANDLE)stream;
+        ipc.param2 = written;
+        ipc.param3 = (unsigned int)stream->listener_param;
+        kipc_post_process(&ipc, INVALID_HANDLE);
     }
 }
 
@@ -143,13 +144,16 @@ void kstream_get_free(STREAM *stream, int* size)
     *size = rb_free(&stream->rb);
 }
 
-void kstream_start_listen(STREAM* stream)
+void kstream_start_listen(STREAM* stream, void* param)
 {
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
     PROCESS* process = kprocess_get_current();
     if (stream->listener == NULL)
+    {
         stream->listener = process;
+        stream->listener_param = param;
+    }
     else
         kprocess_error(process, ERROR_ACCESS_DENIED);
 }
@@ -174,7 +178,7 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, int size)
     STREAM_HANDLE* reader;
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     PROCESS* process = kprocess_get_current();
-    CHECK_ADDRESS(process, buf, size);
+    CHECK_ADDRESS_FLASH(process, buf, size);
     handle->size = size;
     //write directly to output
     while (handle->size > 0 && (reader = handle->stream->read_waiters) != NULL)

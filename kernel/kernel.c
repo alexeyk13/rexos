@@ -173,7 +173,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kstream_get_free((STREAM*)param1, (int*)param2);
         break;
     case SVC_STREAM_START_LISTEN:
-        kstream_start_listen((STREAM*)param1);
+        kstream_start_listen((STREAM*)param1, (void*)param2);
         break;
     case SVC_STREAM_STOP_LISTEN:
         kstream_stop_listen((STREAM*)param1);

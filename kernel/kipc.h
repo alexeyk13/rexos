@@ -18,6 +18,9 @@ typedef struct {
     IPC* ipc;
 }KIPC;
 
+//called from kernel directly
+void kipc_post_process(IPC* ipc, HANDLE sender);
+
 //called from svc
 void kipc_post(IPC* ipc);
 void kipc_read(IPC* ipc, TIME* time, HANDLE wait_process);

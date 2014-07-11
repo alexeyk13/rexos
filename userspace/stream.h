@@ -81,9 +81,9 @@ __STATIC_INLINE int stream_get_free(HANDLE stream)
     \param stream: created STREAM object
     \retval true on ok
 */
-__STATIC_INLINE bool stream_start_listen(HANDLE stream)
+__STATIC_INLINE bool stream_start_listen(HANDLE stream, void* param)
 {
-    svc_call(SVC_STREAM_START_LISTEN, (unsigned int)stream, 0, 0);
+    svc_call(SVC_STREAM_START_LISTEN, (unsigned int)stream, (unsigned int)param, 0);
     return get_last_error() == ERROR_OK;
 }
 

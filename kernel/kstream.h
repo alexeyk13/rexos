@@ -27,6 +27,7 @@ typedef struct {
     struct _STREAM_HANDLE* read_waiters;
     //item
     PROCESS* listener;
+    void* listener_param;
 }STREAM;
 
 typedef struct _STREAM_HANDLE{
@@ -48,7 +49,7 @@ void kstream_open(STREAM* stream, STREAM_HANDLE** handle);
 void kstream_close(STREAM_HANDLE* handle);
 void kstream_get_size(STREAM* stream, int* size);
 void kstream_get_free(STREAM* stream, int* size);
-void kstream_start_listen(STREAM* stream);
+void kstream_start_listen(STREAM* stream, void *param);
 void kstream_stop_listen(STREAM* stream);
 void kstream_write(STREAM_HANDLE* handle, char* buf, int size);
 void kstream_read(STREAM_HANDLE* handle, char* buf, int size);
