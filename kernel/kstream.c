@@ -216,6 +216,7 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, int size)
     {
         handle->buf = buf;
         handle->mode = STREAM_MODE_WRITE;
+        dlist_add_tail((DLIST**)&handle->stream->write_waiters, (DLIST*)handle);
         time.sec = time.usec = 0;
         kprocess_sleep(process, &time, PROCESS_SYNC_STREAM, handle);
     }
@@ -263,6 +264,7 @@ void kstream_read(STREAM_HANDLE* handle, char* buf, int size)
     {
         handle->buf = buf;
         handle->mode = STREAM_MODE_READ;
+        dlist_add_tail((DLIST**)&handle->stream->read_waiters, (DLIST*)handle);
         time.sec = time.usec = 0;
         kprocess_sleep(process, &time, PROCESS_SYNC_STREAM, handle);
     }

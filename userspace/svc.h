@@ -87,8 +87,6 @@ typedef enum {
 
     SVC_OTHER = 0x800,
     SVC_SETUP_SYSTEM,
-    SVC_SETUP_STDOUT,
-    SVC_SETUP_STDIN,
     SVC_SETUP_DBG
 }SVC;
 
@@ -195,31 +193,6 @@ __STATIC_INLINE void setup_system()
 __STATIC_INLINE void setup_dbg(STDOUT stdout, void* param)
 {
     svc_call(SVC_SETUP_DBG, (unsigned int)stdout, (unsigned int)param, 0);
-}
-
-
-/**
-    \brief setup global stdout for newly created processes
-    \details stdout must be in LIB address space, or MPU protection will cause exception
-    \param stdout: pointer to function, called on printf/putc
-    \param param: param, sended during calll
-    \retval none
-*/
-__STATIC_INLINE void setup_stdout(STDOUT stdout, void* param)
-{
-    svc_call(SVC_SETUP_STDOUT, (unsigned int)stdout, (unsigned int)param, 0);
-}
-
-/**
-    \brief setup global stdin for newly created processes
-    \details stdin must be in LIB address space, or MPU protection will cause exception
-    \param stdin: pointer to function, called on scanf/getc
-    \param param: param, sended during calll
-    \retval none
-*/
-__STATIC_INLINE void setup_stdin(STDIN stdin, void* param)
-{
-    svc_call(SVC_SETUP_STDIN, (unsigned int)stdin, (unsigned int)param, 0);
 }
 
 /** \} */ // end of sys group

@@ -61,10 +61,7 @@ typedef struct {
     //system process
     HANDLE system;
     //stdout. Refactor later
-    STDOUT stdout;
-    void* stdout_param;
-    STDIN stdin;
-    void* stdin_param;
+    HANDLE stdout, stdin;
     //name is following
 } HEAP;
 

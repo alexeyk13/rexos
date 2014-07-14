@@ -60,3 +60,12 @@ void kirq_unregister(int vector)
     else
         kprocess_error_current(ERROR_ACCESS_DENIED);
 }
+
+CONTEXT get_context()
+{
+    if (__KERNEL->context >= 0)
+        return IRQ_CONTEXT;
+    if (__KERNEL->svc_count)
+        return SVC_CONTEXT;
+    return USER_CONTEXT;
+}

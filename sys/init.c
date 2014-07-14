@@ -4,10 +4,6 @@
     All rights reserved.
 */
 
-/*
-    init.c - default init file for RExOS SYS. Kernel can be compiled independently, thus totally rewritting following file
- */
-
 #include "sys.h"
 #include "sys_call.h"
 #include "sys_config.h"

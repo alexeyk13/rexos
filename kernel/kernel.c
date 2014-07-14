@@ -24,11 +24,6 @@ void stdout_stub(const char *const buf, unsigned int size, void* param)
     kprocess_error_current(ERROR_STUB_CALLED);
 }
 
-void stdin_stub(char *buf, unsigned int size, void* param)
-{
-    kprocess_error_current(ERROR_STUB_CALLED);
-}
-
 void panic()
 {
 #if (KERNEL_INFO)
@@ -45,6 +40,7 @@ void panic()
 void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     CRITICAL_ENTER;
+    ++__KERNEL->svc_count;
     kprocess_error_current(ERROR_OK);
     switch (num)
     {
@@ -192,18 +188,10 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         break;
     //other - dbg, stdout/in
     case SVC_SETUP_SYSTEM:
-        if (__KERNEL->system == NULL)
-            __KERNEL->system = kprocess_get_current();
+        if (__KERNEL->system == INVALID_HANDLE)
+            __KERNEL->system = (HANDLE)kprocess_get_current();
         else
             kprocess_error_current(ERROR_INVALID_SVC);
-        break;
-    case SVC_SETUP_STDOUT:
-        __KERNEL->stdout_global = (STDOUT)param1;
-        __KERNEL->stdout_global_param = (void*)param2;
-        break;
-    case SVC_SETUP_STDIN:
-        __KERNEL->stdin_global = (STDIN)param1;
-        __KERNEL->stdin_global_param = (void*)param2;
         break;
     case SVC_SETUP_DBG:
         if (__KERNEL->dbg_locked)
@@ -221,6 +209,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     default:
         kprocess_error_current(ERROR_INVALID_SVC);
     }
+    --__KERNEL->svc_count;
     CRITICAL_LEAVE;
 }
 
@@ -232,8 +221,8 @@ void startup()
 
     //setup __KERNEL
     memset(__KERNEL, 0, sizeof(KERNEL));
-    __KERNEL->stdout = __KERNEL->stdout_global = stdout_stub;
-    __KERNEL->stdin_global = stdin_stub;
+    __KERNEL->stdout = stdout_stub;
+    __KERNEL->system = INVALID_HANDLE;
     strcpy(__KERNEL_NAME, "RExOS 0.0.2");
     __KERNEL->struct_size = sizeof(KERNEL) + strlen(__KERNEL_NAME) + 1;
 

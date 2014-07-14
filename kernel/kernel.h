@@ -74,11 +74,6 @@ typedef struct {
     void* stdout_param;
     bool dbg_locked;
 
-    STDOUT stdout_global;
-    void* stdout_global_param;
-    STDIN stdin_global;
-    void* stdin_global_param;
-
     //----------------------process specific-----------------------------
     //for context-switching
     //This values are used in asm context switching. Don't place them more than 128 bytes from start of KERNEL
@@ -94,10 +89,10 @@ typedef struct {
 #endif //(KERNEL_PROCESS_STAT)
     //init process. Always active.
     PROCESS* init;
-    //system process (if present)
-    PROCESS* system;
+    //system handle (if present)
+    HANDLE system;
     //----------------------- IRQ related ------------------------------
-    int context;
+    int context, svc_count;
     //This values are used in asm. Don't place them more than 128 bytes from start of KERNEL
     KIRQ irqs[IRQ_VECTORS_COUNT];
 
@@ -123,6 +118,7 @@ typedef struct {
 
     char shared1;
     char shared8;
+    int killme;
 
     //name is following
 } KERNEL;

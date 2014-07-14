@@ -26,7 +26,7 @@ typedef enum {
     IPC_UART_CLEAR_ERROR,
     //used internally
     IPC_UART_ISR_WRITE_CHUNK_COMPLETE,
-    IPC_UART_ISR_READ_CHUNK_COMPLETE
+    IPC_UART_ISR_RX_CHAR
 } STM32_UART_IPCS;
 
 typedef struct {
@@ -57,5 +57,8 @@ typedef struct {
 } UART_ENABLE;
 
 extern const REX __STM32_UART;
+
+//TODO remove me
+void uart_write_kernel(const char *const buf, unsigned int size, void* param);
 
 #endif // STM32_UART_H

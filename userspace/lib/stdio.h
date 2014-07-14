@@ -8,6 +8,7 @@
 #define STDIO_H
 
 #include "lib.h"
+#include "../process.h"
 
 /** \addtogroup stdio embedded uStdio
  */
@@ -28,6 +29,47 @@ void printf(const char *const fmt, ...);
     \retval none
 */
 void sprintf(char* str, const char *const fmt, ...);
+
+/**
+    \brief put string to stdout
+    \param s: null-terminated string
+    \retval none
+*/
+__STATIC_INLINE void puts(const char* s)
+{
+    __GLOBAL->lib->puts(s);
+}
+
+/**
+    \brief put char to stdout
+    \param c: char
+    \retval none
+*/
+__STATIC_INLINE void putc(const char c)
+{
+    __GLOBAL->lib->putc(c);
+}
+
+/**
+    \brief get char from stdin
+    \param c: char
+    \retval none
+*/
+__STATIC_INLINE char getc()
+{
+    return __GLOBAL->lib->getc();
+}
+
+/**
+    \brief get string from stdin
+    \param s: buffer for out string
+    \param max_size: max string size, including null-terminator
+    \retval null-terminated string
+*/
+__STATIC_INLINE char* gets(char* s, int max_size)
+{
+    return __GLOBAL->lib->gets(s, max_size);
+}
 
 /** \} */ // end of stdlib group
 

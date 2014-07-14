@@ -145,10 +145,6 @@ void kprocess_create(const REX* rex, PROCESS** process)
             rb_init(&((*process)->kipc.rb), rex->ipc_size);
             (*process)->kipc.wait_process = (unsigned int)-1;
             (*process)->heap->handle = (HANDLE)(*process);
-            (*process)->heap->stdout = __KERNEL->stdout_global;
-            (*process)->heap->stdout_param = __KERNEL->stdout_global_param;
-            (*process)->heap->stdin = __KERNEL->stdin_global;
-            (*process)->heap->stdin_param = __KERNEL->stdin_global_param;
             (*process)->heap->system = (HANDLE)__KERNEL->system;
             if (rex->name)
             {

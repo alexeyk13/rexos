@@ -28,9 +28,14 @@ const LIB __LIB = {
     #endif
     //printf.h
     format,
+    pformat,
     sformat,
     __atou,
     __utoa,
+    __puts,
+    __putc,
+    __getc,
+    __gets,
     //rand.h
     __srand,
     __rand,

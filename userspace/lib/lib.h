@@ -20,9 +20,15 @@ typedef struct {
     void (*pool_stat)(POOL*, POOL_STAT*, void*);
     //printf.h
     void (*format)(const char *const, va_list, STDOUT, void*);
+    void (*pformat)(const char *const, va_list);
     void (*sformat)(char*, const char *const, va_list);
     unsigned long (*atou)(const char *const, int);
     int (*utoa)(char*, unsigned long, int, bool);
+    void (*puts)(const char*);
+    void (*putc)(const char);
+    char (*getc)();
+    char* (*gets)(char*, int);
+
     //rand.h
     unsigned int (*srand)();
     unsigned int (*rand)(unsigned int* seed);

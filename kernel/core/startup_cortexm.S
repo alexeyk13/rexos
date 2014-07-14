@@ -225,6 +225,7 @@ context_exit:
 	.thumb_func
 default_handler:
 	mrs   r0, ipsr
+	sub	r0, r0, 16
 	ldr   pc, =kirq_stub
 
 	.thumb_func

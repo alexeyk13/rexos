@@ -105,7 +105,7 @@ __STATIC_INLINE bool stream_stop_listen(HANDLE stream)
     \param size: size of data to write
     \retval true on ok
 */
-__STATIC_INLINE bool stream_write(HANDLE handle, char* buf, int size)
+__STATIC_INLINE bool stream_write(HANDLE handle, const char* buf, int size)
 {
     svc_call(SVC_STREAM_WRITE, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);
     return get_last_error() == ERROR_OK;

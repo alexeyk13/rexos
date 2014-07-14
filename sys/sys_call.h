@@ -10,6 +10,7 @@
 #include "../userspace/ipc.h"
 #include "../userspace/cc_macro.h"
 #include "../userspace/error.h"
+#include "../userspace/stream.h"
 #include "sys.h"
 
 /** \addtogroup sys sys
@@ -127,6 +128,54 @@ __STATIC_INLINE unsigned int sys_get(unsigned int cmd, unsigned int param1, unsi
 __STATIC_INLINE HANDLE sys_get_object(int object)
 {
     return sys_get(SYS_GET_OBJECT, object, 0, 0);
+}
+
+/**
+    \brief open stdout
+    \retval true on success
+*/
+
+__STATIC_INLINE bool open_stdout()
+{
+    HANDLE stream = sys_get_object(SYS_OBJECT_STDOUT_STREAM);
+    if (stream != INVALID_HANDLE)
+        __HEAP->stdout = stream_open(stream);
+    return __HEAP->stdout != INVALID_HANDLE;
+}
+
+/**
+    \brief open stdid
+    \retval true on success
+*/
+
+__STATIC_INLINE bool open_stdin()
+{
+    HANDLE stream = sys_get_object(SYS_OBJECT_STDIN_STREAM);
+    if (stream != INVALID_HANDLE)
+        __HEAP->stdin = stream_open(stream);
+    return __HEAP->stdin != INVALID_HANDLE;
+}
+
+/**
+    \brief close stdout
+    \retval none
+*/
+
+__STATIC_INLINE void close_stdout()
+{
+    if (__HEAP->stdout != INVALID_HANDLE)
+        stream_close(__HEAP->stdout);
+}
+
+/**
+    \brief close stdid
+    \retval none
+*/
+
+__STATIC_INLINE void close_stdin()
+{
+    if (__HEAP->stdin != INVALID_HANDLE)
+        stream_close(__HEAP->stdin);
 }
 
 /** \} */ // end of sys group

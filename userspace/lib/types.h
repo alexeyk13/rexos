@@ -73,7 +73,6 @@ typedef struct {
 } POOL_STAT;
 
 typedef void (*STDOUT)(const char *const buf, unsigned int size, void* param);
-typedef void (*STDIN)(char* buf, unsigned int size, void* param);
 
 typedef void (*IRQ)(int vector, void* param);
 

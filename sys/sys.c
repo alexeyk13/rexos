@@ -17,6 +17,8 @@ typedef struct {
     HANDLE gpio;
     HANDLE timer;
     HANDLE uart;
+    HANDLE stdout_stream;
+    HANDLE stdin_stream;
 }SYS;
 
 void sys();
@@ -38,7 +40,13 @@ const REX __SYS = {
 
 void sys ()
 {
-    SYS sys = {0};
+    SYS sys;
+    sys.power = INVALID_HANDLE;
+    sys.gpio = INVALID_HANDLE;
+    sys.timer = INVALID_HANDLE;
+    sys.uart = INVALID_HANDLE;
+    sys.stdout_stream = INVALID_HANDLE;
+    sys.stdin_stream = INVALID_HANDLE;
     IPC ipc;
     setup_system();
     for (;;)
@@ -68,6 +76,12 @@ void sys ()
             case SYS_OBJECT_UART:
                 ipc.param1 = sys.uart;
                 break;
+            case SYS_OBJECT_STDOUT_STREAM:
+                ipc.param1 = sys.stdout_stream;
+                break;
+            case SYS_OBJECT_STDIN_STREAM:
+                ipc.param1 = sys.stdin_stream;
+                break;
             default:
                 ipc.param1 = (unsigned int)INVALID_HANDLE;
                 ipc.cmd = IPC_INVALID_PARAM;
@@ -91,6 +105,12 @@ void sys ()
             case SYS_OBJECT_UART:
                 sys.uart = ipc.process;
                 break;
+            case SYS_OBJECT_STDOUT_STREAM:
+                sys.stdout_stream = ipc.param2;
+                break;
+            case SYS_OBJECT_STDIN_STREAM:
+                sys.stdin_stream = ipc.param2;
+                break;
             default:
                 ipc.cmd = IPC_INVALID_PARAM;
                 break;
@@ -98,9 +118,9 @@ void sys ()
             }
             ipc_post(&ipc);
             break;
-        case SYS_SET_STDOUT:
-            __HEAP->stdout = (STDOUT)ipc.param1;
-            __HEAP->stdout_param = (void*)ipc.param2;
+        case SYS_SET_STDIO:
+            if (sys.stdout_stream != INVALID_HANDLE)
+                __HEAP->stdout = stream_open(sys.stdout_stream);
 #if (SYS_INFO)
             printf("RExOS system v. 0.0.2 started\n\r");
 #endif

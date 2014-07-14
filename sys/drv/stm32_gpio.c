@@ -214,9 +214,8 @@ void stm32_gpio()
             break;
         case IPC_CALL_ERROR:
             break;
-        case SYS_SET_STDOUT:
-            __HEAP->stdout = (STDOUT)ipc.param1;
-            __HEAP->stdout_param = (void*)ipc.param2;
+        case SYS_SET_STDIO:
+            open_stdout();
             ipc_post(&ipc);
             break;
 #if (SYS_INFO)
