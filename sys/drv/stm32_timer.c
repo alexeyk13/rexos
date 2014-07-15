@@ -11,43 +11,25 @@
 #include "../../userspace/timer.h"
 #include "../../userspace/irq.h"
 
-typedef TIM_TypeDef* TIM_TypeDef_P;
+typedef TIM_TypeDef*                            TIM_TypeDef_P;
 
-const TIM_TypeDef_P _TIMER[] =                        {TIM1, TIM2, TIM3, TIM4, TIM5, TIM6, TIM7, TIM8, TIM9, TIM10, TIM11, TIM12, TIM13, TIM14};
+#define APB1                                    (unsigned int*)((unsigned int)RCC_BASE + offsetof(RCC_TypeDef, APB1ENR))
+#define APB2                                    (unsigned int*)((unsigned int)RCC_BASE + offsetof(RCC_TypeDef, APB2ENR))
 
-#if defined (STM32F10X_LD)
-const IRQn_Type TIMER_VECTORS[]    =                {TIM1_UP_IRQn, TIM2_IRQn, TIM3_IRQn, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-#elif defined (STM32F10X_LD_VL)
-//1 == 15 share
-const IRQn_Type TIMER_VECTORS[]    =                {TIM1_UP_TIM16_IRQn, TIM2_IRQn, TIM3_IRQn, 0, 0, TIM6_DAC_IRQn, TIM7_IRQn, 0, 0, 0, 0, 0, 0, 0,
-                                                             TIM1_BRK_TIM15_IRQn, TIM1_UP_TIM16_IRQn, TIM1_TRG_COM_TIM17_IRQn};
-#elif defined (STM32F10X_MD)
-const IRQn_Type TIMER_VECTORS[]    =                {TIM1_UP_IRQn, TIM2_IRQn, TIM3_IRQn, TIM4_IRQn, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+typedef unsigned int*                           uint_p;
 
-#elif defined (STM32F10X_MD_VL)
-//1 == 15 share
-const IRQn_Type TIMER_VECTORS[]    =                {TIM1_UP_TIM16_IRQn, TIM2_IRQn, TIM3_IRQn, TIM4_IRQn, 0, TIM6_DAC_IRQn, TIM7_IRQn,
-                                                             0, 0, 0, 0, 0, 0, 0,    TIM1_BRK_TIM15_IRQn, TIM1_UP_TIM16_IRQn, TIM1_TRG_COM_TIM17_IRQn};
-#elif defined (STM32F10X_HD_VL)
-//1 == 15 share
-const IRQn_Type TIMER_VECTORS[]    =                {TIM1_UP_TIM16_IRQn, TIM2_IRQn, TIM3_IRQn, TIM4_IRQn, TIM5_IRQn, TIM6_DAC_IRQn, TIM7_IRQn,
-                                                             0, 0, 0, 0, TIM12_IRQHandler, TIM13_IRQHandler, TIM14_IRQHandler,    TIM1_BRK_TIM15_IRQn, TIM1_UP_TIM16_IRQn, TIM1_TRG_COM_TIM17_IRQn};
-#elif defined (STM32F10X_CL)
-const IRQn_Type TIMER_VECTORS[]    =                {TIM1_UP_IRQn, TIM2_IRQn, TIM3_IRQn, TIM4_IRQn, TIM5_IRQn, TIM6_IRQn, TIM7_IRQn, 0,
-                                                             0, 0, 0, 0, 0, 0, 0, 0, 0};
-#elif defined (STM32F10X_HD)
-const IRQn_Type TIMER_VECTORS[]    =                {TIM1_UP_IRQn, TIM2_IRQn, TIM3_IRQn, TIM4_IRQn, TIM5_IRQn, TIM6_IRQn, TIM7_IRQn, TIM8_UP_IRQn,
-                                                             0, 0, 0, 0, 0, 0, 0, 0, 0};
-#elif defined (STM32F10X_XL)
-//1 == 10, 8 == 13
-const IRQn_Type TIMER_VECTORS[]    =                {TIM1_UP_TIM10_IRQn, TIM2_IRQn, TIM3_IRQn, TIM4_IRQn, TIM5_IRQn, TIM6_IRQn, TIM7_IRQn,
-                                                             TIM8_UP_TIM13_IRQn, TIM1_BRK_TIM9_IRQn, TIM1_UP_TIM10_IRQn,    TIM1_TRG_COM_TIM11_IRQn,
-                                                             TIM8_BRK_TIM12_IRQn, TIM8_UP_TIM13_IRQn, TIM8_TRG_COM_TIM14_IRQn, 0, 0, 0};
-#elif defined(STM32F2)
-//1 == 10, 8 == 13
-const IRQn_Type TIMER_VECTORS[] =                {TIM1_UP_TIM10_IRQn, TIM2_IRQn, TIM3_IRQn, TIM4_IRQn, TIM5_IRQn, TIM6_DAC_IRQn, TIM7_IRQn, TIM8_UP_TIM13_IRQn,
-                                                             TIM1_BRK_TIM9_IRQn, TIM1_UP_TIM10_IRQn, TIM1_TRG_COM_TIM11_IRQn, TIM8_BRK_TIM12_IRQn, TIM8_UP_TIM13_IRQn,
-                                                             TIM8_TRG_COM_TIM14_IRQn};
+#if defined (STM32F1)
+#define TIMERS_COUNT                            17
+const TIM_TypeDef_P TIMER_REGS[TIMERS_COUNT] =  {TIM1, TIM2, TIM3, TIM4, TIM5, TIM6, TIM7, TIM8, TIM9, TIM10, TIM11, TIM12, TIM13, TIM14, TIM15, TIM16, TIM17};
+const int TIMER_VECTORS[TIMERS_COUNT] =         {25,   28,   29,   30,   50,   54,   55,   44,   24,   25,    26,    43,    44,    45,    24,    25,    26};
+const int TIMER_POWER_BIT[TIMERS_COUNT] =                 {11,   0,    1,    2,    3,    4,    5,    13,   19,   20,    21,    6,     7,     8,     16,    17,    18};
+const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB2, APB1, APB1, APB1, APB1, APB1, APB1, APB2, APB2, APB2,  APB2,  APB1,  APB1,  APB1,  APB2,  APB2,  APB2};
+#elif defined (STM32F2) || defined (STM32F4)
+#define TIMERS_COUNT                            14
+const TIM_TypeDef_P TIMER_REGS[TIMERS_COUNT] =  {TIM1, TIM2, TIM3, TIM4, TIM5, TIM6, TIM7, TIM8, TIM9, TIM10, TIM11, TIM12, TIM13, TIM14};
+const int TIMER_VECTORS[TIMERS_COUNT] =         {25,   28,   29,   30,   50,   54,   55,   44,   24,   25,    26,    43,    44,    45};
+const int TIMER_POWER_BIT[TIMERS_COUNT] =       {0,    0,    1,    2,    3,    4,    5,    1,    16,   17,    18,    6,     7,     8};
+const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB2, APB1, APB1, APB1, APB1, APB1, APB1, APB2, APB2, APB2,  APB2,  APB1,  APB1,  APB1};
 #endif
 
 #ifndef RCC_APB1ENR_TIM4EN
@@ -106,40 +88,23 @@ const IRQn_Type TIMER_VECTORS[] =                {TIM1_UP_TIM10_IRQn, TIM2_IRQn,
 #define RCC_APB2ENR_TIM17EN    0
 #endif
 
-const uint32_t     RCC_TIMER[] =                        {RCC_APB2ENR_TIM1EN, RCC_APB1ENR_TIM2EN, RCC_APB1ENR_TIM3EN, RCC_APB1ENR_TIM4EN, RCC_APB1ENR_TIM5EN, RCC_APB1ENR_TIM6EN, RCC_APB1ENR_TIM7EN,
-                                                            RCC_APB2ENR_TIM8EN, RCC_APB2ENR_TIM9EN, RCC_APB2ENR_TIM10EN, RCC_APB2ENR_TIM11EN, RCC_APB1ENR_TIM12EN, RCC_APB1ENR_TIM13EN, RCC_APB1ENR_TIM14EN,
-                                                            RCC_APB2ENR_TIM15EN, RCC_APB2ENR_TIM16EN, RCC_APB2ENR_TIM17EN};
-
-#define TIMERS_MASK    (1 << TIM_1)  || (1 << TIM_2)  || (1 << TIM_3)  || (1 << TIM_4) || (1 << TIM_5) || (1 << TIM_6) || (1 << TIM_7)
 
 #define SYS_TIMER_RTC                            RTC_0
 #define SYS_TIMER_HPET                            TIM_4
 #define SYS_TIMER_PRIORITY                        10
 #define SYS_TIMER_SOFT_RTC                        1
 
-void timer_enable(TIMER_CLASS timer, int priority, unsigned int flags)
+void timer_enable(TIMERS timer, int priority, unsigned int flags)
 {
-    if ((1 << timer) & TIMERS_MASK)
+//    if ((1 << timer) & TIMERS_MASK)
     {
         //power up
-        switch (timer)
-        {
-        case TIM_1:
-        case TIM_8:
-        case TIM_9:
-        case TIM_10:
-        case TIM_11:
-            RCC->APB2ENR |= RCC_TIMER[timer];
-            break;
-        default:
-            RCC->APB1ENR |= RCC_TIMER[timer];
-        }
-
+        *(TIMER_POWER_PORT[timer]) |= 1 << TIMER_POWER_BIT[timer];
         //one-pulse mode
-        _TIMER[timer]->CR1 |= TIM_CR1_URS;
+        TIMER_REGS[timer]->CR1 |= TIM_CR1_URS;
         if (flags & TIMER_FLAG_ONE_PULSE_MODE)
-            _TIMER[timer]->CR1 |= TIM_CR1_OPM;
-        _TIMER[timer]->DIER |= TIM_DIER_UIE;
+            TIMER_REGS[timer]->CR1 |= TIM_CR1_OPM;
+        TIMER_REGS[timer]->DIER |= TIM_DIER_UIE;
 
         //enable IRQ
         if (timer == TIM_1 || timer == TIM_10)
@@ -154,17 +119,17 @@ void timer_enable(TIMER_CLASS timer, int priority, unsigned int flags)
         }
         else
             NVIC_EnableIRQ(TIMER_VECTORS[timer]);
-        NVIC_SetPriority(TIMER_VECTORS[timer], priority);
+        NVIC_SetPriority(TIMER_VECTORS[timer], 15);
     }
-    else
-        error(ERROR_NOT_SUPPORTED);
+//    else
+//        error(ERROR_NOT_SUPPORTED);
 }
 
-void timer_disable(TIMER_CLASS timer)
+void timer_disable(TIMERS timer)
 {
-    if ((1 << timer) & TIMERS_MASK)
+    //    if ((1 << timer) & TIMERS_MASK)
     {
-        _TIMER[timer]->CR1 &= ~TIM_CR1_CEN;
+        TIMER_REGS[timer]->CR1 &= ~TIM_CR1_CEN;
         //disable IRQ
         if (timer == TIM_1 || timer == TIM_10)
         {
@@ -180,27 +145,13 @@ void timer_disable(TIMER_CLASS timer)
             NVIC_DisableIRQ(TIMER_VECTORS[timer]);
 
         //power down
-        switch (timer)
-        {
-        case TIM_1:
-        case TIM_8:
-        case TIM_9:
-        case TIM_10:
-        case TIM_11:
-        case TIM_15:
-        case TIM_16:
-        case TIM_17:
-            RCC->APB2ENR &= ~RCC_TIMER[timer];
-            break;
-        default:
-            RCC->APB1ENR &= ~RCC_TIMER[timer];
-        }
+        *(TIMER_POWER_PORT[timer]) &= ~(1 << TIMER_POWER_BIT[timer]);
     }
-    else
-        error(ERROR_NOT_SUPPORTED);
+//    else
+//        error(ERROR_NOT_SUPPORTED);
 }
 
-void timer_start(TIMER_CLASS timer, unsigned int time_us)
+void timer_start(TIMERS timer, unsigned int time_us)
 {
     uint32_t timer_freq;
     switch (timer)
@@ -231,21 +182,21 @@ void timer_start(TIMER_CLASS timer, unsigned int time_us)
     }
     psc *= timer_freq / 1000000; //1us
 
-    _TIMER[timer]->PSC = psc - 1;
-    _TIMER[timer]->ARR = count - 1;
-    _TIMER[timer]->CNT = 0;
+    TIMER_REGS[timer]->PSC = psc - 1;
+    TIMER_REGS[timer]->ARR = count - 1;
+    TIMER_REGS[timer]->CNT = 0;
 
-    _TIMER[timer]->EGR = TIM_EGR_UG;
-    _TIMER[timer]->CR1 |= TIM_CR1_CEN;
+    TIMER_REGS[timer]->EGR = TIM_EGR_UG;
+    TIMER_REGS[timer]->CR1 |= TIM_CR1_CEN;
 }
 
-void timer_stop(TIMER_CLASS timer)
+void timer_stop(TIMERS timer)
 {
-    _TIMER[timer]->CR1 &= ~TIM_CR1_CEN;
-    _TIMER[timer]->SR &= ~TIM_SR_UIF;
+    TIMER_REGS[timer]->CR1 &= ~TIM_CR1_CEN;
+    TIMER_REGS[timer]->SR &= ~TIM_SR_UIF;
 }
 
-unsigned int timer_elapsed(TIMER_CLASS timer)
+unsigned int timer_elapsed(TIMERS timer)
 {
     uint32_t timer_freq;
     switch (timer)
@@ -265,7 +216,7 @@ unsigned int timer_elapsed(TIMER_CLASS timer)
     }
     if (timer_freq !=__KERNEL->ahb_freq)
         timer_freq = timer_freq * 2;
-    return (((_TIMER[timer]->PSC) + 1)/ (timer_freq / 1000000)) * ((_TIMER[timer]->CNT) + 1);
+    return (((TIMER_REGS[timer]->PSC) + 1)/ (timer_freq / 1000000)) * ((TIMER_REGS[timer]->CNT) + 1);
 }
 
 void second_pulse_isr(int vector, void* param)
@@ -297,8 +248,8 @@ unsigned int hpet_elapsed()
 
 void timer_init_hw()
 {
-    irq_register(TIM2_IRQn, second_pulse_isr, NULL);
-    irq_register(TIM4_IRQn, hpet_isr, NULL);
+    irq_register(TIMER_VECTORS[TIM_2], second_pulse_isr, NULL);
+    irq_register(TIMER_VECTORS[TIM_4], hpet_isr, NULL);
 
     timer_enable(SYS_TIMER_HPET, SYS_TIMER_PRIORITY, TIMER_FLAG_ONE_PULSE_MODE);
     CB_SVC_TIMER cb_svc_timer;

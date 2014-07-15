@@ -35,7 +35,7 @@
         - \ref error
 */
 
-#include "../userspace/svc.h"
+#include "../userspace/core/core.h"
 #include "kernel_config.h"
 
 #define KERNEL_BASE                                         (SRAM_BASE + KERNEL_GLOBAL_SIZE)
@@ -45,6 +45,7 @@
 #include "kprocess.h"
 #include "kirq.h"
 #include "../lib/pool.h"
+#include "../userspace/lib/rb.h"
 
 #ifndef IRQ_VECTORS_COUNT
 #error IRQ_VECTORS_COUNT is not decoded. Please specify it manually in Makefile
@@ -52,14 +53,13 @@
 
 #ifdef ARM7
 #include "core/arm7/core_arm7.h"
-#elif defined(CORTEX_M3) || defined(CORTEX_M0) || defined(CORTEX_M1) || defined(CORTEX_M4)
+#elif defined(CORTEX_M)
 #include "kcortexm.h"
 #else
 #error MCU core is not defined or not supported
 #endif
 
 //remove this shit later
-#include "../sys/drv/stm32_uart.h"
 #include "../sys/drv/stm32_timer.h"
 // endof shit
 
@@ -95,6 +95,11 @@ typedef struct {
     int context, svc_count;
     //This values are used in asm. Don't place them more than 128 bytes from start of KERNEL
     KIRQ irqs[IRQ_VECTORS_COUNT];
+#ifdef SOFT_NVIC
+    RB irq_pend_rb;
+    int irq_pend_list[IRQ_VECTORS_COUNT];
+    int irq_pend_list_size;
+#endif
 
     //------------------------- timer specific -------------------------
     TIME uptime;
@@ -164,11 +169,11 @@ extern void pend_switch_context(void);
 extern void process_setup_context(PROCESS* process, void (*fn)(void));
 
 /**
-    \brief reset system core.
+    \brief fatal error handler - generally reset
     \param none
     \retval none
 */
-extern void reset();
+extern void fatal();
 
 /** \} */ // end of arch_porting group
 

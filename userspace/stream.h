@@ -83,6 +83,7 @@ __STATIC_INLINE int stream_get_free(HANDLE stream)
 */
 __STATIC_INLINE bool stream_start_listen(HANDLE stream, void* param)
 {
+    error(ERROR_OK);
     svc_call(SVC_STREAM_START_LISTEN, (unsigned int)stream, (unsigned int)param, 0);
     return get_last_error() == ERROR_OK;
 }
@@ -94,6 +95,7 @@ __STATIC_INLINE bool stream_start_listen(HANDLE stream, void* param)
 */
 __STATIC_INLINE bool stream_stop_listen(HANDLE stream)
 {
+    error(ERROR_OK);
     svc_call(SVC_STREAM_STOP_LISTEN, (unsigned int)stream, 0, 0);
     return get_last_error() == ERROR_OK;
 }
@@ -107,6 +109,7 @@ __STATIC_INLINE bool stream_stop_listen(HANDLE stream)
 */
 __STATIC_INLINE bool stream_write(HANDLE handle, const char* buf, int size)
 {
+    error(ERROR_OK);
     svc_call(SVC_STREAM_WRITE, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);
     return get_last_error() == ERROR_OK;
 }
@@ -120,6 +123,7 @@ __STATIC_INLINE bool stream_write(HANDLE handle, const char* buf, int size)
 */
 __STATIC_INLINE bool stream_read(HANDLE handle, char* buf, int size)
 {
+    error(ERROR_OK);
     svc_call(SVC_STREAM_READ, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);
     return get_last_error() == ERROR_OK;
 }

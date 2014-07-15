@@ -117,22 +117,22 @@
 
 #if (KERNEL_ADDRESS_CHECKING)
 #if (KERNEL_ASSERTIONS)
-#define CHECK_ADDRESS(process, address, sz)     if ((get_context() == USER_CONTEXT) && \
+#define CHECK_ADDRESS(process, address, sz)     if ((process != 0 && __KERNEL->context < 0) && \
                                                     (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \
                                                     || ((unsigned int)(address) + (sz) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
                                                      {printk("INVALID ADDRESS at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
-#define CHECK_ADDRESS_FLASH(process, address, sz)     if ((get_context() == USER_CONTEXT) && \
+#define CHECK_ADDRESS_FLASH(process, address, sz)     if ((process != 0 && __KERNEL->context < 0) && \
                                                         !((((unsigned int)(address) >= (unsigned int)(((PROCESS*)(process))->heap)) \
                                                         && ((unsigned int)(address) + (sz) < (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size)) || \
                                                         (((unsigned int)(address) >= FLASH_BASE) \
                                                         && ((unsigned int)(address) + (sz) < FLASH_BASE + FLASH_SIZE)))) \
                                                             {printk("INVALID ADDRESS at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
 #else
-#define CHECK_ADDRESS(process, address, sz)     if ((get_context() == USER_CONTEXT) && \
+#define CHECK_ADDRESS(process, address, sz)     if ((process != 0 && __KERNEL->context < 0) && \
                                                    (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \
                                                    || ((unsigned int)(address) + (sz) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
                                                       {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
-#define CHECK_ADDRESS_FLASH(process, address, sz)     if ((get_context() == USER_CONTEXT) && \
+#define CHECK_ADDRESS_FLASH(process, address, sz)     if ((process != 0 && __KERNEL->context < 0) && \
                                                         !((((unsigned int)(address) >= (unsigned int)(((PROCESS*)(process))->heap)) \
                                                         && ((unsigned int)(address) + (sz) < (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size)) || \
                                                         (((unsigned int)(address) >= FLASH_BASE) \

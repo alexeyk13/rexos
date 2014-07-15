@@ -143,7 +143,6 @@ void stm32_uart_on_isr(int vector, void* param)
     }
 }
 
-
 void uart_write_kernel(const char *const buf, unsigned int size, void* param)
 {
     int i;

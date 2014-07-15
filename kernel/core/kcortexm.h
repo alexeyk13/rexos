@@ -7,9 +7,6 @@
 #ifndef KCORTEXM_H
 #define KCORTEXM_H
 
-#define NVIC_PRESENT
-
-#include "../../userspace/core/cortexm.h"
 #include "../../userspace/cc_macro.h"
 
 //Application Interrupt and Reset Control Register
@@ -51,11 +48,21 @@
 //BusFault Address Register
 #define SCB_BFAR                         (*(unsigned int*)0xE000ED38)
 
-__STATIC_INLINE void reset()
+__STATIC_INLINE void fatal()
 {
     __ASM volatile ("dsb");
     SCB_AIRCR = AIRCR_VECTKEYSTAT | AIRCR_SYSRESETREQ;
     __ASM volatile ("dsb");
+}
+
+__STATIC_INLINE void disable_interrupts(void)
+{
+    __ASM volatile ("cpsid i");
+}
+
+__STATIC_INLINE void enable_interrupts(void)
+{
+    __ASM volatile ("cpsie i");
 }
 
 #endif // KCORTEXM_H

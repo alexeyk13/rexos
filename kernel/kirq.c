@@ -20,18 +20,54 @@ void kirq_init()
 {
     int i;
     for (i = 0; i < IRQ_VECTORS_COUNT; ++i)
+    {
         __KERNEL->irqs[i].handler = kirq_stub;
+#ifdef SOFT_NVIC
+        __KERNEL->irqs[i].pending = false;
+#endif
+    }
     __KERNEL->context = -1;
-#ifndef NVIC_PRESENT
-    irq_init();
-#endif //NVIC_PRESENT
+#ifdef SOFT_NVIC
+    rb_init(&__KERNEL->irq_pend_rb, IRQ_VECTORS_COUNT);
+#endif
 }
 
 void kirq_enter(int vector)
 {
+#ifdef SOFT_NVIC
+    int pending;
+    //already pending. exit.
+    if (__KERNEL->irqs[vector].pending)
+        return;
+    disable_interrupts();
+    //pend and exit
+    if ((pending = irq_pend_list_size++) == 0)
+    {
+        __KERNEL->irqs[vector].pending = true;
+        __KERNEL->irq_pend_list[rb_put(&__KERNEL->irq_pend_rb)] = vector;
+    }
+    enable_interrupts();
+    if (pending++)
+        return;
+#endif
     register int saved_context = __KERNEL->context;
-    __KERNEL->context = vector;
-    __KERNEL->irqs[vector].handler(vector, __KERNEL->irqs[vector].param);
+#ifdef SOFT_NVIC
+    while (pending--)
+    {
+#endif
+        __KERNEL->context = vector;
+        __KERNEL->irqs[vector].handler(vector, __KERNEL->irqs[vector].param);
+#ifdef SOFT_NVIC
+        if (pending)
+        {
+            disable_interrupts();
+            --irq_pend_list_size;
+            __KERNEL->irqs[vector].pending = false;
+            vector = __KERNEL->irq_pend_list[rb_get(&__KERNEL->irq_pend_rb)];
+            enable_interrupts();
+        }
+    }
+#endif
     __KERNEL->context = saved_context;
 }
 
@@ -59,13 +95,4 @@ void kirq_unregister(int vector)
     }
     else
         kprocess_error_current(ERROR_ACCESS_DENIED);
-}
-
-CONTEXT get_context()
-{
-    if (__KERNEL->context >= 0)
-        return IRQ_CONTEXT;
-    if (__KERNEL->svc_count)
-        return SVC_CONTEXT;
-    return USER_CONTEXT;
 }

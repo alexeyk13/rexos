@@ -57,6 +57,7 @@ __STATIC_INLINE HANDLE mutex_create()
 */
 __STATIC_INLINE bool mutex_lock(HANDLE mutex, TIME* timeout)
 {
+    error(ERROR_OK);
     svc_call(SVC_MUTEX_LOCK, (unsigned int)mutex, (unsigned int)timeout, 0);
     return get_last_error() == ERROR_OK;
 }

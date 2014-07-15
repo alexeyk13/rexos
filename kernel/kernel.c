@@ -33,15 +33,14 @@ void panic()
 #if (KERNEL_HALT_ON_FATAL_ERROR)
     HALT();
 #else
-    reset();
+    fatal();
 #endif //KERNEL_HALT_ON_FATAL_ERROR
 }
 
 void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
-    CRITICAL_ENTER;
-    ++__KERNEL->svc_count;
-    kprocess_error_current(ERROR_OK);
+    disable_interrupts();
+//    ++__KERNEL->svc_count;
     switch (num)
     {
     //process related
@@ -209,8 +208,8 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     default:
         kprocess_error_current(ERROR_INVALID_SVC);
     }
-    --__KERNEL->svc_count;
-    CRITICAL_LEAVE;
+//    --__KERNEL->svc_count;
+    enable_interrupts();
 }
 
 void startup()

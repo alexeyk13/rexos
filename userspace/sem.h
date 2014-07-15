@@ -68,6 +68,7 @@ __STATIC_INLINE void sem_isignal(HANDLE sem)
 */
 __STATIC_INLINE bool sem_wait(HANDLE sem, TIME* timeout)
 {
+    error(ERROR_OK);
     svc_call(SVC_SEM_WAIT, (unsigned int)sem, (unsigned int)timeout, 0);
     return get_last_error() == ERROR_OK;
 }

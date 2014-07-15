@@ -5,7 +5,6 @@
 */
 
 #include "stm32_power.h"
-#include "../../userspace/core/core.h"
 #include "../../userspace/ipc.h"
 #include "../../userspace/lib/stdio.h"
 #include "../../sys/sys_call.h"

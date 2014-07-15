@@ -9,18 +9,16 @@
 
 #include "../userspace/lib/types.h"
 #include "kprocess.h"
+#include "../userspace/core/core.h"
 
 typedef struct {
     IRQ handler;
     void* param;
     PROCESS* process;
+#ifdef SOFT_NVIC
+    bool pending;
+#endif
 }KIRQ;
-
-typedef enum {
-    USER_CONTEXT,
-    SVC_CONTEXT,
-    IRQ_CONTEXT
-}CONTEXT;
 
 //called from kernel startup
 void kirq_init();
@@ -32,8 +30,5 @@ void kirq_enter(int vector);
 //called from svc
 void kirq_register(int vector, IRQ handler, void* param);
 void kirq_unregister(int vector);
-
-//called from kernel
-CONTEXT get_context();
 
 #endif // KIRQ_H

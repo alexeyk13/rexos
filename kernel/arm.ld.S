@@ -9,7 +9,7 @@
  */
 //if you've got error on this line, than this file is not preprocessed
 
-#include "../userspace/svc.h"
+#include "../userspace/core/core.h"
 
 MEMORY
 {

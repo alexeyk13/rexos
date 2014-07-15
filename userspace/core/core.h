@@ -13,12 +13,14 @@
 
 #include "stm32.h"
 
+#ifdef CORTEX_M
+#ifndef SRAM_BASE
+#define SRAM_BASE                0x20000000
+#endif
+#endif
+
 #ifdef ARM7
 #include "arm7/core_arm7.h"
-#elif defined(CORTEX_M)
-#include "cortexm.h"
-#else
-#error MCU core is not defined or not supported
 #endif
 
 #endif // CORE_H

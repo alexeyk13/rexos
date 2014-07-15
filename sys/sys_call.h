@@ -27,7 +27,8 @@
 __STATIC_INLINE bool call(IPC* ipc)
 {
     unsigned int cmd = ipc->cmd;
-    if (ipc_call_ms(ipc, 0) && ipc->cmd == cmd)
+    ipc_call_ms(ipc, 0);
+    if (ipc->cmd == cmd)
         return true;
     if (ipc->cmd == IPC_CALL_ERROR)
         error(ipc->param1);

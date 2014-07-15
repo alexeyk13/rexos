@@ -123,6 +123,7 @@ __STATIC_INLINE void event_iclear(HANDLE event)
 */
 __STATIC_INLINE bool event_wait(HANDLE event, TIME* timeout)
 {
+    error(ERROR_OK);
     svc_call(SVC_EVENT_WAIT, (unsigned int)event, (unsigned int)timeout, 0);
     return get_last_error() == ERROR_OK;
 }

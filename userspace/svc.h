@@ -100,41 +100,9 @@ typedef struct {
 #define __GLOBAL                                            ((GLOBAL*)(SRAM_BASE))
 #define __HEAP                                              ((HEAP*)(((GLOBAL*)(SRAM_BASE))->heap))
 
-
-#define NON_REENTERABLE_ENTER(var)                          int __state = disable_interrupts(); \
-                                                            if (!var) \
-                                                            {   var = true; \
-                                                                restore_interrupts(__state);
-
-#define NON_REENTERABLE_EXIT(var)                               disable_interrupts(); \
-                                                                var = false;\
-                                                            }\
-                                                            restore_interrupts(__state);
-
-#define CRITICAL_ENTER                                      int __state = disable_interrupts()
-#define CRITICAL_ENTER_AGAIN                                disable_interrupts()
-#define CRITICAL_LEAVE                                      restore_interrupts(__state);
-
 /** \addtogroup core_porting core porting
     \{
  */
-
-/**
-    \brief core-dependent interrupt disabler
-    \details Save interrupt state and disable interrupts
-
-    \retval saved interrupt states. core-specific
-*/
-extern int disable_interrupts();
-
-/**
-    \brief core-dependent interrupt restorer
-    \details Restore previously save interrupts
-
-    \param state: core-specific interrupts state
-    \retval none
-*/
-extern void restore_interrupts(int state);
 
 /**
     \brief arch-dependent stack pointer query
@@ -180,7 +148,6 @@ __STATIC_INLINE void setup_system()
 {
     svc_call(SVC_SETUP_SYSTEM, 0, 0, 0);
 }
-
 
 /**
     \brief setup kernel stdout for debug reasons

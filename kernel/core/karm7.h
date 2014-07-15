@@ -20,6 +20,25 @@
 #define I_BIT                       0x80
 #define F_BIT                       0x40
 
-//reset it's not common for ARM7 core, so, it must be defined int vendor-specific implementation.
+//reset it's not common for ARM7 core, so, it must be defined in vendor-specific implementation.
+__STATIC_INLINE void fatal()
+{
+    for (;;) {}
+}
+
+//including FIQ, which is IRQ0
+__STATIC_INLINE void disable_interrupts(void)
+{
+    __ASM volatile ("mrs r1, cpsr\n\t"
+                    "orr r1, r1, #0xc0\n\t"
+                    "msr cpsr_c, r1" : : : "r1", "cc");
+}
+
+__STATIC_INLINE void enable_interrupts(void)
+{
+    __ASM volatile ("mrs r1, cpsr\n\t"
+                    "bic r1, r1, #0xc0\n\t"
+                    "msr cpsr_c, r1" : : : "r1", "cc");
+}
 
 #endif // KARM7_H

@@ -32,15 +32,15 @@ typedef enum {
     TIM_18,
     TIM_19,
     TIM_20
-}TIMER_CLASS;
+}TIMERS;
 
 #define TIMER_FLAG_ONE_PULSE_MODE                (1 << 0)
 
-void timer_enable(TIMER_CLASS timer, int priority, unsigned int flags);
-void timer_disable(TIMER_CLASS timer);
-void timer_start(TIMER_CLASS timer, unsigned int time_us);
-void timer_stop(TIMER_CLASS timer);
-unsigned int timer_elapsed(TIMER_CLASS timer);
+void timer_enable(TIMERS timer, int priority, unsigned int flags);
+void timer_disable(TIMERS timer);
+void timer_start(TIMERS timer, unsigned int time_us);
+void timer_stop(TIMERS timer);
+unsigned int timer_elapsed(TIMERS timer);
 void timer_init_hw();
 
 #endif // STM32_TIMER_H

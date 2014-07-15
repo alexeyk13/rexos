@@ -7,8 +7,6 @@
 #include "sys_config.h"
 #include "sys.h"
 #include "sys_call.h"
-#include "../userspace/svc.h"
-#include "../userspace/core/core.h"
 #include "../userspace/lib/stdio.h"
 
 //temporaily struct, before root fs will be ready
