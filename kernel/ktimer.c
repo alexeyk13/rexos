@@ -13,7 +13,7 @@
 
 #define FREE_RUN                                        2000000
 
-void hpet_start_stub(unsigned int value)
+void hpet_start_stub(unsigned int value, void* param)
 {
 #if (KERNEL_INFO)
     printk("Warning: HPET start stub called\n\r");
@@ -21,7 +21,7 @@ void hpet_start_stub(unsigned int value)
     kprocess_error_current(ERROR_STUB_CALLED);
 }
 
-void hpet_stop_stub()
+void hpet_stop_stub(void* param)
 {
 #if (KERNEL_INFO)
     printk("Warning: HPET stop stub called\n\r");
@@ -29,7 +29,7 @@ void hpet_stop_stub()
     kprocess_error_current(ERROR_STUB_CALLED);
 }
 
-unsigned int hpet_elapsed_stud()
+unsigned int hpet_elapsed_stud(void* param)
 {
 #if (KERNEL_INFO)
     printk("Warning: HPET elapsed stub called\n\r");
@@ -47,7 +47,7 @@ const CB_SVC_TIMER cb_ktimer_stub = {
 void ktimer_get_uptime(TIME* res)
 {
     res->sec = __KERNEL->uptime.sec;
-    res->usec = __KERNEL->uptime.usec + __KERNEL->cb_ktimer.elapsed();
+    res->usec = __KERNEL->uptime.usec + __KERNEL->cb_ktimer.elapsed(__KERNEL->cb_ktimer_param);
     while (res->usec >= 1000000)
     {
         res->sec++;
@@ -57,7 +57,7 @@ void ktimer_get_uptime(TIME* res)
 
 static inline void find_shoot_next()
 {
-    TIMER* to_shoot;
+    KTIMER* to_shoot;
     TIME uptime;
 
     do {
@@ -66,7 +66,7 @@ static inline void find_shoot_next()
         {
             //ignore seconds adjustment
             uptime.sec = __KERNEL->uptime.sec;
-            uptime.usec = __KERNEL->uptime.usec + __KERNEL->cb_ktimer.elapsed();
+            uptime.usec = __KERNEL->uptime.usec + __KERNEL->cb_ktimer.elapsed(__KERNEL->cb_ktimer_param);
             if (time_compare(&__KERNEL->timers->time, &uptime) >= 0)
             {
                 to_shoot = __KERNEL->timers;
@@ -75,10 +75,10 @@ static inline void find_shoot_next()
             //add to this second events
             else if (__KERNEL->timers->time.sec == uptime.sec)
             {
-                __KERNEL->uptime.usec += __KERNEL->cb_ktimer.elapsed();
-                __KERNEL->cb_ktimer.stop();
+                __KERNEL->uptime.usec += __KERNEL->cb_ktimer.elapsed(__KERNEL->cb_ktimer_param);
+                __KERNEL->cb_ktimer.stop(__KERNEL->cb_ktimer_param);
                 __KERNEL->hpet_value = __KERNEL->timers->time.usec - __KERNEL->uptime.usec;
-                __KERNEL->cb_ktimer.start(__KERNEL->hpet_value);
+                __KERNEL->cb_ktimer.start(__KERNEL->hpet_value, __KERNEL->cb_ktimer_param);
             }
             if (to_shoot)
             {
@@ -93,8 +93,8 @@ static inline void find_shoot_next()
 void ktimer_second_pulse()
 {
     __KERNEL->hpet_value = 0;
-    __KERNEL->cb_ktimer.stop();
-    __KERNEL->cb_ktimer.start(FREE_RUN);
+    __KERNEL->cb_ktimer.stop(__KERNEL->cb_ktimer_param);
+    __KERNEL->cb_ktimer.start(FREE_RUN, __KERNEL->cb_ktimer_param);
     ++__KERNEL->uptime.sec;
     __KERNEL->uptime.usec = 0;
 
@@ -109,28 +109,29 @@ void ktimer_hpet_timeout()
 #endif
     __KERNEL->uptime.usec += __KERNEL->hpet_value;
     __KERNEL->hpet_value = 0;
-    __KERNEL->cb_ktimer.start(FREE_RUN);
+    __KERNEL->cb_ktimer.start(FREE_RUN, __KERNEL->cb_ktimer_param);
 
     find_shoot_next();
 }
 
-void ktimer_setup(const CB_SVC_TIMER *cb_ktimer)
+void ktimer_setup(const CB_SVC_TIMER *cb_ktimer, void *cb_ktimer_param)
 {
     if (!__KERNEL->timer_locked)
     {
         memcpy(&__KERNEL->cb_ktimer, cb_ktimer, sizeof(CB_SVC_TIMER));
-        __KERNEL->cb_ktimer.start(FREE_RUN);
+        __KERNEL->cb_ktimer_param = cb_ktimer_param;
+        __KERNEL->cb_ktimer.start(FREE_RUN, __KERNEL->cb_ktimer_param);
         __KERNEL->timer_locked = true;
     }
     else
         kprocess_error_current(ERROR_INVALID_SVC);
 }
 
-void ktimer_start(TIMER* timer)
+void ktimer_start(KTIMER* timer)
 {
     TIME uptime;
     DLIST_ENUM de;
-    TIMER* cur;
+    KTIMER* cur;
     bool found = false;
     ktimer_get_uptime(&uptime);
     time_add(&uptime, &timer->time, &timer->time);
@@ -148,7 +149,7 @@ void ktimer_start(TIMER* timer)
         find_shoot_next();
 }
 
-void ktimer_stop(TIMER* timer)
+void ktimer_stop(KTIMER* timer)
 {
     dlist_remove((DLIST**)&__KERNEL->timers, (DLIST*)timer);
 }

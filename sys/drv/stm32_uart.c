@@ -222,7 +222,7 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
     uart = (UART*)malloc(sizeof(UART));
     if (uart == NULL)
     {
-        error(ERROR_OUT_OF_SYSTEM_MEMORY);
+        error(ERROR_OUT_OF_MEMORY);
         return NULL;
     }
 
@@ -425,7 +425,7 @@ static void stm32_uart_write_chunk(UART* uart)
         uart->tx_chunk_pos = 0;
         uart->tx_chunk_size = to_read;
         uart->tx_total -= to_read;
-        //START TRANSACTION HERE
+        //start transaction
         UART_REGS[uart->port]->CR1 |= USART_CR1_TE | USART_CR1_TXEIE;
     }
 }
@@ -583,7 +583,8 @@ void stm32_uart()
     ack(sys_get_object(SYS_OBJECT_POWER), SYS_SET_STDIO, 0, 0, 0);
     //gpio
     ack(sys_get_object(SYS_OBJECT_GPIO), SYS_SET_STDIO, 0, 0, 0);
-    //TODO timer
+    //timer
+    ack(sys_get_object(SYS_OBJECT_TIMER), SYS_SET_STDIO, 0, 0, 0);
 #endif //UART_STDIO
 
     stm32_uart_loop(uarts);

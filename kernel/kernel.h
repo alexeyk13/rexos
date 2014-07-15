@@ -59,13 +59,9 @@
 #error MCU core is not defined or not supported
 #endif
 
-//remove this shit later
-#include "../sys/drv/stm32_timer.h"
-// endof shit
-
 // will be aligned to pass MPU requirements
 typedef struct {
-    //first 5 params same as userspace for library calls error handling
+    //first 3 params same as userspace for library calls error handling
     //header size including name
     int struct_size;
     POOL pool;
@@ -106,24 +102,17 @@ typedef struct {
 
     //callback for HPET timer
     CB_SVC_TIMER cb_ktimer;
+    //callback param for HPET timer
+    void* cb_ktimer_param;
     //lock timer callbacks after first setup
     bool timer_locked;
 
-    TIMER* timers;
+    KTIMER* timers;
     volatile bool timer_executed;
     //HPET value, set before call
     unsigned int hpet_value;
     //----------------------- paged memory related ---------------------
     POOL paged;
-
-    //--- move this shit later to userspace
-    unsigned long ahb_freq;
-    unsigned long apb1_freq;
-    unsigned long apb2_freq;
-
-    char shared1;
-    char shared8;
-    int killme;
 
     //name is following
 } KERNEL;

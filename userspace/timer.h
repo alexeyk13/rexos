@@ -16,9 +16,9 @@
  *  callbacks ASAP and don't make any heavy stack load, cause you will use here kernel stack
   */
 typedef struct {
-    void (*start) (unsigned int us);                                //!< start HPET timer with us value timeout
-    void (*stop) (void);                                            //!< stop HPET timer
-    unsigned int (*elapsed) (void);                                 //!< return elapsed time from last start in us
+    void (*start) (unsigned int us, void*);                                //!< start HPET timer with us value timeout
+    void (*stop) (void*);                                                  //!< stop HPET timer
+    unsigned int (*elapsed) (void*);                                       //!< return elapsed time from last start in us
 } CB_SVC_TIMER;
 
 
@@ -37,9 +37,9 @@ __STATIC_INLINE void get_uptime(TIME* uptime)
     \param sb_svc_timer pointer to init structure
     \retval none
 */
-__STATIC_INLINE void timer_setup(CB_SVC_TIMER* cb_svc_timer)
+__STATIC_INLINE void timer_setup(CB_SVC_TIMER* cb_svc_timer, void* cb_svc_timer_param)
 {
-    svc_call(SVC_TIMER_SETUP, (unsigned int)cb_svc_timer, 0, 0);
+    svc_call(SVC_TIMER_SETUP, (unsigned int)cb_svc_timer, (unsigned int)cb_svc_timer_param, 0);
 }
 
 /**

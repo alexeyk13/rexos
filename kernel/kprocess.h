@@ -22,7 +22,7 @@ typedef struct {
     unsigned long flags;
     unsigned base_priority;                                            //base priority
     unsigned current_priority;                                         //priority, adjusted by mutex
-    TIMER timer;                                                       //timer for process sleep and sync objects timeouts
+    KTIMER timer;                                                      //timer for process sleep and sync objects timeouts
     void* sync_object;                                                 //sync object we are waiting for
     DLIST* owned_mutexes;                                              //owned mutexes list for nested mutex priority inheritance
 #if (KERNEL_PROCESS_STAT)

@@ -139,7 +139,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         ktimer_get_uptime((TIME*)param1);
         break;
     case SVC_TIMER_SETUP:
-        ktimer_setup((CB_SVC_TIMER*)param1);
+        ktimer_setup((CB_SVC_TIMER*)param1, (void*)param2);
         break;
     //ipc related
     case SVC_IPC_POST:

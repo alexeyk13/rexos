@@ -50,8 +50,7 @@ void init()
 #if defined(STM32)
     process_create(&__STM32_POWER);
     process_create(&__STM32_GPIO);
-    //todo: make process
-    timer_init_hw();
+    process_create(&__STM32_TIMER);
 #if (UART_MODULE)
     process_create(&__STM32_UART);
 #endif

@@ -278,14 +278,10 @@ void setup_clock(int param1, int param2, int param3)
     for (i = 1, bus = 0; (i <= 16) && (pll_clock / i > MAX_APB2); i *= 2, ++bus) {}
     if (bus)
         RCC->CFGR |= (4 | (bus - 1)) << PPRE2;
-    //remove this shit later
-    __KERNEL->apb2_freq = pll_clock / i;
     //APB1.
     for (; (i <= 16) && (pll_clock / i > MAX_APB1); i *= 2, ++bus) {}
     if (bus)
         RCC->CFGR |= (4 | (bus - 1)) << PPRE1;
-    //remove this shit later
-    __KERNEL->apb1_freq = pll_clock / i;
 
     //5. tune flash latency
 #if defined(STM32F1) && !defined(STM32F100)
@@ -296,9 +292,6 @@ void setup_clock(int param1, int param2, int param3)
     //6. switch to PLL
     RCC->CFGR |= RCC_CFGR_SW_PLL;
     while ((RCC->CFGR & (3 << 2)) != RCC_CFGR_SWS_PLL) {}
-
-    //remove this shit later
-    __KERNEL->ahb_freq = pll_clock;
 }
 
 static void inline update_clock(int param1, int param2, int param3)
