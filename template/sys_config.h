@@ -18,8 +18,9 @@
 //powersave mode.
 #define SYS_POWERSAVE                                       0
 
-//------------------------------ modules ---------------------------------------------
-//enable/disable UART module
-#define UART_MODULE                                         1
+//------------------------------ drivers ---------------------------------------------
+//enable/disable drivers
+#define UART_DRIVER                                         1
+#define RTC_DRIVER                                          1
 
 #endif // SYS_CONFIG_H

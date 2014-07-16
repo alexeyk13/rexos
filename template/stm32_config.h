@@ -10,6 +10,7 @@
 //------------------------------ POWER -----------------------------------------------
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
 #define HSE_VALUE                               25000000
+#define LSE_VALUE                               32768
 
 //STM32F1
 #define PLL_MUL                                 7
@@ -40,5 +41,11 @@
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
 //remember, that process itself requires around 256 bytes
 #define UART_TX_BUF_SIZE                        32
+//------------------------------ TIMER -----------------------------------------------
+#define HPET_TIMER                               TIM_2
+#define TIMER_SOFT_RTC                           0
+#define SECOND_PULSE_TIMER                       TIM_3
+
+
 
 #endif // STM32_CONFIG_H
