@@ -14,8 +14,9 @@
 #if defined (STM32)
 #include "drv/stm32_power.h"
 #include "drv/stm32_gpio.h"
-#include "drv/stm32_uart.h"
 #include "drv/stm32_timer.h"
+#include "drv/stm32_uart.h"
+#include "drv/stm32_rtc.h"
 #endif
 #include "sys_config.h"
 
@@ -51,8 +52,11 @@ void init()
     process_create(&__STM32_POWER);
     process_create(&__STM32_GPIO);
     process_create(&__STM32_TIMER);
-#if (UART_MODULE)
+#if (UART_DRIVER)
     process_create(&__STM32_UART);
+#endif
+#if (RTC_DRIVER)
+    process_create(&__STM32_RTC);
 #endif
 
 #else

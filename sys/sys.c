@@ -11,10 +11,7 @@
 
 //temporaily struct, before root fs will be ready
 typedef struct {
-    HANDLE power;
-    HANDLE gpio;
-    HANDLE timer;
-    HANDLE uart;
+    HANDLE power, gpio, timer, uart, rtc;
     HANDLE stdout_stream;
     HANDLE stdin_stream;
 }SYS;
@@ -39,10 +36,7 @@ const REX __SYS = {
 void sys ()
 {
     SYS sys;
-    sys.power = INVALID_HANDLE;
-    sys.gpio = INVALID_HANDLE;
-    sys.timer = INVALID_HANDLE;
-    sys.uart = INVALID_HANDLE;
+    sys.power = sys.gpio = sys.timer = sys.uart = sys.rtc = INVALID_HANDLE;
     sys.stdout_stream = INVALID_HANDLE;
     sys.stdin_stream = INVALID_HANDLE;
     IPC ipc;
@@ -74,6 +68,9 @@ void sys ()
             case SYS_OBJECT_UART:
                 ipc.param1 = sys.uart;
                 break;
+            case SYS_OBJECT_RTC:
+                ipc.param1 = sys.rtc;
+                break;
             case SYS_OBJECT_STDOUT_STREAM:
                 ipc.param1 = sys.stdout_stream;
                 break;
@@ -102,6 +99,9 @@ void sys ()
                 break;
             case SYS_OBJECT_UART:
                 sys.uart = ipc.process;
+                break;
+            case SYS_OBJECT_RTC:
+                sys.rtc = ipc.process;
                 break;
             case SYS_OBJECT_STDOUT_STREAM:
                 sys.stdout_stream = ipc.param2;

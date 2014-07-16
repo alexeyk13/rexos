@@ -188,7 +188,7 @@ unsigned int hpet_elapsed(void* param)
     return (((TIMER_REGS[HPET_TIMER]->PSC) + 1)/ timers->hpet_uspsc) * ((TIMER_REGS[HPET_TIMER]->CNT) + 1);
 }
 
-#ifdef TIMER_SOFT_RTC
+#if (TIMER_SOFT_RTC)
 void second_pulse_isr(int vector, void* param)
 {
     TIMER_REGS[SECOND_PULSE_TIMER]->SR &= ~TIM_SR_UIF;
@@ -201,7 +201,7 @@ static inline void stm32_timer_info()
 {
     printf("STM32 timer driver info\n\r\n\r");
     printf("HPET timer: TIM_%d\n\r", HPET_TIMER + 1);
-#ifdef TIMER_SOFT_RTC
+#if (TIMER_SOFT_RTC)
     printf("Second pulse timer: TIM_%d\n\r", SECOND_PULSE_TIMER + 1);
 #endif
     printf("\n\r\n\r");
@@ -298,7 +298,7 @@ void stm32_timer()
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
     timer_setup(&cb_svc_timer, &timers);
-#ifdef TIMER_SOFT_RTC
+#if (TIMER_SOFT_RTC)
     irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)&timers);
     stm32_timer_enable(&timers, SECOND_PULSE_TIMER, 0);
     //100us prescaller

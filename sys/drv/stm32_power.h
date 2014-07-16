@@ -17,7 +17,11 @@
 typedef enum {
     IPC_GET_CLOCK = IPC_USER,
     IPC_UPDATE_CLOCK,
-    IPC_GET_RESET_REASON
+    IPC_GET_RESET_REASON,
+    IPC_POWER_BACKUP_ON,                                        //!< Turn on backup domain
+    IPC_POWER_BACKUP_OFF,                                       //!< Turn off backup domain
+    IPC_POWER_BACKUP_WRITE_ENABLE,                              //!< Turn off write protection of backup domain
+    IPC_POWER_BACKUP_WRITE_PROTECT                              //!< Turn on write protection of backup domain
 } STM32_POWER_IPCS;
 
 typedef enum {
@@ -35,8 +39,6 @@ typedef enum {
     RESET_REASON_POWERON,
     RESET_REASON_PIN_RST
 } RESET_REASON;
-
-RESET_REASON get_reset_reason();
 
 extern const REX __STM32_POWER;
 

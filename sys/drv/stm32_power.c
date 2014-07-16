@@ -10,9 +10,6 @@
 #include "../../sys/sys_call.h"
 #include "sys_config.h"
 
-//remove me later
-#include "../../kernel/kernel.h"
-
 #if defined(STM32F1)
 #define MAX_APB2                             72000000
 #define MAX_APB1                             36000000
@@ -46,6 +43,10 @@
 #define RCC_CSR_PADRSTF RCC_CSR_PINRSTF
 #endif
 
+typedef struct {
+    int backup_count, write_count;
+}STM32_POWER;
+
 void stm32_power();
 
 const REX __STM32_POWER = {
@@ -62,7 +63,6 @@ const REX __STM32_POWER = {
     //function
     stm32_power
 };
-
 
 #if defined(STM32F100)
 static inline void setup_pll(int mul, int div)
@@ -294,7 +294,7 @@ void setup_clock(int param1, int param2, int param3)
     while ((RCC->CFGR & (3 << 2)) != RCC_CFGR_SWS_PLL) {}
 }
 
-static void inline update_clock(int param1, int param2, int param3)
+static inline void update_clock(int param1, int param2, int param3)
 {
     unsigned int apb1 = RCC->APB1ENR;
     RCC->APB1ENR = 0;
@@ -370,7 +370,39 @@ static inline void stm32_power_info()
 }
 #endif
 
-static inline void stm32_power_loop()
+static inline void backup_on(STM32_POWER* power)
+{
+    if (power->backup_count++ == 0)
+        //enable POWER and BACKUP interface
+        RCC->APB1ENR |= RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN;
+}
+
+static inline void backup_off(STM32_POWER* power)
+{
+    if (--power->backup_count == 0)
+        //enable POWER and BACKUP interface
+        RCC->APB1ENR &= ~(RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN);
+}
+
+static inline void backup_write_enable(STM32_POWER* power)
+{
+    if (power->backup_count)
+    {
+        if (power->write_count++ == 0)
+            PWR->CR |= PWR_CR_DBP;
+    }
+}
+
+static inline void backup_write_protect(STM32_POWER* power)
+{
+    if (power->backup_count)
+    {
+        if (--power->write_count == 0)
+            PWR->CR &= ~PWR_CR_DBP;
+    }
+}
+
+static inline void stm32_power_loop(STM32_POWER* power)
 {
     IPC ipc;
     for (;;)
@@ -420,6 +452,22 @@ static inline void stm32_power_loop()
             ipc.param1 = get_reset_reason();
             ipc_post(&ipc);
             break;
+        case IPC_POWER_BACKUP_ON:
+            backup_on(power);
+            ipc_post(&ipc);
+            break;
+        case IPC_POWER_BACKUP_OFF:
+            backup_off(power);
+            ipc_post(&ipc);
+            break;
+        case IPC_POWER_BACKUP_WRITE_ENABLE:
+            backup_write_enable(power);
+            ipc_post(&ipc);
+            break;
+        case IPC_POWER_BACKUP_WRITE_PROTECT:
+            backup_write_protect(power);
+            ipc_post(&ipc);
+            break;
         default:
             ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
             break;
@@ -429,6 +477,9 @@ static inline void stm32_power_loop()
 
 void stm32_power()
 {
+    STM32_POWER power;
+    power.backup_count = power.write_count = 0;
+
     RCC->APB1ENR = 0;
     RCC->APB2ENR = 0;
 
@@ -454,5 +505,5 @@ void stm32_power()
 #endif
 
     sys_ack(SYS_SET_OBJECT, SYS_OBJECT_POWER, 0, 0);
-    stm32_power_loop();
+    stm32_power_loop(&power);
 }
