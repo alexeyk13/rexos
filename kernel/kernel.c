@@ -14,6 +14,7 @@
 #include "kipc.h"
 #include "kstream.h"
 #include "kprocess.h"
+#include "kdirect.h"
 #include "../userspace/error.h"
 #include "../userspace/lib/lib.h"
 #include <string.h>
@@ -184,6 +185,13 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         break;
     case SVC_STREAM_DESTROY:
         kstream_destroy((STREAM*)param1);
+        break;
+    //direct io
+    case SVC_DIRECT_READ:
+        kdirect_read((PROCESS*)param1, (void*)param2, param3);
+        break;
+    case SVC_DIRECT_WRITE:
+        kdirect_write((PROCESS*)param1, (void*)param2, param3);
         break;
     //other - dbg, stdout/in
     case SVC_SETUP_SYSTEM:

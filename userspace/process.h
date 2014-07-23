@@ -51,6 +51,11 @@ typedef enum {
     PROCESS_SYNC_STREAM =        (0x5 << 4)
 }PROCESS_SYNC_TYPE;
 
+#define DIRECT_NONE              0
+#define DIRECT_READ              (1 << 0)
+#define DIRECT_WRITE             (1 << 1)
+#define DIRECT_READ_WRITE        (DIRECT_READ | DIRECT_WRITE)
+
 typedef struct {
     //header size including name
     int struct_size;
@@ -60,8 +65,12 @@ typedef struct {
     HANDLE handle;
     //system process
     HANDLE system;
-    //stdout. Refactor later
+    //stdout/stdin handle. System specific
     HANDLE stdout, stdin;
+    int direct_mode;
+    HANDLE direct_process;
+    void* direct_addr;
+    unsigned int direct_size;
     //name is following
 } HEAP;
 

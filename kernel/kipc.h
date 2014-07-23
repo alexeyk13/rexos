@@ -19,6 +19,7 @@ typedef struct {
 }KIPC;
 
 //called from kernel directly
+void kipc_init(HANDLE handle, int size);
 void kipc_post_process(IPC* ipc, HANDLE sender);
 
 //called from svc

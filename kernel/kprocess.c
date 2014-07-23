@@ -12,6 +12,7 @@
 #include "ksem.h"
 #include "kstream.h"
 #include "kernel.h"
+#include "kdirect.h"
 #include "../userspace/error.h"
 #include "../lib/pool.h"
 #include "../userspace/ipc.h"
@@ -142,10 +143,11 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->timer.callback = kprocess_timeout;
             (*process)->timer.param = (*process);
             (*process)->size = rex->size;
-            rb_init(&((*process)->kipc.rb), rex->ipc_size);
-            (*process)->kipc.wait_process = (unsigned int)-1;
+            kipc_init((HANDLE)*process, rex->ipc_size);
+            kdirect_init(*process);
             (*process)->heap->handle = (HANDLE)(*process);
             (*process)->heap->system = (HANDLE)__KERNEL->system;
+            (*process)->heap->stdout = (*process)->heap->stdin = INVALID_HANDLE;
             if (rex->name)
             {
                 strncpy(PROCESS_NAME((*process)->heap), rex->name, MAX_PROCESS_NAME_SIZE);

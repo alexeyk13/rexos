@@ -91,6 +91,13 @@ void kipc_post_process(IPC* ipc, unsigned int sender)
     }
 }
 
+void kipc_init(HANDLE handle, int size)
+{
+    PROCESS* process = (PROCESS*)handle;
+    rb_init(&(process->kipc.rb), size);
+    process->kipc.wait_process = (unsigned int)-1;
+}
+
 void kipc_post(IPC* ipc)
 {
     kipc_post_process(ipc, (HANDLE)kprocess_get_current());
