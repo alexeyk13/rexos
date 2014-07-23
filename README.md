@@ -14,7 +14,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Very thin kernel. 
 - Independent library level, accessible both from kernel and userspace
 - Independent system and drivers in userspace
-- Exokernel syncronization: ipc, stream 
+- Exokernel syncronization: ipc, stream, direct IO
 - Standart microkernel syncronization: mutexes, events, semaphores. Nested mutex priority inheritance
 - Embedded dynamic memory manager, for every process
 - Safe and MPU ready. All supervisor-specific calls are wrapped around 
@@ -36,7 +36,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * memory profiling: red-markings, pool free/allocated size, objects fragmentation
 - Supported hardware:
   * ARM7
-  * cortex-m3, drivers for:STM32 F1/F2/F4 (power, gpio, uart, timer)
+  * cortex-m3, drivers for:STM32 F1/F2/F4 - power, gpio, uart, timer, rtc(F1 only)
 
 Cortex-M3 features:
 ------------------
