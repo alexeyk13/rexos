@@ -11,8 +11,11 @@
 #include "../../userspace/lib/stdlib.h"
 #include "../../userspace/lib/stdio.h"
 #include "../../userspace/stream.h"
+#include "../../userspace/direct.h"
 #include "../../userspace/irq.h"
 #include "stm32_config.h"
+#include "sys_config.h"
+#include <string.h>
 
 //one page
 #define UART_STREAM_SIZE                                256
@@ -30,6 +33,7 @@ typedef struct {
     char tx_buf[UART_TX_BUF_SIZE];
     char rx_char;
     int rx_free;
+    UART_BAUD baud;
 } UART;
 
 const REX __STM32_UART = {
@@ -201,7 +205,7 @@ bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
     UART_REGS[uart->port]->CR1 |= USART_CR1_UE | USART_CR1_PEIE;
     UART_REGS[uart->port]->CR3 |= USART_CR3_EIE;
 
-    UART_REGS[uart->port]->CR1 |= USART_CR1_TE;
+    memcpy(&uart->baud, config, sizeof(UART_BAUD));
     return true;
 }
 
@@ -429,10 +433,39 @@ static void stm32_uart_write_chunk(UART* uart)
         UART_REGS[uart->port]->CR1 |= USART_CR1_TE | USART_CR1_TXEIE;
     }
 }
+#if (SYS_INFO)
+//we can't use printf in uart driver, because this can halt driver loop
+static void printu(const char *const fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    __GLOBAL->lib->format(fmt, va, uart_write_kernel, (void*)UART_STDIO_PORT);
+    va_end(va);
+}
+
+static inline void stm32_uart_info(UART** uarts)
+{
+    int i;
+    printu("STM32 uart driver info\n\r\n\r");
+    printu("uarts count: %d\n\r", UARTS_COUNT);
+
+    for (i = 0; i < UARTS_COUNT; ++i)
+    {
+        if (uarts[i])
+        {
+            printu("UART_%d: ", i + 1);
+            printu("%d, %d/'%c'/%d\n\r", uarts[i]->baud.baud, uarts[i]->baud.data_bits, uarts[i]->baud.parity, uarts[i]->baud.stop_bits);
+        }
+    }
+    printu("\n\r\n\r");
+}
+#endif //SYS_INFO
 
 static inline void stm32_uart_loop(UART** uarts)
 {
     IPC ipc;
+    UART_ENABLE ue;
+    UART_BAUD baud;
     for (;;)
     {
         ipc_read_ms(&ipc, 0, 0);
@@ -445,8 +478,24 @@ static inline void stm32_uart_loop(UART** uarts)
             open_stdout();
             ipc_post(&ipc);
             break;
+#if (SYS_INFO)
+        case SYS_GET_INFO:
+            stm32_uart_info(uarts);
+            ipc_post(&ipc);
+            break;
+#endif
         case IPC_UART_ENABLE:
-            //TODO need direct IO
+            if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1] == NULL)
+            {
+                if (direct_read(ipc.process, (void*)&ue, sizeof(UART_ENABLE)))
+                    uarts[ipc.param1] = uart_enable(ipc.param1, &ue);
+                if (uarts[ipc.param1])
+                    ipc_post(&ipc);
+                else
+                    ipc_post_error(ipc.process, get_last_error());
+            }
+            else
+                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
         case IPC_UART_DISABLE:
             if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
@@ -463,10 +512,31 @@ static inline void stm32_uart_loop(UART** uarts)
                 ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
         case IPC_UART_SET_BAUDRATE:
-            //TODO need direct IO
+            if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
+            {
+                if (direct_read(ipc.process, (void*)&baud, sizeof(UART_BAUD)))
+                {
+                    if (uart_set_baudrate(uarts[ipc.param1], &baud))
+                        ipc_post(&ipc);
+                    else
+                        ipc_post_error(ipc.process, get_last_error());
+                }
+                else
+                    ipc_post_error(ipc.process, get_last_error());
+            }
+            else
+                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
         case IPC_UART_GET_BAUDRATE:
-            //TODO need direct IO
+            if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
+            {
+                if (direct_write(ipc.process, (void*)&(uarts[ipc.param1]->baud), sizeof(UART_BAUD)))
+                    ipc_post(&ipc);
+                else
+                    ipc_post_error(ipc.process, get_last_error());
+            }
+            else
+                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
         case IPC_UART_FLUSH:
             if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])

@@ -26,7 +26,17 @@ void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_proce
 {
     int i;
     IPC tmp;
-    CHECK_ADDRESS(process, time, sizeof(TIME));
+    if ((process != 0 && __KERNEL->context < 0) &&
+        (((unsigned int)(time) < (unsigned int)(((PROCESS*)(process))->heap))
+         || ((unsigned int)(time) + (sizeof(TIME)) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
+    {
+//        disable_interrupts();
+//        printk("INVALID ADDRESS at %s, line %d\n\r", __FILE__, __LINE__);
+        printk("INVALID ADDRESS at r, line %d\n\r", __LINE__);
+//        printk("process: %s\n\r", PROCESS_NAME(process->heap));
+        HALT();
+    }
+//    CHECK_ADDRESS(process, time, sizeof(TIME));
     CHECK_ADDRESS(process, ipc, sizeof(IPC));
 #if (KERNEL_IPC_DEBUG)
     if (wait_process == (HANDLE)process)

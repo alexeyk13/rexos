@@ -41,7 +41,7 @@ void panic()
 void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     disable_interrupts();
-//    ++__KERNEL->svc_count;
+    ++__KERNEL->svc_count;
     switch (num)
     {
     //process related
@@ -216,7 +216,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     default:
         kprocess_error_current(ERROR_INVALID_SVC);
     }
-//    --__KERNEL->svc_count;
+    --__KERNEL->svc_count;
     enable_interrupts();
 }
 

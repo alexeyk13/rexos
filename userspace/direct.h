@@ -69,11 +69,12 @@ __STATIC_INLINE void direct_enable_read_write(HANDLE process, void* addr, unsign
     \param process: handle of process, enabled directed IO
     \param addr: address
     \param size: full size
-    \retval none
+    \retval true on success
 */
-__STATIC_INLINE void direct_read(HANDLE process, void* addr, unsigned int size)
+__STATIC_INLINE bool direct_read(HANDLE process, void* addr, unsigned int size)
 {
     svc_call(SVC_DIRECT_READ, (unsigned int)process, (unsigned int)addr, (unsigned int)size);
+    return get_last_error() == ERROR_OK;
 }
 
 /**
@@ -81,11 +82,12 @@ __STATIC_INLINE void direct_read(HANDLE process, void* addr, unsigned int size)
     \param process: handle of process, enabled directed IO
     \param addr: address
     \param size: full size
-    \retval none
+    \retval true on success
 */
-__STATIC_INLINE void direct_write(HANDLE process, void* addr, unsigned int size)
+__STATIC_INLINE bool direct_write(HANDLE process, void* addr, unsigned int size)
 {
     svc_call(SVC_DIRECT_WRITE, (unsigned int)process, (unsigned int)addr, (unsigned int)size);
+    return get_last_error() == ERROR_OK;
 }
 
 /** \} */ // end of event group
