@@ -15,6 +15,7 @@ typedef enum {
     IPC_INVALID_PARAM,
     IPC_PING,
     IPC_STREAM_WRITE,                                   //!< Sent by kernel when stream write is complete. Param1: write size, Param2: none
+    IPC_BLOCK_SENT,                                     //!< Sent by kernel when block is sent to process. Param1: handle, Param2: data pointer, Param3: data size
 
     IPC_SYSTEM = 0x1000,
     IPC_USER = 0x10000

@@ -14,6 +14,11 @@
 #include "kipc.h"
 
 typedef struct {
+    void* data;
+    unsigned int size;
+}PROCESS_BLOCK;
+
+typedef struct {
     DLIST list;                                                        //list of processes - active, frozen, or owned by sync object
     HEAP* heap;                                                        //process heap pointer
     unsigned int* sp;                                                  //current sp(if saved)
@@ -21,14 +26,18 @@ typedef struct {
     unsigned int size;
     unsigned long flags;
     unsigned base_priority;                                            //base priority
-    unsigned current_priority;                                         //priority, adjusted by mutex
     KTIMER timer;                                                      //timer for process sleep and sync objects timeouts
     void* sync_object;                                                 //sync object we are waiting for
+#if (KERNEL_MES)
+    unsigned current_priority;                                         //priority, adjusted by mutex
     DLIST* owned_mutexes;                                              //owned mutexes list for nested mutex priority inheritance
+#endif //KERNEL_MES
 #if (KERNEL_PROCESS_STAT)
     TIME uptime;
     TIME uptime_start;
 #endif //KERNEL_PROCESS_STAT
+    unsigned int blocks_count;
+    PROCESS_BLOCK blocks[KERNEL_BLOCKS_COUNT];
     KIPC kipc;
     //IPC is following
 }PROCESS;
@@ -54,6 +63,8 @@ void kprocess_set_current_priority(PROCESS* process, unsigned int priority);
 void kprocess_error(PROCESS* process, int error);
 void kprocess_error_current(int error);
 PROCESS* kprocess_get_current();
+int kprocess_block_open(PROCESS* process, void* data, unsigned int size);
+void kprocess_block_close(PROCESS* process, int index);
 void kprocess_destroy_current();
 
 //called from startup

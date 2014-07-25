@@ -90,6 +90,6 @@ __STATIC_INLINE bool direct_write(HANDLE process, void* addr, unsigned int size)
     return get_last_error() == ERROR_OK;
 }
 
-/** \} */ // end of event group
+/** \} */ // end of direct group
 
 #endif // DIRECT_H

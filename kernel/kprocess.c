@@ -7,12 +7,14 @@
 #include "kprocess.h"
 #include "kmalloc.h"
 #include "string.h"
-#include "kmutex.h"
-#include "kevent.h"
-#include "ksem.h"
 #include "kstream.h"
 #include "kernel.h"
 #include "kdirect.h"
+#if (KERNEL_MES)
+#include "kmutex.h"
+#include "kevent.h"
+#include "ksem.h"
+#endif
 #include "../userspace/error.h"
 #include "../lib/pool.h"
 #include "../userspace/ipc.h"
@@ -38,7 +40,11 @@ void kprocess_add_to_active_list(PROCESS* process)
     dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
 #endif
     //process priority is less, than active, activate him
+#if (KERNEL_MES)
     if (process->current_priority < __KERNEL->processes->current_priority)
+#else
+    if (process->base_priority < __KERNEL->processes->base_priority)
+#endif //KERNEL_MES
     {
 #if (KERNEL_PROCESS_STAT)
         ktimer_get_uptime(&process->uptime_start);
@@ -55,7 +61,11 @@ void kprocess_add_to_active_list(PROCESS* process)
 
     dlist_enum_start((DLIST**)&__KERNEL->processes, &de);
     while (dlist_enum(&de, (DLIST**)&cur))
+#if (KERNEL_MES)
         if (process_to_save->current_priority < cur->current_priority)
+#else
+        if (process_to_save->base_priority < cur->base_priority)
+#endif //KERNEL_MES
         {
             dlist_add_before((DLIST**)&__KERNEL->processes, (DLIST*)cur, (DLIST*)process_to_save);
             found = true;
@@ -96,6 +106,10 @@ void kprocess_timeout(void* param)
     case PROCESS_SYNC_TIMER_ONLY:
     case PROCESS_SYNC_IPC:
         break;
+    case PROCESS_SYNC_STREAM:
+        kstream_lock_release((STREAM_HANDLE*)process->sync_object, process);
+        break;
+#if (KERNEL_MES)
     case PROCESS_SYNC_MUTEX:
         kmutex_lock_release((MUTEX*)process->sync_object, process);
         break;
@@ -105,9 +119,7 @@ void kprocess_timeout(void* param)
     case PROCESS_SYNC_SEM:
         ksem_lock_release((SEM*)process->sync_object, process);
         break;
-    case PROCESS_SYNC_STREAM:
-        kstream_lock_release((STREAM_HANDLE*)process->sync_object, process);
-        break;
+#endif //KERNEL_MES
     default:
         ASSERT(false);
     }
@@ -138,11 +150,15 @@ void kprocess_create(const REX* rex, PROCESS** process)
         if ((*process)->heap)
         {
             DO_MAGIC((*process), MAGIC_PROCESS);
-            (*process)->base_priority = (*process)->current_priority = rex->priority;
+            (*process)->base_priority = rex->priority;
+#if (KERNEL_MES)
+            (*process)->current_priority = rex->priority;
+#endif //KERNEL_MES
             (*process)->sp = (void*)((unsigned int)(*process)->heap + rex->size);
             (*process)->timer.callback = kprocess_timeout;
             (*process)->timer.param = (*process);
             (*process)->size = rex->size;
+            (*process)->blocks_count = 0;
             kipc_init((HANDLE)*process, rex->ipc_size);
             kdirect_init(*process);
             (*process)->heap->handle = (HANDLE)(*process);
@@ -221,7 +237,9 @@ void kprocess_set_priority(PROCESS* process, unsigned int priority)
     CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     process->base_priority = priority;
+#if (KERNEL_MES)
     kprocess_set_current_priority(process, kmutex_calculate_owner_priority(process));
+#endif
 }
 
 void kprocess_get_priority(PROCESS* process, unsigned int* priority)
@@ -266,6 +284,10 @@ void kprocess_destroy(PROCESS* process)
         case PROCESS_SYNC_TIMER_ONLY:
         case PROCESS_SYNC_IPC:
             break;
+        case PROCESS_SYNC_STREAM:
+            kstream_lock_release((STREAM_HANDLE*)process->sync_object, process);
+            break;
+#if (KERNEL_MES)
         case PROCESS_SYNC_MUTEX:
             kmutex_lock_release((MUTEX*)process->sync_object, process);
             break;
@@ -275,9 +297,7 @@ void kprocess_destroy(PROCESS* process)
         case PROCESS_SYNC_SEM:
             ksem_lock_release((SEM*)process->sync_object, process);
             break;
-        case PROCESS_SYNC_STREAM:
-            kstream_lock_release((STREAM_HANDLE*)process->sync_object, process);
-            break;
+#endif //KERNEL_MES
         default:
             ASSERT(false);
         }
@@ -306,9 +326,11 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
     process->flags |= PROCESS_MODE_WAITING | sync_type;
     process->sync_object = sync_object;
 
+#if (KERNEL_MES)
     //adjust owner priority
     if (sync_type == PROCESS_SYNC_MUTEX && ((MUTEX*)sync_object)->owner->current_priority > process->current_priority)
         kprocess_set_current_priority(((MUTEX*)sync_object)->owner, process->current_priority);
+#endif //KERNEL_MES
 
     //create timer if not infinite
     if (time->sec || time->usec)
@@ -347,6 +369,7 @@ void kprocess_wakeup(PROCESS* process)
     }
 }
 
+#if (KERNEL_MES)
 void kprocess_set_current_priority(PROCESS* process, unsigned int priority)
 {
     CHECK_HANDLE(process, sizeof(PROCESS));
@@ -372,6 +395,7 @@ void kprocess_set_current_priority(PROCESS* process, unsigned int priority)
         }
     }
 }
+#endif //KERNEL_MES
 
 void kprocess_error(PROCESS* process, int error)
 {
@@ -393,6 +417,33 @@ void kprocess_destroy_current()
 PROCESS* kprocess_get_current()
 {
     return (__KERNEL->context >= 0) ?  __KERNEL->irqs[__KERNEL->context].process : __KERNEL->processes;
+}
+
+int kprocess_block_open(PROCESS* process, void* data, unsigned int size)
+{
+    int index = -1;
+    CHECK_HANDLE_RET(process, sizeof(PROCESS), index);
+    CHECK_MAGIC_RET(process, MAGIC_PROCESS, index);
+    if (process->blocks_count < KERNEL_BLOCKS_COUNT)
+    {
+        index = process->blocks_count++;
+        process->blocks[index].data = data;
+        process->blocks[index].size = size;
+    }
+    else
+        kprocess_error(process, ERROR_TOO_MANY_OPEN_BLOCKS);
+    return index;
+}
+
+void kprocess_block_close(PROCESS* process, int index)
+{
+    CHECK_HANDLE(process, sizeof(PROCESS));
+    CHECK_MAGIC(process, MAGIC_PROCESS);
+    if (--process->blocks_count != index)
+    {
+        process->blocks[index].data = process->blocks[process->blocks_count - 1].data;
+        process->blocks[index].size = process->blocks[process->blocks_count - 1].size;
+    }
 }
 
 void kprocess_init(const REX* rex)
@@ -428,11 +479,17 @@ void process_stat(PROCESS* process)
 
     printk("%-16.16s ", PROCESS_NAME(process->heap));
 
+#if (KERNEL_MES)
     if (process->current_priority == (unsigned int)(-1))
         printk(" -init- ");
     else
         printk("%03d(%03d)", process->current_priority, process->base_priority);
-
+#else
+    if (process->base_priority == (unsigned int)(-1))
+        printk(" -init- ");
+    else
+        printk("%03d     ", process->base_priority);
+#endif
     printk("  %4b   ", (unsigned int)process->heap + process->size - (unsigned int)process->sp);
     printk("%4b ", process->size);
 

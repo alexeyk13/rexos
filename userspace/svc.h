@@ -35,24 +35,6 @@ typedef enum {
     SVC_PROCESS_SWITCH_TEST,
     SVC_PROCESS_INFO,
 
-    SVC_MUTEX_CREATE,
-    SVC_MUTEX_LOCK,
-    SVC_MUTEX_UNLOCK,
-    SVC_MUTEX_DESTROY,
-
-    SVC_EVENT_CREATE,
-    SVC_EVENT_PULSE,
-    SVC_EVENT_SET,
-    SVC_EVENT_IS_SET,
-    SVC_EVENT_CLEAR,
-    SVC_EVENT_WAIT,
-    SVC_EVENT_DESTROY,
-
-    SVC_SEM_CREATE,
-    SVC_SEM_WAIT,
-    SVC_SEM_SIGNAL,
-    SVC_SEM_DESTROY,
-
     SVC_IRQ_REGISTER,
     SVC_IRQ_UNREGISTER,
 
@@ -80,8 +62,37 @@ typedef enum {
     SVC_DIRECT_READ,
     SVC_DIRECT_WRITE,
 
+    SVC_BLOCK_CREATE,
+    SVC_BLOCK_OPEN,
+    SVC_BLOCK_CLOSE,
+    SVC_BLOCK_SEND,
+    SVC_BLOCK_RETURN,
+    SVC_BLOCK_DESTROY,
+
     SVC_SETUP_SYSTEM,
-    SVC_SETUP_DBG
+    SVC_SETUP_DBG,
+    SVC_TEST,
+
+#if (KERNEL_MES)
+    SVC_MUTEX_CREATE,
+    SVC_MUTEX_LOCK,
+    SVC_MUTEX_UNLOCK,
+    SVC_MUTEX_DESTROY,
+
+    SVC_EVENT_CREATE,
+    SVC_EVENT_PULSE,
+    SVC_EVENT_SET,
+    SVC_EVENT_IS_SET,
+    SVC_EVENT_CLEAR,
+    SVC_EVENT_WAIT,
+    SVC_EVENT_DESTROY,
+
+    SVC_SEM_CREATE,
+    SVC_SEM_WAIT,
+    SVC_SEM_SIGNAL,
+    SVC_SEM_DESTROY
+#endif //KERNEL_MES
+
 }SVC;
 
 // will be aligned to pass MPU requirements
@@ -154,6 +165,16 @@ __STATIC_INLINE void setup_system()
 __STATIC_INLINE void setup_dbg(STDOUT stdout, void* param)
 {
     svc_call(SVC_SETUP_DBG, (unsigned int)stdout, (unsigned int)param, 0);
+}
+
+/**
+    \brief test kernel call
+    \details Call to kernel and immediate return
+    \retval none
+*/
+__STATIC_INLINE void svc_test()
+{
+    svc_call(SVC_TEST, 0, 0, 0);
 }
 
 /** \} */ // end of sys group

@@ -14,8 +14,8 @@ unavailable, another HPET timer can be used for RTC emulation
 - Very thin kernel. 
 - Independent library level, accessible both from kernel and userspace
 - Independent system and drivers in userspace
-- Exokernel syncronization: ipc, stream, direct IO
-- Standart microkernel syncronization: mutexes, events, semaphores. Nested mutex priority inheritance
+- Exokernel syncronization: ipc, stream, direct IO, block
+- Standart microkernel syncronization: mutexes, events, semaphores. Nested mutex priority inheritance.
 - Embedded dynamic memory manager, for every process
 - Safe and MPU ready. All supervisor-specific calls are wrapped around 
   swi/svc calls for context rising.
@@ -50,6 +50,10 @@ ARM7 features:
 
 History
 =======
+0.0.3
+- new sync objects: direct IO, block
+- mutex, events, sempaphores are now deprecated
+
 0.0.2
 - new sync objects: ipc, stream
 - new sys level - userspace system
