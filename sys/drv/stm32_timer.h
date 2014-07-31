@@ -11,16 +11,8 @@
         timer for STM32
   */
 
-#include "../../userspace/process.h"
-#include "../../userspace/ipc.h"
-
-typedef enum {
-    IPC_TIMER_ENABLE = IPC_USER,
-    IPC_TIMER_DISABLE,
-    IPC_TIMER_START,
-    IPC_TIMER_STOP,
-    IPC_TIMER_GET_CLOCK
-} STM32_TIMER_IPCS;
+#include "sys_config.h"
+#include "stm32_core.h"
 
 typedef enum {
     TIM_1 = 0,
@@ -47,6 +39,15 @@ typedef enum {
 
 #define TIMER_FLAG_ONE_PULSE_MODE                (1 << 0)
 
-extern const REX __STM32_TIMER;
+void stm32_timer_enable(CORE* core, TIMER_NUM num, unsigned int flags);
+void stm32_timer_disable(CORE* core, TIMER_NUM num);
+void stm32_timer_start(TIMER_NUM num, unsigned int psc, unsigned int count);
+void stm32_timer_stop(TIMER_NUM num);
+unsigned int stm32_timer_get_clock(TIMER_NUM num);
+#if (SYS_INFO)
+void stm32_timer_info();
+#endif
+void stm32_timer_init(CORE* core);
+
 
 #endif // STM32_TIMER_H

@@ -64,6 +64,21 @@ __STATIC_INLINE void ipc_post_error(HANDLE process, int code)
 }
 
 /**
+    \brief post IPC or error if any
+    \param ipc: IPC structure
+    \retval none
+*/
+__STATIC_INLINE void ipc_post_or_error(IPC* ipc)
+{
+    if (get_last_error() != ERROR_OK)
+    {
+        ipc->param1 = get_last_error();
+        ipc->cmd = IPC_CALL_ERROR;
+    }
+    svc_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
+}
+
+/**
     \brief post IPC
     \details This version must be called for IRQ context
     \param ipc: IPC structure

@@ -13,6 +13,8 @@
 
 #include "../../userspace/process.h"
 #include "stm32_gpio.h"
+#include "stm32_config.h"
+#include "sys_config.h"
 
 typedef enum {
     IPC_UART_ENABLE = IPC_USER,
@@ -56,9 +58,18 @@ typedef struct {
     UART_BAUD baud;
 } UART_ENABLE;
 
-extern const REX __STM32_UART;
+#if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL)
+#define UARTS_COUNT                                         2
+#elif defined(STM32F10X_MD) || defined(STM32F10X_MD_VL)
+#define UARTS_COUNT                                         3
+#elif defined(STM32F1)
+#define UARTS_COUNT                                         5
+#elif defined(STM32F2) || defined(STM32F40_41xxx)
+#define UARTS_COUNT                                         6
+#elif defined(STM32F4)
+#define UARTS_COUNT                                         8
+#endif
 
-//TODO remove me
-void uart_write_kernel(const char *const buf, unsigned int size, void* param);
+extern const REX __STM32_UART;
 
 #endif // STM32_UART_H

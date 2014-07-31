@@ -5,14 +5,15 @@
 */
 
 #include "stm32_power.h"
-#include "../../userspace/ipc.h"
 #include "../../userspace/lib/stdio.h"
 #include "../../sys/sys_call.h"
-#include "sys_config.h"
+#include "../../userspace/core/stm32.h"
+#include "stm32_config.h"
 
 #if defined(STM32F1)
 #define MAX_APB2                             72000000
 #define MAX_APB1                             36000000
+#define MAX_ADC1                             14000000
 #elif defined(STM32F2)
 #define MAX_APB2                             60000000
 #define MAX_APB1                             30000000
@@ -42,27 +43,6 @@
 #ifndef RCC_CSR_PADRSTF
 #define RCC_CSR_PADRSTF RCC_CSR_PINRSTF
 #endif
-
-typedef struct {
-    int backup_count, write_count;
-}STM32_POWER;
-
-void stm32_power();
-
-const REX __STM32_POWER = {
-    //name
-    "STM32 power",
-    //size
-    512,
-    //priority - driver priority
-    90,
-    //flags
-    PROCESS_FLAGS_ACTIVE,
-    //ipc size
-    10,
-    //function
-    stm32_power
-};
 
 #if defined(STM32F100)
 static inline void setup_pll(int mul, int div)
@@ -222,6 +202,16 @@ int get_apb1_clock()
     return get_ahb_clock() / div;
 }
 
+#if (ADC_DRIVER)
+int get_adc_clock()
+{
+#if defined(STM32F1)
+    return get_apb2_clock() / ((((RCC->CFGR >> 14) & 3) + 1) * 2);
+#endif
+}
+
+#endif
+
 RESET_REASON get_reset_reason()
 {
     RESET_REASON res = RESET_REASON_UNKNOWN;
@@ -294,7 +284,7 @@ void setup_clock(int param1, int param2, int param3)
     while ((RCC->CFGR & (3 << 2)) != RCC_CFGR_SWS_PLL) {}
 }
 
-static inline void update_clock(int param1, int param2, int param3)
+void update_clock(int param1, int param2, int param3)
 {
     unsigned int apb1 = RCC->APB1ENR;
     RCC->APB1ENR = 0;
@@ -336,15 +326,44 @@ static inline void update_clock(int param1, int param2, int param3)
     RCC->APB2ENR = apb2;
 }
 
-#if (SYS_INFO)
-static inline void stm32_power_info()
+unsigned int get_clock(STM32_POWER_CLOCKS type)
 {
-    printf("STM32 power driver info\n\r\n\r");
+    unsigned int res = 0;
+    switch (type)
+    {
+    case STM32_CLOCK_CORE:
+        res = get_core_clock();
+        break;
+    case STM32_CLOCK_AHB:
+        res = get_ahb_clock();
+        break;
+    case STM32_CLOCK_APB1:
+        res = get_apb1_clock();
+        break;
+    case STM32_CLOCK_APB2:
+        res = get_apb2_clock();
+        break;
+#if (ADC_DRIVER)
+    case STM32_CLOCK_ADC:
+        res = get_adc_clock();
+        break;
+#endif //ADC_DRIVER
+    default:
+        error(ERROR_INVALID_PARAMS);
+    }
+    return res;
+}
+
+#if (SYS_INFO)
+void stm32_power_info()
+{
     printf("Core clock: %d\n\r", get_core_clock());
     printf("AHB clock: %d\n\r", get_ahb_clock());
     printf("APB1 clock: %d\n\r", get_apb1_clock());
     printf("APB2 clock: %d\n\r", get_apb2_clock());
-
+#if (ADC_DRIVER)
+    printf("ADC clock: %d\n\r", get_adc_clock());
+#endif
     printf("Reset reason: ");
     switch (get_reset_reason())
     {
@@ -366,119 +385,67 @@ static inline void stm32_power_info()
     default:
         printf("unknown");
     }
-    printf("\n\r\n\r");
+    printf("\n\r");
 }
 #endif
 
-static inline void backup_on(STM32_POWER* power)
+void backup_on(CORE* core)
 {
-    if (power->backup_count++ == 0)
+    if (core->backup_count++ == 0)
         //enable POWER and BACKUP interface
         RCC->APB1ENR |= RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN;
 }
 
-static inline void backup_off(STM32_POWER* power)
+void backup_off(CORE* core)
 {
-    if (--power->backup_count == 0)
+    if (--core->backup_count == 0)
         //enable POWER and BACKUP interface
         RCC->APB1ENR &= ~(RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN);
 }
 
-static inline void backup_write_enable(STM32_POWER* power)
+void backup_write_enable(CORE* core)
 {
-    if (power->backup_count)
+    if (core->backup_count)
     {
-        if (power->write_count++ == 0)
+        if (core->write_count++ == 0)
             PWR->CR |= PWR_CR_DBP;
     }
 }
 
-static inline void backup_write_protect(STM32_POWER* power)
+void backup_write_protect(CORE* core)
 {
-    if (power->backup_count)
+    if (core->backup_count)
     {
-        if (--power->write_count == 0)
+        if (--core->write_count == 0)
             PWR->CR &= ~PWR_CR_DBP;
     }
 }
 
-static inline void stm32_power_loop(STM32_POWER* power)
+#if (ADC_DRIVER)
+void stm32_adc_on()
 {
-    IPC ipc;
-    for (;;)
-    {
-        ipc_read_ms(&ipc, 0, 0);
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
-            ipc_post(&ipc);
-            break;
-        case IPC_CALL_ERROR:
-            break;
-        case SYS_SET_STDIO:
-            open_stdout();
-            ipc_post(&ipc);
-            break;
-#if (SYS_INFO)
-        case SYS_GET_INFO:
-            stm32_power_info();
-            ipc_post(&ipc);
-            break;
+#if defined(STM32F1)
+    int apb2, psc;
+    apb2 = get_apb2_clock();
+    for(psc = 2; psc < 8 && apb2 / psc > MAX_ADC1; psc += 2) {}
+    RCC->CFGR &= ~(3 << 14);
+    RCC->CFGR |= (psc / 2 - 1) << 14;
+    //enable clock
+    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
 #endif
-        case IPC_GET_CLOCK:
-            switch (ipc.param1)
-            {
-            case STM32_CLOCK_CORE:
-                ipc.param1 = get_core_clock();
-                break;
-            case STM32_CLOCK_AHB:
-                ipc.param1 = get_ahb_clock();
-                break;
-            case STM32_CLOCK_APB1:
-                ipc.param1 = get_apb1_clock();
-                break;
-            case STM32_CLOCK_APB2:
-                ipc.param1 = get_apb2_clock();
-                break;
-            default:
-                ipc.cmd = IPC_INVALID_PARAM;
-            }
-            ipc_post(&ipc);
-            break;
-        case IPC_UPDATE_CLOCK:
-            update_clock(ipc.param1, ipc.param2, ipc.param3);
-            break;
-        case IPC_GET_RESET_REASON:
-            ipc.param1 = get_reset_reason();
-            ipc_post(&ipc);
-            break;
-        case IPC_POWER_BACKUP_ON:
-            backup_on(power);
-            ipc_post(&ipc);
-            break;
-        case IPC_POWER_BACKUP_OFF:
-            backup_off(power);
-            ipc_post(&ipc);
-            break;
-        case IPC_POWER_BACKUP_WRITE_ENABLE:
-            backup_write_enable(power);
-            ipc_post(&ipc);
-            break;
-        case IPC_POWER_BACKUP_WRITE_PROTECT:
-            backup_write_protect(power);
-            ipc_post(&ipc);
-            break;
-        default:
-            ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
-            break;
-        }
-    }
 }
 
-void stm32_power()
+void stm32_adc_off()
 {
-    STM32_POWER power;
-    power.backup_count = power.write_count = 0;
+#if defined(STM32F1)
+    RCC->APB2ENR &= ~RCC_APB2ENR_ADC1EN;
+#endif
+}
+#endif //ADC_DRIVER
+
+void stm32_power_init(CORE* core)
+{
+    core->backup_count = core->write_count = 0;
 
     RCC->APB1ENR = 0;
     RCC->APB2ENR = 0;
@@ -503,7 +470,4 @@ void stm32_power()
 #elif defined(STM32F2) || defined(STM32F4)
     setup_clock(PLL_M, PLL_N, PLL_P);
 #endif
-
-    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_POWER, 0, 0);
-    stm32_power_loop(&power);
 }

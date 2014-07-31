@@ -6,7 +6,6 @@
 
 #include "stm32_timer.h"
 #include "stm32_config.h"
-#include "sys_config.h"
 #include "stm32_power.h"
 #include "../../userspace/error.h"
 #include "../../userspace/timer.h"
@@ -14,23 +13,6 @@
 #include "../sys_call.h"
 #include <string.h>
 #include "../../userspace/lib/stdio.h"
-
-void stm32_timer();
-
-const REX __STM32_TIMER = {
-    //name
-    "STM32 timer",
-    //size
-    512,
-    //priority - driver priority.
-    92,
-    //flags
-    PROCESS_FLAGS_ACTIVE,
-    //ipc size
-    10,
-    //function
-    stm32_timer
-};
 
 typedef TIM_TypeDef*                            TIM_TypeDef_P;
 
@@ -53,13 +35,13 @@ const int TIMER_POWER_BIT[TIMERS_COUNT] =       {0,    0,    1,    2,    3,    4
 const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB2, APB1, APB1, APB1, APB1, APB1, APB1, APB2, APB2, APB2,  APB2,  APB1,  APB1,  APB1};
 #endif
 
-typedef struct {
-    int shared1, shared8;
-    int hpet_uspsc;
-}TIMERS;
-
-void stm32_timer_enable(TIMERS* timers, TIMER_NUM num, unsigned int flags)
+void stm32_timer_enable(CORE *core, TIMER_NUM num, unsigned int flags)
 {
+    if (num >= TIMERS_COUNT)
+    {
+        error(ERROR_NOT_SUPPORTED);
+        return;
+    }
     //power up
     *(TIMER_POWER_PORT[num]) |= 1 << TIMER_POWER_BIT[num];
     TIMER_REGS[num]->CR1 |= TIM_CR1_URS;
@@ -71,7 +53,7 @@ void stm32_timer_enable(TIMERS* timers, TIMER_NUM num, unsigned int flags)
     //enable IRQ
     if (num == TIM_1 || num == TIM_10)
     {
-        if (timers->shared1++ == 0)
+        if (core->shared1++ == 0)
         {
             NVIC_EnableIRQ(TIMER_VECTORS[num]);
             NVIC_SetPriority(TIMER_VECTORS[num], 15);
@@ -79,7 +61,7 @@ void stm32_timer_enable(TIMERS* timers, TIMER_NUM num, unsigned int flags)
     }
     else if (num == TIM_8 || num == TIM_13)
     {
-        if (timers->shared8++ == 0)
+        if (core->shared8++ == 0)
         {
             NVIC_EnableIRQ(TIMER_VECTORS[num]);
             NVIC_SetPriority(TIMER_VECTORS[num], 15);
@@ -92,20 +74,25 @@ void stm32_timer_enable(TIMERS* timers, TIMER_NUM num, unsigned int flags)
     }
 }
 
-void stm32_timer_disable(TIMERS* timers, TIMER_NUM num)
+void stm32_timer_disable(CORE *core, TIMER_NUM num)
 {
+    if (num >= TIMERS_COUNT)
+    {
+        error(ERROR_NOT_SUPPORTED);
+        return;
+    }
     //disable timer
     TIMER_REGS[num]->CR1 &= ~TIM_CR1_CEN;
 
     //disable IRQ
     if (num == TIM_1 || num == TIM_10)
     {
-        if (--timers->shared1== 0)
+        if (--core->shared1== 0)
             NVIC_DisableIRQ(TIMER_VECTORS[num]);
     }
     else if (num == TIM_8 || num == TIM_13)
     {
-        if (--timers->shared8 == 0)
+        if (--core->shared8 == 0)
             NVIC_DisableIRQ(TIMER_VECTORS[num]);
     }
     else
@@ -117,6 +104,11 @@ void stm32_timer_disable(TIMERS* timers, TIMER_NUM num)
 
 void stm32_timer_start(TIMER_NUM num, unsigned int psc, unsigned int count)
 {
+    if (num >= TIMERS_COUNT)
+    {
+        error(ERROR_NOT_SUPPORTED);
+        return;
+    }
     TIMER_REGS[num]->PSC = psc - 1;
     TIMER_REGS[num]->ARR = count - 1;
     TIMER_REGS[num]->CNT = 0;
@@ -127,20 +119,24 @@ void stm32_timer_start(TIMER_NUM num, unsigned int psc, unsigned int count)
 
 void stm32_timer_stop(TIMER_NUM num)
 {
+    if (num >= TIMERS_COUNT)
+    {
+        error(ERROR_NOT_SUPPORTED);
+        return;
+    }
     TIMER_REGS[num]->CR1 &= ~TIM_CR1_CEN;
     TIMER_REGS[num]->SR &= ~TIM_SR_UIF;
 }
 
 unsigned int stm32_timer_get_clock(TIMER_NUM num)
 {
-    unsigned int ahb, apb;
-    HANDLE power = sys_get_object(SYS_OBJECT_POWER);
-    if (power == INVALID_HANDLE)
+    if (num >= TIMERS_COUNT)
     {
-        error(ERROR_NOT_FOUND);
+        error(ERROR_NOT_SUPPORTED);
         return 0;
     }
-    ahb = get(power, IPC_GET_CLOCK, STM32_CLOCK_AHB, 0, 0);
+    unsigned int ahb, apb;
+    ahb = get_clock(STM32_CLOCK_AHB);
     switch (num)
     {
     case TIM_1:
@@ -151,10 +147,10 @@ unsigned int stm32_timer_get_clock(TIMER_NUM num)
     case TIM_15:
     case TIM_16:
     case TIM_17:
-        apb = get(power, IPC_GET_CLOCK, STM32_CLOCK_APB2, 0, 0);
+        apb = get_clock(STM32_CLOCK_APB2);
         break;
     default:
-        apb = get(power, IPC_GET_CLOCK, STM32_CLOCK_APB1, 0, 0);
+        apb = get_clock(STM32_CLOCK_APB1);
     }
     if (ahb != apb)
         apb <<= 1;
@@ -169,12 +165,12 @@ void hpet_isr(int vector, void* param)
 
 void hpet_start(unsigned int value, void* param)
 {
-    TIMERS* timers = (TIMERS*)param;
+    CORE* core = (CORE*)param;
     //find near prescaller
     unsigned int mul = value / 0xffff;
     if (value % 0xffff)
         ++mul;
-    stm32_timer_start(HPET_TIMER, timers->hpet_uspsc * mul, value / mul);
+    stm32_timer_start(HPET_TIMER, core->hpet_uspsc * mul, value / mul);
 }
 
 void hpet_stop(void* param)
@@ -184,8 +180,8 @@ void hpet_stop(void* param)
 
 unsigned int hpet_elapsed(void* param)
 {
-    TIMERS* timers = (TIMERS*)param;
-    return (((TIMER_REGS[HPET_TIMER]->PSC) + 1)/ timers->hpet_uspsc) * ((TIMER_REGS[HPET_TIMER]->CNT) + 1);
+    CORE* core = (CORE*)param;
+    return (((TIMER_REGS[HPET_TIMER]->PSC) + 1)/ core->hpet_uspsc) * ((TIMER_REGS[HPET_TIMER]->CNT) + 1);
 }
 
 #if (TIMER_SOFT_RTC)
@@ -197,113 +193,32 @@ void second_pulse_isr(int vector, void* param)
 #endif
 
 #if (SYS_INFO)
-static inline void stm32_timer_info()
+void stm32_timer_info()
 {
-    printf("STM32 timer driver info\n\r\n\r");
     printf("HPET timer: TIM_%d\n\r", HPET_TIMER + 1);
 #if (TIMER_SOFT_RTC)
     printf("Second pulse timer: TIM_%d\n\r", SECOND_PULSE_TIMER + 1);
 #endif
-    printf("\n\r\n\r");
 }
 #endif
 
-static inline void stm32_timer_loop(TIMERS* timers)
+void stm32_timer_init(CORE *core)
 {
-    IPC ipc;
-    for (;;)
-    {
-        ipc_read_ms(&ipc, 0, 0);
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
-            ipc_post(&ipc);
-            break;
-        case IPC_CALL_ERROR:
-            break;
-        case SYS_SET_STDIO:
-            open_stdout();
-            ipc_post(&ipc);
-            break;
-#if (SYS_INFO)
-        case SYS_GET_INFO:
-            stm32_timer_info();
-            ipc_post(&ipc);
-            break;
-#endif
-        case IPC_TIMER_ENABLE:
-            if (ipc.param1 < TIMERS_COUNT)
-            {
-                stm32_timer_enable(timers, (TIMER_NUM)ipc.param1, ipc.param2);
-                ipc_post(&ipc);
-            }
-            else
-                ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
-            break;
-        case IPC_TIMER_DISABLE:
-            if (ipc.param1 < TIMERS_COUNT)
-            {
-                stm32_timer_disable(timers, (TIMER_NUM)ipc.param1);
-                ipc_post(&ipc);
-            }
-            else
-                ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
-            break;
-        case IPC_TIMER_START:
-            if (ipc.param1 < TIMERS_COUNT)
-            {
-                stm32_timer_start(ipc.param1, ipc.param2, ipc.param3);
-                ipc_post(&ipc);
-            }
-            else
-                ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
-            break;
-        case IPC_TIMER_STOP:
-            if (ipc.param1 < TIMERS_COUNT)
-            {
-                stm32_timer_stop(ipc.param1);
-                ipc_post(&ipc);
-            }
-            else
-                ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
-            break;
-        case IPC_TIMER_GET_CLOCK:
-            if (ipc.param1 < TIMERS_COUNT)
-            {
-                ipc.param1 = stm32_timer_get_clock(ipc.param1);
-                ipc_post(&ipc);
-            }
-            else
-                ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
-            break;
-        default:
-            ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
-            break;
-        }
-    }
-}
-
-void stm32_timer()
-{
-    TIMERS timers;
-    timers.shared1 = timers.shared8 = 0;
-    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_TIMER, 0, 0);
+    core->shared1 = core->shared8 = 0;
 
     //setup HPET
-    irq_register(TIMER_VECTORS[HPET_TIMER], hpet_isr, (void*)&timers);
-    timers.hpet_uspsc = stm32_timer_get_clock(HPET_TIMER) / 1000000;
-    stm32_timer_enable(&timers, HPET_TIMER, TIMER_FLAG_ONE_PULSE_MODE);
+    irq_register(TIMER_VECTORS[HPET_TIMER], hpet_isr, (void*)core);
+    core->hpet_uspsc = stm32_timer_get_clock(HPET_TIMER) / 1000000;
+    stm32_timer_enable(core, HPET_TIMER, TIMER_FLAG_ONE_PULSE_MODE);
     CB_SVC_TIMER cb_svc_timer;
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
-    timer_setup(&cb_svc_timer, &timers);
+    timer_setup(&cb_svc_timer, core);
 #if (TIMER_SOFT_RTC)
-    irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)&timers);
-    stm32_timer_enable(&timers, SECOND_PULSE_TIMER, 0);
+    irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)core);
+    stm32_timer_enable(core, SECOND_PULSE_TIMER, 0);
     //100us prescaller
     stm32_timer_start(SECOND_PULSE_TIMER, stm32_timer_get_clock(SECOND_PULSE_TIMER) / 10000, 10000);
 #endif
-
-    stm32_timer_loop(&timers);
 }

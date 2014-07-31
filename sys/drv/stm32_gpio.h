@@ -7,18 +7,7 @@
 #ifndef STM32_GPIO_H
 #define STM32_GPIO_H
 
-#include "../../userspace/process.h"
-#include "../../userspace/core/stm32.h"
-#include "../sys.h"
-
-typedef enum {
-    IPC_ENABLE_PIN = IPC_USER,
-    IPC_ENABLE_PIN_SYSTEM,
-    IPC_DISABLE_PIN,
-    IPC_SET_PIN,
-    IPC_GET_PIN,
-    IPC_DISABLE_JTAG
-} STM32_GPIO_IPCS;
+#include "stm32_core.h"
 
 typedef enum {
     PIN_MODE_OUT = 0,
@@ -44,12 +33,6 @@ typedef enum {
     PIN_UNUSED
 } PIN;
 
-#define GPIO_PORT(pin)                                          (pin / 16)
-#define GPIO_PIN(pin)                                           (pin & 15)
-
-typedef GPIO_TypeDef* GPIO_TypeDef_P;
-extern const GPIO_TypeDef_P GPIO[];
-
 #if defined(STM32F1)
 
 typedef enum {
@@ -70,6 +53,7 @@ typedef enum {
     GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_50MHZ = 0xf
 }GPIO_MODE;
 
+void gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup);
 #elif defined(STM32F2) || defined(STM32F4)
 
 #define GPIO_MODE_INPUT                         (0x0 << 0)
@@ -108,8 +92,16 @@ typedef enum {
     AF15
 } AF;
 
+void gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af);
 #endif
 
-extern const REX __STM32_GPIO;
+void gpio_enable_pin(CORE* core, PIN pin, PIN_MODE mode);
+void gpio_disable_pin(CORE* core, PIN pin);
+void gpio_set_pin(PIN pin, bool set);
+bool gpio_get_pin(PIN pin);
+void gpio_disable_jtag(CORE* core);
+void stm32_gpio_info(CORE* core);
+
+void stm32_gpio_init(CORE* core);
 
 #endif // STM32_GPIO_H

@@ -22,5 +22,7 @@
 //enable/disable drivers
 #define UART_DRIVER                                         1
 #define RTC_DRIVER                                          1
+#define ADC_DRIVER                                          1
+#define DAC_DRIVER                                          1
 
 #endif // SYS_CONFIG_H

@@ -157,18 +157,18 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
         UART_REGS[(UART_PORT)param]->DR = buf[i];
     }
     UART_REGS[(UART_PORT)param]->CR1 |= USART_CR1_TCIE;
-    //transmitter will be disabled int next IRQ TC
+    //transmitter will be disabled in next IRQ TC
 }
 
 bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
 {
-    unsigned int clock;
-    HANDLE power = sys_get_object(SYS_OBJECT_POWER);
-    if (power == INVALID_HANDLE)
+    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    if (core == INVALID_HANDLE)
     {
         error(ERROR_NOT_FOUND);
-        return false;
+        return NULL;
     }
+    unsigned int clock;
     UART_REGS[uart->port]->CR1 &= ~USART_CR1_UE;
 
     if (config->data_bits == 8 && config->parity != 'N')
@@ -191,9 +191,9 @@ bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
     UART_REGS[uart->port]->CR3 = 0;
 
     if (uart->port == UART_1 || uart->port == UART_6)
-        clock = get(power, IPC_GET_CLOCK, STM32_CLOCK_APB2, 0, 0);
+        clock = get(core, STM32_POWER_GET_CLOCK, STM32_CLOCK_APB2, 0, 0);
     else
-        clock = get(power, IPC_GET_CLOCK, STM32_CLOCK_APB1, 0, 0);
+        clock = get(core, STM32_POWER_GET_CLOCK, STM32_CLOCK_APB1, 0, 0);
     if (clock == 0)
         return false;
     unsigned int mantissa, fraction;
@@ -212,8 +212,8 @@ bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
 UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
 {
     UART* uart = NULL;
-    HANDLE gpio = sys_get_object(SYS_OBJECT_GPIO);
-    if (gpio == INVALID_HANDLE)
+    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    if (core == INVALID_HANDLE)
     {
         error(ERROR_NOT_FOUND);
         return NULL;
@@ -316,18 +316,18 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
     if (uart->tx_pin != PIN_UNUSED)
     {
 #if defined(STM32F1)
-        ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+        ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
 #elif defined(STM32F2) || defined(STM32F4)
-        ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
+        ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
 #endif
     }
 
     if (uart->rx_pin != PIN_UNUSED)
     {
 #if defined(STM32F1)
-        ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->rx_pin, GPIO_MODE_INPUT_FLOAT, false);
+        ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, uart->rx_pin, GPIO_MODE_INPUT_FLOAT, false);
 #elif defined(STM32F2) || defined(STM32F4)
-        ack(gpio, IPC_ENABLE_PIN_SYSTEM, uart->rx_pin, , GPIO_MODE_AF | GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
+        ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, uart->rx_pin, , GPIO_MODE_AF | GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
 #endif
     }
     //power up
@@ -352,8 +352,8 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
 
 static inline bool uart_disable(UART* uart)
 {
-    HANDLE gpio = sys_get_object(SYS_OBJECT_GPIO);
-    if (gpio == INVALID_HANDLE)
+    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    if (core == INVALID_HANDLE)
     {
         error(ERROR_NOT_FOUND);
         return false;
@@ -379,13 +379,13 @@ static inline bool uart_disable(UART* uart)
         stream_stop_listen(uart->tx_stream);
         stream_close(uart->tx_handle);
         stream_destroy(uart->tx_stream);
-        ack(gpio, IPC_DISABLE_PIN, uart->tx_pin, 0, 0);
+        ack(core, STM32_GPIO_DISABLE_PIN, uart->tx_pin, 0, 0);
     }
     if (uart->rx_pin != PIN_UNUSED)
     {
         stream_close(uart->rx_handle);
         stream_destroy(uart->rx_stream);
-        ack(gpio, IPC_DISABLE_PIN, uart->rx_pin, 0, 0);
+        ack(core, STM32_GPIO_DISABLE_PIN, uart->rx_pin, 0, 0);
     }
 
 #if defined(STM32F1)
@@ -649,12 +649,8 @@ void stm32_uart()
     sys_ack(SYS_SET_OBJECT, SYS_OBJECT_STDIN_STREAM, uarts[UART_STDIO_PORT]->rx_stream, 0);
     //say early processes, that stdio is setted up
     sys_ack(SYS_SET_STDIO, 0, 0, 0);
-    //power
-    ack(sys_get_object(SYS_OBJECT_POWER), SYS_SET_STDIO, 0, 0, 0);
-    //gpio
-    ack(sys_get_object(SYS_OBJECT_GPIO), SYS_SET_STDIO, 0, 0, 0);
-    //timer
-    ack(sys_get_object(SYS_OBJECT_TIMER), SYS_SET_STDIO, 0, 0, 0);
+    //core
+    ack(sys_get_object(SYS_OBJECT_CORE), SYS_SET_STDIO, 0, 0, 0);
 #endif //UART_STDIO
 
     stm32_uart_loop(uarts);

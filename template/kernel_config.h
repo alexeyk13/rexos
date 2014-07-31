@@ -28,7 +28,7 @@
 //maximum number of blocks, that can be opened at same time. Generally, it's MPU blocks count - 2
 #define KERNEL_BLOCKS_COUNT                         6
 //mutex, event, semaphore are now deprecated. Use stream, direct, block instead
-#define KERNEL_MES                                  1
+#define KERNEL_MES                                  0
 
 //size of GLOBAL consts. For MPU must be pow of 2, starting from 32
 //you must have good reason to changing this

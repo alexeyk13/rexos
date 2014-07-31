@@ -12,23 +12,6 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/timer.h"
 
-void stm32_rtc();
-
-const REX __STM32_RTC = {
-    //name
-    "STM32 RTC",
-    //size
-    512,
-    //priority - driver priority
-    91,
-    //flags
-    PROCESS_FLAGS_ACTIVE,
-    //ipc size
-    10,
-    //function
-    stm32_rtc
-};
-
 void stm32_rtc_isr(int vector, void* param)
 {
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
@@ -36,13 +19,13 @@ void stm32_rtc_isr(int vector, void* param)
     timer_second_pulse();
 }
 
-static inline void stm32_rtc_enable()
+void stm32_rtc_init()
 {
-    HANDLE power = sys_get_object(SYS_OBJECT_POWER);
-    if (power == INVALID_HANDLE)
+    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    if (core == INVALID_HANDLE)
         return;
-    ack(power, IPC_POWER_BACKUP_ON, 0, 0, 0);
-    ack(power, IPC_POWER_BACKUP_WRITE_ENABLE, 0, 0, 0);
+    ack(core, STM32_POWER_BACKUP_ON, 0, 0, 0);
+    ack(core, STM32_POWER_BACKUP_WRITE_ENABLE, 0, 0, 0);
 
     //backup domain reset?
     if (RCC->BDCR == 0)
@@ -73,7 +56,7 @@ static inline void stm32_rtc_enable()
         RTC->CRL &= ~RTC_CRL_CNF;
         while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     }
-    ack(power, IPC_POWER_BACKUP_WRITE_PROTECT, 0, 0, 0);
+    ack(core, STM32_POWER_BACKUP_WRITE_PROTECT, 0, 0, 0);
 
     //wait for APB1<->RTC_CORE sync
     RTC->CRL &= RTC_CRL_RSF;
@@ -87,17 +70,17 @@ static inline void stm32_rtc_enable()
     RTC->CRH |= RTC_CRH_SECIE;
 }
 
-static inline time_t stm32_rtc_get()
+time_t stm32_rtc_get()
 {
     return (time_t)(((RTC->CNTH) << 16ul) | (RTC->CNTL));
 }
 
-static inline void stm32_rtc_set(time_t time)
+void stm32_rtc_set(time_t time)
 {
-    HANDLE power = sys_get_object(SYS_OBJECT_POWER);
-    if (power == INVALID_HANDLE)
+    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    if (core == INVALID_HANDLE)
         return;
-    ack(power, IPC_POWER_BACKUP_WRITE_ENABLE, 0, 0, 0);
+    ack(core, STM32_POWER_BACKUP_WRITE_ENABLE, 0, 0, 0);
 
     //enter configuration mode
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
@@ -111,13 +94,12 @@ static inline void stm32_rtc_set(time_t time)
     RTC->CRL &= ~RTC_CRL_CNF;
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
 
-    ack(power, IPC_POWER_BACKUP_WRITE_PROTECT, 0, 0, 0);
+    ack(core, STM32_POWER_BACKUP_WRITE_PROTECT, 0, 0, 0);
 }
 
 #if (SYS_INFO)
 void stm32_rtc_info()
 {
-    printf("STM32 rtc driver info\n\r\n\r");
     printf("LSE clock: %d\n\r", LSE_VALUE);
     struct tm tm;
     gmtime(stm32_rtc_get(), &tm);
@@ -125,38 +107,3 @@ void stm32_rtc_info()
     printf("\n\r\n\r");
 }
 #endif
-
-void stm32_rtc()
-{
-    IPC ipc;
-    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_RTC, 0, 0);
-    open_stdout();
-    stm32_rtc_enable();
-    for (;;)
-    {
-        ipc_read_ms(&ipc, 0, 0);
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
-            ipc_post(&ipc);
-            break;
-        case IPC_RTC_GET:
-            ipc.param1 = (unsigned int)stm32_rtc_get();
-            ipc_post(&ipc);
-            break;
-        case IPC_RTC_SET:
-            stm32_rtc_set(ipc.param1);
-            ipc_post(&ipc);
-            break;
-#if (SYS_INFO)
-        case SYS_GET_INFO:
-            stm32_rtc_info();
-            ipc_post(&ipc);
-            break;
-#endif
-        default:
-            ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
-            break;
-        }
-    }
-}

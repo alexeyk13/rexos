@@ -37,7 +37,7 @@
 #define UART_STDIO_STOP_BITS                    1
 
 //size of UART process. You will need to increase this, if you have many uarts opened at same time
-#define UART_PROCESS_SIZE                       512
+#define UART_PROCESS_SIZE                       1024
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
 //remember, that process itself requires around 256 bytes
 #define UART_TX_BUF_SIZE                        32
@@ -45,7 +45,13 @@
 #define HPET_TIMER                               TIM_2
 #define TIMER_SOFT_RTC                           0
 #define SECOND_PULSE_TIMER                       TIM_3
-
+//------------------------------- ADC ------------------------------------------------
+// Avg Slope, refer to datasheet
+#define AVG_SLOPE                                4300
+// temp at 25C in mV, refer to datasheet
+#define V25_MV                                   1400
+// Vref in mV, set to 3300, if used internal
+#define ADC_VREF                                 3300
 
 
 #endif // STM32_CONFIG_H

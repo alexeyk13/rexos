@@ -12,11 +12,11 @@
 #include "../userspace/ipc.h"
 
 #if defined (STM32)
-#include "drv/stm32_power.h"
-#include "drv/stm32_gpio.h"
-#include "drv/stm32_timer.h"
+#include "drv/stm32_core.h"
 #include "drv/stm32_uart.h"
-#include "drv/stm32_rtc.h"
+#if (ADC_DRIVER)
+#include "drv/stm32_adc.h"
+#endif //ADC_DRIVER
 #endif
 #include "sys_config.h"
 
@@ -32,7 +32,7 @@ const REX __INIT = {
     //name
     "INIT",
     //size
-    512,
+    256,
     //priority - init priority
     ((unsigned int)-1),
     //flags - init must be called frozen)
@@ -49,15 +49,13 @@ void init()
     __HEAP->system = process_create(&__SYS);
 
 #if defined(STM32)
-    process_create(&__STM32_POWER);
-    process_create(&__STM32_GPIO);
-    process_create(&__STM32_TIMER);
+    process_create(&__STM32_CORE);
 #if (UART_DRIVER)
     process_create(&__STM32_UART);
 #endif
-#if (RTC_DRIVER)
-    process_create(&__STM32_RTC);
-#endif
+#if (ADC_DRIVER)
+    process_create(&__STM32_ADC);
+#endif //ADC_DRIVER
 
 #else
 #warning No drivers loaded. System is abstract!

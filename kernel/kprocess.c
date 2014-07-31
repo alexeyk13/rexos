@@ -236,10 +236,22 @@ void kprocess_set_priority(PROCESS* process, unsigned int priority)
 {
     CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
-    process->base_priority = priority;
 #if (KERNEL_MES)
+    process->base_priority = priority;
     kprocess_set_current_priority(process, kmutex_calculate_owner_priority(process));
+#else
+    if (process->base_priority != priority)
+    {
+        process->base_priority = priority;
+        if ((process->flags & PROCESS_MODE_MASK) == PROCESS_MODE_ACTIVE)
+        {
+            kprocess_remove_from_active_list(process);
+            kprocess_add_to_active_list(process);
+        }
+    }
+
 #endif
+
 }
 
 void kprocess_get_priority(PROCESS* process, unsigned int* priority)
@@ -549,9 +561,9 @@ void kprocess_info()
     DLIST_ENUM de;
     PROCESS* cur;
 #if (KERNEL_PROCESS_STAT)
-    printk("    name         priority  stack  size   used         free       uptime\n\r");
+    printk("\n\r    name         priority  stack  size   used         free       uptime\n\r");
 #else
-    printk("    name         priority  stack  size   used         free\n\r");
+    printk("\n\r    name         priority  stack  size   used         free\n\r");
 #endif
     printk(STAT_LINE);
     dlist_enum_start((DLIST**)&__KERNEL->processes, &de);

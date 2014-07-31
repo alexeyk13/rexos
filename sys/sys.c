@@ -11,7 +11,7 @@
 
 //temporaily struct, before root fs will be ready
 typedef struct {
-    HANDLE power, gpio, timer, uart, rtc;
+    HANDLE core, uart, adc;
     HANDLE stdout_stream;
     HANDLE stdin_stream;
 }SYS;
@@ -36,7 +36,7 @@ const REX __SYS = {
 void sys ()
 {
     SYS sys;
-    sys.power = sys.gpio = sys.timer = sys.uart = sys.rtc = INVALID_HANDLE;
+    sys.uart = sys.core = sys.adc = INVALID_HANDLE;
     sys.stdout_stream = INVALID_HANDLE;
     sys.stdin_stream = INVALID_HANDLE;
     IPC ipc;
@@ -56,20 +56,14 @@ void sys ()
         case SYS_GET_OBJECT:
             switch (ipc.param1)
             {
-            case SYS_OBJECT_POWER:
-                ipc.param1 = sys.power;
-                break;
-            case SYS_OBJECT_GPIO:
-                ipc.param1 = sys.gpio;
-                break;
-            case SYS_OBJECT_TIMER:
-                ipc.param1 = sys.timer;
+            case SYS_OBJECT_CORE:
+                ipc.param1 = sys.core;
                 break;
             case SYS_OBJECT_UART:
                 ipc.param1 = sys.uart;
                 break;
-            case SYS_OBJECT_RTC:
-                ipc.param1 = sys.rtc;
+            case SYS_OBJECT_ADC:
+                ipc.param1 = sys.adc;
                 break;
             case SYS_OBJECT_STDOUT_STREAM:
                 ipc.param1 = sys.stdout_stream;
@@ -88,20 +82,14 @@ void sys ()
         case SYS_SET_OBJECT:
             switch (ipc.param1)
             {
-            case SYS_OBJECT_POWER:
-                sys.power = ipc.process;
-                break;
-            case SYS_OBJECT_GPIO:
-                sys.gpio = ipc.process;
-                break;
-            case SYS_OBJECT_TIMER:
-                sys.timer = ipc.process;
+            case SYS_OBJECT_CORE:
+                sys.core = ipc.process;
                 break;
             case SYS_OBJECT_UART:
                 sys.uart = ipc.process;
                 break;
-            case SYS_OBJECT_RTC:
-                sys.rtc = ipc.process;
+            case SYS_OBJECT_ADC:
+                sys.adc = ipc.process;
                 break;
             case SYS_OBJECT_STDOUT_STREAM:
                 sys.stdout_stream = ipc.param2;

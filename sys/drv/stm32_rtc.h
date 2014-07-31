@@ -6,15 +6,16 @@
 #ifndef STM32_RTC_H
 #define STM32_RTC_H
 
-#include "../../userspace/process.h"
-#include "../../userspace/ipc.h"
+#include "stm32_core.h"
+#include "sys_config.h"
 
-typedef enum {
-    IPC_RTC_GET = IPC_USER,                                            //!< Get RTC value
-    IPC_RTC_SET                                                        //!< Set RTC value
-} STM32_RTC_IPCS;
+time_t stm32_rtc_get();
+void stm32_rtc_set(time_t time);
 
+#if (SYS_INFO)
+void stm32_rtc_info();
+#endif
 
-extern const REX __STM32_RTC;
+void stm32_rtc_init();
 
 #endif // STM32_RTC_H
