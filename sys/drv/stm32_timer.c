@@ -10,7 +10,7 @@
 #include "../../userspace/error.h"
 #include "../../userspace/timer.h"
 #include "../../userspace/irq.h"
-#include "../sys_call.h"
+#include "../sys.h"
 #include <string.h>
 #include "../../userspace/lib/stdio.h"
 

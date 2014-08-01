@@ -37,6 +37,8 @@ typedef enum {
     STM32_POWER_BACKUP_WRITE_PROTECT,                             //!< Turn on write protection of backup domain
     STM32_POWER_ADC_ON,
     STM32_POWER_ADC_OFF,
+    STM32_POWER_USB_ON,
+    STM32_POWER_USB_OFF,
 
     STM32_RTC_GET,                                                //!< Get RTC value
     STM32_RTC_SET                                                 //!< Set RTC value

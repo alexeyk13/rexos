@@ -10,12 +10,12 @@
 #include "sys_config.h"
 
 time_t stm32_rtc_get();
-void stm32_rtc_set(time_t time);
+void stm32_rtc_set(CORE* core, time_t time);
 
 #if (SYS_INFO)
 void stm32_rtc_info();
 #endif
 
-void stm32_rtc_init();
+void stm32_rtc_init(CORE* core);
 
 #endif // STM32_RTC_H

@@ -6,7 +6,7 @@
 
 #include "stm32_adc.h"
 #include "stm32_power.h"
-#include "../sys_call.h"
+#include "../sys.h"
 
 #define ADC1_CLOCK_MAX              14000000
 #define ADC1_TSTAB                  11
@@ -113,6 +113,8 @@ void stm32_adc()
         {
         case IPC_PING:
             ipc_post(&ipc);
+            break;
+        case IPC_CALL_ERROR:
             break;
 #if (SYS_INFO)
         case SYS_GET_INFO:

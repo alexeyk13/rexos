@@ -5,7 +5,6 @@
 */
 
 #include "sys.h"
-#include "sys_call.h"
 #include "sys_config.h"
 #include "../userspace/process.h"
 #include "../userspace/lib/stdio.h"
@@ -13,10 +12,15 @@
 
 #if defined (STM32)
 #include "drv/stm32_core.h"
+#if (UART_DRIVER)
 #include "drv/stm32_uart.h"
+#endif //UART_DRIVER
 #if (ADC_DRIVER)
 #include "drv/stm32_adc.h"
 #endif //ADC_DRIVER
+#if (USB_DRIVER)
+#include "drv/stm32_usb.h"
+#endif //USB_DRIVER
 #endif
 #include "sys_config.h"
 
@@ -56,6 +60,9 @@ void init()
 #if (ADC_DRIVER)
     process_create(&__STM32_ADC);
 #endif //ADC_DRIVER
+#if (USB_DRIVER)
+    process_create(&__STM32_USB);
+#endif //USB_DRIVER
 
 #else
 #warning No drivers loaded. System is abstract!

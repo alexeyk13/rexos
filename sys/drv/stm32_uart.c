@@ -6,7 +6,7 @@
 
 #include "stm32_uart.h"
 #include "stm32_power.h"
-#include "../sys_call.h"
+#include "../sys.h"
 #include "error.h"
 #include "../../userspace/lib/stdlib.h"
 #include "../../userspace/lib/stdio.h"

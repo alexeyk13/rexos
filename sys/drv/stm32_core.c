@@ -5,7 +5,7 @@
 */
 
 #include "stm32_core.h"
-#include "../sys_call.h"
+#include "../sys.h"
 
 #include "stm32_timer.h"
 #include "stm32_gpio.h"
@@ -149,6 +149,16 @@ void stm32_core_loop(CORE* core)
             ipc_post_or_error(&ipc);
             break;
 #endif //ADC_DRIVER
+#if (USB_DRIVER)
+        case STM32_POWER_USB_ON:
+            stm32_usb_power_on();
+            ipc_post_or_error(&ipc);
+            break;
+        case STM32_POWER_USB_OFF:
+            stm32_usb_power_off(core);
+            ipc_post_or_error(&ipc);
+            break;
+#endif //USB_DRIVER
         //RTC
 #if (RTC_DRIVER)
         case STM32_RTC_GET:
@@ -156,7 +166,7 @@ void stm32_core_loop(CORE* core)
             ipc_post(&ipc);
             break;
         case STM32_RTC_SET:
-            stm32_rtc_set(ipc.param1);
+            stm32_rtc_set(core, ipc.param1);
             ipc_post(&ipc);
             break;
 #endif //RTC_DRIVER
@@ -176,7 +186,7 @@ void stm32_core()
     stm32_timer_init(&core);
     stm32_gpio_init(&core);
 #if (RTC_DRIVER)
-    stm32_rtc_init();
+    stm32_rtc_init(&core);
 #endif //RTC_DRIVER
     stm32_core_loop(&core);
 }

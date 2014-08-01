@@ -6,7 +6,7 @@
 #include "stm32_rtc.h"
 #include "stm32_config.h"
 #include "sys_config.h"
-#include "../sys_call.h"
+#include "../sys.h"
 #include "stm32_power.h"
 #include "../../userspace/lib/stdio.h"
 #include "../../userspace/irq.h"
@@ -19,13 +19,10 @@ void stm32_rtc_isr(int vector, void* param)
     timer_second_pulse();
 }
 
-void stm32_rtc_init()
+void stm32_rtc_init(CORE *core)
 {
-    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
-    if (core == INVALID_HANDLE)
-        return;
-    ack(core, STM32_POWER_BACKUP_ON, 0, 0, 0);
-    ack(core, STM32_POWER_BACKUP_WRITE_ENABLE, 0, 0, 0);
+    backup_on(core);
+    backup_write_enable(core);
 
     //backup domain reset?
     if (RCC->BDCR == 0)
@@ -56,7 +53,7 @@ void stm32_rtc_init()
         RTC->CRL &= ~RTC_CRL_CNF;
         while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     }
-    ack(core, STM32_POWER_BACKUP_WRITE_PROTECT, 0, 0, 0);
+    backup_write_protect(core);
 
     //wait for APB1<->RTC_CORE sync
     RTC->CRL &= RTC_CRL_RSF;
@@ -75,12 +72,9 @@ time_t stm32_rtc_get()
     return (time_t)(((RTC->CNTH) << 16ul) | (RTC->CNTL));
 }
 
-void stm32_rtc_set(time_t time)
+void stm32_rtc_set(CORE* core, time_t time)
 {
-    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
-    if (core == INVALID_HANDLE)
-        return;
-    ack(core, STM32_POWER_BACKUP_WRITE_ENABLE, 0, 0, 0);
+    backup_write_enable(core);
 
     //enter configuration mode
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
@@ -94,7 +88,7 @@ void stm32_rtc_set(time_t time)
     RTC->CRL &= ~RTC_CRL_CNF;
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
 
-    ack(core, STM32_POWER_BACKUP_WRITE_PROTECT, 0, 0, 0);
+    backup_write_protect(core);
 }
 
 #if (SYS_INFO)

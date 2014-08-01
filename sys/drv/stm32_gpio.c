@@ -6,7 +6,7 @@
 
 #include "stm32_gpio.h"
 #include "../../userspace/error.h"
-#include "../sys_call.h"
+#include "../sys.h"
 #include "sys_config.h"
 #include "../../userspace/lib/stdlib.h"
 #include "../../userspace/lib/stdio.h"

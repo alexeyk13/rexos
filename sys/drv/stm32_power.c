@@ -6,7 +6,7 @@
 
 #include "stm32_power.h"
 #include "../../userspace/lib/stdio.h"
-#include "../../sys/sys_call.h"
+#include "../sys.h"
 #include "../../userspace/core/stm32.h"
 #include "stm32_config.h"
 
@@ -442,6 +442,46 @@ void stm32_adc_off()
 #endif
 }
 #endif //ADC_DRIVER
+
+#if (USB_DRIVER)
+void stm32_usb_power_on()
+{
+#if defined(STM32F1)
+    int core;
+    core = get_core_clock();
+    if (core == 72000000)
+        RCC->CFGR &= ~(1 << 22);
+    else if (core == 48000000)
+        RCC->CFGR |= 1 << 22;
+    else
+    {
+        error(ERROR_NOT_SUPPORTED);
+        return;
+    }
+#if defined(STM32F10X_CL)
+    //enable clock
+    RCC->AHBENR |= RCC_AHBENR_OTGFSEN;
+#else //F100, F101, F103
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+#endif
+#else //F2, F4
+#error Only STM32F1 is supported for now!
+#endif
+}
+
+void stm32_usb_power_off()
+{
+#if defined(STM32F10X_CL)
+    //disable clock
+    RCC->AHBENR &= ~RCC_AHBENR_OTGFSEN;
+#elif defined(STM32F1)
+    //F100, F101, F103
+    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
+#else
+#error Only STM32F1 is supported for now!
+#endif
+}
+#endif //USB_DRIVER
 
 void stm32_power_init(CORE* core)
 {
