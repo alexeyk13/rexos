@@ -10,7 +10,7 @@
 
 //temporaily struct, before root fs will be ready
 typedef struct {
-    HANDLE core, uart, adc, usb;
+    HANDLE core, uart;
     HANDLE stdout_stream;
     HANDLE stdin_stream;
 }SYS;
@@ -35,7 +35,7 @@ const REX __SYS = {
 void sys ()
 {
     SYS sys;
-    sys.uart = sys.core = sys.adc = sys.usb = INVALID_HANDLE;
+    sys.uart = sys.core = INVALID_HANDLE;
     sys.stdout_stream = INVALID_HANDLE;
     sys.stdin_stream = INVALID_HANDLE;
     IPC ipc;
@@ -61,12 +61,6 @@ void sys ()
             case SYS_OBJECT_UART:
                 ipc.param1 = sys.uart;
                 break;
-            case SYS_OBJECT_ADC:
-                ipc.param1 = sys.adc;
-                break;
-            case SYS_OBJECT_USB:
-                ipc.param1 = sys.usb;
-                break;
             case SYS_OBJECT_STDOUT_STREAM:
                 ipc.param1 = sys.stdout_stream;
                 break;
@@ -89,12 +83,6 @@ void sys ()
                 break;
             case SYS_OBJECT_UART:
                 sys.uart = ipc.process;
-                break;
-            case SYS_OBJECT_ADC:
-                sys.adc = ipc.process;
-                break;
-            case SYS_OBJECT_USB:
-                sys.usb = ipc.process;
                 break;
             case SYS_OBJECT_STDOUT_STREAM:
                 sys.stdout_stream = ipc.param2;

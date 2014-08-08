@@ -202,15 +202,14 @@ int get_apb1_clock()
     return get_ahb_clock() / div;
 }
 
-#if (ADC_DRIVER)
 int get_adc_clock()
 {
 #if defined(STM32F1)
     return get_apb2_clock() / ((((RCC->CFGR >> 14) & 3) + 1) * 2);
+#else
+    return 0;
 #endif
 }
-
-#endif
 
 RESET_REASON get_reset_reason()
 {
@@ -343,11 +342,9 @@ unsigned int get_clock(STM32_POWER_CLOCKS type)
     case STM32_CLOCK_APB2:
         res = get_apb2_clock();
         break;
-#if (ADC_DRIVER)
     case STM32_CLOCK_ADC:
         res = get_adc_clock();
         break;
-#endif //ADC_DRIVER
     default:
         error(ERROR_INVALID_PARAMS);
     }
@@ -361,9 +358,7 @@ void stm32_power_info()
     printf("AHB clock: %d\n\r", get_ahb_clock());
     printf("APB1 clock: %d\n\r", get_apb1_clock());
     printf("APB2 clock: %d\n\r", get_apb2_clock());
-#if (ADC_DRIVER)
     printf("ADC clock: %d\n\r", get_adc_clock());
-#endif
     printf("Reset reason: ");
     switch (get_reset_reason())
     {
@@ -421,7 +416,6 @@ void backup_write_protect(CORE* core)
     }
 }
 
-#if (ADC_DRIVER)
 void stm32_adc_on()
 {
 #if defined(STM32F1)
@@ -441,9 +435,7 @@ void stm32_adc_off()
     RCC->APB2ENR &= ~RCC_APB2ENR_ADC1EN;
 #endif
 }
-#endif //ADC_DRIVER
 
-#if (USB_DRIVER)
 void stm32_usb_power_on()
 {
 #if defined(STM32F1)
@@ -481,7 +473,6 @@ void stm32_usb_power_off()
 #error Only STM32F1 is supported for now!
 #endif
 }
-#endif //USB_DRIVER
 
 void stm32_power_init(CORE* core)
 {

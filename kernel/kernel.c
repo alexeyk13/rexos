@@ -45,7 +45,6 @@ void panic()
 void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     disable_interrupts();
-    ++__KERNEL->svc_count;
     switch (num)
     {
     //process related
@@ -154,13 +153,16 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kblock_create((BLOCK**)param1, param2);
         break;
     case SVC_BLOCK_OPEN:
-        kblock_open((BLOCK*)param1);
+        kblock_open((BLOCK*)param1, (void**)param2);
         break;
     case SVC_BLOCK_CLOSE:
         kblock_close((BLOCK*)param1);
         break;
     case SVC_BLOCK_SEND:
         kblock_send((BLOCK*)param1, (PROCESS*)param2);
+        break;
+    case SVC_BLOCK_SEND_IPC:
+        kblock_send_ipc((BLOCK*)param1, (PROCESS*)param2, (IPC*)param3);
         break;
     case SVC_BLOCK_RETURN:
         kblock_return((BLOCK*)param1);
@@ -246,7 +248,6 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     default:
         kprocess_error_current(ERROR_INVALID_SVC);
     }
-    --__KERNEL->svc_count;
     enable_interrupts();
 }
 

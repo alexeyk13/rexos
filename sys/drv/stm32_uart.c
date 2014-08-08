@@ -100,7 +100,7 @@ void stm32_uart_on_isr(int vector, void* param)
     uint16_t sr = UART_REGS[uart->port]->SR;
 
     //transmit more
-    if ((sr & USART_SR_TXE) && uart->tx_chunk_size)
+    if ((UART_REGS[uart->port]->CR1 & USART_CR1_TXEIE) && (sr & USART_SR_TXE) && uart->tx_chunk_size)
     {
         UART_REGS[uart->port]->DR = uart->tx_buf[uart->tx_chunk_pos++];
         //no more
@@ -117,7 +117,7 @@ void stm32_uart_on_isr(int vector, void* param)
         }
     }
     //transmission completed and no more data. Disable transmitter
-    else if ((sr & USART_SR_TC) &&  uart->tx_total == 0)
+    else if ((UART_REGS[uart->port]->CR1 & USART_CR1_TCIE) && (sr & USART_SR_TC) &&  uart->tx_total == 0)
         UART_REGS[uart->port]->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
     //decode error, if any
     if ((sr & (USART_SR_PE | USART_SR_FE | USART_SR_NE | USART_SR_ORE)))

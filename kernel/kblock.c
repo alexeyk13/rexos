@@ -19,6 +19,7 @@ void kblock_create(BLOCK** block, unsigned int size)
         DO_MAGIC((*block), MAGIC_BLOCK);
         (*block)->owner = (*block)->granted = process;
         (*block)->size = size;
+        (*block)->index = -1;
         //allocate stream data
         if (((*block)->data = paged_alloc(size)) == NULL)
         {
@@ -43,15 +44,23 @@ void kblock_destroy(BLOCK* block)
     kfree(block);
 }
 
-void kblock_open(BLOCK* block)
+void kblock_open(BLOCK* block, void **ptr)
 {
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
+    CHECK_ADDRESS(process, ptr, sizeof(void*));
+
     if (block->index < 0 && block->granted == process)
+    {
         block->index = kprocess_block_open(process, block->data, block->size);
+        *ptr = block->data;
+    }
     else
+    {
         kprocess_error(process, ERROR_ACCESS_DENIED);
+        *ptr = NULL;
+    }
 }
 
 void kblock_close(BLOCK* block)
@@ -70,7 +79,6 @@ void kblock_close(BLOCK* block)
 
 void kblock_send(BLOCK* block, PROCESS* receiver)
 {
-    IPC ipc;
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_HANDLE(receiver, sizeof(PROCESS));
@@ -84,21 +92,20 @@ void kblock_send(BLOCK* block, PROCESS* receiver)
             block->index = -1;
         }
         block->granted = receiver;
-
-        ipc.process = (HANDLE)receiver;
-        ipc.cmd = IPC_BLOCK_SENT;
-        ipc.param1 = (HANDLE)block;
-        ipc.param2 = (unsigned int)block->data;
-        ipc.param3 = (unsigned int)block->size;
-        kipc_post_process(&ipc, INVALID_HANDLE);
     }
     else
         kprocess_error(process, ERROR_ACCESS_DENIED);
 }
 
+void kblock_send_ipc(BLOCK* block, PROCESS* receiver, IPC* ipc)
+{
+    PROCESS* process = kprocess_get_current();
+    kblock_send(block, receiver);
+    kipc_post_process(ipc, (HANDLE)process);
+}
+
 void kblock_return(BLOCK* block)
 {
-    IPC ipc;
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
@@ -111,13 +118,6 @@ void kblock_return(BLOCK* block)
             block->index = -1;
         }
         block->granted = block->owner;
-
-        ipc.process = (HANDLE)block->owner;
-        ipc.cmd = IPC_BLOCK_SENT;
-        ipc.param1 = (HANDLE)block;
-        ipc.param2 = (unsigned int)block->data;
-        ipc.param3 = (unsigned int)block->size;
-        kipc_post_process(&ipc, INVALID_HANDLE);
     }
     else
         kprocess_error(process, ERROR_ACCESS_DENIED);

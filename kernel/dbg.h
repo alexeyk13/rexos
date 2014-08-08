@@ -131,23 +131,23 @@
 #define CHECK_ADDRESS(process, address, sz)     if ((process != 0 && __KERNEL->context < 0) && \
                                                     (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \
                                                     || ((unsigned int)(address) + (sz) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
-                                                     {printk("INVALID ADDRESS at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+                                                     {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
 #define CHECK_ADDRESS_RET(process, address, sz, ret)     if ((process != 0 && __KERNEL->context < 0) && \
                                                     (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \
                                                     || ((unsigned int)(address) + (sz) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
-                                                     {printk("INVALID ADDRESS at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+                                                     {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
 #define CHECK_ADDRESS_FLASH(process, address, sz)     if ((process != 0 && __KERNEL->context < 0) && \
                                                         !((((unsigned int)(address) >= (unsigned int)(((PROCESS*)(process))->heap)) \
                                                         && ((unsigned int)(address) + (sz) < (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size)) || \
                                                         (((unsigned int)(address) >= FLASH_BASE) \
                                                         && ((unsigned int)(address) + (sz) < FLASH_BASE + FLASH_SIZE)))) \
-                                                            {printk("INVALID ADDRESS at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+                                                            {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
 #define CHECK_ADDRESS_FLASH_RET(process, address, sz, ret)     if ((process != 0 && __KERNEL->context < 0) && \
                                                         !((((unsigned int)(address) >= (unsigned int)(((PROCESS*)(process))->heap)) \
                                                         && ((unsigned int)(address) + (sz) < (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size)) || \
                                                         (((unsigned int)(address) >= FLASH_BASE) \
                                                         && ((unsigned int)(address) + (sz) < FLASH_BASE + FLASH_SIZE)))) \
-                                                            {printk("INVALID ADDRESS at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+                                                            {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
 #else
 #define CHECK_ADDRESS(process, address, sz)     if ((process != 0 && __KERNEL->context < 0) && \
                                                    (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \

@@ -879,25 +879,25 @@ typedef struct {
 /******************************************************************************/
 
 typedef struct {
-    __IO uint32_t OTGCTL;     //0x00 Control and status register
-    __IO uint32_t OTGINT;     //0x04 Interrupt register
-    __IO uint32_t AHBCFG;     //0x08 AHB configuration register
-    __IO uint32_t USBCFG;     //0x0c USB configuration register
-    __IO uint32_t RSTCTL;     //0x10 Reset register
-    __IO uint32_t INTSTS;     //0x14 Core interrupt register
-    __IO uint32_t INTMSK;     //0x18 Interrupt mask register
-    __I  uint32_t RXSTSR;     //0x1c Receive status debug read/ORG status read register
-    __IO uint32_t RXSTSP;     //0x20 Receive status debug pop/ORG status pop register
-    __IO uint32_t RXSFSIZ;    //0x24 Receive FIFO size register
-    __IO uint32_t TX0FSIZ;    //0x28 Host: Nonperiodic transmit FIFO size, device: EP0 transmit FIFO size register
-    __I  uint32_t NPTXSTS;    //0x2c Host only: Nonperiodic transmit FIFO/queue status register
-    __IO uint32_t RESERVED1;  //0x30
-    __I  uint32_t RESERVED2;  //0x34
-    __IO uint32_t CCFG;          //0x38 Core configuration register
+    __IO uint32_t OTGCTL;       //0x00 Control and status register
+    __IO uint32_t OTGINT;       //0x04 Interrupt register
+    __IO uint32_t AHBCFG;       //0x08 AHB configuration register
+    __IO uint32_t USBCFG;       //0x0c USB configuration register
+    __IO uint32_t RSTCTL;       //0x10 Reset register
+    __IO uint32_t INTSTS;       //0x14 Core interrupt register
+    __IO uint32_t INTMSK;       //0x18 Interrupt mask register
+    __I  uint32_t RXSTSR;       //0x1c Receive status debug read/ORG status read register
+    __IO uint32_t RXSTSP;       //0x20 Receive status debug pop/ORG status pop register
+    __IO uint32_t RXFSIZ;       //0x24 Receive FIFO size register
+    __IO uint32_t TX0FSIZ;      //0x28 Host: Nonperiodic transmit FIFO size, device: EP0 transmit FIFO size register
+    __I  uint32_t NPTXSTS;      //0x2c Host only: Nonperiodic transmit FIFO/queue status register
+    __IO uint32_t RESERVED1;    //0x30
+    __I  uint32_t RESERVED2;    //0x34
+    __IO uint32_t CCFG;         //0x38 Core configuration register
     __IO uint32_t CID;          //0x3c Core ID register
     __I  uint32_t RESERVED3[48];//0x40..0xfc
     __IO uint32_t HPTXFSIZ;     //0x100 Host periodic transmit FIFO size register
-    __IO uint32_t DIEPTXF[3];//0x104 + (n *4) device IN endpoint transmit FIFO size register
+    __IO uint32_t DIEPTXF[3];   //0x104 + (n *4) device IN endpoint transmit FIFO size register
 } OTG_FS_GENERAL_TypeDef;
 
 typedef struct {
@@ -924,13 +924,13 @@ typedef struct {
 } OTG_FS_HOST_TypeDef;
 
 typedef struct {
-    __IO uint32_t CTL;            //+0x00 control register
-    __I  uint32_t RESERVED;        //+0x04
-    __IO uint32_t INT;            //+0x08 interrupt register
+    __IO uint32_t CTL;          //+0x00 control register
+    __I  uint32_t RESERVED;     //+0x04
+    __IO uint32_t INT;          //+0x08 interrupt register
     __I  uint32_t RESERVED1;    //+0x0c
-    __IO uint32_t TSIZ;            //+0x10 transfer size register
+    __IO uint32_t TSIZ;         //+0x10 transfer size register
     __IO uint32_t RESERVED2;    //+0x14
-    __IO uint32_t FSTS;            //+0x18 IN endpoint TxFIFO status register
+    __IO uint32_t FSTS;         //+0x18 IN endpoint TxFIFO status register
     __I  uint32_t RESERVED3;    //+0x1c
 } OTG_FS_DEVICE_ENDPOINT_TypeDef;
 
@@ -962,6 +962,7 @@ typedef struct {
 #define OTG_FS_HOST_BASE                                        (OTG_FS_BASE + 0x0400)
 #define OTG_FS_DEVICE_BASE                                      (OTG_FS_BASE + 0x0800)
 #define OTG_FS_PC_BASE                                          (OTG_FS_BASE + 0x0e00)
+#define OTG_FS_FIFO_BASE                                        (OTG_FS_BASE + 0x1000)
 
 #define OTG_FS_GENERAL                                          ((OTG_FS_GENERAL_TypeDef *) OTG_FS_GENERAL_BASE)
 #define OTG_FS_HOST                                             ((OTG_FS_HOST_TypeDef *) OTG_FS_HOST_BASE)

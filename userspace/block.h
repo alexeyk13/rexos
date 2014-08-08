@@ -11,6 +11,7 @@
 #include "cc_macro.h"
 #include "svc.h"
 #include "error.h"
+#include "ipc.h"
 
 /** \addtogroup block block
     interprocess block IO
@@ -34,12 +35,13 @@ __STATIC_INLINE HANDLE block_create(unsigned int size)
 /**
     \brief open block
     \param block: block handle
-    \retval true on success
+    \retval ptr on success
 */
-__STATIC_INLINE HANDLE block_open(HANDLE block)
+__STATIC_INLINE void* block_open(HANDLE block)
 {
-    svc_call(SVC_BLOCK_OPEN, (unsigned int)block, 0, 0);
-    return get_last_error() == ERROR_OK;
+    void* ptr;
+    svc_call(SVC_BLOCK_OPEN, (unsigned int)block, (unsigned int)&ptr, 0);
+    return ptr;
 }
 
 /**
@@ -51,6 +53,103 @@ __STATIC_INLINE HANDLE block_open(HANDLE block)
 __STATIC_INLINE void block_send(HANDLE block, HANDLE receiver)
 {
     svc_call(SVC_BLOCK_SEND, (unsigned int)block, (unsigned int)receiver, 0);
+}
+
+/**
+    \brief send block to another process + send custom IPC in one kernel call
+    \param block: block handle
+    \param receiver: receiver process
+    \param ipc: custom ipc
+    \retval none
+*/
+__STATIC_INLINE void block_send_ipc(HANDLE block, HANDLE receiver, IPC* ipc)
+{
+    svc_call(SVC_BLOCK_SEND_IPC, (unsigned int)block, (unsigned int)receiver, (unsigned int)ipc);
+}
+
+/**
+    \brief send block to another process + send custom IPC in one kernel call. Inline mode
+    \param block: block handle
+    \param receiver: receiver process
+    \param cmd: command to send
+    \param param1: custom param1
+    \param param2: custom param2
+    \param param3: custom param3
+    \retval none
+*/
+__STATIC_INLINE void block_send_ipc_inline(HANDLE block, HANDLE receiver, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+{
+    IPC ipc;
+    ipc.process = receiver;
+    ipc.cmd = cmd;
+    ipc.param1 = param1;
+    ipc.param2 = param2;
+    ipc.param3 = param3;
+    svc_call(SVC_BLOCK_SEND_IPC, (unsigned int)block, (unsigned int)receiver, (unsigned int)&ipc);
+}
+
+/**
+    \brief send block to another process, isr version
+    \param block: block handle
+    \param receiver: receiver process
+    \retval none
+*/
+__STATIC_INLINE void block_isend(HANDLE block, HANDLE receiver)
+{
+    __GLOBAL->svc_irq(SVC_BLOCK_SEND, (unsigned int)block, (unsigned int)receiver, 0);
+}
+
+/**
+    \brief send block to another process + send custom IPC in one kernel call, isr mode
+    \param block: block handle
+    \param receiver: receiver process
+    \param ipc: custom ipc
+    \retval none
+*/
+__STATIC_INLINE void block_isend_ipc(HANDLE block, HANDLE receiver, IPC* ipc)
+{
+    __GLOBAL->svc_irq(SVC_BLOCK_SEND_IPC, (unsigned int)block, (unsigned int)receiver, (unsigned int)ipc);
+}
+
+/**
+    \brief send block to another process + send custom IPC in one kernel call. Inline mode, isr mode
+    \param block: block handle
+    \param receiver: receiver process
+    \param cmd: command to send
+    \param param1: custom param1
+    \param param2: custom param2
+    \param param3: custom param3
+    \retval none
+*/
+__STATIC_INLINE void block_isend_ipc_inline(HANDLE block, HANDLE receiver, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+{
+    IPC ipc;
+    ipc.process = receiver;
+    ipc.cmd = cmd;
+    ipc.param1 = param1;
+    ipc.param2 = param2;
+    ipc.param3 = param3;
+    __GLOBAL->svc_irq(SVC_BLOCK_SEND_IPC, (unsigned int)block, (unsigned int)receiver, (unsigned int)&ipc);
+}
+
+/**
+    \brief return block to owner
+    \param block: block handle
+    \retval none
+*/
+__STATIC_INLINE void block_return(HANDLE block)
+{
+    svc_call(SVC_BLOCK_RETURN, (unsigned int)block, 0, 0);
+}
+
+/**
+    \brief return block to owner, isr version
+    \param block: block handle
+    \retval none
+*/
+__STATIC_INLINE void block_ireturn(HANDLE block)
+{
+    __GLOBAL->svc_irq(SVC_BLOCK_RETURN, (unsigned int)block, 0, 0);
 }
 
 /**

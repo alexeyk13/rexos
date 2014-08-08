@@ -9,16 +9,16 @@
 
 //------------------------------ POWER -----------------------------------------------
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
-#define HSE_VALUE                               25000000
+#define HSE_VALUE                               24000000
 #define LSE_VALUE                               32768
 
 //STM32F1
-#define PLL_MUL                                 7
+#define PLL_MUL                                 6
 #define PLL_DIV                                 2
 //STM32F10X_CL only
 // use PLL2 as clock source for main PLL. Set to 0 to disable
-#define PLL2_DIV                                10
-#define PLL2_MUL                                8
+#define PLL2_DIV                                0
+#define PLL2_MUL                                0
 
 //STM32F2, STM32F4
 #define PLL_M                                   0
@@ -52,6 +52,12 @@
 #define V25_MV                                   1400
 // Vref in mV, set to 3300, if used internal
 #define ADC_VREF                                 3300
+//------------------------------- USB ------------------------------------------------
+//Maximum packet size for USB.
+//Must be 8 for Low-speed devices
+//Full speed: 64 if no isochronous transfers, else  1024
+//High speed(STM32F2+): 64 if no high-speed bulk transfers, 512 in other case. 1024 in case of isochronous or high-speed interrupts
+#define STM32_USB_MPS                            64
 
 
 #endif // STM32_CONFIG_H

@@ -171,10 +171,10 @@ void* pool_realloc(POOL* pool, void* ptr, size_t size)
     unsigned int cur_size;
     unsigned int len = ALIGN(size);
     int i;
-    next = NEXT_SLOT(ptr);
 
     if (ptr == NULL)
         return pool_malloc(pool, len);
+    next = NEXT_SLOT(ptr);
     if (len == 0)
     {
         pool_free(pool, ptr);

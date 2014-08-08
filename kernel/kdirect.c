@@ -17,7 +17,7 @@ void kdirect_init(PROCESS* process)
 void kdirect_read(PROCESS* other, void* addr, int size)
 {
     PROCESS* process = kprocess_get_current();
-    CHECK_ADDRESS(process, addr, size);
+    CHECK_ADDRESS_FLASH(process, addr, size);
     if (other->heap->direct_mode & DIRECT_READ && other->heap->direct_size >= size)
     {
         memcpy(addr, other->heap->direct_addr, size);

@@ -39,14 +39,10 @@ void backup_off(CORE* core);
 void backup_write_enable(CORE* core);
 void backup_write_protect(CORE *core);
 RESET_REASON get_reset_reason();
-#if (ADC_DRIVER)
 void stm32_adc_on();
 void stm32_adc_off();
-#endif
-#if (USB_DRIVER)
 void stm32_usb_power_on();
 void stm32_usb_power_off();
-#endif
 
 #if (SYS_INFO)
 void stm32_power_info();

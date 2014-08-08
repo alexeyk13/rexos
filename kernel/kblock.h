@@ -8,6 +8,7 @@
 #define KBLOCK_H
 
 #include "kprocess.h"
+#include "kipc.h"
 
 typedef struct {
     MAGIC;
@@ -20,9 +21,10 @@ typedef struct {
 
 //called from svc
 void kblock_create(BLOCK** block, unsigned int size);
-void kblock_open(BLOCK* block);
+void kblock_open(BLOCK* block, void **ptr);
 void kblock_close(BLOCK* block);
 void kblock_send(BLOCK* block, PROCESS* receiver);
+void kblock_send_ipc(BLOCK* block, PROCESS* receiver, IPC* ipc);
 void kblock_return(BLOCK* block);
 void kblock_destroy(BLOCK* block);
 

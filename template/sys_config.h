@@ -18,11 +18,14 @@
 //powersave mode.
 #define SYS_POWERSAVE                                       0
 
+//-------------------------------- USB -----------------------------------------------
+//low-level USB debug. Turn on only in case of IO problems
+#define USB_DEBUG_REQUESTS                                  1
+#define USB_DEBUG_ERRORS                                    1
+
 //------------------------------ drivers ---------------------------------------------
-//enable/disable drivers
+//enable/disable core drivers
 #define UART_DRIVER                                         1
 #define RTC_DRIVER                                          1
-#define ADC_DRIVER                                          1
-#define DAC_DRIVER                                          1
 
 #endif // SYS_CONFIG_H

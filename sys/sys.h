@@ -16,22 +16,11 @@ typedef enum {
     SYS_GET_OBJECT,                                             //!< Get system object. Temporaily solution before FS is ready
     SYS_SET_OBJECT,                                             //!< Set system object. Temporaily solution before FS is ready
     SYS_GET_INFO,
-
-    //USB common interface
-    SYS_USB_ENABLE,
-    SYS_USB_DISABLE,
-    SYS_USB_REGISTER_CLASS,
-    SYS_USB_UNREGISTER_CLASS,
-    SYS_USB_SET_DESCRIPTOR,
-    SYS_USB_RESET
-
 }SYS_IPCS;
 
 typedef enum {
     SYS_OBJECT_CORE,
     SYS_OBJECT_UART,
-    SYS_OBJECT_ADC,
-    SYS_OBJECT_USB,
     SYS_OBJECT_STDOUT_STREAM,
     SYS_OBJECT_STDIN_STREAM
 }SYS_OBJECT;
@@ -40,67 +29,6 @@ typedef enum {
     \{
  */
 
-
-/**
-    \brief call to process.
-    \param ipc: \ref ipc to post/read.
-    \retval true on success
-*/
-
-__STATIC_INLINE bool call(IPC* ipc)
-{
-    unsigned int cmd = ipc->cmd;
-    ipc_call_ms(ipc, 0);
-    if (ipc->cmd == cmd)
-        return true;
-    if (ipc->cmd == IPC_CALL_ERROR)
-        error(ipc->param1);
-    return false;
-}
-
-/**
-    \brief call to process with no return value
-    \param cmd: command to post
-    \param process: IPC receiver
-    \param param1: cmd specific
-    \param param2: cmd specific
-    \param param3: cmd specific
-    \retval true on success
-*/
-
-__STATIC_INLINE bool ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = param1;
-    ipc.param2 = param2;
-    ipc.param3 = param3;
-    return call(&ipc);
-}
-
-/**
-    \brief get value from process
-    \param cmd: command to post
-    \param process: IPC receiver
-    \param param1: cmd specific
-    \param param2: cmd specific
-    \param param3: cmd specific
-    \retval param1
-*/
-
-__STATIC_INLINE unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = param1;
-    ipc.param2 = param2;
-    ipc.param3 = param3;
-    if (call(&ipc))
-        return ipc.param1;
-    return INVALID_HANDLE;
-}
 
 /**
     \brief call to system.

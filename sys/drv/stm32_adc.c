@@ -102,7 +102,6 @@ int stm32_adc_get_single_sample(int chan, int sample_rate)
 void stm32_adc()
 {
     IPC ipc;
-    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_ADC, 0, 0);
     open_stdout();
     stm32_adc_init();
 

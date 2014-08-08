@@ -88,7 +88,7 @@ typedef struct {
     //system handle (if present)
     HANDLE system;
     //----------------------- IRQ related ------------------------------
-    int context, svc_count;
+    int context;
     //This values are used in asm. Don't place them more than 128 bytes from start of KERNEL
     KIRQ irqs[IRQ_VECTORS_COUNT];
 #ifdef SOFT_NVIC
