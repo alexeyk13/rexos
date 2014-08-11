@@ -73,7 +73,7 @@ void kevent_wait(EVENT* event, TIME* time)
     PROCESS* process = kprocess_get_current();
     if (!event->set)
     {
-        kprocess_sleep_current(time, PROCESS_SYNC_EVENT, event);
+        kprocess_sleep(process, time, PROCESS_SYNC_EVENT, event);
         dlist_add_tail((DLIST**)&event->waiters, (DLIST*)process);
     }
 }

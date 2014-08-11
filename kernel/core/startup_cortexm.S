@@ -212,10 +212,6 @@ load_context:
 	mov   r0, #0
 	str   r0, [r1, offsetof_KERNEL_next_process]
 
-	ldr    r2, [r2, offsetof_PROCESS_heap]         @ save heap in GLOBAL
-	ldr    r1, =SRAM_BASE
-	str    r2, [r1]
-
 context_exit:
 	cpsie i
 	//return to thread mode

@@ -20,7 +20,7 @@
 #define RB_ROUND_BACK(rb, pos)                           ((pos) < 0 ? ((rb)->size) - 1 : (pos))
 
 typedef struct {
-    int head, tail, size;
+    unsigned int head, tail, size;
 }RB;
 
 /** \addtogroup lib_rb ring buffer
@@ -33,7 +33,7 @@ typedef struct {
     \param size: ring buffer size in bytes
     \retval none
 */
-__STATIC_INLINE void rb_init(RB* rb, int size)
+__STATIC_INLINE void rb_init(RB* rb, unsigned int size)
 {
     rb->head = rb->tail = 0;
     rb->size = size;
@@ -75,7 +75,7 @@ __STATIC_INLINE bool rb_is_full(RB* rb)
     \param rb: pointer to initialized \ref RB structure
     \retval index of element from start, where need to put data
 */
-__STATIC_INLINE int rb_put(RB* rb)
+__STATIC_INLINE unsigned int rb_put(RB* rb)
 {
     register int offset = rb->head;
     rb->head = RB_ROUND(rb, rb->head + 1);
@@ -87,7 +87,7 @@ __STATIC_INLINE int rb_put(RB* rb)
     \param rb: pointer to initialized \ref RB structure
     \retval index of element from where we can get data
 */
-__STATIC_INLINE int rb_get(RB* rb)
+__STATIC_INLINE unsigned int rb_get(RB* rb)
 {
     register int offset = rb->tail;
     rb->tail = RB_ROUND(rb, rb->tail + 1);
@@ -99,9 +99,9 @@ __STATIC_INLINE int rb_get(RB* rb)
     \param rb: pointer to initialized \ref RB structure
     \retval used items
 */
-__STATIC_INLINE int rb_size(RB* rb)
+__STATIC_INLINE unsigned int rb_size(RB* rb)
 {
-    return rb->head > rb->tail ? rb->size - rb->head + rb->tail : rb->tail - rb->head;
+    return rb->tail > rb->head ? rb->size - 1 - rb->tail + rb->head : rb->head - rb->tail;
 }
 
 /**
@@ -109,9 +109,9 @@ __STATIC_INLINE int rb_size(RB* rb)
     \param rb: pointer to initialized \ref RB structure
     \retval free items
 */
-__STATIC_INLINE int rb_free(RB* rb)
+__STATIC_INLINE unsigned int rb_free(RB* rb)
 {
-    return rb->head > rb->tail ? rb->head - rb->tail - 1 : rb->size - rb->tail + rb->head - 1;
+    return rb->tail > rb->head ? rb->tail - rb->head : rb->size - 1 - rb->head + rb->tail;
 }
 
 /**

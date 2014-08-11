@@ -100,7 +100,8 @@ void kipc_init(HANDLE handle, int size)
 
 void kipc_post(IPC* ipc)
 {
-    kipc_post_process(ipc, (HANDLE)kprocess_get_current());
+    PROCESS* process = kprocess_get_current();
+    kipc_post_process(ipc, (HANDLE)process);
 }
 
 void kipc_read(IPC* ipc, TIME* time, HANDLE wait_process)
@@ -114,6 +115,6 @@ void kipc_call(IPC* ipc, TIME* time)
     PROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, ipc, sizeof(IPC));
     HANDLE wait_process = (HANDLE)(ipc->process);
-    kipc_post(ipc);
+    kipc_post_process(ipc, (HANDLE)process);
     kipc_read_process(process, ipc, time, wait_process);
 }

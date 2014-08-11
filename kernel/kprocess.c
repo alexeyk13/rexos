@@ -30,6 +30,13 @@ const char *const STAT_LINE="---------------------------------------------------
 const char *const DAMAGED="     !!!DAMAGED!!!     ";
 #endif //(KERNEL_PROFILING)
 
+static inline void switch_to_process(PROCESS* process)
+{
+    __KERNEL->next_process = process;
+    __GLOBAL->heap = process->heap;
+    pend_switch_context();
+}
+
 void kprocess_add_to_active_list(PROCESS* process)
 {
     bool found = false;
@@ -55,8 +62,7 @@ void kprocess_add_to_active_list(PROCESS* process)
         process_to_save = __KERNEL->processes;
         dlist_remove_head((DLIST**)&__KERNEL->processes);
         dlist_add_head((DLIST**)&__KERNEL->processes, (DLIST*)process);
-        __KERNEL->next_process = process;
-        pend_switch_context();
+        switch_to_process(process);
     }
 
     dlist_enum_start((DLIST**)&__KERNEL->processes, &de);
@@ -86,8 +92,7 @@ void kprocess_remove_from_active_list(PROCESS* process)
         time_add(&__KERNEL->processes->uptime_start, &__KERNEL->processes->uptime, &__KERNEL->processes->uptime);
 #endif //KERNEL_PROCESS_STAT
         dlist_remove_head((DLIST**)&__KERNEL->processes);
-        __KERNEL->next_process = __KERNEL->processes;
-        pend_switch_context();
+        switch_to_process(__KERNEL->processes);
     }
     else
         dlist_remove((DLIST**)&__KERNEL->processes, (DLIST*)process);
@@ -356,7 +361,9 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
 
 void kprocess_sleep_current(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
 {
-    kprocess_sleep(kprocess_get_current(), time, sync_type, sync_object);
+    PROCESS* process = kprocess_get_current();
+    if (process != NULL)
+        kprocess_sleep(process, time, sync_type, sync_object);
 }
 
 void kprocess_wakeup(PROCESS* process)
@@ -418,17 +425,21 @@ void kprocess_error(PROCESS* process, int error)
 
 void kprocess_error_current(int error)
 {
-    kprocess_error(kprocess_get_current(), error);
+    PROCESS* process = kprocess_get_current();
+    if (process != NULL)
+        kprocess_error(process, error);
 }
 
 void kprocess_destroy_current()
 {
-    kprocess_destroy(kprocess_get_current());
+    PROCESS* process = kprocess_get_current();
+    if (process != NULL)
+        kprocess_destroy(process);
 }
 
 PROCESS* kprocess_get_current()
 {
-    return (__KERNEL->context >= 0) ?  __KERNEL->irqs[__KERNEL->context].process : __KERNEL->processes;
+    return (__KERNEL->context >= 0) ?  __KERNEL->irqs[__KERNEL->context].process : __KERNEL->active_process;
 }
 
 int kprocess_block_open(PROCESS* process, void* data, unsigned int size)
@@ -465,11 +476,10 @@ void kprocess_init(const REX* rex)
     //activate init
     __KERNEL->init->flags = PROCESS_MODE_ACTIVE;
     dlist_add_head((DLIST**)&__KERNEL->processes, (DLIST*)__KERNEL->init);
-    __KERNEL->next_process =__KERNEL->processes;
 #if (KERNEL_PROCESS_STAT)
     dlist_clear((DLIST**)&__KERNEL->wait_processes);
 #endif
-    pend_switch_context();
+    switch_to_process(__KERNEL->processes);
 }
 
 #if (KERNEL_PROFILING)
@@ -478,7 +488,7 @@ void kprocess_switch_test()
     PROCESS* process = kprocess_get_current();
     kprocess_remove_from_active_list(process);
     kprocess_add_to_active_list(process);
-    pend_switch_context();
+    switch_to_process(process);
     //next process is now same as active process, it will simulate context switching
 }
 

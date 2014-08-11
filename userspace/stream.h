@@ -23,7 +23,7 @@
     \param size: requested size in bytes
     \retval STREAM on success. On failure (out of memory), error will be raised
 */
-__STATIC_INLINE HANDLE stream_create(int size)
+__STATIC_INLINE HANDLE stream_create(unsigned int size)
 {
     HANDLE stream = 0;
     svc_call(SVC_STREAM_CREATE, (unsigned int)&stream, size, 0);
@@ -57,9 +57,9 @@ __STATIC_INLINE void stream_close(HANDLE handle)
     \param stream: created STREAM object
     \retval used size
 */
-__STATIC_INLINE int stream_get_size(HANDLE stream)
+__STATIC_INLINE unsigned int stream_get_size(HANDLE stream)
 {
-    int size;
+    unsigned int size;
     svc_call(SVC_STREAM_GET_SIZE, (unsigned int)stream, (unsigned int)&size, 0);
     return size;
 }
@@ -69,9 +69,9 @@ __STATIC_INLINE int stream_get_size(HANDLE stream)
     \param stream: created STREAM object
     \retval free size
 */
-__STATIC_INLINE int stream_get_free(HANDLE stream)
+__STATIC_INLINE unsigned int stream_get_free(HANDLE stream)
 {
-    int size;
+    unsigned int size;
     svc_call(SVC_STREAM_GET_FREE, (unsigned int)stream, (unsigned int)&size, 0);
     return size;
 }
@@ -81,10 +81,10 @@ __STATIC_INLINE int stream_get_free(HANDLE stream)
     \param stream: created STREAM object
     \retval true on ok
 */
-__STATIC_INLINE bool stream_start_listen(HANDLE stream, void* param)
+__STATIC_INLINE bool stream_listen(HANDLE stream, void* param)
 {
     error(ERROR_OK);
-    svc_call(SVC_STREAM_START_LISTEN, (unsigned int)stream, (unsigned int)param, 0);
+    svc_call(SVC_STREAM_LISTEN, (unsigned int)stream, (unsigned int)param, 0);
     return get_last_error() == ERROR_OK;
 }
 
@@ -107,7 +107,7 @@ __STATIC_INLINE bool stream_stop_listen(HANDLE stream)
     \param size: size of data to write
     \retval true on ok
 */
-__STATIC_INLINE bool stream_write(HANDLE handle, const char* buf, int size)
+__STATIC_INLINE bool stream_write(HANDLE handle, const char* buf, unsigned int size)
 {
     error(ERROR_OK);
     svc_call(SVC_STREAM_WRITE, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);
@@ -121,7 +121,7 @@ __STATIC_INLINE bool stream_write(HANDLE handle, const char* buf, int size)
     \param size: size of data to read
     \retval true on ok
 */
-__STATIC_INLINE bool stream_read(HANDLE handle, char* buf, int size)
+__STATIC_INLINE bool stream_read(HANDLE handle, char* buf, unsigned int size)
 {
     error(ERROR_OK);
     svc_call(SVC_STREAM_READ, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);

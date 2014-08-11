@@ -74,9 +74,9 @@ typedef struct {
     //for context-switching
     //This values are used in asm context switching. Don't place them more than 128 bytes from start of KERNEL
     //now running process. (Active context).
-    volatile PROCESS* active_process;
+    PROCESS* active_process;
     //next process to run, after leave. For context switch. If NULL - no context switch is required
-    volatile PROCESS* next_process;
+    PROCESS* next_process;
 
     //active processes
     PROCESS* processes;

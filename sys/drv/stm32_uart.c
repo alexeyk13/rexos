@@ -32,7 +32,7 @@ typedef struct {
     unsigned int tx_chunk_pos, tx_chunk_size;
     char tx_buf[UART_TX_BUF_SIZE];
     char rx_char;
-    int rx_free;
+    unsigned int rx_free;
     UART_BAUD baud;
 } UART;
 
@@ -109,7 +109,7 @@ void stm32_uart_on_isr(int vector, void* param)
             uart->tx_chunk_pos = uart->tx_chunk_size = 0;
             uart->tx_ipc.process = uart->process;
             uart->tx_ipc.cmd = IPC_UART_ISR_WRITE_CHUNK_COMPLETE;
-            uart->tx_ipc.param1 = (unsigned int)uart;
+            uart->tx_ipc.param1 = uart->port;
             ipc_ipost(&uart->tx_ipc);
             UART_REGS[uart->port]->CR1 &= ~USART_CR1_TXEIE;
             UART_REGS[uart->port]->CR1 |= USART_CR1_TCIE;
@@ -117,7 +117,7 @@ void stm32_uart_on_isr(int vector, void* param)
         }
     }
     //transmission completed and no more data. Disable transmitter
-    else if ((UART_REGS[uart->port]->CR1 & USART_CR1_TCIE) && (sr & USART_SR_TC) &&  uart->tx_total == 0)
+    else if ((UART_REGS[uart->port]->CR1 & USART_CR1_TCIE) && (sr & USART_SR_TC) &&  (uart->tx_total == 0))
         UART_REGS[uart->port]->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
     //decode error, if any
     if ((sr & (USART_SR_PE | USART_SR_FE | USART_SR_NE | USART_SR_ORE)))
@@ -159,6 +159,21 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
     UART_REGS[(UART_PORT)param]->CR1 |= USART_CR1_TCIE;
     //transmitter will be disabled in next IRQ TC
 }
+
+#if (SYS_INFO)
+#if (UART_STDIO)
+//we can't use printf in uart driver, because this can halt driver loop
+static void printu(const char *const fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    __GLOBAL->lib->format(fmt, va, uart_write_kernel, (void*)UART_STDIO_PORT);
+    va_end(va);
+}
+#else
+#define printu printf
+#endif
+#endif //SYS_INFO
 
 bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
 {
@@ -262,7 +277,7 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
             free(uart);
             return NULL;
         }
-        stream_start_listen(uart->tx_stream, (void*)uart);
+        stream_listen(uart->tx_stream, (void*)port);
     }
     if (uart->rx_pin != PIN_UNUSED)
     {
@@ -376,7 +391,6 @@ static inline bool uart_disable(UART* uart)
     //disable pins
     if (uart->tx_pin != PIN_UNUSED)
     {
-        stream_stop_listen(uart->tx_stream);
         stream_close(uart->tx_handle);
         stream_destroy(uart->tx_stream);
         ack(core, STM32_GPIO_DISABLE_PIN, uart->tx_pin, 0, 0);
@@ -419,11 +433,11 @@ static inline bool uart_disable(UART* uart)
     return true;
 }
 
-static void stm32_uart_write_chunk(UART* uart)
+void stm32_uart_write_chunk(UART* uart)
 {
-    unsigned int to_read = UART_TX_BUF_SIZE;
-    if (uart->tx_total < to_read)
-        to_read = uart->tx_total;
+    unsigned int to_read = uart->tx_total;
+    if (uart->tx_total > UART_TX_BUF_SIZE)
+        to_read = UART_TX_BUF_SIZE;
     if (stream_read(uart->tx_handle, uart->tx_buf, to_read))
     {
         uart->tx_chunk_pos = 0;
@@ -433,16 +447,8 @@ static void stm32_uart_write_chunk(UART* uart)
         UART_REGS[uart->port]->CR1 |= USART_CR1_TE | USART_CR1_TXEIE;
     }
 }
-#if (SYS_INFO)
-//we can't use printf in uart driver, because this can halt driver loop
-static void printu(const char *const fmt, ...)
-{
-    va_list va;
-    va_start(va, fmt);
-    __GLOBAL->lib->format(fmt, va, uart_write_kernel, (void*)UART_STDIO_PORT);
-    va_end(va);
-}
 
+#if (SYS_INFO)
 static inline void stm32_uart_info(UART** uarts)
 {
     int i;
@@ -593,19 +599,17 @@ static inline void stm32_uart_loop(UART** uarts)
                 ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
         case IPC_STREAM_WRITE:
-            ((UART*)ipc.param3)->tx_total += ipc.param2;
-            //read here is safe
-            if (((UART*)ipc.param3)->tx_chunk_size == 0)
-                //idle. Can start next transaction.
-                stm32_uart_write_chunk(((UART*)ipc.param3));
+            uarts[ipc.param3]->tx_total = ipc.param2;
+            stm32_uart_write_chunk(uarts[ipc.param3]);
             //message from kernel, no response
             break;
         case IPC_UART_ISR_WRITE_CHUNK_COMPLETE:
-            //make sure we didn't loose any IPC STREAM_WRITE
-            if (((UART*)ipc.param1)->tx_total == 0)
-                ((UART*)ipc.param1)->tx_total = stream_get_size(((UART*)ipc.param1)->tx_stream);
-            if (((UART*)ipc.param1)->tx_total)
-                stm32_uart_write_chunk(((UART*)ipc.param1));
+            if (uarts[ipc.param1]->tx_total == 0)
+                uarts[ipc.param1]->tx_total = stream_get_size(uarts[ipc.param1]->tx_stream);
+            if (uarts[ipc.param1]->tx_total)
+                stm32_uart_write_chunk(uarts[ipc.param1]);
+            else
+                stream_listen(uarts[ipc.param1]->tx_stream, (void*)(ipc.param1));
             //message from ISR, no response
             break;
         case IPC_UART_ISR_RX_CHAR:

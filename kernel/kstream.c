@@ -11,20 +11,6 @@
 #include "../userspace/error.h"
 #include <string.h>
 
-void kstream_inform_listener(STREAM* stream, int written)
-{
-    IPC ipc;
-    if (stream->listener != NULL && written)
-    {
-        ipc.process = (HANDLE)stream->listener;
-        ipc.cmd = IPC_STREAM_WRITE;
-        ipc.param1 = (HANDLE)stream;
-        ipc.param2 = written;
-        ipc.param3 = (unsigned int)stream->listener_param;
-        kipc_post_process(&ipc, INVALID_HANDLE);
-    }
-}
-
 //push data to stream internally after read
 void kstream_push(STREAM* stream)
 {
@@ -37,7 +23,6 @@ void kstream_push(STREAM* stream)
             stream->data[rb_put(&stream->rb)] = *handle->buf++;
             ++written;
         }
-        kstream_inform_listener(stream, written);
         //writed all from waiter? Wake him up.
         if (handle->size <= 0)
         {
@@ -66,7 +51,7 @@ void kstream_lock_release(STREAM_HANDLE* handle, PROCESS* process)
     handle->mode = STREAM_MODE_IDLE;
 }
 
-void kstream_create(STREAM** stream, int size)
+void kstream_create(STREAM** stream, unsigned int size)
 {
     PROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, stream, sizeof(void*));
@@ -128,28 +113,38 @@ void kstream_close(STREAM_HANDLE* handle)
     kfree(handle);
 }
 
-void kstream_get_size(STREAM* stream, int* size)
+void kstream_get_size(STREAM* stream, unsigned int *size)
 {
+    DLIST_ENUM de;
+    STREAM_HANDLE* cur;
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
-    CHECK_ADDRESS(kprocess_get_current(), size, sizeof(int));
-    *size = rb_size(&stream->rb);
+    CHECK_ADDRESS(kprocess_get_current(), size, sizeof(unsigned int));
+    if (rb_is_full(&stream->rb))
+    {
+        *size = stream->rb.size - 1;
+        dlist_enum_start((DLIST**)&stream->write_waiters, &de);
+        while (dlist_enum(&de, (DLIST**)&cur))
+            *size += cur->size;
+    }
+    else
+        *size = rb_size(&stream->rb);
 }
 
-void kstream_get_free(STREAM *stream, int* size)
+void kstream_get_free(STREAM *stream, unsigned int* size)
 {
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
-    CHECK_ADDRESS(kprocess_get_current(), size, sizeof(int));
+    CHECK_ADDRESS(kprocess_get_current(), size, sizeof(unsigned int));
     *size = rb_free(&stream->rb);
 }
 
-void kstream_start_listen(STREAM* stream, void* param)
+void kstream_listen(STREAM* stream, void* param)
 {
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
     PROCESS* process = kprocess_get_current();
-    if (stream->listener == NULL)
+    if (stream->listener == INVALID_HANDLE)
     {
         stream->listener = process;
         stream->listener_param = param;
@@ -164,13 +159,14 @@ void kstream_stop_listen(STREAM* stream)
     CHECK_MAGIC(stream, MAGIC_STREAM);
     PROCESS* process = kprocess_get_current();
     if (stream->listener == process)
-        stream->listener = process;
+        stream->listener = INVALID_HANDLE;
     else
         kprocess_error(process, ERROR_ACCESS_DENIED);
 }
 
-void kstream_write(STREAM_HANDLE *handle, char* buf, int size)
+void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
 {
+    IPC ipc;
     CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     ASSERT(handle->mode == STREAM_MODE_IDLE);
     TIME time;
@@ -181,7 +177,7 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, int size)
     CHECK_ADDRESS_FLASH(process, buf, size);
     handle->size = size;
     //write directly to output
-    while (handle->size > 0 && (reader = handle->stream->read_waiters) != NULL)
+    while (handle->size && (reader = handle->stream->read_waiters) != NULL)
     {
         //all can go directly
         if (handle->size >= reader->size)
@@ -205,14 +201,13 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, int size)
         }
     }
     //write rest to stream
-    for(; handle->size > 0 && !rb_is_full(&handle->stream->rb); --handle->size)
+    for(; handle->size && !rb_is_full(&handle->stream->rb); --handle->size)
     {
         handle->stream->data[rb_put(&handle->stream->rb)] = *buf++;
         ++written;
     }
-    kstream_inform_listener(handle->stream, written);
     //still more? wait
-    if (handle->size > 0)
+    if (handle->size)
     {
         handle->buf = buf;
         handle->mode = STREAM_MODE_WRITE;
@@ -220,9 +215,20 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, int size)
         time.sec = time.usec = 0;
         kprocess_sleep(process, &time, PROCESS_SYNC_STREAM, handle);
     }
+    //inform listener
+    if ((handle->stream->listener != INVALID_HANDLE) && size)
+    {
+        ipc.process = (HANDLE)handle->stream->listener;
+        ipc.cmd = IPC_STREAM_WRITE;
+        ipc.param1 = (HANDLE)handle->stream;
+        ipc.param2 = size;
+        ipc.param3 = (unsigned int)handle->stream->listener_param;
+        handle->stream->listener = INVALID_HANDLE;
+        kipc_post_process(&ipc, INVALID_HANDLE);
+    }
 }
 
-void kstream_read(STREAM_HANDLE* handle, char* buf, int size)
+void kstream_read(STREAM_HANDLE* handle, char* buf, unsigned int size)
 {
     CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     ASSERT(handle->mode == STREAM_MODE_IDLE);
@@ -233,10 +239,10 @@ void kstream_read(STREAM_HANDLE* handle, char* buf, int size)
     CHECK_ADDRESS(process, buf, size);
     handle->size = size;
     //read from stream
-    for(; handle->size > 0 && !rb_is_empty(&handle->stream->rb); --handle->size)
+    for(; handle->size && !rb_is_empty(&handle->stream->rb); --handle->size)
         *buf++ = handle->stream->data[rb_get(&handle->stream->rb)];
     //read directly from input
-    while (handle->size > 0 && (writer = handle->stream->write_waiters) != NULL)
+    while (handle->size && (writer = handle->stream->write_waiters) != NULL)
     {
         //all can go directly
         if (handle->size >= writer->size)
@@ -259,9 +265,14 @@ void kstream_read(STREAM_HANDLE* handle, char* buf, int size)
             handle->size = 0;
         }
     }
-    //still need more? Wait.
-    if (handle->size > 0)
+    if (handle->size)
     {
+        printk("head: %d, tail: %d\n\r", handle->stream->rb.head, handle->stream->rb.tail);
+    }
+    //still need more? Wait.
+    if (handle->size)
+    {
+        printk("out of data, size: %d, req: %d\n\r", handle->size, size);
         handle->buf = buf;
         handle->mode = STREAM_MODE_READ;
         dlist_add_tail((DLIST**)&handle->stream->read_waiters, (DLIST*)handle);
