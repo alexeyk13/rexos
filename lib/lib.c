@@ -11,6 +11,7 @@
 #include "kernel_config.h"
 #include "rand.h"
 #include "lib_time.h"
+#include "lib_array.h"
 
 const LIB __LIB = {
     //pool.h
@@ -51,7 +52,12 @@ const LIB __LIB = {
     __time_to_ms,
     __time_elapsed,
     __time_elapsed_ms,
-    __time_elapsed_us
+    __time_elapsed_us,
+    __array_create,
+    __array_destroy,
+    __array_add,
+    __array_remove,
+    __array_squeeze
 };
 
 

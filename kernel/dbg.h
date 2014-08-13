@@ -98,8 +98,8 @@
 #define MAGIC                                         unsigned int magic
 
 #else
-#define CHECK_MAGIC(obj, magic_vale)
-#define CHECK_MAGIC_RET(obj, magic_vale)
+#define CHECK_MAGIC(obj, magic_value)
+#define CHECK_MAGIC_RET(obj, magic_value, ret)
 #define DO_MAGIC(obj, magic_value)
 #define CLEAR_MAGIC(obj)
 #define MAGIC

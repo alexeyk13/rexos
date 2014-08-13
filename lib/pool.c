@@ -75,7 +75,7 @@ static const unsigned int RANGE_MARK_POOL_END =                   0xeeeeeeee;
 void pool_init(POOL* pool, void* data)
 {
     // _sbrk implementation
-    pool->first_slot = pool->last_slot = (void*)(NUM(data) + SLOT_HEADER_SIZE);
+    pool->first_slot = pool->last_slot = (void*)(ALIGN(NUM(data)) + SLOT_HEADER_SIZE);
     NEXT_SLOT(pool->first_slot) = NULL;
     SET_MARK(pool->first_slot);
     pool->free_slot = NULL;
