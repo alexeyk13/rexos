@@ -17,15 +17,12 @@
 #define SYS_INFO                                            1
 //powersave mode.
 #define SYS_POWERSAVE                                       0
-
+//------------------------------ stdio -----------------------------------------------
+#define STDIO_TX_STREAM_SIZE                                64
+#define STDIO_RX_STREAM_SIZE                                32
 //-------------------------------- USB -----------------------------------------------
 //low-level USB debug. Turn on only in case of IO problems
 #define USB_DEBUG_REQUESTS                                  1
 #define USB_DEBUG_ERRORS                                    1
-
-//------------------------------ drivers ---------------------------------------------
-//enable/disable core drivers
-#define UART_DRIVER                                         1
-#define RTC_DRIVER                                          1
 
 #endif // SYS_CONFIG_H

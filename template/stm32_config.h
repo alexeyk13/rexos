@@ -40,7 +40,7 @@
 #define UART_PROCESS_SIZE                       1024
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
 //remember, that process itself requires around 256 bytes
-#define UART_TX_BUF_SIZE                        32
+#define UART_TX_BUF_SIZE                        32ul
 //------------------------------ TIMER -----------------------------------------------
 #define HPET_TIMER                               TIM_2
 #define TIMER_SOFT_RTC                           0

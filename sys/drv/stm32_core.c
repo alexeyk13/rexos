@@ -10,7 +10,7 @@
 #include "stm32_timer.h"
 #include "stm32_gpio.h"
 #include "stm32_power.h"
-#if (RTC_DRIVER)
+#if !(TIMER_SOFT_RTC)
 #include "stm32_rtc.h"
 #endif
 
@@ -54,7 +54,7 @@ void stm32_core_loop(CORE* core)
             stm32_gpio_info(core);
             stm32_timer_info();
             stm32_power_info();
-#if (RTC_DRIVER)
+#if !(TIMER_SOFT_RTC)
             stm32_rtc_info();
 #endif
             ipc_post(&ipc);
@@ -156,7 +156,7 @@ void stm32_core_loop(CORE* core)
             ipc_post_or_error(&ipc);
             break;
         //RTC
-#if (RTC_DRIVER)
+#if !(TIMER_SOFT_RTC)
         case STM32_RTC_GET:
             ipc.param1 = (unsigned int)stm32_rtc_get();
             ipc_post(&ipc);
@@ -165,7 +165,7 @@ void stm32_core_loop(CORE* core)
             stm32_rtc_set(core, ipc.param1);
             ipc_post(&ipc);
             break;
-#endif //RTC_DRIVER
+#endif //!TIMER_SOFT_RTC
         default:
             ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
             break;
@@ -181,8 +181,8 @@ void stm32_core()
     stm32_power_init(&core);
     stm32_timer_init(&core);
     stm32_gpio_init(&core);
-#if (RTC_DRIVER)
+#if !(TIMER_SOFT_RTC)
     stm32_rtc_init(&core);
-#endif //RTC_DRIVER
+#endif //!TIMER_SOFT_RTC
     stm32_core_loop(&core);
 }

@@ -56,6 +56,7 @@ typedef enum {
 typedef struct {
     PIN tx, rx;
     UART_BAUD baud;
+    unsigned int tx_stream_size, rx_stream_size;
 } UART_ENABLE;
 
 #if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL)

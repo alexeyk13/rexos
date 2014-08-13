@@ -17,9 +17,6 @@
 #include "sys_config.h"
 #include <string.h>
 
-//one page
-#define UART_STREAM_SIZE                                256
-
 void stm32_uart();
 
 typedef struct {
@@ -256,7 +253,6 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
     uart->tx_total = 0;
     uart->tx_chunk_pos = uart->tx_chunk_size = 0;
     uart->process = process_get_current();
-    uart->rx_free = UART_STREAM_SIZE;
     if (uart->tx_pin == PIN_DEFAULT)
         uart->tx_pin = UART_TX_PINS[uart->port];
     if (uart->rx_pin == PIN_DEFAULT)
@@ -264,7 +260,7 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
 
     if (uart->tx_pin != PIN_UNUSED)
     {
-        uart->tx_stream = stream_create(UART_STREAM_SIZE);
+        uart->tx_stream = stream_create(ue->tx_stream_size);
         if (uart->tx_stream == INVALID_HANDLE)
         {
             free(uart);
@@ -281,7 +277,7 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
     }
     if (uart->rx_pin != PIN_UNUSED)
     {
-        uart->rx_stream = stream_create(UART_STREAM_SIZE);
+        uart->rx_stream = stream_create(ue->rx_stream_size);
         if (uart->rx_stream == INVALID_HANDLE)
         {
             stream_close(uart->tx_handle);
@@ -298,6 +294,7 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
             free(uart);
             return NULL;
         }
+        uart->rx_free = stream_get_free(uart->rx_stream);
     }
 
     //setup pins
@@ -644,6 +641,8 @@ void stm32_uart()
     ue.baud.parity = UART_STDIO_PARITY;
     ue.baud.stop_bits = UART_STDIO_STOP_BITS;
     ue.baud.baud = UART_STDIO_BAUD;
+    ue.tx_stream_size = STDIO_TX_STREAM_SIZE;
+    ue.rx_stream_size = STDIO_RX_STREAM_SIZE;
     uarts[UART_STDIO_PORT] = uart_enable(UART_STDIO_PORT, &ue);
 
     //setup kernel printk dbg

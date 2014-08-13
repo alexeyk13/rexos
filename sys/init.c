@@ -10,13 +10,14 @@
 #include "../userspace/lib/stdio.h"
 #include "../userspace/ipc.h"
 
-#if defined (STM32)
-#include "drv/stm32_core.h"
-#if (UART_DRIVER)
-#include "drv/stm32_uart.h"
-#endif //UART_DRIVER
-#endif
 #include "sys_config.h"
+#if defined (STM32)
+#include "stm32_config.h"
+#include "drv/stm32_core.h"
+#if (UART_STDIO)
+#include "drv/stm32_uart.h"
+#endif //UART_STDIO
+#endif
 
 extern const REX __SYS;
 
@@ -48,7 +49,7 @@ void init()
 
 #if defined(STM32)
     process_create(&__STM32_CORE);
-#if (UART_DRIVER)
+#if (UART_STDIO)
     process_create(&__STM32_UART);
 #endif
 
