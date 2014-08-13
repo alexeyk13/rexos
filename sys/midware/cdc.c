@@ -42,7 +42,6 @@ void cdc()
     block = block_create(256);
 
     ack(usb, USB_REGISTER_DEVICE, 0, 0, 0);
-    ack(usb, USB_ENABLE, 0, 0, 0);
     for (;;)
     {
         ipc_read_ms(&ipc, 0, 0);
@@ -52,7 +51,7 @@ void cdc()
             ipc_post(&ipc);
             break;
 #if (SYS_INFO)
-        case SYS_GET_INFO:
+        case IPC_GET_INFO:
 //            cdc_info();
             ipc_post(&ipc);
             break;
@@ -61,7 +60,7 @@ void cdc()
             printf("got USB reset\n\r");
             block_send(block, usb);
             //we only waiting for setup packet now
-            ack(usb, USB_EP_READ, block, 0, 8);
+            ack(usb, IPC_READ, block, 0, 8);
             break;
         case USB_SUSPEND:
             printf("got USB suspend\n\r");
@@ -69,11 +68,11 @@ void cdc()
         case USB_WAKEUP:
             printf("got USB wakeup\n\r");
             break;
-        case USB_EP_READ_COMPLETE:
+        case IPC_READ_COMPLETE:
             printf("read complete\n\r");
             block_send(block, usb);
             //we only waiting for setup packet now
-            ack(usb, USB_EP_READ, block, 0, 64);
+            ack(usb, IPC_READ, block, 0, 64);
             break;
         case USB_SETUP:
             printf("SETUP received\n\r");
@@ -85,7 +84,7 @@ void cdc()
             printf("\n\r");
             block_send(block, usb);
             //we only waiting for setup packet now
-            ack(usb, USB_EP_READ, block, 0, 8);
+            ack(usb, IPC_READ, block, 0, 8);
             break;
         default:
             ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);

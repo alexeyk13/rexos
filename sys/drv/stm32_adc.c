@@ -116,7 +116,7 @@ void stm32_adc()
         case IPC_CALL_ERROR:
             break;
 #if (SYS_INFO)
-        case SYS_GET_INFO:
+        case IPC_GET_INFO:
 //            stm32_adc_info(uarts);
             ipc_post(&ipc);
             break;

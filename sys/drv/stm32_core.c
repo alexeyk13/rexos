@@ -50,7 +50,7 @@ void stm32_core_loop(CORE* core)
             ipc_post(&ipc);
             break;
 #if (SYS_INFO)
-        case SYS_GET_INFO:
+        case IPC_GET_INFO:
             stm32_gpio_info(core);
             stm32_timer_info();
             stm32_power_info();

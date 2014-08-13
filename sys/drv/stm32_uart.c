@@ -221,7 +221,7 @@ bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
     return true;
 }
 
-UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
+UART* uart_open(UART_PORT port, UART_ENABLE* ue)
 {
     UART* uart = NULL;
     HANDLE core = sys_get_object(SYS_OBJECT_CORE);
@@ -362,7 +362,7 @@ UART* uart_enable(UART_PORT port, UART_ENABLE* ue)
     return uart;
 }
 
-static inline bool uart_disable(UART* uart)
+static inline bool uart_close(UART* uart)
 {
     HANDLE core = sys_get_object(SYS_OBJECT_CORE);
     if (core == INVALID_HANDLE)
@@ -482,16 +482,16 @@ static inline void stm32_uart_loop(UART** uarts)
             ipc_post(&ipc);
             break;
 #if (SYS_INFO)
-        case SYS_GET_INFO:
+        case IPC_GET_INFO:
             stm32_uart_info(uarts);
             ipc_post(&ipc);
             break;
 #endif
-        case IPC_UART_ENABLE:
+        case IPC_OPEN:
             if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1] == NULL)
             {
                 if (direct_read(ipc.process, (void*)&ue, sizeof(UART_ENABLE)))
-                    uarts[ipc.param1] = uart_enable(ipc.param1, &ue);
+                    uarts[ipc.param1] = uart_open(ipc.param1, &ue);
                 if (uarts[ipc.param1])
                     ipc_post(&ipc);
                 else
@@ -500,10 +500,10 @@ static inline void stm32_uart_loop(UART** uarts)
             else
                 ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
-        case IPC_UART_DISABLE:
+        case IPC_CLOSE:
             if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
             {
-                if (uart_disable(uarts[ipc.param1]))
+                if (uart_close(uarts[ipc.param1]))
                 {
                     uarts[ipc.param1] = NULL;
                     ipc_post(&ipc);
@@ -541,7 +541,7 @@ static inline void stm32_uart_loop(UART** uarts)
             else
                 ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
-        case IPC_UART_FLUSH:
+        case IPC_FLUSH:
             if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
             {
                 if (uarts[ipc.param1]->tx_stream != INVALID_HANDLE)
@@ -559,7 +559,7 @@ static inline void stm32_uart_loop(UART** uarts)
             else
                 ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
-        case IPC_UART_GET_TX_STREAM:
+        case IPC_GET_TX_STREAM:
             if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
             {
                 ipc.param1 = uarts[ipc.param1]->tx_stream;
@@ -568,7 +568,7 @@ static inline void stm32_uart_loop(UART** uarts)
             else
                 ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
             break;
-        case IPC_UART_GET_RX_STREAM:
+        case IPC_GET_RX_STREAM:
             if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
             {
                 ipc.param1 = uarts[ipc.param1]->rx_stream;
@@ -643,7 +643,7 @@ void stm32_uart()
     ue.baud.baud = UART_STDIO_BAUD;
     ue.tx_stream_size = STDIO_TX_STREAM_SIZE;
     ue.rx_stream_size = STDIO_RX_STREAM_SIZE;
-    uarts[UART_STDIO_PORT] = uart_enable(UART_STDIO_PORT, &ue);
+    uarts[UART_STDIO_PORT] = uart_open(UART_STDIO_PORT, &ue);
 
     //setup kernel printk dbg
     setup_dbg(uart_write_kernel, (void*)UART_STDIO_PORT);

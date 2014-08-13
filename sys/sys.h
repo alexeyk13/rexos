@@ -14,8 +14,7 @@
 typedef enum {
     SYS_SET_STDIO = IPC_SYSTEM + 1,                             //!< Will be called for objects, created before global stdout STREAM is set
     SYS_GET_OBJECT,                                             //!< Get system object. Temporaily solution before FS is ready
-    SYS_SET_OBJECT,                                             //!< Set system object. Temporaily solution before FS is ready
-    SYS_GET_INFO,
+    SYS_SET_OBJECT                                              //!< Set system object. Temporaily solution before FS is ready
 }SYS_IPCS;
 
 typedef enum {

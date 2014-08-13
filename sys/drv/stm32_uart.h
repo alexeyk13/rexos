@@ -17,13 +17,8 @@
 #include "sys_config.h"
 
 typedef enum {
-    IPC_UART_ENABLE = IPC_USER,
-    IPC_UART_DISABLE,
-    IPC_UART_SET_BAUDRATE,
+    IPC_UART_SET_BAUDRATE = IPC_USER,
     IPC_UART_GET_BAUDRATE,
-    IPC_UART_FLUSH,
-    IPC_UART_GET_TX_STREAM,
-    IPC_UART_GET_RX_STREAM,
     IPC_UART_GET_LAST_ERROR,
     IPC_UART_CLEAR_ERROR,
     //used internally

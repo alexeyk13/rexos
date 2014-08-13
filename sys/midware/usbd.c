@@ -13,6 +13,7 @@
 #include "../../userspace/lib/stdlib.h"
 #include "sys_config.h"
 #include <string.h>
+#include "../../userspace/lib/array.h"
 
 #define USBD_BLOCK_SIZE                             256
 
@@ -34,7 +35,7 @@ typedef enum {
 
 
 typedef struct {
-    HANDLE usb, clas, block;
+    HANDLE usb, block;
     //SETUP state machine
     SETUP setup;
     USB_SETUP_STATE setup_state;
@@ -48,6 +49,8 @@ typedef struct {
     USB_SPEED speed;
     int ep0_size;
     int configuration, iface, iface_alt;
+    ARRAY* classes;
+    ARRAY* vendors;
 } USBD;
 
 void usbd();
@@ -66,13 +69,6 @@ const REX __USBD = {
     //function
     usbd
 };
-
-static inline void usbd_init(USBD* usbd)
-{
-    ack(usbd->usb, USB_REGISTER_DEVICE, 0, 0, 0);
-    ack(usbd->usb, USB_ENABLE, 0, 0, 0);
-    usbd->block = block_create(USBD_BLOCK_SIZE);
-}
 
 static inline USB_DEVICE_DESCRIPTOR_TYPE* get_device_descriptor(USBD* usbd)
 {
@@ -192,8 +188,8 @@ static inline void usbd_suspend(USBD* usbd)
 #if (USB_DEBUG_REQUESTS)
         printf("USB device suspend\n\r");
 #endif
-        ack(usbd->usb, USB_EP_FLUSH, 0, 0, 0);
-        ack(usbd->usb, USB_EP_FLUSH, USB_EP_IN | 0, 0, 0);
+        ack(usbd->usb, IPC_FLUSH, 0, 0, 0);
+        ack(usbd->usb, IPC_FLUSH, USB_EP_IN | 0, 0, 0);
 
         //TODO: inform classes & vendors if CONFIGURED
     }
@@ -245,6 +241,7 @@ static inline bool send_configuration_descriptor(USBD* usbd, int num)
 #endif
     if ((configuration_descriptor = get_configuration_descriptor(usbd, num)) != NULL)
         res = safecpy_write(usbd, configuration_descriptor, configuration_descriptor->wTotalLength);
+
     return res;
 }
 
@@ -257,6 +254,7 @@ static inline bool send_strings_descriptor(USBD* usbd, int index, int lang_id)
 #endif
     if ((string_descriptor = get_string_descriptor(usbd, index, lang_id)) != NULL)
         res = safecpy_write(usbd, string_descriptor, string_descriptor->bLength);
+
     return res;
 }
 
@@ -366,20 +364,11 @@ static inline bool usbd_set_configuration(USBD* usbd, int num)
     printf("USB: set configuration %d\n\r", num);
 #endif
     bool res = false;
-///    int i;
     if (num <= get_device_descriptor(usbd)->bNumConfigurations)
     {
         //read USB 2.0 specification for more details
         if (usbd->state == USBD_STATE_CONFIGURED)
         {
-/*			for (i = 1; i < usbd_get_active_interface(usbd)->bNumEndpoints; ++i)
-            {
-                usb_ep_disable(usbd->idx, EP_IN(i));
-                usb_ep_disable(usbd->idx, EP_OUT(i));
-            }
-            */
-            //TODO: disable all active endpoints
-
             usbd->configuration = 0;
             usbd->iface = 0;
             usbd->iface_alt = 0;
@@ -420,7 +409,8 @@ static inline bool usbd_device_request(USBD* usbd)
     case USB_REQUEST_GET_DESCRIPTOR:
         res = usbd_get_descriptor(usbd);
         break;
-    //case USB_REQUEST_SET_DESCRIPTOR:
+    case USB_REQUEST_SET_DESCRIPTOR:
+        break;
     case USB_REQUEST_GET_CONFIGURATION:
         res = usbd_get_configuration(usbd);
         break;
@@ -441,7 +431,7 @@ static inline void usbd_setup(USBD* usbd)
     if (usbd->setup_state != USB_SETUP_STATE_REQUEST)
     {
 #if (USB_DEBUG_REQUESTS)
-        printf("USB B2B SETUP received\n\r");
+        printf("USB B2B SETUP received, state: %d\n\r", usbd->setup_state);
 #endif
         //reset control EP if transaction in progress
         switch (usbd->setup_state)
@@ -449,11 +439,11 @@ static inline void usbd_setup(USBD* usbd)
         case USB_SETUP_STATE_DATA_IN:
         case USB_SETUP_STATE_DATA_IN_ZLP:
         case USB_SETUP_STATE_STATUS_IN:
-            ack(usbd->usb, USB_EP_FLUSH, USB_EP_IN | 0, 0, 0);
+            ack(usbd->usb, IPC_FLUSH, USB_EP_IN | 0, 0, 0);
             break;
         case USB_SETUP_STATE_DATA_OUT:
         case USB_SETUP_STATE_STATUS_OUT:
-            ack(usbd->usb, USB_EP_FLUSH, 0, 0, 0);
+            ack(usbd->usb, IPC_FLUSH, 0, 0, 0);
             break;
         default:
             break;
@@ -508,42 +498,42 @@ static inline void usbd_setup(USBD* usbd)
             if (usbd->data_size)
             {
                 usbd->setup_state = USB_SETUP_STATE_DATA_OUT;
-                block_send_ipc_inline(usbd->block, usbd->usb, USB_EP_READ, usbd->block, 0, usbd->data_size);
+                block_send_ipc_inline(usbd->block, usbd->usb, IPC_READ, usbd->block, 0, usbd->data_size);
             }
             //data stage is optional
             else
             {
                 usbd->setup_state = USB_SETUP_STATE_STATUS_IN;
-                ipc_post_inline(usbd->usb, USB_EP_WRITE, INVALID_HANDLE, USB_EP_IN | 0, 0);
+                ipc_post_inline(usbd->usb, IPC_WRITE, INVALID_HANDLE, USB_EP_IN | 0, 0);
             }
         }
         else
         {
             //response less, than required and multiples of EP0SIZE - we need to send ZLP on end of transfers
-            if (usbd->data_size < usbd->setup.wLength && (usbd->data_size % usbd->ep0_size) == 0)
+            if (usbd->data_size < usbd->setup.wLength && ((usbd->data_size % usbd->ep0_size) == 0))
             {
                 if (usbd->data_size)
                 {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN_ZLP;
-                    block_send_ipc_inline(usbd->block, usbd->usb, USB_EP_WRITE, usbd->block, USB_EP_IN | 0, usbd->data_size);
+                    block_send_ipc_inline(usbd->block, usbd->usb, IPC_WRITE, usbd->block, USB_EP_IN | 0, usbd->data_size);
                 }
                 //if no data at all, but request success, we will send ZLP right now
                 else
                 {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-                    ipc_post_inline(usbd->usb, USB_EP_WRITE, INVALID_HANDLE, USB_EP_IN | 0, 0);
+                    ipc_post_inline(usbd->usb, IPC_WRITE, INVALID_HANDLE, USB_EP_IN | 0, 0);
                 }
             }
             else if (usbd->data_size)
             {
                 usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-                block_send_ipc_inline(usbd->block, usbd->usb, USB_EP_WRITE, usbd->block, USB_EP_IN | 0, usbd->data_size);
+                block_send_ipc_inline(usbd->block, usbd->usb, IPC_WRITE, usbd->block, USB_EP_IN | 0, usbd->data_size);
             }
             //data stage is optional
             else
             {
                 usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
-                ipc_post_inline(usbd->usb, USB_EP_READ, INVALID_HANDLE, 0, 0);
+                ipc_post_inline(usbd->usb, IPC_READ, INVALID_HANDLE, 0, 0);
             }
         }
     }
@@ -574,7 +564,7 @@ void usbd_read_complete(USBD* usbd)
     {
     case USB_SETUP_STATE_DATA_OUT:
         usbd->setup_state = USB_SETUP_STATE_STATUS_IN;
-        ipc_post_inline(usbd->usb, USB_EP_WRITE, INVALID_HANDLE, USB_EP_IN | 0, 0);
+        ipc_post_inline(usbd->usb, IPC_WRITE, INVALID_HANDLE, USB_EP_IN | 0, 0);
         break;
     case USB_SETUP_STATE_STATUS_OUT:
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
@@ -595,11 +585,11 @@ void usbd_write_complete(USBD* usbd)
     case USB_SETUP_STATE_DATA_IN_ZLP:
         //TX ZLP and switch to normal state
         usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-        ipc_post_inline(usbd->usb, USB_EP_WRITE, INVALID_HANDLE, USB_EP_IN | 0, 0);
+        ipc_post_inline(usbd->usb, IPC_WRITE, INVALID_HANDLE, USB_EP_IN | 0, 0);
         break;
     case USB_SETUP_STATE_DATA_IN:
         usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
-        ipc_post_inline(usbd->usb, USB_EP_READ, INVALID_HANDLE, 0, 0);
+        ipc_post_inline(usbd->usb, IPC_READ, INVALID_HANDLE, 0, 0);
         break;
     case USB_SETUP_STATE_STATUS_IN:
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
@@ -620,9 +610,9 @@ void usbd()
 
     open_stdout();
 
-    usbd.usb = usbd.clas = INVALID_HANDLE;
+    usbd.usb = INVALID_HANDLE;
+    usbd.block = block_create(USBD_BLOCK_SIZE);
 
-    usbd.block = INVALID_HANDLE;
     usbd.setup_state = USB_SETUP_STATE_REQUEST;
     usbd.data_size = 0;
 
@@ -638,6 +628,9 @@ void usbd()
     usbd.ep0_size = 8;
     usbd.configuration = 0;
 
+    usbd.classes = array_create(1);
+    usbd.vendors = array_create(1);
+
     for (;;)
     {
         ipc_read_ms(&ipc, 0, 0);
@@ -648,14 +641,14 @@ void usbd()
             ipc_post(&ipc);
             break;
 #if (SYS_INFO)
-        case SYS_GET_INFO:
+        case IPC_GET_INFO:
 //            cdc_info();
             ipc_post(&ipc);
             break;
 #endif
         case USB_SETUP_DRIVER:
             usbd.usb = ipc.param1;
-            usbd_init(&usbd);
+            ack(usbd.usb, USB_REGISTER_DEVICE, 0, 0, 0);
             ipc_post_or_error(&ipc);
             break;
         case USB_SETUP_DESCRIPTORS:
@@ -678,10 +671,10 @@ void usbd()
             usbd_wakeup(&usbd);
             //called from ISR, no response
             break;
-        case USB_EP_READ_COMPLETE:
+        case IPC_READ_COMPLETE:
             usbd_read_complete(&usbd);
             break;
-        case USB_EP_WRITE_COMPLETE:
+        case IPC_WRITE_COMPLETE:
             usbd_write_complete(&usbd);
             break;
         case USB_SETUP:
