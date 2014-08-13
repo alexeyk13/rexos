@@ -383,7 +383,7 @@ void stm32_usb_open(USB* usb)
     }
     if (usb->device == INVALID_HANDLE)
     {
-        error(ERROR_USB_DEVICE_NOT_SET);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     ack(core, STM32_GPIO_ENABLE_PIN, A9, PIN_MODE_IN_FLOAT, 0);
@@ -442,7 +442,6 @@ static inline void stm32_usb_set_address(int addr)
     OTG_FS_DEVICE->CFG &= OTG_FS_DEVICE_CFG_DAD;
     OTG_FS_DEVICE->CFG |= addr << OTG_FS_DEVICE_CFG_DAD_POS;
 }
-
 
 static inline void stm32_usb_read(USB* usb, HANDLE block, int num, int size)
 {

@@ -11,6 +11,10 @@
 
 #include "../../userspace/block.h"
 
+typedef struct {
+    HANDLE usbd, usb;
+} CDC;
+
 void cdc();
 
 const REX __CDC = {
@@ -28,23 +32,30 @@ const REX __CDC = {
     cdc
 };
 
+static inline void cdc_open(CDC* cdc, HANDLE usbd)
+{
+    if (cdc->usbd != INVALID_HANDLE)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    cdc->usbd = usbd;
+    ack(cdc->usbd, USBD_REGISTER_CLASS, 0, 0, 0);
+    cdc->usb = get(cdc->usbd, USBD_GET_DRIVER, 0, 0, 0);
+}
+
 void cdc()
 {
-    char* ptr;
-    int i;
-
-    HANDLE usb;
-    HANDLE block;
     IPC ipc;
+    CDC cdc;
     open_stdout();
-    usb = 0;//sys_get_object(SYS_OBJECT_USB);
 
-    block = block_create(256);
+    cdc.usbd = cdc.usb = INVALID_HANDLE;
 
-    ack(usb, USB_REGISTER_DEVICE, 0, 0, 0);
     for (;;)
     {
         ipc_read_ms(&ipc, 0, 0);
+        error(ERROR_OK);
         switch (ipc.cmd)
         {
         case IPC_PING:
@@ -56,35 +67,29 @@ void cdc()
             ipc_post(&ipc);
             break;
 #endif
+        case IPC_OPEN:
+            cdc_open(&cdc, (HANDLE)ipc.param1);
+            ipc_post_or_error(&ipc);
+            break;
         case USB_RESET:
-            printf("got USB reset\n\r");
-            block_send(block, usb);
-            //we only waiting for setup packet now
-            ack(usb, IPC_READ, block, 0, 8);
+            printf("CDC: got USB reset\n\r");
+            //no response required
             break;
         case USB_SUSPEND:
-            printf("got USB suspend\n\r");
+            printf("CDC: got USB suspend\n\r");
+            //no response required
             break;
         case USB_WAKEUP:
-            printf("got USB wakeup\n\r");
+            printf("CDC: got USB wakeup\n\r");
+            //no response required
             break;
-        case IPC_READ_COMPLETE:
-            printf("read complete\n\r");
-            block_send(block, usb);
-            //we only waiting for setup packet now
-            ack(usb, IPC_READ, block, 0, 64);
+        case USB_CONFIGURED:
+            printf("CDC: configured\n\r");
+            //no response required
             break;
         case USB_SETUP:
-            printf("SETUP received\n\r");
-            ptr = block_open(block);
-            for (i = 0; i < 8; ++i)
-            {
-                printf("%#X ", ptr[i]);
-            }
-            printf("\n\r");
-            block_send(block, usb);
-            //we only waiting for setup packet now
-            ack(usb, IPC_READ, block, 0, 8);
+            printf("CDC: SETUP received\n\r");
+            //TODO: respond with state
             break;
         default:
             ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
