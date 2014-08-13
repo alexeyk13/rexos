@@ -10,53 +10,56 @@
 
 #define ARRAY_HEADER_SIZE                               (sizeof(unsigned int) * 2)
 
-ARRAY* __array_create(unsigned int reserved)
+ARRAY* __array_create(ARRAY** ar, unsigned int reserved)
 {
-    ARRAY* res = malloc(ARRAY_HEADER_SIZE + sizeof(void*) * reserved);
-    if (res)
+    *ar = malloc(ARRAY_HEADER_SIZE + sizeof(void*) * reserved);
+    if (*ar)
     {
-        res->reserved = reserved;
-        res->size = 0;
+        (*ar)->reserved = reserved;
+        (*ar)->size = 0;
     }
-    return res;
+    return (*ar);
 }
 
-void __array_destroy(ARRAY* ar)
+void __array_destroy(ARRAY **ar)
 {
-    free(ar);
+    free(*ar);
+    *ar = NULL;
 }
 
-ARRAY* __array_add(ARRAY *ar, unsigned int size)
+ARRAY* __array_add(ARRAY **ar, unsigned int size)
 {
     //already have space
-    if (ar->reserved - ar->size >= size)
+    if ((*ar)->reserved - (*ar)->size >= size)
     {
-        ar->reserved += size;
-        return ar;
+        (*ar)->size += size;
+        return (*ar);
     }
-    size -= ar->reserved - ar->size;
-    ar->size = ar->reserved;
-    ar = realloc(ar, ARRAY_HEADER_SIZE + sizeof(void*) * size);
-    if (ar)
+    size -= (*ar)->reserved - (*ar)->size;
+    (*ar)->size = (*ar)->reserved;
+    (*ar) = realloc(*ar, ARRAY_HEADER_SIZE + sizeof(void*) * (size + (*ar)->size));
+    if (*ar)
     {
-        ar->reserved += size;
-        ar->size += size;
+        (*ar)->reserved += size;
+        (*ar)->size += size;
     }
-    return ar;
+    return (*ar);
 }
 
-ARRAY* __array_remove(ARRAY* ar, unsigned int index)
+ARRAY* __array_remove(ARRAY** ar, unsigned int index)
 {
-    if (index < ar->size)
-        ar->data[index] = ar->data[--ar->size];
+    if (index < (*ar)->size - 1)
+        (*ar)->data[index] = (*ar)->data[--(*ar)->size];
+    else if (index == (*ar)->size - 1)
+        --(*ar)->size;
     else
         error(ERROR_OUT_OF_RANGE);
-    return ar;
+    return (*ar);
 }
 
-ARRAY* __array_squeeze(ARRAY* ar)
+ARRAY* __array_squeeze(ARRAY** ar)
 {
-    ar = realloc(ar, ARRAY_HEADER_SIZE + sizeof(void*) * ar->size);
-    ar->reserved = ar->size;
-    return ar;
+    *ar = realloc(*ar, ARRAY_HEADER_SIZE + sizeof(void*) * (*ar)->size);
+    (*ar)->reserved = (*ar)->size;
+    return (*ar);
 }

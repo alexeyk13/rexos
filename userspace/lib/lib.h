@@ -46,11 +46,11 @@ typedef struct {
     unsigned int (*time_elapsed_ms)(TIME*);
     unsigned int (*time_elapsed_us)(TIME*);
     //array.h
-    ARRAY* (*array_create)(unsigned int reserved);
-    void (*array_destroy)(ARRAY* ar);
-    ARRAY* (*array_add)(ARRAY* ar, unsigned int size);
-    ARRAY* (*array_remove)(ARRAY* ar, unsigned int index);
-    ARRAY* (*array_squeeze)(ARRAY* ar);
+    ARRAY* (*array_create)(ARRAY** ar, unsigned int reserved);
+    void (*array_destroy)(ARRAY** ar);
+    ARRAY* (*array_add)(ARRAY** ar, unsigned int size);
+    ARRAY* (*array_remove)(ARRAY** ar, unsigned int index);
+    ARRAY* (*array_squeeze)(ARRAY** ar);
 } LIB;
 
 #endif // LIB_H
