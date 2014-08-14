@@ -56,21 +56,23 @@ void kstream_create(STREAM** stream, unsigned int size)
     PROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, stream, sizeof(void*));
     *stream = kmalloc(sizeof(STREAM));
-    if (*stream != NULL)
+    if ((*stream = kmalloc(sizeof(STREAM))) == NULL)
     {
-        memset(*stream, 0, sizeof(STREAM));
-        DO_MAGIC((*stream), MAGIC_STREAM);
-        rb_init(&(*stream)->rb, size);
-        //allocate stream data
-        if (((*stream)->data = paged_alloc(size)) == NULL)
-        {
-            kfree(*stream);
-            (*stream) = NULL;
-            kprocess_error(process, ERROR_OUT_OF_PAGED_MEMORY);
-        }
-    }
-    else
         kprocess_error(process, ERROR_OUT_OF_SYSTEM_MEMORY);
+        return;
+    }
+    //allocate stream data
+    if (((*stream)->data = paged_alloc(size)) == NULL)
+    {
+        kfree(*stream);
+        (*stream) = NULL;
+        kprocess_error(process, ERROR_OUT_OF_PAGED_MEMORY);
+        return;
+    }
+    DO_MAGIC((*stream), MAGIC_STREAM);
+    rb_init(&(*stream)->rb, size);
+    (*stream)->listener = INVALID_HANDLE;
+    (*stream)->write_waiters = (*stream)->read_waiters = NULL;
 }
 
 void kstream_open(STREAM* stream, STREAM_HANDLE** handle)
@@ -146,7 +148,7 @@ void kstream_listen(STREAM* stream, void* param)
     PROCESS* process = kprocess_get_current();
     if (stream->listener == INVALID_HANDLE)
     {
-        stream->listener = process;
+        stream->listener = (HANDLE)process;
         stream->listener_param = param;
     }
     else
@@ -158,7 +160,7 @@ void kstream_stop_listen(STREAM* stream)
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
     PROCESS* process = kprocess_get_current();
-    if (stream->listener == process)
+    if (stream->listener == (HANDLE)process)
         stream->listener = INVALID_HANDLE;
     else
         kprocess_error(process, ERROR_ACCESS_DENIED);
@@ -218,7 +220,7 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
     //inform listener
     if ((handle->stream->listener != INVALID_HANDLE) && size)
     {
-        ipc.process = (HANDLE)handle->stream->listener;
+        ipc.process = handle->stream->listener;
         ipc.cmd = IPC_STREAM_WRITE;
         ipc.param1 = (HANDLE)handle->stream;
         ipc.param2 = size;

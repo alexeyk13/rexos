@@ -26,7 +26,7 @@ typedef struct {
     struct _STREAM_HANDLE* write_waiters;
     struct _STREAM_HANDLE* read_waiters;
     //item
-    PROCESS* listener;
+    HANDLE listener;
     void* listener_param;
 }STREAM;
 
