@@ -22,7 +22,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Embedded libraries:
   * ustdio: printf, sprintf. Around 2k of code.
   * ustdlib: time, rand.
-  * single-linked list, double linked list, ring buffer
+  * single-linked list, double linked list, ring buffer, dynamic arrays
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -32,7 +32,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * object marks
   * sys objects range checking
   * user objects range checking
-  * thread profiling: name, uptime, stack allocated/current/used
+  * thread profiling: name, uptime, stack allocated/used
   * memory profiling: red-markings, pool free/allocated size, objects fragmentation
 - Supported hardware:
   * ARM7
