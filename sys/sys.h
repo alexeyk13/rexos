@@ -12,9 +12,20 @@
 #include "../userspace/lib/types.h"
 
 typedef enum {
-    SYS_SET_STDIO = IPC_SYSTEM + 1,                             //!< Will be called for objects, created before global stdout STREAM is set
-    SYS_GET_OBJECT,                                             //!< Get system object. Temporaily solution before FS is ready
-    SYS_SET_OBJECT                                              //!< Set system object. Temporaily solution before FS is ready
+    IPC_SET_STDIO = IPC_SYSTEM + 1,                             //!< Will be called for objects, created before global stdout STREAM is set
+    IPC_GET_OBJECT,                                             //!< Get system object. Temporaily solution before FS is ready
+    IPC_SET_OBJECT,                                             //!< Set system object. Temporaily solution before FS is ready
+    IPC_GET_INFO,
+    IPC_READ,
+    IPC_READ_COMPLETE,
+    IPC_WRITE,
+    IPC_WRITE_COMPLETE,
+    IPC_FLUSH,
+    IPC_OPEN,
+    IPC_CLOSE,
+    IPC_GET_RX_STREAM,
+    IPC_GET_TX_STREAM
+
 }SYS_IPCS;
 
 typedef enum {
@@ -78,7 +89,7 @@ __STATIC_INLINE unsigned int sys_get(unsigned int cmd, unsigned int param1, unsi
 
 __STATIC_INLINE HANDLE sys_get_object(int object)
 {
-    return sys_get(SYS_GET_OBJECT, object, 0, 0);
+    return sys_get(IPC_GET_OBJECT, object, 0, 0);
 }
 
 /**

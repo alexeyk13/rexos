@@ -52,7 +52,7 @@ void sys ()
         case IPC_CALL_ERROR:
             break;
         //Temporaily solution. Remove after FS will be ready
-        case SYS_GET_OBJECT:
+        case IPC_GET_OBJECT:
             switch (ipc.param1)
             {
             case SYS_OBJECT_CORE:
@@ -75,7 +75,7 @@ void sys ()
             }
             ipc_post(&ipc);
             break;
-        case SYS_SET_OBJECT:
+        case IPC_SET_OBJECT:
             switch (ipc.param1)
             {
             case SYS_OBJECT_CORE:
@@ -97,7 +97,7 @@ void sys ()
             }
             ipc_post(&ipc);
             break;
-        case SYS_SET_STDIO:
+        case IPC_SET_STDIO:
             if (sys.stdout_stream != INVALID_HANDLE)
                 __HEAP->stdout = stream_open(sys.stdout_stream);
 #if (SYS_INFO)
