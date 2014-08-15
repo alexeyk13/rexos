@@ -45,7 +45,7 @@ void stm32_core_loop(CORE* core)
             break;
         case IPC_CALL_ERROR:
             break;
-        case SYS_SET_STDIO:
+        case IPC_SET_STDIO:
             open_stdout();
             ipc_post(&ipc);
             break;
@@ -176,7 +176,7 @@ void stm32_core_loop(CORE* core)
 void stm32_core()
 {
     CORE core;
-    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_CORE, 0, 0);
+    sys_ack(IPC_SET_OBJECT, SYS_OBJECT_CORE, 0, 0);
 
     stm32_power_init(&core);
     stm32_timer_init(&core);

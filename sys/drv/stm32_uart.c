@@ -477,7 +477,7 @@ static inline void stm32_uart_loop(UART** uarts)
         case IPC_PING:
             ipc_post(&ipc);
             break;
-        case SYS_SET_STDIO:
+        case IPC_SET_STDIO:
             open_stdout();
             ipc_post(&ipc);
             break;
@@ -631,7 +631,7 @@ static inline void stm32_uart_loop(UART** uarts)
 void stm32_uart()
 {
     UART* uarts[UARTS_COUNT] = {0};
-    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_UART, 0, 0);
+    sys_ack(IPC_SET_OBJECT, SYS_OBJECT_UART, 0, 0);
 
 #if (UART_STDIO)
     UART_ENABLE ue;
@@ -648,12 +648,12 @@ void stm32_uart()
     //setup kernel printk dbg
     setup_dbg(uart_write_kernel, (void*)UART_STDIO_PORT);
     //setup system stdio
-    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_STDOUT_STREAM, uarts[UART_STDIO_PORT]->tx_stream, 0);
-    sys_ack(SYS_SET_OBJECT, SYS_OBJECT_STDIN_STREAM, uarts[UART_STDIO_PORT]->rx_stream, 0);
+    sys_ack(IPC_SET_OBJECT, SYS_OBJECT_STDOUT_STREAM, uarts[UART_STDIO_PORT]->tx_stream, 0);
+    sys_ack(IPC_SET_OBJECT, SYS_OBJECT_STDIN_STREAM, uarts[UART_STDIO_PORT]->rx_stream, 0);
     //say early processes, that stdio is setted up
-    sys_ack(SYS_SET_STDIO, 0, 0, 0);
+    sys_ack(IPC_SET_STDIO, 0, 0, 0);
     //core
-    ack(sys_get_object(SYS_OBJECT_CORE), SYS_SET_STDIO, 0, 0, 0);
+    ack(sys_get_object(SYS_OBJECT_CORE), IPC_SET_STDIO, 0, 0, 0);
 #endif //UART_STDIO
 
     stm32_uart_loop(uarts);

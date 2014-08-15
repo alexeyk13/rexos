@@ -50,6 +50,13 @@ typedef enum {
     USB_SUPER_SPEED
 } USB_SPEED;
 
+typedef struct {
+    USB_EP_TYPE type;
+    unsigned int size;
+} USB_EP_OPEN;
+
+#define USB_HANDLE_DEVICE                                       0xff
+
 #define USB_MAX_EP0_SIZE                                        64
 
 #define USB_STATUS_SELF_POWERED                                 (1 << 0)
