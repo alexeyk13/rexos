@@ -64,7 +64,7 @@ const REX __STM32_USB = {
 
 static inline OTG_FS_DEVICE_ENDPOINT_TypeDef* ep_reg_data(int num)
 {
-    return (num & USB_EP_IN) ? &(OTG_FS_DEVICE->INEP[USB_EP_NUM(num)]) : &(OTG_FS_DEVICE->INEP[USB_EP_NUM(num)]);
+    return (num & USB_EP_IN) ? &(OTG_FS_DEVICE->INEP[USB_EP_NUM(num)]) : &(OTG_FS_DEVICE->OUTEP[USB_EP_NUM(num)]);
 }
 
 static inline EP* ep_data(USB* usb, int num)
@@ -135,9 +135,9 @@ static inline void stm32_usb_ep_open(USB* usb, HANDLE process, int num, USB_EP_O
         for (i = 0; i < USB_EP_NUM(num); ++i)
             fifo_used += usb->in[i].mps / 4;
         if (USB_EP_NUM(num))
-            OTG_FS_GENERAL->DIEPTXF[USB_EP_NUM(num) - 1] = ((ep_open->size / 4 * 2)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | (fifo_used | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
+            OTG_FS_GENERAL->DIEPTXF[USB_EP_NUM(num) - 1] = ((ep_open->size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
         else
-            OTG_FS_GENERAL->TX0FSIZ = ((ep_open->size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | (fifo_used | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
+            OTG_FS_GENERAL->TX0FSIZ = ((ep_open->size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
         ctl |= USB_EP_NUM(num) << OTG_FS_DEVICE_ENDPOINT_CTL_TXFNUM_POS;
         //enable interrupts for FIFO empty
         OTG_FS_DEVICE->AINTMSK |= 1 << USB_EP_NUM(num);
@@ -248,6 +248,7 @@ static inline void stm32_usb_rx_fifo(USB* usb)
         bcnt = (sta & OTG_FS_GENERAL_RXSTSR_BCNT) >> OTG_FS_GENERAL_RXSTSR_BCNT_POS;
         num = (sta & OTG_FS_GENERAL_RXSTSR_EPNUM) >> OTG_FS_GENERAL_RXSTSR_EPNUM_POS;
         ep = &usb->out[num];
+
         if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_RX)
         //ignore all data on setup packet
         {
@@ -504,6 +505,7 @@ static inline void stm32_usb_write(USB* usb, int num, HANDLE block, int size)
         cnt = (OTG_FS_DEVICE->INEP[USB_EP_NUM(num)].TSIZ & OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT) >> OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_POS;
     else
         cnt = (OTG_FS_DEVICE->INEP[USB_EP_NUM(num)].TSIZ & OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_IN0) >> OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_POS;
+
     if (cnt)
         OTG_FS_DEVICE->EIPEMPMSK |= 1 << (USB_EP_NUM(num));
     else
