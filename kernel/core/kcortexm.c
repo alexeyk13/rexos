@@ -66,7 +66,7 @@ void on_mem_manage(unsigned int ret_value, unsigned int* stack_value)
             printk("Data access violation");
         else if (SCB_CFSR & CFSR_IACCVIOL)
             printk("Instruction access violation");
-        printk(" at %#.08x\n\r", SCB_MMAR);
+        printk(" at %#.08x\n\r, caller %#.08x", SCB_MMAR, stack_value[CALLER_ADDRESS]);
 #endif
         process_fault(ret_value);
     }
@@ -85,9 +85,9 @@ void on_bus_fault(unsigned int ret_value, unsigned int* stack_value)
         else if (SCB_CFSR & CFSR_BUNSTKERR)
             printk("Unstacking failed at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
         else if (SCB_CFSR & (CFSR_IMPRECISERR | CFSR_PRECISERR))
-            printk("Data bus error at %#.08x\n\r", SCB_BFAR);
+            printk("Data bus error at %#.08x, caller %#.08x\n\r", SCB_BFAR, stack_value[CALLER_ADDRESS]);
         else if (SCB_CFSR & CFSR_IBUSERR)
-            printk("Instruction bus error at %#.08x\n\r", SCB_BFAR);
+            printk("Instruction bus error at %#.08x, caller %#.08x\n\r", SCB_BFAR, stack_value[CALLER_ADDRESS]);
 #endif
         panic();
     }
