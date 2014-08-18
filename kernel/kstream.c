@@ -95,6 +95,8 @@ void kstream_open(STREAM* stream, STREAM_HANDLE** handle)
 
 void kstream_close(STREAM_HANDLE* handle)
 {
+    if ((HANDLE)handle == INVALID_HANDLE)
+        return;
     CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     switch (handle->mode)
@@ -303,6 +305,8 @@ void kstream_flush(STREAM* stream)
 
 void kstream_destroy(STREAM* stream)
 {
+    if ((HANDLE)stream == INVALID_HANDLE)
+        return;
     STREAM_HANDLE* handle;
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);

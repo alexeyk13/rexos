@@ -103,6 +103,8 @@ void kmutex_unlock(MUTEX* mutex)
 
 void kmutex_destroy(MUTEX* mutex)
 {
+    if ((HANDLE)mutex == INVALID_HANDLE)
+        return;
     CHECK_HANDLE(mutex, sizeof(MUTEX));
     CHECK_MAGIC(mutex, MAGIC_MUTEX);
     CLEAR_MAGIC(mutex);

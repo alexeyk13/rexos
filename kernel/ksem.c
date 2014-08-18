@@ -61,6 +61,8 @@ void ksem_wait(SEM* sem, TIME* time)
 
 void ksem_destroy(SEM* sem)
 {
+    if ((HANDLE)sem == INVALID_HANDLE)
+        return;
     CHECK_HANDLE(sem, sizeof(SEM));
     CHECK_MAGIC(sem, MAGIC_SEM);
     CLEAR_MAGIC(sem);

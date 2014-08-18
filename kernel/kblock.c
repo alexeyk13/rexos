@@ -35,6 +35,8 @@ void kblock_create(BLOCK** block, unsigned int size)
 
 void kblock_destroy(BLOCK* block)
 {
+    if ((HANDLE)block == INVALID_HANDLE)
+        return;
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
     CLEAR_MAGIC(block);

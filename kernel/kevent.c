@@ -80,6 +80,8 @@ void kevent_wait(EVENT* event, TIME* time)
 
 void kevent_destroy(EVENT* event)
 {
+    if ((HANDLE)event == INVALID_HANDLE)
+        return;
     CHECK_HANDLE(event, sizeof(EVENT));
     CHECK_MAGIC(event, MAGIC_EVENT);
     CLEAR_MAGIC(event);

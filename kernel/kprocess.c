@@ -269,6 +269,8 @@ void kprocess_get_priority(PROCESS* process, unsigned int* priority)
 
 void kprocess_destroy(PROCESS* process)
 {
+    if ((HANDLE)process == INVALID_HANDLE)
+        return;
     CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     CLEAR_MAGIC(process);
