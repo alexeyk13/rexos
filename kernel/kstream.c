@@ -137,10 +137,20 @@ void kstream_get_size(STREAM* stream, unsigned int *size)
 
 void kstream_get_free(STREAM *stream, unsigned int* size)
 {
+    DLIST_ENUM de;
+    STREAM_HANDLE* cur;
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
     CHECK_ADDRESS(kprocess_get_current(), size, sizeof(unsigned int));
-    *size = rb_free(&stream->rb);
+    if (rb_is_empty(&stream->rb))
+    {
+        *size = stream->rb.size - 1;
+        dlist_enum_start((DLIST**)&stream->read_waiters, &de);
+        while (dlist_enum(&de, (DLIST**)&cur))
+            *size += cur->size;
+    }
+    else
+        *size = rb_free(&stream->rb);
 }
 
 void kstream_listen(STREAM* stream, void* param)
@@ -294,6 +304,7 @@ void kstream_flush(STREAM* stream)
     CHECK_MAGIC(stream, MAGIC_STREAM);
     //flush stream
     rb_clear(&stream->rb);
+    stream->listener = INVALID_HANDLE;
     //flush waiters
     while ((handle = stream->write_waiters) != NULL)
     {
