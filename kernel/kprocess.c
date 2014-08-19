@@ -333,6 +333,7 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
 {
     CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
+    ASSERT ((process->flags & PROCESS_FLAGS_WAITING) == 0);
     //init process cannot sleep or be locked by mutex
     if (process == __KERNEL->init)
     {
@@ -342,7 +343,7 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
         return;
     }
     kprocess_remove_from_active_list(process);
-    process->flags |= PROCESS_MODE_WAITING | sync_type;
+    process->flags |= PROCESS_FLAGS_WAITING | sync_type;
     process->sync_object = sync_object;
 
 #if (KERNEL_MES)
@@ -381,10 +382,10 @@ void kprocess_wakeup(PROCESS* process)
 
         switch (process->flags & PROCESS_MODE_MASK)
         {
-        case PROCESS_MODE_WAITING_FROZEN:
-            process->flags &= ~PROCESS_FLAGS_WAITING;
         case PROCESS_MODE_WAITING:
             kprocess_add_to_active_list(process);
+        case PROCESS_MODE_WAITING_FROZEN:
+            process->flags &= ~PROCESS_FLAGS_WAITING;
             break;
         }
     }
