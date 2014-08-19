@@ -30,7 +30,7 @@ typedef struct {
     char tx_buf[UART_TX_BUF_SIZE];
     char rx_char;
     unsigned int rx_free;
-    UART_BAUD baud;
+    BAUD baud;
 } UART;
 
 const REX __STM32_UART = {
@@ -172,7 +172,7 @@ static void printu(const char *const fmt, ...)
 #endif
 #endif //SYS_INFO
 
-bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
+bool uart_set_baudrate(UART* uart, const BAUD* config)
 {
     HANDLE core = sys_get_object(SYS_OBJECT_CORE);
     if (core == INVALID_HANDLE)
@@ -217,7 +217,7 @@ bool uart_set_baudrate(UART* uart, const UART_BAUD* config)
     UART_REGS[uart->port]->CR1 |= USART_CR1_UE | USART_CR1_PEIE;
     UART_REGS[uart->port]->CR3 |= USART_CR3_EIE;
 
-    memcpy(&uart->baud, config, sizeof(UART_BAUD));
+    memcpy(&uart->baud, config, sizeof(BAUD));
     return true;
 }
 
@@ -468,7 +468,7 @@ static inline void stm32_uart_loop(UART** uarts)
 {
     IPC ipc;
     UART_ENABLE ue;
-    UART_BAUD baud;
+    BAUD baud;
     for (;;)
     {
         ipc_read_ms(&ipc, 0, 0);
@@ -517,7 +517,7 @@ static inline void stm32_uart_loop(UART** uarts)
         case IPC_UART_SET_BAUDRATE:
             if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
             {
-                if (direct_read(ipc.process, (void*)&baud, sizeof(UART_BAUD)))
+                if (direct_read(ipc.process, (void*)&baud, sizeof(BAUD)))
                 {
                     if (uart_set_baudrate(uarts[ipc.param1], &baud))
                         ipc_post(&ipc);
@@ -533,7 +533,7 @@ static inline void stm32_uart_loop(UART** uarts)
         case IPC_UART_GET_BAUDRATE:
             if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
             {
-                if (direct_write(ipc.process, (void*)&(uarts[ipc.param1]->baud), sizeof(UART_BAUD)))
+                if (direct_write(ipc.process, (void*)&(uarts[ipc.param1]->baud), sizeof(BAUD)))
                     ipc_post(&ipc);
                 else
                     ipc_post_error(ipc.process, get_last_error());
@@ -547,6 +547,7 @@ static inline void stm32_uart_loop(UART** uarts)
                 if (uarts[ipc.param1]->tx_stream != INVALID_HANDLE)
                 {
                     stream_flush(uarts[ipc.param1]->tx_stream);
+                    stream_listen(uarts[ipc.param1]->tx_stream, (void*)(ipc.param1));
                     uarts[ipc.param1]->tx_total = 0;
                     __disable_irq();
                     uarts[ipc.param1]->tx_chunk_pos = uarts[ipc.param1]->tx_chunk_size = 0;

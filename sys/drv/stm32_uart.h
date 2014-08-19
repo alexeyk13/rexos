@@ -12,6 +12,7 @@
   */
 
 #include "../../userspace/process.h"
+#include "../uart.h"
 #include "stm32_gpio.h"
 #include "stm32_config.h"
 #include "sys_config.h"
@@ -26,17 +27,6 @@ typedef enum {
     IPC_UART_ISR_RX_CHAR
 } STM32_UART_IPCS;
 
-typedef struct {
-    //baudrate
-    uint32_t baud;
-    //data bits: 7, 8
-    uint8_t data_bits;
-    //parity: 'N', 'O', 'E'
-    char parity;
-    //stop bits: 1, 2
-    uint8_t stop_bits;
-}UART_BAUD;
-
 typedef enum {
     UART_1 = 0,
     UART_2,
@@ -50,7 +40,7 @@ typedef enum {
 
 typedef struct {
     PIN tx, rx;
-    UART_BAUD baud;
+    BAUD baud;
     unsigned int tx_stream_size, rx_stream_size;
 } UART_ENABLE;
 
