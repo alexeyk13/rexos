@@ -216,9 +216,9 @@ static inline void usb_wakeup(USB* usb)
 static inline void stm32_usb_return_block(USB* usb, int num, int cmd, int size)
 {
     EP* ep = ep_data(usb, num);
-    HANDLE block = ep->block;
+    block_send_ipc_inline(ep->block, ep->process, cmd, num, ep->block, size);
+    ep->io_active = false;
     ep->block = INVALID_HANDLE;
-    block_send_ipc_inline(block, ep->process, cmd, block, num, size);
 }
 
 static inline void stm32_usb_read_chunk(USB* usb, int num)
@@ -263,10 +263,7 @@ static inline void stm32_usb_rx_fifo(USB* usb)
             memcpy(ep->ptr + ep->processed, (void*)(OTG_FS_FIFO_BASE + num * 0x1000), ALIGN(bcnt));
             ep->processed += bcnt;
             if (ep->processed >= ep->size)
-            {
-                ep->io_active = false;
                 stm32_usb_return_block(usb, num, IPC_READ_COMPLETE, ep->processed);
-            }
             else
                 stm32_usb_read_chunk(usb, num);
         }
@@ -301,10 +298,7 @@ static inline void stm32_usb_write_chunk(USB* usb, int num)
         ep->processed += size;
 
         if (ep->processed >= ep->size)
-        {
-            ep->io_active = false;
             stm32_usb_return_block(usb, num, IPC_WRITE_COMPLETE, ep->processed);
-        }
         else
             OTG_FS_DEVICE->EIPEMPMSK |= 1 << USB_EP_NUM(num);
     }
@@ -479,7 +473,7 @@ static inline void stm32_usb_read(USB* usb, int num, HANDLE block, int size)
 static inline void stm32_usb_write(USB* usb, int num, HANDLE block, int size)
 {
     int cnt;
-    if (USB_EP_NUM(num) >= EP_COUNT_MAX)
+    if (USB_EP_NUM(num) >= EP_COUNT_MAX || ((USB_EP_IN & num) == 0))
     {
         error(ERROR_INVALID_PARAMS);
         return;
