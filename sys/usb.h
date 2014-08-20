@@ -24,15 +24,17 @@ typedef enum {
     USB_SUSPEND,
     USB_WAKEUP,
     USB_SETUP,
-    USB_CONFIGURED,
+    USB_SET_TEST_MODE,
     //USBD
+    USBD_ALERT,
     USBD_REGISTER_CLASS,
     USBD_UNREGISTER_CLASS,
-    USBD_REGISTER_VENDOR,
-    USBD_UNREGISTER_VENDOR,
     USBD_SETUP_DESCRIPTORS,
     USBD_SETUP_STRING_DESCRIPTORS,
     USBD_GET_DRIVER,
+    USBD_SET_FEATURE,
+    USBD_CLEAR_FEATURE,
+
     USB_LAST
 }USB_IPCS;
 
@@ -55,12 +57,18 @@ typedef struct {
     unsigned int size;
 } USB_EP_OPEN;
 
+typedef enum {
+    USB_TEST_MODE_NORMAL = 0,
+    USB_TEST_MODE_J,
+    USB_TEST_MODE_K,
+    USB_TEST_MODE_SE0_NAK,
+    USB_TEST_MODE_PACKET,
+    USB_TEST_MODE_FORCE_ENABLE
+} USB_TEST_MODES;
+
 #define USB_HANDLE_DEVICE                                       0xff
 
 #define USB_MAX_EP0_SIZE                                        64
-
-#define USB_STATUS_SELF_POWERED                                 (1 << 0)
-#define USB_STATUS_REMOTE_WAKEUP                                (1 << 1)
 
 #define BM_REQUEST_DIRECTION                                    0x80
 #define BM_REQUEST_DIRECTION_HOST_TO_DEVICE                     0x00

@@ -40,10 +40,11 @@ typedef struct {
     //SETUP state machine
     SETUP setup;
     USB_SETUP_STATE setup_state;
-    int data_size;
     // USBD state machine
     USBD_STATE state;
     bool suspended;
+    bool self_powered, remote_wakeup;
+    USB_TEST_MODES test_mode;
     //descriptors (LOW SPEED, FULL SPEED, HIGH SPEED, SUPER_SPEED)
     USB_DESCRIPTORS_HEADER* descriptors[4];
     USB_STRING_DESCRIPTORS_HEADER* string_descriptors;
@@ -51,7 +52,6 @@ typedef struct {
     int ep0_size;
     int configuration, iface, iface_alt;
     ARRAY* classes;
-    ARRAY* vendors;
 } USBD;
 
 void usbd();
@@ -98,8 +98,6 @@ static inline void usbd_close(USBD* usbd)
 
     while (usbd->classes->size)
         array_remove(&usbd->classes, usbd->classes->size - 1);
-    while (usbd->vendors->size)
-        array_remove(&usbd->vendors, usbd->vendors->size - 1);
 
     usbd->block = usbd->usb = INVALID_HANDLE;
 }
@@ -129,20 +127,54 @@ static inline void usbd_unregister_object(ARRAY** ar, HANDLE handle)
     error(ERROR_NOT_CONFIGURED);
 }
 
-void inform(USBD* usbd, unsigned int cmd)
+void inform(USBD* usbd, unsigned int cmd, unsigned int param1, unsigned int param2)
 {
     int i;
     IPC ipc;
-    ipc.cmd = cmd;
+    ipc.cmd = USBD_ALERT;
+    ipc.param1 = cmd;
+    ipc.param2 = param1;
+    ipc.param3 = param2;
     for (i = 0; i < usbd->classes->size; ++i)
     {
         ipc.process = (HANDLE)usbd->classes->data[i];
         ipc_post(&ipc);
     }
-    for (i = 0; i < usbd->vendors->size; ++i)
+}
+
+static inline void usbd_set_feature(USBD* usbd, USBD_FEATURES feature, unsigned int param)
+{
+    switch(feature)
     {
-        ipc.process = (HANDLE)usbd->vendors->data[i];
-        ipc_post(&ipc);
+    case USBD_FEATURE_ENDPOINT_HALT:
+        ack(usbd->usb, USB_EP_SET_STALL, param, 0, 0);
+        break;
+    case USBD_FEATURE_DEVICE_REMOTE_WAKEUP:
+        usbd->remote_wakeup = true;
+        break;
+    case USBD_FEATURE_SELF_POWERED:
+        usbd->self_powered = true;
+        break;
+    default:
+        break;
+    }
+}
+
+static inline void usbd_clear_feature(USBD* usbd, USBD_FEATURES feature, unsigned int param)
+{
+    switch(feature)
+    {
+    case USBD_FEATURE_ENDPOINT_HALT:
+        ack(usbd->usb, USB_EP_CLEAR_STALL, param, 0, 0);
+        break;
+    case USBD_FEATURE_DEVICE_REMOTE_WAKEUP:
+        usbd->remote_wakeup = false;
+        break;
+    case USBD_FEATURE_SELF_POWERED:
+        usbd->self_powered = false;
+        break;
+    default:
+        break;
     }
 }
 
@@ -239,15 +271,14 @@ static inline void usbd_setup_string_descriptors(USBD* usbd, HANDLE process, int
         }
 }
 
-static inline void usbd_reset(USBD* usbd)
+static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
 {
     usbd->state = USBD_STATE_DEFAULT;
     usbd->suspended = false;
 #if (USB_DEBUG_REQUESTS)
     printf("USB device reset\n\r");
 #endif
-    //TODO: determine size based on speed
-    usbd->speed = USB_FULL_SPEED;
+    usbd->speed = speed;
     usbd->ep0_size = usbd->speed == USB_LOW_SPEED ? 8 : 64;
 
     USB_EP_OPEN ep_open;
@@ -256,7 +287,7 @@ static inline void usbd_reset(USBD* usbd)
     fopen_ex(usbd->usb, 0, (void*)&ep_open, sizeof(USB_EP_OPEN));
     fopen_ex(usbd->usb, USB_EP_IN | 0, (void*)&ep_open, sizeof(USB_EP_OPEN));
 
-    inform(usbd, USB_RESET);
+    inform(usbd, USBD_ALERT_RESET, 0, 0);
 }
 
 static inline void usbd_suspend(USBD* usbd)
@@ -270,7 +301,15 @@ static inline void usbd_suspend(USBD* usbd)
         fflush(usbd->usb, 0);
         fflush(usbd->usb, USB_EP_IN | 0);
         if (usbd->state == USBD_STATE_CONFIGURED)
-            inform(usbd, USB_SUSPEND);
+        {
+            if (usbd->setup_state != USB_SETUP_STATE_REQUEST)
+            {
+                fflush(usbd->usb, 0);
+                fflush(usbd->usb, USB_EP_IN | 0);
+                usbd->setup_state = USB_SETUP_STATE_REQUEST;
+            }
+            inform(usbd, USBD_ALERT_SUSPEND, 0, 0);
+        }
     }
 }
 
@@ -284,11 +323,11 @@ static inline void usbd_wakeup(USBD* usbd)
 #endif
 
         if (usbd->state == USBD_STATE_CONFIGURED)
-            inform(usbd, USB_WAKEUP);
+            inform(usbd, USBD_ALERT_WAKEUP, 0, 0);
     }
 }
 
-static inline bool safecpy_write(USBD* usbd, void* src, int size)
+static inline int safecpy_write(USBD* usbd, void* src, int size)
 {
     void* ptr = block_open(usbd->block);
     if (size > USBD_BLOCK_SIZE)
@@ -296,14 +335,13 @@ static inline bool safecpy_write(USBD* usbd, void* src, int size)
     if (ptr != NULL)
     {
         memcpy(ptr, src, size);
-        usbd->data_size = size;
-        return true;
+        return size;
     }
     else
-        return false;
+        return -1;
 }
 
-static inline bool send_device_descriptor(USBD* usbd)
+static inline int send_device_descriptor(USBD* usbd)
 {
     USB_DEVICE_DESCRIPTOR_TYPE* device_descriptor = get_device_descriptor(usbd);
 #if (USB_DEBUG_REQUESTS)
@@ -312,9 +350,9 @@ static inline bool send_device_descriptor(USBD* usbd)
     return safecpy_write(usbd, device_descriptor, device_descriptor->bLength);
 }
 
-static inline bool send_configuration_descriptor(USBD* usbd, int num)
+static inline int send_configuration_descriptor(USBD* usbd, int num)
 {
-    bool res = false;
+    int res = -1;
     USB_CONFIGURATION_DESCRIPTOR_TYPE* configuration_descriptor;
 #if (USB_DEBUG_REQUESTS)
     printf("USB get CONFIGURATION %d descriptor\n\r", num);
@@ -325,9 +363,9 @@ static inline bool send_configuration_descriptor(USBD* usbd, int num)
     return res;
 }
 
-static inline bool send_strings_descriptor(USBD* usbd, int index, int lang_id)
+static inline int send_strings_descriptor(USBD* usbd, int index, int lang_id)
 {
-    bool res = false;
+    int res = -1;
     USB_STRING_DESCRIPTOR_TYPE* string_descriptor;
 #if (USB_DEBUG_REQUESTS)
     printf("USB get STRING %d descriptor, LangID: %#X\n\r", index, lang_id);
@@ -338,9 +376,9 @@ static inline bool send_strings_descriptor(USBD* usbd, int index, int lang_id)
     return res;
 }
 
-static inline bool send_device_qualifier_descriptor(USBD* usbd)
+static inline int send_device_qualifier_descriptor(USBD* usbd)
 {
-    bool res = false;
+    int res = -1;
     USB_DEVICE_DESCRIPTOR_TYPE* device_qualifier_descriptor;
 #if (USB_DEBUG_REQUESTS)
     printf("USB get DEVICE qualifier descriptor\n\r");
@@ -350,9 +388,9 @@ static inline bool send_device_qualifier_descriptor(USBD* usbd)
     return res;
 }
 
-static inline bool send_other_speed_configuration_descriptor(USBD* usbd, int num)
+static inline int send_other_speed_configuration_descriptor(USBD* usbd, int num)
 {
-    bool res = false;
+    int res = -1;
     USB_CONFIGURATION_DESCRIPTOR_TYPE* other_speed_configuration_descriptor;
 #if (USB_DEBUG_REQUESTS)
     printf("USB get other speed CONFIGURATION %d descriptor\n\r", num);
@@ -362,17 +400,62 @@ static inline bool send_other_speed_configuration_descriptor(USBD* usbd, int num
     return res;
 }
 
-static inline bool usbd_device_get_status(USBD* usbd)
+static inline int usbd_device_get_status(USBD* usbd)
 {
 #if (USB_DEBUG_REQUESTS)
     printf("USB: get device status\n\r");
 #endif
-    char status[2];
-    status[0] = status[1] = 0;
-    return safecpy_write(usbd, &status, 2);
+    uint16_t status = 0;
+    if (usbd->self_powered)
+        status |= 1 << 0;
+    if (usbd->remote_wakeup)
+        status |= 1 << 1;
+    return safecpy_write(usbd, &status, sizeof(uint16_t));
 }
 
-static inline bool usbd_set_address(USBD* usbd)
+static inline int usbd_device_set_feature(USBD* usbd)
+{
+    unsigned int res = -1;
+#if (USB_DEBUG_REQUESTS)
+    printf("USB: device set feature\n\r");
+#endif
+    //According to documentation the only feature can be set is TEST_MODE
+    switch (usbd->setup.wValue)
+    {
+    case USBD_FEATURE_TEST_MODE:
+        usbd->test_mode = usbd->setup.wIndex >> 16;
+        ack(usbd->usb, USB_SET_TEST_MODE, usbd->test_mode, 0, 0);
+        res = 0;
+        break;
+    default:
+        break;
+    }
+    if (res >= 0)
+        inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, usbd->setup.wIndex >> 16);
+    return res;
+}
+
+static inline int usbd_device_clear_feature(USBD* usbd)
+{
+    unsigned int res = -1;
+#if (USB_DEBUG_REQUESTS)
+    printf("USB: device clear feature\n\r");
+#endif
+    switch (usbd->setup.wValue)
+    {
+    case USBD_FEATURE_DEVICE_REMOTE_WAKEUP:
+        usbd->remote_wakeup = false;
+        res = 0;
+        break;
+    default:
+        break;
+    }
+    if (res >= 0)
+        inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, 0);
+    return res;
+}
+
+static inline int usbd_set_address(USBD* usbd)
 {
 #if (USB_DEBUG_REQUESTS)
     printf("USB set ADDRESS\n\r");
@@ -390,20 +473,20 @@ static inline bool usbd_set_address(USBD* usbd)
     default:
         break;
     }
-    return true;
+    return 0;
 }
 
-static inline bool usbd_get_descriptor(USBD* usbd)
+static inline int usbd_get_descriptor(USBD* usbd)
 {
     //can be called in any device state
-    bool res = false;
+    int res = -1;
 
     if (usbd->descriptors[usbd->speed] == NULL || usbd->string_descriptors == NULL)
     {
 #if (USB_DEBUG_ERRORS)
         printf("USBD: No descriptors set for current speed\n\r");
 #endif
-        return false;
+        return -1;
     }
 
     int index = usbd->setup.wValue & 0xff;
@@ -429,7 +512,7 @@ static inline bool usbd_get_descriptor(USBD* usbd)
     return res;
 }
 
-static inline bool usbd_get_configuration(USBD* usbd)
+static inline int usbd_get_configuration(USBD* usbd)
 {
 #if (USB_DEBUG_REQUESTS)
     printf("USB: get configuration\n\r");
@@ -438,13 +521,13 @@ static inline bool usbd_get_configuration(USBD* usbd)
     return safecpy_write(usbd, &configuration, 1);
 }
 
-static inline bool usbd_set_configuration(USBD* usbd, int num)
+static inline int usbd_set_configuration(USBD* usbd)
 {
 #if (USB_DEBUG_REQUESTS)
-    printf("USB: set configuration %d\n\r", num);
+    printf("USB: set configuration %d\n\r", usbd->setup.wValue);
 #endif
-    bool res = false;
-    if (num <= get_device_descriptor(usbd)->bNumConfigurations)
+    int res = -1;
+    if (usbd->setup.wValue <= get_device_descriptor(usbd)->bNumConfigurations)
     {
         //read USB 2.0 specification for more details
         if (usbd->state == USBD_STATE_CONFIGURED)
@@ -455,33 +538,35 @@ static inline bool usbd_set_configuration(USBD* usbd, int num)
 
             usbd->state = USBD_STATE_ADDRESSED;
 
-            inform(usbd, USB_RESET);
+            inform(usbd, USBD_ALERT_RESET, 0, 0);
         }
-        else if (usbd->state == USBD_STATE_ADDRESSED && num)
+        else if (usbd->state == USBD_STATE_ADDRESSED && usbd->setup.wValue)
         {
-            usbd->configuration = num;
+            usbd->configuration = usbd->setup.wValue;
             usbd->iface = 0;
             usbd->iface_alt = 0;
             usbd->state = USBD_STATE_CONFIGURED;
 
-            inform(usbd, USB_CONFIGURED);
+            inform(usbd, USBD_ALERT_CONFIGURATION_SET, usbd->configuration, 0);
         }
         res = true;
     }
     return res;
 }
 
-static inline bool usbd_device_request(USBD* usbd)
+static inline int usbd_device_request(USBD* usbd)
 {
-    bool res = false;
+    int res = -1;
     switch (usbd->setup.bRequest)
     {
     case USB_REQUEST_GET_STATUS:
         res = usbd_device_get_status(usbd);
         break;
-    case USB_REQUEST_CLEAR_FEATURE:
-        break;
     case USB_REQUEST_SET_FEATURE:
+        res = usbd_device_set_feature(usbd);
+        break;
+    case USB_REQUEST_CLEAR_FEATURE:
+        res = usbd_device_clear_feature(usbd);
         break;
     case USB_REQUEST_SET_ADDRESS:
         res = usbd_set_address(usbd);
@@ -489,50 +574,138 @@ static inline bool usbd_device_request(USBD* usbd)
     case USB_REQUEST_GET_DESCRIPTOR:
         res = usbd_get_descriptor(usbd);
         break;
-    case USB_REQUEST_SET_DESCRIPTOR:
-        break;
     case USB_REQUEST_GET_CONFIGURATION:
         res = usbd_get_configuration(usbd);
         break;
     case USB_REQUEST_SET_CONFIGURATION:
-        res = usbd_set_configuration(usbd, usbd->setup.wValue);
+        res = usbd_set_configuration(usbd);
         break;
     }
 
     return res;
 }
 
-static inline void usbd_setup(USBD* usbd)
+static inline int usbd_interface_get_status(USBD* usbd)
+{
+#if (USB_DEBUG_REQUESTS)
+    printf("USB: get interface status\n\r");
+#endif
+    uint16_t status = 0;
+    return safecpy_write(usbd, &status, sizeof(uint16_t));
+}
+
+static inline int usbd_set_interface(USBD* usbd)
+{
+#if (USB_DEBUG_REQUESTS)
+    printf("USB: interface set\n\r");
+#endif
+    usbd->iface = usbd->setup.wIndex;
+    usbd->iface_alt = usbd->setup.wValue;
+    inform(usbd, USBD_ALERT_INTERFACE_SET, usbd->iface, usbd->iface_alt);
+    return 0;
+}
+
+static inline int usbd_get_interface(USBD* usbd)
+{
+#if (USB_DEBUG_REQUESTS)
+    printf("USB: interface get\n\r");
+#endif
+    uint8_t alt = usbd->iface_alt;
+    return safecpy_write(usbd, &alt, 1);
+}
+
+static inline int usbd_interface_request(USBD* usbd)
+{
+    int res = -1;
+    switch (usbd->setup.bRequest)
+    {
+    case USB_REQUEST_GET_STATUS:
+        res = usbd_interface_get_status(usbd);
+        break;
+    case USB_REQUEST_SET_INTERFACE:
+        res = usbd_set_interface(usbd);
+        break;
+    case USB_REQUEST_GET_INTERFACE:
+        res = usbd_get_interface(usbd);
+        break;
+    }
+    return res;
+}
+
+static inline int usbd_endpoint_get_status(USBD* usbd)
+{
+#if (USB_DEBUG_REQUESTS)
+    printf("USB: get endpoint status\n\r");
+#endif
+    uint16_t status = 0;
+    if (get(usbd->usb, USB_EP_IS_STALL, usbd->setup.wIndex & 0xffff, 0, 0))
+        status |= 1 << 0;
+    return safecpy_write(usbd, &status, sizeof(uint16_t));
+}
+
+static inline int usbd_endpoint_set_feature(USBD* usbd)
+{
+    unsigned int res = -1;
+#if (USB_DEBUG_REQUESTS)
+    printf("USB: endpoint set feature\n\r");
+#endif
+    switch (usbd->setup.wValue)
+    {
+    case USBD_FEATURE_ENDPOINT_HALT:
+        ack(usbd->usb, USB_EP_SET_STALL, usbd->setup.wIndex & 0xffff, 0, 0);
+        res = 0;
+        break;
+    default:
+        break;
+    }
+    if (res >= 0)
+        inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, usbd->setup.wIndex & 0xffff);
+    return res;
+}
+
+static inline int usbd_endpoint_clear_feature(USBD* usbd)
+{
+    unsigned int res = -1;
+#if (USB_DEBUG_REQUESTS)
+    printf("USB: endpoint clear feature\n\r");
+#endif
+    switch (usbd->setup.wValue)
+    {
+    case USBD_FEATURE_ENDPOINT_HALT:
+        ack(usbd->usb, USB_EP_CLEAR_STALL, usbd->setup.wIndex & 0xffff, 0, 0);
+        res = 0;
+        break;
+    default:
+        break;
+    }
+    if (res >= 0)
+        inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, usbd->setup.wIndex & 0xffff);
+    return res;
+}
+
+static inline int usbd_endpoint_request(USBD* usbd)
+{
+    int res = -1;
+    switch (usbd->setup.bRequest)
+    {
+    case USB_REQUEST_GET_STATUS:
+        res = usbd_endpoint_get_status(usbd);
+        break;
+    case USB_REQUEST_SET_FEATURE:
+        res = usbd_endpoint_set_feature(usbd);
+        break;
+    case USB_REQUEST_CLEAR_FEATURE:
+        res = usbd_endpoint_clear_feature(usbd);
+        break;
+    }
+    return res;
+}
+
+void usbd_setup_process(USBD* usbd)
 {
     int i;
-    usbd->data_size = 0;
-    bool res = false;
-
-    //Back2Back setup received
-    if (usbd->setup_state != USB_SETUP_STATE_REQUEST)
-    {
-#if (USB_DEBUG_REQUESTS)
-        printf("USB B2B SETUP received, state: %d\n\r", usbd->setup_state);
-#endif
-        //reset control EP if transaction in progress
-        switch (usbd->setup_state)
-        {
-        case USB_SETUP_STATE_DATA_IN:
-        case USB_SETUP_STATE_DATA_IN_ZLP:
-        case USB_SETUP_STATE_STATUS_IN:
-            fflush(usbd->usb, USB_EP_IN | 0);
-            break;
-        case USB_SETUP_STATE_DATA_OUT:
-        case USB_SETUP_STATE_STATUS_OUT:
-            fflush(usbd->usb, 0);
-            break;
-        default:
-            break;
-        }
-
-        usbd->setup_state = USB_SETUP_STATE_REQUEST;
-    }
-
+    int res = -1;
+    IPC ipc, ipcIn;
     switch (usbd->setup.bmRequestType & BM_REQUEST_TYPE)
     {
     case BM_REQUEST_TYPE_STANDART:
@@ -542,55 +715,50 @@ static inline void usbd_setup(USBD* usbd)
             res = usbd_device_request(usbd);
             break;
         case BM_REQUEST_RECIPIENT_INTERFACE:
-//			res = usbd_interface_request(usbd);
+            res = usbd_interface_request(usbd);
             break;
         case BM_REQUEST_RECIPIENT_ENDPOINT:
-//			res = usbd_endpoint_request(usbd);
+            res = usbd_endpoint_request(usbd);
             break;
         }
         break;
     case BM_REQUEST_TYPE_CLASS:
+    case BM_REQUEST_TYPE_VENDOR:
+        ipc.cmd = USB_SETUP;
+        ipc.param1 = ((uint32_t*)(&usbd->setup))[0];
+        ipc.param2 = ((uint32_t*)(&usbd->setup))[1];
+        ipc.param3 = usbd->block;
         for (i = 0; i < usbd->classes->size; ++i)
         {
-            if ((res = get((HANDLE)(usbd->classes->data[i]), USB_SETUP, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], 0)) == true)
+            ipc.process = (HANDLE)(usbd->classes->data[i]);
+            block_send_ipc(usbd->block, ipc.process, &ipc);
+            ipc_read_ms(&ipcIn, 0, ipc.process);
+            if ((res = ipcIn.param1) >= 0)
                 break;
         }
         break;
-    case BM_REQUEST_TYPE_VENDOR:
-        for (i = 0; i < usbd->vendors->size; ++i)
-            if ((res = get((HANDLE)(usbd->vendors->data[i]), USB_SETUP, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], 0)) == true)
-                break;
-        break;
     }
 
-    if (usbd->data_size > usbd->setup.wLength)
-        usbd->data_size = usbd->setup.wLength;
+    if (res > usbd->setup.wLength)
+        res = usbd->setup.wLength;
     //success. start transfers
-    if (res)
+    if (res >= 0)
     {
         if ((usbd->setup.bmRequestType & BM_REQUEST_DIRECTION) == BM_REQUEST_DIRECTION_HOST_TO_DEVICE)
         {
-            if (usbd->data_size)
-            {
-                usbd->setup_state = USB_SETUP_STATE_DATA_OUT;
-                fread(usbd->usb, 0, usbd->block, usbd->data_size);
-            }
-            //data stage is optional
-            else
-            {
-                usbd->setup_state = USB_SETUP_STATE_STATUS_IN;
-                fwrite_null(usbd->usb, USB_EP_IN | 0);
-            }
+            //data already received, sending status
+            usbd->setup_state = USB_SETUP_STATE_STATUS_IN;
+            fwrite_null(usbd->usb, USB_EP_IN | 0);
         }
         else
         {
             //response less, than required and multiples of EP0SIZE - we need to send ZLP on end of transfers
-            if (usbd->data_size < usbd->setup.wLength && ((usbd->data_size % usbd->ep0_size) == 0))
+            if (res < usbd->setup.wLength && ((res % usbd->ep0_size) == 0))
             {
-                if (usbd->data_size)
+                if (res)
                 {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN_ZLP;
-                    fwrite(usbd->usb, USB_EP_IN | 0, usbd->block, usbd->data_size);
+                    fwrite(usbd->usb, USB_EP_IN | 0, usbd->block, res);
                 }
                 //if no data at all, but request success, we will send ZLP right now
                 else
@@ -599,10 +767,10 @@ static inline void usbd_setup(USBD* usbd)
                     fwrite_null(usbd->usb, USB_EP_IN | 0);
                 }
             }
-            else if (usbd->data_size)
+            else if (res)
             {
                 usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-                fwrite(usbd->usb, USB_EP_IN | 0, usbd->block, usbd->data_size);
+                fwrite(usbd->usb, USB_EP_IN | 0, usbd->block, res);
             }
             //data stage is optional
             else
@@ -621,6 +789,7 @@ static inline void usbd_setup(USBD* usbd)
             ack(usbd->usb, USB_EP_SET_STALL, 0, 0, 0);
             ack(usbd->usb, USB_EP_SET_STALL, USB_EP_IN | 0, 0, 0);
         }
+        usbd->setup_state = USB_SETUP_STATE_REQUEST;
 #if (USB_DEBUG_ERRORS)
         printf("Unhandled ");
         switch (usbd->setup.bmRequestType & BM_REQUEST_TYPE)
@@ -647,13 +816,55 @@ static inline void usbd_setup(USBD* usbd)
     }
 }
 
+static inline void usbd_setup_received(USBD* usbd)
+{
+    //Back2Back setup received
+    if (usbd->setup_state != USB_SETUP_STATE_REQUEST)
+    {
+#if (USB_DEBUG_REQUESTS)
+        printf("USB B2B SETUP received, state: %d\n\r", usbd->setup_state);
+#endif
+        //reset control EP if transaction in progress
+        switch (usbd->setup_state)
+        {
+        case USB_SETUP_STATE_DATA_IN:
+        case USB_SETUP_STATE_DATA_IN_ZLP:
+        case USB_SETUP_STATE_STATUS_IN:
+            fflush(usbd->usb, USB_EP_IN | 0);
+            break;
+        case USB_SETUP_STATE_DATA_OUT:
+        case USB_SETUP_STATE_STATUS_OUT:
+            fflush(usbd->usb, 0);
+            break;
+        default:
+            break;
+        }
+
+        usbd->setup_state = USB_SETUP_STATE_REQUEST;
+    }
+
+    //if data from host - read it first before processing
+    if ((usbd->setup.bmRequestType & BM_REQUEST_DIRECTION) == BM_REQUEST_DIRECTION_HOST_TO_DEVICE)
+    {
+        if (usbd->setup.wLength)
+        {
+            usbd->setup_state = USB_SETUP_STATE_DATA_OUT;
+            fread(usbd->usb, 0, usbd->block, usbd->setup.wLength);
+        }
+        //data stage is optional
+        else
+            usbd_setup_process(usbd);
+    }
+    else
+        usbd_setup_process(usbd);
+}
+
 void usbd_read_complete(USBD* usbd)
 {
     switch (usbd->setup_state)
     {
     case USB_SETUP_STATE_DATA_OUT:
-        usbd->setup_state = USB_SETUP_STATE_STATUS_IN;
-        fwrite_null(usbd->usb, USB_EP_IN | 0);
+        usbd_setup_process(usbd);
         break;
     case USB_SETUP_STATE_STATUS_OUT:
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
@@ -702,10 +913,11 @@ void usbd()
     usbd.usb = INVALID_HANDLE;
 
     usbd.setup_state = USB_SETUP_STATE_REQUEST;
-    usbd.data_size = 0;
 
     usbd.state = USBD_STATE_DEFAULT;
     usbd.suspended = false;
+    usbd.self_powered = usbd.remote_wakeup = false;
+    usbd.test_mode = USB_TEST_MODE_NORMAL;
 
     usbd.descriptors[USB_LOW_SPEED] = NULL;
     usbd.descriptors[USB_FULL_SPEED] = NULL;
@@ -717,7 +929,6 @@ void usbd()
     usbd.configuration = 0;
 
     array_create(&usbd.classes, 1);
-    array_create(&usbd.vendors, 1);
 
     for (;;)
     {
@@ -751,14 +962,6 @@ void usbd()
             usbd_unregister_object(&usbd.classes, (HANDLE)ipc.process);
             ipc_post_or_error(&ipc);
             break;
-        case USBD_REGISTER_VENDOR:
-            usbd_register_object(&usbd.vendors, (HANDLE)ipc.process);
-            ipc_post_or_error(&ipc);
-            break;
-        case USBD_UNREGISTER_VENDOR:
-            usbd_unregister_object(&usbd.vendors, (HANDLE)ipc.process);
-            ipc_post_or_error(&ipc);
-            break;
         case USBD_SETUP_DESCRIPTORS:
             usbd_setup_descriptors(&usbd, ipc.process, ipc.param1, ipc.param2);
             ipc_post_or_error(&ipc);
@@ -768,7 +971,7 @@ void usbd()
             ipc_post_or_error(&ipc);
             break;
         case USB_RESET:
-            usbd_reset(&usbd);
+            usbd_reset(&usbd, ipc.param1);
             //called from ISR, no response
             break;
         case USB_SUSPEND:
@@ -788,11 +991,19 @@ void usbd()
         case USB_SETUP:
             ((uint32_t*)(&usbd.setup))[0] = ipc.param1;
             ((uint32_t*)(&usbd.setup))[1] = ipc.param2;
-            usbd_setup(&usbd);
+            usbd_setup_received(&usbd);
             break;
         case USBD_GET_DRIVER:
             ipc.param1 = usbd.usb;
             ipc_post(&ipc);
+            break;
+        case USBD_SET_FEATURE:
+            usbd_set_feature(&usbd, ipc.param1, ipc.param2);
+            ipc_post_or_error(&ipc);
+            break;
+        case USBD_CLEAR_FEATURE:
+            usbd_set_feature(&usbd, ipc.param1, ipc.param2);
+            ipc_post_or_error(&ipc);
             break;
         default:
             ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
