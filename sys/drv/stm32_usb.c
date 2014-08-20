@@ -24,6 +24,11 @@
 #define USB_TX_EP0_FIFO_SIZE                                64
 #define EP_COUNT_MAX                                        4
 
+
+#if (SYS_INFO)
+const char* const EP_TYPES[] =                              {"CONTROL", "ISOCHRON", "BULK", "INTERRUPT"};
+#endif
+
 typedef enum {
     STM32_USB_FIFO_RX = USB_LAST + 1,
     STM32_USB_FIFO_TX
@@ -41,8 +46,8 @@ typedef struct {
 typedef struct {
   HANDLE process;
   HANDLE device;
-  EP out[4];
-  EP in[4];
+  EP out[EP_COUNT_MAX];
+  EP in[EP_COUNT_MAX];
 } USB;
 
 void stm32_usb();
@@ -137,7 +142,7 @@ static inline void stm32_usb_ep_open(USB* usb, HANDLE process, int num, USB_EP_O
         if (USB_EP_NUM(num))
             OTG_FS_GENERAL->DIEPTXF[USB_EP_NUM(num) - 1] = ((ep_open->size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
         else
-            OTG_FS_GENERAL->TX0FSIZ = ((ep_open->size / 4 * 2)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
+            OTG_FS_GENERAL->TX0FSIZ = ((ep_open->size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
         ctl |= USB_EP_NUM(num) << OTG_FS_DEVICE_ENDPOINT_CTL_TXFNUM_POS;
         //enable interrupts for XFRCM
         OTG_FS_DEVICE->AINTMSK |= 1 << USB_EP_NUM(num);
@@ -168,7 +173,6 @@ static inline void stm32_usb_ep_open(USB* usb, HANDLE process, int num, USB_EP_O
     ep->process = process;
     ep_reg_data(num)->CTL = ctl;
 }
-
 
 void stm32_usb_ep_set_stall(USB* usb, int num)
 {
@@ -287,12 +291,19 @@ static inline void stm32_usb_tx(USB* usb, int num)
     ep->processed += size;
 }
 
+USB_SPEED stm32_usb_get_speed(USB* usb)
+{
+    //according to datasheet STM32F1_CL doesn't support low speed mode...
+    return USB_FULL_SPEED;
+}
+
 static inline void usb_enumdne(USB* usb)
 {
     OTG_FS_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_USBSUSPM;
 
     IPC ipc;
     ipc.process = usb->device;
+    ipc.param1 = stm32_usb_get_speed(usb);
     ipc.cmd = USB_RESET;
     ipc_ipost(&ipc);
 }
@@ -431,6 +442,37 @@ void stm32_usb_open(USB* usb)
     OTG_FS_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_OTGM;
 }
 
+static inline void stm32_usb_close(USB* usb)
+{
+    HANDLE core = sys_get(IPC_GET_OBJECT, SYS_OBJECT_CORE, 0, 0);
+    if (core == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_FOUND);
+        return;
+    }
+    int i;
+    //Mask global interrupts
+    OTG_FS_GENERAL->INTMSK &= ~OTG_FS_GENERAL_INTMSK_OTGM;
+
+    //disable interrupts
+    NVIC_DisableIRQ(OTG_FS_IRQn);
+    irq_unregister(OTG_FS_IRQn);
+
+    //close all endpoints
+    for (i = 0; i < EP_COUNT_MAX; ++i)
+    {
+        stm32_usb_ep_close(usb, i);
+        stm32_usb_ep_close(usb, USB_EP_IN | i);
+    }
+
+    //power down
+    ack(core, STM32_POWER_USB_OFF, 0, 0, 0);
+
+    //disable pins
+    ack(core, STM32_GPIO_DISABLE_PIN, A9, 0, 0);
+    ack(core, STM32_GPIO_DISABLE_PIN, A10, 0, 0);
+}
+
 static inline void stm32_usb_set_address(int addr)
 {
     OTG_FS_DEVICE->CFG &= OTG_FS_DEVICE_CFG_DAD;
@@ -488,6 +530,30 @@ static inline void stm32_usb_write(USB* usb, unsigned int num, HANDLE block, uns
     stm32_usb_tx(usb, num);
 }
 
+#if (SYS_INFO)
+static inline void stm32_usb_info(USB* usb)
+{
+    int i;
+    printf("STM32 USB driver info\n\r\n\r");
+    printf("State: ");
+    if (OTG_FS_DEVICE->STS & 1)
+    {
+        printf("suspended\n\r");
+        return;
+    }
+    printf("device\n\r");
+    printf("Speed: FULL SPEED, address: %d\n\r", (OTG_FS_DEVICE->CFG & OTG_FS_DEVICE_CFG_DAD) >> OTG_FS_DEVICE_CFG_DAD_POS);
+    printf("Active endpoints:\n\r");
+    for (i = 0; i < EP_COUNT_MAX; ++i)
+    {
+        if (OTG_FS_DEVICE->OUTEP[i].CTL & OTG_FS_DEVICE_ENDPOINT_CTL_USBAEP)
+            printf("OUT%d: %s %d bytes\n\r", i, EP_TYPES[(OTG_FS_DEVICE->OUTEP[i].CTL & OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP) >> OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP_POS], usb->out[i].mps);
+        if (OTG_FS_DEVICE->INEP[i].CTL & OTG_FS_DEVICE_ENDPOINT_CTL_USBAEP)
+            printf("IN%d: %s %d bytes\n\r", i, EP_TYPES[(OTG_FS_DEVICE->INEP[i].CTL & OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP) >> OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP_POS], usb->in[i].mps);
+    }
+}
+#endif
+
 void stm32_usb()
 {
     IPC ipc;
@@ -517,7 +583,7 @@ void stm32_usb()
             break;
 #if (SYS_INFO)
         case IPC_GET_INFO:
-//            stm32_usb_info();
+            stm32_usb_info(&usb);
             ipc_post(&ipc);
             break;
 #endif
@@ -526,6 +592,10 @@ void stm32_usb()
             break;
         case STM32_USB_FIFO_TX:
             stm32_usb_tx(&usb, ipc.param1);
+            break;
+        case USB_GET_SPEED:
+            ipc.param1 = stm32_usb_get_speed(&usb);
+            ipc_post_or_error(&ipc);
             break;
         case IPC_OPEN:
             if (ipc.param1 == USB_HANDLE_DEVICE)
@@ -541,10 +611,7 @@ void stm32_usb()
             break;
         case IPC_CLOSE:
             if (ipc.param1 == USB_HANDLE_DEVICE)
-            {
-                //TODO
-                error(ERROR_NOT_SUPPORTED);
-            }
+                stm32_usb_close(&usb);
             else
                 stm32_usb_ep_close(&usb, ipc.param1);
             ipc_post_or_error(&ipc);

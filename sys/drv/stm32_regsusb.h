@@ -1544,6 +1544,7 @@ typedef struct {
 #define  OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP_ISOCHRONOUS           (uint32_t)(1ul << 18ul)        //Isochronous EP type
 #define  OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP_BULK                  (uint32_t)(2ul << 18ul)        //Bulk EP type
 #define  OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP_INTERRUPT             (uint32_t)(3ul << 18ul)        //Interrupt EP type
+#define  OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP_POS                   18ul
 
 #define  OTG_FS_DEVICE_ENDPOINT_CTL_MPSIZ0_64                   (uint32_t)(0x0ul << 0ul)    //EP0 maximum packet size 64 bytes
 #define  OTG_FS_DEVICE_ENDPOINT_CTL_MPSIZ0_32                   (uint32_t)(0x1ul << 0ul)    //EP0 maximum packet size 32 bytes
