@@ -302,14 +302,9 @@ void kstream_read(STREAM_HANDLE* handle, char* buf, unsigned int size)
             handle->size = 0;
         }
     }
-    if (handle->size)
-    {
-        printk("head: %d, tail: %d\n\r", handle->stream->rb.head, handle->stream->rb.tail);
-    }
     //still need more? Wait.
     if (handle->size)
     {
-        printk("out of data, size: %d, req: %d\n\r", handle->size, size);
         handle->buf = buf;
         handle->mode = STREAM_MODE_READ;
         dlist_add_tail((DLIST**)&handle->stream->read_waiters, (DLIST*)handle);
