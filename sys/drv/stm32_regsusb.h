@@ -1398,6 +1398,7 @@ typedef struct {
 #define  OTG_FS_DEVICE_CTL_TCTL_SE0_NAK                         (uint32_t)(0x3ul << 4ul)  //Se0 NAK mode
 #define  OTG_FS_DEVICE_CTL_TCTL_PACKET                          (uint32_t)(0x4ul << 4ul)  //Packet mode
 #define  OTG_FS_DEVICE_CTL_TCTL_FORCE_ENABLE                    (uint32_t)(0x5ul << 4ul)  //Force enable
+#define  OTG_FS_DEVICE_CTL_TCTL_POS                             4ul
 
 /**************  Bit definition for OTG_FS_DEVICE_STS register  ***************/
 #define  OTG_FS_DEVICE_STS_FNSOF                                (uint32_t)(0x3ffful << 8ul)//Frame number of received SOF

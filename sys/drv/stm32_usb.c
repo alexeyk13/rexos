@@ -530,6 +530,12 @@ static inline void stm32_usb_write(USB* usb, unsigned int num, HANDLE block, uns
     stm32_usb_tx(usb, num);
 }
 
+static inline void stm32_usb_set_test_mode(USB* usb, USB_TEST_MODES test_mode)
+{
+    OTG_FS_DEVICE->CTL &= ~OTG_FS_DEVICE_CTL_TCTL;
+    OTG_FS_DEVICE->CTL |= test_mode << OTG_FS_DEVICE_CTL_TCTL_POS;
+}
+
 #if (SYS_INFO)
 static inline void stm32_usb_info(USB* usb)
 {
@@ -657,6 +663,11 @@ void stm32_usb()
             else
                 error(ERROR_ACCESS_DENIED);
             ipc_post_or_error(&ipc);
+            break;
+        case USB_SET_TEST_MODE:
+            stm32_usb_set_test_mode(&usb, ipc.param1);
+            ipc_post_or_error(&ipc);
+            break;
         default:
             ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
             break;
