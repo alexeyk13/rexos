@@ -910,7 +910,7 @@ void usbd_write_complete(USBD* usbd)
 #if (SYS_INFO)
 static inline void usbd_info(USBD* usbd)
 {
-    printf("STM32 USB device info\n\r\n\r");
+    printf("USB device info\n\r\n\r");
     printf("State: %s\n\r", USBD_TEXT_STATES[usbd->state]);
     if (usbd->state != USBD_STATE_CONFIGURED)
         return;

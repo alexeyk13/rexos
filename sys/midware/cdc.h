@@ -8,6 +8,12 @@
 #define CDC_H
 
 #include "../../userspace/process.h"
+#include "../usb.h"
+
+typedef enum {
+    //CDC common interface
+    CDC_SEND_BREAK = USB_LAST + 1
+}CDC_IPCS;
 
 #define COMMUNICATION_DEVICE_CLASS                                                      0x02
 
@@ -166,6 +172,22 @@ typedef struct {
 
 } CDC_ACM_DESCRIPTOR_TYPE;
 
+typedef struct {
+    uint32_t dwDTERate;                                                                 /*  Data terminal rate, in bits per second. */
+    uint8_t bCharFormat;                                                                /*  Stop bits
+                                                                                                0 - 1 Stop bit
+                                                                                                1 - 1.5 Stop bits
+                                                                                                2 - 2 Stop bits*/
+    uint8_t bParityType;                                                                /*  Parity
+                                                                                                0 - None
+                                                                                                1 - Odd
+                                                                                                2 - Even
+                                                                                                3 - Mark
+                                                                                                4 - Space */
+
+    uint8_t bDataBits;                                                                  /* Data bits (5, 6, 7, 8 or 16). */
+} LINE_CODING_STRUCT;
+
 #pragma pack(pop)
 
 #define SEND_ENCAPSULATED_COMMAND                                                       0x00
@@ -221,9 +243,29 @@ typedef struct {
 #define GET_CRC_MODE                                                                    0x89
 #define SET_CRC_MODE                                                                    0x8a
 
+//CDC notifications
+#define CDC_NETWORK_CONNECTION                                                          0x00
+#define CDC_RESPONSE_AVAILABLE                                                          0x01
+#define CDC_AUX_JACK_HOOK_STATE                                                         0x08
+#define CDC_RING_DETECT                                                                 0x09
+#define CDC_SERIAL_STATE                                                                0x20
+#define CDC_CALL_STATE_CHANGE                                                           0x28
+#define CDC_LINE_STATE_CHANGE                                                           0x23
+
+//serial state notify
+#define CDC_SERIAL_STATE_DCD                                                            (1 << 0)
+#define CDC_SERIAL_STATE_DSR                                                            (1 << 1)
+#define CDC_SERIAL_STATE_BREAK                                                          (1 << 2)
+#define CDC_SERIAL_STATE_RINGING                                                        (1 << 3)
+#define CDC_SERIAL_STATE_FRAME_ERROR                                                    (1 << 4)
+#define CDC_SERIAL_STATE_PARITY_ERROR                                                   (1 << 5)
+#define CDC_SERIAL_STATE_OVERRUN                                                        (1 << 6)
+
 typedef struct {
-    unsigned int control_ep;
-    unsigned int data_ep;
+    unsigned int control_ep, data_ep;
+    unsigned int control_ep_size,data_ep_size;
+    unsigned int rx_stream_size;
+    unsigned int tx_stream_size;
 } CDC_OPEN_STRUCT;
 
 extern const REX __CDC;
