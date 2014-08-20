@@ -18,8 +18,12 @@
 
 #define USBD_BLOCK_SIZE                             256
 
+#if (SYS_INFO)
+const char* const USBD_TEXT_STATES[] =              {"Default", "Addressed", "Configured"};
+#endif
+
 typedef enum {
-    USBD_STATE_DEFAULT,
+    USBD_STATE_DEFAULT = 0,
     USBD_STATE_ADDRESSED,
     USBD_STATE_CONFIGURED
 } USBD_STATE;
@@ -903,6 +907,17 @@ void usbd_write_complete(USBD* usbd)
     }
 }
 
+#if (SYS_INFO)
+static inline void usbd_info(USBD* usbd)
+{
+    printf("STM32 USB device info\n\r\n\r");
+    printf("State: %s\n\r", USBD_TEXT_STATES[usbd->state]);
+    if (usbd->state != USBD_STATE_CONFIGURED)
+        return;
+    printf("Configuration: %d\n\r", usbd->configuration);
+}
+#endif
+
 void usbd()
 {
     USBD usbd;
@@ -941,7 +956,7 @@ void usbd()
             break;
 #if (SYS_INFO)
         case IPC_GET_INFO:
-//            usbd_info();
+            usbd_info(&usbd);
             ipc_post(&ipc);
             break;
 #endif
