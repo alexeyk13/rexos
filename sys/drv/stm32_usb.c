@@ -32,8 +32,8 @@ typedef enum {
 typedef struct {
     HANDLE block;
     void* ptr;
-    int size, processed;
-    int mps;
+    unsigned int size, processed;
+    unsigned int mps;
     bool io_active;
     HANDLE process;
 } EP;
@@ -83,7 +83,7 @@ bool stm32_usb_ep_flush(USB* usb, int num)
     if (ep->block != INVALID_HANDLE)
     {
         ep_reg_data(num)->CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_SNAK;
-        block_return(ep->block);
+        block_send(ep->block, ep->process);
         ep->block = INVALID_HANDLE;
     }
     ep->io_active = false;
@@ -137,9 +137,9 @@ static inline void stm32_usb_ep_open(USB* usb, HANDLE process, int num, USB_EP_O
         if (USB_EP_NUM(num))
             OTG_FS_GENERAL->DIEPTXF[USB_EP_NUM(num) - 1] = ((ep_open->size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
         else
-            OTG_FS_GENERAL->TX0FSIZ = ((ep_open->size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
+            OTG_FS_GENERAL->TX0FSIZ = ((ep_open->size / 4 * 2)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
         ctl |= USB_EP_NUM(num) << OTG_FS_DEVICE_ENDPOINT_CTL_TXFNUM_POS;
-        //enable interrupts for FIFO empty
+        //enable interrupts for XFRCM
         OTG_FS_DEVICE->AINTMSK |= 1 << USB_EP_NUM(num);
     }
 
@@ -213,15 +213,7 @@ static inline void usb_wakeup(USB* usb)
     ipc_ipost(&ipc);
 }
 
-static inline void stm32_usb_return_block(USB* usb, int num, int cmd, int size)
-{
-    EP* ep = ep_data(usb, num);
-    block_send_ipc_inline(ep->block, ep->process, cmd, num, ep->block, size);
-    ep->io_active = false;
-    ep->block = INVALID_HANDLE;
-}
-
-static inline void stm32_usb_read_chunk(USB* usb, int num)
+static inline void stm32_usb_rx_prepare(USB* usb, int num)
 {
     EP* ep = &usb->out[USB_EP_NUM(num)];
     int size = ep->size - ep->processed;
@@ -235,84 +227,64 @@ static inline void stm32_usb_read_chunk(USB* usb, int num)
     OTG_FS_DEVICE->OUTEP[USB_EP_NUM(num)].CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_EPENA | OTG_FS_DEVICE_ENDPOINT_CTL_CNAK;
 }
 
-static inline void stm32_usb_rx_fifo(USB* usb)
+static inline void stm32_usb_rx(USB* usb)
 {
     IPC ipc;
-    int bcnt, num;
-    EP* ep;
-    int sta = OTG_FS_GENERAL->RXSTSP;
-    int pktsts = sta & OTG_FS_GENERAL_RXSTSR_PKTSTS;
+    unsigned int sta = OTG_FS_GENERAL->RXSTSP;
+    unsigned int pktsts = sta & OTG_FS_GENERAL_RXSTSR_PKTSTS;
+    int bcnt = (sta & OTG_FS_GENERAL_RXSTSR_BCNT) >> OTG_FS_GENERAL_RXSTSR_BCNT_POS;
+    unsigned int num = (sta & OTG_FS_GENERAL_RXSTSR_EPNUM) >> OTG_FS_GENERAL_RXSTSR_EPNUM_POS;
+    EP* ep = &usb->out[num];
 
-    if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_RX || pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_OUT_RX)
+    if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_RX)
     {
-        bcnt = (sta & OTG_FS_GENERAL_RXSTSR_BCNT) >> OTG_FS_GENERAL_RXSTSR_BCNT_POS;
-        num = (sta & OTG_FS_GENERAL_RXSTSR_EPNUM) >> OTG_FS_GENERAL_RXSTSR_EPNUM_POS;
-        ep = &usb->out[num];
-
-        if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_RX)
         //ignore all data on setup packet
+        ipc.process = ep->process;
+        ipc.cmd = USB_SETUP;
+        ipc.param1 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[0];
+        ipc.param2 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[1];
+        ipc_post(&ipc);
+    }
+    else if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_OUT_RX)
+    {
+        memcpy(ep->ptr + ep->processed, (void*)(OTG_FS_FIFO_BASE + num * 0x1000), ALIGN(bcnt));
+        ep->processed += bcnt;
+
+        if (ep->processed >= ep->size)
         {
-            ipc.process = ep->process;
-            ipc.cmd = USB_SETUP;
-            ipc.param1 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[0];
-            ipc.param2 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[1];
-            ipc_post(&ipc);
-        }
-        else if (ep->size)
-        {
-            memcpy(ep->ptr + ep->processed, (void*)(OTG_FS_FIFO_BASE + num * 0x1000), ALIGN(bcnt));
-            ep->processed += bcnt;
-            if (ep->processed >= ep->size)
-                stm32_usb_return_block(usb, num, IPC_READ_COMPLETE, ep->processed);
-            else
-                stm32_usb_read_chunk(usb, num);
-        }
-        //ZLP rx
-        else
-        {
-            ep->io_active = false;
             ipc.process = ep->process;
             ipc.cmd = IPC_READ_COMPLETE;
-            ipc.param1 = INVALID_HANDLE;
+            ipc.param1 = ep->block;
             ipc.param2 = num;
-            ipc.param3 = 0;
-            ipc_post(&ipc);
+            ipc.param3 = ep->processed;
+
+            if (ep->block != INVALID_HANDLE)
+            {
+                block_send_ipc(ep->block, ep->process, &ipc);
+                ep->block = INVALID_HANDLE;
+            }
+            else
+                ipc_post(&ipc);
+            ep->io_active = false;
         }
+        else
+            stm32_usb_rx_prepare(usb, num);
     }
     OTG_FS_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_RXFLVLM;
 }
 
-static inline void stm32_usb_write_chunk(USB* usb, int num)
+static inline void stm32_usb_tx(USB* usb, int num)
 {
-    IPC ipc;
     EP* ep = &usb->in[USB_EP_NUM(num)];
+
     int size = ep->size - ep->processed;
     if (size > ep->mps)
         size = ep->mps;
     OTG_FS_DEVICE->INEP[USB_EP_NUM(num)].TSIZ = (1 << OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_POS) | (size << OTG_FS_DEVICE_ENDPOINT_TSIZ_XFRSIZ_POS);
     OTG_FS_DEVICE->INEP[USB_EP_NUM(num)].CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_EPENA | OTG_FS_DEVICE_ENDPOINT_CTL_CNAK;
 
-    if (size)
-    {
-        memcpy((void*)(OTG_FS_FIFO_BASE + USB_EP_NUM(num) * 0x1000), ep->ptr +  ep->processed, ALIGN(size));
-        ep->processed += size;
-
-        if (ep->processed >= ep->size)
-            stm32_usb_return_block(usb, num, IPC_WRITE_COMPLETE, ep->processed);
-        else
-            OTG_FS_DEVICE->EIPEMPMSK |= 1 << USB_EP_NUM(num);
-    }
-    //ZLP tx
-    else
-    {
-        ep->io_active = false;
-        ipc.process = ep->process;
-        ipc.cmd = IPC_WRITE_COMPLETE;
-        ipc.param1 = INVALID_HANDLE;
-        ipc.param2 = num;
-        ipc.param3 = 0;
-        ipc_post(&ipc);
-    }
+    memcpy((void*)(OTG_FS_FIFO_BASE + USB_EP_NUM(num) * 0x1000), ep->ptr +  ep->processed, ALIGN(size));
+    ep->processed += size;
 }
 
 static inline void usb_enumdne(USB* usb)
@@ -343,13 +315,33 @@ void usb_on_isr(int vector, void* param)
         return;
     }
     for (i = 0; i < EP_COUNT_MAX; ++i)
-        if (usb->in[i].io_active && (OTG_FS_DEVICE->INEP[i].INT & OTG_FS_DEVICE_ENDPOINT_INT_TXFE))
+        if (usb->in[i].io_active && (OTG_FS_DEVICE->INEP[i].INT & OTG_FS_DEVICE_ENDPOINT_INT_XFRC))
         {
-            OTG_FS_DEVICE->EIPEMPMSK &= ~(1 << i);
-            ipc.process = usb->process;
-            ipc.cmd = STM32_USB_FIFO_TX;
-            ipc.param1 = USB_EP_IN | i;
-            ipc_ipost(&ipc);
+            OTG_FS_DEVICE->INEP[i].INT = OTG_FS_DEVICE_ENDPOINT_INT_XFRC;
+            if (usb->in[i].processed >= usb->in[i].size)
+            {
+                ipc.process = usb->in[i].process;
+                ipc.cmd = IPC_WRITE_COMPLETE;
+                ipc.param1 = usb->in[i].block;
+                ipc.param2 = USB_EP_IN | i;
+                ipc.param3 = usb->in[i].processed;
+                if (usb->in[i].block != INVALID_HANDLE)
+                {
+                    block_isend_ipc(usb->in[i].block, usb->in[i].process, &ipc);
+                    usb->in[i].block = INVALID_HANDLE;
+                }
+                else
+                    ipc_ipost(&ipc);
+                usb->in[i].io_active = false;
+
+            }
+            else
+            {
+                ipc.process = usb->process;
+                ipc.cmd = STM32_USB_FIFO_TX;
+                ipc.param1 = USB_EP_IN | i;
+                ipc_ipost(&ipc);
+            }
             return;
         }
     //rarely called
@@ -422,8 +414,8 @@ void stm32_usb_open(USB* usb)
     OTG_FS_GENERAL->INTMSK = OTG_FS_GENERAL_INTMSK_USBSUSPM | OTG_FS_GENERAL_INTMSK_ENUMDNEM | OTG_FS_GENERAL_INTMSK_IEPM | OTG_FS_GENERAL_INTMSK_RXFLVLM;
     //3.
     OTG_FS_GENERAL->CCFG |= OTG_FS_GENERAL_CCFG_VBUSBSEN;
-    //disable endpoint interrupts
-    OTG_FS_DEVICE->IEPMSK = 0;
+    //disable endpoint interrupts, except IN XFRC
+    OTG_FS_DEVICE->IEPMSK = OTG_FS_DEVICE_IEPMSK_XFRCM;
     OTG_FS_DEVICE->OEPMSK = 0;
     OTG_FS_DEVICE->CTL = OTG_FS_DEVICE_CTL_POPRGDNE;
 
@@ -445,7 +437,7 @@ static inline void stm32_usb_set_address(int addr)
     OTG_FS_DEVICE->CFG |= addr << OTG_FS_DEVICE_CFG_DAD_POS;
 }
 
-static inline void stm32_usb_read(USB* usb, int num, HANDLE block, int size)
+static inline void stm32_usb_read(USB* usb, unsigned int num, HANDLE block, unsigned int size)
 {
     if (USB_EP_NUM(num) >= EP_COUNT_MAX)
     {
@@ -467,12 +459,11 @@ static inline void stm32_usb_read(USB* usb, int num, HANDLE block, int size)
     ep->size = size;
     ep->processed = 0;
     ep->io_active = true;
-    stm32_usb_read_chunk(usb, num);
+    stm32_usb_rx_prepare(usb, num);
 }
 
-static inline void stm32_usb_write(USB* usb, int num, HANDLE block, int size)
+static inline void stm32_usb_write(USB* usb, unsigned int num, HANDLE block, unsigned int size)
 {
-    int cnt;
     if (USB_EP_NUM(num) >= EP_COUNT_MAX || ((USB_EP_IN & num) == 0))
     {
         error(ERROR_INVALID_PARAMS);
@@ -494,16 +485,7 @@ static inline void stm32_usb_write(USB* usb, int num, HANDLE block, int size)
     ep->processed = 0;
     ep->io_active = true;
 
-    //if there are pending packet(s) to send, wait for interrupt FIFO empty
-    if (USB_EP_NUM(num))
-        cnt = (OTG_FS_DEVICE->INEP[USB_EP_NUM(num)].TSIZ & OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT) >> OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_POS;
-    else
-        cnt = (OTG_FS_DEVICE->INEP[USB_EP_NUM(num)].TSIZ & OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_IN0) >> OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_POS;
-
-    if (cnt)
-        OTG_FS_DEVICE->EIPEMPMSK |= 1 << (USB_EP_NUM(num));
-    else
-        stm32_usb_write_chunk(usb, num);
+    stm32_usb_tx(usb, num);
 }
 
 void stm32_usb()
@@ -540,10 +522,10 @@ void stm32_usb()
             break;
 #endif
         case STM32_USB_FIFO_RX:
-            stm32_usb_rx_fifo(&usb);
+            stm32_usb_rx(&usb);
             break;
         case STM32_USB_FIFO_TX:
-            stm32_usb_write_chunk(&usb, ipc.param1);
+            stm32_usb_tx(&usb, ipc.param1);
             break;
         case IPC_OPEN:
             if (ipc.param1 == USB_HANDLE_DEVICE)
