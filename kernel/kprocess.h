@@ -65,6 +65,8 @@ void kprocess_error_current(int error);
 PROCESS* kprocess_get_current();
 int kprocess_block_open(PROCESS* process, void* data, unsigned int size);
 void kprocess_block_close(PROCESS* process, int index);
+bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size);
+bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size);
 void kprocess_destroy_current();
 
 //called from startup

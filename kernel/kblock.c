@@ -82,7 +82,13 @@ void kblock_close(BLOCK* block)
 void kblock_send(BLOCK* block, PROCESS* receiver)
 {
     PROCESS* process = kprocess_get_current();
-    CHECK_HANDLE(block, sizeof(BLOCK));
+    if (((unsigned int)(block) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE))  || ((unsigned int)(block) + sizeof(BLOCK) >= (SRAM_BASE) + (KERNEL_SIZE)))
+    {
+        printk("error, process: %s\n\r", PROCESS_NAME(process->heap));
+        printk("addr: %#X\n\r", block);
+        for(;;) {}
+    }
+//    CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_HANDLE(receiver, sizeof(PROCESS));
     CHECK_MAGIC(block, MAGIC_BLOCK);
     if (block->granted == process)
@@ -111,7 +117,7 @@ void kblock_return(BLOCK* block)
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
-    if (block->granted == process)
+    if (block->owner == process)
     {
         //close first if open
         if (block->index >= 0)

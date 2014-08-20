@@ -448,8 +448,6 @@ PROCESS* kprocess_get_current()
 int kprocess_block_open(PROCESS* process, void* data, unsigned int size)
 {
     int index = -1;
-    CHECK_HANDLE_RET(process, sizeof(PROCESS), index);
-    CHECK_MAGIC_RET(process, MAGIC_PROCESS, index);
     if (process->blocks_count < KERNEL_BLOCKS_COUNT)
     {
         index = process->blocks_count++;
@@ -463,13 +461,46 @@ int kprocess_block_open(PROCESS* process, void* data, unsigned int size)
 
 void kprocess_block_close(PROCESS* process, int index)
 {
-    CHECK_HANDLE(process, sizeof(PROCESS));
-    CHECK_MAGIC(process, MAGIC_PROCESS);
     if (--process->blocks_count != index)
     {
         process->blocks[index].data = process->blocks[process->blocks_count - 1].data;
         process->blocks[index].size = process->blocks[process->blocks_count - 1].size;
     }
+}
+
+bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size)
+{
+    int i;
+    //don't check on IRQ or kernel post
+    if ((HANDLE)process == INVALID_HANDLE || __KERNEL->context >= 0)
+        return true;
+    //check HEAP
+    if ((unsigned int)addr >= (unsigned int)process->heap && (unsigned int)addr + size < (unsigned int)process->heap + process->size)
+        return true;
+    //check open blocks
+    for (i = 0; i < process->blocks_count; ++i)
+        if ((unsigned int)addr >= (unsigned int)process->blocks[i].data && (unsigned int)addr + size < (unsigned int)process->blocks[i].data + process->blocks[i].size)
+            return true;
+    return false;
+}
+
+bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size)
+{
+    int i;
+    //don't check on IRQ or kernel post
+    if ((HANDLE)process == INVALID_HANDLE || __KERNEL->context >= 0)
+        return true;
+    //check HEAP
+    if ((unsigned int)addr >= (unsigned int)process->heap && (unsigned int)addr + size < (unsigned int)process->heap + process->size)
+        return true;
+    //check FLASH
+    if ((unsigned int)addr >= FLASH_BASE && (unsigned int)addr + size < FLASH_BASE + FLASH_SIZE)
+        return true;
+    //check open blocks
+    for (i = 0; i < process->blocks_count; ++i)
+        if ((unsigned int)addr >= (unsigned int)process->blocks[i].data && (unsigned int)addr + size < (unsigned int)process->blocks[i].data + process->blocks[i].size)
+            return true;
+    return false;
 }
 
 void kprocess_init(const REX* rex)

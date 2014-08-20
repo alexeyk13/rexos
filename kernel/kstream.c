@@ -33,6 +33,23 @@ void kstream_push(STREAM* stream)
     }
 }
 
+unsigned int kstream_get_size_internal(STREAM* stream)
+{
+    DLIST_ENUM de;
+    STREAM_HANDLE* cur;
+    unsigned int size;
+    if (rb_is_full(&stream->rb))
+    {
+        size = stream->rb.size - 1;
+        dlist_enum_start((DLIST**)&stream->write_waiters, &de);
+        while (dlist_enum(&de, (DLIST**)&cur))
+            size += cur->size;
+    }
+    else
+        size = rb_size(&stream->rb);
+    return size;
+}
+
 void kstream_lock_release(STREAM_HANDLE* handle, PROCESS* process)
 {
     CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
@@ -119,20 +136,10 @@ void kstream_close(STREAM_HANDLE* handle)
 
 void kstream_get_size(STREAM* stream, unsigned int *size)
 {
-    DLIST_ENUM de;
-    STREAM_HANDLE* cur;
+    CHECK_ADDRESS(kprocess_get_current(), size, sizeof(unsigned int));
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
-    CHECK_ADDRESS(kprocess_get_current(), size, sizeof(unsigned int));
-    if (rb_is_full(&stream->rb))
-    {
-        *size = stream->rb.size - 1;
-        dlist_enum_start((DLIST**)&stream->write_waiters, &de);
-        while (dlist_enum(&de, (DLIST**)&cur))
-            *size += cur->size;
-    }
-    else
-        *size = rb_size(&stream->rb);
+    *size = kstream_get_size_internal(stream);
 }
 
 void kstream_get_free(STREAM *stream, unsigned int* size)
@@ -155,13 +162,29 @@ void kstream_get_free(STREAM *stream, unsigned int* size)
 
 void kstream_listen(STREAM* stream, void* param)
 {
+    unsigned int size;
+    IPC ipc;
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
     PROCESS* process = kprocess_get_current();
+    size = kstream_get_size_internal(stream);
     if (stream->listener == INVALID_HANDLE)
     {
-        stream->listener = (HANDLE)process;
-        stream->listener_param = param;
+        if (size)
+        {
+            ipc.process = (HANDLE)process;
+            ipc.cmd = IPC_STREAM_WRITE;
+            ipc.param1 = (HANDLE)stream;
+            ipc.param2 = size;
+            ipc.param3 = (unsigned int)param;
+            kipc_post_process(&ipc, INVALID_HANDLE);
+
+        }
+        else
+        {
+            stream->listener = (HANDLE)process;
+            stream->listener_param = param;
+        }
     }
     else
         kprocess_error(process, ERROR_ACCESS_DENIED);
@@ -188,7 +211,7 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
     STREAM_HANDLE* reader;
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     PROCESS* process = kprocess_get_current();
-    CHECK_ADDRESS_FLASH(process, buf, size);
+    CHECK_ADDRESS_READ(process, buf, size);
     handle->size = size;
     //write directly to output
     while (handle->size && (reader = handle->stream->read_waiters) != NULL)
@@ -235,7 +258,7 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
         ipc.process = handle->stream->listener;
         ipc.cmd = IPC_STREAM_WRITE;
         ipc.param1 = (HANDLE)handle->stream;
-        ipc.param2 = size;
+        ipc.param2 = kstream_get_size_internal(handle->stream);
         ipc.param3 = (unsigned int)handle->stream->listener_param;
         handle->stream->listener = INVALID_HANDLE;
         kipc_post_process(&ipc, INVALID_HANDLE);

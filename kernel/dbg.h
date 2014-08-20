@@ -74,10 +74,8 @@
 */
 #if (KERNEL_ASSERTIONS)
 #define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {printk("INVALID MAGIC at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
-#define CHECK_MAGIC_RET(obj, magic_value, ret)    if ((obj)->magic != (magic_value)) {printk("INVALID MAGIC at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
 #else
 #define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {kprocess_error_current(ERROR_INVALID_MAGIC); return;}
-#define CHECK_MAGIC_RET(obj, magic_value, ret)    if ((obj)->magic != (magic_value)) {kprocess_error_current(ERROR_INVALID_MAGIC); return ret;}
 #endif
 /**
     \brief apply object magic on object creation
@@ -99,7 +97,6 @@
 
 #else
 #define CHECK_MAGIC(obj, magic_value)
-#define CHECK_MAGIC_RET(obj, magic_value, ret)
 #define DO_MAGIC(obj, magic_value)
 #define CLEAR_MAGIC(obj)
 #define MAGIC
@@ -110,71 +107,30 @@
 #define CHECK_HANDLE(handle, size)     if (((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
                                        || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (KERNEL_SIZE))) \
                                           {printk("INVALID HANDLE at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
-#define CHECK_HANDLE_RET(handle, size, ret)     if (((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
-                                       || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (KERNEL_SIZE))) \
-                                          {printk("INVALID HANDLE at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
 #else
 #define CHECK_HANDLE(handle, size)     if (((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
                                        || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (KERNEL_SIZE))) \
                                           {kprocess_error_current(ERROR_INVALID_MAGIC); return;}
-#define CHECK_HANDLE_RET(handle, size, ret)     if (((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
-                                       || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (KERNEL_SIZE))) \
-                                          {kprocess_error_current(ERROR_INVALID_MAGIC); return ret;}
 #endif
 #else
 #define CHECK_HANDLE(handle, size)
-#define CHECK_HANDLE_RET(handle, size, ret)
 #endif //KERNEL_HANDLE_CHECKING
 
 #if (KERNEL_ADDRESS_CHECKING)
 #if (KERNEL_ASSERTIONS)
-#define CHECK_ADDRESS(process, address, sz)     if (((HANDLE)(process) != INVALID_HANDLE && __KERNEL->context < 0) && \
-                                                    (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \
-                                                    || ((unsigned int)(address) + (sz) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
-                                                     {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
-#define CHECK_ADDRESS_RET(process, address, sz, ret)     if (((HANDLE)(process) != INVALID_HANDLE && __KERNEL->context < 0) && \
-                                                    (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \
-                                                    || ((unsigned int)(address) + (sz) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
-                                                     {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
-#define CHECK_ADDRESS_FLASH(process, address, sz)     if (((HANDLE)(process) != INVALID_HANDLE && __KERNEL->context < 0) && \
-                                                        !((((unsigned int)(address) >= (unsigned int)(((PROCESS*)(process))->heap)) \
-                                                        && ((unsigned int)(address) + (sz) < (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size)) || \
-                                                        (((unsigned int)(address) >= FLASH_BASE) \
-                                                        && ((unsigned int)(address) + (sz) < FLASH_BASE + FLASH_SIZE)))) \
-                                                            {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
-#define CHECK_ADDRESS_FLASH_RET(process, address, sz, ret)     if (((HANDLE)(process) != INVALID_HANDLE && __KERNEL->context < 0) && \
-                                                        !((((unsigned int)(address) >= (unsigned int)(((PROCESS*)(process))->heap)) \
-                                                        && ((unsigned int)(address) + (sz) < (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size)) || \
-                                                        (((unsigned int)(address) >= FLASH_BASE) \
-                                                        && ((unsigned int)(address) + (sz) < FLASH_BASE + FLASH_SIZE)))) \
-                                                            {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
+#define CHECK_ADDRESS(process, address, sz)     if (!kprocess_check_address((PROCESS*)(process), (address), (sz))) \
+                                                    {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
+#define CHECK_ADDRESS_READ(process, address, sz)     if (!kprocess_check_address_read((PROCESS*)(process), (address), (sz))) \
+                                                          {printk("INVALID READ ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
 #else
-#define CHECK_ADDRESS(process, address, sz)     if (((HANDLE)(process) != INVALID_HANDLE && __KERNEL->context < 0) && \
-                                                   (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \
-                                                   || ((unsigned int)(address) + (sz) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
-                                                      {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
-#define CHECK_ADDRESS_RET(process, address, sz, ret)     if (((HANDLE)(process) != INVALID_HANDLE && __KERNEL->context < 0) && \
-                                                   (((unsigned int)(address) < (unsigned int)(((PROCESS*)(process))->heap)) \
-                                                   || ((unsigned int)(address) + (sz) >= (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size))) \
-                                                      {kprocess_error_current(ERROR_ACCESS_DENIED); return ret;}
-#define CHECK_ADDRESS_FLASH(process, address, sz)     if (((HANDLE)(process) != INVALID_HANDLE && __KERNEL->context < 0) && \
-                                                        !((((unsigned int)(address) >= (unsigned int)(((PROCESS*)(process))->heap)) \
-                                                        && ((unsigned int)(address) + (sz) < (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size)) || \
-                                                        (((unsigned int)(address) >= FLASH_BASE) \
-                                                        && ((unsigned int)(address) + (sz) < FLASH_BASE + FLASH_SIZE)))) \
-                                                            {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
-#define CHECK_ADDRESS_FLASH_RET(process, address, ret)     if (((HANDLE)(process) != INVALID_HANDLE && __KERNEL->context < 0) && \
-                                                        !((((unsigned int)(address) >= (unsigned int)(((PROCESS*)(process))->heap)) \
-                                                        && ((unsigned int)(address) + (sz) < (unsigned int)(((PROCESS*)(process))->heap) + ((PROCESS*)(process))->size)) || \
-                                                        (((unsigned int)(address) >= FLASH_BASE) \
-                                                        && ((unsigned int)(address) + (sz) < FLASH_BASE + FLASH_SIZE)))) \
-                                                            {kprocess_error_current(ERROR_ACCESS_DENIED); return ret;}
+#define CHECK_ADDRESS(process, address, sz)     if (!kprocess_check_address((PROCESS*)(process), (address), (sz))) \
+                                                     {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
+#define CHECK_ADDRESS_READ(process, address, sz)     if (!kprocess_check_address_read((PROCESS*)(process), (address), (sz))) \
+                                                          {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
 #endif //KERNEL_ASSERTIONS
 #else
 #define CHECK_ADDRESS(process, address, size)
-#define CHECK_ADDRESS_RET(process, address, size, ret)
 #define CHECK_ADDRESS_FLASH(process, address, size)
-#define CHECK_ADDRESS_FLASH_RET(process, address, size, ret)
 #endif //KERNEL_ADDRESS_CHECKING
 
 /**
