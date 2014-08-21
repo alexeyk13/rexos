@@ -24,7 +24,7 @@ static const int LC_BAUD_STOP_BITS[LC_BAUD_STOP_BITS_SIZE] =                    
 static const char LC_BAUD_PARITY[LC_BAUD_PARITY_SIZE] =                         "NOEMS";
 
 #if (USB_DEBUG_CLASS_REQUESTS) || (SYS_INFO)
-const char* const ON_OFF[] =                                                    {"on", "off"};
+const char* const ON_OFF[] =                                                    {"off", "on"};
 #endif
 
 
