@@ -22,7 +22,8 @@
 #define STDIO_RX_STREAM_SIZE                                32
 //-------------------------------- USB -----------------------------------------------
 //low-level USB debug. Turn on only in case of IO problems
-#define USB_DEBUG_REQUESTS                                  1
+#define USB_DEBUG_REQUESTS                                  0
+#define USB_DEBUG_CLASS_REQUESTS                            1
 #define USB_DEBUG_ERRORS                                    1
 
 #endif // SYS_CONFIG_H

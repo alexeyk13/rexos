@@ -34,7 +34,10 @@ void kmutex_lock_release(MUTEX* mutex, PROCESS* process)
     {
         //process now is not owning mutex, remove it from owned list and calculate new priority (he is still can own nested mutexes)
         dlist_remove((DLIST**)&process->owned_mutexes, (DLIST*)mutex);
+        disable_interrupts();
         kprocess_set_current_priority(process, kmutex_calculate_owner_priority(process));
+        enable_interrupts();
+
 
         mutex->owner = mutex->waiters;
         if (mutex->owner)
@@ -42,7 +45,9 @@ void kmutex_lock_release(MUTEX* mutex, PROCESS* process)
             dlist_remove_head((DLIST**)&mutex->waiters);
             dlist_add_tail((DLIST**)&mutex->owner->owned_mutexes, (DLIST*)mutex);
             //owner can still depends on some waiters
+            disable_interrupts();
             kprocess_set_current_priority(mutex->owner, kmutex_calculate_owner_priority(mutex->owner));
+            enable_interrupts();
             kprocess_wakeup(mutex->owner);
         }
     }
@@ -51,7 +56,9 @@ void kmutex_lock_release(MUTEX* mutex, PROCESS* process)
     {
         dlist_remove((DLIST**)&mutex->waiters, (DLIST*)process);
         //this can affect on owner priority
+        disable_interrupts();
         kprocess_set_current_priority(mutex->owner, kmutex_calculate_owner_priority(mutex->owner));
+        enable_interrupts();
         //it's up to caller to decide, wake up process (timeout, mutex destroy) or not (process terminate) owned process
     }
 }
@@ -79,7 +86,7 @@ void kmutex_lock(MUTEX* mutex, TIME* time)
     {
         ASSERT(mutex->owner != process);
         //first - remove from active list
-        kprocess_sleep_current(time, PROCESS_SYNC_MUTEX, mutex);
+        kprocess_sleep(process, time, PROCESS_SYNC_MUTEX, mutex);
         //add to mutex watiers list
         dlist_add_tail((DLIST**)&mutex->waiters, (DLIST*)process);
     }

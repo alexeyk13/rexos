@@ -42,37 +42,43 @@ typedef struct {
     //IPC is following
 }PROCESS;
 
-//called from svc
+//called from svc, IRQ disabled
 void kprocess_create(const REX* rex, PROCESS** process);
-void kprocess_get_flags(PROCESS* process, unsigned int* flags);
 void kprocess_set_flags(PROCESS* process, unsigned int flags);
 void kprocess_unfreeze(PROCESS* process);
 void kprocess_freeze(PROCESS* process);
 void kprocess_set_priority(PROCESS* process, unsigned int priority);
-void kprocess_get_priority(PROCESS* process, unsigned int* priority);
 void kprocess_destroy(PROCESS* process);
 //cannot be called from init task, because init task is only task running, while other tasks are waiting or frozen
 //this function can be call indirectly from any sync object.
 //also called from sync objects
-void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
 void kprocess_sleep_current(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
 
-//called from other places in kernel
+//called from svc, IRQ enabled
+void kprocess_get_flags(PROCESS* process, unsigned int* flags);
+void kprocess_get_priority(PROCESS* process, unsigned int* priority);
+
+//called from other places in kernel, IRQ disabled
+void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
 void kprocess_wakeup(PROCESS* process);
 void kprocess_set_current_priority(PROCESS* process, unsigned int priority);
+bool kprocess_block_open(PROCESS* process, void* data, unsigned int size);
+void kprocess_block_close(PROCESS* process, void *data);
+void kprocess_destroy_current();
+
+//called from other places in kernel, IRQ enabled
+bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size);
+bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size);
 void kprocess_error(PROCESS* process, int error);
 void kprocess_error_current(int error);
 PROCESS* kprocess_get_current();
-int kprocess_block_open(PROCESS* process, void* data, unsigned int size);
-void kprocess_block_close(PROCESS* process, int index);
-bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size);
-bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size);
-void kprocess_destroy_current();
+
 
 //called from startup
 void kprocess_init(const REX *rex);
 
 #if (KERNEL_PROFILING)
+//called from svc, IRQ disabled
 void kprocess_switch_test();
 void kprocess_info();
 #endif //(KERNEL_PROFILING)

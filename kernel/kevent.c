@@ -12,8 +12,26 @@ void kevent_lock_release(EVENT* event, PROCESS* process)
 {
     CHECK_HANDLE(event, sizeof(EVENT));
     CHECK_MAGIC(event, MAGIC_EVENT);
+    disable_interrupts();
     dlist_remove((DLIST**)&event->waiters, (DLIST*)process);
+    enable_interrupts();
 }
+
+static inline PROCESS* remove_top(EVENT* event)
+{
+    PROCESS* process = (PROCESS*)INVALID_HANDLE;
+    disable_interrupts();
+    if (event->waiters)
+    {
+        process = event->waiters;
+        dlist_remove_head((DLIST**)&event->waiters);
+    }
+    enable_interrupts();
+    if (process != INVALID_HANDLE)
+        kprocess_wakeup(process);
+    return process;
+}
+
 
 void kevent_create(EVENT** event)
 {
@@ -33,20 +51,15 @@ void kevent_pulse(EVENT* event)
     CHECK_HANDLE(event, sizeof(EVENT));
     CHECK_MAGIC(event, MAGIC_EVENT);
 
-    //release all waiters
-    PROCESS* process;
-    while (event->waiters)
-    {
-        process = event->waiters;
-        dlist_remove_head((DLIST**)&event->waiters);
-        kprocess_wakeup(process);
-    }
+    while (remove_top(event) != INVALID_HANDLE) {}
 }
 
 void kevent_set(EVENT* event)
 {
-    kevent_pulse(event);
+    CHECK_HANDLE(event, sizeof(EVENT));
+    CHECK_MAGIC(event, MAGIC_EVENT);
 
+    while (remove_top(event) != INVALID_HANDLE) {}
     event->set = true;
 }
 
@@ -69,13 +82,22 @@ void kevent_wait(EVENT* event, TIME* time)
 {
     CHECK_HANDLE(event, sizeof(EVENT));
     CHECK_MAGIC(event, MAGIC_EVENT);
-
+    //already set? do nothing.
+    if (event->set)
+        return;
     PROCESS* process = kprocess_get_current();
+
+    kprocess_sleep(process, time, PROCESS_SYNC_EVENT, event);
+    disable_interrupts();
     if (!event->set)
     {
-        kprocess_sleep(process, time, PROCESS_SYNC_EVENT, event);
         dlist_add_tail((DLIST**)&event->waiters, (DLIST*)process);
+        process = INVALID_HANDLE;
     }
+    enable_interrupts();
+    //late set arrival in interrupt
+    if (process != INVALID_HANDLE)
+        kprocess_wakeup(process);
 }
 
 void kevent_destroy(EVENT* event)
@@ -86,12 +108,6 @@ void kevent_destroy(EVENT* event)
     CHECK_MAGIC(event, MAGIC_EVENT);
     CLEAR_MAGIC(event);
 
-    PROCESS* process;
-    while (event->waiters)
-    {
-        process = event->waiters;
-        dlist_remove_head((DLIST**)&event->waiters);
-        kprocess_error(process, ERROR_SYNC_OBJECT_DESTROYED);
-    }
+    while (remove_top(event) != INVALID_HANDLE) {}
     kfree(event);
 }

@@ -16,7 +16,7 @@ typedef struct {
     unsigned int size;
     PROCESS* owner;
     PROCESS* granted;
-    int index;
+    bool open;
 }BLOCK;
 
 //called from svc

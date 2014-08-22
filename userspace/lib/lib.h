@@ -8,6 +8,7 @@
 #define LIB_H
 
 #include "types.h"
+#include "kernel_config.h"
 
 typedef struct {
     //pool.h
@@ -16,8 +17,10 @@ typedef struct {
     void* (*pool_realloc)(POOL*, void*, size_t);
     void (*pool_free)(POOL*, void*);
 
+#if (KERNEL_PROFILING)
     bool (*pool_check)(POOL*, void*);
     void (*pool_stat)(POOL*, POOL_STAT*, void*);
+#endif //KERNEL_PROFILING
     //printf.h
     void (*format)(const char *const, va_list, STDOUT, void*);
     void (*pformat)(const char *const, va_list);
@@ -46,11 +49,13 @@ typedef struct {
     unsigned int (*time_elapsed_ms)(TIME*);
     unsigned int (*time_elapsed_us)(TIME*);
     //array.h
+#if (LIB_ARRAY)
     ARRAY* (*array_create)(ARRAY** ar, unsigned int reserved);
     void (*array_destroy)(ARRAY** ar);
     ARRAY* (*array_add)(ARRAY** ar, unsigned int size);
     ARRAY* (*array_remove)(ARRAY** ar, unsigned int index);
     ARRAY* (*array_squeeze)(ARRAY** ar);
+#endif //LIB_ARRAY
 } LIB;
 
 #endif // LIB_H

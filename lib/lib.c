@@ -8,10 +8,11 @@
 
 #include "pool.h"
 #include "printf.h"
-#include "kernel_config.h"
 #include "rand.h"
 #include "lib_time.h"
+#if (LIB_ARRAY)
 #include "lib_array.h"
+#endif //LIB_ARRAY
 
 const LIB __LIB = {
     //pool.h
@@ -20,13 +21,10 @@ const LIB __LIB = {
     pool_realloc,
     pool_free,
 
-    #if (KERNEL_PROFILING)
+#if (KERNEL_PROFILING)
     pool_check,
     pool_stat,
-    #else
-    NULL,
-    NULL,
-    #endif
+#endif //KERNEL_PROFILING
     //printf.h
     format,
     pformat,
@@ -52,12 +50,15 @@ const LIB __LIB = {
     __time_to_ms,
     __time_elapsed,
     __time_elapsed_ms,
-    __time_elapsed_us,
+    __time_elapsed_us
+#if (LIB_ARRAY)
+    ,
     __array_create,
     __array_destroy,
     __array_add,
     __array_remove,
     __array_squeeze
+#endif //LIB_ARRAY
 };
 
 

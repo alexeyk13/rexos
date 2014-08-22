@@ -23,6 +23,8 @@
 #include "../userspace/lib/lib.h"
 #include <string.h>
 
+#define KERNEL_NAME                                                          "RExOS 0.0.4"
+
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {
     //what can we debug in debug stub? :)
@@ -44,7 +46,6 @@ void panic()
 
 void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
-    disable_interrupts();
     switch (num)
     {
     //process related
@@ -248,7 +249,6 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     default:
         kprocess_error_current(ERROR_INVALID_SVC);
     }
-    enable_interrupts();
 }
 
 void startup()
@@ -261,7 +261,7 @@ void startup()
     memset(__KERNEL, 0, sizeof(KERNEL));
     __KERNEL->stdout = stdout_stub;
     __KERNEL->system = INVALID_HANDLE;
-    strcpy(__KERNEL_NAME, "RExOS 0.0.2");
+    strcpy(__KERNEL_NAME, KERNEL_NAME);
     __KERNEL->struct_size = sizeof(KERNEL) + strlen(__KERNEL_NAME) + 1;
 
     //initialize irq subsystem

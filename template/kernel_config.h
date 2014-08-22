@@ -36,4 +36,8 @@
 //total size of kernel RAM, including GLOBAL. For MPU Must be pow of 2, starting from 32
 #define KERNEL_SIZE                                 0x2000
 
+//save stdio, stdlib and time are required libs, all rest is optional
+#define LIB_ARRAY                                   1
+
+
 #endif // KERNEL_CONFIG_H

@@ -50,6 +50,14 @@ ARM7 features:
 
 History
 =======
+0.0.4
+- interrupt friendly kernel calls for faster realtime response
+- dynamic array library
+- (system) basic file level abstraction
+- (system) USB STM32F1 CL drivers
+- (system) USB device stack
+- (system) USB CDC stack
+
 0.0.3
 - new sync objects: direct IO, block
 - mutex, events, sempaphores are now deprecated

@@ -13,10 +13,16 @@
 
 #define IPC_ITEM(process, num)              ((IPC*)((unsigned int)(process) + sizeof(PROCESS) + (num) * sizeof(IPC)))
 
-int kipc_index(PROCESS* process, HANDLE wait_process)
+void kipc_lock_release(HANDLE process)
+{
+    ((PROCESS*)process)->kipc.wait_process = INVALID_HANDLE;
+}
+
+static inline int kipc_index(PROCESS* process, HANDLE wait_process)
 {
     int i;
-    for (i = process->kipc.rb.tail; i != process->kipc.rb.head; i = RB_ROUND_BACK(&process->kipc.rb, i - 1))
+    unsigned int head = process->kipc.rb.head;
+    for (i = process->kipc.rb.tail; i != head; i = RB_ROUND_BACK(&process->kipc.rb, i - 1))
         if (IPC_ITEM(process, i)->process == wait_process || wait_process == 0)
             return i;
     return -1;
@@ -32,7 +38,14 @@ void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_proce
     if (wait_process == (HANDLE)process)
         printk("Warning: calling wait IPC with receiver same as caller can cause deadlock! process: %s\n\r", PROCESS_NAME(process->heap));
 #endif
-    i = kipc_index(process, wait_process);
+    process->kipc.ipc = ipc;
+    kprocess_sleep(process, time, PROCESS_SYNC_IPC, process);
+
+    disable_interrupts();
+    if ((i = kipc_index(process, wait_process)) < 0)
+        process->kipc.wait_process = wait_process;
+    enable_interrupts();
+
     //maybe already on queue? Peek.
     if (i >= 0)
     {
@@ -44,28 +57,27 @@ void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_proce
             memcpy(IPC_ITEM(process, RB_ROUND(&process->kipc.rb, i + 1)), &tmp, sizeof(IPC));
         }
         memcpy(ipc, IPC_ITEM(process, rb_get(&process->kipc.rb)), sizeof(IPC));
-    }
-    //no? sleep and wait
-    else
-    {
-        process->kipc.ipc = ipc;
-        process->kipc.wait_process = wait_process;
-        kprocess_sleep(process, time, PROCESS_SYNC_IPC, process);
+        kprocess_wakeup(process);
     }
 }
 
 void kipc_post_process(IPC* ipc, unsigned int sender)
 {
-    //NULL means kernel
     CHECK_ADDRESS(sender, ipc, sizeof(IPC));
     PROCESS* receiver = (PROCESS*)ipc->process;
-    IPC* cur;
+    bool wake = false;
+    IPC* cur = NULL;
     CHECK_HANDLE(receiver, sizeof(PROCESS));
     CHECK_MAGIC(receiver, MAGIC_PROCESS);
+    disable_interrupts();
+    if ((wake = (receiver->kipc.wait_process == sender || receiver->kipc.wait_process == 0)))
+        receiver->kipc.wait_process = INVALID_HANDLE;
+    else if (!rb_is_full(&receiver->kipc.rb))
+        cur = IPC_ITEM(receiver, rb_put(&receiver->kipc.rb));
+    enable_interrupts();
     //already waiting?
-    if (receiver->kipc.wait_process == sender || receiver->kipc.wait_process == 0)
+    if (wake)
     {
-        receiver->kipc.wait_process = (unsigned int)-1;
         receiver->kipc.ipc->cmd = ipc->cmd;
         receiver->kipc.ipc->param1 = ipc->param1;
         receiver->kipc.ipc->param2 = ipc->param2;
@@ -73,9 +85,8 @@ void kipc_post_process(IPC* ipc, unsigned int sender)
         receiver->kipc.ipc->process = sender;
         kprocess_wakeup(receiver);
     }
-    else if (receiver->kipc.rb.size && !rb_is_full(&receiver->kipc.rb))
+    else if (cur)
     {
-        cur = IPC_ITEM(receiver, rb_put(&receiver->kipc.rb));
         cur->cmd = ipc->cmd;
         cur->param1 = ipc->param1;
         cur->param2 = ipc->param2;
@@ -94,8 +105,11 @@ void kipc_post_process(IPC* ipc, unsigned int sender)
 void kipc_init(HANDLE handle, int size)
 {
     PROCESS* process = (PROCESS*)handle;
+    //stub
+    if (size == 0)
+        size = 1;
     rb_init(&(process->kipc.rb), size);
-    process->kipc.wait_process = (unsigned int)-1;
+    process->kipc.wait_process = INVALID_HANDLE;
 }
 
 void kipc_post(IPC* ipc)

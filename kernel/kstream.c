@@ -73,13 +73,14 @@ void kstream_create(STREAM** stream, unsigned int size)
     PROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, stream, sizeof(void*));
     *stream = kmalloc(sizeof(STREAM));
-    if ((*stream = kmalloc(sizeof(STREAM))) == NULL)
+    if ((*stream) == NULL)
     {
         kprocess_error(process, ERROR_OUT_OF_SYSTEM_MEMORY);
         return;
     }
     //allocate stream data
-    if (((*stream)->data = paged_alloc(size)) == NULL)
+    (*stream)->data = paged_alloc(size);
+    if ((*stream)->data == NULL)
     {
         kfree(*stream);
         (*stream) = NULL;

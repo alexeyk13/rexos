@@ -19,9 +19,10 @@ void kblock_create(BLOCK** block, unsigned int size)
         DO_MAGIC((*block), MAGIC_BLOCK);
         (*block)->owner = (*block)->granted = process;
         (*block)->size = size;
-        (*block)->index = -1;
+        (*block)->open = false;
         //allocate stream data
-        if (((*block)->data = paged_alloc(size)) == NULL)
+        (*block)->data = paged_alloc(size);
+        if ((*block)->data == NULL)
         {
             kfree(*block);
             (*block) = NULL;
@@ -40,22 +41,28 @@ void kblock_destroy(BLOCK* block)
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
     CLEAR_MAGIC(block);
-    if (block->index >= 0)
-        kprocess_block_close(block->granted, block->index);
+    if (block->open)
+        kprocess_block_close(block->granted, block->data);
     paged_free(block->data);
     kfree(block);
 }
 
 void kblock_open(BLOCK* block, void **ptr)
 {
+    bool open;
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
     CHECK_ADDRESS(process, ptr, sizeof(void*));
 
-    if (block->index < 0 && block->granted == process)
+    if (block->granted == process)
     {
-        block->index = kprocess_block_open(process, block->data, block->size);
+        disable_interrupts();
+        open = block->open;
+        block->open = true;
+        enable_interrupts();
+        if (!open)
+            kprocess_block_open(process, block->data, block->size);
         *ptr = block->data;
     }
     else
@@ -67,13 +74,18 @@ void kblock_open(BLOCK* block, void **ptr)
 
 void kblock_close(BLOCK* block)
 {
+    bool open;
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
-    if (block->index >= 0 && block->granted == process)
+    if (block->granted == process)
     {
-        kprocess_block_close(process, block->index);
-        block->index = -1;
+        disable_interrupts();
+        open = block->open;
+        block->open = false;
+        enable_interrupts();
+        if (open)
+            kprocess_block_close(process, block->data);
     }
     else
         kprocess_error(process, ERROR_ACCESS_DENIED);
@@ -81,18 +93,19 @@ void kblock_close(BLOCK* block)
 
 void kblock_send(BLOCK* block, PROCESS* receiver)
 {
+    bool open;
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_HANDLE(receiver, sizeof(PROCESS));
     CHECK_MAGIC(block, MAGIC_BLOCK);
     if (block->granted == process)
     {
-        //close first if open
-        if (block->index >= 0)
-        {
-            kprocess_block_close(process, block->index);
-            block->index = -1;
-        }
+        disable_interrupts();
+        open = block->open;
+        block->open = false;
+        enable_interrupts();
+        if (open)
+            kprocess_block_close(process, block->data);
         block->granted = receiver;
     }
     else
@@ -108,17 +121,18 @@ void kblock_send_ipc(BLOCK* block, PROCESS* receiver, IPC* ipc)
 
 void kblock_return(BLOCK* block)
 {
+    bool open;
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
     if (block->owner == process)
     {
-        //close first if open
-        if (block->index >= 0)
-        {
-            kprocess_block_close(process, block->index);
-            block->index = -1;
-        }
+        disable_interrupts();
+        open = block->open;
+        block->open = false;
+        enable_interrupts();
+        if (open)
+            kprocess_block_close(process, block->data);
         block->granted = block->owner;
     }
     else

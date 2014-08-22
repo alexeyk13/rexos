@@ -92,13 +92,15 @@ static inline void find_shoot_next()
 
 void ktimer_second_pulse()
 {
+    disable_interrupts();
+    ++__KERNEL->uptime.sec;
     __KERNEL->hpet_value = 0;
     __KERNEL->cb_ktimer.stop(__KERNEL->cb_ktimer_param);
     __KERNEL->cb_ktimer.start(FREE_RUN, __KERNEL->cb_ktimer_param);
-    ++__KERNEL->uptime.sec;
     __KERNEL->uptime.usec = 0;
 
     find_shoot_next();
+    enable_interrupts();
 }
 
 void ktimer_hpet_timeout()
@@ -107,11 +109,13 @@ void ktimer_hpet_timeout()
     if (__KERNEL->hpet_value == 0)
         printk("Warning: HPET timeout on FREE RUN mode: second pulse is inactive or HPET configured improperly");
 #endif
+    disable_interrupts();
     __KERNEL->uptime.usec += __KERNEL->hpet_value;
     __KERNEL->hpet_value = 0;
     __KERNEL->cb_ktimer.start(FREE_RUN, __KERNEL->cb_ktimer_param);
 
     find_shoot_next();
+    enable_interrupts();
 }
 
 void ktimer_setup(const CB_SVC_TIMER *cb_ktimer, void *cb_ktimer_param)
