@@ -5,13 +5,15 @@
 */
 
 #include "stm32_core.h"
-#include "../sys.h"
 
 #include "stm32_timer.h"
 #include "stm32_gpio.h"
 #include "stm32_power.h"
 #if !(TIMER_SOFT_RTC)
 #include "stm32_rtc.h"
+#endif
+#if (STM32_WDT)
+#include "stm32_wdt.h"
 #endif
 
 void stm32_core();
@@ -166,6 +168,12 @@ void stm32_core_loop(CORE* core)
             ipc_post(&ipc);
             break;
 #endif //!TIMER_SOFT_RTC
+#if (STM32_WDT)
+        case STM32_WDT_KICK:
+            stm32_wdt_kick();
+            ipc_post(&ipc);
+            break;
+#endif //STM32_WDT
         default:
             ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
             break;
@@ -178,11 +186,17 @@ void stm32_core()
     CORE core;
     sys_ack(IPC_SET_OBJECT, SYS_OBJECT_CORE, 0, 0);
 
+#if (STM32_WDT)
+    stm32_wdt_pre_init();
+#endif
     stm32_power_init(&core);
     stm32_timer_init(&core);
     stm32_gpio_init(&core);
 #if !(TIMER_SOFT_RTC)
     stm32_rtc_init(&core);
 #endif //!TIMER_SOFT_RTC
+#if (STM32_WDT)
+    stm32_wdt_init();
+#endif
     stm32_core_loop(&core);
 }

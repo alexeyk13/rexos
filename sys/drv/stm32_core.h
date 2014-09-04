@@ -40,8 +40,11 @@ typedef enum {
     STM32_POWER_USB_ON,
     STM32_POWER_USB_OFF,
 
+    //RTC
     STM32_RTC_GET,                                                //!< Get RTC value
-    STM32_RTC_SET                                                 //!< Set RTC value
+    STM32_RTC_SET,                                                //!< Set RTC value
+
+    STM32_WDT_KICK
 
 } STM32_CORE_IPCS;
 
