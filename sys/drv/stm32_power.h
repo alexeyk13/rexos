@@ -22,15 +22,6 @@ typedef enum {
     STM32_CLOCK_ADC
 } STM32_POWER_CLOCKS;
 
-typedef enum {
-    RESET_REASON_UNKNOWN    = 0,
-    RESET_REASON_LOW_POWER,
-    RESET_REASON_WATCHDOG,
-    RESET_REASON_SOFTWARE,
-    RESET_REASON_POWERON,
-    RESET_REASON_PIN_RST
-} RESET_REASON;
-
 unsigned int get_clock(STM32_POWER_CLOCKS type);
 //params are product line specific
 void update_clock(int param1, int param2, int param3);
@@ -38,14 +29,14 @@ void backup_on(CORE* core);
 void backup_off(CORE* core);
 void backup_write_enable(CORE* core);
 void backup_write_protect(CORE *core);
-RESET_REASON get_reset_reason();
+RESET_REASON get_reset_reason(CORE *core);
 void stm32_adc_on();
 void stm32_adc_off();
 void stm32_usb_power_on();
 void stm32_usb_power_off();
 
 #if (SYS_INFO)
-void stm32_power_info();
+void stm32_power_info(CORE *core);
 #endif
 
 void stm32_power_init(CORE* core);

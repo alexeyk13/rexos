@@ -48,6 +48,15 @@ typedef enum {
 
 } STM32_CORE_IPCS;
 
+typedef enum {
+    RESET_REASON_UNKNOWN    = 0,
+    RESET_REASON_LOW_POWER,
+    RESET_REASON_WATCHDOG,
+    RESET_REASON_SOFTWARE,
+    RESET_REASON_POWERON,
+    RESET_REASON_PIN_RST
+} RESET_REASON;
+
 typedef struct {
     //timer specific
     int shared1, shared8;
@@ -56,6 +65,7 @@ typedef struct {
     int* used_pins;
     //power specific
     int backup_count, write_count;
+    RESET_REASON reset_reason;
 }CORE;
 
 extern const REX __STM32_CORE;

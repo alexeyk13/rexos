@@ -211,20 +211,9 @@ int get_adc_clock()
 #endif
 }
 
-RESET_REASON get_reset_reason()
+RESET_REASON get_reset_reason(CORE* core)
 {
-    RESET_REASON res = RESET_REASON_UNKNOWN;
-    if (RCC->CSR & RCC_CSR_LPWRRSTF)
-        res = RESET_REASON_LOW_POWER;
-    else if (RCC->CSR & (RCC_CSR_WWDGRSTF | RCC_CSR_WDGRSTF))
-        res = RESET_REASON_WATCHDOG;
-    else if (RCC->CSR & RCC_CSR_SFTRSTF)
-        res = RESET_REASON_SOFTWARE;
-    else if (RCC->CSR & RCC_CSR_PORRSTF)
-        res = RESET_REASON_POWERON;
-    else if (RCC->CSR & RCC_CSR_PADRSTF)
-        res = RESET_REASON_PIN_RST;
-    return res;
+    return core->reset_reason;
 }
 
 void setup_clock(int param1, int param2, int param3)
@@ -352,7 +341,7 @@ unsigned int get_clock(STM32_POWER_CLOCKS type)
 }
 
 #if (SYS_INFO)
-void stm32_power_info()
+void stm32_power_info(CORE* core)
 {
     printf("Core clock: %d\n\r", get_core_clock());
     printf("AHB clock: %d\n\r", get_ahb_clock());
@@ -360,7 +349,7 @@ void stm32_power_info()
     printf("APB2 clock: %d\n\r", get_apb2_clock());
     printf("ADC clock: %d\n\r", get_adc_clock());
     printf("Reset reason: ");
-    switch (get_reset_reason())
+    switch (core->reset_reason)
     {
     case RESET_REASON_LOW_POWER:
         printf("low power");
@@ -474,9 +463,26 @@ void stm32_usb_power_off()
 #endif
 }
 
+static inline void decode_reset_reason(CORE* core)
+{
+    core->reset_reason = RESET_REASON_UNKNOWN;
+    if (RCC->CSR & RCC_CSR_LPWRRSTF)
+        core->reset_reason = RESET_REASON_LOW_POWER;
+    else if (RCC->CSR & (RCC_CSR_WWDGRSTF | RCC_CSR_WDGRSTF))
+        core->reset_reason = RESET_REASON_WATCHDOG;
+    else if (RCC->CSR & RCC_CSR_SFTRSTF)
+        core->reset_reason = RESET_REASON_SOFTWARE;
+    else if (RCC->CSR & RCC_CSR_PORRSTF)
+        core->reset_reason = RESET_REASON_POWERON;
+    else if (RCC->CSR & RCC_CSR_PADRSTF)
+        core->reset_reason = RESET_REASON_PIN_RST;
+    RCC->CSR |= RCC_CSR_RMVF;
+}
+
 void stm32_power_init(CORE* core)
 {
     core->backup_count = core->write_count = 0;
+    decode_reset_reason(core);
 
     RCC->APB1ENR = 0;
     RCC->APB2ENR = 0;
@@ -501,4 +507,6 @@ void stm32_power_init(CORE* core)
 #elif defined(STM32F2) || defined(STM32F4)
     setup_clock(PLL_M, PLL_N, PLL_P);
 #endif
+
+
 }

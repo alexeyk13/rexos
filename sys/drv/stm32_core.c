@@ -55,7 +55,7 @@ void stm32_core_loop(CORE* core)
         case IPC_GET_INFO:
             stm32_gpio_info(core);
             stm32_timer_info();
-            stm32_power_info();
+            stm32_power_info(core);
 #if !(TIMER_SOFT_RTC)
             stm32_rtc_info();
 #endif
@@ -122,7 +122,7 @@ void stm32_core_loop(CORE* core)
             ipc_post_or_error(&ipc);
             break;
         case STM32_POWER_GET_RESET_REASON:
-            ipc.param1 = get_reset_reason();
+            ipc.param1 = get_reset_reason(core);
             ipc_post_or_error(&ipc);
             break;
         case STM32_POWER_BACKUP_ON:
