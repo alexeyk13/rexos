@@ -58,6 +58,11 @@
 //Full speed: 64 if no isochronous transfers, else  1024
 //High speed(STM32F2+): 64 if no high-speed bulk transfers, 512 in other case. 1024 in case of isochronous or high-speed interrupts
 #define STM32_USB_MPS                            64
+//------------------------------- WDT ------------------------------------------------
+//if set by STM32 Option Bits, WDT is started by hardware on power-up
+#define HARDWARE_WATCHDOG                        0
+//WDT module enable
+#define STM32_WDT                                1
 
 
 #endif // STM32_CONFIG_H
