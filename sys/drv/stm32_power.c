@@ -13,7 +13,6 @@
 #if defined(STM32F1)
 #define MAX_APB2                             72000000
 #define MAX_APB1                             36000000
-#define MAX_ADC1                             14000000
 #elif defined(STM32F2)
 #define MAX_APB2                             60000000
 #define MAX_APB1                             30000000
@@ -403,26 +402,6 @@ void backup_write_protect(CORE* core)
         if (--core->write_count == 0)
             PWR->CR &= ~PWR_CR_DBP;
     }
-}
-
-void stm32_adc_on()
-{
-#if defined(STM32F1)
-    int apb2, psc;
-    apb2 = get_apb2_clock();
-    for(psc = 2; psc < 8 && apb2 / psc > MAX_ADC1; psc += 2) {}
-    RCC->CFGR &= ~(3 << 14);
-    RCC->CFGR |= (psc / 2 - 1) << 14;
-    //enable clock
-    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
-#endif
-}
-
-void stm32_adc_off()
-{
-#if defined(STM32F1)
-    RCC->APB2ENR &= ~RCC_APB2ENR_ADC1EN;
-#endif
 }
 
 void stm32_usb_power_on()

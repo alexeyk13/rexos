@@ -35,8 +35,6 @@ typedef enum {
     STM32_POWER_BACKUP_OFF,                                       //!< Turn off backup domain
     STM32_POWER_BACKUP_WRITE_ENABLE,                              //!< Turn off write protection of backup domain
     STM32_POWER_BACKUP_WRITE_PROTECT,                             //!< Turn on write protection of backup domain
-    STM32_POWER_ADC_ON,
-    STM32_POWER_ADC_OFF,
     STM32_POWER_USB_ON,
     STM32_POWER_USB_OFF,
 

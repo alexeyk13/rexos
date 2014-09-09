@@ -141,14 +141,6 @@ void stm32_core_loop(CORE* core)
             backup_write_protect(core);
             ipc_post_or_error(&ipc);
             break;
-        case STM32_POWER_ADC_ON:
-            stm32_adc_on(core);
-            ipc_post_or_error(&ipc);
-            break;
-        case STM32_POWER_ADC_OFF:
-            stm32_adc_off(core);
-            ipc_post_or_error(&ipc);
-            break;
         case STM32_POWER_USB_ON:
             stm32_usb_power_on();
             ipc_post_or_error(&ipc);

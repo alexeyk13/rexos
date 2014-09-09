@@ -30,8 +30,6 @@ void backup_off(CORE* core);
 void backup_write_enable(CORE* core);
 void backup_write_protect(CORE *core);
 RESET_REASON get_reset_reason(CORE *core);
-void stm32_adc_on();
-void stm32_adc_off();
 void stm32_usb_power_on();
 void stm32_usb_power_off();
 

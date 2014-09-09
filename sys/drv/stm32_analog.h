@@ -3,12 +3,14 @@
     Copyright (c) 2011-2014, Alexey Kramarenko
     All rights reserved.
 */
-#ifndef STM32_ADC_H
-#define STM32_ADC_H
+#ifndef STM32_ANALOG_H
+#define STM32_ANALOG_H
 
 #include "../../userspace/process.h"
 #include "../../userspace/core/stm32.h"
 #include "../sys.h"
+#include "stm32_gpio.h"
+#include "stm32_timer.h"
 
 #define ADC_SMPR_1_5                                0
 #define ADC_SMPR_7_5                                1
@@ -24,9 +26,30 @@
 
 typedef enum {
     STM32_ADC_SINGLE_CHANNEL = IPC_USER,
-    STM32_ADC_TEMP
-} STM32_ADC_IPCS;
+    STM32_ADC_TEMP,
+} STM32_ANALOG_IPCS;
 
-extern const REX __STM32_ADC;
+typedef enum {
+    STM32_DAC1,
+    STM32_DAC2,
+    STM32_DAC_DUAL,
+    STM32_ADC
+} STM32_DAC;
 
-#endif // STM32_ADC_H
+typedef enum {
+    DAC_TRIGGER_TIMER,
+    DAC_TRIGGER_PIN
+} DAC_TRIGGER;
+
+typedef struct {
+    STM32_DAC dac;
+    DAC_TRIGGER trigger;
+
+    PIN pin;
+    TIMER_NUM timer;
+    unsigned int frequency;
+} STM32_DAC_ENABLE;
+
+extern const REX __STM32_ANALOG;
+
+#endif // STM32_ANALOG_H
