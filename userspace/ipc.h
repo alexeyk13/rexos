@@ -113,11 +113,12 @@ __STATIC_INLINE void ipc_ipost(IPC* ipc)
     \param ipc: ipc
     \param time: timeout
     \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
-    \retval none
+    \retval true on success, false on timeout
 */
-__STATIC_INLINE void ipc_read(IPC* ipc, TIME* timeout, HANDLE wait_process)
+__STATIC_INLINE bool ipc_read(IPC* ipc, TIME* timeout, HANDLE wait_process)
 {
     svc_call(SVC_IPC_READ, (unsigned int)ipc, (unsigned int)timeout, wait_process);
+    return get_last_error() == ERROR_OK;
 }
 
 /**
@@ -125,13 +126,13 @@ __STATIC_INLINE void ipc_read(IPC* ipc, TIME* timeout, HANDLE wait_process)
     \param ipc: ipc
     \param ms: timeout in ms
     \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
-    \retval none
+    \retval true on success, false on timeout
 */
-__STATIC_INLINE void ipc_read_ms(IPC* ipc, unsigned int ms, HANDLE wait_process)
+__STATIC_INLINE bool ipc_read_ms(IPC* ipc, unsigned int ms, HANDLE wait_process)
 {
     TIME timeout;
     ms_to_time(ms, &timeout);
-    ipc_read(ipc, &timeout, wait_process);
+    return ipc_read(ipc, &timeout, wait_process);
 }
 
 /**
@@ -139,13 +140,13 @@ __STATIC_INLINE void ipc_read_ms(IPC* ipc, unsigned int ms, HANDLE wait_process)
     \param ipc: ipc
     \param us: timeout in us
     \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
-    \retval none
+    \retval true on success, false on timeout
 */
-__STATIC_INLINE void ipc_read_us(IPC* ipc, unsigned int us, HANDLE wait_process)
+__STATIC_INLINE bool ipc_read_us(IPC* ipc, unsigned int us, HANDLE wait_process)
 {
     TIME timeout;
     us_to_time(us, &timeout);
-    ipc_read(ipc, &timeout, wait_process);
+    return ipc_read(ipc, &timeout, wait_process);
 }
 
 /**
