@@ -130,7 +130,7 @@
 #endif //KERNEL_ASSERTIONS
 #else
 #define CHECK_ADDRESS(process, address, size)
-#define CHECK_ADDRESS_FLASH(process, address, size)
+#define CHECK_ADDRESS_READ(process, address, size)
 #endif //KERNEL_ADDRESS_CHECKING
 
 /**
