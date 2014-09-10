@@ -752,7 +752,7 @@ void usbd_setup_process(USBD* usbd)
         {
             //data already received, sending status
             usbd->setup_state = USB_SETUP_STATE_STATUS_IN;
-            fwrite_null(usbd->usb, USB_EP_IN | 0);
+            fwrite_async_null(usbd->usb, USB_EP_IN | 0);
         }
         else
         {
@@ -762,25 +762,25 @@ void usbd_setup_process(USBD* usbd)
                 if (res)
                 {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN_ZLP;
-                    fwrite(usbd->usb, USB_EP_IN | 0, usbd->block, res);
+                    fwrite_async(usbd->usb, USB_EP_IN | 0, usbd->block, res);
                 }
                 //if no data at all, but request success, we will send ZLP right now
                 else
                 {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-                    fwrite_null(usbd->usb, USB_EP_IN | 0);
+                    fwrite_async_null(usbd->usb, USB_EP_IN | 0);
                 }
             }
             else if (res)
             {
                 usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-                fwrite(usbd->usb, USB_EP_IN | 0, usbd->block, res);
+                fwrite_async(usbd->usb, USB_EP_IN | 0, usbd->block, res);
             }
             //data stage is optional
             else
             {
                 usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
-                fread_null(usbd->usb, 0);
+                fread_async_null(usbd->usb, 0);
             }
         }
     }
@@ -853,7 +853,7 @@ static inline void usbd_setup_received(USBD* usbd)
         if (usbd->setup.wLength)
         {
             usbd->setup_state = USB_SETUP_STATE_DATA_OUT;
-            fread(usbd->usb, 0, usbd->block, usbd->setup.wLength);
+            fread_async(usbd->usb, 0, usbd->block, usbd->setup.wLength);
         }
         //data stage is optional
         else
@@ -889,11 +889,11 @@ void usbd_write_complete(USBD* usbd)
     case USB_SETUP_STATE_DATA_IN_ZLP:
         //TX ZLP and switch to normal state
         usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-        fwrite_null(usbd->usb, USB_EP_IN | 0);
+        fwrite_async_null(usbd->usb, USB_EP_IN | 0);
         break;
     case USB_SETUP_STATE_DATA_IN:
         usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
-        fread_null(usbd->usb, 0);
+        fread_async_null(usbd->usb, 0);
         break;
     case USB_SETUP_STATE_STATUS_IN:
         usbd->setup_state = USB_SETUP_STATE_REQUEST;

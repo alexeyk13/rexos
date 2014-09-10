@@ -159,7 +159,7 @@ void cdc_notify_serial_state(CDC* cdc, unsigned int state)
         setup->wLength = 2;
         uint16_t* serial_state = (uint16_t*)(notify + sizeof(SETUP));
         *serial_state = state;
-        fwrite(cdc->usb, USB_EP_IN | cdc->control_ep, cdc->notify, sizeof(SETUP) + 2);
+        fwrite_async(cdc->usb, USB_EP_IN | cdc->control_ep, cdc->notify, sizeof(SETUP) + 2);
     }
 }
 
@@ -178,7 +178,7 @@ static inline void cdc_read_complete(CDC* cdc, unsigned int size)
     ptr = block_open(cdc->rx);
     if (ptr && to_read && stream_write(cdc->rx_stream_handle, ptr, to_read))
         cdc->rx_free -= to_read;
-    fread(cdc->usb, cdc->data_ep, cdc->rx, 1);
+    fread_async(cdc->usb, cdc->data_ep, cdc->rx, 1);
 
     if (to_read < size)
         cdc_notify_serial_state(cdc, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_OVERRUN);
@@ -204,7 +204,7 @@ void cdc_write(CDC* cdc)
         if (ptr && stream_read(cdc->tx_stream_handle, ptr, to_write))
         {
             cdc->tx_idle = false;
-            fwrite(cdc->usb, USB_EP_IN | cdc->data_ep, cdc->tx, to_write);
+            fwrite_async(cdc->usb, USB_EP_IN | cdc->data_ep, cdc->tx, to_write);
         }
         //just in case of driver failure
         else
@@ -246,7 +246,7 @@ static inline void cdc_configured(CDC* cdc)
     ep_open.type = USB_EP_INTERRUPT;
     fopen_ex(cdc->usb, USB_EP_IN | cdc->control_ep, (void*)&ep_open, sizeof(USB_EP_OPEN));
 
-    fread(cdc->usb, cdc->data_ep, cdc->rx, 1);
+    fread_async(cdc->usb, cdc->data_ep, cdc->rx, 1);
     cdc_notify_serial_state(cdc, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
 }
 

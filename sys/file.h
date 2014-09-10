@@ -80,7 +80,7 @@ __STATIC_INLINE bool fclose(HANDLE process, HANDLE file)
     \retval none. Check corresponding IPC.
 */
 
-__STATIC_INLINE void fread(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE void fread_async(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
     ipc.cmd = IPC_READ;
@@ -98,7 +98,7 @@ __STATIC_INLINE void fread(HANDLE process, HANDLE file, HANDLE block, unsigned i
     \retval none. Check corresponding IPC.
 */
 
-__STATIC_INLINE void fread_null(HANDLE process, HANDLE file)
+__STATIC_INLINE void fread_async_null(HANDLE process, HANDLE file)
 {
     IPC ipc;
     ipc.cmd = IPC_READ;
@@ -118,7 +118,7 @@ __STATIC_INLINE void fread_null(HANDLE process, HANDLE file)
     \retval none. Check corresponding IPC.
 */
 
-__STATIC_INLINE void fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE void fwrite_async(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
     ipc.cmd = IPC_WRITE;
@@ -136,7 +136,7 @@ __STATIC_INLINE void fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned 
     \retval none. Check corresponding IPC.
 */
 
-__STATIC_INLINE void fwrite_null(HANDLE process, HANDLE file)
+__STATIC_INLINE void fwrite_async_null(HANDLE process, HANDLE file)
 {
     IPC ipc;
     ipc.cmd = IPC_WRITE;
