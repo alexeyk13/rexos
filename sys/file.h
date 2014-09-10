@@ -92,6 +92,29 @@ __STATIC_INLINE void fread_async(HANDLE process, HANDLE file, HANDLE block, unsi
 }
 
 /**
+    \brief read from file
+    \param process: process handle
+    \param file: file handle
+    \param block: file block
+    \param size: size of transfer
+    \retval true on success
+*/
+
+__STATIC_INLINE bool fread(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+{
+    IPC ipc;
+    ipc.cmd = IPC_READ;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = block;
+    ipc.param3 = size;
+    block_send_ipc(block, process, &ipc);
+    ipc_read_ms(&ipc, 0, process);
+    return ipc.cmd == IPC_READ_COMPLETE;
+}
+
+
+/**
     \brief read from file (async) with no data
     \param process: process handle
     \param file: file handle
@@ -107,6 +130,26 @@ __STATIC_INLINE void fread_async_null(HANDLE process, HANDLE file)
     ipc.param2 = INVALID_HANDLE;
     ipc.param3 = 0;
     ipc_post(&ipc);
+}
+
+/**
+    \brief read from file with no data
+    \param process: process handle
+    \param file: file handle
+    \retval true on success
+*/
+
+__STATIC_INLINE bool fread_null(HANDLE process, HANDLE file)
+{
+    IPC ipc;
+    ipc.cmd = IPC_READ;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = INVALID_HANDLE;
+    ipc.param3 = 0;
+    ipc_post(&ipc);
+    ipc_read_ms(&ipc, 0, process);
+    return ipc.cmd == IPC_READ_COMPLETE;
 }
 
 /**
@@ -130,6 +173,28 @@ __STATIC_INLINE void fwrite_async(HANDLE process, HANDLE file, HANDLE block, uns
 }
 
 /**
+    \brief write to file
+    \param process: process handle
+    \param file: file handle
+    \param block: file block
+    \param size: size of transfer
+    \retval true on success
+*/
+
+__STATIC_INLINE bool fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+{
+    IPC ipc;
+    ipc.cmd = IPC_WRITE;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = block;
+    ipc.param3 = size;
+    block_send_ipc(block, process, &ipc);
+    ipc_read_ms(&ipc, 0, process);
+    return ipc.cmd == IPC_WRITE_COMPLETE;
+}
+
+/**
     \brief write to file (async) with no data
     \param process: process handle
     \param file: file handle
@@ -145,6 +210,26 @@ __STATIC_INLINE void fwrite_async_null(HANDLE process, HANDLE file)
     ipc.param2 = INVALID_HANDLE;
     ipc.param3 = 0;
     ipc_post(&ipc);
+}
+
+/**
+    \brief write to file (async) with no data
+    \param process: process handle
+    \param file: file handle
+    \retval true on success
+*/
+
+__STATIC_INLINE bool fwrite_null(HANDLE process, HANDLE file)
+{
+    IPC ipc;
+    ipc.cmd = IPC_WRITE;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = INVALID_HANDLE;
+    ipc.param3 = 0;
+    ipc_post(&ipc);
+    ipc_read_ms(&ipc, 0, process);
+    return ipc.cmd == IPC_WRITE_COMPLETE;
 }
 
 /**
