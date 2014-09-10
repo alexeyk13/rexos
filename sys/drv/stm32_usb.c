@@ -258,8 +258,8 @@ static inline void stm32_usb_rx(USB* usb)
         {
             ipc.process = ep->process;
             ipc.cmd = IPC_READ_COMPLETE;
-            ipc.param1 = ep->block;
-            ipc.param2 = num;
+            ipc.param1 = num;
+            ipc.param2 = ep->block;
             ipc.param3 = ep->processed;
 
             if (ep->block != INVALID_HANDLE)
@@ -333,8 +333,8 @@ void usb_on_isr(int vector, void* param)
             {
                 ipc.process = usb->in[i].process;
                 ipc.cmd = IPC_WRITE_COMPLETE;
-                ipc.param1 = usb->in[i].block;
-                ipc.param2 = USB_EP_IN | i;
+                ipc.param1 = USB_EP_IN | i;
+                ipc.param2 = usb->in[i].block;
                 ipc.param3 = usb->in[i].processed;
                 if (usb->in[i].block != INVALID_HANDLE)
                 {

@@ -463,7 +463,7 @@ void cdc()
             break;
         case IPC_WRITE_COMPLETE:
             //ignore notify complete
-            if (ipc.param2 == (cdc.data_ep | USB_EP_IN))
+            if (ipc.param1 == (cdc.data_ep | USB_EP_IN))
             {
                 cdc.tx_idle = true;
                 cdc_write(&cdc);
