@@ -8,6 +8,7 @@
 #include "stm32_power.h"
 #include "stm32_config.h"
 #include "../../userspace/direct.h"
+#include "../../userspace/block.h"
 #include "../sys.h"
 
 #define ADC1_CLOCK_MAX              14000000
@@ -42,10 +43,14 @@ typedef struct {
         PIN pin;
         TIMER_NUM timer;
     } u;
+    HANDLE block, process;
+    void* ptr;
+    unsigned int size;
 } DAC_STRUCT;
 
 typedef struct {
     DAC_STRUCT dac[2];
+    int active_channels;
 } ANALOG;
 
 static inline void stm32_adc_open()
@@ -128,14 +133,25 @@ void stm32_dac_open_channel(ANALOG* analog, HANDLE core, int channel, STM32_DAC_
     uint32_t reg;
     //enable PIN analog mode
     ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, DAC_OUT[channel], GPIO_MODE_INPUT_ANALOG, false);
-    DAC->CR &= ~(0xffff << (16 * channel));
     //EN
+    DAC->CR &= ~(0xffff << (16 * channel));
     reg = (1 << 0);
 #if (DAC_BOFF)
     reg |= (1 << 1);
 #endif
     DAC->CR |= reg << (16 * channel);
-    analog->dac[channel].active = true;
+}
+
+void stm32_dac_close_channel(ANALOG* analog, HANDLE core, int channel)
+{
+    if (analog->dac[channel].active)
+    {
+        analog->dac[channel].active = false;
+        //DIS
+        DAC->CR &= ~(0xffff << (16 * channel));
+        //disable PIN
+        ack(core, STM32_GPIO_DISABLE_PIN, DAC_OUT[channel], 0, 0);
+    }
 }
 
 void stm32_dac_open(ANALOG* analog, STM32_DAC_ENABLE* dac_enable)
@@ -147,7 +163,7 @@ void stm32_dac_open(ANALOG* analog, STM32_DAC_ENABLE* dac_enable)
         return;
     }
     //turn clock on
-    if (analog->dac[0].active == false && analog->dac[1].active == false)
+    if (analog->active_channels++ == 0)
         RCC->APB1ENR |= RCC_APB1ENR_DACEN;
     if (dac_enable->dac == STM32_DAC1 || dac_enable->dac == STM32_DAC_DUAL)
         stm32_dac_open_channel(analog, core, 0, dac_enable);
@@ -155,18 +171,69 @@ void stm32_dac_open(ANALOG* analog, STM32_DAC_ENABLE* dac_enable)
         stm32_dac_open_channel(analog, core, 1, dac_enable);
 
     sleep_us(DAC_TWAKEUP);
+}
+
+void stm32_dac_close(ANALOG* analog, STM32_DAC dac)
+{
+    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    if (core == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_FOUND);
+        return;
+    }
+    //TODO: flush
+    //disable channel
+    if (dac == STM32_DAC1 || dac == STM32_DAC_DUAL)
+        stm32_dac_close_channel(analog, core, 0);
+    if (dac == STM32_DAC2 || dac == STM32_DAC_DUAL)
+        stm32_dac_close_channel(analog, core, 1);
+    //turn clock off
+    if (--analog->active_channels == 0)
+        RCC->APB1ENR &= ~RCC_APB1ENR_DACEN;
+}
+
+void stm32_dac_write(ANALOG* analog, IPC* ipc)
+{
+    if (ipc->param1 > STM32_DAC_DUAL)
+    {
+        ipc_post_error(ipc->process, ERROR_INVALID_PARAMS);
+        return;
+    }
+    DAC_STRUCT* ds = &analog->dac[ipc->param1 == STM32_DAC2 ? 1 : 0];
+    if (ds->active)
+    {
+        ipc_post_error(ipc->process, ERROR_IN_PROGRESS);
+        return;
+    }
+    ds->block = ipc->param2;
+    if ((ds->ptr = block_open(ds->block)) == NULL)
+    {
+        ipc_post_error(ipc->process, get_last_error());
+        return;
+    }
+    ds->process = ipc->process;
+    ds->size = ipc->param3;
+    ds->active = true;
 
     //just for test
     volatile int i, j;
-    for (i = 0; i < 1000; ++i)
+    __disable_irq();
+    for (i = 0; i < ds->size; ++i)
     {
-        __disable_irq();
-        DAC->DHR12R1 = 0xfff;
+        DAC->DHR12R1 = ((uint32_t*)(ds->ptr))[i];
         for (j = 0; j < 500; ++j) {}
-        DAC->DHR12R1 = 0x0;
-        for (j = 0; j < 500; ++j) {}
-        __enable_irq();
     }
+    __enable_irq();
+
+    ipc->process = ds->process;
+    ipc->cmd = IPC_WRITE_COMPLETE;
+    ipc->param1 = STM32_DAC1;
+    ipc->param2 = ds->block;
+    ipc->param3 = ds->size;
+    block_send_ipc(ds->block, ds->process, ipc);
+    ds->block = INVALID_HANDLE;
+
+    ds->active = false;
 }
 
 void stm32_analog()
@@ -175,6 +242,7 @@ void stm32_analog()
     ANALOG analog;
     STM32_DAC_ENABLE de;
     analog.dac[0].active = analog.dac[1].active = false;
+    analog.active_channels = 0;
 #if (SYS_INFO)
     open_stdout();
 #endif
@@ -216,18 +284,15 @@ void stm32_analog()
             ipc_post_or_error(&ipc);
             break;
         case IPC_CLOSE:
-/*            if (ipc.param1 < UARTS_COUNT && uarts[ipc.param1])
-            {
-                if (uart_close(uarts[ipc.param1]))
-                {
-                    uarts[ipc.param1] = NULL;
-                    ipc_post(&ipc);
-                }
-                else
-                    ipc_post_error(ipc.process, get_last_error());
-            }
+            if (ipc.param1 < STM32_ADC)
+                stm32_dac_close(&analog, ipc.param1);
             else
-                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);*/
+                error(ERROR_INVALID_PARAMS);
+            ipc_post_or_error(&ipc);
+            break;
+        case IPC_WRITE:
+            stm32_dac_write(&analog, &ipc);
+            //generally posted with block, no return IPC
             break;
         default:
             ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
