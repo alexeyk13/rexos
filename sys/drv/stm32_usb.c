@@ -479,55 +479,63 @@ static inline void stm32_usb_set_address(int addr)
     OTG_FS_DEVICE->CFG |= addr << OTG_FS_DEVICE_CFG_DAD_POS;
 }
 
-static inline void stm32_usb_read(USB* usb, unsigned int num, HANDLE block, unsigned int size)
+static inline void stm32_usb_read(USB* usb, IPC* ipc)
 {
-    if (USB_EP_NUM(num) >= EP_COUNT_MAX)
+    if (USB_EP_NUM(ipc->param1) >= EP_COUNT_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        ipc_post_error(ipc->process, ERROR_INVALID_PARAMS);
         return;
     }
-    EP* ep = &usb->out[USB_EP_NUM(num)];
+    EP* ep = &usb->out[USB_EP_NUM(ipc->param1)];
     if (ep->io_active)
     {
-        error(ERROR_IN_PROGRESS);
+        ipc_post_error(ipc->process, ERROR_IN_PROGRESS);
         return;
     }
     //no blocks for ZLP
-    if (size)
+    ep->size = ipc->param3;
+    if (ep->size)
     {
-        ep->block = block;
-        ep->ptr = block_open(block);
+        ep->block = (HANDLE)ipc->param2;
+        if ((ep->ptr = block_open(ep->block)) == NULL)
+        {
+            ipc_post_error(ipc->process, get_last_error());
+            return;
+        }
     }
-    ep->size = size;
     ep->processed = 0;
     ep->io_active = true;
-    stm32_usb_rx_prepare(usb, num);
+    stm32_usb_rx_prepare(usb, ipc->param1);
 }
 
-static inline void stm32_usb_write(USB* usb, unsigned int num, HANDLE block, unsigned int size)
+static inline void stm32_usb_write(USB* usb, IPC* ipc)
 {
-    if (USB_EP_NUM(num) >= EP_COUNT_MAX || ((USB_EP_IN & num) == 0))
+    if (USB_EP_NUM(ipc->param1) >= EP_COUNT_MAX || ((USB_EP_IN & ipc->param1) == 0))
     {
-        error(ERROR_INVALID_PARAMS);
+        ipc_post_error(ipc->process, ERROR_INVALID_PARAMS);
         return;
     }
-    EP* ep = &usb->in[USB_EP_NUM(num)];
+    EP* ep = &usb->in[USB_EP_NUM(ipc->param1)];
     if (ep->io_active)
     {
-        error(ERROR_IN_PROGRESS);
+        ipc_post_error(ipc->process, ERROR_IN_PROGRESS);
         return;
     }
+    ep->size = ipc->param3;
     //no blocks for ZLP
-    if (size)
+    if (ep->size)
     {
-        ep->block = block;
-        ep->ptr = block_open(block);
+        ep->block = ipc->param2;
+        if ((ep->ptr = block_open(ep->block)) == NULL)
+        {
+            ipc_post_error(ipc->process, get_last_error());
+            return;
+        }
     }
-    ep->size = size;
     ep->processed = 0;
     ep->io_active = true;
 
-    stm32_usb_tx(usb, num);
+    stm32_usb_tx(usb, ipc->param1);
 }
 
 static inline void stm32_usb_set_test_mode(USB* usb, USB_TEST_MODES test_mode)
@@ -643,11 +651,11 @@ void stm32_usb()
             ipc_post_or_error(&ipc);
             break;
         case IPC_READ:
-            stm32_usb_read(&usb, ipc.param1, (HANDLE)ipc.param2, ipc.param3);
+            stm32_usb_read(&usb, &ipc);
             //generally posted with block, no return IPC
             break;
         case IPC_WRITE:
-            stm32_usb_write(&usb, ipc.param1, (HANDLE)ipc.param2, ipc.param3);
+            stm32_usb_write(&usb, &ipc);
             //generally posted with block, no return IPC
             break;
         case USB_REGISTER_DEVICE:
