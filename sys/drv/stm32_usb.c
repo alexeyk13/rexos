@@ -483,12 +483,14 @@ static inline void stm32_usb_read(USB* usb, IPC* ipc)
 {
     if (USB_EP_NUM(ipc->param1) >= EP_COUNT_MAX)
     {
+        block_send((HANDLE)ipc->param2, ipc->process);
         ipc_post_error(ipc->process, ERROR_INVALID_PARAMS);
         return;
     }
     EP* ep = &usb->out[USB_EP_NUM(ipc->param1)];
     if (ep->io_active)
     {
+        block_send((HANDLE)ipc->param2, ipc->process);
         ipc_post_error(ipc->process, ERROR_IN_PROGRESS);
         return;
     }
@@ -499,6 +501,7 @@ static inline void stm32_usb_read(USB* usb, IPC* ipc)
         ep->block = (HANDLE)ipc->param2;
         if ((ep->ptr = block_open(ep->block)) == NULL)
         {
+            block_send((HANDLE)ipc->param2, ipc->process);
             ipc_post_error(ipc->process, get_last_error());
             return;
         }
@@ -512,12 +515,14 @@ static inline void stm32_usb_write(USB* usb, IPC* ipc)
 {
     if (USB_EP_NUM(ipc->param1) >= EP_COUNT_MAX || ((USB_EP_IN & ipc->param1) == 0))
     {
+        block_send((HANDLE)ipc->param2, ipc->process);
         ipc_post_error(ipc->process, ERROR_INVALID_PARAMS);
         return;
     }
     EP* ep = &usb->in[USB_EP_NUM(ipc->param1)];
     if (ep->io_active)
     {
+        block_send((HANDLE)ipc->param2, ipc->process);
         ipc_post_error(ipc->process, ERROR_IN_PROGRESS);
         return;
     }
@@ -528,6 +533,7 @@ static inline void stm32_usb_write(USB* usb, IPC* ipc)
         ep->block = ipc->param2;
         if ((ep->ptr = block_open(ep->block)) == NULL)
         {
+            block_send((HANDLE)ipc->param2, ipc->process);
             ipc_post_error(ipc->process, get_last_error());
             return;
         }
