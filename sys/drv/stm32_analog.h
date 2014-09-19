@@ -42,7 +42,6 @@ typedef enum {
 } DAC_TRIGGER;
 
 typedef struct {
-    STM32_DAC dac;
     DAC_TRIGGER trigger;
 
     PIN pin;
