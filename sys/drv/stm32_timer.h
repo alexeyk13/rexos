@@ -38,8 +38,14 @@ typedef enum {
 }TIMER_NUM;
 
 #define TIMER_FLAG_ONE_PULSE_MODE                (1 << 0)
+#define TIMER_FLAG_ENABLE_IRQ                    (1 << 1)
 
-void stm32_timer_enable(CORE* core, TIMER_NUM num, unsigned int flags);
+typedef TIM_TypeDef*                            TIM_TypeDef_P;
+
+extern const TIM_TypeDef_P TIMER_REGS[];
+extern const int TIMER_VECTORS[];
+
+void stm32_timer_enable(CORE* core, TIMER_NUM num, unsigned int flags, int priority);
 void stm32_timer_disable(CORE* core, TIMER_NUM num);
 void stm32_timer_start(TIMER_NUM num, unsigned int psc, unsigned int count);
 void stm32_timer_stop(TIMER_NUM num);

@@ -14,8 +14,6 @@
 #include <string.h>
 #include "../../userspace/lib/stdio.h"
 
-typedef TIM_TypeDef*                            TIM_TypeDef_P;
-
 #define APB1                                    (unsigned int*)((unsigned int)RCC_BASE + offsetof(RCC_TypeDef, APB1ENR))
 #define APB2                                    (unsigned int*)((unsigned int)RCC_BASE + offsetof(RCC_TypeDef, APB2ENR))
 
@@ -25,7 +23,7 @@ typedef unsigned int*                           uint_p;
 #define TIMERS_COUNT                            17
 const TIM_TypeDef_P TIMER_REGS[TIMERS_COUNT] =  {TIM1, TIM2, TIM3, TIM4, TIM5, TIM6, TIM7, TIM8, TIM9, TIM10, TIM11, TIM12, TIM13, TIM14, TIM15, TIM16, TIM17};
 const int TIMER_VECTORS[TIMERS_COUNT] =         {25,   28,   29,   30,   50,   54,   55,   44,   24,   25,    26,    43,    44,    45,    24,    25,    26};
-const int TIMER_POWER_BIT[TIMERS_COUNT] =                 {11,   0,    1,    2,    3,    4,    5,    13,   19,   20,    21,    6,     7,     8,     16,    17,    18};
+const int TIMER_POWER_BIT[TIMERS_COUNT] =       {11,   0,    1,    2,    3,    4,    5,    13,   19,   20,    21,    6,     7,     8,     16,    17,    18};
 const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB2, APB1, APB1, APB1, APB1, APB1, APB1, APB2, APB2, APB2,  APB2,  APB1,  APB1,  APB1,  APB2,  APB2,  APB2};
 #elif defined (STM32F2) || defined (STM32F4)
 #define TIMERS_COUNT                            14
@@ -35,7 +33,7 @@ const int TIMER_POWER_BIT[TIMERS_COUNT] =       {0,    0,    1,    2,    3,    4
 const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB2, APB1, APB1, APB1, APB1, APB1, APB1, APB2, APB2, APB2,  APB2,  APB1,  APB1,  APB1};
 #endif
 
-void stm32_timer_enable(CORE *core, TIMER_NUM num, unsigned int flags)
+void stm32_timer_enable(CORE *core, TIMER_NUM num, unsigned int flags, int priority)
 {
     if (num >= TIMERS_COUNT)
     {
@@ -48,29 +46,38 @@ void stm32_timer_enable(CORE *core, TIMER_NUM num, unsigned int flags)
     //one-pulse mode
     if (flags & TIMER_FLAG_ONE_PULSE_MODE)
         TIMER_REGS[num]->CR1 |= TIM_CR1_OPM;
-    TIMER_REGS[num]->DIER |= TIM_DIER_UIE;
+    if (flags & TIMER_FLAG_ENABLE_IRQ)
+        TIMER_REGS[num]->DIER |= TIM_DIER_UIE;
 
-    //enable IRQ
     if (num == TIM_1 || num == TIM_10)
     {
         if (core->shared1++ == 0)
         {
-            NVIC_EnableIRQ(TIMER_VECTORS[num]);
-            NVIC_SetPriority(TIMER_VECTORS[num], 15);
+            if (flags & TIMER_FLAG_ENABLE_IRQ)
+            {
+                NVIC_EnableIRQ(TIMER_VECTORS[num]);
+                NVIC_SetPriority(TIMER_VECTORS[num], priority);
+            }
         }
     }
     else if (num == TIM_8 || num == TIM_13)
     {
         if (core->shared8++ == 0)
         {
-            NVIC_EnableIRQ(TIMER_VECTORS[num]);
-            NVIC_SetPriority(TIMER_VECTORS[num], 15);
+            if (flags & TIMER_FLAG_ENABLE_IRQ)
+            {
+                NVIC_EnableIRQ(TIMER_VECTORS[num]);
+                NVIC_SetPriority(TIMER_VECTORS[num], priority);
+            }
         }
     }
     else
     {
-        NVIC_EnableIRQ(TIMER_VECTORS[num]);
-        NVIC_SetPriority(TIMER_VECTORS[num], 15);
+        if (flags & TIMER_FLAG_ENABLE_IRQ)
+        {
+            NVIC_EnableIRQ(TIMER_VECTORS[num]);
+            NVIC_SetPriority(TIMER_VECTORS[num], priority);
+        }
     }
 }
 
@@ -209,7 +216,7 @@ void stm32_timer_init(CORE *core)
     //setup HPET
     irq_register(TIMER_VECTORS[HPET_TIMER], hpet_isr, (void*)core);
     core->hpet_uspsc = stm32_timer_get_clock(HPET_TIMER) / 1000000;
-    stm32_timer_enable(core, HPET_TIMER, TIMER_FLAG_ONE_PULSE_MODE);
+    stm32_timer_enable(core, HPET_TIMER, TIMER_FLAG_ONE_PULSE_MODE | TIMER_FLAG_ENABLE_IRQ, 15);
     CB_SVC_TIMER cb_svc_timer;
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
@@ -217,7 +224,7 @@ void stm32_timer_init(CORE *core)
     timer_setup(&cb_svc_timer, core);
 #if (TIMER_SOFT_RTC)
     irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)core);
-    stm32_timer_enable(core, SECOND_PULSE_TIMER, 0);
+    stm32_timer_enable(core, SECOND_PULSE_TIMER, TIMER_FLAG_ENABLE_IRQ, 15);
     //100us prescaller
     stm32_timer_start(SECOND_PULSE_TIMER, stm32_timer_get_clock(SECOND_PULSE_TIMER) / 10000, 10000);
 #endif

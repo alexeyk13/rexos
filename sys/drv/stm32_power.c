@@ -372,6 +372,18 @@ void stm32_power_info(CORE* core)
 }
 #endif
 
+void dma_on(CORE* core, unsigned int index)
+{
+    if (core->dma_count[index]++ == 0)
+        RCC->AHBENR |= 1 << index;
+}
+
+void dma_off(CORE* core, unsigned int index)
+{
+    if (--core->dma_count[index] == 0)
+        RCC->AHBENR &= ~(1 << index);
+}
+
 void backup_on(CORE* core)
 {
     if (core->backup_count++ == 0)
@@ -460,7 +472,7 @@ static inline void decode_reset_reason(CORE* core)
 
 void stm32_power_init(CORE* core)
 {
-    core->backup_count = core->write_count = 0;
+    core->backup_count = core->write_count = core->dma_count[0] = core->dma_count[1] = 0;
     decode_reset_reason(core);
 
     RCC->APB1ENR = 0;

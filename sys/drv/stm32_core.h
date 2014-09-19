@@ -31,6 +31,8 @@ typedef enum {
     STM32_POWER_GET_CLOCK,
     STM32_POWER_UPDATE_CLOCK,
     STM32_POWER_GET_RESET_REASON,
+    STM32_POWER_DMA_ON,
+    STM32_POWER_DMA_OFF,
     STM32_POWER_BACKUP_ON,                                        //!< Turn on backup domain
     STM32_POWER_BACKUP_OFF,                                       //!< Turn off backup domain
     STM32_POWER_BACKUP_WRITE_ENABLE,                              //!< Turn off write protection of backup domain
@@ -62,7 +64,7 @@ typedef struct {
     //GPIO specific
     int* used_pins;
     //power specific
-    int backup_count, write_count;
+    int backup_count, write_count, dma_count[2];
     RESET_REASON reset_reason;
 }CORE;
 

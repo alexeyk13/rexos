@@ -64,7 +64,7 @@ void stm32_core_loop(CORE* core)
 #endif
         //timer specific
         case STM32_TIMER_ENABLE:
-            stm32_timer_enable(core, (TIMER_NUM)ipc.param1, ipc.param2);
+            stm32_timer_enable(core, (TIMER_NUM)ipc.param1, ipc.param2, ipc.param3);
             ipc_post_or_error(&ipc);
             break;
         case STM32_TIMER_DISABLE:
@@ -123,6 +123,14 @@ void stm32_core_loop(CORE* core)
             break;
         case STM32_POWER_GET_RESET_REASON:
             ipc.param1 = get_reset_reason(core);
+            ipc_post_or_error(&ipc);
+            break;
+        case STM32_POWER_DMA_ON:
+            dma_on(core, ipc.param1);
+            ipc_post_or_error(&ipc);
+            break;
+        case STM32_POWER_DMA_OFF:
+            dma_off(core, ipc.param1);
             ipc_post_or_error(&ipc);
             break;
         case STM32_POWER_BACKUP_ON:

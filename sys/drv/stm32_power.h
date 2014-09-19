@@ -22,9 +22,16 @@ typedef enum {
     STM32_CLOCK_ADC
 } STM32_POWER_CLOCKS;
 
+typedef enum {
+    DMA_1 = 0,
+    DMA_2
+} STM32_DMA;
+
 unsigned int get_clock(STM32_POWER_CLOCKS type);
 //params are product line specific
 void update_clock(int param1, int param2, int param3);
+void dma_on(CORE* core, unsigned int index);
+void dma_off(CORE* core, unsigned int index);
 void backup_on(CORE* core);
 void backup_off(CORE* core);
 void backup_write_enable(CORE* core);
