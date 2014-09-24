@@ -11,6 +11,8 @@
 #include "../../userspace/block.h"
 #include "../../userspace/irq.h"
 #include "../sys.h"
+#include <string.h>
+#include <stdio.h>
 
 #define ADC1_CLOCK_MAX                                  14000000
 #define ADC1_TSTAB                                      11
@@ -18,6 +20,8 @@
 #define ADC2uV(raw)                                     ((raw * ADC_VREF * 100 / 0xfff) * 10ul)
 
 #define DAC_TWAKEUP                                     10
+#define DAC1_PIN                                        A4
+#define DAC2_PIN                                        A5
 const PIN DAC_OUT[] =                                   {A4, A5};
 #if (DAC_DMA)
 typedef DMA_Channel_TypeDef* DMA_Channel_TypeDef_P;
@@ -43,16 +47,25 @@ const REX __STM32_ANALOG = {
 };
 
 typedef struct {
-    bool active;
     DAC_TRIGGER trigger;
     PIN pin;
     TIMER_NUM timer;
     HANDLE block, process;
     void* ptr;
     unsigned int size;
-#if !(DAC_DMA)
+    STM32_DAC num;
+
+#if (DAC_DMA)
+    HANDLE fifo;
+    void* fifo_ptr;
+    unsigned int cnt;
+    int half;
+#else
     unsigned int* reg;
     unsigned int processed;
+#endif
+#if (DAC_DEBUG)
+    HANDLE self;
 #endif
 } DAC_STRUCT;
 
@@ -131,54 +144,7 @@ int stm32_adc_get_single_sample(int chan, int sample_rate)
     return ADC1->DR;
 }
 
-#if (DAC_DMA)
-void stm32_dac_dma_isr(int vector, void* param)
-{
-    IPC ipc;
-    DAC_STRUCT* dac = (DAC_STRUCT*)param;
-    //TODO:
-    DMA2->IFCR |= 0xf << (8 + 4 * 0);
-    DAC_DMA_REGS[0]->CCR &= ~(1 << 0);
-
-    TIMER_REGS[dac->timer]->CR1 &= ~TIM_CR1_CEN;
-    dac->active = false;
-
-    ipc.process = dac->process;
-    ipc.cmd = IPC_WRITE_COMPLETE;
-    ipc.param1 = STM32_DAC1;
-    ipc.param2 = dac->block;
-    ipc.param3 = dac->size;
-    block_isend_ipc(dac->block, dac->process, &ipc);
-    dac->block = INVALID_HANDLE;
-}
-#else
-void stm32_dac_timer_isr(int vector, void* param)
-{
-    IPC ipc;
-    DAC_STRUCT* dac = (DAC_STRUCT*)param;
-    *(dac->reg) = *((unsigned int*)(dac->ptr));
-    dac->ptr += sizeof(unsigned int);
-    dac->processed += sizeof(unsigned int);
-
-    if (dac->processed >= dac->size)
-    {
-        TIMER_REGS[dac->timer]->CR1 &= ~TIM_CR1_CEN;
-        dac->active = false;
-
-        ipc.process = dac->process;
-        ipc.cmd = IPC_WRITE_COMPLETE;
-        ipc.param1 = STM32_DAC1;
-        ipc.param2 = dac->block;
-        ipc.param3 = dac->size;
-        block_isend_ipc(dac->block, dac->process, &ipc);
-        dac->block = INVALID_HANDLE;
-
-    }
-    TIMER_REGS[dac->timer]->SR &= ~TIM_SR_UIF;
-}
-#endif
-
-static inline void stm32_dac_open_timer(ANALOG* analog, int channel, STM32_DAC_ENABLE* de, uint32_t* reg)
+static inline void stm32_dac_timer_open(ANALOG* analog, int channel, STM32_DAC_ENABLE* de)
 {
     unsigned int psc, value, clock;
     analog->dac[channel].timer = de->timer;
@@ -192,19 +158,19 @@ static inline void stm32_dac_open_timer(ANALOG* analog, int channel, STM32_DAC_E
     {
     case TIM_3:
     case TIM_8:
-        *reg |= 1 << 3;
+        DAC->CR |= (1 << 3) << (16 * channel);
         break;
     case TIM_7:
-        *reg |= 2 << 3;
+        DAC->CR |= (2 << 3) << (16 * channel);
         break;
     case TIM_5:
-        *reg |= 3 << 3;
+        DAC->CR |= (3 << 3) << (16 * channel);
         break;
     case TIM_2:
-        *reg |= 4 << 3;
+        DAC->CR |= (4 << 3) << (16 * channel);
         break;
     case TIM_4:
-        *reg |= 5 << 3;
+        DAC->CR |= (5 << 3) << (16 * channel);
         break;
     case TIM_6:
     default:
@@ -229,15 +195,123 @@ static inline void stm32_dac_open_timer(ANALOG* analog, int channel, STM32_DAC_E
     TIMER_REGS[de->timer]->ARR = (value / psc) - 1;
 }
 
-static inline void stm32_dac_write_timer(ANALOG* analog, int channel)
+static inline void stm32_dac_trigger_open(ANALOG* analog, int channel, STM32_DAC_ENABLE* de)
 {
-    TIMER_NUM timer = analog->dac[channel].timer;
-    TIMER_REGS[timer]->CNT = 0;
-    TIMER_REGS[timer]->EGR = TIM_EGR_UG;
-    TIMER_REGS[timer]->CR1 |= TIM_CR1_CEN;
+    analog->dac[channel].trigger = de->trigger;
+    switch (analog->dac[channel].trigger)
+    {
+    case DAC_TRIGGER_TIMER:
+        stm32_dac_timer_open(analog, channel, de);
+        break;
+    default:
+        break;
+    }
 }
 
-void stm32_dac_open_channel(ANALOG* analog, int channel, STM32_DAC_ENABLE* de)
+static inline void stm32_dac_trigger_close(ANALOG* analog, int channel)
+{
+    switch (analog->dac[channel].trigger)
+    {
+    case DAC_TRIGGER_TIMER:
+        ack(analog->core, STM32_TIMER_DISABLE, analog->dac[channel].timer, 0, 0);
+        break;
+    default:
+        break;
+    }
+}
+
+static inline void stm32_dac_trigger_start(DAC_STRUCT* dac)
+{
+    switch (dac->trigger)
+    {
+    case DAC_TRIGGER_TIMER:
+        TIMER_REGS[dac->timer]->CNT = 0;
+        TIMER_REGS[dac->timer]->EGR = TIM_EGR_UG;
+        TIMER_REGS[dac->timer]->CR1 |= TIM_CR1_CEN;
+        break;
+    default:
+        break;
+    }
+}
+
+static inline void stm32_dac_trigger_stop(DAC_STRUCT* dac)
+{
+    switch (dac->trigger)
+    {
+    case DAC_TRIGGER_TIMER:
+        TIMER_REGS[dac->timer]->CR1 &= ~TIM_CR1_CEN;
+        break;
+    default:
+        break;
+    }
+}
+
+#if (DAC_DMA)
+void stm32_dac_dma_isr(int vector, void* param)
+{
+    IPC ipc;
+    DAC_STRUCT* dac = (DAC_STRUCT*)param;
+    int channel = dac->num == STM32_DAC2 ? 1 : 0;
+    DMA2->IFCR |= 0xf << (8 + 4 * channel);
+    dac->half = !dac->half;
+    --dac->cnt;
+
+    if (dac->block != INVALID_HANDLE)
+    {
+        if (dac->cnt >= 2)
+        {
+            //TODO M2M mode
+            memcpy(dac->fifo_ptr + DAC_DMA_FIFO_SIZE * dac->half, dac->ptr, DAC_DMA_FIFO_SIZE);
+            dac->ptr += DAC_DMA_FIFO_SIZE;
+        }
+        else
+        {
+            ipc.process = dac->process;
+            ipc.cmd = IPC_WRITE_COMPLETE;
+            ipc.param1 = dac->num;
+            ipc.param2 = dac->block;
+            ipc.param3 = dac->size;
+            block_isend_ipc(dac->block, dac->process, &ipc);
+            dac->block = INVALID_HANDLE;
+        }
+    }
+    if (dac->cnt == 0)
+    {
+        dac->half = 0;
+        stm32_dac_trigger_stop(dac);
+#if (DAC_DEBUG)
+        ipc.process = dac->self;
+        ipc.cmd = STM32_DAC_UNDERFLOW_DEBUG;
+        ipc.param1 = dac->num;
+        ipc_ipost(&ipc);
+#endif
+    }
+}
+#else
+void stm32_dac_timer_isr(int vector, void* param)
+{
+    IPC ipc;
+    DAC_STRUCT* dac = (DAC_STRUCT*)param;
+    *(dac->reg) = *((unsigned int*)(dac->ptr));
+    dac->ptr += sizeof(unsigned int);
+    dac->processed += sizeof(unsigned int);
+
+    if (dac->processed >= dac->size)
+    {
+        TIMER_REGS[dac->timer]->CR1 &= ~TIM_CR1_CEN;
+
+        ipc.process = dac->process;
+        ipc.cmd = IPC_WRITE_COMPLETE;
+        ipc.param1 = dac->num;
+        ipc.param2 = dac->block;
+        ipc.param3 = dac->size;
+        block_isend_ipc(dac->block, dac->process, &ipc);
+    }
+    TIMER_REGS[dac->timer]->SR &= ~TIM_SR_UIF;
+}
+#endif
+
+void stm32_dac_open_channel(ANALOG* analog, int channel)
 {
     uint32_t reg;
     //enable PIN analog mode
@@ -249,53 +323,61 @@ void stm32_dac_open_channel(ANALOG* analog, int channel, STM32_DAC_ENABLE* de)
     reg |= (1 << 1);
 #endif
 #if (DAC_DMA)
-    DMA2->IFCR |= 0xf << (8 + 4 * channel);
     //DMAEN, TEN
     reg |= (1 << 12) | (1 << 2);
-
-    //register DMA isr
-    irq_register(DAC_DMA_VECTORS[channel], stm32_dac_dma_isr, (void*)(&(analog->dac[channel])));
-    NVIC_EnableIRQ(DAC_DMA_VECTORS[channel]);
-    NVIC_SetPriority(DAC_DMA_VECTORS[channel], 10);
 #endif
-
-    analog->dac[channel].trigger = de->trigger;
-    switch (analog->dac[channel].trigger)
-    {
-    case DAC_TRIGGER_TIMER:
-        stm32_dac_open_timer(analog, channel, de, &reg);
-        break;
-    default:
-        break;
-    }
 
     DAC->CR |= reg << (16 * channel);
 }
 
 void stm32_dac_close_channel(ANALOG* analog, int channel)
 {
-    if (analog->dac[channel].active)
-    {
-        analog->dac[channel].active = false;
-        //DIS
-        DAC->CR &= ~(0xffff << (16 * channel));
-        //disable PIN
-        ack(analog->core, STM32_GPIO_DISABLE_PIN, DAC_OUT[channel], 0, 0);
-    }
+    //DIS
+    DAC->CR &= ~(0xffff << (16 * channel));
+    //disable PIN
+    ack(analog->core, STM32_GPIO_DISABLE_PIN, DAC_OUT[channel], 0, 0);
 }
 
-void stm32_dac_open(ANALOG* analog, STM32_DAC dac, STM32_DAC_ENABLE* de)
+void stm32_dac_open(ANALOG* analog, STM32_DAC dac_num, STM32_DAC_ENABLE* de)
 {
     //turn clock on
     if (analog->active_channels++ == 0)
         RCC->APB1ENR |= RCC_APB1ENR_DACEN;
-    if (dac == STM32_DAC1 || dac == STM32_DAC_DUAL)
-        stm32_dac_open_channel(analog, 0, de);
-    if (dac == STM32_DAC2 || dac == STM32_DAC_DUAL)
-        stm32_dac_open_channel(analog, 1, de);
+
+    if (dac_num == STM32_DAC1 || dac_num == STM32_DAC_DUAL)
+        stm32_dac_open_channel(analog, 0);
+    if (dac_num == STM32_DAC2 || dac_num == STM32_DAC_DUAL)
+        stm32_dac_open_channel(analog, 1);
+    int channel = dac_num == STM32_DAC2 ? 1 : 0;
+    DAC_STRUCT* dac = &analog->dac[channel];
+    dac->num = dac_num;
+    dac->block = INVALID_HANDLE;
+#if (DAC_DEBUG)
+    dac->self = process_get_current();
+#endif
 #if (DAC_DMA)
+    dac->fifo = block_create(DAC_DMA_FIFO_SIZE * 2);
+    if (dac->fifo == INVALID_HANDLE)
+    {
+        if (dac_num == STM32_DAC1 || dac_num == STM32_DAC_DUAL)
+            stm32_dac_close_channel(analog, 0);
+        if (dac_num == STM32_DAC2 || dac_num == STM32_DAC_DUAL)
+            stm32_dac_close_channel(analog, 1);
+        return;
+    }
+    dac->fifo_ptr = block_open(dac->fifo);
+    dac->cnt = 0;
+    dac->half = 0;
+
+    //TODO: decode reg & num
     ack(analog->core, STM32_POWER_DMA_ON, DMA_2, 0, 0);
-    switch (dac)
+    DMA2->IFCR |= 0xf << (8 + 4 * channel);
+
+    //register DMA isr
+    irq_register(DAC_DMA_VECTORS[channel], stm32_dac_dma_isr, (void*)(&(analog->dac[channel])));
+    NVIC_EnableIRQ(DAC_DMA_VECTORS[channel]);
+    NVIC_SetPriority(DAC_DMA_VECTORS[channel], 10);
+    switch (dac_num)
     {
     case STM32_DAC1:
         DAC_DMA_REGS[0]->CPAR = (unsigned int)&(DAC->DHR12R1);
@@ -309,8 +391,12 @@ void stm32_dac_open(ANALOG* analog, STM32_DAC dac, STM32_DAC_ENABLE* de)
     default:
         break;
     }
+    DAC_DMA_REGS[channel]->CMAR = (unsigned int)(dac->fifo_ptr);
+    DAC_DMA_REGS[channel]->CNDTR = (DAC_DMA_FIFO_SIZE * 2) / sizeof(uint32_t);
+    //High priority, mem: 32, pf: 32, PINC, from memory, TCIE, HCIF, CIRC
+    DAC_DMA_REGS[channel]->CCR = (2 << 12) | (2 << 10) | (2 << 8) | (1 << 7) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0);
 #else
-    switch (dac)
+    switch (dac_num)
     {
     case STM32_DAC1:
         analog->dac[0].reg = (unsigned int*)&(DAC->DHR12R1);
@@ -326,47 +412,52 @@ void stm32_dac_open(ANALOG* analog, STM32_DAC dac, STM32_DAC_ENABLE* de)
     }
 #endif
 
+    stm32_dac_trigger_open(analog, channel, de);
+
     sleep_us(DAC_TWAKEUP);
 }
 
-void stm32_dac_close(ANALOG* analog, STM32_DAC dac)
+void stm32_dac_close(ANALOG* analog, STM32_DAC num)
 {
+    int channel = num == STM32_DAC2 ? 1 : 0;
     //TODO: flush
+
+    stm32_dac_trigger_close(analog, channel);
+    //disable DMA
+#if (DAC_DMA)
+    NVIC_DisableIRQ(DAC_DMA_VECTORS[channel]);
+    //unregister DMA isr
+    irq_unregister(DAC_DMA_VECTORS[channel]);
+    //TODO: decode reg & num
+    ack(analog->core, STM32_POWER_DMA_OFF, DMA_2, 0, 0);
+
+    block_destroy(analog->dac[channel].fifo);
+#endif
     //disable channel
-    if (dac == STM32_DAC1 || dac == STM32_DAC_DUAL)
+    if (num == STM32_DAC1 || num == STM32_DAC_DUAL)
         stm32_dac_close_channel(analog, 0);
-    if (dac == STM32_DAC2 || dac == STM32_DAC_DUAL)
+    if (num == STM32_DAC2 || num == STM32_DAC_DUAL)
         stm32_dac_close_channel(analog, 1);
     //turn clock off
     if (--analog->active_channels == 0)
         RCC->APB1ENR &= ~RCC_APB1ENR_DACEN;
 }
 
-void stm32_dac_write_block(ANALOG* analog, int channel)
-{
-//    IPC ipc;
-    DAC_STRUCT* dac = &analog->dac[channel];
-
-    dac->active = true;
-#if (DAC_DMA)
-    DAC_DMA_REGS[channel]->CMAR = (unsigned int)(dac->ptr);
-    DAC_DMA_REGS[channel]->CNDTR = dac->size / sizeof(uint32_t);
-    //High priority, mem: 32, pf: 32, PINC, from memory, TCIE
-    DAC_DMA_REGS[channel]->CCR = (2 << 12) | (2 << 10) | (2 << 8) | (1 << 7) | (1 << 4) | (1 << 1) | (1 << 0);
-#endif
-
-}
-
 void stm32_dac_write(ANALOG* analog, IPC* ipc)
 {
-    if (ipc->param1 > STM32_DAC_DUAL)
+    bool need_start = true;
+    if (ipc->param1 > STM32_DAC_DUAL || ipc->param3 == 0)
     {
         ipc_post_error(ipc->process, ERROR_INVALID_PARAMS);
         return;
     }
     int channel = ipc->param1 == STM32_DAC2 ? 1 : 0;
     DAC_STRUCT* dac = &analog->dac[channel];
-    if (dac->active)
+#if (DAC_DMA)
+    if (dac->cnt > 2)
+#else
+    if (dac->ptr != NULL)
+#endif
     {
         ipc_post_error(ipc->process, ERROR_IN_PROGRESS);
         return;
@@ -380,21 +471,42 @@ void stm32_dac_write(ANALOG* analog, IPC* ipc)
     dac->process = ipc->process;
     dac->size = ipc->param3;
 
-    stm32_dac_write_block(analog, channel);
-
-    switch (dac->trigger)
+#if (DAC_DMA)
+    unsigned int cnt = dac->size / DAC_DMA_FIFO_SIZE;
+    if (dac->size % DAC_DMA_FIFO_SIZE)
+        ++cnt;
+    unsigned int cnt_left = cnt;
+    if (dac->cnt == 0 && cnt >= 2)
     {
-    case DAC_TRIGGER_TIMER:
-        stm32_dac_write_timer(analog, channel);
-        break;
-    default:
-        break;
+        //TODO M2M mode
+        memcpy(dac->fifo_ptr, dac->ptr, DAC_DMA_FIFO_SIZE * 2);
+        dac->ptr += DAC_DMA_FIFO_SIZE * 2;
+        cnt_left -= 2;
+    }
+    else if (dac->cnt < 2)
+    {
+        //TODO M2M mode
+        memcpy(dac->fifo_ptr + DAC_DMA_FIFO_SIZE * dac->half, dac->ptr, DAC_DMA_FIFO_SIZE);
+        dac->ptr += DAC_DMA_FIFO_SIZE;
+        --cnt_left;
+    }
+    if (!cnt_left)
+    {
+        //ready for next
+        ipc->cmd = IPC_WRITE_COMPLETE;
+        block_send_ipc(dac->block, ipc->process, ipc);
     }
 
-#if !(DAC_DMA)
+    __disable_irq();
+    need_start = dac->cnt == 0;
+    dac->cnt += cnt;
+    __enable_irq();
+#else
     dac->processed = 0;
 #endif
 
+    if (need_start)
+        stm32_dac_trigger_start(dac);
 }
 
 void stm32_analog()
@@ -402,7 +514,6 @@ void stm32_analog()
     IPC ipc;
     ANALOG analog;
     STM32_DAC_ENABLE de;
-    analog.dac[0].active = analog.dac[1].active = false;
     analog.active_channels = 0;
     analog.core = sys_get_object(SYS_OBJECT_CORE);
     if (analog.core == INVALID_HANDLE)
@@ -458,6 +569,11 @@ void stm32_analog()
             stm32_dac_write(&analog, &ipc);
             //generally posted with block, no return IPC
             break;
+#if (DAC_DEBUG)
+        case STM32_DAC_UNDERFLOW_DEBUG:
+            printf("DAC %d underflow/stop\n\r", ipc.param1);
+            break;
+#endif
         default:
             ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
             break;

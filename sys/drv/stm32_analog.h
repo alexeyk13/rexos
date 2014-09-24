@@ -27,6 +27,7 @@
 typedef enum {
     STM32_ADC_SINGLE_CHANNEL = IPC_USER,
     STM32_ADC_TEMP,
+    STM32_DAC_UNDERFLOW_DEBUG
 } STM32_ANALOG_IPCS;
 
 typedef enum {
