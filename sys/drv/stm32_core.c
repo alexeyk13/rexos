@@ -100,6 +100,14 @@ void stm32_core_loop(CORE* core)
             gpio_disable_pin(core, (PIN)ipc.param1);
             ipc_post_or_error(&ipc);
             break;
+        case STM32_GPIO_ENABLE_EXTI:
+            gpio_enable_exti(core, (PIN)ipc.param1, ipc.param2);
+            ipc_post_or_error(&ipc);
+            break;
+        case STM32_GPIO_DISABLE_EXTI:
+            gpio_disable_exti(core, (PIN)ipc.param1);
+            ipc_post_or_error(&ipc);
+            break;
         case STM32_GPIO_SET_PIN:
             gpio_set_pin((PIN)ipc.param1, (bool)ipc.param2);
             ipc_post_or_error(&ipc);

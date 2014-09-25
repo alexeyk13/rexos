@@ -44,6 +44,18 @@ static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {0, 1, 2, 3, 4, 
 #define GPIO_ODR_SET(pin, mode)                                 GPIO[GPIO_PORT(pin)]->ODR &= ~(1 << GPIO_PIN(pin)); \
                                                                 GPIO[GPIO_PORT(pin)]->ODR |= mode << GPIO_PIN(pin)
 
+void gpio_enable_afio(CORE* core)
+{
+    if (core->used_afio++ == 0)
+        RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+}
+
+void gpio_disable_afio(CORE* core)
+{
+    if (--core->used_afio == 0)
+        RCC->APB2ENR &= ~RCC_APB2ENR_AFIOEN;
+}
+
 void gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup)
 {
     if (core->used_pins[GPIO_PORT(pin)]++ == 0)
@@ -119,6 +131,52 @@ void gpio_enable_pin(CORE* core, PIN pin, PIN_MODE mode)
 #endif
 }
 
+void gpio_enable_exti(CORE* core, PIN pin, unsigned int flags)
+{
+    switch (flags & EXTI_FLAGS_PULL_MASK)
+    {
+    case 0:
+        gpio_enable_pin(core, pin, PIN_MODE_IN_FLOAT);
+        break;
+    case EXTI_FLAGS_PULLUP:
+        gpio_enable_pin(core, pin, PIN_MODE_IN_PULLUP);
+        break;
+    case EXTI_FLAGS_PULLDOWN:
+        gpio_enable_pin(core, pin, PIN_MODE_IN_PULLDOWN);
+        break;
+    }
+
+#if defined(STM32F1)
+    gpio_enable_afio(core);
+    AFIO->EXTICR[GPIO_PIN(pin) / 4] &= ~(0xful << (uint32_t)(GPIO_PIN(pin) & 3ul));
+    AFIO->EXTICR[GPIO_PIN(pin) / 4] |= ((uint32_t)GPIO_PORT(pin) << (uint32_t)(GPIO_PIN(pin) & 3ul));
+
+    EXTI->IMR |= 1ul << GPIO_PIN(pin);
+    EXTI->EMR |= 1ul << GPIO_PIN(pin);
+
+    EXTI->RTSR &= ~(1ul << GPIO_PIN(pin));
+    EXTI->FTSR &= ~(1ul << GPIO_PIN(pin));
+    if (flags & EXTI_FLAGS_RISING)
+        EXTI->RTSR |= (1ul << GPIO_PIN(pin));
+    if (flags & EXTI_FLAGS_RISING)
+        EXTI->FTSR |= (1ul << GPIO_PIN(pin));
+#endif
+}
+
+void gpio_disable_exti(CORE* core, PIN pin)
+{
+#if defined(STM32F1)
+    AFIO->EXTICR[GPIO_PIN(pin) / 4] &= ~(0xful << (uint32_t)(GPIO_PIN(pin) & 3ul));
+    EXTI->IMR &= ~(1ul << GPIO_PIN(pin));
+    EXTI->EMR &= ~(1ul << GPIO_PIN(pin));
+
+    EXTI->RTSR &= ~(1ul << GPIO_PIN(pin));
+    EXTI->FTSR &= ~(1ul << GPIO_PIN(pin));
+    gpio_disable_afio(core);
+#endif
+    gpio_disable_pin(core, pin);
+}
+
 void gpio_disable_pin(CORE* core, PIN pin)
 {
 #if defined(STM32F1)
@@ -164,7 +222,7 @@ void gpio_disable_jtag(CORE *core)
     gpio_disable_pin(core, B4);
 
 #if defined(STM32F1)
-    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+    gpio_enable_afio(core);
 	AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_DISABLE;
 #endif
 }
@@ -192,4 +250,5 @@ void stm32_gpio_init(CORE* core)
 {
     core->used_pins = (int*)malloc(sizeof(int) * GPIO_COUNT);
     memset(core->used_pins, 0, sizeof(int) * GPIO_COUNT);
+    core->used_afio = 0;
 }

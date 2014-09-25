@@ -23,6 +23,8 @@ typedef enum {
     STM32_GPIO_ENABLE_PIN,
     STM32_GPIO_ENABLE_PIN_SYSTEM,
     STM32_GPIO_DISABLE_PIN,
+    STM32_GPIO_ENABLE_EXTI,
+    STM32_GPIO_DISABLE_EXTI,
     STM32_GPIO_SET_PIN,
     STM32_GPIO_GET_PIN,
     STM32_GPIO_DISABLE_JTAG,
@@ -63,6 +65,9 @@ typedef struct {
     int hpet_uspsc;
     //GPIO specific
     int* used_pins;
+#if defined(STM32F1)
+    int used_afio;
+#endif
     //power specific
     int backup_count, write_count, dma_count[2];
     RESET_REASON reset_reason;

@@ -95,7 +95,15 @@ typedef enum {
 void gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af);
 #endif
 
+#define EXTI_FLAGS_RISING                            (1 << 0)
+#define EXTI_FLAGS_FALLING                           (1 << 1)
+#define EXTI_FLAGS_PULLUP                            (1 << 2)
+#define EXTI_FLAGS_PULLDOWN                          (2 << 2)
+#define EXTI_FLAGS_PULL_MASK                         (3 << 2)
+
 void gpio_enable_pin(CORE* core, PIN pin, PIN_MODE mode);
+void gpio_enable_exti(CORE* core, PIN pin, unsigned int flags);
+void gpio_disable_exti(CORE* core, PIN pin);
 void gpio_disable_pin(CORE* core, PIN pin);
 void gpio_set_pin(PIN pin, bool set);
 bool gpio_get_pin(PIN pin);
