@@ -150,16 +150,6 @@ void gpio_enable_exti(CORE* core, PIN pin, unsigned int flags)
     gpio_enable_afio(core);
     AFIO->EXTICR[GPIO_PIN(pin) / 4] &= ~(0xful << (uint32_t)(GPIO_PIN(pin) & 3ul));
     AFIO->EXTICR[GPIO_PIN(pin) / 4] |= ((uint32_t)GPIO_PORT(pin) << (uint32_t)(GPIO_PIN(pin) & 3ul));
-
-    EXTI->IMR |= 1ul << GPIO_PIN(pin);
-    EXTI->EMR |= 1ul << GPIO_PIN(pin);
-
-    EXTI->RTSR &= ~(1ul << GPIO_PIN(pin));
-    EXTI->FTSR &= ~(1ul << GPIO_PIN(pin));
-    if (flags & EXTI_FLAGS_RISING)
-        EXTI->RTSR |= (1ul << GPIO_PIN(pin));
-    if (flags & EXTI_FLAGS_RISING)
-        EXTI->FTSR |= (1ul << GPIO_PIN(pin));
 #endif
 }
 
