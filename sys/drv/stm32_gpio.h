@@ -53,6 +53,9 @@ typedef enum {
     GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_50MHZ = 0xf
 }GPIO_MODE;
 
+void gpio_enable_afio(CORE* core);
+void gpio_disable_afio(CORE* core);
+
 void gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup);
 #elif defined(STM32F2) || defined(STM32F4)
 
@@ -97,8 +100,9 @@ void gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af);
 
 #define EXTI_FLAGS_RISING                            (1 << 0)
 #define EXTI_FLAGS_FALLING                           (1 << 1)
+#define EXTI_FLAGS_EDGE_MASK                         (3 << 0)
 #define EXTI_FLAGS_PULLUP                            (1 << 2)
-#define EXTI_FLAGS_PULLDOWN                          (2 << 2)
+#define EXTI_FLAGS_PULLDOWN                          (1 << 3)
 #define EXTI_FLAGS_PULL_MASK                         (3 << 2)
 
 void gpio_enable_pin(CORE* core, PIN pin, PIN_MODE mode);
