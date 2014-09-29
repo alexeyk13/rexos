@@ -471,6 +471,7 @@ static inline void stm32_uart_loop(UART** uarts)
     BAUD baud;
     for (;;)
     {
+        error(ERROR_OK);
         ipc_read_ms(&ipc, 0, 0);
         switch (ipc.cmd)
         {

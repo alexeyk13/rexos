@@ -38,8 +38,8 @@ void stm32_core_loop(CORE* core)
     IPC ipc;
     for (;;)
     {
-        ipc_read_ms(&ipc, 0, 0);
         error(ERROR_OK);
+        ipc_read_ms(&ipc, 0, 0);
         switch (ipc.cmd)
         {
         case IPC_PING:
