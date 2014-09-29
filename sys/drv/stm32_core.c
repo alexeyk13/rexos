@@ -64,11 +64,19 @@ void stm32_core_loop(CORE* core)
 #endif
         //timer specific
         case STM32_TIMER_ENABLE:
-            stm32_timer_enable(core, (TIMER_NUM)ipc.param1, ipc.param2, ipc.param3);
+            stm32_timer_enable(core, (TIMER_NUM)ipc.param1, ipc.param2);
             ipc_post_or_error(&ipc);
             break;
         case STM32_TIMER_DISABLE:
             stm32_timer_disable(core, (TIMER_NUM)ipc.param1);
+            ipc_post_or_error(&ipc);
+            break;
+        case STM32_TIMER_ENABLE_EXT_CLOCK:
+            stm32_timer_enable_ext_clock(core, (TIMER_NUM)ipc.param1, (PIN)ipc.param2, ipc.param3);
+            ipc_post_or_error(&ipc);
+            break;
+        case STM32_TIMER_DISABLE_EXT_CLOCK:
+            stm32_timer_disable_ext_clock(core, (TIMER_NUM)ipc.param1, (PIN)ipc.param2);
             ipc_post_or_error(&ipc);
             break;
         case STM32_TIMER_START:
