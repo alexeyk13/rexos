@@ -42,18 +42,26 @@
 //remember, that process itself requires around 256 bytes
 #define UART_TX_BUF_SIZE                        32ul
 //------------------------------ TIMER -----------------------------------------------
-#define HPET_TIMER                               TIM_2
+#define HPET_TIMER                               TIM_7
 #define TIMER_SOFT_RTC                           0
 #define SECOND_PULSE_TIMER                       TIM_3
-//------------------------------- ADC ------------------------------------------------
+//----------------------------- ANALOG -----------------------------------------------
 // Avg Slope, refer to datasheet
 #define AVG_SLOPE                                4300
 // temp at 25C in mV, refer to datasheet
 #define V25_MV                                   1400
 // Vref in mV, set to 3300, if used internal
 #define ADC_VREF                                 3300
-//------------------------------- DAC ------------------------------------------------
+
 #define DAC_BOFF                                 1
+#define DAC_DMA                                  1
+//will be allocated 2 for double-buffering, decrease for memory saving, increase if you have data underflow.
+//Generally you will need fifo enough to hold samples at least for 30-50us, depending on core frequency.
+#define DAC_DMA_FIFO_SIZE                        128
+//Turn on for DAC data underflow debug.
+#define DAC_DEBUG                                0
+//Copy data to internal buffer, using M2M DMA. Ignored if DAC_DMA is not set
+#define DAC_M2M_DMA                              1
 
 //------------------------------- USB ------------------------------------------------
 //Maximum packet size for USB.
