@@ -177,55 +177,23 @@ static inline void stm32_dac_setup_trigger(TIMER_NUM num, int channel)
 }
 #endif
 
-static inline void stm32_dac_timer_open(ANALOG* analog, int channel, STM32_DAC_ENABLE* de)
-{
-    DAC_STRUCT* dac = &analog->dac[channel];
-#if (DAC_DMA)
-    ack(analog->core, STM32_TIMER_ENABLE, dac->timer, 0, 0);
-
-//    stm32_dac_setup_trigger(dac->timer);
-    //trigger on update
-    TIMER_REGS[dac->timer]->CR2 = 2 << 4;
-    TIMER_REGS[dac->timer]->DIER |= TIM_DIER_UDE;
-    switch (dac->timer)
-    {
-    case TIM_3:
-    case TIM_8:
-        DAC->CR |= (1 << 3) << (16 * channel);
-        break;
-    case TIM_7:
-        DAC->CR |= (2 << 3) << (16 * channel);
-        break;
-    case TIM_5:
-        DAC->CR |= (3 << 3) << (16 * channel);
-        break;
-    case TIM_2:
-        DAC->CR |= (4 << 3) << (16 * channel);
-        break;
-    case TIM_4:
-        DAC->CR |= (5 << 3) << (16 * channel);
-        break;
-    case TIM_6:
-    default:
-        break;
-    }
-#else
-    irq_register(TIMER_VECTORS[dac->timer], stm32_dac_timer_isr, (void*)dac);
-    ack(analog->core, STM32_TIMER_ENABLE, dac->timer, TIMER_FLAG_ENABLE_IRQ | (10 << TIMER_FLAG_PRIORITY));
-#endif
-    ack(analog->core, STM32_TIMER_SETUP_HZ, de->frequency, 0, 0);
-}
-
 static inline void stm32_dac_trigger_open(ANALOG* analog, int channel, STM32_DAC_ENABLE* de)
 {
     DAC_STRUCT* dac = &analog->dac[channel];
     dac->flags = de->flags;
     dac->timer = de->timer;
     dac->pin = de->pin;
-    switch (de->flags & DAC_FLAGS_TRIGGER_MASK)
+    switch (dac->flags & DAC_FLAGS_TRIGGER_MASK)
     {
     case DAC_FLAGS_TIMER:
-        stm32_dac_timer_open(analog, channel, de);
+#if (DAC_DMA)
+        ack(analog->core, STM32_TIMER_ENABLE, dac->timer, 0, 0);
+        stm32_dac_setup_trigger(dac->timer, channel);
+#else
+        irq_register(TIMER_VECTORS[dac->timer], stm32_dac_timer_isr, (void*)dac);
+        ack(analog->core, STM32_TIMER_ENABLE, dac->timer, TIMER_FLAG_ENABLE_IRQ | (10 << TIMER_FLAG_PRIORITY));
+#endif
+        ack(analog->core, STM32_TIMER_SETUP_HZ, de->frequency, 0, 0);
         break;
     case DAC_FLAGS_PIN:
         ack(analog->core, STM32_GPIO_ENABLE_EXTI, dac->pin, dac->flags & 0xf, 0);
@@ -233,17 +201,32 @@ static inline void stm32_dac_trigger_open(ANALOG* analog, int channel, STM32_DAC
         DAC->CR |= (6 << 3) << (16 * channel);
         break;
     default:
-;
+#if (DAC_DMA)
+        ack(analog->core, STM32_TIMER_ENABLE_EXT_CLOCK, dac->timer, dac->pin, de->flags & 0xf);
+        stm32_dac_setup_trigger(dac->timer, channel);
+#else
+        irq_register(TIMER_VECTORS[dac->timer], stm32_dac_timer_isr, (void*)dac);
+        ack(analog->core, STM32_TIMER_ENABLE_EXT_CLOCK, dac->timer, dac->pin, (de->flags & 0xf) | (TIMER_FLAG_ENABLE_IRQ | (10 << TIMER_FLAG_PRIORITY)));
+#endif
+        TIMER_REGS[dac->timer]->PSC = 0;
+        TIMER_REGS[dac->timer]->ARR = de->frequency - 1;
     }
 }
 
 static inline void stm32_dac_trigger_close(ANALOG* analog, int channel)
 {
     DAC_STRUCT* dac = &analog->dac[channel];
-    if (dac->flags & DAC_FLAGS_TIMER)
+    switch (dac->flags & DAC_FLAGS_TRIGGER_MASK)
+    {
+    case DAC_FLAGS_TIMER:
         ack(analog->core, STM32_TIMER_DISABLE, dac->timer, 0, 0);
-    if (dac->flags & DAC_FLAGS_PIN)
+        break;
+    case DAC_FLAGS_PIN:
         ack(analog->core, STM32_GPIO_DISABLE_EXTI, dac->pin, 0, 0);
+        break;
+    default:
+        ack(analog->core, STM32_TIMER_DISABLE_EXT_CLOCK, dac->timer, dac->pin, 0);
+    }
 }
 
 static inline void stm32_dac_trigger_start(DAC_STRUCT* dac)
@@ -598,12 +581,7 @@ void stm32_analog()
             else if (ipc.param1 < STM32_ADC)
             {
                 if (direct_read(ipc.process, (void*)&de, sizeof(STM32_DAC_ENABLE)))
-                {
                     stm32_dac_open(&analog, ipc.param1, &de);
-                }
-                else
-                    printf("res: %d\n\r", get_last_error());
-
             }
             else
                 error(ERROR_INVALID_PARAMS);

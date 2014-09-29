@@ -37,17 +37,19 @@ typedef enum {
     STM32_ADC
 } STM32_DAC;
 
-typedef enum {
-    DAC_TRIGGER_TIMER,
-    DAC_TRIGGER_PIN
-} DAC_TRIGGER;
+#define DAC_FLAGS_RISING                            (1 << 0)
+#define DAC_FLAGS_FALLING                           (1 << 1)
+#define DAC_FLAGS_PULLUP                            (1 << 2)
+#define DAC_FLAGS_PULLDOWN                          (1 << 3)
+#define DAC_FLAGS_TIMER                             (1 << 4)
+#define DAC_FLAGS_PIN                               (1 << 5)
+#define DAC_FLAGS_TRIGGER_MASK                      (3 << 4)
 
 typedef struct {
-    DAC_TRIGGER trigger;
-
     PIN pin;
     TIMER_NUM timer;
     unsigned int frequency;
+    unsigned int flags;
 } STM32_DAC_ENABLE;
 
 extern const REX __STM32_ANALOG;
