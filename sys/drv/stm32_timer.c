@@ -274,17 +274,37 @@ void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
     error(ERROR_INVALID_PARAMS);
 }
 
-void stm32_timer_start(TIMER_NUM num, unsigned int psc, unsigned int count)
+void stm32_timer_setup_hz(TIMER_NUM num, unsigned int hz)
 {
     if (num >= TIMERS_COUNT)
     {
         error(ERROR_NOT_SUPPORTED);
         return;
     }
-    TIMER_REGS[num]->PSC = psc - 1;
-    TIMER_REGS[num]->ARR = count - 1;
-    TIMER_REGS[num]->CNT = 0;
+    unsigned int psc, value, clock;
+    //setup psc
+    clock = stm32_timer_get_clock(num);
+    //period in clock units, rounded
+    value = (clock * 10) / hz;
+    if (value % 10 >= 5)
+        value += 10;
+    value /= 10;
+    psc = value / 0xffff;
+    if (value % 0xffff)
+        ++psc;
 
+    TIMER_REGS[num]->PSC = psc - 1;
+    TIMER_REGS[num]->ARR = (value / psc) - 1;
+}
+
+void stm32_timer_start(TIMER_NUM num)
+{
+    if (num >= TIMERS_COUNT)
+    {
+        error(ERROR_NOT_SUPPORTED);
+        return;
+    }
+    TIMER_REGS[num]->CNT = 0;
     TIMER_REGS[num]->EGR = TIM_EGR_UG;
     TIMER_REGS[num]->CR1 |= TIM_CR1_CEN;
 }
@@ -342,7 +362,13 @@ void hpet_start(unsigned int value, void* param)
     unsigned int mul = value / 0xffff;
     if (value % 0xffff)
         ++mul;
-    stm32_timer_start(HPET_TIMER, core->hpet_uspsc * mul, value / mul);
+
+    TIMER_REGS[HPET_TIMER]->PSC = core->hpet_uspsc * mul - 1;
+    TIMER_REGS[HPET_TIMER]->ARR = value / mul - 1;
+    TIMER_REGS[HPET_TIMER]->CNT = 0;
+
+    TIMER_REGS[HPET_TIMER]->EGR = TIM_EGR_UG;
+    TIMER_REGS[HPET_TIMER]->CR1 |= TIM_CR1_CEN;
 }
 
 void hpet_stop(void* param)
@@ -390,7 +416,7 @@ void stm32_timer_init(CORE *core)
 #if (TIMER_SOFT_RTC)
     irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)core);
     stm32_timer_enable(core, SECOND_PULSE_TIMER, TIMER_FLAG_ENABLE_IRQ | (15 << TIMER_FLAG_PRIORITY));
-    //100us prescaller
-    stm32_timer_start(SECOND_PULSE_TIMER, stm32_timer_get_clock(SECOND_PULSE_TIMER) / 10000, 10000);
+    stm32_timer_setup_hz(SECOND_PULSE_TIMER, 1);
+    stm32_timer_start(SECOND_PULSE_TIMER);
 #endif
 }

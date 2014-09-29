@@ -57,7 +57,8 @@ void stm32_timer_enable(CORE* core, TIMER_NUM num, unsigned int flags);
 void stm32_timer_disable(CORE* core, TIMER_NUM num);
 void stm32_timer_enable_ext_clock(CORE *core, TIMER_NUM num, PIN pin, unsigned int flags);
 void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin);
-void stm32_timer_start(TIMER_NUM num, unsigned int psc, unsigned int count);
+void stm32_timer_setup_hz(TIMER_NUM num, unsigned int hz);
+void stm32_timer_start(TIMER_NUM num);
 void stm32_timer_stop(TIMER_NUM num);
 unsigned int stm32_timer_get_clock(TIMER_NUM num);
 #if (SYS_INFO)

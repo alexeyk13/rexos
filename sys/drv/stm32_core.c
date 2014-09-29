@@ -79,8 +79,12 @@ void stm32_core_loop(CORE* core)
             stm32_timer_disable_ext_clock(core, (TIMER_NUM)ipc.param1, (PIN)ipc.param2);
             ipc_post_or_error(&ipc);
             break;
+        case STM32_TIMER_SETUP_HZ:
+            stm32_timer_setup_hz((TIMER_NUM)ipc.param1, ipc.param2);
+            ipc_post_or_error(&ipc);
+            break;
         case STM32_TIMER_START:
-            stm32_timer_start(ipc.param1, ipc.param2, ipc.param3);
+            stm32_timer_start((TIMER_NUM)ipc.param1);
             ipc_post_or_error(&ipc);
             break;
         case STM32_TIMER_STOP:
