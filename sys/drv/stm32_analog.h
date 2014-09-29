@@ -27,6 +27,7 @@
 typedef enum {
     STM32_ADC_SINGLE_CHANNEL = IPC_USER,
     STM32_ADC_TEMP,
+    STM32_DAC_SET_LEVEL,
     STM32_DAC_UNDERFLOW_DEBUG
 } STM32_ANALOG_IPCS;
 
@@ -48,7 +49,7 @@ typedef enum {
 typedef struct {
     PIN pin;
     TIMER_NUM timer;
-    unsigned int frequency;
+    unsigned int value;
     unsigned int flags;
 } STM32_DAC_ENABLE;
 
