@@ -399,23 +399,84 @@
 
 #endif
 
+//---------------------------------------------------------------------------- STM32 L0 ----------------------------------------------------------------------------------------------------------
+#if defined(STM32L051C6) || defined(STM32L051C8) || defined(STM32L051K6) || defined(STM32L051K8) || defined(STM32L051R6) || defined(STM32L051R8) \
+ || defined(STM32L051T6) || defined(STM32L051T8)
+#define STM32L051xx
+#endif
+
+#if defined(STM32L052C6) || defined(STM32L052C8) || defined(STM32L052K6) || defined(STM32L052K8) || defined(STM32L052R6) || defined(STM32L052R8) \
+ || defined(STM32L052T6) || defined(STM32L052T8)
+#define STM32L052xx
+#endif
+
+#if defined(STM32L053C6) || defined(STM32L053C8) || defined(STM32L053R6) || defined(STM32L053R8)
+#define STM32L053xx
+#endif
+
+#if defined(STM32L062K8)
+#define STM32L062xx
+#endif
+
+#if defined(STM32L063C8) || defined(STM32L063R8)
+#define STM32L063xx
+#endif
+
+#if defined(STM32L051C6) || defined(STM32L051K6) || defined(STM32L051R6) || defined(STM32L051T6) \
+ || defined(STM32L052C6) || defined(STM32L052K6) || defined(STM32L052R6) || defined(STM32L052T6) \
+ || defined(STM32L053C6) || defined(STM32L053R6)
+#define FLASH_SIZE          0x8000
+#endif
+
+#if defined(STM32L051C8) || defined(STM32L051K8) || defined(STM32L051R8) || defined(STM32L051T8) \
+ || defined(STM32L052C8) || defined(STM32L052K8) || defined(STM32L052R8) || defined(STM32L052T8) \
+ || defined(STM32L053C8) || defined(STM32L053R8) || defined(STM32L062K8) || defined(STM32L063C8) \
+ || defined(STM32L063R8)
+#define FLASH_SIZE          0x10000
+#endif
+
+#if defined(STM32L051xx) || defined(STM32L052xx) || defined(STM32L053xx) || defined(STM32L061xx) || defined(STM32L062xx) || defined(STM32L063xx)
+#define STM32L0
+#define SRAM_SIZE           0x2000
+
+#if defined(STM32L051xx) || defined(STM32L061xx)
+#define IRQ_VECTORS_COUNT   30
+#else
+#define IRQ_VECTORS_COUNT   32
+#endif
+
+#endif
+
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
 #define STM32
-#ifndef FLASH_BASE
-#define FLASH_BASE                0x08000000
-#endif
 #ifndef CORTEX_M3
 #define CORTEX_M3
 #endif
+#endif //STM32F1 || STM32F2 || STM32F4
+
+#if defined(STM32L0)
+#define STM32
+#ifndef CORTEX_M0
+#define CORTEX_M0
+#endif
+#endif //STM32L0
+
+#if defined(CORTEX_M3) || defined(CORTEX_M0)
 #ifndef CORTEX_M
 #define CORTEX_M
 #endif
-#endif //STM32F1 || STM32F2 || STM32F4
+#endif
+
+#if defined(STM32)
+#ifndef FLASH_BASE
+#define FLASH_BASE                0x08000000
+#endif
+#endif
 
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+#if defined(STM32)
 
 //fucking morons in ST forgot to check if variable is already defined
 #undef SRAM_BASE
@@ -428,9 +489,11 @@
 #include "stm32f2xx.h"
 #elif defined(STM32F4)
 #include "stm32f4xx.h"
+#elif defined(STM32L0)
+#include "stm23l0xx.h"
 #endif
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)
 
-#endif //STM32F1 || STM32F2 || STM32F4
+#endif //STM32
 
 #endif //STM32_H
