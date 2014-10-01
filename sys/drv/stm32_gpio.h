@@ -112,7 +112,9 @@ void gpio_disable_pin(CORE* core, PIN pin);
 void gpio_set_pin(PIN pin, bool set);
 bool gpio_get_pin(PIN pin);
 void gpio_disable_jtag(CORE* core);
+#if (SYS_INFO)
 void stm32_gpio_info(CORE* core);
+#endif
 
 void stm32_gpio_init(CORE* core);
 

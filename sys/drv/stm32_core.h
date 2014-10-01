@@ -63,17 +63,19 @@ typedef enum {
 } RESET_REASON;
 
 typedef struct {
-    //timer specific
-    int shared1, shared8;
-    int hpet_uspsc;
     //GPIO specific
-    int* used_pins;
+    int* used_pins[GPIO_COUNT];
 #if defined(STM32F1)
     int used_afio;
 #endif
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     //power specific
     int backup_count, write_count, dma_count[2];
     RESET_REASON reset_reason;
+    //timer specific
+    int shared1, shared8;
+    int hpet_uspsc;
+#endif //defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
 }CORE;
 
 extern const REX __STM32_CORE;

@@ -5,11 +5,11 @@
 */
 
 #include "stm32_gpio.h"
-#include "../../userspace/error.h"
-#include "../sys.h"
 #include "sys_config.h"
+#if (SYS_INFO)
 #include "../../userspace/lib/stdlib.h"
 #include "../../userspace/lib/stdio.h"
+#endif
 #include <string.h>
 
 #define GPIO_PORT(pin)                                          (pin / 16)
@@ -18,22 +18,19 @@
 typedef GPIO_TypeDef* GPIO_TypeDef_P;
 extern const GPIO_TypeDef_P GPIO[];
 
-//it's what defined in STM32F1xxx.h. Real count may be less.
 #if defined(STM32F1)
-#define GPIO_COUNT                                              7
 const GPIO_TypeDef_P GPIO[GPIO_COUNT] =							{GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF, GPIOG};
 static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {2, 3, 4, 5, 6, 7, 8};
 #define GPIO_POWER_PORT                                         RCC->APB2ENR
 #elif defined(STM32F2)
-#define GPIO_COUNT                                              9
 const GPIO_TypeDef_P GPIO[GPIO_COUNT] =							{GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF, GPIOG, GPIOH, GPIOI};
 static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {0, 1, 2, 3, 4, 5, 6, 7, 8};
 #define GPIO_POWER_PORT                                         RCC->AHB1ENR
 #elif defined(STM32F4)
-#define GPIO_COUNT                                              11
 const GPIO_TypeDef_P GPIO[GPIO_COUNT] =							{GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF, GPIOG, GPIOH, GPIOI, GPIOJ, GPIOK};
 static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 #define GPIO_POWER_PORT                                         RCC->AHB1ENR
+#elif defined(STM32L0)
 #endif
 
 #if defined(STM32F1)
@@ -204,7 +201,7 @@ bool gpio_get_pin(PIN pin)
 void gpio_disable_jtag(CORE *core)
 {
     core->used_pins[0] += 3;
-    core->used_pins[2] += 2;
+    core->used_pins[1] += 2;
     gpio_disable_pin(core, A13);
     gpio_disable_pin(core, A14);
     gpio_disable_pin(core, A15);
@@ -217,6 +214,7 @@ void gpio_disable_jtag(CORE *core)
 #endif
 }
 
+#if (SYS_INFO)
 void stm32_gpio_info(CORE* core)
 {
     int i;
@@ -235,10 +233,12 @@ void stm32_gpio_info(CORE* core)
     }
     printf("\n\r");
 }
+#endif
 
 void stm32_gpio_init(CORE* core)
 {
-    core->used_pins = (int*)malloc(sizeof(int) * GPIO_COUNT);
     memset(core->used_pins, 0, sizeof(int) * GPIO_COUNT);
+#if defined(STM32F1)
     core->used_afio = 0;
+#endif
 }
