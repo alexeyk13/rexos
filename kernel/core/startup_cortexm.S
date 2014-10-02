@@ -22,29 +22,29 @@
 		psr
 	  */
 
-	.equ   CONTEXT_SIZE,          (16 * 4)
-	.equ   R0_OFFSET_IN_CONTEXT,       (8 * 4)
-	.equ   LR_OFFSET_IN_CONTEXT,       (13 * 4)
-	.equ   PC_OFFSET_IN_CONTEXT,       (14 * 4)
-	.equ   PSR_OFFSET_IN_CONTEXT,       (15 * 4)
+  .equ   CONTEXT_SIZE,          (16 * 4)
+  .equ   R0_OFFSET_IN_CONTEXT,  (8 * 4)
+  .equ   LR_OFFSET_IN_CONTEXT,  (13 * 4)
+  .equ   PC_OFFSET_IN_CONTEXT,  (14 * 4)
+  .equ   PSR_OFFSET_IN_CONTEXT, (15 * 4)
 
-	.equ   LR_TO_HANDLER,         0xfffffff1
-	.equ   LR_TO_PROCESS_PSP,       0xfffffffd
-	.equ   INITIAL_PSP_VALUE,         0x01000000
-	.equ   SVC_PSP_VALUE,         0x0100000b
+  .equ   LR_TO_HANDLER,         0xfffffff1
+  .equ   LR_TO_PROCESS_PSP,     0xfffffffd
+  .equ   INITIAL_PSP_VALUE,     0x01000000
+  .equ   SVC_PSP_VALUE,         0x0100000b
 
-	.equ   ICSR,               0xe000ed04
-	.equ   CCR,               0xe000ed14
-	.equ   SHPR1,              0xe000ed18
-	.equ   SHPR2,              0xe000ed1c
-	.equ   SHPR3,              0xe000ed20
-	.equ   SHCSR,              0xe000ed24
-	.equ	 ICSPR0,						0xe000e280
+  .equ   ICSR,                  0xe000ed04
+  .equ   CCR,                   0xe000ed14
+  .equ   SHPR1,                 0xe000ed18
+  .equ   SHPR2,                 0xe000ed1c
+  .equ   SHPR3,                 0xe000ed20
+  .equ   SHCSR,                 0xe000ed24
+  .equ   ICPR0,                 0xe000e280
 
-	.equ   PEND_SV_BIT,           (1 << 28)
-	.equ   SHPR1_VALUE,           ((0x02 << 0) | (0x02 << 8) | (0x02 << 16))
-	.equ   SHPR2_VALUE,           (0xff << 24)
-	.equ   SHPR3_VALUE,           (0xff << 16)
+  .equ   PEND_SV_BIT,           (1 << 28)
+  .equ   SHPR1_VALUE,           ((0x02 << 0) | (0x02 << 8) | (0x02 << 16))
+  .equ   SHPR2_VALUE,           (0xff << 24)
+  .equ   SHPR3_VALUE,           (0xff << 16)
 
 /* imported global constants and functions */
 	.extern on_hard_fault
@@ -118,7 +118,7 @@ Reset_Handler:
 
 	@clear all pending interrupts
 	ldr	r0, =0xffffffff
-	ldr	r1, =ICSPR0
+  ldr	r1, =ICPR0
 	str	r0, [r1]
 	str	r0, [r1, #0x4]
 	str	r0, [r1, #0x8]
