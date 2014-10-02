@@ -266,6 +266,7 @@ void setup_clock(int param1, int param2, int param3)
         RCC->CR |= RCC_CR_HSEON;
 #endif
 #if defined(HSE_STARTUP_TIMEOUT)
+        int i;
         for (i = 0; i < HSE_STARTUP_TIMEOUT; ++i)
             if (RCC->CR & RCC_CR_HSERDY)
                 break;

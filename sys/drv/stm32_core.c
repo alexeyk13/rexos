@@ -5,7 +5,6 @@
 */
 
 #include "stm32_core.h"
-
 #include "stm32_timer.h"
 #include "stm32_gpio.h"
 #include "stm32_power.h"
@@ -103,7 +102,7 @@ void stm32_core_loop(CORE* core)
         case STM32_GPIO_ENABLE_PIN_SYSTEM:
 #if defined(STM32F1)
             gpio_enable_pin_system(core, (PIN)ipc.param1, (GPIO_MODE)ipc.param2, ipc.param3);
-#elif defined(STM32F2) || defined(STM32F4)
+#elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
             gpio_enable_pin_system(core, (PIN)ipc.param1, ipc.param2, (AF)ipc.param3);
 #endif
             ipc_post_or_error(&ipc);
@@ -145,6 +144,7 @@ void stm32_core_loop(CORE* core)
             ipc.param1 = get_reset_reason(core);
             ipc_post_or_error(&ipc);
             break;
+#if defined(STM32F1)
         case STM32_POWER_DMA_ON:
             dma_on(core, ipc.param1);
             ipc_post_or_error(&ipc);
@@ -153,6 +153,7 @@ void stm32_core_loop(CORE* core)
             dma_off(core, ipc.param1);
             ipc_post_or_error(&ipc);
             break;
+#endif //STM32F1
         case STM32_POWER_BACKUP_ON:
             backup_on(core);
             ipc_post_or_error(&ipc);
@@ -169,6 +170,7 @@ void stm32_core_loop(CORE* core)
             backup_write_protect(core);
             ipc_post_or_error(&ipc);
             break;
+#if defined(STM32F1)
         case STM32_POWER_USB_ON:
             stm32_usb_power_on();
             ipc_post_or_error(&ipc);
@@ -177,6 +179,7 @@ void stm32_core_loop(CORE* core)
             stm32_usb_power_off(core);
             ipc_post_or_error(&ipc);
             break;
+#endif //STM32F1
         //RTC
 #if !(TIMER_SOFT_RTC)
         case STM32_RTC_GET:

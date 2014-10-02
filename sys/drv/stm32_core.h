@@ -8,6 +8,7 @@
 #define STM32_CORE_H
 
 #include "stm32_config.h"
+#include "sys_config.h"
 #include "../sys.h"
 #include "../../userspace/process.h"
 
@@ -67,11 +68,16 @@ typedef struct {
     int* used_pins[GPIO_COUNT];
 #if defined(STM32F1)
     int used_afio;
+#elif defined(STM32L0)
+    int used_syscfg;
+#endif
+    //power specific
+    int backup_count, write_count;
+    RESET_REASON reset_reason;
+#if defined(STM32F1)
+    int dma_count[2];
 #endif
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
-    //power specific
-    int backup_count, write_count, dma_count[2];
-    RESET_REASON reset_reason;
     //timer specific
     int shared1, shared8;
     int hpet_uspsc;
