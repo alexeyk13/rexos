@@ -57,7 +57,7 @@ void gpio_enable_afio(CORE* core);
 void gpio_disable_afio(CORE* core);
 
 void gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup);
-#elif defined(STM32F2) || defined(STM32F4)
+#elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
 
 #define GPIO_MODE_INPUT                         (0x0 << 0)
 #define GPIO_MODE_OUTPUT                        (0x1 << 0)
@@ -67,10 +67,17 @@ void gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup);
 #define GPIO_OT_PUSH_PULL                       (0x0 << 2)
 #define GPIO_OT_OPEN_DRAIN                      (0x1 << 2)
 
+#if defined(STM32L0)
+#define GPIO_SPEED_VERY_LOW                     (0x0 << 3)
+#define GPIO_SPEED_LOW                          (0x1 << 3)
+#define GPIO_SPEED_MEDIUM                       (0x2 << 3)
+#define GPIO_SPEED_HIGH                         (0x3 << 3)
+#else
 #define GPIO_SPEED_LOW                          (0x0 << 3)
 #define GPIO_SPEED_MEDIUM                       (0x1 << 3)
 #define GPIO_SPEED_FAST                         (0x2 << 3)
 #define GPIO_SPEED_HIGH                         (0x3 << 3)
+#endif
 
 #define GPIO_PUPD_NO_PULLUP                     (0x0 << 5)
 #define GPIO_PUPD_PULLUP                        (0x1 << 5)
@@ -94,6 +101,11 @@ typedef enum {
     AF14,
     AF15
 } AF;
+
+#if defined(STM32L0)
+void gpio_enable_syscfg(CORE* core);
+void gpio_disable_syscfg(CORE* core);
+#endif
 
 void gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af);
 #endif
