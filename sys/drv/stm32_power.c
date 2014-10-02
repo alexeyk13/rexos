@@ -5,10 +5,10 @@
 */
 
 #include "stm32_power.h"
+//#include "../sys.h"
+#if (SYS_INFO)
 #include "../../userspace/lib/stdio.h"
-#include "../sys.h"
-#include "../../userspace/core/stm32.h"
-#include "stm32_config.h"
+#endif
 
 #if defined(STM32F1)
 #define MAX_APB2                             72000000
@@ -25,9 +25,13 @@
 #elif defined(STM32F427) || defined(STM32F429) || defined(STM32F437) || defined(STM32F439)
 #define MAX_APB2                             90000000
 #define MAX_APB1                             45000000
+#elif defined(STM32L0)
+#define MAX_APB2                             32000000
+#define MAX_APB1                             32000000
+#define HSI_VALUE                            16000000
 #endif
 
-#if defined(STM32F1)
+#if defined(STM32F1) || defined(STM32L0)
 #define PPRE1                                8
 #define PPRE2                                11
 #elif defined(STM32F2) || defined(STM32F4)
@@ -135,6 +139,33 @@ static inline int get_pll_clock()
     return pllsrc * (((RCC->CFGR >> 18) & 0xf) + 2);
 }
 
+#elif defined(STM32L0)
+static inline void setup_pll(int mul, int div)
+{
+    unsigned int pow;
+    for (pow = 0; mul > 4; mul /= 2, pow++) {}
+    RCC->CFGR &= ~((0xf << 18) | (3 << 22) | (1 << 16));
+    RCC->CFGR |= (((pow << 1) | (mul - 3)) << 18);
+#if (HSE_VALUE)
+    RCC->CFGR |= (((div - 1) << 22) | ((pow << 1) | (mul - 3)) << 18) | (1 << 16);
+#else
+    RCC->CFGR |= (((div - 1) << 22) | ((pow << 1) | (mul - 3)) << 18);
+#endif
+}
+
+static inline int get_pll_clock()
+{
+    unsigned int pllsrc = HSI_VALUE;
+    unsigned int mul = (2 << ((RCC->CFGR >> 19) & 7)) * (3 + ((RCC->CFGR >> 18) & 1));
+    unsigned int div = ((RCC->CFGR >> 22) & 3) + 1;
+
+#if (HSE_VALUE)
+    if (RCC->CFGR & (1 << 16))
+        pllsrc = HSE_VALUE;
+#endif
+    return pllsrc * mul / div;
+}
+
 #elif defined (STM32F2) || defined (STM32F4)
 static inline void setup_pll(int m, int n, int p)
 {
@@ -164,10 +195,13 @@ int get_core_clock()
     case RCC_CFGR_SWS_HSI:
         return HSI_VALUE;
         break;
-    case RCC_CFGR_SWS_HSE:
-#if (HSE_VALUE)
-        return HSE_VALUE;
+#if defined(STM32L0)
+    case RCC_CFGR_SWS_MSI:
+        return 65536 * (2 << ((RCC->ICSCR >> 13) & 7));
+        break;
 #endif
+    case RCC_CFGR_SWS_HSE:
+        return HSE_VALUE;
         break;
     case RCC_CFGR_SWS_PLL:
         return get_pll_clock();
@@ -201,14 +235,12 @@ int get_apb1_clock()
     return get_ahb_clock() / div;
 }
 
+#if defined(STM32F1)
 int get_adc_clock()
 {
-#if defined(STM32F1)
     return get_apb2_clock() / ((((RCC->CFGR >> 14) & 3) + 1) * 2);
-#else
-    return 0;
-#endif
 }
+#endif
 
 RESET_REASON get_reset_reason(CORE* core)
 {
@@ -217,28 +249,43 @@ RESET_REASON get_reset_reason(CORE* core)
 
 void setup_clock(int param1, int param2, int param3)
 {
-    int i, bus, pll_clock;
-    //1. switch to HSI (if not already)
-    if (((RCC->CFGR >> 2) & 3) != RCC_CFGR_SW_HSI)
+    unsigned int pll_clock;
+    //1. switch to internal RC(HSI/MSI) (if not already)
+    if (RCC->CFGR & (3 << 2))
     {
         RCC->CFGR &= ~3;
-        while ((RCC->CFGR & (3 << 2)) != RCC_CFGR_SWS_HSI) {}
+        while (RCC->CFGR & (3 << 2)) {}
     }
     //2. try to turn HSE on (if not already, and if HSE_VALUE is set)
 #if (HSE_VALUE)
     if ((RCC->CR & RCC_CR_HSEON) == 0)
     {
+#if (HSE_BYPASS)
+        RCC->CR |= RCC_CR_HSEON | RCC_CR_HSEBYP;
+#else
         RCC->CR |= RCC_CR_HSEON;
+#endif
+#if defined(HSE_STARTUP_TIMEOUT)
         for (i = 0; i < HSE_STARTUP_TIMEOUT; ++i)
             if (RCC->CR & RCC_CR_HSERDY)
                 break;
-    }
+#else
+        while ((RCC->CR & RCC_CR_HSERDY) == 0) {}
 #endif
+    }
+//we need to turn on HSI on STM32L0
+#elif defined(STM32L0)
+    if ((RCC->CR & RCC_CR_HSION) == 0)
+    {
+        RCC->CR |= RCC_CR_HSION;
+        while ((RCC->CR & RCC_CR_HSIRDY) == 0) {}
+    }
+#endif //HSE_VALUE
     //3. setup pll
     RCC->CR &= ~RCC_CR_PLLON;
 #if defined(STM32F10X_CL)
     setup_pll(param1, param2, param3 & 0xffff, (param3 >> 16));
-#elif defined(STM32F1)
+#elif defined(STM32F1) || defined(STM32L0)
     setup_pll(param1, param2);
 #elif defined(STM32F2) || defined(STM32F4)
     setup_pll(param1, param2, param3);
@@ -251,6 +298,9 @@ void setup_clock(int param1, int param2, int param3)
     //4. setup bases
     RCC->CFGR &= ~((0xf << 4) | (0x7 << PPRE1) | (0x7 << PPRE2));
     //AHB. Can operates at maximum clock
+    //on STM32L0 APB1/APB2 can operates at maximum speed, save few flash bytes here
+#ifndef STM32L0
+    unsigned int i, bus;
     //APB2.
     for (i = 1, bus = 0; (i <= 16) && (pll_clock / i > MAX_APB2); i *= 2, ++bus) {}
     if (bus)
@@ -259,12 +309,15 @@ void setup_clock(int param1, int param2, int param3)
     for (; (i <= 16) && (pll_clock / i > MAX_APB1); i *= 2, ++bus) {}
     if (bus)
         RCC->CFGR |= (4 | (bus - 1)) << PPRE1;
+#endif
 
     //5. tune flash latency
 #if defined(STM32F1) && !defined(STM32F100)
     FLASH->ACR = FLASH_ACR_PRFTBE | (pll_clock / 24000000);
 #elif defined(STM32F2) || defined(STM32F4)
     FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_ICEN | FLASH_ACR_DCEN | (pll_clock / 30000000);
+#elif defined(STM32L0)
+    FLASH->ACR = FLASH_ACR_PRE_READ | (pll_clock / 16000001);
 #endif
     //6. switch to PLL
     RCC->CFGR |= RCC_CFGR_SW_PLL;
@@ -277,7 +330,7 @@ void update_clock(int param1, int param2, int param3)
     RCC->APB1ENR = 0;
     unsigned int apb2 = RCC->APB2ENR;
     RCC->APB2ENR = 0;
-#if defined(STM32F1)
+#if defined(STM32F1) || defined(STM32L0)
     unsigned int ahb = RCC->AHBENR;
     RCC->AHBENR = 0;
 #elif defined (STM32F2) || defined(STM32F4)
@@ -296,13 +349,13 @@ void update_clock(int param1, int param2, int param3)
 
 #if defined(STM32F10X_CL)
     setup_clock(PLL_MUL, PLL_DIV, PLL2_MUL | (PLL2_DIV << 16));
-#elif defined(STM32F1)
-    setup_clock(PLL_MUL, PLL_DIV);
+#elif defined(STM32F1) || defined(STM32L0)
+    setup_clock(PLL_MUL, PLL_DIV, 0);
 #elif defined(STM32F2) || defined(STM32F4)
     setup_clock(PLL_M, PLL_N, PLL_P);
 #endif
 
-#if defined(STM32F1)
+#if defined(STM32F1) || defined(STM32L0)
     RCC->AHBENR = ahb;
 #elif defined (STM32F2) || defined(STM32F4)
     RCC->AHB1ENR = ahb1;
@@ -330,9 +383,11 @@ unsigned int get_clock(STM32_POWER_CLOCKS type)
     case STM32_CLOCK_APB2:
         res = get_apb2_clock();
         break;
+#if defined(STM32F1)
     case STM32_CLOCK_ADC:
         res = get_adc_clock();
         break;
+#endif
     default:
         error(ERROR_INVALID_PARAMS);
     }
@@ -346,7 +401,9 @@ void stm32_power_info(CORE* core)
     printf("AHB clock: %d\n\r", get_ahb_clock());
     printf("APB1 clock: %d\n\r", get_apb1_clock());
     printf("APB2 clock: %d\n\r", get_apb2_clock());
+#if defined(STM32F1)
     printf("ADC clock: %d\n\r", get_adc_clock());
+#endif
     printf("Reset reason: ");
     switch (core->reset_reason)
     {
@@ -372,6 +429,7 @@ void stm32_power_info(CORE* core)
 }
 #endif
 
+#if defined(STM32F1)
 void dma_on(CORE* core, unsigned int index)
 {
     if (core->dma_count[index]++ == 0)
@@ -383,19 +441,28 @@ void dma_off(CORE* core, unsigned int index)
     if (--core->dma_count[index] == 0)
         RCC->AHBENR &= ~(1 << index);
 }
+#endif
 
 void backup_on(CORE* core)
 {
     if (core->backup_count++ == 0)
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
         //enable POWER and BACKUP interface
         RCC->APB1ENR |= RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN;
+#elif defined(STM32L0)
+        RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+#endif
 }
 
 void backup_off(CORE* core)
 {
     if (--core->backup_count == 0)
-        //enable POWER and BACKUP interface
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+        //disable POWER and BACKUP interface
         RCC->APB1ENR &= ~(RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN);
+#elif defined(STM32L0)
+        RCC->APB1ENR &= ~RCC_APB1ENR_PWREN;
+#endif
 }
 
 void backup_write_enable(CORE* core)
@@ -416,9 +483,9 @@ void backup_write_protect(CORE* core)
     }
 }
 
+#if defined(STM32F1)
 void stm32_usb_power_on()
 {
-#if defined(STM32F1)
     int core;
     core = get_core_clock();
     if (core == 72000000)
@@ -433,11 +500,8 @@ void stm32_usb_power_on()
 #if defined(STM32F10X_CL)
     //enable clock
     RCC->AHBENR |= RCC_AHBENR_OTGFSEN;
-#else //F100, F101, F103
+#elif defined(STM32F1) //F100, F101, F103
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;
-#endif
-#else //F2, F4
-#error Only STM32F1 is supported for now!
 #endif
 }
 
@@ -449,10 +513,9 @@ void stm32_usb_power_off()
 #elif defined(STM32F1)
     //F100, F101, F103
     RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
-#else
-#error Only STM32F1 is supported for now!
 #endif
 }
+#endif
 
 static inline void decode_reset_reason(CORE* core)
 {
@@ -472,13 +535,16 @@ static inline void decode_reset_reason(CORE* core)
 
 void stm32_power_init(CORE* core)
 {
-    core->backup_count = core->write_count = core->dma_count[0] = core->dma_count[1] = 0;
+    core->backup_count = core->write_count = 0;
+#if defined(STM32F1)
+    core->dma_count[0] = core->dma_count[1] = 0;
     decode_reset_reason(core);
+#endif
 
     RCC->APB1ENR = 0;
     RCC->APB2ENR = 0;
 
-#if defined(STM32F1)
+#if defined(STM32F1) || defined(STM32L0)
     RCC->AHBENR = 0;
 #elif defined(STM32F2) || defined(STM32F4)
     RCC->AHB1ENR = 0;
@@ -493,8 +559,8 @@ void stm32_power_init(CORE* core)
 
 #if defined(STM32F10X_CL)
     setup_clock(PLL_MUL, PLL_DIV, PLL2_MUL | (PLL2_DIV << 16));
-#elif defined(STM32F1)
-    setup_clock(PLL_MUL, PLL_DIV);
+#elif defined(STM32F1) || defined(STM32L0)
+    setup_clock(PLL_MUL, PLL_DIV, 0);
 #elif defined(STM32F2) || defined(STM32F4)
     setup_clock(PLL_M, PLL_N, PLL_P);
 #endif
