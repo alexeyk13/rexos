@@ -495,7 +495,7 @@
 #elif defined(STM32F4)
 #include "stm32f4xx.h"
 #elif defined(STM32L0)
-#include "stm23l0xx.h"
+#include "stm32l0xx.h"
 #endif
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)
 
