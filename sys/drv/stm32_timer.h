@@ -11,10 +11,10 @@
         timer for STM32
   */
 
-#include "sys_config.h"
 #include "stm32_core.h"
 #include "stm32_gpio.h"
 
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
 typedef enum {
     TIM_1 = 0,
     TIM_2,
@@ -37,6 +37,14 @@ typedef enum {
     TIM_19,
     TIM_20
 }TIMER_NUM;
+#elif defined(STM32L0)
+typedef enum {
+    TIM_2 = 0,
+    TIM_6,
+    TIM_21,
+    TIM_22
+}TIMER_NUM;
+#endif
 
 #define TIMER_FLAG_RISING                            (1 << 0)
 #define TIMER_FLAG_FALLING                           (1 << 1)
