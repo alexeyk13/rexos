@@ -51,7 +51,6 @@ const REX __STM32_UART = {
 typedef USART_TypeDef* USART_TypeDef_P;
 
 #if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL)
-#define UARTS_COUNT                                         2
 static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38};
 static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {14, 17};
 static const PIN UART_TX_PINS[UARTS_COUNT] =                {A9, A2};
@@ -59,7 +58,6 @@ static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3};
 static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2};
 
 #elif defined(STM32F10X_MD) || defined(STM32F10X_MD_VL)
-#define UARTS_COUNT                                         3
 static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39};
 static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {14, 17, 18};
 static const PIN UART_TX_PINS[UARTS_COUNT] =                {A9, A2, B10};
@@ -67,7 +65,6 @@ static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3, B11};
 static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USART3};
 
 #elif defined(STM32F1)
-#define UARTS_COUNT                                         5
 static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39, 52, 53};
 static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {14, 17, 18, 19, 20};
 static const PIN UART_TX_PINS[UARTS_COUNT] =                {A9, A2, B10, C10, C12};
@@ -75,7 +72,6 @@ static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3, B11, C11, 
 static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USART3, UART4, UART5};
 
 #elif defined(STM32F2) || defined(STM32F40_41xxx)
-#define UARTS_COUNT                                         6
 static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39, 52, 53, 71};
 static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {4, 17, 18, 19, 20, 5};
 static const PIN UART_TX_PINS[UARTS_COUNT] =                {A9, A2, B10, C10, C12, C6};
@@ -83,23 +79,43 @@ static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3, B11, C11, 
 static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USART3, UART4, UART5, USART6};
 
 #elif defined(STM32F4)
-#define UARTS_COUNT                                         8
 static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39, 52, 53, 71, 82, 83};
 static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {4, 17, 18, 19, 20, 5, 30, 31};
 static const PIN UART_TX_PINS[UARTS_COUNT] =                {A9, A2, B10, C10, C12, C6, F7, F1};
 static const PIN UART_RX_PINS[UARTS_COUNT] =                {A10, A3, B11, C11, D2, C7, F6, E0};
 static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USART3, UART4, UART5, USART6, UART7, UART8};
+#elif defined(STM32L0)
+static const unsigned int UART_VECTORS[UARTS_COUNT] =       {27, 28};
+static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {14, 17};
+static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2};
+static const PIN UART_TX_PINS[UARTS_COUNT] =                {B6, PIN_UNUSED};
+static const PIN UART_RX_PINS[UARTS_COUNT] =                {B7, PIN_UNUSED};
 #endif
 
 void stm32_uart_on_isr(int vector, void* param)
 {
     UART* uart = (UART*)param;
+#if defined(STM32L0)
+#define USART_SR_TXE        USART_ISR_TXE
+#define USART_SR_TC         USART_ISR_TC
+#define USART_SR_PE         USART_ISR_PE
+#define USART_SR_FE         USART_ISR_FE
+#define USART_SR_NE         USART_ISR_NE
+#define USART_SR_ORE        USART_ISR_ORE
+#define USART_SR_RXNE       USART_ISR_RXNE
+    unsigned int sr = UART_REGS[uart->port]->ISR;
+#else
     uint16_t sr = UART_REGS[uart->port]->SR;
+#endif
 
     //transmit more
     if ((UART_REGS[uart->port]->CR1 & USART_CR1_TXEIE) && (sr & USART_SR_TXE) && uart->tx_chunk_size)
     {
+#if defined(STM32L0)
+        UART_REGS[uart->port]->TDR = uart->tx_buf[uart->tx_chunk_pos++];
+#else
         UART_REGS[uart->port]->DR = uart->tx_buf[uart->tx_chunk_pos++];
+#endif
         //no more
         if (uart->tx_chunk_pos >= uart->tx_chunk_size)
         {
@@ -123,7 +139,11 @@ void stm32_uart_on_isr(int vector, void* param)
             uart->error = ERROR_OVERFLOW;
         else
         {
+#if defined(STM32L0)
+            __REG_RC32(UART_REGS[uart->port]->RDR);
+#else
             __REG_RC32(UART_REGS[uart->port]->DR);
+#endif
             if (sr & USART_SR_FE)
                 uart->error = ERROR_UART_FRAME;
             else if (sr & USART_SR_PE)
@@ -136,7 +156,11 @@ void stm32_uart_on_isr(int vector, void* param)
     //receive data
     if (sr & USART_SR_RXNE)
     {
+#if defined(STM32L0)
+        uart->rx_char = UART_REGS[uart->port]->RDR;
+#else
         uart->rx_char = UART_REGS[uart->port]->DR;
+#endif
         uart->rx_ipc.process = uart->process;
         uart->rx_ipc.cmd = IPC_UART_ISR_RX_CHAR;
         uart->rx_ipc.param1 = (unsigned int)uart;
@@ -150,8 +174,13 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
     UART_REGS[(UART_PORT)param]->CR1 |= USART_CR1_TE;
     for(i = 0; i < size; ++i)
     {
+#if defined(STM32L0)
+        while ((UART_REGS[(UART_PORT)param]->ISR & USART_ISR_TXE) == 0) {}
+        UART_REGS[(UART_PORT)param]->TDR = buf[i];
+#else
         while ((UART_REGS[(UART_PORT)param]->SR & USART_SR_TXE) == 0) {}
         UART_REGS[(UART_PORT)param]->DR = buf[i];
+#endif
     }
     UART_REGS[(UART_PORT)param]->CR1 |= USART_CR1_TCIE;
     //transmitter will be disabled in next IRQ TC
@@ -184,9 +213,17 @@ bool uart_set_baudrate(UART* uart, const BAUD* config)
     UART_REGS[uart->port]->CR1 &= ~USART_CR1_UE;
 
     if (config->data_bits == 8 && config->parity != 'N')
+#if defined(STM32L0)
+        UART_REGS[uart->port]->CR1 |= USART_CR1_M_0;
+#else
         UART_REGS[uart->port]->CR1 |= USART_CR1_M;
+#endif
     else
+#if defined(STM32L0)
+        UART_REGS[uart->port]->CR1 &= ~USART_CR1_M_0;
+#else
         UART_REGS[uart->port]->CR1 &= ~USART_CR1_M;
+#endif
 
     if (config->parity != 'N')
     {
@@ -331,6 +368,8 @@ UART* uart_open(UART_PORT port, UART_ENABLE* ue)
         ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
 #elif defined(STM32F2) || defined(STM32F4)
         ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
+#elif defined(STM32L0)
+        ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, uart->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, uart->tx_pin == UART_TX_PINS[uart->port] ? AF0 : AF4);
 #endif
     }
 
@@ -340,6 +379,8 @@ UART* uart_open(UART_PORT port, UART_ENABLE* ue)
         ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, uart->rx_pin, GPIO_MODE_INPUT_FLOAT, false);
 #elif defined(STM32F2) || defined(STM32F4)
         ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, uart->rx_pin, , GPIO_MODE_AF | GPIO_SPEED_HIGH, uart->port < UART_4 ? AF7 : AF8);
+#elif defined(STM32L0)
+        ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, uart->rx_pin, GPIO_MODE_AF | GPIO_SPEED_HIGH, uart->rx_pin == UART_RX_PINS[uart->port] ? AF0 : AF4);
 #endif
     }
     //power up

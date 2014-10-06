@@ -221,5 +221,6 @@ void stm32_core()
 #if (STM32_WDT)
     stm32_wdt_init();
 #endif
+
     stm32_core_loop(&core);
 }

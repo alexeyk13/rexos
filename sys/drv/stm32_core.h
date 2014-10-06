@@ -77,10 +77,10 @@ typedef struct {
 #if defined(STM32F1)
     int dma_count[2];
 #endif
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     //timer specific
-    int shared1, shared8;
     int hpet_uspsc;
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+    int shared1, shared8;
 #endif //defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
 }CORE;
 

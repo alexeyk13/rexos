@@ -54,6 +54,8 @@ typedef struct {
 #define UARTS_COUNT                                         6
 #elif defined(STM32F4)
 #define UARTS_COUNT                                         8
+#elif defined(STM32L0)
+#define UARTS_COUNT                                         2
 #endif
 
 extern const REX __STM32_UART;
