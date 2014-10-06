@@ -69,15 +69,25 @@ int_vectors:
 	.word  Reset_Handler
 	.word  NMI_Handler
 	.word  HardFault_Handler
+#if defined(CORTEX_M3) || defined(CORTEX_M4)
 	.word  MemManage_Handler
 	.word  BusFault_Handler
 	.word  UsageFault_Handler
+#else
+	.word  0
+	.word  0
+	.word  0
+#endif
 	.word  0
 	.word  0
 	.word  0
 	.word  0
 	.word  SVC_Handler
+#if defined(CORTEX_M3) || defined(CORTEX_M4)
 	.word  DebugMon_Handler
+#else
+	.word  0
+#endif
 	.word  0
 	.word  PendSV_Handler
 	.word  SysTick_Handler
@@ -88,7 +98,13 @@ int_vectors:
 
 /*********************** reset vector handler *********************/
 	.syntax unified
+#if defined(CORTEX_M3)
 	.cpu cortex-m3
+#elif defined(CORTEX_M4)
+	.cpu cortex-m4
+#else
+	.cpu cortex-m0
+#endif
 	.thumb
 
 	.thumb_func
@@ -96,9 +112,11 @@ Reset_Handler:
 	cpsid   i
 
 	@setup system and fault handlers priority
+#if defined(CORTEX_M3) || defined(CORTEX_M4)
 	ldr   r1, =SHPR1
 	ldr   r0, =SHPR1_VALUE
 	str   r0, [r1]
+#endif
 
 	ldr   r1, =SHPR2
 	ldr   r0, =SHPR2_VALUE
@@ -108,18 +126,21 @@ Reset_Handler:
 	ldr   r0, =SHPR3_VALUE
 	str   r0, [r1]
 
+#if defined(CORTEX_M3) || defined(CORTEX_M4)
 	@enable detailed faults
 	ldr   r1, =SHCSR
-	mov   r2, #7
-	lsl   r2, r2, #16
+	movs  r2, #7
+	lsls  r2, r2, #16
 	ldr   r0, [r1]
-	orr   r0, r0, r2
+	orrs  r0, r0, r2
 	str   r0, [r1]
+	#endif
 
 	@clear all pending interrupts
 	ldr	r0, =0xffffffff
-  ldr	r1, =ICPR0
+	ldr	r1, =ICPR0
 	str	r0, [r1]
+#if defined(CORTEX_M3) || defined(CORTEX_M4)
 	str	r0, [r1, #0x4]
 	str	r0, [r1, #0x8]
 	str	r0, [r1, #0xc]
@@ -127,6 +148,7 @@ Reset_Handler:
 	str	r0, [r1, #0x14]
 	str	r0, [r1, #0x18]
 	str	r0, [r1, #0x1c]
+#endif
 
 	bl   startup                @ to high-level initialization
 
@@ -144,7 +166,13 @@ Reset_Handler:
 /*********************** exception vectors handlers *********************/
 .macro exception_enter
 	mov   r0, lr
+#if defined(CORTEX_M0)
+	movs	r1, #0
+	subs	r1, r1, #3
+	cmp   r0, r1
+#else
 	cmp   r0, 0xfffffffd
+#endif
 	bne   1f
 	mrs   r1, psp
 	b     2f
@@ -159,6 +187,7 @@ HardFault_Handler:
 	exception_enter
 	b   on_hard_fault
 
+#if defined(CORTEX_M3) || defined(CORTEX_M4)
 	.thumb_func
 MemManage_Handler:
 	exception_enter
@@ -173,19 +202,21 @@ BusFault_Handler:
 UsageFault_Handler:
 	exception_enter
 	b   on_usage_fault
+#endif
 
 	.thumb_func
 SVC_Handler:
-	mrs   r12, psp
-	ldmia  r12, {r0-r3}
-	bl   svc                           @ call c handler
-
-	@patch registers in minimal context
-	mrs   r12, psp
-	str   r0, [r12]
+	mrs   r0, psp
+	ldmia r0, {r0-r3}
+	bl    svc                           @ call c handler
 
 	//return to thread mode
+#if defined(CORTEX_M0)
+	ldr   r0, =0xfffffffd
+	bx		r0
+#else
 	ldr   pc, =0xfffffffd
+#endif
 
 	.thumb_func
 PendSV_Handler:
@@ -200,35 +231,63 @@ PendSV_Handler:
 	beq   load_context
 
 	mrs   r0, psp
-	stmdb  r0!, {r4-r11}                       @save other context on stack
+
+#if defined(CORTEX_M0)
+	subs  r0, r0, #(4 * 4)                         @save other context on stack
+	stmia r0!, {r4-r7}
+	mov	r4, r8
+	mov   r5, r9
+	mov   r6, r10
+	mov   r7, r11
+	subs  r0, r0, #(8 * 4)
+	stmia r0!, {r4-r7}
+	subs  r0, r0, #(4 * 4)
+#else
+	stmdb  r0!, {r4-r11}                           @save other context on stack
+#endif
 	str   r0, [r3, offsetof_PROCESS_sp]            @save sp on process->sp
 
 load_context:
 	ldr   r0, [r2, offsetof_PROCESS_sp]            @load sp from process->sp
-	ldmia  r0!, {r4-r11}                       @load other context from stack
+#if defined(CORTEX_M0)
+	ldmia r0!, {r4-r7}                             @load other context from stack
+	mov	r8, r4
+	mov	r9, r5
+	mov   r10, r6
+	mov   r11, r7
+	ldmia r0!, {r4-r7}
+#else
+	ldmia  r0!, {r4-r11}                           @load other context from stack
+#endif
+
 	msr   psp, r0
 
 	str   r2, [r1, offsetof_KERNEL_active_process]
-	mov   r0, #0
+	movs  r0, #0
 	str   r0, [r1, offsetof_KERNEL_next_process]
 
 context_exit:
 	cpsie i
 	//return to thread mode
+#if defined(CORTEX_M0)
+	ldr   r0, =0xfffffffd
+	bx		r0
+#else
 	ldr   pc, =0xfffffffd
+#endif
 
 
 	.thumb_func
 default_handler:
 	mrs   r0, ipsr
-	sub	r0, r0, 16
-	ldr   pc, =kirq_stub
+	subs  r0, r0, 16
+	b     kirq_stub
 
 	.thumb_func
 irq_handler:
 	mrs	r0, ipsr
-	sub	r0, r0, 16
-	ldr	pc, =kirq_enter
+	subs	r0, r0, #16
+	b     kirq_enter
 
 /*********************** context specific *********************/
 /*
@@ -239,25 +298,29 @@ pend_switch_context:
 	ldr   r1, =ICSR
 	ldr   r0, =PEND_SV_BIT
 	str   r0, [r1]
-	bx     lr
+	bx    lr
 
 /*
 	void process_setup_context(PROCESS* process, PROCESS_FUNCTION fn);
 */
 	.thumb_func
 process_setup_context:
-	ldr   r12, [r0, offsetof_PROCESS_sp]
-	lsr   r12, r12, #3                   @8 byte stack align
-	lsl   r12, r12, #3
-	sub   r12,   r12, #CONTEXT_SIZE
+	ldr   r2, [r0, offsetof_PROCESS_sp]
+	lsrs  r2, r2, #3									    @8 byte stack align
+	lsls  r2, r2, #3
+	subs  r2, r2, #CONTEXT_SIZE
 	ldr   r3, =kprocess_abnormal_exit
-	str   r3, [r12, #LR_OFFSET_IN_CONTEXT]        @abnormal process exit
-	str   r1, [r12, #PC_OFFSET_IN_CONTEXT]        @entry point
-	mov   r3, #INITIAL_PSP_VALUE              @T-Bit only
-	str   r3, [r12, #PSR_OFFSET_IN_CONTEXT]       @run in system context, interrupts are enabled
-	str   r12, [r0, offsetof_PROCESS_sp]
+	str   r3, [r2, #LR_OFFSET_IN_CONTEXT]         @abnormal process exit
+	str   r1, [r2, #PC_OFFSET_IN_CONTEXT]         @entry point
+#if defined(CORTEX_M3)
+	movs  r3, #INITIAL_PSP_VALUE					    @T-Bit only
+#else
+	ldr   r3, =INITIAL_PSP_VALUE					    @T-Bit only
+#endif
+	str   r3, [r2, #PSR_OFFSET_IN_CONTEXT]        @run in system context, interrupts are enabled
+	str   r2, [r0, offsetof_PROCESS_sp]
 
-	bx     lr
+	bx    lr
 
 /*********************** weak unhandled vectors *********************/
 .macro weak_vector vector
@@ -266,5 +329,7 @@ process_setup_context:
 .endm
 
 weak_vector   NMI_Handler
+#if defined(CORTEX_M3) || defined(CORTEX_M4)
 weak_vector   DebugMon_Handler
+#endif
 weak_vector   SysTick_Handler
