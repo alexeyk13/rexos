@@ -11,6 +11,7 @@
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
 #define HSE_VALUE                               24000000
 #define LSE_VALUE                               32768
+#define HSE_BYPASS                              0
 
 //STM32F1
 #define PLL_MUL                                 6
