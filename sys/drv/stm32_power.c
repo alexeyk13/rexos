@@ -156,7 +156,7 @@ static inline void setup_pll(int mul, int div)
 static inline int get_pll_clock()
 {
     unsigned int pllsrc = HSI_VALUE;
-    unsigned int mul = (2 << ((RCC->CFGR >> 19) & 7)) * (3 + ((RCC->CFGR >> 18) & 1));
+    unsigned int mul = (1 << ((RCC->CFGR >> 19) & 7)) * (3 + ((RCC->CFGR >> 18) & 1));
     unsigned int div = ((RCC->CFGR >> 22) & 3) + 1;
 
 #if (HSE_VALUE)
