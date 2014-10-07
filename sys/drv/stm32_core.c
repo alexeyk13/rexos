@@ -154,22 +154,6 @@ void stm32_core_loop(CORE* core)
             ipc_post_or_error(&ipc);
             break;
 #endif //STM32F1
-        case STM32_POWER_BACKUP_ON:
-            backup_on(core);
-            ipc_post_or_error(&ipc);
-            break;
-        case STM32_POWER_BACKUP_OFF:
-            backup_off(core);
-            ipc_post_or_error(&ipc);
-            break;
-        case STM32_POWER_BACKUP_WRITE_ENABLE:
-            backup_write_enable(core);
-            ipc_post_or_error(&ipc);
-            break;
-        case STM32_POWER_BACKUP_WRITE_PROTECT:
-            backup_write_protect(core);
-            ipc_post_or_error(&ipc);
-            break;
 #if defined(STM32F1)
         case STM32_POWER_USB_ON:
             stm32_usb_power_on();
@@ -216,7 +200,7 @@ void stm32_core()
     stm32_timer_init(&core);
     stm32_gpio_init(&core);
 #if !(TIMER_SOFT_RTC)
-    stm32_rtc_init(&core);
+    stm32_rtc_init();
 #endif //!TIMER_SOFT_RTC
 #if (STM32_WDT)
     stm32_wdt_init();

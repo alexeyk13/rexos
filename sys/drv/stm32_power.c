@@ -260,6 +260,11 @@ void setup_clock(int param1, int param2, int param3)
 #if (HSE_VALUE)
     if ((RCC->CR & RCC_CR_HSEON) == 0)
     {
+#if defined(STM32L0) && !(LSE_VALUE)
+        RCC->CR &= ~(3 << 20);
+        RCC->CR |= (30 - __builtin_clz(HSE_VALUE / 1000000)) << 20;
+#endif
+
 #if (HSE_BYPASS)
         RCC->CR |= RCC_CR_HSEON | RCC_CR_HSEBYP;
 #else
@@ -444,46 +449,6 @@ void dma_off(CORE* core, unsigned int index)
 }
 #endif
 
-void backup_on(CORE* core)
-{
-    if (core->backup_count++ == 0)
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
-        //enable POWER and BACKUP interface
-        RCC->APB1ENR |= RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN;
-#elif defined(STM32L0)
-        RCC->APB1ENR |= RCC_APB1ENR_PWREN;
-#endif
-}
-
-void backup_off(CORE* core)
-{
-    if (--core->backup_count == 0)
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
-        //disable POWER and BACKUP interface
-        RCC->APB1ENR &= ~(RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN);
-#elif defined(STM32L0)
-        RCC->APB1ENR &= ~RCC_APB1ENR_PWREN;
-#endif
-}
-
-void backup_write_enable(CORE* core)
-{
-    if (core->backup_count)
-    {
-        if (core->write_count++ == 0)
-            PWR->CR |= PWR_CR_DBP;
-    }
-}
-
-void backup_write_protect(CORE* core)
-{
-    if (core->backup_count)
-    {
-        if (--core->write_count == 0)
-            PWR->CR &= ~PWR_CR_DBP;
-    }
-}
-
 #if defined(STM32F1)
 void stm32_usb_power_on()
 {
@@ -536,7 +501,7 @@ static inline void decode_reset_reason(CORE* core)
 
 void stm32_power_init(CORE* core)
 {
-    core->backup_count = core->write_count = 0;
+    core->write_count = 0;
 #if defined(STM32F1)
     core->dma_count[0] = core->dma_count[1] = 0;
     decode_reset_reason(core);

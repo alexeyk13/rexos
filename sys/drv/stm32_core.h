@@ -39,10 +39,6 @@ typedef enum {
     STM32_POWER_GET_RESET_REASON,
     STM32_POWER_DMA_ON,
     STM32_POWER_DMA_OFF,
-    STM32_POWER_BACKUP_ON,                                        //!< Turn on backup domain
-    STM32_POWER_BACKUP_OFF,                                       //!< Turn off backup domain
-    STM32_POWER_BACKUP_WRITE_ENABLE,                              //!< Turn off write protection of backup domain
-    STM32_POWER_BACKUP_WRITE_PROTECT,                             //!< Turn on write protection of backup domain
     STM32_POWER_USB_ON,
     STM32_POWER_USB_OFF,
 
@@ -72,7 +68,7 @@ typedef struct {
     int used_syscfg;
 #endif
     //power specific
-    int backup_count, write_count;
+    int write_count;
     RESET_REASON reset_reason;
 #if defined(STM32F1)
     int dma_count[2];

@@ -34,10 +34,6 @@ void update_clock(int param1, int param2, int param3);
 void dma_on(CORE* core, unsigned int index);
 void dma_off(CORE* core, unsigned int index);
 #endif
-void backup_on(CORE* core);
-void backup_off(CORE* core);
-void backup_write_enable(CORE* core);
-void backup_write_protect(CORE *core);
 RESET_REASON get_reset_reason(CORE *core);
 #if defined(STM32F1)
 void stm32_usb_power_on();
