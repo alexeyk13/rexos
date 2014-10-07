@@ -16,6 +16,6 @@ void stm32_rtc_set(CORE* core, time_t time);
 void stm32_rtc_info();
 #endif
 
-void stm32_rtc_init(CORE* core);
+void stm32_rtc_init();
 
 #endif // STM32_RTC_H

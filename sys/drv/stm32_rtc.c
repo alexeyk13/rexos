@@ -12,19 +12,81 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/timer.h"
 
+#if defined(STM32L0)
+#define RTC_EXTI_LINE                               20
+#endif
+
 void stm32_rtc_isr(int vector, void* param)
 {
+#if defined(STM32F1)
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     RTC->CRL = 0;
+#else
+    EXTI->PR = 1 << RTC_EXTI_LINE;
+    RTC->ISR &= ~RTC_ISR_WUTF;
+#endif
     timer_second_pulse();
 }
 
-void stm32_rtc_init(CORE *core)
+static inline void backup_on()
 {
-    backup_on(core);
-    backup_write_enable(core);
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+    //enable POWER and BACKUP interface
+    RCC->APB1ENR |= RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN;
+    PWR->CR |= PWR_CR_DBP;
+#elif defined(STM32L0)
+    RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+    PWR->CR |= PWR_CR_DBP;
+    __disable_irq();
+    RTC->WPR = 0xca;
+    RTC->WPR = 0x53;
+    __enable_irq();
+#endif
+}
+
+static inline void backup_off()
+{
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+    //disable POWER and BACKUP interface
+    PWR->CR &= ~PWR_CR_DBP;
+    RCC->APB1ENR &= ~(RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN);
+#elif defined(STM32L0)
+    __disable_irq();
+    RTC->WPR = 0x00;
+    RTC->WPR = 0xff;
+    __enable_irq();
+    PWR->CR &= ~PWR_CR_DBP;
+    RCC->APB1ENR &= ~RCC_APB1ENR_PWREN;
+#endif
+}
+
+static inline void enter_configuration()
+{
+#if defined(STM32F1)
+    while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
+    RTC->CRL |= RTC_CRL_CNF;
+#else
+    RTC->ISR |= RTC_ISR_INIT;
+    while ((RTC->ISR & RTC_ISR_INITF) == 0) {}
+#endif
+}
+
+static inline void leave_configuration()
+{
+#if defined(STM32F1)
+    RTC->CRL &= ~RTC_CRL_CNF;
+    while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
+#else
+    RTC->ISR &= ~RTC_ISR_INIT;
+#endif
+}
+
+void stm32_rtc_init()
+{
+    backup_on();
 
     //backup domain reset?
+#if defined(STM32F1)
     if (RCC->BDCR == 0)
     {
         //turn on 32khz oscillator
@@ -35,9 +97,7 @@ void stm32_rtc_init(CORE *core)
         //turn on RTC
         RCC->BDCR |= RCC_BDCR_RTCEN;
 
-        //enter configuration mode
-        while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
-        RTC->CRL |= RTC_CRL_CNF;
+        enter_configuration();
 
         //prescaller to 1 sec
         RTC->PRLH = (LSE_VALUE >> 16) & 0xf;
@@ -49,46 +109,84 @@ void stm32_rtc_init(CORE *core)
         RTC->ALRH = 0;
         RTC->ALRL = 0;
 
-        //leave configuration mode
-        RTC->CRL &= ~RTC_CRL_CNF;
-        while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
+        leave_configuration();
     }
-    backup_write_protect(core);
 
     //wait for APB1<->RTC_CORE sync
     RTC->CRL &= RTC_CRL_RSF;
     while ((RTC->CRL & RTC_CRL_RSF) == 0) {}
 
     //enable second pulse
-    irq_register(RTC_IRQn, stm32_rtc_isr, (void*)process_get_current());
-    NVIC_EnableIRQ(RTC_IRQn);
-    NVIC_SetPriority(RTC_IRQn, 15);
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     RTC->CRH |= RTC_CRH_SECIE;
+#else
+    if ((RCC->CSR & RCC_CSR_RTCEN) == 0)
+    {
+        RCC->CSR &= ~(3 << 16);
+
+#if (LSE_VALUE)
+        //turn on 32khz oscillator
+        RCC->CSR |= RCC_CSR_LSEON;
+        while ((RCC->CSR & RCC_CSR_LSERDY) == 0) {}
+        //select LSE as clock source
+        RCC->CSR |= RCC_CSR_RTCSEL_LSE;
+#else
+        //select HSE as clock source
+        RCC->CSR |= RCC_CSR_RTCSEL_HSE;
+#endif
+        //turn on RTC
+        RCC->CSR |= RCC_CSR_RTCEN;
+        enter_configuration();
+
+        //prescaller to 1 sec
+#if (LSE_VALUE)
+        RTC->PRER = ((128 - 1) << 16) | (LSE_VALUE / 128 - 1);
+#else
+        RTC->PRER = ((64 - 1) << 16) | (1000000 / 64 - 1);
+#endif
+
+        //setup second tick
+        RTC->CR &= ~RTC_CR_WUTE;
+        while ((RTC->ISR & RTC_ISR_WUTWF) == 0) {}
+        RTC->CR |= 4 | RTC_CR_WUTIE;
+        RTC->WUTR = 0;
+        RTC->CR |= RTC_CR_WUTE;
+        leave_configuration();
+
+    }
+
+    //setup EXTI for second pulse
+    EXTI->IMR |= 1 << RTC_EXTI_LINE;
+    EXTI->RTSR |= 1 << RTC_EXTI_LINE;
+#endif
+    irq_register(RTC_IRQn, stm32_rtc_isr, NULL);
+    NVIC_EnableIRQ(RTC_IRQn);
+    NVIC_SetPriority(RTC_IRQn, 15);
 }
 
 time_t stm32_rtc_get()
 {
+    //TODO
+#if defined(STM32F1)
     return (time_t)(((RTC->CNTH) << 16ul) | (RTC->CNTL));
+#else
+    return (time_t)0;
+#endif
 }
 
 void stm32_rtc_set(CORE* core, time_t time)
 {
-    backup_write_enable(core);
+    enter_configuration();
 
-    //enter configuration mode
-    while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
-    RTC->CRL |= RTC_CRL_CNF;
-
+    //TODO:
+#if defined(STM32F1)
     //reset counter & alarm
     RTC->CNTH = (uint16_t)(time >> 16ul);
     RTC->CNTL = (uint16_t)(time & 0xffff);
 
-    //leave configuration mode
-    RTC->CRL &= ~RTC_CRL_CNF;
-    while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
+#endif
 
-    backup_write_protect(core);
+    leave_configuration();
 }
 
 #if (SYS_INFO)
