@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2014, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #include "../../rexos/userspace/process.h"
 #include "../../rexos/userspace/lib/time.h"
 #include "../../rexos/userspace/lib/stdlib.h"

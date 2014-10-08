@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2014, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #include "../../rexos/sys/sys.h"
 #include "../../rexos/sys/drv/stm32_core.h"
 #include "../../rexos/sys/drv/stm32_gpio.h"

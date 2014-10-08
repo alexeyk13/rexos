@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2014, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #ifndef USB_DESC_H
 #define USB_DESC_H
 
