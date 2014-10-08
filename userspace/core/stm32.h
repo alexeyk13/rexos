@@ -499,6 +499,19 @@
 #endif
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)
 
+#ifdef USB_EP_BULK
+#undef USB_EP_BULK
+#endif
+#ifdef USB_EP_CONTROL
+#undef USB_EP_CONTROL
+#endif
+#ifdef USB_EP_ISOCHRONOUS
+#undef USB_EP_ISOCHRONOUS
+#endif
+#ifdef USB_EP_INTERRUPT
+#undef USB_EP_INTERRUPT
+#endif
+
 #endif //STM32
 
 #endif //STM32_H
