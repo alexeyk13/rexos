@@ -98,9 +98,9 @@ void sys ()
             ipc_post(&ipc);
             break;
         case IPC_SET_STDIO:
-            if (sys.stdout_stream != INVALID_HANDLE)
-                __HEAP->stdout = stream_open(sys.stdout_stream);
 #if (SYS_INFO)
+            if (sys.stdout_stream != INVALID_HANDLE)
+                 __HEAP->stdout = stream_open(sys.stdout_stream);
             printf("RExOS system v. 0.0.2 started\n\r");
 #endif
             ipc_post(&ipc);
