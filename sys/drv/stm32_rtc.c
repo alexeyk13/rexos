@@ -9,6 +9,7 @@
 #include "../sys.h"
 #include "stm32_power.h"
 #include "../../userspace/lib/stdio.h"
+#include "../../userspace/lib/time.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/timer.h"
 
@@ -166,26 +167,43 @@ void stm32_rtc_init()
 
 time_t stm32_rtc_get()
 {
-    //TODO
 #if defined(STM32F1)
     return (time_t)(((RTC->CNTH) << 16ul) | (RTC->CNTL));
 #else
-    return (time_t)0;
+    //fucking shit
+    struct tm ts;
+    ts.tm_sec = ((RTC->TR >> 4) & 7) * 10 + (RTC->TR & 0xf);
+    ts.tm_min = ((RTC->TR >> 12) & 7) * 10 + ((RTC->TR >> 8) & 0xf);
+    ts.tm_hour = ((RTC->TR >> 20) & 3) * 10 + ((RTC->TR >> 16) & 0xf);
+
+    ts.tm_mday = ((RTC->DR >> 4) & 3) * 10 + (RTC->DR & 0xf);
+    ts.tm_mon = ((RTC->DR >> 12) & 1) * 10 + ((RTC->DR >> 8) & 0xf);
+    ts.tm_year = ((RTC->DR >> 20) & 0xf) * 10 + ((RTC->DR >> 16) & 0xf) + 2000;
+
+    return mktime(&ts);
 #endif
 }
 
 void stm32_rtc_set(CORE* core, time_t time)
 {
     enter_configuration();
-
-    //TODO:
 #if defined(STM32F1)
     //reset counter & alarm
     RTC->CNTH = (uint16_t)(time >> 16ul);
     RTC->CNTL = (uint16_t)(time & 0xffff);
 
+#else
+    //fucking shit
+    struct tm ts;
+    gmtime(time, &ts);
+    ts.tm_year -= 2000;
+    RTC->TR = ((ts.tm_hour / 10) << 20) | ((ts.tm_hour % 10) << 16) |
+              ((ts.tm_min / 10) << 12)  | ((ts.tm_min % 10) << 8)   |
+              ((ts.tm_sec / 10) << 4)   | (ts.tm_sec % 10);
+    RTC->DR = ((ts.tm_year / 10) << 20) | ((ts.tm_year % 10) << 16) |
+              ((ts.tm_mon / 10) << 12)  | ((ts.tm_mon % 10) << 8)   |
+              ((ts.tm_mday / 10) << 4)  | (ts.tm_mday % 10) | (1 << 13);
 #endif
-
     leave_configuration();
 }
 
