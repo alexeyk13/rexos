@@ -29,6 +29,9 @@
 #define MAGIC_UNINITIALIZED                            0xcdcdcdcd
 #define MAGIC_UNINITIALIZED_BYTE                       0xcd
 
+#define	KERNEL_STACK_MAX                               0x200
+
+
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
 #include "kernel_config.h"

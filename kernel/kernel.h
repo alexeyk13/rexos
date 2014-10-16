@@ -61,13 +61,12 @@
 
 // will be aligned to pass MPU requirements
 typedef struct {
-    //first 3 params same as userspace for library calls error handling
     //header size including name
     int struct_size;
+    //first param same as userspace for library calls error handling
     int error;
     STDOUT stdout;
     void* stdout_param;
-    bool dbg_locked;
 
     //----------------------process specific-----------------------------
     //for context-switching
@@ -117,7 +116,7 @@ typedef struct {
 } KERNEL;
 
 #define __KERNEL                                            ((KERNEL*)(KERNEL_BASE))
-#define __KERNEL_NAME                                       ((char*)(KERNEL_BASE + sizeof(KERNEL)))
+extern const char* const                                    __KERNEL_NAME;
 
 #define LIB_ENTER                                           void* __saved_heap = __GLOBAL->heap;\
                                                             __GLOBAL->heap = __KERNEL; \

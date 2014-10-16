@@ -23,7 +23,7 @@
 #include "../userspace/lib/lib.h"
 #include <string.h>
 
-#define KERNEL_NAME                                                          "RExOS 0.0.4"
+const char* const __KERNEL_NAME=                                                      "RExOS 0.0.4";
 
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {
@@ -179,13 +179,12 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
             kprocess_error_current(ERROR_INVALID_SVC);
         break;
     case SVC_SETUP_DBG:
-        if (__KERNEL->dbg_locked)
+        if (__KERNEL->stdout != stdout_stub)
             kprocess_error_current(ERROR_INVALID_SVC);
         else
         {
             __KERNEL->stdout = (STDOUT)param1;
             __KERNEL->stdout_param = (void*)param2;
-            __KERNEL->dbg_locked = true;
 #if KERNEL_INFO
             printk("%s\n\r", __KERNEL_NAME);
 #endif
@@ -261,7 +260,6 @@ void startup()
     memset(__KERNEL, 0, sizeof(KERNEL));
     __KERNEL->stdout = stdout_stub;
     __KERNEL->system = INVALID_HANDLE;
-    strcpy(__KERNEL_NAME, KERNEL_NAME);
     __KERNEL->struct_size = sizeof(KERNEL) + strlen(__KERNEL_NAME) + 1;
 
     //initialize irq subsystem

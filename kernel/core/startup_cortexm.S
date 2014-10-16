@@ -9,6 +9,7 @@
 #include "../kernel.h"
 #include "asm_defines.h"
 #include "../../userspace/svc.h"
+#include "../dbg.h"
 
 /* Define constants used in low-level initialization.  */
 
@@ -150,7 +151,15 @@ Reset_Handler:
 	str	r0, [r1, #0x1c]
 #endif
 
-#if defined(KERNEL_STACK_PROFILING)
+#if (KERNEL_PROFILING)
+	ldr	r1, =(SRAM_BASE + SRAM_SIZE)
+	ldr	r2, =KERNEL_STACK_MAX
+	sub	r0, r1, r2
+	ldr	r2, =MAGIC_UNINITIALIZED
+profiling_loop:
+	str	r2, [r0], #4
+	cmp	r0, r1
+	bcc   profiling_loop
 #endif
 
 	bl   startup                @ to high-level initialization

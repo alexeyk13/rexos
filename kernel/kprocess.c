@@ -580,7 +580,7 @@ void process_stat(PROCESS* process)
     else
         printk("%03d     ", process->base_priority);
 #endif
-    printk("  %4b   ", (unsigned int)process->heap + process->size - (unsigned int)process->sp);
+    printk("     %4b   ", (unsigned int)process->heap + process->size - (unsigned int)process->sp);
     printk("%4b ", process->size);
 
     if (__KERNEL->error != ERROR_OK)
@@ -600,6 +600,13 @@ void process_stat(PROCESS* process)
     printk("\n\r");
 }
 
+static unsigned int stack_used(unsigned int top, unsigned int end)
+{
+    unsigned int cur;
+    for (cur = top; cur < end && *((unsigned int*)cur) == MAGIC_UNINITIALIZED; cur += 4) {}
+    return end - cur;
+}
+
 static inline void kernel_stat()
 {
 #if (KERNEL_PROCESS_STAT)
@@ -612,8 +619,8 @@ static inline void kernel_stat()
 
     printk("%-16.16s         ", __KERNEL_NAME);
 
-    printk("  %4b   ", KERNEL_BASE + KERNEL_GLOBAL_SIZE + sizeof(KERNEL) - (unsigned int)get_sp());
-    printk("%4b ", KERNEL_GLOBAL_SIZE + sizeof(KERNEL));
+    printk("     %4b   ", stack_used(SRAM_BASE + SRAM_SIZE - KERNEL_STACK_MAX, SRAM_BASE + SRAM_SIZE));
+    printk("%4b ", SRAM_SIZE - KERNEL_GLOBAL_SIZE - sizeof(KERNEL));
 
     if (__KERNEL->error != ERROR_OK)
     {
@@ -639,9 +646,9 @@ void kprocess_info()
     DLIST_ENUM de;
     PROCESS* cur;
 #if (KERNEL_PROCESS_STAT)
-    printk("\n\r    name         priority  stack  size   used         free       uptime\n\r");
+    printk("\n\r    name         priority  stack max size   used         free       uptime\n\r");
 #else
-    printk("\n\r    name         priority  stack  size   used         free\n\r");
+    printk("\n\r    name         priority  stack max size   used         free\n\r");
 #endif
     printk(STAT_LINE);
     disable_interrupts();
