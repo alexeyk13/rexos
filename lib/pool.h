@@ -16,6 +16,7 @@ void* pool_realloc(POOL* pool, void* ptr, size_t size);
 void pool_free(POOL* pool, void* ptr);
 
 #if (KERNEL_PROFILING)
+void* pool_free_ptr(POOL* pool);
 bool pool_check(POOL* pool, void *sp);
 void pool_stat(POOL* pool, POOL_STAT* stat, void* sp);
 #endif

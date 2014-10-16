@@ -111,8 +111,6 @@ typedef struct {
     unsigned int hpet_value;
     //----------------------- paged memory related ---------------------
     POOL paged;
-
-    //name is following
 } KERNEL;
 
 #define __KERNEL                                            ((KERNEL*)(KERNEL_BASE))

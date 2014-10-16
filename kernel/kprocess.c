@@ -176,6 +176,9 @@ void kprocess_create(const REX* rex, PROCESS** process)
         (*process)->heap = kmalloc(rex->size);
         if ((*process)->heap)
         {
+#if (KERNEL_PROFILING)
+            memset((*process)->heap, MAGIC_UNINITIALIZED_BYTE, rex->size);
+#endif
             DO_MAGIC((*process), MAGIC_PROCESS);
             (*process)->base_priority = rex->priority;
 #if (KERNEL_MES)
@@ -560,6 +563,13 @@ void kprocess_switch_test()
     //next process is now same as active process, it will simulate context switching
 }
 
+static unsigned int stack_used(unsigned int top, unsigned int end)
+{
+    unsigned int cur;
+    for (cur = top; cur < end && *((unsigned int*)cur) == MAGIC_UNINITIALIZED; cur += 4) {}
+    return end - cur;
+}
+
 void process_stat(PROCESS* process)
 {
     POOL_STAT stat;
@@ -580,7 +590,7 @@ void process_stat(PROCESS* process)
     else
         printk("%03d     ", process->base_priority);
 #endif
-    printk("     %4b   ", (unsigned int)process->heap + process->size - (unsigned int)process->sp);
+    printk("     %4b   ", stack_used((unsigned int)pool_free_ptr(&process->heap->pool), (unsigned int)process->heap + process->size));
     printk("%4b ", process->size);
 
     if (__KERNEL->error != ERROR_OK)
@@ -598,13 +608,6 @@ void process_stat(PROCESS* process)
     printk("%3d:%02d.%03d", process->uptime.sec / 60, process->uptime.sec % 60, process->uptime.usec / 1000);
 #endif
     printk("\n\r");
-}
-
-static unsigned int stack_used(unsigned int top, unsigned int end)
-{
-    unsigned int cur;
-    for (cur = top; cur < end && *((unsigned int*)cur) == MAGIC_UNINITIALIZED; cur += 4) {}
-    return end - cur;
 }
 
 static inline void kernel_stat()

@@ -92,9 +92,7 @@ static inline bool grow(POOL* pool, size_t size)
 
     new_last = (void*)(NUM(pool->last_slot) + SLOT_HEADER_SIZE + size + SLOT_FOOTER_SIZE);
     //check uint overflow and compare with stack
-    //TODO: overflow check ignored for paged pool!!!
-///    if (NUM(new_last) < NUM(pool->last_slot) || NUM(new_last) >= NUM(get_sp()))
-    if (NUM(new_last) < NUM(pool->last_slot))
+    if (NUM(new_last) < NUM(pool->last_slot) || NUM(new_last) >= NUM(get_sp()))
     {
         error(ERROR_OUT_OF_MEMORY);
         return false;
@@ -290,6 +288,11 @@ void pool_free(POOL* pool, void* ptr)
 }
 
 #if (KERNEL_PROFILING)
+
+void* pool_free_ptr(POOL* pool)
+{
+    return pool->last_slot + SLOT_HEADER_SIZE;
+}
 
 bool pool_check(POOL* pool, void* sp)
 {
