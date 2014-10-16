@@ -65,7 +65,7 @@
 	.section  .reset, "ax"
 
 int_vectors:
-	.word  (SRAM_BASE + KERNEL_SIZE)
+	.word  (SRAM_BASE + SRAM_SIZE)
 	.word  Reset_Handler
 	.word  NMI_Handler
 	.word  HardFault_Handler
@@ -148,6 +148,9 @@ Reset_Handler:
 	str	r0, [r1, #0x14]
 	str	r0, [r1, #0x18]
 	str	r0, [r1, #0x1c]
+#endif
+
+#if defined(KERNEL_STACK_PROFILING)
 #endif
 
 	bl   startup                @ to high-level initialization

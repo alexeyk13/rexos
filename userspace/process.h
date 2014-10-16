@@ -56,6 +56,18 @@ typedef enum {
 #define DIRECT_WRITE             (1 << 1)
 #define DIRECT_READ_WRITE        (DIRECT_READ | DIRECT_WRITE)
 
+/*
+    struct_size?
+    int error
+    self handle - optional
+    system - remove
+    stdout - optional
+    stdin - optional
+    direct - optional
+    POOL optional
+
+ */
+
 typedef struct {
     //header size including name
     int struct_size;

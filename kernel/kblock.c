@@ -21,7 +21,7 @@ void kblock_create(BLOCK** block, unsigned int size)
         (*block)->size = size;
         (*block)->open = false;
         //allocate stream data
-        (*block)->data = paged_alloc(size);
+        (*block)->data = kmalloc(size);
         if ((*block)->data == NULL)
         {
             kfree(*block);
@@ -43,7 +43,7 @@ void kblock_destroy(BLOCK* block)
     CLEAR_MAGIC(block);
     if (block->open)
         kprocess_block_close(block->granted, block->data);
-    paged_free(block->data);
+    kfree(block->data);
     kfree(block);
 }
 

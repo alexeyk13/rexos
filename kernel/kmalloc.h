@@ -21,7 +21,7 @@
 */
 __STATIC_INLINE void* kmalloc(int size)
 {
-    return __GLOBAL->lib->pool_malloc(&__KERNEL->pool, size);
+    return __GLOBAL->lib->pool_malloc(&__KERNEL->paged, size);
 }
 
 /**
@@ -32,7 +32,7 @@ __STATIC_INLINE void* kmalloc(int size)
 */
 __STATIC_INLINE void* krealloc(void* ptr, int size)
 {
-    return __GLOBAL->lib->pool_realloc(&__KERNEL->pool, ptr, size);
+    return __GLOBAL->lib->pool_realloc(&__KERNEL->paged, ptr, size);
 }
 
 /**
@@ -41,26 +41,6 @@ __STATIC_INLINE void* krealloc(void* ptr, int size)
     \retval none
 */
 __STATIC_INLINE void kfree(void *ptr)
-{
-    __GLOBAL->lib->pool_free(&__KERNEL->pool, ptr);
-}
-
-/**
-    \brief allocate memory in paged area
-    \param size: data size in bytes
-    \retval pointer on success, NULL on out of memory conditiion
-*/
-__STATIC_INLINE void* paged_alloc(int size)
-{
-    return __GLOBAL->lib->pool_malloc(&__KERNEL->paged, size);
-}
-
-/**
-    \brief free memory in paged area
-    \param ptr: pointer to allocated data
-    \retval none
-*/
-__STATIC_INLINE void paged_free(void* ptr)
 {
     __GLOBAL->lib->pool_free(&__KERNEL->paged, ptr);
 }

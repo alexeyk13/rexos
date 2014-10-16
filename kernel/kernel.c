@@ -267,11 +267,8 @@ void startup()
     //initialize irq subsystem
     kirq_init();
 
-    //initialize system memory pool
-    pool_init(&__KERNEL->pool, (void*)(KERNEL_BASE + __KERNEL->struct_size));
-
     //initialize paged area
-    pool_init(&__KERNEL->paged, (void*)(SRAM_BASE + KERNEL_SIZE));
+    pool_init(&__KERNEL->paged, (void*)(SRAM_BASE + KERNEL_GLOBAL_SIZE + sizeof(KERNEL)));
 
     //initilize timer
     ktimer_init();

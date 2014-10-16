@@ -105,11 +105,11 @@
 #if (KERNEL_HANDLE_CHECKING)
 #if (KERNEL_ASSERTIONS)
 #define CHECK_HANDLE(handle, size)     if ((HANDLE)(handle) == INVALID_HANDLE || ((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
-                                       || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (KERNEL_SIZE))) \
+                                       || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (SRAM_SIZE))) \
                                           {printk("INVALID HANDLE at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
 #else
 #define CHECK_HANDLE(handle, size)     if ((HANDLE)(handle) == INVALID_HANDLE || ((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
-                                       || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (KERNEL_SIZE))) \
+                                       || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (SRAM_SIZE))) \
                                           {kprocess_error_current(ERROR_INVALID_MAGIC); return;}
 #endif
 #else

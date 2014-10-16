@@ -79,7 +79,7 @@ void kstream_create(STREAM** stream, unsigned int size)
         return;
     }
     //allocate stream data
-    (*stream)->data = paged_alloc(size);
+    (*stream)->data = kmalloc(size);
     if ((*stream)->data == NULL)
     {
         kfree(*stream);
@@ -359,6 +359,6 @@ void kstream_destroy(STREAM* stream)
         kprocess_error(handle->process, ERROR_SYNC_OBJECT_DESTROYED);
         kfree(handle);
     }
-    paged_free(stream->data);
+    kfree(stream->data);
     kfree(stream);
 }

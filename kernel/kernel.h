@@ -64,7 +64,6 @@ typedef struct {
     //first 3 params same as userspace for library calls error handling
     //header size including name
     int struct_size;
-    POOL pool;
     int error;
     STDOUT stdout;
     void* stdout_param;

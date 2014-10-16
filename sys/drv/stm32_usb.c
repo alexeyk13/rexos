@@ -591,7 +591,9 @@ void stm32_usb()
         usb.in[i].mps = 0;
         usb.in[i].io_active = false;
     }
+#if (SYS_INFO)
     open_stdout();
+#endif
     for (;;)
     {
         error(ERROR_OK);
