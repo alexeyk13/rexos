@@ -37,7 +37,6 @@ void kirq_init()
 
 void kirq_enter(int vector)
 {
-    //TODO pending list
 #ifdef SOFT_NVIC
     int pending;
     //already pending. exit.
