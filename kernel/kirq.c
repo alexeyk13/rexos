@@ -26,13 +26,12 @@ void kirq_init()
     for (i = 0; i < IRQ_VECTORS_COUNT; ++i)
     {
         __KERNEL->irqs[i] = (KIRQ_P)&__KIRQ_STUB;
-#ifdef SOFT_NVIC
-        __KERNEL->irqs[i].pending = false;
-#endif
     }
     __KERNEL->context = -1;
 #ifdef SOFT_NVIC
     rb_init(&__KERNEL->irq_pend_rb, IRQ_VECTORS_COUNT);
+    for (i = 0; i < (IRQ_VECTORS_COUNT + 7) / 8; ++i)
+        __KERNEL->irq_pend_mask[i] = 0;
 #endif
 }
 
@@ -42,13 +41,13 @@ void kirq_enter(int vector)
 #ifdef SOFT_NVIC
     int pending;
     //already pending. exit.
-    if (__KERNEL->irqs[vector].pending)
+    if (__KERNEL->irq_pend_mask[vector / 8] & (1 << (vector & 7)))
         return;
     disable_interrupts();
     //pend and exit
     if ((pending = irq_pend_list_size++) == 0)
     {
-        __KERNEL->irqs[vector].pending = true;
+        __KERNEL->irq_pend_mask[vector / 8] |= 1 << (vector & 7);
         __KERNEL->irq_pend_list[rb_put(&__KERNEL->irq_pend_rb)] = vector;
     }
     enable_interrupts();
@@ -67,7 +66,7 @@ void kirq_enter(int vector)
         {
             disable_interrupts();
             --irq_pend_list_size;
-            __KERNEL->irqs[vector].pending = false;
+            __KERNEL->irq_pend_mask[vector / 8] &= ~(1 << (vector & 7));
             vector = __KERNEL->irq_pend_list[rb_get(&__KERNEL->irq_pend_rb)];
             enable_interrupts();
         }

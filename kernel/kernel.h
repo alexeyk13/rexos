@@ -91,6 +91,7 @@ typedef struct {
     RB irq_pend_rb;
     int irq_pend_list[IRQ_VECTORS_COUNT];
     int irq_pend_list_size;
+    char irq_pend_mask[(IRQ_VECTORS_COUNT + 7) / 8];
 #endif
 
     //------------------------- timer specific -------------------------
