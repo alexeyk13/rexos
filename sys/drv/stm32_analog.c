@@ -10,6 +10,7 @@
 #include "../../userspace/direct.h"
 #include "../../userspace/block.h"
 #include "../../userspace/irq.h"
+#include "../../userspace/object.h"
 #include "../sys.h"
 #include <string.h>
 #include <stdio.h>
@@ -594,7 +595,7 @@ void stm32_analog()
     ANALOG analog;
     STM32_DAC_ENABLE de;
     analog.active_channels = 0;
-    analog.core = sys_get_object(SYS_OBJECT_CORE);
+    analog.core = object_get(SYS_OBJ_CORE);
     if (analog.core == INVALID_HANDLE)
         process_exit();
 #if (SYS_INFO)

@@ -44,9 +44,6 @@ const REX __INIT = {
 
 void init()
 {
-    //start the system
-    __HEAP->system = process_create(&__SYS);
-
 #if defined(STM32)
     process_create(&__STM32_CORE);
 #if (UART_STDIO)

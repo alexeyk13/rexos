@@ -8,6 +8,7 @@
 #include "stm32_timer.h"
 #include "stm32_gpio.h"
 #include "stm32_power.h"
+#include "../../userspace/object.h"
 #if !(TIMER_SOFT_RTC)
 #include "stm32_rtc.h"
 #endif
@@ -191,7 +192,7 @@ void stm32_core_loop(CORE* core)
 void stm32_core()
 {
     CORE core;
-    sys_ack(IPC_SET_OBJECT, SYS_OBJECT_CORE, 0, 0);
+    object_set_self(SYS_OBJ_CORE);
 
 #if (STM32_WDT)
     stm32_wdt_pre_init();

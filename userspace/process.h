@@ -75,8 +75,6 @@ typedef struct {
     POOL pool;
     //self handle
     HANDLE handle;
-    //system process
-    HANDLE system;
     //stdout/stdin handle. System specific
     HANDLE stdout, stdin;
     int direct_mode;

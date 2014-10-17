@@ -13,6 +13,7 @@
 #include "../../userspace/stream.h"
 #include "../../userspace/direct.h"
 #include "../../userspace/irq.h"
+#include "../../userspace/object.h"
 #include "stm32_config.h"
 #include "sys_config.h"
 #include <string.h>
@@ -203,7 +204,7 @@ static void printu(const char *const fmt, ...)
 
 bool uart_set_baudrate(UART* uart, const BAUD* config)
 {
-    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    HANDLE core = object_get(SYS_OBJ_CORE);
     if (core == INVALID_HANDLE)
     {
         error(ERROR_NOT_FOUND);
@@ -261,7 +262,7 @@ bool uart_set_baudrate(UART* uart, const BAUD* config)
 UART* uart_open(UART_PORT port, UART_ENABLE* ue)
 {
     UART* uart = NULL;
-    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    HANDLE core = object_get(SYS_OBJ_CORE);
     if (core == INVALID_HANDLE)
     {
         error(ERROR_NOT_FOUND);
@@ -405,7 +406,7 @@ UART* uart_open(UART_PORT port, UART_ENABLE* ue)
 
 static inline bool uart_close(UART* uart)
 {
-    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    HANDLE core = object_get(SYS_OBJ_CORE);
     if (core == INVALID_HANDLE)
     {
         error(ERROR_NOT_FOUND);
@@ -674,7 +675,7 @@ static inline void stm32_uart_loop(UART** uarts)
 void stm32_uart()
 {
     UART* uarts[UARTS_COUNT] = {0};
-    sys_ack(IPC_SET_OBJECT, SYS_OBJECT_UART, 0, 0);
+    object_set_self(SYS_OBJ_UART);
 
 #if (UART_STDIO)
     UART_ENABLE ue;
@@ -691,12 +692,12 @@ void stm32_uart()
     //setup kernel printk dbg
     setup_dbg(uart_write_kernel, (void*)UART_STDIO_PORT);
     //setup system stdio
-    sys_ack(IPC_SET_OBJECT, SYS_OBJECT_STDOUT_STREAM, uarts[UART_STDIO_PORT]->tx_stream, 0);
-    sys_ack(IPC_SET_OBJECT, SYS_OBJECT_STDIN_STREAM, uarts[UART_STDIO_PORT]->rx_stream, 0);
-    //say early processes, that stdio is setted up
-    sys_ack(IPC_SET_STDIO, 0, 0, 0);
-    //core
-    ack(sys_get_object(SYS_OBJECT_CORE), IPC_SET_STDIO, 0, 0, 0);
+    object_set(SYS_OBJ_STDOUT, uarts[UART_STDIO_PORT]->tx_stream);
+    object_set(SYS_OBJ_STDIN, uarts[UART_STDIO_PORT]->rx_stream);
+#if (SYS_INFO)
+    //inform early process (core) about stdio.
+    ack(object_get(SYS_OBJ_CORE), IPC_SET_STDIO, 0, 0, 0);
+#endif //SYS_INFO
 #endif //UART_STDIO
 
     stm32_uart_loop(uarts);

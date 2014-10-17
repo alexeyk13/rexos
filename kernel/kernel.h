@@ -81,8 +81,6 @@ typedef struct {
 #endif //(KERNEL_PROCESS_STAT)
     //init process. Always active.
     PROCESS* init;
-    //system handle (if present)
-    HANDLE system;
     //----------------------- IRQ related ------------------------------
     int context;
     //This values are used in asm. Don't place them more than 128 bytes from start of KERNEL
@@ -108,6 +106,8 @@ typedef struct {
     unsigned int hpet_value;
     //----------------------- paged memory related ---------------------
     POOL paged;
+    //-------------------------- kernel objects ------------------------
+    HANDLE objects[KERNEL_OBJECTS_COUNT];
 } KERNEL;
 
 #define __KERNEL                                            ((KERNEL*)(KERNEL_BASE))

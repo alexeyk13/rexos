@@ -50,6 +50,12 @@ ARM7 features:
 
 History
 =======
+0.0.5 
+- No system process anymore, replaced by kernel objects
+- IRQ handlers now in dynamic memory, saving some space
+- persistent kernel name
+- kernel/user stack profiling with max stack usage
+
 0.0.4
 - interrupt friendly kernel calls for faster realtime response
 - dynamic array library

@@ -192,7 +192,6 @@ void kprocess_create(const REX* rex, PROCESS** process)
             kipc_init((HANDLE)*process, rex->ipc_size);
             kdirect_init(*process);
             (*process)->heap->handle = (HANDLE)(*process);
-            (*process)->heap->system = (HANDLE)__KERNEL->system;
             (*process)->heap->stdout = (*process)->heap->stdin = INVALID_HANDLE;
             if (rex->name)
             {

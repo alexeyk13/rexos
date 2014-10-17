@@ -13,6 +13,7 @@
 #include "kprocess.h"
 #include "kdirect.h"
 #include "kblock.h"
+#include "kobject.h"
 #if (KERNEL_MES)
 #include "kmutex.h"
 #include "kevent.h"
@@ -23,7 +24,7 @@
 #include "../userspace/lib/lib.h"
 #include <string.h>
 
-const char* const __KERNEL_NAME=                                                      "RExOS 0.0.4";
+const char* const __KERNEL_NAME=                                                      "RExOS 0.0.5";
 
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {
@@ -171,13 +172,13 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_BLOCK_DESTROY:
         kblock_destroy((BLOCK*)param1);
         break;
-    //other - dbg, stdout/in
-    case SVC_SETUP_SYSTEM:
-        if (__KERNEL->system == INVALID_HANDLE)
-            __KERNEL->system = (HANDLE)kprocess_get_current();
-        else
-            kprocess_error_current(ERROR_INVALID_SVC);
+    case SVC_OBJECT_SET:
+        kobject_set(param1, (HANDLE)param2);
         break;
+    case SVC_OBJECT_GET:
+        kobject_get(param1, (HANDLE*)param2);
+        break;
+    //other - dbg, stdout/in
     case SVC_SETUP_DBG:
         if (__KERNEL->stdout != stdout_stub)
             kprocess_error_current(ERROR_INVALID_SVC);
@@ -259,7 +260,6 @@ void startup()
     //setup __KERNEL
     memset(__KERNEL, 0, sizeof(KERNEL));
     __KERNEL->stdout = stdout_stub;
-    __KERNEL->system = INVALID_HANDLE;
 
     //initialize irq subsystem
     kirq_init();
@@ -269,6 +269,9 @@ void startup()
 
     //initilize timer
     ktimer_init();
+
+    //initialize kernel objects
+    kobject_init();
 
     //initialize thread subsystem, create idle task
     kprocess_init(&__INIT);

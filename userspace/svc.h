@@ -70,6 +70,9 @@ typedef enum {
     SVC_BLOCK_RETURN,
     SVC_BLOCK_DESTROY,
 
+    SVC_OBJECT_SET,
+    SVC_OBJECT_GET,
+
     SVC_SETUP_SYSTEM,
     SVC_SETUP_DBG,
     SVC_TEST,

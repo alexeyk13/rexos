@@ -15,6 +15,7 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/block.h"
 #include "../../userspace/direct.h"
+#include "../../userspace/object.h"
 #include "../../userspace/lib/stdio.h"
 #include <string.h>
 
@@ -380,7 +381,7 @@ void stm32_usb_open(USB* usb)
     HANDLE core;
     int trdt;
     //enable GPIO
-    core = sys_get(IPC_GET_OBJECT, SYS_OBJECT_CORE, 0, 0);
+    core = object_get(SYS_OBJ_CORE);
     if (core == INVALID_HANDLE)
     {
         error(ERROR_NOT_FOUND);
@@ -444,7 +445,7 @@ void stm32_usb_open(USB* usb)
 
 static inline void stm32_usb_close(USB* usb)
 {
-    HANDLE core = sys_get(IPC_GET_OBJECT, SYS_OBJECT_CORE, 0, 0);
+    HANDLE core = object_get(SYS_OBJ_CORE);
     if (core == INVALID_HANDLE)
     {
         error(ERROR_NOT_FOUND);
