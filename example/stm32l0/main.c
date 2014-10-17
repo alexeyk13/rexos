@@ -9,6 +9,8 @@
 #include "../../rexos/sys/drv/stm32_gpio.h"
 #include "../../rexos/sys/drv/stm32_power.h"
 #include "../../rexos/userspace/lib/stdio.h"
+#include "../../rexos/userspace/object.h"
+#include "sys_config.h"
 
 #define GREEN                           B4
 #define RED                             A5
@@ -33,7 +35,7 @@ const REX __APP = {
 void app()
 {
     HANDLE core;
-    core = sys_get_object(SYS_OBJECT_CORE);
+    core = object_get(SYS_OBJ_CORE);
     open_stdout();
 
     ack(core, STM32_GPIO_ENABLE_PIN, RED, PIN_MODE_OUT, 0);

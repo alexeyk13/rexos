@@ -33,6 +33,8 @@
 #define KERNEL_IPC_DEBUG                            0
 //maximum number of blocks, that can be opened at same time. Generally, it's MPU blocks count - 2
 #define KERNEL_BLOCKS_COUNT                         6
+//maximum number of global handles. Must be at least 1
+#define KERNEL_OBJECTS_COUNT                        4
 //mutex, event, semaphore are now deprecated. Use stream, direct, block instead
 #define KERNEL_MES                                  0
 

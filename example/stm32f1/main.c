@@ -12,6 +12,7 @@
 #include "../../rexos/userspace/ipc.h"
 #include "../../rexos/userspace/stream.h"
 #include "../../rexos/userspace/direct.h"
+#include "../../rexos/userspace/object.h"
 #include "string.h"
 #include "../../rexos/sys/sys.h"
 #include "../../rexos/sys/drv/stm32_gpio.h"
@@ -151,7 +152,7 @@ void dac_test(HANDLE analog)
 void app()
 {
     HANDLE core, uart, analog, usb_rx;
-    core = sys_get_object(SYS_OBJECT_CORE);
+    core = object_get(SYS_OBJ_CORE);
     TIME uptime;
     int i;
     unsigned int diff;
@@ -171,11 +172,6 @@ void app()
     //first second signal may go faster
     sleep_ms(1000);
     ack(core, STM32_WDT_KICK, 0, 0, 0);
-    printf("Ping\n\r");
-    if (sys_ack(IPC_PING, 0, 0, 0))
-        printf("Pong!\n\r");
-    else
-        printf("err: %d\n\r", get_last_error());
 
     get_uptime(&uptime);
     for (i = 0; i < TEST_ROUNDS; ++i)
@@ -190,13 +186,6 @@ void app()
     ack(core, STM32_WDT_KICK, 0, 0, 0);
     diff = time_elapsed_us(&uptime);
     printf("average switch time: %d.%dus\n\r", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
-
-    get_uptime(&uptime);
-    for (i = 0; i < TEST_ROUNDS; ++i)
-        sys_ack(IPC_PING, 0, 0, 0);
-    ack(core, STM32_WDT_KICK, 0, 0, 0);
-    diff = time_elapsed_us(&uptime);
-    printf("average sys ping time: %d.%dus\n\r", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
     process_create(&test3);
 

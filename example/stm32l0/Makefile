@@ -1,4 +1,4 @@
-OPTIMIZATION            = 2
+OPTIMIZATION            = s
 
 #----------------------------------------------------------
 #PATH must be set to CodeSourcery/bin
@@ -12,32 +12,33 @@ OBJDUMP                    = $(CROSS)objdump
 NM                         = $(CROSS)nm
 
 #----------------------------------------------------------
-MCU                         = STM32F107VC
-TARGET_NAME                 = stm32f1
+MCU                         = STM32L053C8
+TARGET_NAME                 = rad
 #----------------------------------------------------------
 BUILD_DIR                   = build
 OUTPUT_DIR                  = output
 REXOS                       = ../../rexos
 KERNEL                      = $(REXOS)/kernel
-USERSPACE					 	 = $(REXOS)/userspace
-LIB								 = $(REXOS)/lib
-SYS								 = $(REXOS)/sys
+USERSPACE                   = $(REXOS)/userspace
+LIB                         = $(REXOS)/lib
+SYS                         = $(REXOS)/sys
 LDS_SCRIPT                  = $(KERNEL)/arm.ld.S
 #----------------------------------------------------------
 LIBS_DIR                    = ../../3rdparty
 CMSIS_DIR                   = $(LIBS_DIR)/CMSIS
-CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32F10x
+CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32L0xx
+#CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32F10x
 #CMSIS_DEVICE_DIR           = $(CMSIS_DIR)/Device/ST/STM32F2xx
 #CMSIS_DEVICE_DIR           = $(CMSIS_DIR)/Device/ST/STM32F4xx
 #----------------------------------------------------------
 #not used in kernel
 INCLUDE_FOLDERS             = $(CMSIS_DIR)/Include $(CMSIS_DEVICE_DIR)/Include
-#userspace
-INCLUDE_FOLDERS				+= $(USERSPACE) $(USERSPACE)/core $(USERSPACE)/lib
 #kernel
-INCLUDE_FOLDERS				+= $(KERNEL) $(KERNEL)/core
+INCLUDE_FOLDERS            += $(KERNEL) $(KERNEL)/core
 #lib
 INCLUDE_FOLDERS            += $(LIB)
+#userspace
+INCLUDE_FOLDERS            += $(USERSPACE) $(USERSPACE)/core $(USERSPACE)/lib
 #sys
 INCLUDE_FOLDERS            += $(SYS) $(SYS)/drv $(SYS)/midware
 
@@ -52,20 +53,20 @@ SRC_C                      += kernel.c dbg.c kirq.c kprocess.c ktimer.c kipc.c k
 #kernel MES
 #SRC_C                      += kmutex.c kevent.c ksem.c
 #lib
-SRC_C                      += lib.c lib_time.c rand.c pool.c printf.c lib_array.c
+SRC_C                      += lib.c lib_time.c rand.c pool.c printf.c lib_array.c stdio.c
 #userspace
-SRC_C                      += stdio.c main.c
+SRC_C                      += main.c
 #sys
 SRC_C                      += init.c
 #drv
-SRC_C                      += stm32_power.c stm32_gpio.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_analog.c stm32_usb.c stm32_wdt.c
+SRC_C                      += stm32_gpio.c stm32_power.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_usbl.c
 #midware
-SRC_C								+= usbd.c cdc.c
+SRC_C                      += usbd.c cdc.c
 
 OBJ                         = $(SRC_AS:%.S=%.o) $(SRC_C:%.c=%.o)
 #----------------------------------------------------------
 DEFINES                     = -D$(MCU)
-MCU_FLAGS                   = -mcpu=cortex-m3 -mthumb -D__CORTEX_M3 -D__thumb2__=1 -mtune=cortex-m3 -msoft-float -mapcs-frame
+MCU_FLAGS                   = -mcpu=cortex-m0 -mthumb -D__CORTEX_M0 -D__thumb2__=1 -mtune=cortex-m0 -msoft-float -mapcs-frame
 NO_DEFAULTS                 = -fdata-sections -ffunction-sections -fno-hosted -fno-builtin  -nostdlib -nodefaultlibs
 FLAGS_CC                    = $(INCLUDES) $(DEFINES) -I. -O$(OPTIMIZATION) -Wall -c -fmessage-length=0 $(MCU_FLAGS) $(NO_DEFAULTS)
 FLAGS_LD                    = -Xlinker --gc-sections $(MCU_FLAGS)
@@ -100,7 +101,7 @@ asm_defines.h: asm_defines.c
 	$(GCC) $(FLAGS_CC) -S $< -o - | awk '($$1 == "->") { print "#define " $$2 " " $$3 }' > $@
 
 program:
-	@st-flash write $(OUTPUT_DIR)/$(TARGET_NAME).bin 0x8000000
+	@st-flash --reset write $(OUTPUT_DIR)/$(TARGET_NAME).bin 0x8000000
 
 clean:
 	@echo '-----------------------------------------------------------'
