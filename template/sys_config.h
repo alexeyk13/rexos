@@ -17,6 +17,13 @@
 #define SYS_INFO                                            1
 //powersave mode.
 #define SYS_POWERSAVE                                       0
+//----------------------------- objects ----------------------------------------------
+//make sure, you know what are you doing, before change
+#define SYS_OBJ_STDOUT                                      0
+#define SYS_OBJ_STDIN                                       1
+#define SYS_OBJ_CORE                                        2
+#define SYS_OBJ_UART                                        3
+
 //------------------------------ stdio -----------------------------------------------
 #define STDIO_TX_STREAM_SIZE                                64
 #define STDIO_RX_STREAM_SIZE                                32
