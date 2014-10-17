@@ -16,7 +16,7 @@
 #define GPIO_PIN(pin)                                           (pin & 15)
 
 typedef GPIO_TypeDef* GPIO_TypeDef_P;
-extern const GPIO_TypeDef_P GPIO[];
+const GPIO_TypeDef_P GPIO[];
 
 #if defined(STM32F1)
 const GPIO_TypeDef_P GPIO[GPIO_COUNT] =							{GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF, GPIOG};
