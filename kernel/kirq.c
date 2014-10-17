@@ -6,6 +6,7 @@
 
 #include "kirq.h"
 #include "kernel.h"
+#include "kmalloc.h"
 #include "../userspace/error.h"
 
 void kirq_stub(int vector, void* param)
@@ -16,12 +17,15 @@ void kirq_stub(int vector, void* param)
     kprocess_error_current(ERROR_STUB_CALLED);
 }
 
+typedef KIRQ* KIRQ_P;
+static const KIRQ __KIRQ_STUB ={kirq_stub, NULL, NULL};
+
 void kirq_init()
 {
     int i;
     for (i = 0; i < IRQ_VECTORS_COUNT; ++i)
     {
-        __KERNEL->irqs[i].handler = kirq_stub;
+        __KERNEL->irqs[i] = (KIRQ_P)&__KIRQ_STUB;
 #ifdef SOFT_NVIC
         __KERNEL->irqs[i].pending = false;
 #endif
@@ -34,6 +38,7 @@ void kirq_init()
 
 void kirq_enter(int vector)
 {
+    //TODO pending list
 #ifdef SOFT_NVIC
     int pending;
     //already pending. exit.
@@ -56,7 +61,7 @@ void kirq_enter(int vector)
     {
 #endif
         __KERNEL->context = vector;
-        __KERNEL->irqs[vector].handler(vector, __KERNEL->irqs[vector].param);
+        __KERNEL->irqs[vector]->handler(vector, __KERNEL->irqs[vector]->param);
 #ifdef SOFT_NVIC
         if (pending)
         {
@@ -74,24 +79,33 @@ void kirq_enter(int vector)
 void kirq_register(int vector, IRQ handler, void* param)
 {
     if (vector >= IRQ_VECTORS_COUNT)
-        kprocess_error_current(ERROR_OUT_OF_RANGE);
-    else if (__KERNEL->irqs[vector].handler != kirq_stub)
-        kprocess_error_current(ERROR_ACCESS_DENIED);
-    else
     {
-        __KERNEL->irqs[vector].handler = handler;
-        __KERNEL->irqs[vector].param = param;
-        __KERNEL->irqs[vector].process = kprocess_get_current();
+        kprocess_error_current(ERROR_OUT_OF_RANGE);
+        return;
     }
+    if (__KERNEL->irqs[vector] != (KIRQ_P)&__KIRQ_STUB)
+    {
+        kprocess_error_current(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    __KERNEL->irqs[vector] = kmalloc(sizeof(KIRQ));
+    if (__KERNEL->irqs[vector] == NULL)
+    {
+        __KERNEL->irqs[vector] = (KIRQ_P)&__KIRQ_STUB;
+        kprocess_error_current(ERROR_OUT_OF_SYSTEM_MEMORY);
+        return;
+    }
+    __KERNEL->irqs[vector]->handler = handler;
+    __KERNEL->irqs[vector]->param = param;
+    __KERNEL->irqs[vector]->process = kprocess_get_current();
 }
 
 void kirq_unregister(int vector)
 {
-    if (__KERNEL->irqs[vector].process == kprocess_get_current())
+    if (__KERNEL->irqs[vector]->process == kprocess_get_current())
     {
-        __KERNEL->irqs[vector].handler = kirq_stub;
-        __KERNEL->irqs[vector].process = NULL;
-        __KERNEL->irqs[vector].param = NULL;
+        kfree(__KERNEL->irqs[vector]);
+        __KERNEL->irqs[vector] = (KIRQ_P)&__KIRQ_STUB;
     }
     else
         kprocess_error_current(ERROR_ACCESS_DENIED);

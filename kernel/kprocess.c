@@ -465,7 +465,7 @@ void kprocess_destroy_current()
 
 PROCESS* kprocess_get_current()
 {
-    return (__KERNEL->context >= 0) ?  __KERNEL->irqs[__KERNEL->context].process : __KERNEL->active_process;
+    return (__KERNEL->context >= 0) ?  __KERNEL->irqs[__KERNEL->context]->process : __KERNEL->active_process;
 }
 
 bool kprocess_block_open(PROCESS* process, void* data, unsigned int size)

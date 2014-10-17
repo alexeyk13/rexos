@@ -61,8 +61,6 @@
 
 // will be aligned to pass MPU requirements
 typedef struct {
-    //header size including name
-    int struct_size;
     //first param same as userspace for library calls error handling
     int error;
     STDOUT stdout;
@@ -88,7 +86,7 @@ typedef struct {
     //----------------------- IRQ related ------------------------------
     int context;
     //This values are used in asm. Don't place them more than 128 bytes from start of KERNEL
-    KIRQ irqs[IRQ_VECTORS_COUNT];
+    KIRQ* irqs[IRQ_VECTORS_COUNT];
 #ifdef SOFT_NVIC
     RB irq_pend_rb;
     int irq_pend_list[IRQ_VECTORS_COUNT];
@@ -102,8 +100,6 @@ typedef struct {
     CB_SVC_TIMER cb_ktimer;
     //callback param for HPET timer
     void* cb_ktimer_param;
-    //lock timer callbacks after first setup
-    bool timer_locked;
 
     KTIMER* timers;
     volatile bool timer_executed;

@@ -260,7 +260,6 @@ void startup()
     memset(__KERNEL, 0, sizeof(KERNEL));
     __KERNEL->stdout = stdout_stub;
     __KERNEL->system = INVALID_HANDLE;
-    __KERNEL->struct_size = sizeof(KERNEL) + strlen(__KERNEL_NAME) + 1;
 
     //initialize irq subsystem
     kirq_init();

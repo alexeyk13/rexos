@@ -10,6 +10,7 @@
 #include "../userspace/lib/types.h"
 #include "kprocess.h"
 #include "../userspace/core/core.h"
+#include "kernel_config.h"
 
 typedef struct {
     IRQ handler;

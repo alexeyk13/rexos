@@ -69,10 +69,10 @@ typedef enum {
  */
 
 typedef struct {
+    int error;
     //header size including name
     int struct_size;
     POOL pool;
-    int error;
     //self handle
     HANDLE handle;
     //system process
