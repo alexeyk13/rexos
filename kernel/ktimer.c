@@ -29,7 +29,7 @@ void hpet_stop_stub(void* param)
     kprocess_error_current(ERROR_STUB_CALLED);
 }
 
-unsigned int hpet_elapsed_stud(void* param)
+unsigned int hpet_elapsed_stub(void* param)
 {
 #if (KERNEL_INFO)
     printk("Warning: HPET elapsed stub called\n\r");
@@ -37,12 +37,6 @@ unsigned int hpet_elapsed_stud(void* param)
     kprocess_error_current(ERROR_STUB_CALLED);
     return 0;
 }
-
-const CB_SVC_TIMER cb_ktimer_stub = {
-    hpet_start_stub,
-    hpet_stop_stub,
-    hpet_elapsed_stud
-};
 
 void ktimer_get_uptime(TIME* res)
 {
@@ -120,12 +114,13 @@ void ktimer_hpet_timeout()
 
 void ktimer_setup(const CB_SVC_TIMER *cb_ktimer, void *cb_ktimer_param)
 {
-    if (!__KERNEL->timer_locked)
+    if (__KERNEL->cb_ktimer.start == hpet_start_stub)
     {
-        memcpy(&__KERNEL->cb_ktimer, cb_ktimer, sizeof(CB_SVC_TIMER));
+        __KERNEL->cb_ktimer.start = cb_ktimer->start;
+        __KERNEL->cb_ktimer.stop = cb_ktimer->stop;
+        __KERNEL->cb_ktimer.elapsed = cb_ktimer->elapsed;
         __KERNEL->cb_ktimer_param = cb_ktimer_param;
         __KERNEL->cb_ktimer.start(FREE_RUN, __KERNEL->cb_ktimer_param);
-        __KERNEL->timer_locked = true;
     }
     else
         kprocess_error_current(ERROR_INVALID_SVC);
@@ -160,5 +155,7 @@ void ktimer_stop(KTIMER* timer)
 
 void ktimer_init()
 {
-    memcpy(&__KERNEL->cb_ktimer, &cb_ktimer_stub, sizeof(CB_SVC_TIMER));
+    __KERNEL->cb_ktimer.start = hpet_start_stub;
+    __KERNEL->cb_ktimer.stop = hpet_stop_stub;
+    __KERNEL->cb_ktimer.elapsed = hpet_elapsed_stub;
 }
