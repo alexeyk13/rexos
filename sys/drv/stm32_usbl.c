@@ -36,7 +36,7 @@ void stm32_usb_open(USB_STRUCT* usb)
     HANDLE core;
     int trdt;
     //enable GPIO
-    core = sys_get(IPC_GET_OBJECT, SYS_OBJECT_CORE, 0, 0);
+    core = object_get(SYS_OBJ_CORE);
     if (core == INVALID_HANDLE)
     {
         error(ERROR_NOT_FOUND);
