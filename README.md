@@ -50,6 +50,10 @@ ARM7 features:
 
 History
 =======
+0.1.0
+- No IDLE process required anymore. All idle execution is going on PendSV level
+- Some critical bug fixes in process switching
+
 0.0.5 
 - No system process anymore, replaced by kernel objects
 - IRQ handlers now in dynamic memory, saving some space
