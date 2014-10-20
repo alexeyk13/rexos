@@ -38,7 +38,7 @@
 #include "../userspace/lib/stdlib.h"
 #include "../userspace/cc_macro.h"
 
-#if (KERNEL_ASSERTIONS)
+#if (KERNEL_DEVELOPER_MODE)
 
 
 /**
@@ -75,7 +75,7 @@
     \param name: object text to display in case of wrong magic
     \retval no return if wrong magic, else none
 */
-#if (KERNEL_ASSERTIONS)
+#if (KERNEL_DEVELOPER_MODE)
 #define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {printk("INVALID MAGIC at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
 #else
 #define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {kprocess_error_current(ERROR_INVALID_MAGIC); return;}
@@ -106,7 +106,7 @@
 #endif //KERNEL_MARKS
 
 #if (KERNEL_HANDLE_CHECKING)
-#if (KERNEL_ASSERTIONS)
+#if (KERNEL_DEVELOPER_MODE)
 #define CHECK_HANDLE(handle, size)     if ((HANDLE)(handle) == INVALID_HANDLE || ((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
                                        || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (SRAM_SIZE))) \
                                           {printk("INVALID HANDLE at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
@@ -120,7 +120,7 @@
 #endif //KERNEL_HANDLE_CHECKING
 
 #if (KERNEL_ADDRESS_CHECKING)
-#if (KERNEL_ASSERTIONS)
+#if (KERNEL_DEVELOPER_MODE)
 #define CHECK_ADDRESS(process, address, sz)     if (!kprocess_check_address((PROCESS*)(process), (address), (sz))) \
                                                     {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, PROCESS_NAME(((PROCESS*)(process))->heap));    HALT();}
 #define CHECK_ADDRESS_READ(process, address, sz)     if (!kprocess_check_address_read((PROCESS*)(process), (address), (sz))) \
@@ -130,7 +130,7 @@
                                                      {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
 #define CHECK_ADDRESS_READ(process, address, sz)     if (!kprocess_check_address_read((PROCESS*)(process), (address), (sz))) \
                                                           {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
-#endif //KERNEL_ASSERTIONS
+#endif //KERNEL_DEVELOPER_MODE
 #else
 #define CHECK_ADDRESS(process, address, size)
 #define CHECK_ADDRESS_READ(process, address, size)

@@ -38,11 +38,11 @@ void panic()
     printk("Kernel panic\n\r");
     dump(SRAM_BASE, 0x200);
 #endif
-#if (KERNEL_HALT_ON_FATAL_ERROR)
+#if (KERNEL_DEVELOPER_MODE)
     HALT();
 #else
     fatal();
-#endif //KERNEL_HALT_ON_FATAL_ERROR
+#endif //KERNEL_DEVELOPER_MODE
 }
 
 void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
