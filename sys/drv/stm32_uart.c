@@ -171,6 +171,7 @@ void stm32_uart_on_isr(int vector, void* param)
 
 void uart_write_kernel(const char *const buf, unsigned int size, void* param)
 {
+    NVIC_DisableIRQ(UART_VECTORS[(UART_PORT)param]);
     int i;
     UART_REGS[(UART_PORT)param]->CR1 |= USART_CR1_TE;
     for(i = 0; i < size; ++i)
@@ -185,6 +186,7 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
     }
     UART_REGS[(UART_PORT)param]->CR1 |= USART_CR1_TCIE;
     //transmitter will be disabled in next IRQ TC
+    NVIC_EnableIRQ(UART_VECTORS[(UART_PORT)param]);
 }
 
 #if (SYS_INFO)
@@ -400,7 +402,7 @@ UART* uart_open(UART_PORT port, UART_ENABLE* ue)
     //enable interrupts
     irq_register(UART_VECTORS[uart->port], stm32_uart_on_isr, (void*)uart);
     NVIC_EnableIRQ(UART_VECTORS[uart->port]);
-    NVIC_SetPriority(UART_VECTORS[uart->port], 15);
+    NVIC_SetPriority(UART_VECTORS[uart->port], 14);
     return uart;
 }
 
