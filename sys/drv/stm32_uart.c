@@ -13,6 +13,7 @@
 #include "../../userspace/stream.h"
 #include "../../userspace/direct.h"
 #include "../../userspace/irq.h"
+#include "../../userspace/block.h"
 #include "../../userspace/object.h"
 #include "stm32_config.h"
 #include "sys_config.h"
@@ -22,6 +23,7 @@ void stm32_uart();
 
 typedef struct {
     UART_PORT port;
+    HANDLE block;
     PIN tx_pin, rx_pin;
     IPC tx_ipc, rx_ipc;
     int error;
@@ -38,7 +40,7 @@ const REX __STM32_UART = {
     //name
     "STM32 uart",
     //size
-    UART_PROCESS_SIZE,
+    512,
     //priority - driver priority. Setting priority lower than other drivers can cause IPC overflow on SYS_INFO
     89,
     //flags
@@ -275,12 +277,14 @@ UART* uart_open(UART_PORT port, UART_ENABLE* ue)
         error(ERROR_NOT_SUPPORTED);
         return NULL;
     }
-    uart = (UART*)malloc(sizeof(UART));
-    if (uart == NULL)
+    HANDLE block = block_create(sizeof(UART));
+    if (block == INVALID_HANDLE)
     {
         error(ERROR_OUT_OF_MEMORY);
         return NULL;
     }
+    uart = (UART*)block_open(block);
+    uart->block = block;
 
     uart->port = port;
     uart->tx_pin = ue->tx;
@@ -470,7 +474,7 @@ static inline bool uart_close(UART* uart)
             RCC->APB2ENR &= RCC_APB2ENR_AFIOEN;
     }
 #endif
-    free(uart);
+    block_destroy(uart->block);
     return true;
 }
 
