@@ -402,7 +402,7 @@ UART* uart_open(UART_PORT port, UART_ENABLE* ue)
     //enable interrupts
     irq_register(UART_VECTORS[uart->port], stm32_uart_on_isr, (void*)uart);
     NVIC_EnableIRQ(UART_VECTORS[uart->port]);
-    NVIC_SetPriority(UART_VECTORS[uart->port], 14);
+    NVIC_SetPriority(UART_VECTORS[uart->port], 13);
     return uart;
 }
 

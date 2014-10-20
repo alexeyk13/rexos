@@ -162,7 +162,7 @@ void stm32_rtc_init()
 #endif
     irq_register(RTC_IRQn, stm32_rtc_isr, NULL);
     NVIC_EnableIRQ(RTC_IRQn);
-    NVIC_SetPriority(RTC_IRQn, 15);
+    NVIC_SetPriority(RTC_IRQn, 13);
 }
 
 time_t stm32_rtc_get()

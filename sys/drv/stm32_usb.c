@@ -437,7 +437,7 @@ void stm32_usb_open(USB* usb)
     //enable interrupts
     irq_register(OTG_FS_IRQn, usb_on_isr, (void*)usb);
     NVIC_EnableIRQ(OTG_FS_IRQn);
-    NVIC_SetPriority(OTG_FS_IRQn, 15);
+    NVIC_SetPriority(OTG_FS_IRQn, 13);
 
     //Unmask global interrupts
     OTG_FS_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_OTGM;
