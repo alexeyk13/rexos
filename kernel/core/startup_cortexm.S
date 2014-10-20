@@ -158,10 +158,15 @@ Reset_Handler:
 #if (KERNEL_PROFILING)
 	ldr	r1, =(SRAM_BASE + SRAM_SIZE)
 	ldr	r2, =KERNEL_STACK_MAX
-	sub	r0, r1, r2
+	subs	r0, r1, r2
 	ldr	r2, =MAGIC_UNINITIALIZED
 profiling_loop:
+#ifdef CORTEX_M0
+	str	r2, [r0]
+	adds	r0, r0, #4
+#else
 	str	r2, [r0], #4
+#endif
 	cmp	r0, r1
 	bcc   profiling_loop
 #endif
