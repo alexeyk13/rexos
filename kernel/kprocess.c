@@ -190,6 +190,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
             memset((*process)->heap, MAGIC_UNINITIALIZED_BYTE, rex->size);
 #endif
             DO_MAGIC((*process), MAGIC_PROCESS);
+            (*process)->flags = 0;
             (*process)->base_priority = rex->priority;
 #if (KERNEL_MES)
             (*process)->current_priority = rex->priority;
@@ -220,7 +221,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
 #endif
             if ((rex->flags & 1) == PROCESS_FLAGS_ACTIVE)
             {
-                (*process)->flags = PROCESS_MODE_ACTIVE;
+                (*process)->flags |= PROCESS_MODE_ACTIVE;
                 disable_interrupts();
                 kprocess_add_to_active_list(*process);
                 enable_interrupts();
@@ -548,7 +549,6 @@ void kprocess_switch_test()
     disable_interrupts();
     kprocess_remove_from_active_list(process);
     kprocess_add_to_active_list(process);
-    switch_to_process(process);
     enable_interrupts();
     //next process is now same as active process, it will simulate context switching
 }
