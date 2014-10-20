@@ -204,14 +204,15 @@ void kprocess_create(const REX* rex, PROCESS** process)
             kdirect_init(*process);
             (*process)->heap->handle = (HANDLE)(*process);
             (*process)->heap->stdout = (*process)->heap->stdin = INVALID_HANDLE;
-            if (rex->name)
-            {
-                strncpy(PROCESS_NAME((*process)->heap), rex->name, MAX_PROCESS_NAME_SIZE);
-                PROCESS_NAME((*process)->heap)[MAX_PROCESS_NAME_SIZE] = 0;
-            }
-            else
-                strcpy(PROCESS_NAME((*process)->heap), "UNNAMED PROCESS");
+
+            unsigned int len = strlen(rex->name);
+            if (len > MAX_PROCESS_NAME_SIZE)
+                len = MAX_PROCESS_NAME_SIZE;
+            memcpy(PROCESS_NAME((*process)->heap), rex->name, len);
+            PROCESS_NAME((*process)->heap)[len] = '\x0';
+
             (*process)->heap->struct_size = sizeof(HEAP) + strlen(PROCESS_NAME((*process)->heap)) + 1;
+
             pool_init(&(*process)->heap->pool, (void*)(*process)->heap + (*process)->heap->struct_size);
 
             process_setup_context((*process), rex->fn);
@@ -369,11 +370,6 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
     CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
-/*    if (process->flags & PROCESS_FLAGS_WAITING)
-    {
-        printk("process: %#X\n\r", process);
-    }*/
-//        return;
     ASSERT ((process->flags & PROCESS_FLAGS_WAITING) == 0);
     kprocess_remove_from_active_list(process);
     process->flags |= PROCESS_FLAGS_WAITING | sync_type;
@@ -570,10 +566,7 @@ void process_stat(PROCESS* process)
     printk("%-16.16s ", PROCESS_NAME(process->heap));
 
 #if (KERNEL_MES)
-    if (process->current_priority == (unsigned int)(-1))
-        printk(" -init- ");
-    else
-        printk("%03d(%03d)", process->current_priority, process->base_priority);
+    printk("%03d(%03d)", process->current_priority, process->base_priority);
 #else
     printk("%03d     ", process->base_priority);
 #endif
