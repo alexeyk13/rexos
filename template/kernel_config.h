@@ -14,15 +14,13 @@
 #define KERNEL_ADDRESS_CHECKING                     1
 //some kernel statistics (stack, mem, etc). Decrease perfomance in any object creation.
 #define KERNEL_PROFILING                            1
-//enable kernel assertions. If assertions happens, system will be halted with FILE and LINE, instead of returning error.
-//Doesn't affect on perfomance, but recommended only for debug
-#define KERNEL_ASSERTIONS                           1
-//halt system instead of reset. Only for development. Turn off in production.
-#define KERNEL_HALT_ON_FATAL_ERROR                  1
+//Kernel assertions, halt on fatal error, disable power save mode
+//Don't forget to turn off in production.
+#define KERNEL_DEVELOPER_MODE                       1
 //enable this only if you have problems with system timer. May decrease perfomance
 #define KERNEL_TIMER_DEBUG                          0
 //Enabling this you will get stats on each thread uptime, but decreasing context switching up to 2 times
-#define KERNEL_PROCESS_STAT                         0
+#define KERNEL_PROCESS_STAT                         1
 //Enable this only if you have problems with IPC oferflow.
 #define KERNEL_IPC_DEBUG                            0
 //maximum number of blocks, that can be opened at same time. Generally, it's MPU blocks count - 2
@@ -36,7 +34,8 @@
 //you must have good reason to changing this
 #define KERNEL_GLOBAL_SIZE                          32
 
-//save stdio, stdlib and time are required libs, all rest is optional
+//------------------------------------- lib --------------------------------------------------------------------
+//stdio, stdlib and time are required libs, all rest is optional
 #define LIB_ARRAY                                   1
 
 

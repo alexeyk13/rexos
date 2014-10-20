@@ -74,7 +74,7 @@
 //if set by STM32 Option Bits, WDT is started by hardware on power-up
 #define HARDWARE_WATCHDOG                        0
 //WDT module enable
-#define STM32_WDT                                1
+#define STM32_WDT                                0
 
 
 #endif // STM32_CONFIG_H

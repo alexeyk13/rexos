@@ -1,9 +1,3 @@
-/*
-    RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
-    All rights reserved.
-*/
-
 #ifndef KERNEL_CONFIG_H
 #define KERNEL_CONFIG_H
 
@@ -19,20 +13,18 @@
 //check user adresses. Require few tacts, but making kernel calls much safer
 #define KERNEL_ADDRESS_CHECKING                     0
 //some kernel statistics (stack, mem, etc). Decrease perfomance in any object creation.
-#define KERNEL_PROFILING                            0
-//enable kernel assertions. If assertions happens, system will be halted with FILE and LINE, instead of returning error.
-//Doesn't affect on perfomance, but recommended only for debug
-#define KERNEL_ASSERTIONS                           0
-//halt system instead of reset. Only for development. Turn off in production.
-#define KERNEL_HALT_ON_FATAL_ERROR                  1
+#define KERNEL_PROFILING                            1
+//Kernel assertions, halt on fatal error, disable power save mode
+//Don't forget to turn off in production.
+#define KERNEL_DEVELOPER_MODE                       1
 //enable this only if you have problems with system timer. May decrease perfomance
 #define KERNEL_TIMER_DEBUG                          0
 //Enabling this you will get stats on each thread uptime, but decreasing context switching up to 2 times
-#define KERNEL_PROCESS_STAT                         0
+#define KERNEL_PROCESS_STAT                         1
 //Enable this only if you have problems with IPC oferflow.
 #define KERNEL_IPC_DEBUG                            0
 //maximum number of blocks, that can be opened at same time. Generally, it's MPU blocks count - 2
-#define KERNEL_BLOCKS_COUNT                         3
+#define KERNEL_BLOCKS_COUNT                         4
 //maximum number of global handles. Must be at least 1
 #define KERNEL_OBJECTS_COUNT                        4
 //mutex, event, semaphore are now deprecated. Use stream, direct, block instead

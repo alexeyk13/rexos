@@ -1,9 +1,3 @@
-/*
-    RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
-    All rights reserved.
-*/
-
 #include "../../rexos/userspace/process.h"
 #include "../../rexos/userspace/lib/time.h"
 #include "../../rexos/userspace/lib/stdlib.h"
@@ -68,7 +62,7 @@ void test_thread3()
     printf("test thread3 started\n\r");
     printf("my name is: %s\n\r", __PROCESS_NAME);
 
-    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    HANDLE core = object_get(SYS_OBJ_CORE);
     ack(core, STM32_GPIO_ENABLE_PIN, B9, PIN_MODE_OUT, 0);
 
     ack(core, STM32_WDT_KICK, 0, 0, 0);
@@ -88,7 +82,7 @@ void test_thread3()
 
 void te_usb_disable_power()
 {
-    HANDLE core = sys_get_object(SYS_OBJECT_CORE);
+    HANDLE core = object_get(SYS_OBJ_CORE);
     ack(core, STM32_GPIO_ENABLE_PIN, C9, PIN_MODE_OUT, 0);
     ack(core, STM32_GPIO_SET_PIN, C9, true, 0);
 }
@@ -152,6 +146,10 @@ void dac_test(HANDLE analog)
 void app()
 {
     HANDLE core, uart, analog, usb_rx;
+
+    core = process_create(&__STM32_CORE);
+    uart = process_create(&__STM32_UART);
+
     core = object_get(SYS_OBJ_CORE);
     TIME uptime;
     int i;
@@ -188,8 +186,6 @@ void app()
     printf("average switch time: %d.%dus\n\r", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
     process_create(&test3);
-
-    uart = sys_get_object(SYS_OBJECT_UART);
 
     ack(core, IPC_GET_INFO, 0, 0, 0);
     //uart info in direct mode. Make sure all data is sent before

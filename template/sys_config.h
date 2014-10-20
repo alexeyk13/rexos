@@ -11,12 +11,8 @@
     config.h - userspace config
  */
 
-//if set, after sys startup, __APP REx will be executed
-#define SYS_APP                                             1
 //add some debug info in SYS
 #define SYS_INFO                                            1
-//powersave mode.
-#define SYS_POWERSAVE                                       0
 //----------------------------- objects ----------------------------------------------
 //make sure, you know what are you doing, before change
 #define SYS_OBJ_STDOUT                                      0
@@ -30,7 +26,7 @@
 //-------------------------------- USB -----------------------------------------------
 //low-level USB debug. Turn on only in case of IO problems
 #define USB_DEBUG_REQUESTS                                  0
-#define USB_DEBUG_CLASS_REQUESTS                            1
-#define USB_DEBUG_ERRORS                                    1
+#define USB_DEBUG_CLASS_REQUESTS                            0
+#define USB_DEBUG_ERRORS                                    0
 
 #endif // SYS_CONFIG_H

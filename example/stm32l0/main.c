@@ -35,8 +35,14 @@ const REX __APP = {
 void app()
 {
     HANDLE core;
-    core = object_get(SYS_OBJ_CORE);
+    core = process_create(&__STM32_CORE);
+    process_create(&__STM32_UART);
+
     open_stdout();
+
+    ack(core, STM32_GPIO_ENABLE_PIN, RED, PIN_MODE_OUT, 0);
+    ack(core, STM32_GPIO_ENABLE_PIN, GREEN, PIN_MODE_OUT, 0);
+    ack(core, STM32_GPIO_SET_PIN, GREEN, true, 0);
 
     ack(core, STM32_GPIO_ENABLE_PIN, RED, PIN_MODE_OUT, 0);
     ack(core, STM32_GPIO_ENABLE_PIN, GREEN, PIN_MODE_OUT, 0);

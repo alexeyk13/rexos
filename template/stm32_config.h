@@ -9,16 +9,13 @@
 
 //------------------------------ POWER -----------------------------------------------
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
-#define HSE_VALUE                               8000000
-#define HSE_BYPASS                              1
+#define HSE_VALUE                               24000000
 #define LSE_VALUE                               32768
+#define HSE_BYPASS                              0
 
 //STM32F1
-//#define PLL_MUL                                 6
-//#define PLL_DIV                                 2
-//STM32L0
-#define PLL_MUL                                 12
-#define PLL_DIV                                 3
+#define PLL_MUL                                 6
+#define PLL_DIV                                 2
 //STM32F10X_CL only
 // use PLL2 as clock source for main PLL. Set to 0 to disable
 #define PLL2_DIV                                0
@@ -32,9 +29,9 @@
 //Use UART as default stdio
 #define UART_STDIO                              1
 //PIN_DEFAULT and PIN_UNUSED can be also set.
-#define UART_STDIO_PORT                         UART_1
-#define UART_STDIO_TX                           A9
-#define UART_STDIO_RX                           A10
+#define UART_STDIO_PORT                         UART_2
+#define UART_STDIO_TX                           D5
+#define UART_STDIO_RX                           D6
 #define UART_STDIO_BAUD                         115200
 #define UART_STDIO_DATA_BITS                    8
 #define UART_STDIO_PARITY                       'N'
@@ -44,11 +41,11 @@
 #define UART_PROCESS_SIZE                       1024
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
 //remember, that process itself requires around 256 bytes
-#define UART_TX_BUF_SIZE                        16ul
+#define UART_TX_BUF_SIZE                        32ul
 //------------------------------ TIMER -----------------------------------------------
-#define HPET_TIMER                               TIM_21
-#define TIMER_SOFT_RTC                           1
-#define SECOND_PULSE_TIMER                       TIM_22
+#define HPET_TIMER                               TIM_7
+#define TIMER_SOFT_RTC                           0
+#define SECOND_PULSE_TIMER                       TIM_3
 //----------------------------- ANALOG -----------------------------------------------
 // Avg Slope, refer to datasheet
 #define AVG_SLOPE                                4300

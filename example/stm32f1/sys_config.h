@@ -11,12 +11,8 @@
     config.h - userspace config
  */
 
-//if set, after sys startup, __APP REx will be executed
-#define SYS_APP                                             1
 //add some debug info in SYS
 #define SYS_INFO                                            1
-//powersave mode.
-#define SYS_POWERSAVE                                       0
 //----------------------------- objects ----------------------------------------------
 //make sure, you know what are you doing, before change
 #define SYS_OBJ_STDOUT                                      0

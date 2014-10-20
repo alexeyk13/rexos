@@ -11,7 +11,8 @@
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
 #define HSE_VALUE                               8000000
 #define HSE_BYPASS                              1
-#define LSE_VALUE                               32768
+//0 meaning HSE
+#define LSE_VALUE                               0
 
 //STM32F1
 //#define PLL_MUL                                 6
@@ -47,7 +48,7 @@
 #define UART_TX_BUF_SIZE                        16ul
 //------------------------------ TIMER -----------------------------------------------
 #define HPET_TIMER                               TIM_21
-#define TIMER_SOFT_RTC                           1
+#define TIMER_SOFT_RTC                           0
 #define SECOND_PULSE_TIMER                       TIM_22
 //----------------------------- ANALOG -----------------------------------------------
 // Avg Slope, refer to datasheet
