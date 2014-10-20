@@ -69,7 +69,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kprocess_destroy((PROCESS*)param1);
         break;
     case SVC_PROCESS_SLEEP:
-        kprocess_sleep_current((TIME*)param1, PROCESS_SYNC_TIMER_ONLY, NULL);
+        kprocess_sleep(kprocess_get_current(), (TIME*)param1, PROCESS_SYNC_TIMER_ONLY, NULL);
         break;
 #if (KERNEL_PROFILING)
     case SVC_PROCESS_SWITCH_TEST:
@@ -273,6 +273,6 @@ void startup()
     //initialize kernel objects
     kobject_init();
 
-    //initialize thread subsystem, create idle task
-    kprocess_init(&__INIT);
+    //initialize thread subsystem, create application task
+    kprocess_init(&__APP);
 }

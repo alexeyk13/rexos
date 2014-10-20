@@ -33,7 +33,8 @@ const char *const DAMAGED="     !!!DAMAGED!!!     ";
 static inline void switch_to_process(PROCESS* process)
 {
     __KERNEL->next_process = process;
-    __GLOBAL->heap = process->heap;
+    if (process != NULL)
+        __GLOBAL->heap = process->heap;
     pend_switch_context();
 }
 
@@ -46,7 +47,13 @@ void kprocess_add_to_active_list(PROCESS* process)
 #if (KERNEL_PROCESS_STAT)
     dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
 #endif
-    //process priority is less, than active, activate him
+    //return from core HALT
+    if (__KERNEL->processes == NULL)
+    {
+        dlist_add_head((DLIST**)&__KERNEL->processes, (DLIST*)process);
+        switch_to_process(process);
+        return;
+    }
 #if (KERNEL_MES)
     if (process->current_priority < __KERNEL->processes->current_priority)
 #else
@@ -54,17 +61,20 @@ void kprocess_add_to_active_list(PROCESS* process)
 #endif //KERNEL_MES
     {
 #if (KERNEL_PROCESS_STAT)
-        ktimer_get_uptime(&process->uptime_start);
-        time_sub(&__KERNEL->processes->uptime_start, &process->uptime_start, &__KERNEL->processes->uptime_start);
-        time_add(&__KERNEL->processes->uptime_start, &__KERNEL->processes->uptime, &__KERNEL->processes->uptime);
+        if (__KERNEL->processes != NULL)
+        {
+            ktimer_get_uptime(&process->uptime_start);
+            time_sub(&__KERNEL->processes->uptime_start, &process->uptime_start, &__KERNEL->processes->uptime_start);
+            time_add(&__KERNEL->processes->uptime_start, &__KERNEL->processes->uptime, &__KERNEL->processes->uptime);
+        }
 #endif //KERNEL_PROCESS_STAT
-
         process_to_save = __KERNEL->processes;
         dlist_remove_head((DLIST**)&__KERNEL->processes);
         dlist_add_head((DLIST**)&__KERNEL->processes, (DLIST*)process);
         switch_to_process(process);
     }
 
+    //find place for saved process
     dlist_enum_start((DLIST**)&__KERNEL->processes, &de);
     while (dlist_enum(&de, (DLIST**)&cur))
 #if (KERNEL_MES)
@@ -87,9 +97,12 @@ void kprocess_remove_from_active_list(PROCESS* process)
     if (process == __KERNEL->processes)
     {
 #if (KERNEL_PROCESS_STAT)
-        ktimer_get_uptime(&((PROCESS*)(((DLIST*)__KERNEL->processes)->next))->uptime_start);
-        time_sub(&__KERNEL->processes->uptime_start, &((PROCESS*)(((DLIST*)__KERNEL->processes)->next))->uptime_start, &__KERNEL->processes->uptime_start);
-        time_add(&__KERNEL->processes->uptime_start, &__KERNEL->processes->uptime, &__KERNEL->processes->uptime);
+        if (((DLIST*)__KERNEL->processes)->next != (DLIST*)__KERNEL->processes)
+        {
+            ktimer_get_uptime(&((PROCESS*)(((DLIST*)__KERNEL->processes)->next))->uptime_start);
+            time_sub(&__KERNEL->processes->uptime_start, &((PROCESS*)(((DLIST*)__KERNEL->processes)->next))->uptime_start, &__KERNEL->processes->uptime_start);
+            time_add(&__KERNEL->processes->uptime_start, &__KERNEL->processes->uptime, &__KERNEL->processes->uptime);
+        }
 #endif //KERNEL_PROCESS_STAT
         dlist_remove_head((DLIST**)&__KERNEL->processes);
         switch_to_process(__KERNEL->processes);
@@ -160,10 +173,7 @@ void kprocess_abnormal_exit()
 #if (KERNEL_INFO)
     printk("Warning: abnormal process termination: %s\n\r", PROCESS_NAME(kprocess_get_current()->heap));
 #endif
-    if (kprocess_get_current() == __KERNEL->init)
-        panic();
-    else
-        kprocess_destroy_current();
+    kprocess_destroy_current();
 }
 
 void kprocess_create(const REX* rex, PROCESS** process)
@@ -210,7 +220,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
 #endif
             if ((rex->flags & 1) == PROCESS_FLAGS_ACTIVE)
             {
-                (*process)->flags |= PROCESS_MODE_ACTIVE;
+                (*process)->flags = PROCESS_MODE_ACTIVE;
                 disable_interrupts();
                 kprocess_add_to_active_list(*process);
                 enable_interrupts();
@@ -302,17 +312,8 @@ void kprocess_destroy(PROCESS* process)
         return;
     CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
-    CLEAR_MAGIC(process);
-    //we cannot destroy init process
-    if (process == __KERNEL->init)
-    {
-#if (KERNEL_INFO)
-        printk("Init process cannot be destroyed\n\r");
-#endif
-        error(ERROR_RESTRICTED_FOR_INIT);
-        return;
-    }
     disable_interrupts();
+    CLEAR_MAGIC(process);
     //if process is running, freeze it first
     if ((process->flags & PROCESS_MODE_MASK) == PROCESS_MODE_ACTIVE)
     {
@@ -366,16 +367,13 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
 {
     CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
-    ASSERT ((process->flags & PROCESS_FLAGS_WAITING) == 0);
-    //init process cannot sleep or be locked by mutex
-    if (process == __KERNEL->init)
-    {
-        process->flags |= sync_type;
-        kprocess_timeout(sync_object);
-        error(ERROR_RESTRICTED_FOR_INIT);
-        return;
-    }
     disable_interrupts();
+/*    if (process->flags & PROCESS_FLAGS_WAITING)
+    {
+        printk("process: %#X\n\r", process);
+    }*/
+//        return;
+    ASSERT ((process->flags & PROCESS_FLAGS_WAITING) == 0);
     kprocess_remove_from_active_list(process);
     process->flags |= PROCESS_FLAGS_WAITING | sync_type;
     process->sync_object = sync_object;
@@ -395,13 +393,6 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
         ktimer_start(&process->timer);
     }
     enable_interrupts();
-}
-
-void kprocess_sleep_current(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
-{
-    PROCESS* process = kprocess_get_current();
-    if (process != NULL)
-        kprocess_sleep(process, time, sync_type, sync_object);
 }
 
 void kprocess_wakeup(PROCESS* process)
@@ -539,15 +530,15 @@ bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size
 
 void kprocess_init(const REX* rex)
 {
-    kprocess_create(rex, &__KERNEL->init);
-
-    //activate init
-    __KERNEL->init->flags = PROCESS_MODE_ACTIVE;
-    dlist_add_head((DLIST**)&__KERNEL->processes, (DLIST*)__KERNEL->init);
+    PROCESS* init;
+    __KERNEL->next_process = NULL;
+    __KERNEL->active_process = NULL;
+    dlist_clear((DLIST**)&__KERNEL->processes);
 #if (KERNEL_PROCESS_STAT)
     dlist_clear((DLIST**)&__KERNEL->wait_processes);
 #endif
-    switch_to_process(__KERNEL->processes);
+    //create and activate first process
+    kprocess_create(rex, &init);
 }
 
 #if (KERNEL_PROFILING)
@@ -584,10 +575,7 @@ void process_stat(PROCESS* process)
     else
         printk("%03d(%03d)", process->current_priority, process->base_priority);
 #else
-    if (process->base_priority == (unsigned int)(-1))
-        printk(" -init- ");
-    else
-        printk("%03d     ", process->base_priority);
+    printk("%03d     ", process->base_priority);
 #endif
     printk("     %4b   ", stack_used((unsigned int)pool_free_ptr(&process->heap->pool), (unsigned int)process->heap + process->size));
     printk("%4b ", process->size);

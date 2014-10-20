@@ -79,8 +79,6 @@ typedef struct {
 #if (KERNEL_PROCESS_STAT)
     PROCESS* wait_processes;
 #endif //(KERNEL_PROCESS_STAT)
-    //init process. Always active.
-    PROCESS* init;
     //----------------------- IRQ related ------------------------------
     int context;
     //This values are used in asm. Don't place them more than 128 bytes from start of KERNEL
@@ -119,7 +117,7 @@ extern const char* const                                    __KERNEL_NAME;
 
 #define LIB_EXIT                                            __GLOBAL->heap = __saved_heap;
 
-extern const REX __INIT;
+extern const REX __APP;
 extern const LIB __LIB;
 
 /** \addtogroup arch_porting architecture porting

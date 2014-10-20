@@ -49,10 +49,6 @@ void kprocess_unfreeze(PROCESS* process);
 void kprocess_freeze(PROCESS* process);
 void kprocess_set_priority(PROCESS* process, unsigned int priority);
 void kprocess_destroy(PROCESS* process);
-//cannot be called from init task, because init task is only task running, while other tasks are waiting or frozen
-//this function can be call indirectly from any sync object.
-//also called from sync objects
-void kprocess_sleep_current(TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
 
 //called from svc, IRQ enabled
 void kprocess_get_flags(PROCESS* process, unsigned int* flags);

@@ -42,9 +42,10 @@
   .equ   SHCSR,                 0xe000ed24
   .equ   ICPR0,                 0xe000e280
 
-  .equ   PEND_SV_BIT,           (1 << 28)
+  .equ   PEND_SV_SET,           (1 << 28)
+  .equ   PEND_SV_CLEAR,         (1 << 27)
   .equ   SHPR1_VALUE,           ((0x02 << 0) | (0x02 << 8) | (0x02 << 16))
-  .equ   SHPR2_VALUE,           (0xff << 24)
+  .equ   SHPR2_VALUE,           (0xfe << 24)
   .equ   SHPR3_VALUE,           (0xff << 16)
 
 /* imported global constants and functions */
@@ -57,6 +58,9 @@
 	.extern kprocess_abnormal_exit
 	.extern kirq_stub
 	.extern kirq_enter
+
+	//remove me
+	.extern testprint
 
 /* exported global constant and functions */
 	.global pend_switch_context
@@ -234,10 +238,10 @@ SVC_Handler:
 PendSV_Handler:
 	/*save*/
 	cpsid   i
-	ldr    r1, =KERNEL_BASE
-	ldr   r2, [r1, offsetof_KERNEL_next_process]
-	cmp   r2, #0                              @late arrival of pendSV can cause double-calling
-	beq   context_exit
+	ldr   r2, =ICSR											 @late arrival of pendSV can cause double-calling
+	ldr   r0, =PEND_SV_CLEAR
+	str   r0, [r2]
+	ldr   r1, =KERNEL_BASE
 	ldr   r3, [r1, offsetof_KERNEL_active_process]   @active_process will be NULL on startup/task destroy
 	cmp   r3, #0
 	beq   load_context
@@ -260,6 +264,9 @@ PendSV_Handler:
 	str   r0, [r3, offsetof_PROCESS_sp]            @save sp on process->sp
 
 load_context:
+	ldr   r2, [r1, offsetof_KERNEL_next_process]
+	cmp	r2, #0
+	beq	halt_core										  @halt core if no tasks
 	ldr   r0, [r2, offsetof_PROCESS_sp]            @load sp from process->sp
 #if defined(CORTEX_M0)
 	ldmia r0!, {r4-r7}                             @load other context from stack
@@ -288,6 +295,17 @@ context_exit:
 	ldr   pc, =0xfffffffd
 #endif
 
+halt_core:
+	cpsie	i
+#if !(KERNEL_DEVELOPER_MODE)
+	wfi
+#endif //!KERNEL_DEVELOPER_MODE
+	cpsid i
+	ldr   r2, =ICSR
+	ldr   r0, =PEND_SV_CLEAR
+	str   r0, [r2]
+	b		load_context
+
 
 	.thumb_func
 default_handler:
@@ -308,7 +326,7 @@ irq_handler:
 	.thumb_func
 pend_switch_context:
 	ldr   r1, =ICSR
-	ldr   r0, =PEND_SV_BIT
+	ldr   r0, =PEND_SV_SET
 	str   r0, [r1]
 	bx    lr
 
