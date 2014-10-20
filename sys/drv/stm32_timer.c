@@ -434,7 +434,7 @@ void stm32_timer_init(CORE *core)
     //setup HPET
     irq_register(TIMER_VECTORS[HPET_TIMER], hpet_isr, (void*)core);
     core->hpet_uspsc = stm32_timer_get_clock(HPET_TIMER) / 1000000;
-    stm32_timer_enable(core, HPET_TIMER, TIMER_FLAG_ONE_PULSE_MODE | TIMER_FLAG_ENABLE_IRQ | (15 << TIMER_FLAG_PRIORITY));
+    stm32_timer_enable(core, HPET_TIMER, TIMER_FLAG_ONE_PULSE_MODE | TIMER_FLAG_ENABLE_IRQ | (13 << TIMER_FLAG_PRIORITY));
     CB_SVC_TIMER cb_svc_timer;
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
@@ -442,7 +442,7 @@ void stm32_timer_init(CORE *core)
     timer_setup(&cb_svc_timer, core);
 #if (TIMER_SOFT_RTC)
     irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)core);
-    stm32_timer_enable(core, SECOND_PULSE_TIMER, TIMER_FLAG_ENABLE_IRQ | (15 << TIMER_FLAG_PRIORITY));
+    stm32_timer_enable(core, SECOND_PULSE_TIMER, TIMER_FLAG_ENABLE_IRQ | (13 << TIMER_FLAG_PRIORITY));
     stm32_timer_setup_hz(SECOND_PULSE_TIMER, 1);
     stm32_timer_start(SECOND_PULSE_TIMER);
 #endif
