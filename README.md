@@ -50,6 +50,13 @@ ARM7 features:
 
 History
 =======
+0.1.1
+- global lib refactoring
+- lib heap
+- persistent names flag for process
+- some STM32 driver refactoring
+- HAL driver abstraction started
+
 0.1.0
 - No IDLE process required anymore. All idle execution is going on PendSV level
 - Some critical bug fixes in process switching
