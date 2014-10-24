@@ -30,11 +30,6 @@
 #include <stdarg.h>
 
 typedef struct {
-    unsigned int size, reserved;
-    void* data[65535];
-} ARRAY;
-
-typedef struct {
     void* free_slot;
     void* first_slot;
     void* last_slot;

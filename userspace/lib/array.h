@@ -12,6 +12,11 @@
 #include "../svc.h"
 
 typedef struct {
+    unsigned int size, reserved;
+    void* data[65535];
+} ARRAY;
+
+typedef struct {
     ARRAY* (*array_create)(ARRAY** ar, unsigned int reserved);
     void (*array_destroy)(ARRAY** ar);
     ARRAY* (*array_add)(ARRAY** ar, unsigned int size);
