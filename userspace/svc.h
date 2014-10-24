@@ -16,7 +16,6 @@
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
 #include "cc_macro.h"
-#include "lib/types.h"
 
 /*
     List of all calls to supervisor
@@ -117,24 +116,7 @@ typedef struct {
 
  */
 
-typedef struct {
-    int error;
-    //header size including name
-    int struct_size;
-    POOL pool;
-    //self handle
-    HANDLE handle;
-    //stdout/stdin handle. System specific
-    HANDLE stdout, stdin;
-    int direct_mode;
-    HANDLE direct_process;
-    void* direct_addr;
-    unsigned int direct_size;
-    //name is following
-} HEAP;
-
 #define __GLOBAL                                            ((GLOBAL*)(SRAM_BASE))
-#define __HEAP                                              ((HEAP*)(((GLOBAL*)(SRAM_BASE))->heap))
 
 typedef void (*STDOUT)(const char *const buf, unsigned int size, void* param);
 

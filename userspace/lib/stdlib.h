@@ -8,7 +8,8 @@
 #define STDLIB_H
 
 #include "lib.h"
-#include "../process.h"
+#include "../svc.h"
+#include "heap.h"
 
 typedef struct {
     unsigned long (*atou)(const char *const, int);

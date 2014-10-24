@@ -11,9 +11,6 @@
     error.h - error handling
 */
 
-#include "cc_macro.h"
-#include "svc.h"
-
 typedef enum {
     //kernel-specific
     ERROR_OK = 0,
@@ -59,15 +56,5 @@ typedef enum {
     ERROR_USB_STALL
 
 }ERROR_CODE;
-
-__STATIC_INLINE ERROR_CODE get_last_error()
-{
-    return __HEAP->error;
-}
-
-__STATIC_INLINE void error(ERROR_CODE error)
-{
-    __HEAP->error = error;
-}
 
 #endif // ERROR_H

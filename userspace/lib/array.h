@@ -9,6 +9,7 @@
 
 #include "types.h"
 #include "lib.h"
+#include "heap.h"
 #include "../svc.h"
 
 typedef struct {

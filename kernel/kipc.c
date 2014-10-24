@@ -36,7 +36,7 @@ void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_proce
     CHECK_ADDRESS(process, ipc, sizeof(IPC));
 #if (KERNEL_IPC_DEBUG)
     if (wait_process == (HANDLE)process)
-        printk("Warning: calling wait IPC with receiver same as caller can cause deadlock! process: %s\n\r", PROCESS_NAME(process->heap));
+        printk("Warning: calling wait IPC with receiver same as caller can cause deadlock! process: %s\n\r", kprocess_name(process));
 #endif
     process->kipc.ipc = ipc;
     kprocess_sleep(process, time, PROCESS_SYNC_IPC, process);
@@ -97,7 +97,7 @@ void kipc_post_process(IPC* ipc, unsigned int sender)
     {
         kprocess_error(receiver, ERROR_OVERFLOW);
 #if (KERNEL_IPC_DEBUG)
-        printk("Error: receiver %s IPC overflow!\n\r", PROCESS_NAME(receiver->heap));
+        printk("Error: receiver %s IPC overflow!\n\r", kprocess_name(receiver));
 #endif
     }
 }

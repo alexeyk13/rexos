@@ -8,6 +8,7 @@
 #define IPC_H
 
 #include "lib/types.h"
+#include "lib/heap.h"
 
 typedef enum {
     IPC_COMMON = 0x0,

@@ -172,7 +172,7 @@ void kprocess_timeout(void* param)
 void kprocess_abnormal_exit()
 {
 #if (KERNEL_INFO)
-    printk("Warning: abnormal process termination: %s\n\r", PROCESS_NAME(kprocess_get_current()->heap));
+    printk("Warning: abnormal process termination: %s\n\r", kprocess_name(kprocess_get_current()));
 #endif
     kprocess_destroy_current();
 }
@@ -209,10 +209,10 @@ void kprocess_create(const REX* rex, PROCESS** process)
             unsigned int len = strlen(rex->name);
             if (len > MAX_PROCESS_NAME_SIZE)
                 len = MAX_PROCESS_NAME_SIZE;
-            memcpy(PROCESS_NAME((*process)->heap), rex->name, len);
-            PROCESS_NAME((*process)->heap)[len] = '\x0';
+            memcpy(kprocess_name(*process), rex->name, len);
+            kprocess_name(*process)[len] = '\x0';
 
-            (*process)->heap->struct_size = sizeof(HEAP) + strlen(PROCESS_NAME((*process)->heap)) + 1;
+            (*process)->heap->struct_size = sizeof(HEAP) + strlen(kprocess_name(*process)) + 1;
 
             pool_init(&(*process)->heap->pool, (void*)(*process)->heap + (*process)->heap->struct_size);
 
@@ -564,7 +564,7 @@ void process_stat(PROCESS* process)
     ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_stat(&process->heap->pool, &stat, process->sp);
     LIB_EXIT;
 
-    printk("%-16.16s ", PROCESS_NAME(process->heap));
+    printk("%-16.16s ", kprocess_name(process));
 
 #if (KERNEL_MES)
     printk("%03d(%03d)", process->current_priority, process->base_priority);

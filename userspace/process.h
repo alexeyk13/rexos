@@ -27,7 +27,7 @@
 
 #include "svc.h"
 #include "lib/time.h"
-
+#include "lib/heap.h"
 
 #define PROCESS_FLAGS_ACTIVE                                     (1 << 0)
 #define PROCESS_FLAGS_WAITING                                    (1 << 1)
@@ -54,10 +54,6 @@ typedef enum {
 #define DIRECT_READ              (1 << 0)
 #define DIRECT_WRITE             (1 << 1)
 #define DIRECT_READ_WRITE        (DIRECT_READ | DIRECT_WRITE)
-
-#define PROCESS_NAME(heap)                              ((char*)((unsigned int)heap + sizeof(HEAP)))
-
-#define __PROCESS_NAME                                  (PROCESS_NAME(__HEAP))
 
 typedef struct {
     const char* name;

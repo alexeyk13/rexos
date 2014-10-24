@@ -9,6 +9,8 @@
 
 #include "lib.h"
 #include "../svc.h"
+#include <stdarg.h>
+#include <stdbool.h>
 
 typedef struct {
     void (*__format)(const char *const, va_list, STDOUT, void*);

@@ -69,6 +69,12 @@ void kprocess_error(PROCESS* process, int error);
 void kprocess_error_current(int error);
 PROCESS* kprocess_get_current();
 
+__STATIC_INLINE char* kprocess_name(PROCESS* process)
+{
+    return ((const LIB_HEAP*)__GLOBAL->lib[LIB_ID_HEAP])->__process_name(process->heap);
+}
+
+
 
 //called from startup
 void kprocess_init(const REX *rex);

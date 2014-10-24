@@ -10,6 +10,7 @@
 #include "../lib/lib_std.h"
 #include "../lib/lib_stdio.h"
 #include "../lib/lib_time.h"
+#include "../lib/lib_heap.h"
 #include "../lib/lib_array.h"
 
 void lib_stub ()
@@ -24,6 +25,8 @@ const void *const __LIB[] = {
     (const void *const )&__LIB_STDIO,
     //lib_time.h
     (const void *const)&__LIB_TIME,
+    //lib_heap.h
+    (const void *const )&__LIB_HEAP,
 #if (KERNEL_LIB_ARRAY)
     (const void *const)&__LIB_ARRAY
 #else
