@@ -206,15 +206,20 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->heap->handle = (HANDLE)(*process);
             (*process)->heap->stdout = (*process)->heap->stdin = INVALID_HANDLE;
 
-            unsigned int len = strlen(rex->name);
-            if (len > MAX_PROCESS_NAME_SIZE)
-                len = MAX_PROCESS_NAME_SIZE;
-            memcpy(kprocess_name(*process), rex->name, len);
-            kprocess_name(*process)[len] = '\x0';
+            (*process)->heap->flags = rex->flags >> REX_HEAP_FLAGS_OFFSET;
 
-            (*process)->heap->struct_size = sizeof(HEAP) + strlen(kprocess_name(*process)) + 1;
+            if ((*process)->heap->flags & HEAP_PERSISTENT_NAME)
+                *((const char**)(kprocess_struct_ptr((*process), HEAP_STRUCT_NAME))) = rex->name;
+            else
+            {
+                unsigned int len = strlen(rex->name);
+                if (len > MAX_PROCESS_NAME_SIZE)
+                    len = MAX_PROCESS_NAME_SIZE;
+                memcpy(kprocess_struct_ptr((*process), HEAP_STRUCT_NAME), rex->name, len);
+                ((char*)(kprocess_struct_ptr((*process), HEAP_STRUCT_NAME)))[len] = '\x0';
+            }
 
-            pool_init(&(*process)->heap->pool, (void*)(*process)->heap + (*process)->heap->struct_size);
+            pool_init(&(*process)->heap->pool, kprocess_struct_ptr((*process), HEAP_STRUCT_FREE));
 
             process_setup_context((*process), rex->fn);
 

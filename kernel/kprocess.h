@@ -69,6 +69,11 @@ void kprocess_error(PROCESS* process, int error);
 void kprocess_error_current(int error);
 PROCESS* kprocess_get_current();
 
+__STATIC_INLINE void* kprocess_struct_ptr(PROCESS* process, HEAP_STRUCT_TYPE struct_type)
+{
+    return ((const LIB_HEAP*)__GLOBAL->lib[LIB_ID_HEAP])->__heap_struct_ptr(process->heap, struct_type);
+}
+
 __STATIC_INLINE char* kprocess_name(PROCESS* process)
 {
     return ((const LIB_HEAP*)__GLOBAL->lib[LIB_ID_HEAP])->__process_name(process->heap);

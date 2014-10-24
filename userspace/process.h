@@ -55,6 +55,9 @@ typedef enum {
 #define DIRECT_WRITE             (1 << 1)
 #define DIRECT_READ_WRITE        (DIRECT_READ | DIRECT_WRITE)
 
+#define REX_HEAP_FLAGS_OFFSET   24
+#define REX_HEAP_FLAGS(flags)   ((flags) << REX_HEAP_FLAGS_OFFSET)
+
 typedef struct {
     const char* name;
     unsigned int size;

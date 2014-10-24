@@ -104,18 +104,6 @@ typedef struct {
     const void** lib;
 } GLOBAL;
 
-/*
-    struct_size?
-    int error
-    self handle - optional
-    system - remove
-    stdout - optional
-    stdin - optional
-    direct - optional
-    POOL optional
-
- */
-
 #define __GLOBAL                                            ((GLOBAL*)(SRAM_BASE))
 
 typedef void (*STDOUT)(const char *const buf, unsigned int size, void* param);
