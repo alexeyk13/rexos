@@ -11,7 +11,7 @@ void printf(const char *const fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
-    __GLOBAL->lib->pformat(fmt, va);
+    ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->pformat(fmt, va);
     va_end(va);
 }
 
@@ -19,6 +19,6 @@ void sprintf(char* str, const char * const fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
-    __GLOBAL->lib->sformat(str, fmt, va);
+    ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->sformat(str, fmt, va);
     va_end(va);
 }
