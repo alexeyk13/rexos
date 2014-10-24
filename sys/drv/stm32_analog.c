@@ -49,7 +49,7 @@ const REX __STM32_ANALOG = {
     //priority - driver priority
     92,
     //flags
-    PROCESS_FLAGS_ACTIVE,
+    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
     10,
     //function

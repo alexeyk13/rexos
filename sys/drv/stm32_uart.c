@@ -44,7 +44,7 @@ const REX __STM32_UART = {
     //priority - driver priority. Setting priority lower than other drivers can cause IPC overflow on SYS_INFO
     89,
     //flags
-    PROCESS_FLAGS_ACTIVE,
+    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
     10,
     //function

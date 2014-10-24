@@ -50,7 +50,7 @@ const REX __CDC = {
     //priority - midware priority
     150,
     //flags
-    PROCESS_FLAGS_ACTIVE,
+    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
     10,
     //function
