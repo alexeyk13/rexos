@@ -33,7 +33,7 @@ const REX __APP = {
     //priority
     120,
     //flags
-    PROCESS_FLAGS_ACTIVE,
+    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
     10,
     //function
@@ -48,7 +48,7 @@ const REX test3 = {
     //priority
     119,
     //flags
-    PROCESS_FLAGS_ACTIVE,
+    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
     10,
     //function
