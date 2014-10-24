@@ -39,18 +39,7 @@ const LIB __LIB = {
     __srand,
     __rand,
     //lib_time.h
-    __mktime,
-    __gmtime,
-    __time_compare,
-    __time_add,
-    __time_sub,
-    __us_to_time,
-    __ms_to_time,
-    __time_to_us,
-    __time_to_ms,
-    __time_elapsed,
-    __time_elapsed_ms,
-    __time_elapsed_us
+    (const void* const)&__LIB_TIME
 #if (LIB_ARRAY)
     ,
     __array_create,

@@ -36,18 +36,7 @@ typedef struct {
     unsigned int (*srand)();
     unsigned int (*rand)(unsigned int* seed);
     //time.h
-    time_t (*mktime)(struct tm*);
-    struct tm* (*gmtime)(time_t, struct tm*);
-    int (*time_compare)(TIME*, TIME*);
-    void (*time_add)(TIME*, TIME*, TIME*);
-    void (*time_sub)(TIME*, TIME*, TIME*);
-    void (*us_to_time)(int, TIME*);
-    void (*ms_to_time)(int, TIME*);
-    int (*time_to_us)(TIME*);
-    int (*time_to_ms)(TIME*);
-    TIME* (*time_elapsed)(TIME*, TIME*);
-    unsigned int (*time_elapsed_ms)(TIME*);
-    unsigned int (*time_elapsed_us)(TIME*);
+    const void* const p_lib_time;
     //array.h
 #if (LIB_ARRAY)
     ARRAY* (*array_create)(ARRAY** ar, unsigned int reserved);

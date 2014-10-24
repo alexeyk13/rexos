@@ -12,7 +12,53 @@
  */
 
 #include "lib.h"
-#include "../process.h"
+#include "../svc.h"
+
+//In 2037, please change this to unsigned long long. In 32 bits mcu changing this can significally decrease perfomance
+/**
+    \brief time_t POSIX analogue
+*/
+typedef unsigned long time_t;
+
+/**
+    \brief POSIX analogue of struct tm
+    \our struct tm is shorter, than POSIX. RExOS didn't use tm_wday, tm_yday, tm_isdst and negative values for perfomance reasons, tm_year - is absolute value
+*/
+struct tm {
+    unsigned char tm_sec;                   //!< seconds after the minute [0, 59]
+    unsigned char tm_min;                   //!< minutes after the hour [0, 59]
+    unsigned char tm_hour;                  //!< hours since midnight [0, 23]
+    unsigned char tm_mday;                  //!< day of the month [1, 31]
+    unsigned char tm_mon;                   //!< months since January [0, 11]
+    unsigned short tm_year;                 //!< years since 0
+};
+
+/**
+    \brief structure for holding time units
+*/
+typedef struct {
+    time_t sec;                             //!< seconds
+    unsigned int usec;                      //!< microseconds
+}TIME;
+
+/** \} */ // end of lib_time group
+
+
+typedef struct {
+    time_t (*mktime)(struct tm*);
+    struct tm* (*gmtime)(time_t, struct tm*);
+    int (*time_compare)(TIME*, TIME*);
+    void (*time_add)(TIME*, TIME*, TIME*);
+    void (*time_sub)(TIME*, TIME*, TIME*);
+    void (*us_to_time)(int, TIME*);
+    void (*ms_to_time)(int, TIME*);
+    int (*time_to_us)(TIME*);
+    int (*time_to_ms)(TIME*);
+    TIME* (*time_elapsed)(TIME*, TIME*);
+    unsigned int (*time_elapsed_ms)(TIME*);
+    unsigned int (*time_elapsed_us)(TIME*);
+} LIB_TIME;
+
 
 /** \addtogroup lib_time time
     time routines
@@ -26,7 +72,7 @@
 */
 __STATIC_INLINE time_t mktime(struct tm* ts)
 {
-    return __GLOBAL->lib->mktime(ts);
+    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->mktime(ts);
 }
 
 /**
@@ -37,7 +83,7 @@ __STATIC_INLINE time_t mktime(struct tm* ts)
 */
 __STATIC_INLINE struct tm* gmtime(time_t time, struct tm* ts)
 {
-    return __GLOBAL->lib->gmtime(time, ts);
+    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->gmtime(time, ts);
 }
 
 /**
@@ -50,7 +96,7 @@ __STATIC_INLINE struct tm* gmtime(time_t time, struct tm* ts)
 */
 __STATIC_INLINE int time_compare(TIME* from, TIME* to)
 {
-    return __GLOBAL->lib->time_compare(from, to);
+    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_compare(from, to);
 }
 
 /**
@@ -62,7 +108,7 @@ __STATIC_INLINE int time_compare(TIME* from, TIME* to)
 */
 __STATIC_INLINE void time_add(TIME* from, TIME* to, TIME* res)
 {
-    __GLOBAL->lib->time_add(from, to, res);
+    ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_add(from, to, res);
 }
 
 /**
@@ -74,7 +120,7 @@ __STATIC_INLINE void time_add(TIME* from, TIME* to, TIME* res)
 */
 __STATIC_INLINE void time_sub(TIME* from, TIME* to, TIME* res)
 {
-    __GLOBAL->lib->time_sub(from, to, res);
+    ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_sub(from, to, res);
 }
 
 /**
@@ -85,7 +131,7 @@ __STATIC_INLINE void time_sub(TIME* from, TIME* to, TIME* res)
 */
 __STATIC_INLINE void us_to_time(int us, TIME* time)
 {
-    __GLOBAL->lib->us_to_time(us, time);
+    ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->us_to_time(us, time);
 }
 
 /**
@@ -96,7 +142,7 @@ __STATIC_INLINE void us_to_time(int us, TIME* time)
 */
 __STATIC_INLINE void ms_to_time(int ms, TIME* time)
 {
-    __GLOBAL->lib->ms_to_time(ms, time);
+    ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->ms_to_time(ms, time);
 }
 
 /**
@@ -106,7 +152,7 @@ __STATIC_INLINE void ms_to_time(int ms, TIME* time)
 */
 __STATIC_INLINE int time_to_us(TIME* time)
 {
-    return __GLOBAL->lib->time_to_us(time);
+    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_to_us(time);
 }
 
 /**
@@ -116,7 +162,7 @@ __STATIC_INLINE int time_to_us(TIME* time)
 */
 __STATIC_INLINE int time_to_ms(TIME* time)
 {
-    return __GLOBAL->lib->time_to_ms(time);
+    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_to_ms(time);
 }
 
 /**
@@ -127,7 +173,7 @@ __STATIC_INLINE int time_to_ms(TIME* time)
 */
 __STATIC_INLINE TIME* time_elapsed(TIME* from, TIME* res)
 {
-    return __GLOBAL->lib->time_elapsed(from, res);
+    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_elapsed(from, res);
 }
 
 /**
@@ -137,7 +183,7 @@ __STATIC_INLINE TIME* time_elapsed(TIME* from, TIME* res)
 */
 __STATIC_INLINE unsigned int time_elapsed_ms(TIME* from)
 {
-    return __GLOBAL->lib->time_elapsed_ms(from);
+    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_elapsed_ms(from);
 }
 
 /**
@@ -147,7 +193,7 @@ __STATIC_INLINE unsigned int time_elapsed_ms(TIME* from)
 */
 __STATIC_INLINE unsigned int time_elapsed_us(TIME* from)
 {
-    return __GLOBAL->lib->time_elapsed_us(from);
+    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_elapsed_us(from);
 }
 
 /** \} */ // end of time group
