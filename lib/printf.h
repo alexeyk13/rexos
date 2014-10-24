@@ -7,8 +7,6 @@
 #ifndef PRINTF_H
 #define PRINTF_H
 
-#include "../userspace/lib/types.h"
-
 /** \addtogroup lib_printf embedded stdio
     embedded stdio routines contains standart ANSI c printf/sprintf analogue, with only
     difference that it's required around 1.5k of code,    doesn't use dynamic memory allocation
@@ -62,17 +60,11 @@
 
 #include <stdarg.h>
 #include "../userspace/lib/types.h"
-#include "../userspace/cc_macro.h"
 
 unsigned long __atou(const char *const buf, int size);
 int __utoa(char* buf, unsigned long value, int radix, bool uppercase);
 
 void format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param);
-void pformat(const char *const fmt, va_list va);
 void sformat(char* str, const char *const fmt, va_list va);
-void __puts(const char* s);
-void __putc(const char c);
-char __getc();
-char* __gets(char* s, int max_size);
 
 #endif // PRINTF_H

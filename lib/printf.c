@@ -6,8 +6,6 @@
 
 #include "printf.h"
 #include <string.h>
-#include "../userspace/process.h"
-#include "../userspace/stream.h"
 
 #define PRINTF_BUF_SIZE                                         10
 
@@ -31,11 +29,6 @@ static void sprintf_handler(const char *const buf, unsigned int size, void* para
     char** str = (char**)param;
     memcpy(*str, buf, size);
     *str += size;
-}
-
-static void printf_handler(const char *const buf, unsigned int size, void* param)
-{
-    stream_write(__HEAP->stdout, buf, size);
 }
 
 static void pad_spaces(int count, STDOUT write_handler, void *write_param)
@@ -402,41 +395,11 @@ void format(const char *const fmt, va_list va, STDOUT write_handler, void* write
         write_handler(fmt + start, cur - start, write_param);
 }
 
-void pformat(const char *const fmt, va_list va)
-{
-    format(fmt, va, printf_handler, NULL);
-}
-
 void sformat(char* str, const char *const fmt, va_list va)
 {
     char* str_cur = str;
     format(fmt, va, sprintf_handler, &str_cur);
     *str_cur = 0;
-}
-
-void __puts(const char* s)
-{
-    stream_write(__HEAP->stdout, s, strlen(s));
-}
-
-void __putc(const char c)
-{
-    stream_write(__HEAP->stdout, &c, 1);
-}
-
-char __getc()
-{
-    char c;
-    stream_read(__HEAP->stdin, &c, 1);
-    return c;
-}
-
-char* __gets(char* s, int max_size)
-{
-    int i;
-    for (i = 0; (s[i] = __getc()) != '\n' && i < max_size - 1; ++i) {}
-    s[i] = 0;
-    return s;
 }
 
 /** \} */ // end of lib_printf group
