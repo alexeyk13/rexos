@@ -7,13 +7,13 @@
 #include "dbg.h"
 #include "../userspace/error.h"
 #include "kernel.h"
-#include "../userspace/lib/lib.h"
+#include "../userspace/lib/stdio.h"
 
 void printk(const char *const fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
-    __GLOBAL->lib->format(fmt, va, __KERNEL->stdout, __KERNEL->stdout_param);
+    format(fmt, va, __KERNEL->stdout, __KERNEL->stdout_param);
     va_end(va);
 }
 

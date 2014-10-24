@@ -8,13 +8,35 @@
 #define STDIO_H
 
 #include "lib.h"
-#include "../process.h"
+#include "../svc.h"
+
+typedef struct {
+    void (*__format)(const char *const, va_list, STDOUT, void*);
+    void (*pformat)(const char *const, va_list);
+    void (*sformat)(char*, const char *const, va_list);
+    unsigned long (*atou)(const char *const, int);
+    int (*utoa)(char*, unsigned long, int, bool);
+    void (*puts)(const char*);
+    void (*putc)(const char);
+    char (*getc)();
+    char* (*gets)(char*, int);
+} LIB_STDIO;
 
 /** \addtogroup stdio embedded uStdio
  */
 
 /**
-    \brief format string, using \ref dbg_write as handler
+    \brief format string
+    \param c: char
+    \retval none
+*/
+__STATIC_INLINE void format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param)
+{
+    return ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->__format(fmt, va, write_handler, write_param);
+}
+
+/**
+    \brief format string, using \ref stdout as handler
     \param fmt: format (see global description)
     \param ...: list of arguments
     \retval none
@@ -37,7 +59,7 @@ void sprintf(char* str, const char *const fmt, ...);
 */
 __STATIC_INLINE void puts(const char* s)
 {
-    __GLOBAL->lib->puts(s);
+    ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->puts(s);
 }
 
 /**
@@ -47,7 +69,7 @@ __STATIC_INLINE void puts(const char* s)
 */
 __STATIC_INLINE void putc(const char c)
 {
-    __GLOBAL->lib->putc(c);
+    ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->putc(c);
 }
 
 /**
@@ -57,7 +79,7 @@ __STATIC_INLINE void putc(const char c)
 */
 __STATIC_INLINE char getc()
 {
-    return __GLOBAL->lib->getc();
+    return ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->getc();
 }
 
 /**
@@ -68,10 +90,10 @@ __STATIC_INLINE char getc()
 */
 __STATIC_INLINE char* gets(char* s, int max_size)
 {
-    return __GLOBAL->lib->gets(s, max_size);
+    return ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->gets(s, max_size);
 }
 
-/** \} */ // end of stdlib group
+/** \} */ // end of stdio group
 
 
 #endif // STDIO_H

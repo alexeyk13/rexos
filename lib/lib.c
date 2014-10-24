@@ -7,7 +7,7 @@
 #include "../userspace/lib/lib.h"
 
 #include "pool.h"
-#include "printf.h"
+#include "lib_stdio.h"
 #include "rand.h"
 #include "lib_time.h"
 #if (KERNEL_LIB_ARRAY)
@@ -25,16 +25,8 @@ const LIB __LIB = {
     pool_check,
     pool_stat,
 #endif //KERNEL_PROFILING
-    //printf.h
-    format,
-    pformat,
-    sformat,
-    __atou,
-    __utoa,
-    __puts,
-    __putc,
-    __getc,
-    __gets,
+    //lib_stdio.h
+    (const void* const)&__LIB_STDIO,
     //rand.h
     __srand,
     __rand,

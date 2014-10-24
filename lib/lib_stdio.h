@@ -1,10 +1,14 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2014, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #ifndef LIB_STDIO_H
 #define LIB_STDIO_H
 
-class lib_stdio
-{
-public:
-    lib_stdio();
-};
+#include "../userspace/lib/stdio.h"
+
+extern const LIB_STDIO __LIB_STDIO;
 
 #endif // LIB_STDIO_H

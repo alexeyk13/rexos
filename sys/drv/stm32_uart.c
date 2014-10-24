@@ -198,7 +198,7 @@ static void printu(const char *const fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
-    __GLOBAL->lib->format(fmt, va, uart_write_kernel, (void*)UART_STDIO_PORT);
+    format(fmt, va, uart_write_kernel, (void*)UART_STDIO_PORT);
     va_end(va);
 }
 #else
