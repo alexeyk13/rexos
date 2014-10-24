@@ -64,7 +64,7 @@
 unsigned long __atou(const char *const buf, int size);
 int __utoa(char* buf, unsigned long value, int radix, bool uppercase);
 
-void format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param);
+void __format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param);
 void sformat(char* str, const char *const fmt, va_list va);
 
 #endif // PRINTF_H

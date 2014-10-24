@@ -121,7 +121,7 @@ int size_in_bytes(unsigned int value, char* buf)
     \param va: va_list of arguments
     \retval none
 */
-void format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param)
+void __format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param)
 {
     char buf[PRINTF_BUF_SIZE];
     unsigned char flags;
@@ -398,7 +398,7 @@ void format(const char *const fmt, va_list va, STDOUT write_handler, void* write
 void sformat(char* str, const char *const fmt, va_list va)
 {
     char* str_cur = str;
-    format(fmt, va, sprintf_handler, &str_cur);
+    __format(fmt, va, sprintf_handler, &str_cur);
     *str_cur = 0;
 }
 
