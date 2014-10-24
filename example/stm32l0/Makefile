@@ -53,7 +53,7 @@ SRC_C                      += kernel.c dbg.c kirq.c kprocess.c ktimer.c kipc.c k
 #kernel MES
 #SRC_C                      += kmutex.c kevent.c ksem.c
 #lib
-SRC_C                      += klib.c lib_time.c rand.c pool.c printf.c lib_array.c stdio.c  lib_std.c lib_stdio.c
+SRC_C                      += klib.c lib_time.c pool.c printf.c lib_array.c stdio.c  lib_std.c lib_stdio.c
 #userspace
 SRC_C                      += main.c
 #drv
