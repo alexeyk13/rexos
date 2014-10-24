@@ -35,7 +35,7 @@
 #define KERNEL_GLOBAL_SIZE                          32
 
 //save stdio, stdlib and time are required libs, all rest is optional
-#define LIB_ARRAY                                   1
+#define KERNEL_LIB_ARRAY                            1
 
 
 #endif // KERNEL_CONFIG_H
