@@ -40,8 +40,9 @@
 //size of UART process. You will need to increase this, if you have many uarts opened at same time
 #define UART_PROCESS_SIZE                       1024
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
-//remember, that process itself requires around 256 bytes
 #define UART_TX_BUF_SIZE                        32ul
+//Sizeof UART process stack. Remember, that process itself requires around 500 bytes
+#define STM32_UART_STACK_SIZE                   500 + (100 + UART_TX_BUF_SIZE) * 1
 //------------------------------ TIMER -----------------------------------------------
 #define HPET_TIMER                               TIM_7
 #define TIMER_SOFT_RTC                           0
