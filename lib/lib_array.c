@@ -63,3 +63,11 @@ ARRAY* __array_squeeze(ARRAY** ar)
     (*ar)->reserved = (*ar)->size;
     return (*ar);
 }
+
+const LIB_ARRAY __LIB_ARRAY = {
+    __array_create,
+    __array_destroy,
+    __array_add,
+    __array_remove,
+    __array_squeeze
+};

@@ -9,31 +9,39 @@
 
 #include "types.h"
 #include "lib.h"
-#include "../process.h"
+#include "../svc.h"
+
+typedef struct {
+    ARRAY* (*array_create)(ARRAY** ar, unsigned int reserved);
+    void (*array_destroy)(ARRAY** ar);
+    ARRAY* (*array_add)(ARRAY** ar, unsigned int size);
+    ARRAY* (*array_remove)(ARRAY** ar, unsigned int index);
+    ARRAY* (*array_squeeze)(ARRAY** ar);
+} LIB_ARRAY;
 
 __STATIC_INLINE ARRAY* array_create(ARRAY** ar, unsigned int reserved)
 {
-    return __GLOBAL->lib->array_create(ar, reserved);
+    return ((const LIB_ARRAY*)__GLOBAL->lib->p_lib_array)->array_create(ar, reserved);
 }
 
 __STATIC_INLINE void array_destroy(ARRAY** ar)
 {
-    __GLOBAL->lib->array_destroy(ar);
+    ((const LIB_ARRAY*)__GLOBAL->lib->p_lib_array)->array_destroy(ar);
 }
 
 __STATIC_INLINE ARRAY* array_add(ARRAY** ar, unsigned int size)
 {
-    return __GLOBAL->lib->array_add(ar, size);
+    return ((const LIB_ARRAY*)__GLOBAL->lib->p_lib_array)->array_add(ar, size);
 }
 
 __STATIC_INLINE ARRAY* array_remove(ARRAY** ar, unsigned int index)
 {
-    return __GLOBAL->lib->array_remove(ar, index);
+    return ((const LIB_ARRAY*)__GLOBAL->lib->p_lib_array)->array_remove(ar, index);
 }
 
 __STATIC_INLINE ARRAY* array_squeeze(ARRAY** ar)
 {
-    return __GLOBAL->lib->array_squeeze(ar);
+    return ((const LIB_ARRAY*)__GLOBAL->lib->p_lib_array)->array_squeeze(ar);
 }
 
 #endif // ARRAY_H

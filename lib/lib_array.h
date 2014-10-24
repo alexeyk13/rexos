@@ -7,12 +7,8 @@
 #ifndef LIB_ARRAY_H
 #define LIB_ARRAY_H
 
-#include "../userspace/lib/types.h"
+#include "../userspace/lib/array.h"
 
-ARRAY* __array_create(ARRAY** ar, unsigned int reserved);
-void __array_destroy(ARRAY** ar);
-ARRAY* __array_add(ARRAY** ar, unsigned int size);
-ARRAY* __array_remove(ARRAY** ar, unsigned int index);
-ARRAY* __array_squeeze(ARRAY** ar);
+extern const LIB_ARRAY __LIB_ARRAY;
 
 #endif // LIB_ARRAY_H

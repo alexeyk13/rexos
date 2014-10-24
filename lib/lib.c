@@ -10,9 +10,9 @@
 #include "printf.h"
 #include "rand.h"
 #include "lib_time.h"
-#if (LIB_ARRAY)
+#if (KERNEL_LIB_ARRAY)
 #include "lib_array.h"
-#endif //LIB_ARRAY
+#endif //KERNEL_LIB_ARRAY
 
 const LIB __LIB = {
     //pool.h
@@ -39,15 +39,12 @@ const LIB __LIB = {
     __srand,
     __rand,
     //lib_time.h
-    (const void* const)&__LIB_TIME
-#if (LIB_ARRAY)
-    ,
-    __array_create,
-    __array_destroy,
-    __array_add,
-    __array_remove,
-    __array_squeeze
-#endif //LIB_ARRAY
+    (const void* const)&__LIB_TIME,
+#if (KERNEL_LIB_ARRAY)
+    (const void* const)&__LIB_ARRAY
+#else
+    (const void* const)NULL
+#endif //KERNEL_LIB_ARRAY
 };
 
 

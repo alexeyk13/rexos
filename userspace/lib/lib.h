@@ -38,13 +38,7 @@ typedef struct {
     //time.h
     const void* const p_lib_time;
     //array.h
-#if (LIB_ARRAY)
-    ARRAY* (*array_create)(ARRAY** ar, unsigned int reserved);
-    void (*array_destroy)(ARRAY** ar);
-    ARRAY* (*array_add)(ARRAY** ar, unsigned int size);
-    ARRAY* (*array_remove)(ARRAY** ar, unsigned int index);
-    ARRAY* (*array_squeeze)(ARRAY** ar);
-#endif //LIB_ARRAY
+    const void* const p_lib_array;
 } LIB;
 
 #endif // LIB_H
