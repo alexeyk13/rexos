@@ -136,6 +136,8 @@ typedef struct {
 #define __GLOBAL                                            ((GLOBAL*)(SRAM_BASE))
 #define __HEAP                                              ((HEAP*)(((GLOBAL*)(SRAM_BASE))->heap))
 
+typedef void (*STDOUT)(const char *const buf, unsigned int size, void* param);
+
 /** \addtogroup core_porting core porting
     \{
  */

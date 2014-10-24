@@ -43,8 +43,4 @@ typedef struct {
     unsigned int largest_free;
 } POOL_STAT;
 
-typedef void (*STDOUT)(const char *const buf, unsigned int size, void* param);
-
-typedef void (*IRQ)(int vector, void* param);
-
 #endif // TYPES_H

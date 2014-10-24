@@ -7,7 +7,7 @@
 #ifndef KIRQ_H
 #define KIRQ_H
 
-#include "../userspace/lib/types.h"
+#include "../userspace/irq.h"
 #include "kprocess.h"
 #include "../userspace/core/core.h"
 #include "kernel_config.h"

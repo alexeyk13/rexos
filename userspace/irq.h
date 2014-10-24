@@ -12,6 +12,8 @@
 #include "cc_macro.h"
 #include "error.h"
 
+typedef void (*IRQ)(int vector, void* param);
+
 /** \addtogroup irq irq
     All irq's before they can be used must be registered with handler. If IRQ already registered, it will be locked and
     cannot be registered again, until caller process unregister it.
