@@ -28,6 +28,23 @@ typedef enum {
 
 }SYS_IPCS;
 
+typedef enum {
+    HAL_GPIO = 0,
+    HAL_POWER,
+    HAL_RTC,
+    HAL_WDT,
+    HAL_UART,
+    HAL_USB,
+    HAL_ADC,
+    HAL_DAC
+} HAL;
+
+#define HAL_HANDLE(hal)                                     ((hal) << 16)
+#define HAL_ITEM(handle)                                    ((handle) & 0xff)
+#define HAL_GROUP(handle)                                   ((handle) >> 16)
+
+#define HAL_IPC(hal)                                        (IPC_USER + ((hal) << 16))
+
 /** \addtogroup sys sys
     \{
  */
