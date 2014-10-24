@@ -26,27 +26,32 @@ typedef struct {
 
 __STATIC_INLINE ARRAY* array_create(ARRAY** ar, unsigned int reserved)
 {
-    return ((const LIB_ARRAY*)__GLOBAL->lib->p_lib_array)->array_create(ar, reserved);
+    LIB_CHECK_RET(LIB_ID_ARRAY);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->array_create(ar, reserved);
 }
 
 __STATIC_INLINE void array_destroy(ARRAY** ar)
 {
-    ((const LIB_ARRAY*)__GLOBAL->lib->p_lib_array)->array_destroy(ar);
+    LIB_CHECK(LIB_ID_ARRAY);
+    ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->array_destroy(ar);
 }
 
 __STATIC_INLINE ARRAY* array_add(ARRAY** ar, unsigned int size)
 {
-    return ((const LIB_ARRAY*)__GLOBAL->lib->p_lib_array)->array_add(ar, size);
+    LIB_CHECK_RET(LIB_ID_ARRAY);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->array_add(ar, size);
 }
 
 __STATIC_INLINE ARRAY* array_remove(ARRAY** ar, unsigned int index)
 {
-    return ((const LIB_ARRAY*)__GLOBAL->lib->p_lib_array)->array_remove(ar, index);
+    LIB_CHECK_RET(LIB_ID_ARRAY);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->array_remove(ar, index);
 }
 
 __STATIC_INLINE ARRAY* array_squeeze(ARRAY** ar)
 {
-    return ((const LIB_ARRAY*)__GLOBAL->lib->p_lib_array)->array_squeeze(ar);
+    LIB_CHECK_RET(LIB_ID_ARRAY);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->array_squeeze(ar);
 }
 
 #endif // ARRAY_H

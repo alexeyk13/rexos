@@ -55,34 +55,6 @@ typedef enum {
 #define DIRECT_WRITE             (1 << 1)
 #define DIRECT_READ_WRITE        (DIRECT_READ | DIRECT_WRITE)
 
-/*
-    struct_size?
-    int error
-    self handle - optional
-    system - remove
-    stdout - optional
-    stdin - optional
-    direct - optional
-    POOL optional
-
- */
-
-typedef struct {
-    int error;
-    //header size including name
-    int struct_size;
-    POOL pool;
-    //self handle
-    HANDLE handle;
-    //stdout/stdin handle. System specific
-    HANDLE stdout, stdin;
-    int direct_mode;
-    HANDLE direct_process;
-    void* direct_addr;
-    unsigned int direct_size;
-    //name is following
-} HEAP;
-
 #define PROCESS_NAME(heap)                              ((char*)((unsigned int)heap + sizeof(HEAP)))
 
 #define __PROCESS_NAME                                  (PROCESS_NAME(__HEAP))

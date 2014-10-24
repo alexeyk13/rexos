@@ -7,20 +7,24 @@
 #ifndef LIB_H
 #define LIB_H
 
-#include "types.h"
-#include "kernel_config.h"
+#include "../cc_macro.h"
+#include "../svc.h"
+#include "../error.h"
 
-typedef struct {
-    //stdlib.h
-    const void* const p_lib_std;
-    //sdtio.h
-    const void* const p_lib_stdio;
-    //time.h
-    const void* const p_lib_time;
-    //array.h
-    const void* const p_lib_array;
-} LIB;
+typedef enum {
+    LIB_ID_STD = 0,
+    LIB_ID_STDIO,
+    LIB_ID_TIME,
+    LIB_ID_ARRAY,
+    LIB_ID_MAX
+} LIB_ID;
 
-void lib_stub ();
+#define LIB_CHECK(id)                                       if (__GLOBAL->lib[(id)] == NULL) { \
+                                                                error(ERROR_STUB_CALLED); \
+                                                                return;}
+
+#define LIB_CHECK_RET(id)                                   if (__GLOBAL->lib[(id)] == NULL) { \
+                                                                error(ERROR_STUB_CALLED); \
+                                                                return 0;}
 
 #endif // LIB_H

@@ -72,7 +72,7 @@ typedef struct {
 */
 __STATIC_INLINE time_t mktime(struct tm* ts)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->mktime(ts);
+    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->mktime(ts);
 }
 
 /**
@@ -83,7 +83,7 @@ __STATIC_INLINE time_t mktime(struct tm* ts)
 */
 __STATIC_INLINE struct tm* gmtime(time_t time, struct tm* ts)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->gmtime(time, ts);
+    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->gmtime(time, ts);
 }
 
 /**
@@ -96,7 +96,7 @@ __STATIC_INLINE struct tm* gmtime(time_t time, struct tm* ts)
 */
 __STATIC_INLINE int time_compare(TIME* from, TIME* to)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_compare(from, to);
+    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_compare(from, to);
 }
 
 /**
@@ -108,7 +108,7 @@ __STATIC_INLINE int time_compare(TIME* from, TIME* to)
 */
 __STATIC_INLINE void time_add(TIME* from, TIME* to, TIME* res)
 {
-    ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_add(from, to, res);
+    ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_add(from, to, res);
 }
 
 /**
@@ -120,7 +120,7 @@ __STATIC_INLINE void time_add(TIME* from, TIME* to, TIME* res)
 */
 __STATIC_INLINE void time_sub(TIME* from, TIME* to, TIME* res)
 {
-    ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_sub(from, to, res);
+    ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_sub(from, to, res);
 }
 
 /**
@@ -131,7 +131,7 @@ __STATIC_INLINE void time_sub(TIME* from, TIME* to, TIME* res)
 */
 __STATIC_INLINE void us_to_time(int us, TIME* time)
 {
-    ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->us_to_time(us, time);
+    ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->us_to_time(us, time);
 }
 
 /**
@@ -142,7 +142,7 @@ __STATIC_INLINE void us_to_time(int us, TIME* time)
 */
 __STATIC_INLINE void ms_to_time(int ms, TIME* time)
 {
-    ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->ms_to_time(ms, time);
+    ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->ms_to_time(ms, time);
 }
 
 /**
@@ -152,7 +152,7 @@ __STATIC_INLINE void ms_to_time(int ms, TIME* time)
 */
 __STATIC_INLINE int time_to_us(TIME* time)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_to_us(time);
+    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_to_us(time);
 }
 
 /**
@@ -162,7 +162,7 @@ __STATIC_INLINE int time_to_us(TIME* time)
 */
 __STATIC_INLINE int time_to_ms(TIME* time)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_to_ms(time);
+    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_to_ms(time);
 }
 
 /**
@@ -173,7 +173,7 @@ __STATIC_INLINE int time_to_ms(TIME* time)
 */
 __STATIC_INLINE TIME* time_elapsed(TIME* from, TIME* res)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_elapsed(from, res);
+    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_elapsed(from, res);
 }
 
 /**
@@ -183,7 +183,7 @@ __STATIC_INLINE TIME* time_elapsed(TIME* from, TIME* res)
 */
 __STATIC_INLINE unsigned int time_elapsed_ms(TIME* from)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_elapsed_ms(from);
+    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_elapsed_ms(from);
 }
 
 /**
@@ -193,7 +193,7 @@ __STATIC_INLINE unsigned int time_elapsed_ms(TIME* from)
 */
 __STATIC_INLINE unsigned int time_elapsed_us(TIME* from)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib->p_lib_time)->time_elapsed_us(from);
+    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_elapsed_us(from);
 }
 
 /** \} */ // end of time group

@@ -17,7 +17,6 @@
 
 #include "cc_macro.h"
 #include "lib/types.h"
-#include "lib/lib.h"
 
 /*
     List of all calls to supervisor
@@ -103,8 +102,36 @@ typedef enum {
 typedef struct {
     void* heap;
     void (*svc_irq)(unsigned int, unsigned int, unsigned int, unsigned int);
-    const LIB* lib;
+    const void** lib;
 } GLOBAL;
+
+/*
+    struct_size?
+    int error
+    self handle - optional
+    system - remove
+    stdout - optional
+    stdin - optional
+    direct - optional
+    POOL optional
+
+ */
+
+typedef struct {
+    int error;
+    //header size including name
+    int struct_size;
+    POOL pool;
+    //self handle
+    HANDLE handle;
+    //stdout/stdin handle. System specific
+    HANDLE stdout, stdin;
+    int direct_mode;
+    HANDLE direct_process;
+    void* direct_addr;
+    unsigned int direct_size;
+    //name is following
+} HEAP;
 
 #define __GLOBAL                                            ((GLOBAL*)(SRAM_BASE))
 #define __HEAP                                              ((HEAP*)(((GLOBAL*)(SRAM_BASE))->heap))

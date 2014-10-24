@@ -12,7 +12,7 @@
 */
 
 #include "cc_macro.h"
-#include "process.h"
+#include "svc.h"
 
 typedef enum {
     //kernel-specific
@@ -28,7 +28,6 @@ typedef enum {
     ERROR_TIMEOUT,
     ERROR_INVALID_SVC,
     ERROR_SYNC_OBJECT_DESTROYED,
-    ERROR_RESTRICTED_FOR_INIT,
     ERROR_STUB_CALLED,
     ERROR_OUT_OF_RANGE,
     ERROR_ACCESS_DENIED,

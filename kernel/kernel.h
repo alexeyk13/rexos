@@ -111,14 +111,7 @@ typedef struct {
 #define __KERNEL                                            ((KERNEL*)(KERNEL_BASE))
 extern const char* const                                    __KERNEL_NAME;
 
-#define LIB_ENTER                                           void* __saved_heap = __GLOBAL->heap;\
-                                                            __GLOBAL->heap = __KERNEL; \
-                                                            __KERNEL->error = ERROR_OK;
-
-#define LIB_EXIT                                            __GLOBAL->heap = __saved_heap;
-
 extern const REX __APP;
-extern const LIB __LIB;
 
 /** \addtogroup arch_porting architecture porting
         For architecture support, all these functions must be implemented.

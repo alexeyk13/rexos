@@ -32,7 +32,7 @@ typedef struct {
 */
 __STATIC_INLINE void format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param)
 {
-    return ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->__format(fmt, va, write_handler, write_param);
+    return ((const LIB_STDIO*)__GLOBAL->lib[LIB_ID_STDIO])->__format(fmt, va, write_handler, write_param);
 }
 
 /**
@@ -59,7 +59,7 @@ void sprintf(char* str, const char *const fmt, ...);
 */
 __STATIC_INLINE void puts(const char* s)
 {
-    ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->puts(s);
+    ((const LIB_STDIO*)__GLOBAL->lib[LIB_ID_STDIO])->puts(s);
 }
 
 /**
@@ -69,7 +69,7 @@ __STATIC_INLINE void puts(const char* s)
 */
 __STATIC_INLINE void putc(const char c)
 {
-    ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->putc(c);
+    ((const LIB_STDIO*)__GLOBAL->lib[LIB_ID_STDIO])->putc(c);
 }
 
 /**
@@ -79,7 +79,7 @@ __STATIC_INLINE void putc(const char c)
 */
 __STATIC_INLINE char getc()
 {
-    return ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->getc();
+    return ((const LIB_STDIO*)__GLOBAL->lib[LIB_ID_STDIO])->getc();
 }
 
 /**
@@ -90,7 +90,7 @@ __STATIC_INLINE char getc()
 */
 __STATIC_INLINE char* gets(char* s, int max_size)
 {
-    return ((const LIB_STDIO*)__GLOBAL->lib->p_lib_stdio)->gets(s, max_size);
+    return ((const LIB_STDIO*)__GLOBAL->lib[LIB_ID_STDIO])->gets(s, max_size);
 }
 
 /** \} */ // end of stdio group

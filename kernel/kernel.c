@@ -21,7 +21,7 @@
 #endif //KERNEL_MES
 
 #include "../userspace/error.h"
-#include "../userspace/lib/lib.h"
+#include "klib.h"
 #include <string.h>
 
 const char* const __KERNEL_NAME=                                                      "RExOS 0.1.0";
@@ -255,7 +255,7 @@ void startup()
 {
     //setup __GLOBAL
     __GLOBAL->svc_irq = svc;
-    __GLOBAL->lib = &__LIB;
+    __GLOBAL->lib = (const void**)&__LIB;
 
     //setup __KERNEL
     memset(__KERNEL, 0, sizeof(KERNEL));

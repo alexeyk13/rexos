@@ -36,6 +36,7 @@ typedef struct {
 
 #include "svc.h"
 #include "error.h"
+#include "lib/time.h"
 
 /**
     \brief post IPC

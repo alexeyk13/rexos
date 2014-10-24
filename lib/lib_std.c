@@ -4,6 +4,7 @@
     All rights reserved.
 */
 
+#include "kernel_config.h"
 #include "lib_std.h"
 #include "printf.h"
 #include "pool.h"
@@ -20,10 +21,13 @@ const LIB_STD __LIB_STD = {
     pool_realloc,
     pool_free,
 
-    //#if (KERNEL_PROFILING)
+#if (KERNEL_PROFILING)
     pool_check,
     pool_stat,
-    //#endif //KERNEL_PROFILING
+#else
+    lib_stub,
+    lib_stub,
+#endif //KERNEL_PROFILING
     //rand.h
     __srand,
     __rand,
