@@ -31,7 +31,7 @@ static void sprintf_handler(const char *const buf, unsigned int size, void* para
     *str += size;
 }
 
-static void pad_spaces(int count, STDOUT write_handler, void *write_param)
+static void pad_spaces(int count, WRITE_HANDLER write_handler, void *write_param)
 {
     while (count > PRINTF_BUF_SIZE)
     {
@@ -42,7 +42,7 @@ static void pad_spaces(int count, STDOUT write_handler, void *write_param)
         write_handler(spaces, count, write_param);
 }
 
-static inline void pad_zeroes(int count, STDOUT write_handler, void *write_param)
+static inline void pad_zeroes(int count, WRITE_HANDLER write_handler, void *write_param)
 {
     while (count > PRINTF_BUF_SIZE)
     {
@@ -121,7 +121,7 @@ int size_in_bytes(unsigned int value, char* buf)
     \param va: va_list of arguments
     \retval none
 */
-void __format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param)
+void __format(const char *const fmt, va_list va, WRITE_HANDLER write_handler, void* write_param)
 {
     char buf[PRINTF_BUF_SIZE];
     unsigned char flags;

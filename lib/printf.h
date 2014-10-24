@@ -59,12 +59,14 @@
  */
 
 #include <stdarg.h>
-#include "../userspace/lib/types.h"
+#include <stdbool.h>
+
+typedef void (*WRITE_HANDLER)(const char *const buf, unsigned int size, void* param);
 
 unsigned long __atou(const char *const buf, int size);
 int __utoa(char* buf, unsigned long value, int radix, bool uppercase);
 
-void __format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param);
+void __format(const char *const fmt, va_list va, WRITE_HANDLER write_handler, void* write_param);
 void sformat(char* str, const char *const fmt, va_list va);
 
 #endif // PRINTF_H
