@@ -19,8 +19,6 @@ typedef struct {
     void (*pool_free)(POOL*, void*);
     bool (*pool_check)(POOL*, void*);
     void (*pool_stat)(POOL*, POOL_STAT*, void*);
-
-    //rand.h
     unsigned int (*srand)();
     unsigned int (*rand)(unsigned int* seed);
 }LIB_STD;
