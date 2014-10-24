@@ -628,22 +628,27 @@ void stm32_analog()
             ipc_post(&ipc);
             break;
         case IPC_OPEN:
-            if (ipc.param1 == STM32_ADC)
-                stm32_adc_open(&analog);
-            else if (ipc.param1 < STM32_ADC)
+            switch (HAL_GROUP(ipc.param1))
             {
+            case HAL_ADC:
+                stm32_adc_open(&analog);
+                break;
+            case HAL_DAC:
                 if (direct_read(ipc.process, (void*)&de, sizeof(STM32_DAC_ENABLE)))
                     stm32_dac_open(&analog, ipc.param1, &de);
-            }
-            else
+            default:
                 error(ERROR_INVALID_PARAMS);
+            }
             ipc_post_or_error(&ipc);
             break;
         case IPC_CLOSE:
-            if (ipc.param1 < STM32_ADC)
+            switch (HAL_GROUP(ipc.param1))
+            {
+            case HAL_DAC:
                 stm32_dac_close(&analog, ipc.param1);
-            else
+            default:
                 error(ERROR_INVALID_PARAMS);
+            }
             ipc_post_or_error(&ipc);
             break;
         case STM32_DAC_SET_LEVEL:
@@ -651,10 +656,13 @@ void stm32_analog()
             ipc_post_or_error(&ipc);
             break;
         case IPC_FLUSH:
-            if (ipc.param1 < STM32_ADC)
+            switch (HAL_GROUP(ipc.param1))
+            {
+            case HAL_DAC:
                 stm32_dac_flush(&analog, ipc.param1);
-            else
+            default:
                 error(ERROR_INVALID_PARAMS);
+            }
             ipc_post_or_error(&ipc);
             break;
         case IPC_WRITE:
