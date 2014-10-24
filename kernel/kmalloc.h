@@ -7,6 +7,7 @@
 #ifndef KMALLOC_H
 #define KMALLOC_H
 
+#include "../userspace/lib/stdlib.h"
 #include "../userspace/cc_macro.h"
 #include "kernel.h"
 
@@ -21,7 +22,7 @@
 */
 __STATIC_INLINE void* kmalloc(int size)
 {
-    return __GLOBAL->lib->pool_malloc(&__KERNEL->paged, size);
+    return ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->pool_malloc(&__KERNEL->paged, size);
 }
 
 /**
@@ -32,7 +33,7 @@ __STATIC_INLINE void* kmalloc(int size)
 */
 __STATIC_INLINE void* krealloc(void* ptr, int size)
 {
-    return __GLOBAL->lib->pool_realloc(&__KERNEL->paged, ptr, size);
+    return ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->pool_realloc(&__KERNEL->paged, ptr, size);
 }
 
 /**
@@ -42,7 +43,7 @@ __STATIC_INLINE void* krealloc(void* ptr, int size)
 */
 __STATIC_INLINE void kfree(void *ptr)
 {
-    __GLOBAL->lib->pool_free(&__KERNEL->paged, ptr);
+    ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->pool_free(&__KERNEL->paged, ptr);
 }
 
 /** \} */ // end of memory group

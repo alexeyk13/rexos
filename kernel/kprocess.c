@@ -560,7 +560,7 @@ void process_stat(PROCESS* process)
 {
     POOL_STAT stat;
     LIB_ENTER;
-    __GLOBAL->lib->pool_stat(&process->heap->pool, &stat, process->sp);
+    ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->pool_stat(&process->heap->pool, &stat, process->sp);
     LIB_EXIT;
 
     printk("%-16.16s ", PROCESS_NAME(process->heap));
@@ -597,7 +597,7 @@ static inline void kernel_stat()
 #endif
     POOL_STAT stat;
     LIB_ENTER;
-    __GLOBAL->lib->pool_stat(&__KERNEL->paged, &stat, get_sp());
+    ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->pool_stat(&__KERNEL->paged, &stat, get_sp());
     LIB_EXIT;
 
     printk("%-16.16s         ", __KERNEL_NAME);

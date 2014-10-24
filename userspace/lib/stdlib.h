@@ -10,6 +10,23 @@
 #include "lib.h"
 #include "../process.h"
 
+typedef struct {
+    unsigned long (*atou)(const char *const, int);
+    int (*utoa)(char*, unsigned long, int, bool);
+    void (*pool_init)(POOL*, void*);
+    void* (*pool_malloc)(POOL*, size_t);
+    void* (*pool_realloc)(POOL*, void*, size_t);
+    void (*pool_free)(POOL*, void*);
+
+//#if (KERNEL_PROFILING)
+    bool (*pool_check)(POOL*, void*);
+    void (*pool_stat)(POOL*, POOL_STAT*, void*);
+//#endif //KERNEL_PROFILING
+    //rand.h
+    unsigned int (*srand)();
+    unsigned int (*rand)(unsigned int* seed);
+}LIB_STD;
+
 /** \addtogroup stdlib embedded uStdlib
  */
 
@@ -20,7 +37,7 @@
 */
 __STATIC_INLINE void* malloc(int size)
 {
-    return __GLOBAL->lib->pool_malloc(&__HEAP->pool, size);
+    return ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->pool_malloc(&__HEAP->pool, size);
 }
 
 /**
@@ -30,7 +47,7 @@ __STATIC_INLINE void* malloc(int size)
 */
 __STATIC_INLINE void* realloc(void* ptr, int size)
 {
-    return __GLOBAL->lib->pool_realloc(&__HEAP->pool, ptr, size);
+    return ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->pool_realloc(&__HEAP->pool, ptr, size);
 }
 
 /**
@@ -41,7 +58,7 @@ __STATIC_INLINE void* realloc(void* ptr, int size)
 */
 __STATIC_INLINE void free(void* ptr)
 {
-    __GLOBAL->lib->pool_free(&__HEAP->pool, ptr);
+    ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->pool_free(&__HEAP->pool, ptr);
 }
 
 /** \addtogroup lib_printf embedded stdio
@@ -56,7 +73,7 @@ __STATIC_INLINE void free(void* ptr)
 */
 __STATIC_INLINE unsigned long atou(const char *const buf, int size)
 {
-    return __GLOBAL->lib->atou(buf, size);
+    return ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->atou(buf, size);
 }
 
 /**
@@ -69,7 +86,7 @@ __STATIC_INLINE unsigned long atou(const char *const buf, int size)
 */
 __STATIC_INLINE int utoa(char* buf, unsigned long value, int radix, bool uppercase)
 {
-    return __GLOBAL->lib->utoa(buf, value, radix, uppercase);
+    return ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->utoa(buf, value, radix, uppercase);
 }
 
 /**
@@ -78,7 +95,7 @@ __STATIC_INLINE int utoa(char* buf, unsigned long value, int radix, bool upperca
 */
 __STATIC_INLINE unsigned int srand()
 {
-    return __GLOBAL->lib->srand();
+    return ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->srand();
 }
 
 /**
@@ -88,7 +105,7 @@ __STATIC_INLINE unsigned int srand()
 */
 __STATIC_INLINE unsigned int rand(unsigned int* seed)
 {
-    return __GLOBAL->lib->rand(seed);
+    return ((const LIB_STD*)__GLOBAL->lib->p_lib_std)->rand(seed);
 }
 
 /** \} */ // end of stdlib group
