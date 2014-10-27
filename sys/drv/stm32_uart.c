@@ -433,13 +433,13 @@ static inline bool uart_close(UART* uart)
     {
         stream_close(uart->tx_handle);
         stream_destroy(uart->tx_stream);
-        ack(core, STM32_GPIO_DISABLE_PIN, uart->tx_pin, 0, 0);
+        ack(core, GPIO_DISABLE_PIN, uart->tx_pin, 0, 0);
     }
     if (uart->rx_pin != PIN_UNUSED)
     {
         stream_close(uart->rx_handle);
         stream_destroy(uart->rx_stream);
-        ack(core, STM32_GPIO_DISABLE_PIN, uart->rx_pin, 0, 0);
+        ack(core, GPIO_DISABLE_PIN, uart->rx_pin, 0, 0);
     }
 
 #if defined(STM32F1)

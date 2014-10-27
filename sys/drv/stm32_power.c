@@ -5,7 +5,7 @@
 */
 
 #include "stm32_power.h"
-//#include "../sys.h"
+#include "stm32_core_private.h"
 #if (SYS_INFO)
 #include "../../userspace/lib/stdio.h"
 #endif

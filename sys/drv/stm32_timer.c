@@ -7,6 +7,7 @@
 #include "stm32_timer.h"
 #include "stm32_config.h"
 #include "stm32_power.h"
+#include "stm32_core_private.h"
 #include "../../userspace/error.h"
 #include "../../userspace/timer.h"
 #include "../sys.h"
@@ -218,7 +219,7 @@ void stm32_timer_enable_ext_clock(CORE *core, TIMER_NUM num, PIN pin, unsigned i
             //map AFIO
             if (i % 3)
             {
-                gpio_enable_afio(core);
+                stm32_gpio_enable_afio(core);
                 if (num <= TIM_8)
                     AFIO->MAPR |= TIMER_REMAP[num][(i % 3) - 1];
                 else
@@ -231,13 +232,13 @@ void stm32_timer_enable_ext_clock(CORE *core, TIMER_NUM num, PIN pin, unsigned i
             switch (flags & TIMER_FLAG_PULL_MASK)
             {
             case TIMER_FLAG_PULLUP:
-                gpio_enable_pin(core, pin, PIN_MODE_IN_PULLUP);
+                stm32_gpio_enable_pin(core, pin, PIN_MODE_IN_PULLUP);
                 break;
             case TIMER_FLAG_PULLDOWN:
-                gpio_enable_pin(core, pin, PIN_MODE_IN_PULLDOWN);
+                stm32_gpio_enable_pin(core, pin, PIN_MODE_IN_PULLDOWN);
                 break;
             default:
-                gpio_enable_pin(core, pin, PIN_MODE_IN_FLOAT);
+                stm32_gpio_enable_pin(core, pin, PIN_MODE_IN_FLOAT);
             }
             //map to input, no filter
             TIMER_REGS[num]->CCMR1 = 1 << (8 * (channel));
@@ -276,7 +277,7 @@ void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
             //disable timer
             stm32_timer_disable(core, num);
             //disable pin
-            gpio_disable_pin(core, pin);
+            stm32_gpio_disable_pin(core, pin);
 #if defined (STM32F1)
             //unmap AFIO
             if (i % 3)
@@ -285,7 +286,7 @@ void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
                     AFIO->MAPR &= ~TIMER_REMAP_MASK[num];
                 else
                     AFIO->MAPR2 &= ~TIMER_REMAP_MASK[num];
-                gpio_disable_afio(core);
+                stm32_gpio_disable_afio(core);
             }
 #endif
             return;

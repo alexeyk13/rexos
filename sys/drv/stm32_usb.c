@@ -392,8 +392,8 @@ void stm32_usb_open(USB* usb)
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    ack(core, STM32_GPIO_ENABLE_PIN, A9, PIN_MODE_IN_FLOAT, 0);
-    ack(core, STM32_GPIO_ENABLE_PIN, A10, PIN_MODE_IN_PULLUP, 0);
+    ack(core, GPIO_ENABLE_PIN, A9, PIN_MODE_IN_FLOAT, 0);
+    ack(core, GPIO_ENABLE_PIN, A10, PIN_MODE_IN_PULLUP, 0);
 
     //enable clock, setup prescaller
     ack(core, STM32_POWER_USB_ON, 0, 0, 0);
@@ -470,8 +470,8 @@ static inline void stm32_usb_close(USB* usb)
     ack(core, STM32_POWER_USB_OFF, 0, 0, 0);
 
     //disable pins
-    ack(core, STM32_GPIO_DISABLE_PIN, A9, 0, 0);
-    ack(core, STM32_GPIO_DISABLE_PIN, A10, 0, 0);
+    ack(core, GPIO_DISABLE_PIN, A9, 0, 0);
+    ack(core, GPIO_DISABLE_PIN, A10, 0, 0);
 }
 
 static inline void stm32_usb_set_address(int addr)

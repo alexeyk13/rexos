@@ -354,7 +354,7 @@ void stm32_dac_close_channel(ANALOG* analog, int channel)
     //DIS
     DAC->CR &= ~(0xffff << (16 * channel));
     //disable PIN
-    ack(analog->core, STM32_GPIO_DISABLE_PIN, DAC_OUT[channel], 0, 0);
+    ack(analog->core, GPIO_DISABLE_PIN, DAC_OUT[channel], 0, 0);
 }
 
 void stm32_dac_flush(ANALOG* analog, STM32_DAC num)

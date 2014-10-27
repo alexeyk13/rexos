@@ -34,14 +34,14 @@ void update_clock(int param1, int param2, int param3);
 void dma_on(CORE* core, unsigned int index);
 void dma_off(CORE* core, unsigned int index);
 #endif
-RESET_REASON get_reset_reason(CORE *core);
+RESET_REASON get_reset_reason(CORE* core);
 #if defined(STM32F1)
 void stm32_usb_power_on();
 void stm32_usb_power_off();
 #endif
 
 #if (SYS_INFO)
-void stm32_power_info(CORE *core);
+void stm32_power_info(CORE* core);
 #endif
 
 void stm32_power_init(CORE* core);
