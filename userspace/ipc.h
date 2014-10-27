@@ -15,7 +15,7 @@ typedef enum {
     IPC_CALL_ERROR,                                     //!< IPC caller returned error. Check value in param1. Never answer to this IPC
     IPC_INVALID_PARAM,
     IPC_PING,
-    IPC_STREAM_WRITE,                                   //!< Sent by kernel when stream write is complete. Param1: write size, Param2: none
+    IPC_STREAM_WRITE,                                   //!< Sent by kernel when stream write is complete. Param1: handle, Param2: size, Param3: application specific
 
     IPC_SYSTEM = 0x1000,
     IPC_USER = 0x10000
