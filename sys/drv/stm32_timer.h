@@ -12,7 +12,28 @@
   */
 
 #include "stm32_core.h"
-#include "stm32_gpio.h"
+#include "../gpio.h"
+
+typedef enum {
+    //timer
+    STM32_TIMER_ENABLE = HAL_IPC(HAL_TIMER),
+    STM32_TIMER_DISABLE,
+    STM32_TIMER_ENABLE_EXT_CLOCK,
+    STM32_TIMER_DISABLE_EXT_CLOCK,
+    STM32_TIMER_SETUP_HZ,
+    STM32_TIMER_START,
+    STM32_TIMER_STOP,
+    STM32_TIMER_GET_CLOCK,
+} STM32_TIMER_IPCS;
+
+typedef struct {
+    //timer specific
+    int hpet_uspsc;
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+    int shared1, shared8;
+#endif //defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+}TIMER_DRV;
+
 
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
 typedef enum {
@@ -61,18 +82,7 @@ typedef TIM_TypeDef*                            TIM_TypeDef_P;
 extern const TIM_TypeDef_P TIMER_REGS[];
 extern const int TIMER_VECTORS[];
 
-void stm32_timer_enable(CORE* core, TIMER_NUM num, unsigned int flags);
-void stm32_timer_disable(CORE* core, TIMER_NUM num);
-void stm32_timer_enable_ext_clock(CORE *core, TIMER_NUM num, PIN pin, unsigned int flags);
-void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin);
-void stm32_timer_setup_hz(TIMER_NUM num, unsigned int hz);
-void stm32_timer_start(TIMER_NUM num);
-void stm32_timer_stop(TIMER_NUM num);
-unsigned int stm32_timer_get_clock(TIMER_NUM num);
-#if (SYS_INFO)
-void stm32_timer_info();
-#endif
 void stm32_timer_init(CORE* core);
-
+bool stm32_timer_request(CORE* core, IPC* ipc);
 
 #endif // STM32_TIMER_H

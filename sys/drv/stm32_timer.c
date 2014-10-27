@@ -5,12 +5,11 @@
 */
 
 #include "stm32_timer.h"
-#include "stm32_config.h"
+#include "stm32_gpio.h"
 #include "stm32_power.h"
 #include "stm32_core_private.h"
 #include "../../userspace/error.h"
 #include "../../userspace/timer.h"
-#include "../sys.h"
 #include "../../userspace/irq.h"
 #include <string.h>
 #if (SYS_INFO)
@@ -149,7 +148,7 @@ void stm32_timer_enable(CORE *core, TIMER_NUM num, unsigned int flags)
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     if (num == TIM_1 || num == TIM_10)
     {
-        if (core->shared1++ == 0)
+        if (core->timer.shared1++ == 0)
         {
             if (flags & TIMER_FLAG_ENABLE_IRQ)
             {
@@ -160,7 +159,7 @@ void stm32_timer_enable(CORE *core, TIMER_NUM num, unsigned int flags)
     }
     else if (num == TIM_8 || num == TIM_13)
     {
-        if (core->shared8++ == 0)
+        if (core->timer.shared8++ == 0)
         {
             if (flags & TIMER_FLAG_ENABLE_IRQ)
             {
@@ -192,12 +191,12 @@ void stm32_timer_disable(CORE *core, TIMER_NUM num)
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     if (num == TIM_1 || num == TIM_10)
     {
-        if (--core->shared1== 0)
+        if (--core->timer.shared1== 0)
             NVIC_DisableIRQ(TIMER_VECTORS[num]);
     }
     else if (num == TIM_8 || num == TIM_13)
     {
-        if (--core->shared8 == 0)
+        if (--core->timer.shared8 == 0)
             NVIC_DisableIRQ(TIMER_VECTORS[num]);
     }
     else
@@ -295,6 +294,40 @@ void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
     error(ERROR_INVALID_PARAMS);
 }
 
+unsigned int stm32_timer_get_clock(TIMER_NUM num)
+{
+    if (num >= TIMERS_COUNT)
+    {
+        error(ERROR_NOT_SUPPORTED);
+        return 0;
+    }
+    unsigned int ahb, apb;
+    ahb = get_clock(STM32_CLOCK_AHB);
+    switch (num)
+    {
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+    case TIM_1:
+    case TIM_8:
+    case TIM_9:
+    case TIM_10:
+    case TIM_11:
+    case TIM_15:
+    case TIM_16:
+    case TIM_17:
+#else
+    case TIM_21:
+    case TIM_22:
+#endif
+        apb = get_clock(STM32_CLOCK_APB2);
+        break;
+    default:
+        apb = get_clock(STM32_CLOCK_APB1);
+    }
+    if (ahb != apb)
+        apb <<= 1;
+    return apb;
+}
+
 void stm32_timer_setup_hz(TIMER_NUM num, unsigned int hz)
 {
     if (num >= TIMERS_COUNT)
@@ -341,40 +374,6 @@ void stm32_timer_stop(TIMER_NUM num)
     TIMER_REGS[num]->SR &= ~TIM_SR_UIF;
 }
 
-unsigned int stm32_timer_get_clock(TIMER_NUM num)
-{
-    if (num >= TIMERS_COUNT)
-    {
-        error(ERROR_NOT_SUPPORTED);
-        return 0;
-    }
-    unsigned int ahb, apb;
-    ahb = get_clock(STM32_CLOCK_AHB);
-    switch (num)
-    {
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
-    case TIM_1:
-    case TIM_8:
-    case TIM_9:
-    case TIM_10:
-    case TIM_11:
-    case TIM_15:
-    case TIM_16:
-    case TIM_17:
-#else
-    case TIM_21:
-    case TIM_22:
-#endif
-        apb = get_clock(STM32_CLOCK_APB2);
-        break;
-    default:
-        apb = get_clock(STM32_CLOCK_APB1);
-    }
-    if (ahb != apb)
-        apb <<= 1;
-    return apb;
-}
-
 void hpet_isr(int vector, void* param)
 {
     TIMER_REGS[HPET_TIMER]->SR &= ~TIM_SR_UIF;
@@ -389,7 +388,7 @@ void hpet_start(unsigned int value, void* param)
     if (value % 0xffff)
         ++mul;
 
-    TIMER_REGS[HPET_TIMER]->PSC = core->hpet_uspsc * mul - 1;
+    TIMER_REGS[HPET_TIMER]->PSC = core->timer.hpet_uspsc * mul - 1;
     TIMER_REGS[HPET_TIMER]->ARR = value / mul - 1;
     TIMER_REGS[HPET_TIMER]->CNT = 0;
 
@@ -405,7 +404,7 @@ void hpet_stop(void* param)
 unsigned int hpet_elapsed(void* param)
 {
     CORE* core = (CORE*)param;
-    return (((TIMER_REGS[HPET_TIMER]->PSC) + 1)/ core->hpet_uspsc) * ((TIMER_REGS[HPET_TIMER]->CNT) + 1);
+    return (((TIMER_REGS[HPET_TIMER]->PSC) + 1)/ core->timer.hpet_uspsc) * ((TIMER_REGS[HPET_TIMER]->CNT) + 1);
 }
 
 #if (TIMER_SOFT_RTC)
@@ -429,12 +428,12 @@ void stm32_timer_info()
 void stm32_timer_init(CORE *core)
 {
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
-    core->shared1 = core->shared8 = 0;
+    core->timer.shared1 = core->timer.shared8 = 0;
 #endif
 
     //setup HPET
     irq_register(TIMER_VECTORS[HPET_TIMER], hpet_isr, (void*)core);
-    core->hpet_uspsc = stm32_timer_get_clock(HPET_TIMER) / 1000000;
+    core->timer.hpet_uspsc = stm32_timer_get_clock(HPET_TIMER) / 1000000;
     stm32_timer_enable(core, HPET_TIMER, TIMER_FLAG_ONE_PULSE_MODE | TIMER_FLAG_ENABLE_IRQ | (13 << TIMER_FLAG_PRIORITY));
     CB_SVC_TIMER cb_svc_timer;
     cb_svc_timer.start = hpet_start;
@@ -447,4 +446,55 @@ void stm32_timer_init(CORE *core)
     stm32_timer_setup_hz(SECOND_PULSE_TIMER, 1);
     stm32_timer_start(SECOND_PULSE_TIMER);
 #endif
+}
+
+bool stm32_timer_request(CORE* core, IPC* ipc)
+{
+    bool need_post = false;
+    switch (ipc->cmd)
+    {
+#if (SYS_INFO)
+    case IPC_GET_INFO:
+        stm32_timer_info();
+        need_post = true;
+        break;
+#endif
+    case STM32_TIMER_ENABLE:
+        stm32_timer_enable(core, (TIMER_NUM)ipc->param1, ipc->param2);
+        need_post = true;
+        break;
+    case STM32_TIMER_DISABLE:
+        stm32_timer_disable(core, (TIMER_NUM)ipc->param1);
+        need_post = true;
+        break;
+    case STM32_TIMER_ENABLE_EXT_CLOCK:
+        stm32_timer_enable_ext_clock(core, (TIMER_NUM)ipc->param1, (PIN)ipc->param2, ipc->param3);
+        need_post = true;
+        break;
+    case STM32_TIMER_DISABLE_EXT_CLOCK:
+        stm32_timer_disable_ext_clock(core, (TIMER_NUM)ipc->param1, (PIN)ipc->param2);
+        need_post = true;
+        break;
+    case STM32_TIMER_SETUP_HZ:
+        stm32_timer_setup_hz((TIMER_NUM)ipc->param1, ipc->param2);
+        need_post = true;
+        break;
+    case STM32_TIMER_START:
+        stm32_timer_start((TIMER_NUM)ipc->param1);
+        need_post = true;
+        break;
+    case STM32_TIMER_STOP:
+        stm32_timer_stop(ipc->param1);
+        need_post = true;
+        break;
+    case STM32_TIMER_GET_CLOCK:
+        ipc->param1 = stm32_timer_get_clock(ipc->param1);
+        need_post = true;
+        break;
+    default:
+        ipc_set_error(ipc, ERROR_NOT_SUPPORTED);
+        need_post = true;
+        break;
+    }
+    return need_post;
 }

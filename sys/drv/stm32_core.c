@@ -61,7 +61,7 @@ void stm32_core_loop(CORE* core)
 #if (SYS_INFO)
             case IPC_GET_INFO:
                 need_post |= stm32_gpio_request(core, &ipc);
-                stm32_timer_info();
+                need_post |= stm32_timer_request(core, &ipc);
                 stm32_power_info(core);
 #if !(TIMER_SOFT_RTC)
                 need_post |= stm32_rtc_request(&ipc);
@@ -88,6 +88,9 @@ void stm32_core_loop(CORE* core)
             case HAL_GPIO:
                 need_post = stm32_gpio_request(core, &ipc);
                 break;
+            case HAL_TIMER:
+                need_post = stm32_timer_request(core, &ipc);
+                break;
 #if !(TIMER_SOFT_RTC)
             case HAL_RTC:
                 need_post = stm32_rtc_request(&ipc);
@@ -101,39 +104,6 @@ void stm32_core_loop(CORE* core)
             default:
                 switch (ipc.cmd)
                 {
-                //timer specific
-                case STM32_TIMER_ENABLE:
-                    stm32_timer_enable(core, (TIMER_NUM)ipc.param1, ipc.param2);
-                    need_post = true;
-                    break;
-                case STM32_TIMER_DISABLE:
-                    stm32_timer_disable(core, (TIMER_NUM)ipc.param1);
-                    need_post = true;
-                    break;
-                case STM32_TIMER_ENABLE_EXT_CLOCK:
-                    stm32_timer_enable_ext_clock(core, (TIMER_NUM)ipc.param1, (PIN)ipc.param2, ipc.param3);
-                    need_post = true;
-                    break;
-                case STM32_TIMER_DISABLE_EXT_CLOCK:
-                    stm32_timer_disable_ext_clock(core, (TIMER_NUM)ipc.param1, (PIN)ipc.param2);
-                    need_post = true;
-                    break;
-                case STM32_TIMER_SETUP_HZ:
-                    stm32_timer_setup_hz((TIMER_NUM)ipc.param1, ipc.param2);
-                    need_post = true;
-                    break;
-                case STM32_TIMER_START:
-                    stm32_timer_start((TIMER_NUM)ipc.param1);
-                    need_post = true;
-                    break;
-                case STM32_TIMER_STOP:
-                    stm32_timer_stop(ipc.param1);
-                    need_post = true;
-                    break;
-                case STM32_TIMER_GET_CLOCK:
-                    ipc.param1 = stm32_timer_get_clock(ipc.param1);
-                    need_post = true;
-                    break;
                 //power specific
                 case STM32_POWER_GET_CLOCK:
                     ipc.param1 = get_clock(ipc.param1);
