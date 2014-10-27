@@ -31,6 +31,7 @@ typedef enum {
 typedef enum {
     HAL_GPIO = 0,
     HAL_POWER,
+    HAL_TIMER,
     HAL_RTC,
     HAL_WDT,
     HAL_UART,
@@ -44,6 +45,7 @@ typedef enum {
 #define HAL_GROUP(handle)                                   ((handle) >> 16)
 
 #define HAL_IPC(hal)                                        (IPC_USER + ((hal) << 16))
+#define HAL_IPC_GROUP(ipc)                                  (((ipc) - IPC_USER) >> 16)
 
 /** \addtogroup sys sys
     \{
