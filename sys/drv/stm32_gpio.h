@@ -14,7 +14,16 @@ typedef enum {
     STM32_GPIO_ENABLE_PIN_SYSTEM = GPIO_HAL_MAX,
     STM32_GPIO_ENABLE_EXTI,
     STM32_GPIO_DISABLE_EXTI,
-    STM32_GPIO_DISABLE_JTAG,
+    STM32_GPIO_DISABLE_JTAG
+#if defined(STM32F1)
+    ,
+    STM32_GPIO_ENABLE_AFIO,
+    STM32_GPIO_DISABLE_AFIO
+#elif defined(STM32L0)
+    ,
+    STM32_GPIO_ENABLE_SYSCFG,
+    STM32_GPIO_DISABLE_SYSCFG
+#endif
 } STM32_GPIO_IPCS;
 
 typedef enum {
@@ -54,10 +63,6 @@ typedef enum {
     GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_50MHZ = 0xf
 }GPIO_MODE;
 
-void stm32_gpio_enable_afio(CORE* core);
-void stm32_gpio_disable_afio(CORE* core);
-
-void stm32_gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup);
 #elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
 
 #define GPIO_MODE_INPUT                         (0x0 << 0)
@@ -103,12 +108,6 @@ typedef enum {
     AF15
 } AF;
 
-#if defined(STM32L0)
-void stm32_gpio_enable_syscfg(CORE* core);
-void stm32_gpio_disable_syscfg(CORE* core);
-#endif
-
-void stm32_gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af);
 #endif
 
 #define EXTI_FLAGS_RISING                            (1 << 0)
@@ -118,18 +117,27 @@ void stm32_gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af)
 #define EXTI_FLAGS_PULLDOWN                          (1 << 3)
 #define EXTI_FLAGS_PULL_MASK                         (3 << 2)
 
-void stm32_gpio_enable_pin(CORE* core, PIN pin, PIN_MODE mode);
-void stm32_gpio_enable_exti(CORE* core, PIN pin, unsigned int flags);
-void stm32_gpio_disable_exti(CORE* core, PIN pin);
-void stm32_gpio_disable_pin(CORE* core, PIN pin);
-void stm32_gpio_set_pin(PIN pin, bool set);
-bool stm32_gpio_get_pin(PIN pin);
-void stm32_gpio_disable_jtag(CORE* core);
-#if (SYS_INFO)
-void stm32_gpio_info(CORE* core);
+typedef struct {
+    int* used_pins[GPIO_COUNT];
+#if defined(STM32F1)
+    int used_afio;
+#elif defined(STM32L0)
+    int used_syscfg;
 #endif
+}GPIO_DRV;
 
 void stm32_gpio_init(CORE* core);
-void stm32_gpio_request(CORE* core, IPC* ipc);
+bool stm32_gpio_request(CORE* core, IPC* ipc);
+
+__STATIC_INLINE void stm32_gpio_request_inline(CORE* core, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.param1 = param1;
+    ipc.param2 = param2;
+    ipc.param3 = param3;
+    stm32_gpio_request(core, &ipc);
+}
+
 
 #endif // STM32_GPIO_H

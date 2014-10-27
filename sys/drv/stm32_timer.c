@@ -219,7 +219,7 @@ void stm32_timer_enable_ext_clock(CORE *core, TIMER_NUM num, PIN pin, unsigned i
             //map AFIO
             if (i % 3)
             {
-                stm32_gpio_enable_afio(core);
+                stm32_gpio_request_inline(core, STM32_GPIO_ENABLE_AFIO, 0, 0, 0);
                 if (num <= TIM_8)
                     AFIO->MAPR |= TIMER_REMAP[num][(i % 3) - 1];
                 else
@@ -232,13 +232,13 @@ void stm32_timer_enable_ext_clock(CORE *core, TIMER_NUM num, PIN pin, unsigned i
             switch (flags & TIMER_FLAG_PULL_MASK)
             {
             case TIMER_FLAG_PULLUP:
-                stm32_gpio_enable_pin(core, pin, PIN_MODE_IN_PULLUP);
+                stm32_gpio_request_inline(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_PULLUP, 0);
                 break;
             case TIMER_FLAG_PULLDOWN:
-                stm32_gpio_enable_pin(core, pin, PIN_MODE_IN_PULLDOWN);
+                stm32_gpio_request_inline(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_PULLDOWN, 0);
                 break;
             default:
-                stm32_gpio_enable_pin(core, pin, PIN_MODE_IN_FLOAT);
+                stm32_gpio_request_inline(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_FLOAT, 0);
             }
             //map to input, no filter
             TIMER_REGS[num]->CCMR1 = 1 << (8 * (channel));
@@ -277,7 +277,7 @@ void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
             //disable timer
             stm32_timer_disable(core, num);
             //disable pin
-            stm32_gpio_disable_pin(core, pin);
+            stm32_gpio_request_inline(core, GPIO_DISABLE_PIN, pin, 0, 0);
 #if defined (STM32F1)
             //unmap AFIO
             if (i % 3)
@@ -286,7 +286,7 @@ void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
                     AFIO->MAPR &= ~TIMER_REMAP_MASK[num];
                 else
                     AFIO->MAPR2 &= ~TIMER_REMAP_MASK[num];
-                stm32_gpio_disable_afio(core);
+                stm32_gpio_request_inline(core, STM32_GPIO_DISABLE_AFIO, 0, 0, 0);
             }
 #endif
             return;

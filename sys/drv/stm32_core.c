@@ -37,12 +37,18 @@ const REX __STM32_CORE = {
 void stm32_core_loop(CORE* core)
 {
     IPC ipc;
+    bool need_post;
     for (;;)
     {
         error(ERROR_OK);
+        need_post = false;
         ipc_read_ms(&ipc, 0, 0);
         if (HAL_IPC_GROUP(ipc.cmd) == HAL_GPIO)
-            stm32_gpio_request(core, &ipc);
+        {
+            need_post = stm32_gpio_request(core, &ipc);
+            if (need_post)
+                ipc_post_or_error(&ipc);
+        }
         else
             switch (ipc.cmd)
             {
@@ -57,7 +63,7 @@ void stm32_core_loop(CORE* core)
                 break;
     #if (SYS_INFO)
             case IPC_GET_INFO:
-                stm32_gpio_info(core);
+                need_post |= stm32_gpio_request(core, &ipc);
                 stm32_timer_info();
                 stm32_power_info(core);
     #if !(TIMER_SOFT_RTC)

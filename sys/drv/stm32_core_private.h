@@ -9,15 +9,10 @@
 
 #include "stm32_config.h"
 #include "stm32_core.h"
+#include "stm32_gpio.h"
 
 typedef struct _CORE {
-    //GPIO specific
-    int* used_pins[GPIO_COUNT];
-#if defined(STM32F1)
-    int used_afio;
-#elif defined(STM32L0)
-    int used_syscfg;
-#endif
+    GPIO_DRV gpio;
     //power specific
     int write_count;
     RESET_REASON reset_reason;
