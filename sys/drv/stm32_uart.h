@@ -35,14 +35,16 @@ typedef enum {
     UART_5,
     UART_6,
     UART_7,
-    UART_8
+    UART_8,
+    UART_MAX
 }UART_PORT;
 
 typedef struct {
-    PIN tx, rx;
+    int tx, rx;
     BAUD baud;
     unsigned int tx_stream_size, rx_stream_size;
 } UART_ENABLE;
+
 
 #if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL)
 #define UARTS_COUNT                                         2
