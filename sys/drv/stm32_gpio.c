@@ -274,7 +274,7 @@ void stm32_gpio_disable_jtag(GPIO_DRV* gpio)
 	AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_DISABLE;
 #endif
 #elif defined(STM32L0)
-    core->used_pins[0] += 2;
+    gpio->used_pins[0] += 2;
     stm32_gpio_disable_pin(gpio, A13);
     stm32_gpio_disable_pin(gpio, A14);
 #endif
