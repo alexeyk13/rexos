@@ -11,16 +11,12 @@
 #include "stm32_core.h"
 #include "stm32_gpio.h"
 #include "stm32_timer.h"
+#include "stm32_power.h"
 
 typedef struct _CORE {
     GPIO_DRV gpio;
     TIMER_DRV timer;
-    //power specific
-    int write_count;
-    RESET_REASON reset_reason;
-#if defined(STM32F1)
-    int dma_count[2];
-#endif
+    POWER_DRV power;
 }CORE;
 
 #endif // STM32_CORE_PRIVATE_H

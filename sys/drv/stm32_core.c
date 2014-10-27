@@ -62,7 +62,7 @@ void stm32_core_loop(CORE* core)
             case IPC_GET_INFO:
                 need_post |= stm32_gpio_request(core, &ipc);
                 need_post |= stm32_timer_request(core, &ipc);
-                stm32_power_info(core);
+                need_post |= stm32_power_request(core, &ipc);
 #if !(TIMER_SOFT_RTC)
                 need_post |= stm32_rtc_request(&ipc);
 #endif
@@ -85,6 +85,9 @@ void stm32_core_loop(CORE* core)
         {
             switch (group)
             {
+            case HAL_POWER:
+                need_post = stm32_power_request(core, &ipc);
+                break;
             case HAL_GPIO:
                 need_post = stm32_gpio_request(core, &ipc);
                 break;
@@ -102,46 +105,9 @@ void stm32_core_loop(CORE* core)
                 break;
 #endif //STM32_WDT
             default:
-                switch (ipc.cmd)
-                {
-                //power specific
-                case STM32_POWER_GET_CLOCK:
-                    ipc.param1 = get_clock(ipc.param1);
-                    need_post = true;
-                    break;
-                case STM32_POWER_UPDATE_CLOCK:
-                    update_clock(ipc.param1, ipc.param2, ipc.param3);
-                    need_post = true;
-                    break;
-                case STM32_POWER_GET_RESET_REASON:
-                    ipc.param1 = get_reset_reason(core);
-                    need_post = true;
-                    break;
-        #if defined(STM32F1)
-                case STM32_POWER_DMA_ON:
-                    dma_on(core, ipc.param1);
-                    need_post = true;
-                    break;
-                case STM32_POWER_DMA_OFF:
-                    dma_off(core, ipc.param1);
-                    need_post = true;
-                    break;
-        #endif //STM32F1
-        #if defined(STM32F1)
-                case STM32_POWER_USB_ON:
-                    stm32_usb_power_on();
-                    need_post = true;
-                    break;
-                case STM32_POWER_USB_OFF:
-                    stm32_usb_power_off(core);
-                    need_post = true;
-                    break;
-        #endif //STM32F1
-                default:
-                    ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
-                    need_post = true;
-                    break;
-                }
+                ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
+                need_post = true;
+                break;
             }
         }
         if (need_post)

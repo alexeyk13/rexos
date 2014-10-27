@@ -27,23 +27,44 @@ typedef enum {
     DMA_2
 } STM32_DMA;
 
-unsigned int get_clock(STM32_POWER_CLOCKS type);
-//params are product line specific
-void update_clock(int param1, int param2, int param3);
-#if defined(STM32F1)
-void dma_on(CORE* core, unsigned int index);
-void dma_off(CORE* core, unsigned int index);
-#endif
-RESET_REASON get_reset_reason(CORE* core);
-#if defined(STM32F1)
-void stm32_usb_power_on();
-void stm32_usb_power_off();
-#endif
+typedef enum {
+    RESET_REASON_UNKNOWN    = 0,
+    RESET_REASON_LOW_POWER,
+    RESET_REASON_WATCHDOG,
+    RESET_REASON_SOFTWARE,
+    RESET_REASON_POWERON,
+    RESET_REASON_PIN_RST
+} RESET_REASON;
 
-#if (SYS_INFO)
-void stm32_power_info(CORE* core);
+typedef struct {
+    int write_count;
+    RESET_REASON reset_reason;
+#if defined(STM32F1)
+    int dma_count[2];
 #endif
+}POWER_DRV;
 
 void stm32_power_init(CORE* core);
+bool stm32_power_request(CORE* core, IPC* ipc);
+
+__STATIC_INLINE unsigned int stm32_power_request_inline(CORE* core, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.param1 = param1;
+    ipc.param2 = param2;
+    ipc.param3 = param3;
+    stm32_power_request(core, &ipc);
+    return ipc.param1;
+}
+
+__STATIC_INLINE unsigned int stm32_power_get_clock_internal(CORE* core, STM32_POWER_CLOCKS type)
+{
+    IPC ipc;
+    ipc.cmd = STM32_POWER_GET_CLOCK;
+    ipc.param1 = (unsigned int)type;
+    stm32_power_request(core, &ipc);
+    return ipc.param1;
+}
 
 #endif // STM32_POWER_H

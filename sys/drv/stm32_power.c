@@ -244,7 +244,7 @@ int get_adc_clock()
 
 RESET_REASON get_reset_reason(CORE* core)
 {
-    return core->reset_reason;
+    return core->power.reset_reason;
 }
 
 void setup_clock(int param1, int param2, int param3)
@@ -411,7 +411,7 @@ void stm32_power_info(CORE* core)
     printf("ADC clock: %d\n\r", get_adc_clock());
 #endif
     printf("Reset reason: ");
-    switch (core->reset_reason)
+    switch (core->power.reset_reason)
     {
     case RESET_REASON_LOW_POWER:
         printf("low power");
@@ -438,13 +438,13 @@ void stm32_power_info(CORE* core)
 #if defined(STM32F1)
 void dma_on(CORE* core, unsigned int index)
 {
-    if (core->dma_count[index]++ == 0)
+    if (core->power.dma_count[index]++ == 0)
         RCC->AHBENR |= 1 << index;
 }
 
 void dma_off(CORE* core, unsigned int index)
 {
-    if (--core->dma_count[index] == 0)
+    if (--core->power.dma_count[index] == 0)
         RCC->AHBENR &= ~(1 << index);
 }
 #endif
@@ -485,25 +485,25 @@ void stm32_usb_power_off()
 
 static inline void decode_reset_reason(CORE* core)
 {
-    core->reset_reason = RESET_REASON_UNKNOWN;
+    core->power.reset_reason = RESET_REASON_UNKNOWN;
     if (RCC->CSR & RCC_CSR_LPWRRSTF)
-        core->reset_reason = RESET_REASON_LOW_POWER;
+        core->power.reset_reason = RESET_REASON_LOW_POWER;
     else if (RCC->CSR & (RCC_CSR_WWDGRSTF | RCC_CSR_WDGRSTF))
-        core->reset_reason = RESET_REASON_WATCHDOG;
+        core->power.reset_reason = RESET_REASON_WATCHDOG;
     else if (RCC->CSR & RCC_CSR_SFTRSTF)
-        core->reset_reason = RESET_REASON_SOFTWARE;
+        core->power.reset_reason = RESET_REASON_SOFTWARE;
     else if (RCC->CSR & RCC_CSR_PORRSTF)
-        core->reset_reason = RESET_REASON_POWERON;
+        core->power.reset_reason = RESET_REASON_POWERON;
     else if (RCC->CSR & RCC_CSR_PADRSTF)
-        core->reset_reason = RESET_REASON_PIN_RST;
+        core->power.reset_reason = RESET_REASON_PIN_RST;
     RCC->CSR |= RCC_CSR_RMVF;
 }
 
 void stm32_power_init(CORE* core)
 {
-    core->write_count = 0;
+    core->power.write_count = 0;
 #if defined(STM32F1)
-    core->dma_count[0] = core->dma_count[1] = 0;
+    core->power.dma_count[0] = core->power.dma_count[1] = 0;
     decode_reset_reason(core);
 #endif
 
@@ -532,4 +532,54 @@ void stm32_power_init(CORE* core)
 #endif
 
 
+}
+
+bool stm32_power_request(CORE* core, IPC* ipc)
+{
+    bool need_post = false;
+    switch (ipc->cmd)
+    {
+#if (SYS_INFO)
+    case IPC_GET_INFO:
+        stm32_power_info(core);
+        need_post = true;
+        break;
+#endif
+    case STM32_POWER_GET_CLOCK:
+        ipc->param1 = get_clock(ipc->param1);
+        need_post = true;
+        break;
+    case STM32_POWER_UPDATE_CLOCK:
+        update_clock(ipc->param1, ipc->param2, ipc->param3);
+        need_post = true;
+        break;
+    case STM32_POWER_GET_RESET_REASON:
+        ipc->param1 = get_reset_reason(core);
+        need_post = true;
+        break;
+#if defined(STM32F1)
+    case STM32_POWER_DMA_ON:
+        dma_on(core, ipc->param1);
+        need_post = true;
+        break;
+    case STM32_POWER_DMA_OFF:
+        dma_off(core, ipc->param1);
+        need_post = true;
+        break;
+#endif //STM32F1
+#if defined(STM32F1)
+    case STM32_POWER_USB_ON:
+        stm32_usb_power_on();
+        need_post = true;
+        break;
+    case STM32_POWER_USB_OFF:
+        stm32_usb_power_off(core);
+        need_post = true;
+        break;
+#endif //STM32F1
+    default:
+        ipc_set_error(ipc, ERROR_NOT_SUPPORTED);
+        need_post = true;
+    }
+    return need_post;
 }

@@ -294,7 +294,7 @@ void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
     error(ERROR_INVALID_PARAMS);
 }
 
-unsigned int stm32_timer_get_clock(TIMER_NUM num)
+unsigned int stm32_timer_get_clock(CORE* core, TIMER_NUM num)
 {
     if (num >= TIMERS_COUNT)
     {
@@ -302,7 +302,7 @@ unsigned int stm32_timer_get_clock(TIMER_NUM num)
         return 0;
     }
     unsigned int ahb, apb;
-    ahb = get_clock(STM32_CLOCK_AHB);
+    ahb = stm32_power_get_clock_internal(core, STM32_CLOCK_AHB);
     switch (num)
     {
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
@@ -318,17 +318,17 @@ unsigned int stm32_timer_get_clock(TIMER_NUM num)
     case TIM_21:
     case TIM_22:
 #endif
-        apb = get_clock(STM32_CLOCK_APB2);
+        apb = stm32_power_get_clock_internal(core, STM32_CLOCK_APB2);
         break;
     default:
-        apb = get_clock(STM32_CLOCK_APB1);
+        apb = stm32_power_get_clock_internal(core, STM32_CLOCK_APB1);
     }
     if (ahb != apb)
         apb <<= 1;
     return apb;
 }
 
-void stm32_timer_setup_hz(TIMER_NUM num, unsigned int hz)
+void stm32_timer_setup_hz(CORE* core, TIMER_NUM num, unsigned int hz)
 {
     if (num >= TIMERS_COUNT)
     {
@@ -337,7 +337,7 @@ void stm32_timer_setup_hz(TIMER_NUM num, unsigned int hz)
     }
     unsigned int psc, value, clock;
     //setup psc
-    clock = stm32_timer_get_clock(num);
+    clock = stm32_timer_get_clock(core, num);
     //period in clock units, rounded
     value = (clock * 10) / hz;
     if (value % 10 >= 5)
@@ -433,7 +433,7 @@ void stm32_timer_init(CORE *core)
 
     //setup HPET
     irq_register(TIMER_VECTORS[HPET_TIMER], hpet_isr, (void*)core);
-    core->timer.hpet_uspsc = stm32_timer_get_clock(HPET_TIMER) / 1000000;
+    core->timer.hpet_uspsc = stm32_timer_get_clock(core, HPET_TIMER) / 1000000;
     stm32_timer_enable(core, HPET_TIMER, TIMER_FLAG_ONE_PULSE_MODE | TIMER_FLAG_ENABLE_IRQ | (13 << TIMER_FLAG_PRIORITY));
     CB_SVC_TIMER cb_svc_timer;
     cb_svc_timer.start = hpet_start;
@@ -443,7 +443,7 @@ void stm32_timer_init(CORE *core)
 #if (TIMER_SOFT_RTC)
     irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)core);
     stm32_timer_enable(core, SECOND_PULSE_TIMER, TIMER_FLAG_ENABLE_IRQ | (13 << TIMER_FLAG_PRIORITY));
-    stm32_timer_setup_hz(SECOND_PULSE_TIMER, 1);
+    stm32_timer_setup_hz(core, SECOND_PULSE_TIMER, 1);
     stm32_timer_start(SECOND_PULSE_TIMER);
 #endif
 }
@@ -476,7 +476,7 @@ bool stm32_timer_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
     case STM32_TIMER_SETUP_HZ:
-        stm32_timer_setup_hz((TIMER_NUM)ipc->param1, ipc->param2);
+        stm32_timer_setup_hz(core, (TIMER_NUM)ipc->param1, ipc->param2);
         need_post = true;
         break;
     case STM32_TIMER_START:
@@ -488,7 +488,7 @@ bool stm32_timer_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
     case STM32_TIMER_GET_CLOCK:
-        ipc->param1 = stm32_timer_get_clock(ipc->param1);
+        ipc->param1 = stm32_timer_get_clock(core, ipc->param1);
         need_post = true;
         break;
     default:
