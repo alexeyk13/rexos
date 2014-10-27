@@ -377,7 +377,7 @@ void stm32_uart_open_internal(UART_DRV* drv, UART_PORT port, UART_ENABLE* ue)
 #elif defined(STM32F2) || defined(STM32F4)
         ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart[port]->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, drv->uart[port]->port < UART_4 ? AF7 : AF8);
 #elif defined(STM32L0)
-        ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart[port]->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, drv->uart[port]->tx_pin == UART_TX_PINS[drv->uart[port]->port] ? AF0 : AF4);
+        ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart[port]->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, drv->uart[port]->tx_pin == UART_TX_PINS[port] ? AF0 : AF4);
 #endif
     }
 
@@ -388,7 +388,7 @@ void stm32_uart_open_internal(UART_DRV* drv, UART_PORT port, UART_ENABLE* ue)
 #elif defined(STM32F2) || defined(STM32F4)
         ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart[port]->rx_pin, , GPIO_MODE_AF | GPIO_SPEED_HIGH, drv->uart[port]->port < UART_4 ? AF7 : AF8);
 #elif defined(STM32L0)
-        ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart[port]->rx_pin, GPIO_MODE_AF | GPIO_SPEED_HIGH, drv->uart[port]->rx_pin == UART_RX_PINS[drv->uart[port]->port] ? AF0 : AF4);
+        ack(core, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart[port]->rx_pin, GPIO_MODE_AF | GPIO_SPEED_HIGH, drv->uart[port]->rx_pin == UART_RX_PINS[port] ? AF0 : AF4);
 #endif
     }
     //power up
