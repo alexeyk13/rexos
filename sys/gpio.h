@@ -8,6 +8,9 @@
 #define GPIO_H
 
 #include "sys.h"
+#include "sys_config.h"
+#include "../userspace/cc_macro.h"
+#include "../userspace/ipc.h"
 
 typedef enum {
     GPIO_ENABLE_PIN = HAL_IPC(HAL_GPIO),
@@ -25,5 +28,24 @@ typedef enum {
     PIN_MODE_IN_PULLDOWN
 } PIN_MODE;
 
+__STATIC_INLINE void gpio_enable_pin(int pin, PIN_MODE mode)
+{
+    ack(object_get(SYS_OBJ_CORE), GPIO_ENABLE_PIN, pin, mode, 0);
+}
+
+__STATIC_INLINE void gpio_disable_pin(int pin)
+{
+    ack(object_get(SYS_OBJ_CORE), GPIO_DISABLE_PIN, pin, 0, 0);
+}
+
+__STATIC_INLINE void gpio_set_pin(int pin, bool set)
+{
+    ack(object_get(SYS_OBJ_CORE), GPIO_SET_PIN, pin, set, 0);
+}
+
+__STATIC_INLINE bool gpio_get_pin(int pin)
+{
+    return get(object_get(SYS_OBJ_CORE), GPIO_GET_PIN, pin, 0, 0);
+}
 
 #endif // GPIO_H
