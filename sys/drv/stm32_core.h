@@ -34,10 +34,6 @@ typedef enum {
     STM32_POWER_USB_ON,
     STM32_POWER_USB_OFF,
 
-    //RTC
-    STM32_RTC_GET = HAL_IPC(HAL_RTC),                             //!< Get RTC value
-    STM32_RTC_SET,                                                //!< Set RTC value
-
     STM32_WDT_KICK = HAL_IPC(HAL_WDT)
 
 } STM32_CORE_IPCS;

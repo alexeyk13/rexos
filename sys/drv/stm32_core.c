@@ -38,127 +38,145 @@ void stm32_core_loop(CORE* core)
 {
     IPC ipc;
     bool need_post;
+    int group;
     for (;;)
     {
         error(ERROR_OK);
         need_post = false;
+        group = -1;
         ipc_read_ms(&ipc, 0, 0);
-        if (HAL_IPC_GROUP(ipc.cmd) == HAL_GPIO)
+        if (ipc.cmd < IPC_SYSTEM)
         {
-            need_post = stm32_gpio_request(core, &ipc);
-            if (need_post)
-                ipc_post_or_error(&ipc);
-        }
-        else
             switch (ipc.cmd)
             {
             case IPC_PING:
-                ipc_post(&ipc);
+                need_post = true;
                 break;
             case IPC_CALL_ERROR:
                 break;
             case IPC_SET_STDIO:
                 open_stdout();
-                ipc_post(&ipc);
+                need_post = true;
                 break;
-    #if (SYS_INFO)
+#if (SYS_INFO)
             case IPC_GET_INFO:
                 need_post |= stm32_gpio_request(core, &ipc);
                 stm32_timer_info();
                 stm32_power_info(core);
-    #if !(TIMER_SOFT_RTC)
-                stm32_rtc_info();
-    #endif
-                ipc_post(&ipc);
+#if !(TIMER_SOFT_RTC)
+                need_post |= stm32_rtc_request(&ipc);
+#endif
                 break;
-    #endif
-            //timer specific
-            case STM32_TIMER_ENABLE:
-                stm32_timer_enable(core, (TIMER_NUM)ipc.param1, ipc.param2);
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_TIMER_DISABLE:
-                stm32_timer_disable(core, (TIMER_NUM)ipc.param1);
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_TIMER_ENABLE_EXT_CLOCK:
-                stm32_timer_enable_ext_clock(core, (TIMER_NUM)ipc.param1, (PIN)ipc.param2, ipc.param3);
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_TIMER_DISABLE_EXT_CLOCK:
-                stm32_timer_disable_ext_clock(core, (TIMER_NUM)ipc.param1, (PIN)ipc.param2);
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_TIMER_SETUP_HZ:
-                stm32_timer_setup_hz((TIMER_NUM)ipc.param1, ipc.param2);
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_TIMER_START:
-                stm32_timer_start((TIMER_NUM)ipc.param1);
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_TIMER_STOP:
-                stm32_timer_stop(ipc.param1);
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_TIMER_GET_CLOCK:
-                ipc.param1 = stm32_timer_get_clock(ipc.param1);
-                ipc_post_or_error(&ipc);
-                break;
-            //power specific
-            case STM32_POWER_GET_CLOCK:
-                ipc.param1 = get_clock(ipc.param1);
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_POWER_UPDATE_CLOCK:
-                update_clock(ipc.param1, ipc.param2, ipc.param3);
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_POWER_GET_RESET_REASON:
-                ipc.param1 = get_reset_reason(core);
-                ipc_post_or_error(&ipc);
-                break;
-    #if defined(STM32F1)
-            case STM32_POWER_DMA_ON:
-                dma_on(core, ipc.param1);
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_POWER_DMA_OFF:
-                dma_off(core, ipc.param1);
-                ipc_post_or_error(&ipc);
-                break;
-    #endif //STM32F1
-    #if defined(STM32F1)
-            case STM32_POWER_USB_ON:
-                stm32_usb_power_on();
-                ipc_post_or_error(&ipc);
-                break;
-            case STM32_POWER_USB_OFF:
-                stm32_usb_power_off(core);
-                ipc_post_or_error(&ipc);
-                break;
-    #endif //STM32F1
-            //RTC
-    #if !(TIMER_SOFT_RTC)
-            case STM32_RTC_GET:
-                ipc.param1 = (unsigned int)stm32_rtc_get();
-                ipc_post(&ipc);
-                break;
-            case STM32_RTC_SET:
-                stm32_rtc_set(core, ipc.param1);
-                ipc_post(&ipc);
-                break;
-    #endif //!TIMER_SOFT_RTC
-    #if (STM32_WDT)
-            case STM32_WDT_KICK:
-                stm32_wdt_kick();
-                ipc_post(&ipc);
-                break;
-    #endif //STM32_WDT
+#endif
             default:
-                ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
-                break;
+                ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
+                need_post = true;
             }
+        }
+        //prepare for UART, USB, Analog
+        else if (ipc.cmd < IPC_USER)
+        {
+            ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
+            need_post = true;
+        }
+        else
+            group = HAL_IPC_GROUP(ipc.cmd);
+        if (group >= 0)
+        {
+            switch (group)
+            {
+            case HAL_GPIO:
+                need_post = stm32_gpio_request(core, &ipc);
+                break;
+#if !(TIMER_SOFT_RTC)
+            case HAL_RTC:
+                need_post = stm32_rtc_request(&ipc);
+                break;
+#endif //!TIMER_SOFT_RTC
+            default:
+                switch (ipc.cmd)
+                {
+                //timer specific
+                case STM32_TIMER_ENABLE:
+                    stm32_timer_enable(core, (TIMER_NUM)ipc.param1, ipc.param2);
+                    need_post = true;
+                    break;
+                case STM32_TIMER_DISABLE:
+                    stm32_timer_disable(core, (TIMER_NUM)ipc.param1);
+                    need_post = true;
+                    break;
+                case STM32_TIMER_ENABLE_EXT_CLOCK:
+                    stm32_timer_enable_ext_clock(core, (TIMER_NUM)ipc.param1, (PIN)ipc.param2, ipc.param3);
+                    need_post = true;
+                    break;
+                case STM32_TIMER_DISABLE_EXT_CLOCK:
+                    stm32_timer_disable_ext_clock(core, (TIMER_NUM)ipc.param1, (PIN)ipc.param2);
+                    need_post = true;
+                    break;
+                case STM32_TIMER_SETUP_HZ:
+                    stm32_timer_setup_hz((TIMER_NUM)ipc.param1, ipc.param2);
+                    need_post = true;
+                    break;
+                case STM32_TIMER_START:
+                    stm32_timer_start((TIMER_NUM)ipc.param1);
+                    need_post = true;
+                    break;
+                case STM32_TIMER_STOP:
+                    stm32_timer_stop(ipc.param1);
+                    need_post = true;
+                    break;
+                case STM32_TIMER_GET_CLOCK:
+                    ipc.param1 = stm32_timer_get_clock(ipc.param1);
+                    need_post = true;
+                    break;
+                //power specific
+                case STM32_POWER_GET_CLOCK:
+                    ipc.param1 = get_clock(ipc.param1);
+                    need_post = true;
+                    break;
+                case STM32_POWER_UPDATE_CLOCK:
+                    update_clock(ipc.param1, ipc.param2, ipc.param3);
+                    need_post = true;
+                    break;
+                case STM32_POWER_GET_RESET_REASON:
+                    ipc.param1 = get_reset_reason(core);
+                    need_post = true;
+                    break;
+        #if defined(STM32F1)
+                case STM32_POWER_DMA_ON:
+                    dma_on(core, ipc.param1);
+                    need_post = true;
+                    break;
+                case STM32_POWER_DMA_OFF:
+                    dma_off(core, ipc.param1);
+                    need_post = true;
+                    break;
+        #endif //STM32F1
+        #if defined(STM32F1)
+                case STM32_POWER_USB_ON:
+                    stm32_usb_power_on();
+                    need_post = true;
+                    break;
+                case STM32_POWER_USB_OFF:
+                    stm32_usb_power_off(core);
+                    need_post = true;
+                    break;
+        #endif //STM32F1
+        #if (STM32_WDT)
+                case STM32_WDT_KICK:
+                    stm32_wdt_kick();
+                    need_post = true;
+                    break;
+        #endif //STM32_WDT
+                default:
+                    ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
+                    need_post = true;
+                    break;
+                }
+            }
+        }
+        if (need_post)
+            ipc_post_or_error(&ipc);
     }
 }
 

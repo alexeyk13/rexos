@@ -4,6 +4,7 @@
     All rights reserved.
 */
 #include "stm32_rtc.h"
+#include "../rtc.h"
 #include "stm32_config.h"
 #include "sys_config.h"
 #include "../sys.h"
@@ -184,7 +185,7 @@ time_t stm32_rtc_get()
 #endif
 }
 
-void stm32_rtc_set(CORE* core, time_t time)
+void stm32_rtc_set(time_t time)
 {
     enter_configuration();
 #if defined(STM32F1)
@@ -217,3 +218,31 @@ void stm32_rtc_info()
     printf("\n\r\n\r");
 }
 #endif
+
+
+bool stm32_rtc_request(IPC* ipc)
+{
+    bool need_post = false;
+    switch (ipc->cmd)
+    {
+#if (SYS_INFO)
+    case IPC_GET_INFO:
+        stm32_rtc_info();
+        need_post = true;
+        break;
+#endif
+    case RTC_GET:
+        ipc->param1 = (unsigned int)stm32_rtc_get();
+        need_post = true;
+        break;
+    case RTC_SET:
+        stm32_rtc_set((time_t)ipc->param1);
+        need_post = true;
+        break;
+    default:
+        ipc_set_error(ipc, ERROR_NOT_SUPPORTED);
+        need_post = true;
+        break;
+    }
+    return need_post;
+}
