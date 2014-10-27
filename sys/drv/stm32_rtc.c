@@ -8,7 +8,6 @@
 #include "stm32_config.h"
 #include "sys_config.h"
 #include "../sys.h"
-#include "stm32_power.h"
 #include "../../userspace/lib/stdio.h"
 #include "../../userspace/lib/time.h"
 #include "../../userspace/irq.h"
