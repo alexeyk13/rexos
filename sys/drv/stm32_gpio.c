@@ -5,6 +5,7 @@
 */
 
 #include "stm32_gpio.h"
+#include "stm32_core_private.h"
 #include "sys_config.h"
 #if (SYS_INFO)
 #include "../../userspace/lib/stdlib.h"
@@ -42,19 +43,19 @@ const GPIO_TypeDef_P GPIO[8] =                                  {GPIOA, GPIOB, G
 #define GPIO_ODR_SET(pin, mode)                                 GPIO[GPIO_PORT(pin)]->ODR &= ~(1 << GPIO_PIN(pin)); \
                                                                 GPIO[GPIO_PORT(pin)]->ODR |= mode << GPIO_PIN(pin)
 
-void gpio_enable_afio(CORE* core)
+void stm32_gpio_enable_afio(CORE* core)
 {
     if (core->used_afio++ == 0)
         RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
 }
 
-void gpio_disable_afio(CORE* core)
+void stm32_gpio_disable_afio(CORE* core)
 {
     if (--core->used_afio == 0)
         RCC->APB2ENR &= ~RCC_APB2ENR_AFIOEN;
 }
 
-void gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup)
+void stm32_gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup)
 {
     if (core->used_pins[GPIO_PORT(pin)]++ == 0)
         GPIO_POWER_PORT |= 1 << GPIO_POWER_PINS[GPIO_PORT(pin)];
@@ -81,20 +82,20 @@ void gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup)
                                                                 GPIO_AFR(pin) |= ((unsigned int)(mode) << ((GPIO_PIN(pin) % 8) * 4ul))
 
 #if defined(STM32L0)
-void gpio_enable_syscfg(CORE* core)
+void stm32_gpio_enable_syscfg(CORE* core)
 {
     if (core->used_syscfg++ == 0)
         RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 }
 
-void gpio_disable_syscfg(CORE* core)
+void stm32_gpio_disable_syscfg(CORE* core)
 {
     if (--core->used_syscfg == 0)
         RCC->APB2ENR &= ~RCC_APB2ENR_SYSCFGEN;
 }
 #endif
 
-void gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af)
+void stm32_gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af)
 {
 #if defined(STM32L0)
     if (GPIO_PORT(pin) >= GPIO_COUNT || (core->used_pins[GPIO_PORT(pin)]++ == 0))
@@ -111,80 +112,80 @@ void gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af)
 }
 #endif
 
-void gpio_enable_pin(CORE* core, PIN pin, PIN_MODE mode)
+void stm32_gpio_enable_pin(CORE* core, PIN pin, PIN_MODE mode)
 {
 #if defined(STM32F1)
     switch (mode)
     {
     case PIN_MODE_OUT:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_OUTPUT_PUSH_PULL_2MHZ, false);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_OUTPUT_PUSH_PULL_2MHZ, false);
         break;
     case PIN_MODE_IN_FLOAT:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT_FLOAT, false);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT_FLOAT, false);
         break;
     case PIN_MODE_IN_PULLUP:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT_PULL, true);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT_PULL, true);
         break;
     case PIN_MODE_IN_PULLDOWN:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT_PULL, false);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT_PULL, false);
         break;
     }
 #elif defined(STM32F2) || defined(STM32F4)
     switch (mode)
     {
     case PIN_MODE_OUT:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_OUTPUT | GPIO_OT_PUSH_PULL | GPIO_SPEED_LOW | GPIO_PUPD_NO_PULLUP, AF0);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_OUTPUT | GPIO_OT_PUSH_PULL | GPIO_SPEED_LOW | GPIO_PUPD_NO_PULLUP, AF0);
         break;
     case PIN_MODE_IN_FLOAT:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_NO_PULLUP, AF0);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_NO_PULLUP, AF0);
         break;
     case PIN_MODE_IN_PULLUP:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_PULLUP, AF0);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_PULLUP, AF0);
         break;
     case PIN_MODE_IN_PULLDOWN:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_PULLDOWN, AF0);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_PULLDOWN, AF0);
         break;
     }
 #elif defined(STM32L0)
     switch (mode)
     {
     case PIN_MODE_OUT:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_OUTPUT | GPIO_OT_PUSH_PULL | GPIO_SPEED_VERY_LOW | GPIO_PUPD_NO_PULLUP, AF0);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_OUTPUT | GPIO_OT_PUSH_PULL | GPIO_SPEED_VERY_LOW | GPIO_PUPD_NO_PULLUP, AF0);
         break;
     case PIN_MODE_IN_FLOAT:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_NO_PULLUP, AF0);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_NO_PULLUP, AF0);
         break;
     case PIN_MODE_IN_PULLUP:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_PULLUP, AF0);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_PULLUP, AF0);
         break;
     case PIN_MODE_IN_PULLDOWN:
-        gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_PULLDOWN, AF0);
+        stm32_gpio_enable_pin_system(core, pin, GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_PULLDOWN, AF0);
         break;
     }
 #endif
 }
 
-void gpio_enable_exti(CORE* core, PIN pin, unsigned int flags)
+void stm32_gpio_enable_exti(CORE* core, PIN pin, unsigned int flags)
 {
     switch (flags & EXTI_FLAGS_PULL_MASK)
     {
     case 0:
-        gpio_enable_pin(core, pin, PIN_MODE_IN_FLOAT);
+        stm32_gpio_enable_pin(core, pin, PIN_MODE_IN_FLOAT);
         break;
     case EXTI_FLAGS_PULLUP:
-        gpio_enable_pin(core, pin, PIN_MODE_IN_PULLUP);
+        stm32_gpio_enable_pin(core, pin, PIN_MODE_IN_PULLUP);
         break;
     case EXTI_FLAGS_PULLDOWN:
-        gpio_enable_pin(core, pin, PIN_MODE_IN_PULLDOWN);
+        stm32_gpio_enable_pin(core, pin, PIN_MODE_IN_PULLDOWN);
         break;
     }
 #if defined(STM32F1) || defined(STM32L0)
 #if defined(STM32F1)
-    gpio_enable_afio(core);
+    stm32_gpio_enable_afio(core);
     AFIO->EXTICR[GPIO_PIN(pin) / 4] &= ~(0xful << (uint32_t)(GPIO_PIN(pin) & 3ul));
     AFIO->EXTICR[GPIO_PIN(pin) / 4] |= ((uint32_t)GPIO_PORT(pin) << (uint32_t)(GPIO_PIN(pin) & 3ul));
 #elif defined(STM32L0)
-    gpio_enable_syscfg(core);
+    stm32_gpio_enable_syscfg(core);
     SYSCFG->EXTICR[GPIO_PIN(pin) / 4] &= ~(0xful << (uint32_t)(GPIO_PIN(pin) & 3ul));
     SYSCFG->EXTICR[GPIO_PIN(pin) / 4] |= ((uint32_t)GPIO_PORT(pin) << (uint32_t)(GPIO_PIN(pin) & 3ul));
 #endif
@@ -197,7 +198,7 @@ void gpio_enable_exti(CORE* core, PIN pin, unsigned int flags)
 #endif
 }
 
-void gpio_disable_exti(CORE* core, PIN pin)
+void stm32_gpio_disable_exti(CORE* core, PIN pin)
 {
 #if defined(STM32F1) || defined(STM32L0)
     EXTI->IMR &= ~(1ul << GPIO_PIN(pin));
@@ -206,15 +207,15 @@ void gpio_disable_exti(CORE* core, PIN pin)
     EXTI->RTSR &= ~(1ul << GPIO_PIN(pin));
     EXTI->FTSR &= ~(1ul << GPIO_PIN(pin));
 #if defined(STM32F1)
-    gpio_disable_afio(core);
+    stm32_gpio_disable_afio(core);
 #elif defined(STM32L0)
-    gpio_disable_syscfg(core);
+    stm32_gpio_disable_syscfg(core);
 #endif
 #endif
-    gpio_disable_pin(core, pin);
+    stm32_gpio_disable_pin(core, pin);
 }
 
-void gpio_disable_pin(CORE* core, PIN pin)
+void stm32_gpio_disable_pin(CORE* core, PIN pin)
 {
 #if defined(STM32F1)
     GPIO_CR_SET(pin, PIN_MODE_IN_FLOAT);
@@ -237,7 +238,7 @@ void gpio_disable_pin(CORE* core, PIN pin)
 #endif
 }
 
-void gpio_set_pin(PIN pin, bool set)
+void stm32_gpio_set_pin(PIN pin, bool set)
 {
 #if defined(STM32F1) || defined (STM32L0)
 	if (set)
@@ -252,30 +253,30 @@ void gpio_set_pin(PIN pin, bool set)
 #endif
 }
 
-bool gpio_get_pin(PIN pin)
+bool stm32_gpio_get_pin(PIN pin)
 {
     return (GPIO[GPIO_PORT(pin)]->IDR >> GPIO_PIN(pin)) & 1;
 }
 
-void gpio_disable_jtag(CORE *core)
+void stm32_gpio_disable_jtag(CORE *core)
 {
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     core->used_pins[0] += 3;
     core->used_pins[1] += 2;
-    gpio_disable_pin(core, A13);
-    gpio_disable_pin(core, A14);
-    gpio_disable_pin(core, A15);
-    gpio_disable_pin(core, B3);
-    gpio_disable_pin(core, B4);
+    stm32_gpio_disable_pin(core, A13);
+    stm32_gpio_disable_pin(core, A14);
+    stm32_gpio_disable_pin(core, A15);
+    stm32_gpio_disable_pin(core, B3);
+    stm32_gpio_disable_pin(core, B4);
 
 #if defined(STM32F1)
-    gpio_enable_afio(core);
+    stm32_gpio_enable_afio(core);
 	AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_DISABLE;
 #endif
 #elif defined(STM32L0)
     core->used_pins[0] += 2;
-    gpio_disable_pin(core, A13);
-    gpio_disable_pin(core, A14);
+    stm32_gpio_disable_pin(core, A13);
+    stm32_gpio_disable_pin(core, A14);
 #endif
 }
 
@@ -308,4 +309,50 @@ void stm32_gpio_init(CORE* core)
 #elif defined(STM32L0)
     core->used_syscfg = 0;
 #endif
+}
+
+void stm32_gpio_request(CORE* core, IPC* ipc)
+{
+    switch (ipc->cmd)
+    {
+    case GPIO_ENABLE_PIN:
+        stm32_gpio_enable_pin(core, (PIN)ipc->param1, (PIN_MODE)ipc->param2);
+        ipc_post_or_error(ipc);
+        break;
+    case GPIO_SET_PIN:
+        stm32_gpio_set_pin((PIN)ipc->param1, (bool)ipc->param2);
+        ipc_post_or_error(ipc);
+        break;
+    case GPIO_GET_PIN:
+        ipc->param1 = stm32_gpio_get_pin((PIN)ipc->param1);
+        ipc_post_or_error(ipc);
+        break;
+    case STM32_GPIO_ENABLE_PIN_SYSTEM:
+#if defined(STM32F1)
+        stm32_gpio_enable_pin_system(core, (PIN)ipc->param1, (GPIO_MODE)ipc->param2, ipc->param3);
+#elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
+        stm32_gpio_enable_pin_system(core, (PIN)ipc->param1, ipc->param2, (AF)ipc->param3);
+#endif
+        ipc_post_or_error(ipc);
+        break;
+    case GPIO_DISABLE_PIN:
+        stm32_gpio_disable_pin(core, (PIN)ipc->param1);
+        ipc_post_or_error(ipc);
+        break;
+    case STM32_GPIO_ENABLE_EXTI:
+        stm32_gpio_enable_exti(core, (PIN)ipc->param1, ipc->param2);
+        ipc_post_or_error(ipc);
+        break;
+    case STM32_GPIO_DISABLE_EXTI:
+        stm32_gpio_disable_exti(core, (PIN)ipc->param1);
+        ipc_post_or_error(ipc);
+        break;
+    case STM32_GPIO_DISABLE_JTAG:
+        stm32_gpio_disable_jtag(core);
+        ipc_post_or_error(ipc);
+        break;
+    default:
+        ipc_post_error(ipc->process, ERROR_NOT_SUPPORTED);
+        break;
+    }
 }

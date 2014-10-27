@@ -8,13 +8,14 @@
 #define STM32_GPIO_H
 
 #include "stm32_core.h"
+#include "../gpio.h"
 
 typedef enum {
-    PIN_MODE_OUT = 0,
-    PIN_MODE_IN_FLOAT,
-    PIN_MODE_IN_PULLUP,
-    PIN_MODE_IN_PULLDOWN
-} PIN_MODE;
+    STM32_GPIO_ENABLE_PIN_SYSTEM = GPIO_HAL_MAX,
+    STM32_GPIO_ENABLE_EXTI,
+    STM32_GPIO_DISABLE_EXTI,
+    STM32_GPIO_DISABLE_JTAG,
+} STM32_GPIO_IPCS;
 
 typedef enum {
     A0 = 0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15,
@@ -53,10 +54,10 @@ typedef enum {
     GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_50MHZ = 0xf
 }GPIO_MODE;
 
-void gpio_enable_afio(CORE* core);
-void gpio_disable_afio(CORE* core);
+void stm32_gpio_enable_afio(CORE* core);
+void stm32_gpio_disable_afio(CORE* core);
 
-void gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup);
+void stm32_gpio_enable_pin_system(CORE* core, PIN pin, GPIO_MODE mode, bool pullup);
 #elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
 
 #define GPIO_MODE_INPUT                         (0x0 << 0)
@@ -103,11 +104,11 @@ typedef enum {
 } AF;
 
 #if defined(STM32L0)
-void gpio_enable_syscfg(CORE* core);
-void gpio_disable_syscfg(CORE* core);
+void stm32_gpio_enable_syscfg(CORE* core);
+void stm32_gpio_disable_syscfg(CORE* core);
 #endif
 
-void gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af);
+void stm32_gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af);
 #endif
 
 #define EXTI_FLAGS_RISING                            (1 << 0)
@@ -117,17 +118,18 @@ void gpio_enable_pin_system(CORE* core, PIN pin, unsigned int mode, AF af);
 #define EXTI_FLAGS_PULLDOWN                          (1 << 3)
 #define EXTI_FLAGS_PULL_MASK                         (3 << 2)
 
-void gpio_enable_pin(CORE* core, PIN pin, PIN_MODE mode);
-void gpio_enable_exti(CORE* core, PIN pin, unsigned int flags);
-void gpio_disable_exti(CORE* core, PIN pin);
-void gpio_disable_pin(CORE* core, PIN pin);
-void gpio_set_pin(PIN pin, bool set);
-bool gpio_get_pin(PIN pin);
-void gpio_disable_jtag(CORE* core);
+void stm32_gpio_enable_pin(CORE* core, PIN pin, PIN_MODE mode);
+void stm32_gpio_enable_exti(CORE* core, PIN pin, unsigned int flags);
+void stm32_gpio_disable_exti(CORE* core, PIN pin);
+void stm32_gpio_disable_pin(CORE* core, PIN pin);
+void stm32_gpio_set_pin(PIN pin, bool set);
+bool stm32_gpio_get_pin(PIN pin);
+void stm32_gpio_disable_jtag(CORE* core);
 #if (SYS_INFO)
 void stm32_gpio_info(CORE* core);
 #endif
 
 void stm32_gpio_init(CORE* core);
+void stm32_gpio_request(CORE* core, IPC* ipc);
 
 #endif // STM32_GPIO_H
