@@ -93,6 +93,11 @@ void stm32_core_loop(CORE* core)
                 need_post = stm32_rtc_request(&ipc);
                 break;
 #endif //!TIMER_SOFT_RTC
+#if (STM32_WDT)
+            case HAL_WDT:
+                need_post = stm32_wdt_request(&ipc);
+                break;
+#endif //STM32_WDT
             default:
                 switch (ipc.cmd)
                 {
@@ -162,12 +167,6 @@ void stm32_core_loop(CORE* core)
                     need_post = true;
                     break;
         #endif //STM32F1
-        #if (STM32_WDT)
-                case STM32_WDT_KICK:
-                    stm32_wdt_kick();
-                    need_post = true;
-                    break;
-        #endif //STM32_WDT
                 default:
                     ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
                     need_post = true;

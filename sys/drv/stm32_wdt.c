@@ -1,5 +1,6 @@
 #include "stm32_wdt.h"
 #include "../sys.h"
+#include "../wdt.h"
 #include "stm32_config.h"
 
 #define KICK_KEY                                        0xaaaa
@@ -50,3 +51,21 @@ void stm32_wdt_kick()
 {
     IWDG->KR = KICK_KEY;
 }
+
+bool stm32_wdt_request(IPC* ipc)
+{
+    bool need_post = false;
+    switch (ipc->cmd)
+    {
+    case WDT_KICK:
+        stm32_wdt_kick();
+        need_post = true;
+        break;
+    default:
+        ipc_set_error(ipc, ERROR_NOT_SUPPORTED);
+        need_post = true;
+        break;
+    }
+    return need_post;
+}
+
