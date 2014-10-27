@@ -2,6 +2,7 @@
 #include "../../rexos/userspace/lib/time.h"
 #include "../../rexos/userspace/lib/stdlib.h"
 #include "../../rexos/userspace/lib/stdio.h"
+#include "../../rexos/userspace/lib/heap.h"
 #include "../../rexos/userspace/timer.h"
 #include "../../rexos/userspace/ipc.h"
 #include "../../rexos/userspace/stream.h"
@@ -9,9 +10,10 @@
 #include "../../rexos/userspace/object.h"
 #include "string.h"
 #include "../../rexos/sys/sys.h"
-#include "../../rexos/sys/drv/stm32_gpio.h"
+#include "../../rexos/sys/gpio.h"
+#include "../../rexos/sys/rtc.h"
+#include "../../rexos/sys/wdt.h"
 #include "../../rexos/sys/drv/stm32_uart.h"
-#include "../../rexos/sys/drv/stm32_rtc.h"
 #include "../../rexos/sys/drv/stm32_analog.h"
 #include "../../rexos/sys/drv/stm32_usb.h"
 #include "../../rexos/sys/midware/cdc.h"
@@ -60,21 +62,20 @@ void test_thread3()
     TIME uptime;
     open_stdout();
     printf("test thread3 started\n\r");
-    printf("my name is: %s\n\r", __PROCESS_NAME);
+    printf("my name is: %s\n\r", process_name());
 
-    HANDLE core = object_get(SYS_OBJ_CORE);
-    ack(core, STM32_GPIO_ENABLE_PIN, B9, PIN_MODE_OUT, 0);
+    gpio_enable_pin(B9, PIN_MODE_OUT);
 
-    ack(core, STM32_WDT_KICK, 0, 0, 0);
+    wdt_kick();
     process_info();
     bool set = true;
     for (;;)
     {
         get_uptime(&uptime);
         printf("uptime: %02d:%02d.%06d\n\r", uptime.sec / 60, uptime.sec % 60, uptime.usec);
-        printf("rtc: %d\n\r", get(core, STM32_RTC_GET, 0, 0, 0));
-        ack(core, STM32_GPIO_SET_PIN, B9, set, 0);
-        ack(core, STM32_WDT_KICK, 0, 0, 0);
+        printf("rtc: %d\n\r", rtc_get());
+        gpio_set_pin(B9, set);
+        wdt_kick();
         set = !set;
         sleep_ms(700);
     }
@@ -82,9 +83,8 @@ void test_thread3()
 
 void te_usb_disable_power()
 {
-    HANDLE core = object_get(SYS_OBJ_CORE);
-    ack(core, STM32_GPIO_ENABLE_PIN, C9, PIN_MODE_OUT, 0);
-    ack(core, STM32_GPIO_SET_PIN, C9, true, 0);
+    gpio_enable_pin(C9, PIN_MODE_OUT);
+    gpio_set_pin(C9, true);
 }
 
 HANDLE usb_on()
@@ -122,8 +122,8 @@ HANDLE usb_on()
 void dac_on(HANDLE core, HANDLE analog)
 {
     //TE pin enable power
-    ack(core, STM32_GPIO_ENABLE_PIN, C13, PIN_MODE_OUT, 0);
-    ack(core, STM32_GPIO_SET_PIN, C13, false, 0);
+    gpio_enable_pin(C13, PIN_MODE_OUT);
+    gpio_set_pin(C13, false);
 
     STM32_DAC_ENABLE de;
     de.value = 1000;
@@ -150,7 +150,6 @@ void app()
     core = process_create(&__STM32_CORE);
     uart = process_create(&__STM32_UART);
 
-    core = object_get(SYS_OBJ_CORE);
     TIME uptime;
     int i;
     unsigned int diff;
@@ -158,7 +157,7 @@ void app()
     open_stdin();
 
     printf("App started\n\r");
-    ack(core, STM32_WDT_KICK, 0, 0, 0);
+    wdt_kick();
 
     char c;
 
@@ -169,19 +168,19 @@ void app()
 
     //first second signal may go faster
     sleep_ms(1000);
-    ack(core, STM32_WDT_KICK, 0, 0, 0);
+    wdt_kick();
 
     get_uptime(&uptime);
     for (i = 0; i < TEST_ROUNDS; ++i)
         svc_test();
-    ack(core, STM32_WDT_KICK, 0, 0, 0);
+    wdt_kick();
     diff = time_elapsed_us(&uptime);
     printf("average kernel call time: %d.%dus\n\r", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
     get_uptime(&uptime);
     for (i = 0; i < TEST_ROUNDS; ++i)
         process_switch_test();
-    ack(core, STM32_WDT_KICK, 0, 0, 0);
+    wdt_kick();
     diff = time_elapsed_us(&uptime);
     printf("average switch time: %d.%dus\n\r", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
@@ -197,7 +196,6 @@ void app()
 
     int temp = get(analog, STM32_ADC_TEMP, 0, 0, 0);
     printf("Temp (raw): %d.%d\n\r", temp / 10, temp % 10);
-
 
     for (;;)
     {

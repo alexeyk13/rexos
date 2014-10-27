@@ -7,6 +7,9 @@
 #ifndef STM32_CONFIG_H
 #define STM32_CONFIG_H
 
+//------------------------------ CORE ------------------------------------------------
+//Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
+#define STM32_CORE_STACK_SIZE                   280
 //------------------------------ POWER -----------------------------------------------
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
 #define HSE_VALUE                               24000000
@@ -41,8 +44,8 @@
 #define UART_PROCESS_SIZE                       1024
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
 #define UART_TX_BUF_SIZE                        32ul
-//Sizeof UART process stack. Remember, that process itself requires around 500 bytes
-#define STM32_UART_STACK_SIZE                   500 + (100 + UART_TX_BUF_SIZE) * 1
+//Sizeof UART process stack. Remember, that process itself requires around 450 bytes
+#define STM32_UART_STACK_SIZE                   410 + (50 + UART_TX_BUF_SIZE) * 1
 //------------------------------ TIMER -----------------------------------------------
 #define HPET_TIMER                               TIM_7
 #define TIMER_SOFT_RTC                           0
