@@ -17,7 +17,7 @@ typedef enum {
     RTC_GET = HAL_IPC(HAL_RTC),                             //!< Get RTC value
     RTC_SET,                                                //!< Set RTC value
 
-    GPIO_RTC_MAX
+    RTC_HAL_MAX
 } RTC_IPCS;
 
 __STATIC_INLINE time_t rtc_get()
