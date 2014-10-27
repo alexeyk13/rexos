@@ -70,6 +70,18 @@ __STATIC_INLINE void ipc_post_inline(HANDLE process, unsigned int cmd, unsigned 
 }
 
 /**
+    \brief set error for IPC
+    \param ipc: IPC variable
+    \param code: error code
+    \retval none
+*/
+__STATIC_INLINE void ipc_set_error(IPC* ipc, int code)
+{
+    ipc->cmd = IPC_CALL_ERROR;
+    ipc->param1 = code;
+}
+
+/**
     \brief post IPC
     \param process: IPC receiver
     \param code: error code
