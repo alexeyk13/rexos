@@ -80,6 +80,30 @@ __STATIC_INLINE HANDLE process_create(const REX* rex)
 }
 
 /**
+    \brief get current process
+    \param rex: pointer to process header
+    \retval process HANDLE on success, or INVALID_HANDLE on failure
+*/
+__STATIC_INLINE HANDLE process_get_current()
+{
+    HANDLE handle;
+    svc_call(SVC_PROCESS_GET_CURRENT, (unsigned int)&handle, 0, 0);
+    return handle;
+}
+
+/**
+    \brief get current process. Isr version
+    \param rex: pointer to process header
+    \retval process HANDLE on success, or INVALID_HANDLE on failure
+*/
+__STATIC_INLINE HANDLE process_iget_current()
+{
+    HANDLE handle;
+    __GLOBAL->svc_irq(SVC_PROCESS_GET_CURRENT, (unsigned int)&handle, 0, 0);
+    return handle;
+}
+
+/**
     \brief get process flags
     \param process: handle of created process
     \retval process flags
@@ -123,15 +147,6 @@ __STATIC_INLINE void process_freeze(HANDLE process)
 }
 
 /**
-    \brief return handle to currently running process
-    \retval handle to current process
-*/
-__STATIC_INLINE HANDLE process_get_current()
-{
-    return __HEAP->handle;
-}
-
-/**
     \brief get priority
     \param process: handle of created process
     \retval process base priority
@@ -150,7 +165,7 @@ __STATIC_INLINE unsigned int process_get_priority(HANDLE process)
 */
 __STATIC_INLINE unsigned int process_get_current_priority()
 {
-    return process_get_priority(__HEAP->handle);
+    return process_get_priority(process_get_current());
 }
 
 /**
@@ -171,7 +186,7 @@ __STATIC_INLINE void process_set_priority(HANDLE process, unsigned int priority)
 */
 __STATIC_INLINE void process_set_current_priority(unsigned int priority)
 {
-    process_set_priority(__HEAP->handle, priority);
+    process_set_priority(process_get_current(), priority);
 }
 
 /**
@@ -191,7 +206,7 @@ __STATIC_INLINE void process_destroy(HANDLE process)
 */
 __STATIC_INLINE void process_exit()
 {
-    process_destroy(__HEAP->handle);
+    process_destroy(process_get_current());
 }
 
 /**

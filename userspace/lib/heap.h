@@ -33,8 +33,6 @@ typedef struct {
     int error;
     char flags;
     POOL pool;
-    //self handle
-    HANDLE handle;
     //stdout/stdin handle. System specific
     HANDLE stdout, stdin;
     int direct_mode;

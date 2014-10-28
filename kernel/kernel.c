@@ -53,6 +53,9 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_PROCESS_CREATE:
         kprocess_create((REX*)param1, (PROCESS**)param2);
         break;
+    case SVC_PROCESS_GET_CURRENT:
+        kprocess_get_current_svc((PROCESS**)param1);
+        break;
     case SVC_PROCESS_GET_FLAGS:
         kprocess_get_flags((PROCESS*)param1, (unsigned int*)param2);
         break;

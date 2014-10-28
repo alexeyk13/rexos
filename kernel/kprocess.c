@@ -203,7 +203,6 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->blocks_count = 0;
             kipc_init((HANDLE)*process, rex->ipc_size);
             kdirect_init(*process);
-            (*process)->heap->handle = (HANDLE)(*process);
             (*process)->heap->stdout = (*process)->heap->stdin = INVALID_HANDLE;
 
             (*process)->heap->flags = rex->flags >> REX_HEAP_FLAGS_OFFSET;
@@ -312,6 +311,13 @@ void kprocess_get_priority(PROCESS* process, unsigned int* priority)
     CHECK_MAGIC(process, MAGIC_PROCESS);
     CHECK_ADDRESS(process, priority, sizeof(unsigned int));
     *priority = process->base_priority;
+}
+
+void kprocess_get_current_svc(PROCESS** var)
+{
+    PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, var, sizeof(PROCESS*));
+    *var = process;
 }
 
 void kprocess_destroy(PROCESS* process)

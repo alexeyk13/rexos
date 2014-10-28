@@ -53,6 +53,7 @@ void kprocess_destroy(PROCESS* process);
 //called from svc, IRQ enabled
 void kprocess_get_flags(PROCESS* process, unsigned int* flags);
 void kprocess_get_priority(PROCESS* process, unsigned int* priority);
+void kprocess_get_current_svc(PROCESS** var);
 
 //called from other places in kernel, IRQ disabled
 void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
