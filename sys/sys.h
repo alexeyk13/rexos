@@ -40,7 +40,7 @@ typedef enum {
     HAL_DAC
 } HAL;
 
-#define HAL_HANDLE(hal)                                     ((hal) << 16)
+#define HAL_HANDLE(group, item)                             ((group) << 16 | (item))
 #define HAL_ITEM(handle)                                    ((handle) & 0xff)
 #define HAL_GROUP(handle)                                   ((handle) >> 16)
 
