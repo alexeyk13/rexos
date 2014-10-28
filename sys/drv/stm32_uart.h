@@ -16,9 +16,12 @@
 #include "stm32_gpio.h"
 #include "stm32_config.h"
 #include "sys_config.h"
+#if (MONOLITH_UART)
+#include "stm32_core.h"
+#endif
 
 typedef enum {
-    IPC_UART_SET_BAUDRATE = IPC_USER,
+    IPC_UART_SET_BAUDRATE = HAL_IPC(HAL_UART),
     IPC_UART_GET_BAUDRATE,
     IPC_UART_GET_LAST_ERROR,
     IPC_UART_CLEAR_ERROR,
@@ -45,21 +48,44 @@ typedef struct {
     BAUD baud;
 } UART_ENABLE;
 
+typedef struct {
+    uint8_t tx_pin, rx_pin;
+    uint16_t error;
+    HANDLE tx_stream, tx_handle;
+    uint16_t tx_total, tx_chunk_pos, tx_chunk_size;
+    char tx_buf[UART_TX_BUF_SIZE];
+    HANDLE rx_stream, rx_handle;
+    uint16_t rx_free;
+} UART;
 
-#if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL)
-#define UARTS_COUNT                                         2
-#elif defined(STM32F10X_MD) || defined(STM32F10X_MD_VL)
-#define UARTS_COUNT                                         3
-#elif defined(STM32F1)
-#define UARTS_COUNT                                         5
-#elif defined(STM32F2) || defined(STM32F40_41xxx)
-#define UARTS_COUNT                                         6
-#elif defined(STM32F4)
-#define UARTS_COUNT                                         8
-#elif defined(STM32L0)
-#define UARTS_COUNT                                         2
+typedef struct {
+    UART* uarts[UARTS_COUNT];
+} UART_DRV;
+
+#if (MONOLITH_UART)
+#define SHARED_UART_DRV                    CORE
+#else
+
+typedef struct {
+    UART_DRV uart;
+} SHARED_UART_DRV;
+
 #endif
 
+#if (SYS_INFO)
+#if (UART_STDIO)
+//we can't use printf in uart driver, because this can halt driver loop
+void printu(const char *const fmt, ...);
+#else
+#define printu printf
+#endif
+#endif //SYS_INFO
+
+void stm32_uart_init(SHARED_UART_DRV* drv);
+bool stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc);
+
+#if !(MONOLITH_UART)
 extern const REX __STM32_UART;
+#endif
 
 #endif // STM32_UART_H

@@ -16,7 +16,6 @@
 #include "stm32_uart.h"
 #endif
 
-
 typedef struct _CORE {
     GPIO_DRV gpio;
     TIMER_DRV timer;
@@ -25,5 +24,14 @@ typedef struct _CORE {
     UART_DRV uart;
 #endif
 }CORE;
+
+#if (SYS_INFO)
+#if (UART_STDIO) && (MONOLITH_UART)
+#define printd          printu
+#else
+#define printd          printf
+#endif
+#endif //SYS_INFO
+
 
 #endif // STM32_CORE_PRIVATE_H

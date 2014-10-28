@@ -285,19 +285,19 @@ void stm32_gpio_info(GPIO_DRV* gpio)
 {
     int i;
     bool empty = true;
-    printf("Total GPIO count: %d\n\r", GPIO_COUNT);
-    printf("Active GPIO: ");
+    printd("Total GPIO count: %d\n\r", GPIO_COUNT);
+    printd("Active GPIO: ");
     for (i = 0; i < GPIO_COUNT; ++i)
     {
         if (!empty && gpio->used_pins[i])
-            printf(", ");
+            printd(", ");
         if (gpio->used_pins[i])
         {
-            printf("%c(%d)", 'A' + i, gpio->used_pins[i]);
+            printd("%c(%d)", 'A' + i, gpio->used_pins[i]);
             empty = false;
         }
     }
-    printf("\n\r");
+    printd("\n\r");
 }
 #endif
 

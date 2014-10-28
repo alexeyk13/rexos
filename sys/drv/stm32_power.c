@@ -403,35 +403,35 @@ unsigned int get_clock(STM32_POWER_CLOCKS type)
 #if (SYS_INFO)
 void stm32_power_info(CORE* core)
 {
-    printf("Core clock: %d\n\r", get_core_clock());
-    printf("AHB clock: %d\n\r", get_ahb_clock());
-    printf("APB1 clock: %d\n\r", get_apb1_clock());
-    printf("APB2 clock: %d\n\r", get_apb2_clock());
+    printd("Core clock: %d\n\r", get_core_clock());
+    printd("AHB clock: %d\n\r", get_ahb_clock());
+    printd("APB1 clock: %d\n\r", get_apb1_clock());
+    printd("APB2 clock: %d\n\r", get_apb2_clock());
 #if defined(STM32F1)
-    printf("ADC clock: %d\n\r", get_adc_clock());
+    printd("ADC clock: %d\n\r", get_adc_clock());
 #endif
-    printf("Reset reason: ");
+    printd("Reset reason: ");
     switch (core->power.reset_reason)
     {
     case RESET_REASON_LOW_POWER:
-        printf("low power");
+        printd("low power");
         break;
     case RESET_REASON_WATCHDOG:
-        printf("watchdog");
+        printd("watchdog");
         break;
     case RESET_REASON_SOFTWARE:
-        printf("software");
+        printd("software");
         break;
     case RESET_REASON_POWERON:
-        printf("power ON");
+        printd("power ON");
         break;
     case RESET_REASON_PIN_RST:
-        printf("pin reset");
+        printd("pin reset");
         break;
     default:
-        printf("unknown");
+        printd("unknown");
     }
-    printf("\n\r");
+    printd("\n\r");
 }
 #endif
 

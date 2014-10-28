@@ -418,9 +418,9 @@ void second_pulse_isr(int vector, void* param)
 #if (SYS_INFO)
 void stm32_timer_info()
 {
-    printf("HPET timer: TIM_%d\n\r", HPET_TIMER + 1);
+    printd("HPET timer: TIM_%d\n\r", HPET_TIMER + 1);
 #if (TIMER_SOFT_RTC)
-    printf("Second pulse timer: TIM_%d\n\r", SECOND_PULSE_TIMER + 1);
+    printd("Second pulse timer: TIM_%d\n\r", SECOND_PULSE_TIMER + 1);
 #endif
 }
 #endif

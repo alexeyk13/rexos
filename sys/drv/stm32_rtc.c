@@ -6,6 +6,7 @@
 #include "stm32_rtc.h"
 #include "../rtc.h"
 #include "stm32_config.h"
+#include "stm32_core_private.h"
 #include "sys_config.h"
 #include "../sys.h"
 #include "../../userspace/lib/stdio.h"
@@ -210,11 +211,11 @@ void stm32_rtc_set(time_t time)
 #if (SYS_INFO)
 void stm32_rtc_info()
 {
-    printf("LSE clock: %d\n\r", LSE_VALUE);
+    printd("LSE clock: %d\n\r", LSE_VALUE);
     struct tm tm;
     gmtime(stm32_rtc_get(), &tm);
-    printf("Now: %d.%d.%d %d:%d:%d\n\r", tm.tm_mday, tm.tm_mon + 1, tm.tm_year, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    printf("\n\r\n\r");
+    printd("Now: %d.%d.%d %d:%d:%d\n\r", tm.tm_mday, tm.tm_mon + 1, tm.tm_year, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    printd("\n\r\n\r");
 }
 #endif
 

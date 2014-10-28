@@ -16,6 +16,9 @@
 #if (STM32_WDT)
 #include "stm32_wdt.h"
 #endif
+#if (MONOLITH_UART)
+#include "stm32_uart.h"
+#endif
 
 void stm32_core();
 
@@ -44,7 +47,9 @@ void stm32_core_loop(CORE* core)
         error(ERROR_OK);
         need_post = false;
         group = -1;
+        ipc.cmd = 0;
         ipc_read_ms(&ipc, 0, 0);
+
         if (ipc.cmd < IPC_USER)
         {
             switch (ipc.cmd)
@@ -66,8 +71,21 @@ void stm32_core_loop(CORE* core)
 #if !(TIMER_SOFT_RTC)
                 need_post |= stm32_rtc_request(&ipc);
 #endif
+#if (MONOLITH_UART)
+                need_post |= stm32_uart_request(core, &ipc);
+#endif
                 break;
 #endif
+            case IPC_OPEN:
+            case IPC_CLOSE:
+            case IPC_FLUSH:
+            case IPC_GET_TX_STREAM:
+            case IPC_GET_RX_STREAM:
+                group = HAL_GROUP(ipc.param1);
+                break;
+            case IPC_STREAM_WRITE:
+                group = HAL_GROUP(ipc.param3);
+                break;
             default:
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
                 need_post = true;
@@ -92,12 +110,17 @@ void stm32_core_loop(CORE* core)
             case HAL_RTC:
                 need_post = stm32_rtc_request(&ipc);
                 break;
-#endif //!TIMER_SOFT_RTC
+#endif // !TIMER_SOFT_RTC
 #if (STM32_WDT)
             case HAL_WDT:
                 need_post = stm32_wdt_request(&ipc);
                 break;
 #endif //STM32_WDT
+#if (MONOLITH_UART)
+            case HAL_UART:
+                need_post = stm32_uart_request(core, &ipc);
+                break;
+#endif //MONOLITH_UART
             default:
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
                 need_post = true;
@@ -125,6 +148,9 @@ void stm32_core()
 #endif //!TIMER_SOFT_RTC
 #if (STM32_WDT)
     stm32_wdt_init();
+#endif
+#if (MONOLITH_UART)
+    stm32_uart_init(&core);
 #endif
 
     stm32_core_loop(&core);
