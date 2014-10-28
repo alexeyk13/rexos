@@ -51,7 +51,7 @@ const REX __STM32_ANALOG = {
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
-    10,
+    STM32_DRIVERS_IPC_COUNT,
     //function
     stm32_analog
 };
