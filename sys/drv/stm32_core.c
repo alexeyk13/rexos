@@ -45,7 +45,7 @@ void stm32_core_loop(CORE* core)
         need_post = false;
         group = -1;
         ipc_read_ms(&ipc, 0, 0);
-        if (ipc.cmd < IPC_SYSTEM)
+        if (ipc.cmd < IPC_USER)
         {
             switch (ipc.cmd)
             {
@@ -72,12 +72,6 @@ void stm32_core_loop(CORE* core)
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
                 need_post = true;
             }
-        }
-        //prepare for UART, USB, Analog
-        else if (ipc.cmd < IPC_USER)
-        {
-            ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
-            need_post = true;
         }
         else
             group = HAL_IPC_GROUP(ipc.cmd);

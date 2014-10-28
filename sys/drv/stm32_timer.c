@@ -218,7 +218,7 @@ void stm32_timer_enable_ext_clock(CORE *core, TIMER_NUM num, PIN pin, unsigned i
             //map AFIO
             if (i % 3)
             {
-                stm32_gpio_request_inline(core, STM32_GPIO_ENABLE_AFIO, 0, 0, 0);
+                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_AFIO, 0, 0, 0);
                 if (num <= TIM_8)
                     AFIO->MAPR |= TIMER_REMAP[num][(i % 3) - 1];
                 else
@@ -231,13 +231,13 @@ void stm32_timer_enable_ext_clock(CORE *core, TIMER_NUM num, PIN pin, unsigned i
             switch (flags & TIMER_FLAG_PULL_MASK)
             {
             case TIMER_FLAG_PULLUP:
-                stm32_gpio_request_inline(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_PULLUP, 0);
+                stm32_gpio_request_inside(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_PULLUP, 0);
                 break;
             case TIMER_FLAG_PULLDOWN:
-                stm32_gpio_request_inline(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_PULLDOWN, 0);
+                stm32_gpio_request_inside(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_PULLDOWN, 0);
                 break;
             default:
-                stm32_gpio_request_inline(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_FLOAT, 0);
+                stm32_gpio_request_inside(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_FLOAT, 0);
             }
             //map to input, no filter
             TIMER_REGS[num]->CCMR1 = 1 << (8 * (channel));
@@ -276,7 +276,7 @@ void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
             //disable timer
             stm32_timer_disable(core, num);
             //disable pin
-            stm32_gpio_request_inline(core, GPIO_DISABLE_PIN, pin, 0, 0);
+            stm32_gpio_request_inside(core, GPIO_DISABLE_PIN, pin, 0, 0);
 #if defined (STM32F1)
             //unmap AFIO
             if (i % 3)
@@ -285,7 +285,7 @@ void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
                     AFIO->MAPR &= ~TIMER_REMAP_MASK[num];
                 else
                     AFIO->MAPR2 &= ~TIMER_REMAP_MASK[num];
-                stm32_gpio_request_inline(core, STM32_GPIO_DISABLE_AFIO, 0, 0, 0);
+                stm32_gpio_request_inside(core, STM32_GPIO_DISABLE_AFIO, 0, 0, 0);
             }
 #endif
             return;
@@ -302,7 +302,7 @@ unsigned int stm32_timer_get_clock(CORE* core, TIMER_NUM num)
         return 0;
     }
     unsigned int ahb, apb;
-    ahb = stm32_power_get_clock_internal(core, STM32_CLOCK_AHB);
+    ahb = stm32_power_get_clock_inside(core, STM32_CLOCK_AHB);
     switch (num)
     {
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
@@ -318,10 +318,10 @@ unsigned int stm32_timer_get_clock(CORE* core, TIMER_NUM num)
     case TIM_21:
     case TIM_22:
 #endif
-        apb = stm32_power_get_clock_internal(core, STM32_CLOCK_APB2);
+        apb = stm32_power_get_clock_inside(core, STM32_CLOCK_APB2);
         break;
     default:
-        apb = stm32_power_get_clock_internal(core, STM32_CLOCK_APB1);
+        apb = stm32_power_get_clock_inside(core, STM32_CLOCK_APB1);
     }
     if (ahb != apb)
         apb <<= 1;
