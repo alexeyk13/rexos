@@ -209,6 +209,15 @@
 #define STM32F1
 //it's what defined in STM32F1xxx.h. Real count may be less.
 #define GPIO_COUNT                                              7
+
+#if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL)
+#define UARTS_COUNT                                             2
+#elif defined(STM32F10X_MD) || defined(STM32F10X_MD_VL)
+#define UARTS_COUNT                                             3
+#else
+#define UARTS_COUNT                                             5
+#endif
+
 #endif
 
 //---------------------------------------------------------------------------- stm 32 F2 ----------------------------------------------------------------------------------------------------------
@@ -235,6 +244,7 @@
 #define STM32F2
 #define IRQ_VECTORS_COUNT   81
 #define GPIO_COUNT          9
+#define UARTS_COUNT         6
 
 #if defined(STM32F205RB) || defined(STM32F205VB)
 #define FLASH_SIZE        0x20000
@@ -384,6 +394,13 @@
 #define STM32F4
 #define GPIO_COUNT          11
 
+#if defined(STM32F40_41xxx)
+#define UARTS_COUNT                                             6
+#else defined(STM32F4)
+#define UARTS_COUNT                                             8
+#endif
+
+
 #if defined(STM32F401) || defined(STM32F405) || defined(STM32F407) || defined(STM32F411) || defined(STM32F415) || defined(STM32F417)
 #define STM32F40_41xxx
 #if defined(STM32F401)
@@ -443,6 +460,7 @@
 #define STM32L0
 #define SRAM_SIZE           0x2000
 #define GPIO_COUNT          3
+#define UARTS_COUNT         2
 
 #if defined(STM32L051xx) || defined(STM32L061xx)
 #define IRQ_VECTORS_COUNT   30
