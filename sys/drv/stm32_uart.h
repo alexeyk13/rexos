@@ -23,8 +23,8 @@ typedef enum {
     IPC_UART_GET_LAST_ERROR,
     IPC_UART_CLEAR_ERROR,
     //used internally
-    IPC_UART_ISR_WRITE_CHUNK_COMPLETE,
-    IPC_UART_ISR_RX_CHAR
+    IPC_UART_ISR_TX,
+    IPC_UART_ISR_RX
 } STM32_UART_IPCS;
 
 typedef enum {
@@ -40,9 +40,9 @@ typedef enum {
 }UART_PORT;
 
 typedef struct {
-    int tx, rx;
+    uint8_t tx, rx;
+    uint16_t stream_size;
     BAUD baud;
-    unsigned int tx_stream_size, rx_stream_size;
 } UART_ENABLE;
 
 

@@ -21,19 +21,17 @@
 void stm32_uart();
 
 typedef struct {
-    PIN tx_pin, rx_pin;
-    int error;
-    HANDLE tx_stream, rx_stream, tx_handle, rx_handle, process;
-    unsigned int tx_total;
-    uint16_t tx_chunk_pos, tx_chunk_size;
+    uint8_t tx_pin, rx_pin;
+    uint16_t error;
+    HANDLE tx_stream, tx_handle;
+    uint16_t tx_total, tx_chunk_pos, tx_chunk_size;
     char tx_buf[UART_TX_BUF_SIZE];
-    char rx_char;
-    unsigned int rx_free;
+    HANDLE rx_stream, rx_handle;
+    uint16_t rx_free;
 } UART;
 
 typedef struct {
     UART* uart[UARTS_COUNT];
-    HANDLE process;
 } UART_DRV;
 
 const REX __STM32_UART = {
@@ -46,7 +44,7 @@ const REX __STM32_UART = {
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
-    10,
+    STM32_DRIVERS_IPC_COUNT,
     //function
     stm32_uart
 };
@@ -101,7 +99,7 @@ void stm32_uart_on_isr(int vector, void* param)
     //find port by vector
     UART_PORT port;
     for (port = UART_1; port < UART_MAX && UART_VECTORS[port] != vector; ++port) {}
-    UART* uart = (UART*)param;
+    UART_DRV* drv = (UART_DRV*)param;
 #if defined(STM32L0)
 #define USART_SR_TXE        USART_ISR_TXE
 #define USART_SR_TC         USART_ISR_TC
@@ -116,20 +114,21 @@ void stm32_uart_on_isr(int vector, void* param)
 #endif
 
     //transmit more
-    if ((UART_REGS[port]->CR1 & USART_CR1_TXEIE) && (sr & USART_SR_TXE) && uart->tx_chunk_size)
+    if ((UART_REGS[port]->CR1 & USART_CR1_TXEIE) && (sr & USART_SR_TXE) && drv->uart[port]->tx_chunk_size)
     {
 #if defined(STM32L0)
-        UART_REGS[port]->TDR = uart->tx_buf[uart->tx_chunk_pos++];
+        UART_REGS[port]->TDR = drv->uart[port]->tx_buf[drv->uart[port]->tx_chunk_pos++];
 #else
-        UART_REGS[port]->DR = uart->tx_buf[uart->tx_chunk_pos++];
+        UART_REGS[port]->DR = drv->uart[port]->tx_buf[drv->uart[port]->tx_chunk_pos++];
 #endif
         //no more
-        if (uart->tx_chunk_pos >= uart->tx_chunk_size)
+        if (drv->uart[port]->tx_chunk_pos >= drv->uart[port]->tx_chunk_size)
         {
-            uart->tx_chunk_pos = uart->tx_chunk_size = 0;
-            ipc.process = uart->process;
-            ipc.cmd = IPC_UART_ISR_WRITE_CHUNK_COMPLETE;
-            ipc.param1 = port;
+            drv->uart[port]->tx_chunk_pos = drv->uart[port]->tx_chunk_size = 0;
+            ipc.process = process_iget_current();
+            ipc.cmd = IPC_UART_ISR_TX;
+            ipc.param2 = 0;
+            ipc.param3 = HAL_HANDLE(HAL_UART, port);
             ipc_ipost(&ipc);
             UART_REGS[port]->CR1 &= ~USART_CR1_TXEIE;
             UART_REGS[port]->CR1 |= USART_CR1_TCIE;
@@ -137,13 +136,13 @@ void stm32_uart_on_isr(int vector, void* param)
         }
     }
     //transmission completed and no more data. Disable transmitter
-    else if ((UART_REGS[port]->CR1 & USART_CR1_TCIE) && (sr & USART_SR_TC) &&  (uart->tx_total == 0))
+    else if ((UART_REGS[port]->CR1 & USART_CR1_TCIE) && (sr & USART_SR_TC) &&  (drv->uart[port]->tx_total == 0))
         UART_REGS[port]->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
     //decode error, if any
     if ((sr & (USART_SR_PE | USART_SR_FE | USART_SR_NE | USART_SR_ORE)))
     {
         if (sr & USART_SR_ORE)
-            uart->error = ERROR_OVERFLOW;
+            drv->uart[port]->error = ERROR_OVERFLOW;
         else
         {
 #if defined(STM32L0)
@@ -152,11 +151,11 @@ void stm32_uart_on_isr(int vector, void* param)
             __REG_RC32(UART_REGS[port]->DR);
 #endif
             if (sr & USART_SR_FE)
-                uart->error = ERROR_UART_FRAME;
+                drv->uart[port]->error = ERROR_UART_FRAME;
             else if (sr & USART_SR_PE)
-                uart->error = ERROR_UART_PARITY;
+                drv->uart[port]->error = ERROR_UART_PARITY;
             else if  (sr & USART_SR_NE)
-                uart->error = ERROR_UART_NOISE;
+                drv->uart[port]->error = ERROR_UART_NOISE;
         }
     }
 
@@ -164,13 +163,13 @@ void stm32_uart_on_isr(int vector, void* param)
     if (sr & USART_SR_RXNE)
     {
 #if defined(STM32L0)
-        uart->rx_char = UART_REGS[port]->RDR;
+        ipc.param1 = UART_REGS[port]->RDR;
 #else
-        uart->rx_char = UART_REGS[port]->DR;
+        ipc.param1 = UART_REGS[port]->DR;
 #endif
-        ipc.process = uart->process;
-        ipc.cmd = IPC_UART_ISR_RX_CHAR;
-        ipc.param1 = (unsigned int)uart;
+        ipc.process = process_iget_current();
+        ipc.cmd = IPC_UART_ISR_RX;
+        ipc.param3 = HAL_HANDLE(HAL_UART, port);
         ipc_ipost(&ipc);
     }
 }
@@ -215,6 +214,11 @@ void stm32_uart_set_baudrate_internal(UART_DRV* drv, UART_PORT port, const BAUD*
     if (port >= UARTS_COUNT)
     {
         error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    if (drv->uart[port] == NULL)
+    {
+        error(ERROR_NOT_ACTIVE);
         return;
     }
     HANDLE core = object_get(SYS_OBJ_CORE);
@@ -276,6 +280,11 @@ void stm32_uart_open_internal(UART_DRV* drv, UART_PORT port, UART_ENABLE* ue)
         error(ERROR_INVALID_PARAMS);
         return;
     }
+    if (drv->uart[port] != NULL)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
     HANDLE core = object_get(SYS_OBJ_CORE);
     drv->uart[port] = malloc(sizeof(UART));
     if (drv->uart[port] == NULL)
@@ -292,7 +301,6 @@ void stm32_uart_open_internal(UART_DRV* drv, UART_PORT port, UART_ENABLE* ue)
     drv->uart[port]->rx_handle = INVALID_HANDLE;
     drv->uart[port]->tx_total = 0;
     drv->uart[port]->tx_chunk_pos = drv->uart[port]->tx_chunk_size = 0;
-    drv->uart[port]->process = process_get_current();
     if (drv->uart[port]->tx_pin == PIN_DEFAULT)
         drv->uart[port]->tx_pin = UART_TX_PINS[port];
     if (drv->uart[port]->rx_pin == PIN_DEFAULT)
@@ -300,7 +308,7 @@ void stm32_uart_open_internal(UART_DRV* drv, UART_PORT port, UART_ENABLE* ue)
 
     if (drv->uart[port]->tx_pin != PIN_UNUSED)
     {
-        drv->uart[port]->tx_stream = stream_create(ue->tx_stream_size);
+        drv->uart[port]->tx_stream = stream_create(ue->stream_size);
         if (drv->uart[port]->tx_stream == INVALID_HANDLE)
         {
             free(drv->uart[port]);
@@ -315,11 +323,11 @@ void stm32_uart_open_internal(UART_DRV* drv, UART_PORT port, UART_ENABLE* ue)
             drv->uart[port] = NULL;
             return;
         }
-        stream_listen(drv->uart[port]->tx_stream, (void*)port);
+        stream_listen(drv->uart[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
     }
     if (drv->uart[port]->rx_pin != PIN_UNUSED)
     {
-        drv->uart[port]->rx_stream = stream_create(ue->rx_stream_size);
+        drv->uart[port]->rx_stream = stream_create(ue->stream_size);
         if (drv->uart[port]->rx_stream == INVALID_HANDLE)
         {
             stream_close(drv->uart[port]->tx_handle);
@@ -405,7 +413,7 @@ void stm32_uart_open_internal(UART_DRV* drv, UART_PORT port, UART_ENABLE* ue)
 
     stm32_uart_set_baudrate_internal(drv, port, &ue->baud);
     //enable interrupts
-    irq_register(UART_VECTORS[port], stm32_uart_on_isr, (void*)drv->uart[port]);
+    irq_register(UART_VECTORS[port], stm32_uart_on_isr, (void*)drv);
     NVIC_EnableIRQ(UART_VECTORS[port]);
     NVIC_SetPriority(UART_VECTORS[port], 13);
 }
@@ -422,6 +430,11 @@ static inline void stm32_uart_close(UART_DRV* drv, UART_PORT port)
     if (port >= UARTS_COUNT)
     {
         error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    if (drv->uart[port] == NULL)
+    {
+        error(ERROR_NOT_ACTIVE);
         return;
     }
     HANDLE core = object_get(SYS_OBJ_CORE);
@@ -485,18 +498,132 @@ static inline void stm32_uart_close(UART_DRV* drv, UART_PORT port)
     drv->uart[port] = NULL;
 }
 
-void stm32_uart_write_chunk(UART_DRV* drv, UART_PORT port)
+static inline void stm32_uart_flush(UART_DRV* drv, UART_PORT port)
 {
-    unsigned int to_read = drv->uart[port]->tx_total;
-    if (drv->uart[port]->tx_total > UART_TX_BUF_SIZE)
-        to_read = UART_TX_BUF_SIZE;
-    if (stream_read(drv->uart[port]->tx_handle, drv->uart[port]->tx_buf, to_read))
+    if (port >= UARTS_COUNT)
     {
-        drv->uart[port]->tx_chunk_pos = 0;
-        drv->uart[port]->tx_chunk_size = to_read;
-        drv->uart[port]->tx_total -= to_read;
-        //start transaction
-        UART_REGS[port]->CR1 |= USART_CR1_TE | USART_CR1_TXEIE;
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    if (drv->uart[port] == NULL)
+    {
+        error(ERROR_NOT_ACTIVE);
+        return;
+    }
+    if (drv->uart[port]->tx_pin != PIN_UNUSED)
+    {
+        stream_flush(drv->uart[port]->tx_stream);
+        stream_listen(drv->uart[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
+        drv->uart[port]->tx_total = 0;
+        __disable_irq();
+        drv->uart[port]->tx_chunk_pos = drv->uart[port]->tx_chunk_size = 0;
+        __enable_irq();
+    }
+    if (drv->uart[port]->rx_pin != PIN_UNUSED)
+        stream_flush(drv->uart[port]->rx_stream);
+    drv->uart[port]->error = ERROR_OK;
+}
+
+static inline HANDLE stm32_uart_get_tx_stream(UART_DRV* drv, UART_PORT port)
+{
+    if (port >= UARTS_COUNT)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return INVALID_HANDLE;
+    }
+    if (drv->uart[port] == NULL)
+    {
+        error(ERROR_NOT_ACTIVE);
+        return INVALID_HANDLE;
+    }
+    return drv->uart[port]->tx_stream;
+}
+
+static inline HANDLE stm32_uart_get_rx_stream(UART_DRV* drv, UART_PORT port)
+{
+    if (port >= UARTS_COUNT)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return INVALID_HANDLE;
+    }
+    if (drv->uart[port] == NULL)
+    {
+        error(ERROR_NOT_ACTIVE);
+        return INVALID_HANDLE;
+    }
+    if (drv->uart[port]->rx_pin == PIN_UNUSED)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return INVALID_HANDLE;
+    }
+    return drv->uart[port]->rx_stream;
+}
+
+static inline uint16_t stm32_uart_get_last_error(UART_DRV* drv, UART_PORT port)
+{
+    if (port >= UARTS_COUNT)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return ERROR_OK;
+    }
+    if (drv->uart[port] == NULL)
+    {
+        error(ERROR_NOT_ACTIVE);
+        return ERROR_OK;
+    }
+    return drv->uart[port]->error;
+}
+
+static inline void stm32_uart_clear_error(UART_DRV* drv, UART_PORT port)
+{
+    if (port >= UARTS_COUNT)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    if (drv->uart[port] == NULL)
+    {
+        error(ERROR_NOT_ACTIVE);
+        return;
+    }
+    drv->uart[port]->error = ERROR_OK;
+}
+
+void stm32_uart_write(UART_DRV* drv, UART_PORT port, unsigned int total)
+{
+    if (total)
+        drv->uart[port]->tx_total = total;
+    if (drv->uart[port]->tx_total == 0)
+        drv->uart[port]->tx_total = stream_get_size(drv->uart[port]->tx_stream);
+    if (drv->uart[port]->tx_total)
+    {
+        unsigned int to_read = drv->uart[port]->tx_total;
+        if (drv->uart[port]->tx_total > UART_TX_BUF_SIZE)
+            to_read = UART_TX_BUF_SIZE;
+        if (stream_read(drv->uart[port]->tx_handle, drv->uart[port]->tx_buf, to_read))
+        {
+            drv->uart[port]->tx_chunk_pos = 0;
+            drv->uart[port]->tx_chunk_size = to_read;
+            drv->uart[port]->tx_total -= to_read;
+            //start transaction
+            UART_REGS[port]->CR1 |= USART_CR1_TE | USART_CR1_TXEIE;
+        }
+    }
+    else
+        stream_listen(drv->uart[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
+
+}
+
+static inline void stm32_uart_read(UART_DRV* drv, UART_PORT port, char c)
+{
+    //caching calls to svc
+    if (drv->uart[port]->rx_free == 0)
+        (drv->uart[port]->rx_free = stream_get_free(drv->uart[port]->rx_stream));
+    //if stream is full, char will be discarded
+    if (drv->uart[port]->rx_free)
+    {
+        stream_write(drv->uart[port]->rx_handle, &c, 1);
+        drv->uart[port]->rx_free--;
     }
 }
 
@@ -539,96 +666,44 @@ static inline void stm32_uart_loop(UART_DRV* drv)
             break;
 #endif
         case IPC_OPEN:
-            stm32_uart_open(drv, ipc.param1, ipc.process);
+            stm32_uart_open(drv, HAL_ITEM(ipc.param1), ipc.process);
             ipc_post_or_error(&ipc);
             break;
         case IPC_CLOSE:
-            stm32_uart_close(drv, ipc.param1);
+            stm32_uart_close(drv, HAL_ITEM(ipc.param1));
             ipc_post_or_error(&ipc);
             break;
         case IPC_UART_SET_BAUDRATE:
-            stm32_uart_set_baudrate(drv, ipc.param1, ipc.param1);
+            stm32_uart_set_baudrate(drv, HAL_ITEM(ipc.param1), ipc.process);
             ipc_post_or_error(&ipc);
             break;
         case IPC_FLUSH:
-            if (ipc.param1 < UARTS_COUNT && drv->uart[ipc.param1])
-            {
-                if (drv->uart[ipc.param1]->tx_stream != INVALID_HANDLE)
-                {
-                    stream_flush(drv->uart[ipc.param1]->tx_stream);
-                    stream_listen(drv->uart[ipc.param1]->tx_stream, (void*)(ipc.param1));
-                    drv->uart[ipc.param1]->tx_total = 0;
-                    __disable_irq();
-                    drv->uart[ipc.param1]->tx_chunk_pos = drv->uart[ipc.param1]->tx_chunk_size = 0;
-                    __enable_irq();
-                }
-                if (drv->uart[ipc.param1]->rx_stream != INVALID_HANDLE)
-                    stream_flush(drv->uart[ipc.param1]->rx_stream);
-                ipc_post(&ipc);
-            }
-            else
-                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
+            stm32_uart_flush(drv, HAL_ITEM(ipc.param1));
+            ipc_post_or_error(&ipc);
             break;
         case IPC_GET_TX_STREAM:
-            if (ipc.param1 < UARTS_COUNT && drv->uart[ipc.param1])
-            {
-                ipc.param1 = drv->uart[ipc.param1]->tx_stream;
-                ipc_post(&ipc);
-            }
-            else
-                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
+            ipc.param1 = stm32_uart_get_tx_stream(drv, HAL_ITEM(ipc.param1));
+            ipc_post_or_error(&ipc);
             break;
         case IPC_GET_RX_STREAM:
-            if (ipc.param1 < UARTS_COUNT && drv->uart[ipc.param1])
-            {
-                ipc.param1 = drv->uart[ipc.param1]->rx_stream;
-                ipc_post(&ipc);
-            }
-            else
-                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
+            ipc.param1 = stm32_uart_get_rx_stream(drv, HAL_ITEM(ipc.param1));
+            ipc_post_or_error(&ipc);
             break;
         case IPC_UART_GET_LAST_ERROR:
-            if (ipc.param1 < UARTS_COUNT && drv->uart[ipc.param1])
-            {
-                ipc.param1 = drv->uart[ipc.param1]->error;
-                ipc_post(&ipc);
-            }
-            else
-                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
+            ipc.param1 = stm32_uart_get_last_error(drv, HAL_ITEM(ipc.param1));
+            ipc_post_or_error(&ipc);
             break;
         case IPC_UART_CLEAR_ERROR:
-            if (ipc.param1 < UARTS_COUNT && drv->uart[ipc.param1])
-            {
-                drv->uart[ipc.param1]->error = ERROR_OK;
-                ipc_post(&ipc);
-            }
-            else
-                ipc_post_error(ipc.process, ERROR_INVALID_PARAMS);
+            stm32_uart_clear_error(drv, HAL_ITEM(ipc.param1));
+            ipc_post_or_error(&ipc);
             break;
         case IPC_STREAM_WRITE:
-            drv->uart[ipc.param3]->tx_total = ipc.param2;
-            stm32_uart_write_chunk(drv, ipc.param3);
-            //message from kernel, no response
+        case IPC_UART_ISR_TX:
+            stm32_uart_write(drv, HAL_ITEM(ipc.param3), ipc.param2);
+            //message from kernel (or ISR), no response
             break;
-        case IPC_UART_ISR_WRITE_CHUNK_COMPLETE:
-            if (drv->uart[ipc.param1]->tx_total == 0)
-                drv->uart[ipc.param1]->tx_total = stream_get_size(drv->uart[ipc.param1]->tx_stream);
-            if (drv->uart[ipc.param1]->tx_total)
-                stm32_uart_write_chunk(drv, ipc.param1);
-            else
-                stream_listen(drv->uart[ipc.param1]->tx_stream, (void*)(ipc.param1));
-            //message from ISR, no response
-            break;
-        case IPC_UART_ISR_RX_CHAR:
-            //caching calls to svc
-            if (((UART*)ipc.param1)->rx_free == 0)
-                ((UART*)ipc.param1)->rx_free = stream_get_free(((UART*)ipc.param1)->rx_stream);
-            //if stream is full, char will be discarded
-            if (((UART*)ipc.param1)->rx_free)
-            {
-                stream_write(((UART*)ipc.param1)->rx_handle, &((UART*)ipc.param1)->rx_char, 1);
-                ((UART*)ipc.param1)->rx_free--;
-            }
+        case IPC_UART_ISR_RX:
+            stm32_uart_read(drv, HAL_ITEM(ipc.param3), ipc.param1);
             //message from ISR, no response
             break;
         default:
@@ -648,8 +723,7 @@ static inline void stm32_uart_open_stdio(UART_DRV* drv)
     ue.baud.parity = UART_STDIO_PARITY;
     ue.baud.stop_bits = UART_STDIO_STOP_BITS;
     ue.baud.baud = UART_STDIO_BAUD;
-    ue.tx_stream_size = STDIO_TX_STREAM_SIZE;
-    ue.rx_stream_size = STDIO_RX_STREAM_SIZE;
+    ue.stream_size = STDIO_STREAM_SIZE;
     stm32_uart_open_internal(drv, UART_STDIO_PORT, &ue);
 
     //setup kernel printk dbg
