@@ -15,8 +15,6 @@ typedef enum {
     USB_EP_SET_STALL,
     USB_EP_CLEAR_STALL,
     USB_EP_IS_STALL,
-    USB_REGISTER_DEVICE,
-    USB_UNREGISTER_DEVICE,
     USB_RESET,
     USB_SUSPEND,
     USB_WAKEUP,
@@ -57,6 +55,10 @@ typedef struct {
     USB_EP_TYPE type;
     unsigned int size;
 } USB_EP_OPEN;
+
+typedef struct {
+    HANDLE device;
+} USB_OPEN;
 
 typedef enum {
     USB_TEST_MODE_NORMAL = 0,

@@ -86,7 +86,6 @@ static inline void usbd_open(USBD* usbd, HANDLE usb)
     if ((usbd->block = block_create(USBD_BLOCK_SIZE)) == INVALID_HANDLE)
         return;
     usbd->usb = usb;
-    ack(usbd->usb, USB_REGISTER_DEVICE, 0, 0, 0);
 }
 
 static inline void usbd_close(USBD* usbd)
@@ -100,7 +99,6 @@ static inline void usbd_close(USBD* usbd)
         fclose(usbd->usb, USB_EP_IN | 0);
         usbd->ep0_size = 0;
     }
-    ack(usbd->usb, USB_UNREGISTER_DEVICE, 0, 0, 0);
 
     block_destroy(usbd->block);
 

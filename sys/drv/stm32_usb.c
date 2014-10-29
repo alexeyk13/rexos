@@ -172,7 +172,7 @@ static inline void stm32_usb_rx(USB* usb)
     if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_RX)
     {
         //ignore all data on setup packet
-        ipc.process = process_;
+        ipc.process = ep->process;
         ipc.cmd = USB_SETUP;
         ipc.param1 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[0];
         ipc.param2 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[1];
@@ -249,7 +249,7 @@ void usb_on_isr(int vector, void* param)
     {
         //mask interrupts, will be umasked by process after FIFO read
         OTG_FS_GENERAL->INTMSK &= ~OTG_FS_GENERAL_INTMSK_RXFLVLM;
-        ipc.process = usb->process;
+        ipc.process = process_iget_current();
         ipc.cmd = STM32_USB_FIFO_RX;
         ipc_ipost(&ipc);
         return;
@@ -277,7 +277,7 @@ void usb_on_isr(int vector, void* param)
             }
             else
             {
-                ipc.process = usb->process;
+                ipc.process = process_iget_current();
                 ipc.cmd = STM32_USB_FIFO_TX;
                 ipc.param1 = USB_EP_IN | i;
                 ipc_ipost(&ipc);
@@ -304,22 +304,18 @@ void usb_on_isr(int vector, void* param)
     }
 }
 
-void stm32_usb_open_device(USB* usb)
+void stm32_usb_open_device(USB* usb, USB_OPEN* uo)
 {
     HANDLE core;
     int trdt;
     //enable GPIO
     core = object_get(SYS_OBJ_CORE);
-    if (core == INVALID_HANDLE)
+    if (usb->device != INVALID_HANDLE)
     {
-        error(ERROR_NOT_FOUND);
+        error(ERROR_ALREADY_CONFIGURED);
         return;
     }
-    if (usb->device == INVALID_HANDLE)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
+    usb->device = uo->device;
     ack(core, GPIO_ENABLE_PIN, A9, PIN_MODE_IN_FLOAT, 0);
     ack(core, GPIO_ENABLE_PIN, A10, PIN_MODE_IN_PULLUP, 0);
 
@@ -456,10 +452,14 @@ void stm32_usb_open(USB* drv, unsigned int handle, HANDLE process)
 {
     union {
         USB_EP_OPEN ep_open;
+        USB_OPEN uo;
     } u;
 
     if (handle == USB_HANDLE_DEVICE)
-        stm32_usb_open_device(drv);
+    {
+        if (direct_read(process, (void*)&u.uo, sizeof(USB_OPEN)))
+           stm32_usb_open_device(drv, &u.uo);
+    }
     else
     {
         if (direct_read(process, (void*)&u.ep_open, sizeof(USB_EP_OPEN)))
@@ -508,6 +508,7 @@ static inline void stm32_usb_close_device(USB* usb)
         if (usb->in[i] != NULL)
             stm32_usb_close_ep(usb, USB_EP_IN | i);
     }
+    usb->device = INVALID_HANDLE;
 
     //power down
     ack(core, STM32_POWER_USB_OFF, 0, 0, 0);
@@ -631,7 +632,6 @@ void stm32_usb_init(USB* drv)
 {
     int i;
     drv->device = INVALID_HANDLE;
-    drv->process = process_get_current();
     for (i = 0; i < 4; ++i)
     {
         drv->out[i] = NULL;
@@ -639,96 +639,101 @@ void stm32_usb_init(USB* drv)
     }
 }
 
+bool stm32_usb_request(USB* drv, IPC* ipc)
+{
+    bool need_post = false;
+    switch (ipc->cmd)
+    {
+    case STM32_USB_FIFO_RX:
+        stm32_usb_rx(drv);
+        //message from isr, no response
+        break;
+    case STM32_USB_FIFO_TX:
+        stm32_usb_tx(drv, ipc->param1);
+        //message from isr, no response
+        break;
+    case USB_GET_SPEED:
+        ipc->param1 = stm32_usb_get_speed(drv);
+        need_post = true;
+        break;
+    case IPC_OPEN:
+        stm32_usb_open(drv, ipc->param1, ipc->process);
+        need_post = true;
+        break;
+    case IPC_CLOSE:
+        stm32_usb_close(drv, ipc->param1);
+        need_post = true;
+        break;
+    case USB_SET_ADDRESS:
+        stm32_usb_set_address(ipc->param1);
+        need_post = true;
+        break;
+    case IPC_FLUSH:
+        stm32_usb_ep_flush(drv, ipc->param1);
+        need_post = true;
+        break;
+    case USB_EP_SET_STALL:
+        stm32_usb_ep_set_stall(drv, ipc->param1);
+        need_post = true;
+        break;
+    case USB_EP_CLEAR_STALL:
+        stm32_usb_ep_clear_stall(drv, ipc->param1);
+        need_post = true;
+        break;
+    case USB_EP_IS_STALL:
+        ipc->param1 = stm32_usb_ep_is_stall(ipc->param1);
+        need_post = true;
+        break;
+    case IPC_READ:
+        stm32_usb_read(drv, ipc);
+        //generally posted with block, no return IPC
+        break;
+    case IPC_WRITE:
+        stm32_usb_write(drv, ipc);
+        //generally posted with block, no return IPC
+        break;
+    case USB_SET_TEST_MODE:
+        stm32_usb_set_test_mode(drv, ipc->param1);
+        need_post = true;
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
+        break;
+    }
+    return need_post;
+}
+
 void stm32_usb()
 {
     IPC ipc;
-    USB usb;
-    stm32_usb_init(&usb);
+    USB drv;
+    bool need_post;
+    stm32_usb_init(&drv);
 #if (SYS_INFO)
     open_stdout();
 #endif
     for (;;)
     {
         error(ERROR_OK);
+        need_post = false;
         ipc_read_ms(&ipc, 0, 0);
         switch (ipc.cmd)
         {
         case IPC_PING:
-            ipc_post(&ipc);
+            need_post = true;
             break;
 #if (SYS_INFO)
         case IPC_GET_INFO:
-            stm32_usb_info(&usb);
-            ipc_post(&ipc);
+            stm32_usb_info(&drv);
+            need_post = true;
             break;
 #endif
-        case STM32_USB_FIFO_RX:
-            stm32_usb_rx(&usb);
-            break;
-        case STM32_USB_FIFO_TX:
-            stm32_usb_tx(&usb, ipc.param1);
-            break;
-        case USB_GET_SPEED:
-            ipc.param1 = stm32_usb_get_speed(&usb);
-            ipc_post_or_error(&ipc);
-            break;
-        case IPC_OPEN:
-            stm32_usb_open(&usb, ipc.param1, ipc.process);
-            ipc_post_or_error(&ipc);
-            break;
-        case IPC_CLOSE:
-            stm32_usb_close(&usb, ipc.param1);
-            ipc_post_or_error(&ipc);
-            break;
-        case USB_SET_ADDRESS:
-            stm32_usb_set_address(ipc.param1);
-            ipc_post_or_error(&ipc);
-            break;
-        case IPC_FLUSH:
-            stm32_usb_ep_flush(&usb, ipc.param1);
-            ipc_post_or_error(&ipc);
-            break;
-        case USB_EP_SET_STALL:
-            stm32_usb_ep_set_stall(&usb, ipc.param1);
-            ipc_post_or_error(&ipc);
-            break;
-        case USB_EP_CLEAR_STALL:
-            stm32_usb_ep_clear_stall(&usb, ipc.param1);
-            ipc_post_or_error(&ipc);
-            break;
-        case USB_EP_IS_STALL:
-            ipc.param1 = stm32_usb_ep_is_stall(ipc.param1);
-            ipc_post_or_error(&ipc);
-            break;
-        case IPC_READ:
-            stm32_usb_read(&usb, &ipc);
-            //generally posted with block, no return IPC
-            break;
-        case IPC_WRITE:
-            stm32_usb_write(&usb, &ipc);
-            //generally posted with block, no return IPC
-            break;
-        case USB_REGISTER_DEVICE:
-            if (usb.device == INVALID_HANDLE)
-                usb.device = ipc.process;
-            else
-                error(ERROR_ACCESS_DENIED);
-            ipc_post_or_error(&ipc);
-            break;
-        case USB_UNREGISTER_DEVICE:
-            if (usb.device == ipc.process)
-                usb.device = INVALID_HANDLE;
-            else
-                error(ERROR_ACCESS_DENIED);
-            ipc_post_or_error(&ipc);
-            break;
-        case USB_SET_TEST_MODE:
-            stm32_usb_set_test_mode(&usb, ipc.param1);
-            ipc_post_or_error(&ipc);
-            break;
         default:
-            ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
+            need_post = stm32_usb_request(&drv, &ipc);
             break;
         }
+        if (need_post)
+            ipc_post(&ipc);
     }
 }
