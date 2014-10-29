@@ -36,7 +36,6 @@ void app()
 {
     HANDLE core;
     core = process_create(&__STM32_CORE);
-    process_create(&__STM32_UART);
 
     open_stdout();
 

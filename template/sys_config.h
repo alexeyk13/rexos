@@ -20,9 +20,7 @@
 #define SYS_OBJ_CORE                                        2
 #define SYS_OBJ_UART                                        3
 
-//------------------------------ stdio -----------------------------------------------
-#define STDIO_TX_STREAM_SIZE                                64
-#define STDIO_RX_STREAM_SIZE                                32
+#define STDIO_STREAM_SIZE                                   32
 //-------------------------------- USB -----------------------------------------------
 //low-level USB debug. Turn on only in case of IO problems
 #define USB_DEBUG_REQUESTS                                  0
