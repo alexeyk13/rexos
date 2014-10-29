@@ -11,6 +11,10 @@
 #include "../sys.h"
 #include "stm32_gpio.h"
 #include "stm32_timer.h"
+#include "stm32_config.h"
+#if (MONOLITH_ANALOG)
+#include "stm32_core.h"
+#endif
 
 #define ADC_SMPR_1_5                                0
 #define ADC_SMPR_7_5                                1
@@ -32,10 +36,10 @@ typedef enum {
 } STM32_ANALOG_IPCS;
 
 typedef enum {
-    STM32_ADC = HAL_HANDLE(HAL_ADC, 0),
-    STM32_DAC1 = HAL_HANDLE(HAL_DAC, 0),
+    STM32_DAC1 = 0,
     STM32_DAC2,
     STM32_DAC_DUAL,
+    STM32_DAC_MAX
 } STM32_DAC;
 
 #define DAC_FLAGS_RISING                            (1 << 0)
@@ -53,6 +57,40 @@ typedef struct {
     unsigned int flags;
 } STM32_DAC_ENABLE;
 
+typedef struct {
+    uint8_t flags;
+    uint8_t pin, timer;
+    HANDLE block, process;
+    void* ptr;
+    STM32_DAC num;
+
+#if (DAC_DMA)
+    char fifo[DAC_DMA_FIFO_SIZE * 2];
+    uint16_t cnt, half;
+#else
+    uint16_t processed;
+#endif
+    uint16_t size;
+} DAC_STRUCT;
+
+typedef struct {
+    DAC_STRUCT* dac[2];
+} ANALOG_DRV;
+
+#if (MONOLITH_ANALOG)
+#define SHARED_ANALOG_DRV                    CORE
+#else
+
+typedef struct {
+    ANALOG_DRV analog;
+} SHARED_ANALOG_DRV;
+#endif
+
+bool stm32_analog_request(SHARED_ANALOG_DRV* drv, IPC* ipc);
+void stm32_analog_init(SHARED_ANALOG_DRV* drv);
+
+#if !(MONOLITH_ANALOG)
 extern const REX __STM32_ANALOG;
+#endif
 
 #endif // STM32_ANALOG_H

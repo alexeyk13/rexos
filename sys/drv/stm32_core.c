@@ -19,6 +19,9 @@
 #if (MONOLITH_UART)
 #include "stm32_uart.h"
 #endif
+#if (MONOLITH_ANALOG)
+#include "stm32_analog.h"
+#endif
 
 void stm32_core();
 
@@ -74,11 +77,16 @@ void stm32_core_loop(CORE* core)
 #if (MONOLITH_UART)
                 need_post |= stm32_uart_request(core, &ipc);
 #endif
+#if (MONOLITH_ANALOG)
+                need_post |= stm32_analog_request(core, &ipc);
+#endif
                 break;
 #endif
             case IPC_OPEN:
             case IPC_CLOSE:
             case IPC_FLUSH:
+            case IPC_READ:
+            case IPC_WRITE:
             case IPC_GET_TX_STREAM:
             case IPC_GET_RX_STREAM:
                 group = HAL_GROUP(ipc.param1);
@@ -121,6 +129,12 @@ void stm32_core_loop(CORE* core)
                 need_post = stm32_uart_request(core, &ipc);
                 break;
 #endif //MONOLITH_UART
+#if (MONOLITH_ANALOG)
+            case HAL_ADC:
+            case HAL_DAC:
+                need_post = stm32_analog_request(core, &ipc);
+                break;
+#endif //MONOLITH_UART
             default:
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
                 need_post = true;
@@ -151,6 +165,9 @@ void stm32_core()
 #endif
 #if (MONOLITH_UART)
     stm32_uart_init(&core);
+#endif
+#if (MONOLITH_ANALOG)
+    stm32_analog_init(&core);
 #endif
 
     stm32_core_loop(&core);

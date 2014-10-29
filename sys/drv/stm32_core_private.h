@@ -15,6 +15,9 @@
 #if (MONOLITH_UART)
 #include "stm32_uart.h"
 #endif
+#if (MONOLITH_ANALOG)
+#include "stm32_analog.h"
+#endif
 
 typedef struct _CORE {
     GPIO_DRV gpio;
@@ -22,6 +25,9 @@ typedef struct _CORE {
     POWER_DRV power;
 #if (MONOLITH_UART)
     UART_DRV uart;
+#endif
+#if (MONOLITH_ANALOG)
+    ANALOG_DRV analog;
 #endif
 }CORE;
 
