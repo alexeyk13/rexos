@@ -14,6 +14,7 @@
 
 //UART driver is monolith. Enable for size, disable for perfomance
 #define MONOLITH_UART                           1
+#define MONOLITH_ANALOG                         0
 //------------------------------ POWER -----------------------------------------------
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
 #define HSE_VALUE                               24000000
@@ -72,6 +73,8 @@
 //Copy data to internal buffer, using M2M DMA. Ignored if DAC_DMA is not set
 #define DAC_M2M_DMA                              1
 
+//Sizeof ANALOG process stack. Remember, that process itself requires around 512 bytes
+#define STM32_ANALOG_STACK_SIZE                  720
 //------------------------------- USB ------------------------------------------------
 //Maximum packet size for USB.
 //Must be 8 for Low-speed devices
