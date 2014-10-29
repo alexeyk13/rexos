@@ -85,4 +85,16 @@ extern const int TIMER_VECTORS[];
 void stm32_timer_init(CORE* core);
 bool stm32_timer_request(CORE* core, IPC* ipc);
 
+__STATIC_INLINE unsigned int stm32_timer_request_inside(CORE* core, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.param1 = param1;
+    ipc.param2 = param2;
+    ipc.param3 = param3;
+    stm32_timer_request(core, &ipc);
+    return ipc.param1;
+}
+
+
 #endif // STM32_TIMER_H
