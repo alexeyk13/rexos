@@ -7,14 +7,11 @@
 #ifndef USB_H
 #define USB_H
 
-#include "../userspace/ipc.h"
+#include "sys.h"
 
 typedef enum {
-    //USB common interface
-    USB_SET_ADDRESS = IPC_USER,
+    USB_SET_ADDRESS = HAL_IPC(HAL_USB),
     USB_GET_SPEED,
-    USB_EP_ENABLE,
-    USB_EP_DISABLE,
     USB_EP_SET_STALL,
     USB_EP_CLEAR_STALL,
     USB_EP_IS_STALL,
@@ -25,8 +22,12 @@ typedef enum {
     USB_WAKEUP,
     USB_SETUP,
     USB_SET_TEST_MODE,
-    //USBD
-    USBD_ALERT,
+
+    USB_HAL_MAX
+}USB_IPCS;
+
+typedef enum {
+    USBD_ALERT = IPC_USER,
     USBD_REGISTER_CLASS,
     USBD_UNREGISTER_CLASS,
     USBD_SETUP_DESCRIPTORS,
@@ -35,8 +36,8 @@ typedef enum {
     USBD_SET_FEATURE,
     USBD_CLEAR_FEATURE,
 
-    USB_LAST
-}USB_IPCS;
+    USBD_MAX
+}USBD_IPCS;
 
 typedef enum {
     USB_EP_CONTROL = 0,

@@ -33,10 +33,10 @@ typedef struct {
     HANDLE usbd, usb;
     HANDLE rx, tx, notify, rx_stream, tx_stream;
     HANDLE tx_stream_handle, rx_stream_handle;
-    unsigned int data_ep, control_ep, data_ep_size, control_ep_size;
-    unsigned int rx_free, tx_size;
-    bool DTR, RTS, tx_idle;
-    bool suspended;
+    uint8_t data_ep, control_ep;
+    uint16_t data_ep_size, control_ep_size, rx_free, tx_size;
+    uint8_t DTR, RTS, tx_idle;
+    uint8_t suspended, configured;
     BAUD baud;
 } CDC;
 
@@ -107,11 +107,18 @@ static inline void cdc_open(CDC* cdc, HANDLE usbd, CDC_OPEN_STRUCT* cos)
 static inline void cdc_close(CDC* cdc)
 {
     if (cdc->usbd == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_CONFIGURED);
         return;
+    }
 
-    fclose(cdc->usb, cdc->data_ep);
-    fclose(cdc->usb, USB_EP_IN | cdc->data_ep);
-    fclose(cdc->usb, USB_EP_IN | cdc->control_ep);
+    if (cdc->configured)
+    {
+        fclose(cdc->usb, cdc->data_ep);
+        fclose(cdc->usb, USB_EP_IN | cdc->data_ep);
+        fclose(cdc->usb, USB_EP_IN | cdc->control_ep);
+        cdc->configured = false;
+    }
 
     block_destroy(cdc->tx);
     cdc->tx = INVALID_HANDLE;
@@ -217,9 +224,13 @@ void cdc_write(CDC* cdc)
 static inline void cdc_reset(CDC* cdc)
 {
     cdc->suspended = false;
-    fclose(cdc->usb, cdc->data_ep);
-    fclose(cdc->usb, USB_EP_IN | cdc->data_ep);
-    fclose(cdc->usb, USB_EP_IN | cdc->control_ep);
+    if (cdc->configured)
+    {
+        fclose(cdc->usb, cdc->data_ep);
+        fclose(cdc->usb, USB_EP_IN | cdc->data_ep);
+        fclose(cdc->usb, USB_EP_IN | cdc->control_ep);
+        cdc->configured = false;
+    }
     cdc->DTR = cdc->RTS = false;
     cdc->baud.baud = 115200;
     cdc->baud.data_bits = 8;
@@ -248,15 +259,19 @@ static inline void cdc_configured(CDC* cdc)
 
     fread_async(cdc->usb, cdc->data_ep, cdc->rx, 1);
     cdc_notify_serial_state(cdc, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
+    cdc->configured = true;
 }
 
 static inline void cdc_suspend(CDC* cdc)
 {
     cdc->suspended = true;
     stream_stop_listen(cdc->rx_stream);
-    fflush(cdc->usb, USB_EP_IN | cdc->control_ep);
-    fflush(cdc->usb, cdc->data_ep);
-    fflush(cdc->usb, USB_EP_IN | cdc->data_ep);
+    if (cdc->configured)
+    {
+        fflush(cdc->usb, USB_EP_IN | cdc->control_ep);
+        fflush(cdc->usb, cdc->data_ep);
+        fflush(cdc->usb, USB_EP_IN | cdc->data_ep);
+    }
     cdc->tx_idle = true;
     cdc->rx_free = cdc->tx_size = 0;
 }
@@ -415,11 +430,12 @@ void cdc()
     cdc.usbd = cdc.usb = cdc.rx = cdc.tx = cdc.notify = INVALID_HANDLE;
     cdc.rx_stream = cdc.tx_stream = INVALID_HANDLE;
     cdc.rx_stream_handle = cdc.tx_stream_handle = INVALID_HANDLE;
-    cdc.data_ep = cdc.control_ep = INVALID_HANDLE;
+    cdc.data_ep = cdc.control_ep = 0;
     cdc.data_ep_size = cdc.control_ep_size = 0;
     cdc.rx_free = cdc.tx_size = 0;
     cdc.tx_idle = true;
     cdc.suspended = false;
+    cdc.configured = false;
 
     for (;;)
     {

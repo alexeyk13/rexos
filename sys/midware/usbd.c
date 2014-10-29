@@ -94,8 +94,12 @@ static inline void usbd_close(USBD* usbd)
     if (usbd->usb == INVALID_HANDLE)
         return;
 
-    fflush(usbd->usb, 0);
-    fflush(usbd->usb, USB_EP_IN | 0);
+    if (usbd->ep0_size)
+    {
+        fclose(usbd->usb, 0);
+        fclose(usbd->usb, USB_EP_IN | 0);
+        usbd->ep0_size = 0;
+    }
     ack(usbd->usb, USB_UNREGISTER_DEVICE, 0, 0, 0);
 
     block_destroy(usbd->block);
@@ -282,6 +286,11 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
 #if (USB_DEBUG_REQUESTS)
     printf("USB device reset\n\r");
 #endif
+    if (usbd->ep0_size)
+    {
+        fclose(usbd->usb, 0);
+        fclose(usbd->usb, USB_EP_IN | 0);
+    }
     usbd->speed = speed;
     usbd->ep0_size = usbd->speed == USB_LOW_SPEED ? 8 : 64;
 
@@ -302,18 +311,14 @@ static inline void usbd_suspend(USBD* usbd)
 #if (USB_DEBUG_REQUESTS)
         printf("USB device suspend\n\r");
 #endif
-        fflush(usbd->usb, 0);
-        fflush(usbd->usb, USB_EP_IN | 0);
-        if (usbd->state == USBD_STATE_CONFIGURED)
+        if (usbd->ep0_size)
         {
-            if (usbd->setup_state != USB_SETUP_STATE_REQUEST)
-            {
-                fflush(usbd->usb, 0);
-                fflush(usbd->usb, USB_EP_IN | 0);
-                usbd->setup_state = USB_SETUP_STATE_REQUEST;
-            }
-            inform(usbd, USBD_ALERT_SUSPEND, 0, 0);
+            fflush(usbd->usb, 0);
+            fflush(usbd->usb, USB_EP_IN | 0);
         }
+        usbd->setup_state = USB_SETUP_STATE_REQUEST;
+        if (usbd->state == USBD_STATE_CONFIGURED)
+            inform(usbd, USBD_ALERT_SUSPEND, 0, 0);
     }
 }
 
@@ -940,7 +945,7 @@ void usbd()
     usbd.descriptors[USB_SUPER_SPEED] = NULL;
     usbd.string_descriptors = NULL;
     usbd.speed = USB_LOW_SPEED;
-    usbd.ep0_size = 8;
+    usbd.ep0_size = 0;
     usbd.configuration = 0;
 
     array_create(&usbd.classes, 1);

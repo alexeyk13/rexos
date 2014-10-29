@@ -12,7 +12,7 @@
 
 typedef enum {
     //CDC common interface
-    CDC_SEND_BREAK = USB_LAST + 1
+    CDC_SEND_BREAK = USBD_MAX + 1
 }CDC_IPCS;
 
 #define COMMUNICATION_DEVICE_CLASS                                                      0x02
@@ -262,10 +262,10 @@ typedef struct {
 #define CDC_SERIAL_STATE_OVERRUN                                                        (1 << 6)
 
 typedef struct {
-    unsigned int control_ep, data_ep;
-    unsigned int control_ep_size,data_ep_size;
-    unsigned int rx_stream_size;
-    unsigned int tx_stream_size;
+    uint8_t control_ep, data_ep;
+    uint16_t control_ep_size,data_ep_size;
+    uint16_t rx_stream_size;
+    uint16_t tx_stream_size;
 } CDC_OPEN_STRUCT;
 
 extern const REX __CDC;
