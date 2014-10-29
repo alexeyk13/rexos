@@ -57,7 +57,7 @@ const REX __STM32_USB = {
     //name
     "STM32 USB",
     //size
-    1024,
+    STM32_USB_STACK_SIZE,
     //priority - driver priority
     92,
     //flags

@@ -64,7 +64,7 @@ const REX __USBD = {
     //name
     "USB device stack",
     //size
-    1024,
+    800,
     //priority - midware priority
     150,
     //flags
