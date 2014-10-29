@@ -147,6 +147,8 @@ void stm32_rtc_init()
         RTC->PRER = ((64 - 1) << 16) | (1000000 / 64 - 1);
 #endif
 
+        RTC->TR = 0;
+        RTC->DR = 0;
         //setup second tick
         RTC->CR &= ~RTC_CR_WUTE;
         while ((RTC->ISR & RTC_ISR_WUTWF) == 0) {}
