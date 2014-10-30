@@ -87,12 +87,17 @@ void te_usb_disable_power()
     gpio_set_pin(C9, true);
 }
 
-HANDLE usb_on()
+HANDLE usb_on(HANDLE core)
 {
     HANDLE usb, usbd, cdc;
     CDC_OPEN_STRUCT cos;
     te_usb_disable_power();
+
+#if (MONOLITH_USB)
+    usb = core;
+#else
     usb = process_create(&__STM32_USB);
+#endif
 
     //setup usbd
     usbd = process_create(&__USBD);
@@ -113,7 +118,10 @@ HANDLE usb_on()
     fopen_ex(cdc, usbd, (void*)&cos, sizeof(CDC_OPEN_STRUCT));
 
     //turn USB on
-    fopen(usb, USB_HANDLE_DEVICE);
+    USB_OPEN uo;
+    uo.device = usbd;
+
+    fopen_ex(usb, HAL_HANDLE(HAL_USB, USB_HANDLE_DEVICE), &uo, sizeof(USB_OPEN));
 
     HANDLE rx_stream = get(cdc, IPC_GET_RX_STREAM, 0, 0, 0);
     return stream_open(rx_stream);
@@ -145,10 +153,12 @@ void dac_test(HANDLE analog)
 
 void app()
 {
-    HANDLE core, uart, analog, usb_rx;
+    HANDLE core, analog, usb_rx;
 
     core = process_create(&__STM32_CORE);
-    uart = process_create(&__STM32_UART);
+#if !(MONOLITH_UART)
+    HANDLE uart = process_create(&__STM32_UART);
+#endif
 
     TIME uptime;
     int i;
@@ -161,10 +171,14 @@ void app()
 
     char c;
 
+#if (MONOLITH_ANALOG)
+    analog = core;
+#else
     analog = process_create(&__STM32_ANALOG);
-    fopen(analog, STM32_ADC);
+#endif
+    fopen(analog, HAL_HANDLE(HAL_ADC, 0));
 
-    usb_rx = usb_on();
+    usb_rx = usb_on(core);
 
     //first second signal may go faster
     sleep_ms(1000);
@@ -189,7 +203,9 @@ void app()
     ack(core, IPC_GET_INFO, 0, 0, 0);
     //uart info in direct mode. Make sure all data is sent before
     sleep_ms(50);
+#if !(MONOLITH_UART)
     ack(uart, IPC_GET_INFO, 0, 0, 0);
+#endif
 
     dac_on(core, analog);
     dac_test(analog);

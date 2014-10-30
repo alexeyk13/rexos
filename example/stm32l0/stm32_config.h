@@ -15,6 +15,7 @@
 //UART driver is monolith. Enable for size, disable for perfomance
 #define MONOLITH_UART                           1
 #define MONOLITH_ANALOG                         0
+#define MONOLITH_USB                            0
 //------------------------------ POWER -----------------------------------------------
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
 #define HSE_VALUE                               8000000
@@ -85,6 +86,8 @@
 //Full speed: 64 if no isochronous transfers, else  1024
 //High speed(STM32F2+): 64 if no high-speed bulk transfers, 512 in other case. 1024 in case of isochronous or high-speed interrupts
 #define STM32_USB_MPS                            64
+//Sizeof USB process stack. Remember, that process itself requires around 512 bytes
+#define STM32_USB_STACK_SIZE                    550
 //------------------------------- WDT ------------------------------------------------
 //if set by STM32 Option Bits, WDT is started by hardware on power-up
 #define HARDWARE_WATCHDOG                        0
