@@ -95,8 +95,8 @@ static inline void usbd_close(USBD* usbd)
 
     if (usbd->ep0_size)
     {
-        fclose(usbd->usb, 0);
-        fclose(usbd->usb, USB_EP_IN | 0);
+        fclose(usbd->usb, HAL_HANDLE(HAL_USB, 0));
+        fclose(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
         usbd->ep0_size = 0;
     }
 
@@ -153,7 +153,7 @@ static inline void usbd_set_feature(USBD* usbd, USBD_FEATURES feature, unsigned 
     switch(feature)
     {
     case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, USB_EP_SET_STALL, param, 0, 0);
+        ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, param), 0, 0);
         break;
     case USBD_FEATURE_DEVICE_REMOTE_WAKEUP:
         usbd->remote_wakeup = true;
@@ -171,7 +171,7 @@ static inline void usbd_clear_feature(USBD* usbd, USBD_FEATURES feature, unsigne
     switch(feature)
     {
     case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, USB_EP_CLEAR_STALL, param, 0, 0);
+        ack(usbd->usb, USB_EP_CLEAR_STALL, HAL_HANDLE(HAL_USB, param), 0, 0);
         break;
     case USBD_FEATURE_DEVICE_REMOTE_WAKEUP:
         usbd->remote_wakeup = false;
@@ -286,8 +286,8 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
 #endif
     if (usbd->ep0_size)
     {
-        fclose(usbd->usb, 0);
-        fclose(usbd->usb, USB_EP_IN | 0);
+        fclose(usbd->usb, HAL_HANDLE(HAL_USB, 0));
+        fclose(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
     }
     usbd->speed = speed;
     usbd->ep0_size = usbd->speed == USB_LOW_SPEED ? 8 : 64;
@@ -295,8 +295,8 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
     USB_EP_OPEN ep_open;
     ep_open.type = USB_EP_CONTROL;
     ep_open.size = usbd->ep0_size;
-    fopen_ex(usbd->usb, 0, (void*)&ep_open, sizeof(USB_EP_OPEN));
-    fopen_ex(usbd->usb, USB_EP_IN | 0, (void*)&ep_open, sizeof(USB_EP_OPEN));
+    fopen_ex(usbd->usb, HAL_HANDLE(HAL_USB, 0), (void*)&ep_open, sizeof(USB_EP_OPEN));
+    fopen_ex(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), (void*)&ep_open, sizeof(USB_EP_OPEN));
 
     inform(usbd, USBD_ALERT_RESET, 0, 0);
 }
@@ -311,8 +311,8 @@ static inline void usbd_suspend(USBD* usbd)
 #endif
         if (usbd->ep0_size)
         {
-            fflush(usbd->usb, 0);
-            fflush(usbd->usb, USB_EP_IN | 0);
+            fflush(usbd->usb, HAL_HANDLE(HAL_USB, 0));
+            fflush(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
         }
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
         if (usbd->state == USBD_STATE_CONFIGURED)
@@ -645,7 +645,7 @@ static inline int usbd_endpoint_get_status(USBD* usbd)
     printf("USB: get endpoint status\n\r");
 #endif
     uint16_t status = 0;
-    if (get(usbd->usb, USB_EP_IS_STALL, usbd->setup.wIndex & 0xffff, 0, 0))
+    if (get(usbd->usb, USB_EP_IS_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex & 0xffff), 0, 0))
         status |= 1 << 0;
     return safecpy_write(usbd, &status, sizeof(uint16_t));
 }
@@ -659,7 +659,7 @@ static inline int usbd_endpoint_set_feature(USBD* usbd)
     switch (usbd->setup.wValue)
     {
     case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, USB_EP_SET_STALL, usbd->setup.wIndex & 0xffff, 0, 0);
+        ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex & 0xffff), 0, 0);
         res = 0;
         break;
     default:
@@ -679,7 +679,7 @@ static inline int usbd_endpoint_clear_feature(USBD* usbd)
     switch (usbd->setup.wValue)
     {
     case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, USB_EP_CLEAR_STALL, usbd->setup.wIndex & 0xffff, 0, 0);
+        ack(usbd->usb, USB_EP_CLEAR_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex & 0xffff), 0, 0);
         res = 0;
         break;
     default:
@@ -755,7 +755,7 @@ void usbd_setup_process(USBD* usbd)
         {
             //data already received, sending status
             usbd->setup_state = USB_SETUP_STATE_STATUS_IN;
-            fwrite_async_null(usbd->usb, USB_EP_IN | 0);
+            fwrite_async_null(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
         }
         else
         {
@@ -765,36 +765,36 @@ void usbd_setup_process(USBD* usbd)
                 if (res)
                 {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN_ZLP;
-                    fwrite_async(usbd->usb, USB_EP_IN | 0, usbd->block, res);
+                    fwrite_async(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), usbd->block, res);
                 }
                 //if no data at all, but request success, we will send ZLP right now
                 else
                 {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-                    fwrite_async_null(usbd->usb, USB_EP_IN | 0);
+                    fwrite_async_null(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
                 }
             }
             else if (res)
             {
                 usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-                fwrite_async(usbd->usb, USB_EP_IN | 0, usbd->block, res);
+                fwrite_async(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), usbd->block, res);
             }
             //data stage is optional
             else
             {
                 usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
-                fread_async_null(usbd->usb, 0);
+                fread_async_null(usbd->usb, HAL_HANDLE(HAL_USB, 0));
             }
         }
     }
     else
     {
         if ((usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT) == BM_REQUEST_RECIPIENT_ENDPOINT)
-            ack(usbd->usb, USB_EP_SET_STALL, usbd->setup.wIndex, 0, 0);
+            ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex), 0, 0);
         else
         {
-            ack(usbd->usb, USB_EP_SET_STALL, 0, 0, 0);
-            ack(usbd->usb, USB_EP_SET_STALL, USB_EP_IN | 0, 0, 0);
+            ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, 0), 0, 0);
+            ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), 0, 0);
         }
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
 #if (USB_DEBUG_ERRORS)
@@ -837,11 +837,11 @@ static inline void usbd_setup_received(USBD* usbd)
         case USB_SETUP_STATE_DATA_IN:
         case USB_SETUP_STATE_DATA_IN_ZLP:
         case USB_SETUP_STATE_STATUS_IN:
-            fflush(usbd->usb, USB_EP_IN | 0);
+            fflush(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
             break;
         case USB_SETUP_STATE_DATA_OUT:
         case USB_SETUP_STATE_STATUS_OUT:
-            fflush(usbd->usb, 0);
+            fflush(usbd->usb, HAL_HANDLE(HAL_USB, 0));
             break;
         default:
             break;
@@ -856,7 +856,7 @@ static inline void usbd_setup_received(USBD* usbd)
         if (usbd->setup.wLength)
         {
             usbd->setup_state = USB_SETUP_STATE_DATA_OUT;
-            fread_async(usbd->usb, 0, usbd->block, usbd->setup.wLength);
+            fread_async(usbd->usb, HAL_HANDLE(HAL_USB, 0), usbd->block, usbd->setup.wLength);
         }
         //data stage is optional
         else
@@ -892,11 +892,11 @@ void usbd_write_complete(USBD* usbd)
     case USB_SETUP_STATE_DATA_IN_ZLP:
         //TX ZLP and switch to normal state
         usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-        fwrite_async_null(usbd->usb, USB_EP_IN | 0);
+        fwrite_async_null(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
         break;
     case USB_SETUP_STATE_DATA_IN:
         usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
-        fread_async_null(usbd->usb, 0);
+        fread_async_null(usbd->usb, HAL_HANDLE(HAL_USB, 0));
         break;
     case USB_SETUP_STATE_STATUS_IN:
         usbd->setup_state = USB_SETUP_STATE_REQUEST;

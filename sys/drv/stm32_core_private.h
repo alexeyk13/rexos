@@ -18,6 +18,9 @@
 #if (MONOLITH_ANALOG)
 #include "stm32_analog.h"
 #endif
+#if (MONOLITH_USB)
+#include "stm32_usb.h"
+#endif
 
 typedef struct _CORE {
     GPIO_DRV gpio;
@@ -28,6 +31,9 @@ typedef struct _CORE {
 #endif
 #if (MONOLITH_ANALOG)
     ANALOG_DRV analog;
+#endif
+#if (MONOLITH_USB)
+    USB_DRV usb;
 #endif
 }CORE;
 

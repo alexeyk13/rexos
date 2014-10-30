@@ -22,6 +22,9 @@
 #if (MONOLITH_ANALOG)
 #include "stm32_analog.h"
 #endif
+#if (MONOLITH_USB)
+#include "stm32_usb.h"
+#endif
 
 void stm32_core();
 
@@ -80,6 +83,9 @@ void stm32_core_loop(CORE* core)
 #if (MONOLITH_ANALOG)
                 need_post |= stm32_analog_request(core, &ipc);
 #endif
+#if (MONOLITH_USB)
+                need_post |= stm32_usb_request(core, &ipc);
+#endif
                 break;
 #endif
             case IPC_OPEN:
@@ -134,7 +140,12 @@ void stm32_core_loop(CORE* core)
             case HAL_DAC:
                 need_post = stm32_analog_request(core, &ipc);
                 break;
-#endif //MONOLITH_UART
+#endif //MONOLITH_ANALOG
+#if (MONOLITH_USB)
+            case HAL_USB:
+                need_post = stm32_usb_request(core, &ipc);
+                break;
+#endif //MONOLITH_USB
             default:
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
                 need_post = true;
@@ -168,6 +179,9 @@ void stm32_core()
 #endif
 #if (MONOLITH_ANALOG)
     stm32_analog_init(&core);
+#endif
+#if (MONOLITH_USB)
+    stm32_usb_init(&core);
 #endif
 
     stm32_core_loop(&core);
