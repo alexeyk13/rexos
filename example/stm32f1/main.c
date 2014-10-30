@@ -102,9 +102,10 @@ HANDLE usb_on(HANDLE core)
     //setup usbd
     usbd = process_create(&__USBD);
 
+    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_DEVICE_FS, 0, 0, &__DEVICE_DESCRIPTOR);
+    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_CONFIGURATION_FS, 0, 0, &__CONFIGURATION_DESCRIPTOR);
+    
     fopen(usbd, usb);
-    direct_enable_read(usbd, (void*)&__DESCRIPTORS, __DESCRIPTORS.header.total_size);
-    ack(usbd, USBD_SETUP_DESCRIPTORS, USB_FULL_SPEED, __DESCRIPTORS.header.total_size, 0);
     direct_enable_read(usbd, (void*)&__STRINGS, __STRINGS.header.header.total_size);
     ack(usbd, USBD_SETUP_STRING_DESCRIPTORS, __STRINGS.header.header.total_size, 0, 0);
 

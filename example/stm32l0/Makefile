@@ -55,7 +55,7 @@ SRC_C                      += kernel.c dbg.c kirq.c kprocess.c ktimer.c kipc.c k
 #lib
 SRC_C                      += klib.c lib_time.c pool.c printf.c lib_array.c stdio.c  lib_std.c lib_stdio.c lib_heap.c
 #userspace
-SRC_C                      += main.c
+SRC_C                      += main.c libusb.c
 #drv
 SRC_C                      += stm32_gpio.c stm32_power.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c
 #midware
