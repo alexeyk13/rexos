@@ -23,6 +23,9 @@ unavailable, another HPET timer can be used for RTC emulation
   * ustdio: printf, sprintf. Around 2k of code.
   * ustdlib: time, rand.
   * single-linked list, double linked list, ring buffer, dynamic arrays
+- Device stacks:
+  * USB device stack
+  * USB CDC class
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -36,7 +39,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * memory profiling: red-markings, pool free/allocated size, objects fragmentation
 - Supported hardware:
   * ARM7
-  * cortex-m3, drivers for:STM32 F1/F2/F4 - power, gpio, uart, timer, rtc(F1 only)
+  * cortex-m3, drivers for:STM32 F1/F2/F4/L0 - power, GPIO, UART, timer, RTC, WDT, analog, USB
 
 Cortex-M3 features:
 ------------------
@@ -50,6 +53,12 @@ ARM7 features:
 
 History
 =======
+0.1.2
+- dynamic BLOCK links
+- some optimization in kernel_config.h
+- HAL drivers for STM32
+- STM32 analog, USB, UART can be optionally monolith for small systems
+
 0.1.1
 - global lib refactoring
 - lib heap
