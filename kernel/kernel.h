@@ -38,6 +38,11 @@
 #include "../userspace/core/core.h"
 #include "kernel_config.h"
 
+#ifndef KERNEL_GLOBAL_SIZE
+//shit, but assembler safe
+#define KERNEL_GLOBAL_SIZE                                  12
+#endif
+
 #define KERNEL_BASE                                         (SRAM_BASE + KERNEL_GLOBAL_SIZE)
 
 #if !defined(LDS) && !defined(__ASSEMBLER__)
