@@ -28,7 +28,8 @@ typedef enum {
     USBD_ALERT = IPC_USER,
     USBD_REGISTER_CLASS,
     USBD_UNREGISTER_CLASS,
-    USBD_SETUP_DESCRIPTORS,
+    USBD_REGISTER_DESCRIPTOR,
+    USBD_UNREGISTER_DESCRIPTOR,
     USBD_SETUP_STRING_DESCRIPTORS,
     USBD_GET_DRIVER,
     USBD_SET_FEATURE,
@@ -127,6 +128,12 @@ typedef struct {
 #define USB_CONFIGURATION_DESCRIPTOR_SIZE                       9
 #define USB_INTERFACE_DESCRIPTOR_SIZE                           9
 #define USB_ENDPOINT_DESCRIPTOR_SIZE                            7
+
+typedef struct {
+    uint8_t  bLength;                                           //Number Size of this descriptor in bytes
+    uint8_t  bDescriptorType;                                   //Constant DEVICE Descriptor Type
+    uint8_t  data[256];
+} USB_DESCRIPTOR_TYPE, *P_USB_DESCRIPTOR_TYPE;
 
 typedef struct {
     uint8_t  bLength;                                           //Number Size of this descriptor in bytes

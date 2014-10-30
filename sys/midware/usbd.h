@@ -47,6 +47,23 @@ typedef enum {
     USBD_FEATURE_SELF_POWERED
 } USBD_FEATURES;
 
+
+typedef enum {
+    USB_DESCRIPTOR_DEVICE_FS = 0,
+    USB_DESCRIPTOR_DEVICE_HS,
+    USB_DESCRIPTOR_CONFIGURATION_FS,
+    USB_DESCRIPTOR_CONFIGURATION_HS,
+    USB_DESCRIPTOR_STRING
+} USBD_DESCRIPTOR_TYPE;
+
+#define USBD_FLAG_PERSISTENT_DESCRIPTOR                 (1 << 0)
+
+typedef struct {
+    uint8_t flags;
+    uint16_t lang, index;
+    //data or pointer is following
+} USBD_DESCRIPTOR_REGISTER_STRUCT;
+
 extern const REX __USBD;
 
 #endif // USBD_H
