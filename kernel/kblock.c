@@ -8,6 +8,7 @@
 #include "kernel.h"
 #include "kmalloc.h"
 #include "kipc.h"
+#include "kprocess.h"
 
 void kblock_create(BLOCK** block, unsigned int size)
 {
@@ -47,9 +48,30 @@ void kblock_destroy(BLOCK* block)
     kfree(block);
 }
 
+static inline void kblock_open_internal(BLOCK* block, PROCESS* process)
+{
+    disable_interrupts();
+    if (!block->open)
+    {
+        block->open = true;
+        kprocess_block_open(process, block);
+    }
+    enable_interrupts();
+}
+
+static inline void kblock_close_internal(BLOCK* block, PROCESS* process)
+{
+    disable_interrupts();
+    if (block->open)
+    {
+        kprocess_block_close(process, block);
+        block->open = false;
+    }
+    enable_interrupts();
+}
+
 void kblock_open(BLOCK* block, void **ptr)
 {
-    bool open;
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
@@ -57,12 +79,7 @@ void kblock_open(BLOCK* block, void **ptr)
 
     if (block->granted == process)
     {
-        disable_interrupts();
-        open = block->open;
-        block->open = true;
-        enable_interrupts();
-        if (!open)
-            kprocess_block_open(process, block->data, block->size);
+        kblock_open_internal(block, process);
         *ptr = block->data;
     }
     else
@@ -74,38 +91,24 @@ void kblock_open(BLOCK* block, void **ptr)
 
 void kblock_close(BLOCK* block)
 {
-    bool open;
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
     if (block->granted == process)
-    {
-        disable_interrupts();
-        open = block->open;
-        block->open = false;
-        enable_interrupts();
-        if (open)
-            kprocess_block_close(process, block->data);
-    }
+        kblock_close_internal(block, process);
     else
         kprocess_error(process, ERROR_ACCESS_DENIED);
 }
 
 void kblock_send(BLOCK* block, PROCESS* receiver)
 {
-    bool open;
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_HANDLE(receiver, sizeof(PROCESS));
     CHECK_MAGIC(block, MAGIC_BLOCK);
     if (block->granted == process)
     {
-        disable_interrupts();
-        open = block->open;
-        block->open = false;
-        enable_interrupts();
-        if (open)
-            kprocess_block_close(process, block->data);
+        kblock_close_internal(block, process);
         block->granted = receiver;
     }
     else
@@ -121,18 +124,12 @@ void kblock_send_ipc(BLOCK* block, PROCESS* receiver, IPC* ipc)
 
 void kblock_return(BLOCK* block)
 {
-    bool open;
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
     if (block->owner == process)
     {
-        disable_interrupts();
-        open = block->open;
-        block->open = false;
-        enable_interrupts();
-        if (open)
-            kprocess_block_close(process, block->data);
+        kblock_close_internal(block, process);
         block->granted = block->owner;
     }
     else

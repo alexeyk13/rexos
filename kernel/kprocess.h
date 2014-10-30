@@ -12,13 +12,9 @@
 #include "kernel_config.h"
 #include "dbg.h"
 #include "kipc.h"
+#include "kblock.h"
 
-typedef struct {
-    void* data;
-    unsigned int size;
-}PROCESS_BLOCK;
-
-typedef struct {
+typedef struct _PROCESS {
     DLIST list;                                                        //list of processes - active, frozen, or owned by sync object
     HEAP* heap;                                                        //process heap pointer
     unsigned int* sp;                                                  //current sp(if saved)
@@ -36,8 +32,7 @@ typedef struct {
     TIME uptime;
     TIME uptime_start;
 #endif //KERNEL_PROCESS_STAT
-    unsigned int blocks_count;
-    PROCESS_BLOCK blocks[KERNEL_BLOCKS_COUNT];
+    BLOCK* blocks;
     KIPC kipc;
     //IPC is following
 }PROCESS;
@@ -59,8 +54,16 @@ void kprocess_get_current_svc(PROCESS** var);
 void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
 void kprocess_wakeup(PROCESS* process);
 void kprocess_set_current_priority(PROCESS* process, unsigned int priority);
-bool kprocess_block_open(PROCESS* process, void* data, unsigned int size);
-void kprocess_block_close(PROCESS* process, void *data);
+__STATIC_INLINE void kprocess_block_open(PROCESS* process, BLOCK* block)
+{
+    dlist_add_tail((DLIST**)&process->blocks, (DLIST*)block);
+}
+
+__STATIC_INLINE void kprocess_block_close(PROCESS* process, BLOCK* block)
+{
+    dlist_remove((DLIST**)&process->blocks, (DLIST*)block);
+}
+
 void kprocess_destroy_current();
 
 //called from other places in kernel, IRQ enabled

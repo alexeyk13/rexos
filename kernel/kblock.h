@@ -7,10 +7,14 @@
 #ifndef KBLOCK_H
 #define KBLOCK_H
 
-#include "kprocess.h"
 #include "kipc.h"
+#include "../userspace/lib/dlist.h"
+#include "dbg.h"
+
+typedef struct _PROCESS PROCESS;
 
 typedef struct {
+    DLIST list;
     MAGIC;
     void* data;
     unsigned int size;
@@ -27,6 +31,5 @@ void kblock_send(BLOCK* block, PROCESS* receiver);
 void kblock_send_ipc(BLOCK* block, PROCESS* receiver, IPC* ipc);
 void kblock_return(BLOCK* block);
 void kblock_destroy(BLOCK* block);
-
 
 #endif // KBLOCK_H

@@ -200,7 +200,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->timer.callback = kprocess_timeout;
             (*process)->timer.param = (*process);
             (*process)->size = rex->size;
-            (*process)->blocks_count = 0;
+            dlist_clear((DLIST**)&((*process)->blocks));
             kipc_init((HANDLE)*process, rex->ipc_size);
             kdirect_init(*process);
             (*process)->heap->stdout = (*process)->heap->stdin = INVALID_HANDLE;
@@ -467,44 +467,10 @@ PROCESS* kprocess_get_current()
     return (__KERNEL->context >= 0) ?  __KERNEL->irqs[__KERNEL->context]->process : __KERNEL->active_process;
 }
 
-bool kprocess_block_open(PROCESS* process, void* data, unsigned int size)
-{
-    bool res = true;
-    disable_interrupts();
-    if (process->blocks_count < KERNEL_BLOCKS_COUNT)
-    {
-        process->blocks[process->blocks_count].data = data;
-        process->blocks[process->blocks_count].size = size;
-        process->blocks_count++;
-    }
-    else
-        res = false;
-    enable_interrupts();
-    if (!res)
-        kprocess_error(process, ERROR_TOO_MANY_OPEN_BLOCKS);
-    return res;
-}
-
-void kprocess_block_close(PROCESS* process, void* data)
-{
-    int i;
-    disable_interrupts();
-    for (i = 0; i < process->blocks_count; ++i)
-        if (process->blocks[i].data == data)
-        {
-            if (i < --process->blocks_count)
-            {
-                process->blocks[i].data = process->blocks[process->blocks_count - 1].data;
-                process->blocks[i].size = process->blocks[process->blocks_count - 1].size;
-            }
-            break;
-        }
-    enable_interrupts();
-}
-
 bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size)
 {
-    int i;
+    DLIST_ENUM de;
+    BLOCK* cur;
     //don't check on IRQ or kernel post
     if ((HANDLE)process == INVALID_HANDLE || __KERNEL->context >= 0)
         return true;
@@ -512,15 +478,19 @@ bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size)
     if ((unsigned int)addr >= (unsigned int)process->heap && (unsigned int)addr + size < (unsigned int)process->heap + process->size)
         return true;
     //check open blocks
-    for (i = 0; i < process->blocks_count; ++i)
-        if ((unsigned int)addr >= (unsigned int)process->blocks[i].data && (unsigned int)addr + size < (unsigned int)process->blocks[i].data + process->blocks[i].size)
+    dlist_enum_start((DLIST**)&process->blocks, &de);
+    while (dlist_enum(&de, (DLIST**)&cur))
+    {
+        if ((unsigned int)addr >= (unsigned int)cur->data && (unsigned int)addr + size < (unsigned int)cur->data + cur->size)
             return true;
+    }
     return false;
 }
 
 bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size)
 {
-    int i;
+    DLIST_ENUM de;
+    BLOCK* cur;
     //don't check on IRQ or kernel post
     if ((HANDLE)process == INVALID_HANDLE || __KERNEL->context >= 0)
         return true;
@@ -531,9 +501,12 @@ bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size
     if ((unsigned int)addr >= FLASH_BASE && (unsigned int)addr + size < FLASH_BASE + FLASH_SIZE)
         return true;
     //check open blocks
-    for (i = 0; i < process->blocks_count; ++i)
-        if ((unsigned int)addr >= (unsigned int)process->blocks[i].data && (unsigned int)addr + size < (unsigned int)process->blocks[i].data + process->blocks[i].size)
+    dlist_enum_start((DLIST**)&process->blocks, &de);
+    while (dlist_enum(&de, (DLIST**)&cur))
+    {
+        if ((unsigned int)addr >= (unsigned int)cur->data && (unsigned int)addr + size < (unsigned int)cur->data + cur->size)
             return true;
+    }
     return false;
 }
 
