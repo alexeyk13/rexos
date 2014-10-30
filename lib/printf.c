@@ -14,11 +14,11 @@
 #define FLAGS_LEFT_JUSTIFY                                      (1 << 1)
 #define FLAGS_FORCE_PLUS                                        (1 << 2)
 #define FLAGS_SPACE_FOR_SIGN                                    (1 << 3)
-#define FLAGS_RADIX_PREFIX                                      (1 << 5)
-#define FLAGS_ZERO_PAD_NUMBERS                                  (1 << 6)
-#define FLAGS_SHORT_INT                                         (1 << 7)
+#define FLAGS_RADIX_PREFIX                                      (1 << 4)
+#define FLAGS_ZERO_PAD_NUMBERS                                  (1 << 5)
+#define FLAGS_SHORT_INT                                         (1 << 6)
 
-#define FLAGS_SIGN_MINUS                                        (1 << 8)
+#define FLAGS_SIGN_MINUS                                        (1 << 7)
 
 const char spaces[PRINTF_BUF_SIZE] =                            "          ";
 const char zeroes[PRINTF_BUF_SIZE] =                            "0000000000";
