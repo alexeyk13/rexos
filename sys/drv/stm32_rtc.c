@@ -39,6 +39,15 @@ static inline void backup_on()
 #elif defined(STM32L0)
     RCC->APB1ENR |= RCC_APB1ENR_PWREN;
     PWR->CR |= PWR_CR_DBP;
+    //HSE as clock source can cause faults on pin reset, so reset backup domain is required
+#if !(LSE_VALUE)
+    RCC->CSR |= RCC_CSR_RTCRST;
+    __NOP();
+    __NOP();
+    __NOP();
+    RCC->CSR &= ~RCC_CSR_RTCRST;
+#endif
+
     __disable_irq();
     RTC->WPR = 0xca;
     RTC->WPR = 0x53;
@@ -122,6 +131,7 @@ void stm32_rtc_init()
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     RTC->CRH |= RTC_CRH_SECIE;
 #else
+
     if ((RCC->CSR & RCC_CSR_RTCEN) == 0)
     {
         RCC->CSR &= ~(3 << 16);
@@ -156,7 +166,6 @@ void stm32_rtc_init()
         RTC->WUTR = 0;
         RTC->CR |= RTC_CR_WUTE;
         leave_configuration();
-
     }
 
     //setup EXTI for second pulse
