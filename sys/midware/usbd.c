@@ -249,13 +249,13 @@ void usbd_register_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned in
         return;
     udrs = (USBD_DESCRIPTOR_REGISTER_STRUCT*)buf;
     if (udrs->flags & USBD_FLAG_PERSISTENT_DESCRIPTOR)
-        ptr = *(char**)(buf + sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT));
+        ptr = *(char**)(buf + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED);
     else
     {
-        ptr = malloc(size - sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT));
+        ptr = malloc(size - USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED);
         if (ptr == NULL)
             return;
-        memcpy(ptr, (void*)(buf + sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT)), size - sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT));
+        memcpy(ptr, (void*)(buf + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED), size - USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED);
     }
     bool res = false;
     switch (type)
@@ -281,7 +281,6 @@ void usbd_register_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned in
     }
     if (!res && (udrs->flags & USBD_FLAG_PERSISTENT_DESCRIPTOR) == 0)
         free(ptr);
-    return;
 }
 
 void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned int index, unsigned int lang)

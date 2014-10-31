@@ -42,6 +42,8 @@ typedef struct {
     //data or pointer is following
 } USBD_DESCRIPTOR_REGISTER_STRUCT;
 
+#define USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED    ((sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT) + 3) & ~3)
+
 extern const REX __USBD;
 
 #endif // USBD_H
