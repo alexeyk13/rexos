@@ -59,7 +59,7 @@ const CONFIGURATION __CONFIGURATION_DESCRIPTOR = {
         CDC_COMM_INTERFACE_CLASS,                                           /*bInterfaceClass*/
         CDC_ACM,                                                            /*bInterfaceSubClass*/
         CDC_CP_V250,                                                        /*bInterfaceProtocol*/
-        5                                                                   /*iInterface*/
+        4                                                                   /*iInterface*/
     },
     //CDC header descriptor
     {
@@ -133,138 +133,62 @@ const CONFIGURATION __CONFIGURATION_DESCRIPTOR = {
     }
 };
 
-#define STRING_OFFSETS_COUNT                                                    6
-#define STRINGS_COUNT                                                           5
+const char __STRING_WLANGS[] = {
+    2 + 2,                                                                      /*bLength*/
+    USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
+    0x09, 0x04                                                                  // 0x409 - English
+};
 
-#define LANG_SIZE                                                               (2 + 1 * 2)
-#define MANUFACTURER_SIZE                                                       (2 + 6 * 2)
-#define PRODUCT_SIZE                                                            (2 + 7 * 2)
-#define SERIAL_SIZE                                                             (2 + 12 * 2)
-#define DEFAULT_SIZE                                                            (2 + 7 * 2)
+const char __STRING_MANUFACTURER[] = {
+    6 + 2,                                                                      /*bLength*/
+    USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
+    'R', 0,
+    'E', 0,
+    'x', 0,
+    ' ', 0,
+    'O', 0,
+    'S', 0
+};
 
-typedef struct {
-    USB_STRING_DESCRIPTORS_HEADER header;
-    USB_STRING_DESCRIPTOR_OFFSET offsets[STRING_OFFSETS_COUNT];
-} STRINGS_HEADER;
+const char __STRING_PRODUCT[] = {
+    7 + 2,                                                                      /*bLength*/
+    USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
+    'U', 0,
+    'S', 0,
+    'B', 0,
+    ' ', 0,
+    'C', 0,
+    'D', 0,
+    'C', 0
+};
 
-typedef struct {
-    STRINGS_HEADER header;
-    char data[LANG_SIZE + MANUFACTURER_SIZE + PRODUCT_SIZE + SERIAL_SIZE + DEFAULT_SIZE];
-} STRINGS;
+const char __STRING_SERIAL[] = {
+    12 + 2,                                                                     /*bLength*/
+    USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
+    '0', 0,
+    '1', 0,
+    '2', 0,
+    '3', 0,
+    '4', 0,
+    '5', 0,
+    '6', 0,
+    '7', 0,
+    '8', 0,
+    '9', 0,
+    'A', 0,
+    'B', 0
+};
 
-const STRINGS __STRINGS = {
-    //header
-    {
-        //header
-        {
-        sizeof(STRINGS),                                                            //total_size
-        STRING_OFFSETS_COUNT,                                                       //count
-        },
-        //offsets
-        {
-            //0 - wlangs
-            {
-                0x0,                                                                //lang
-                0x0,                                                                //index
-                sizeof(STRINGS_HEADER)                                              //offset
-            },
-            //manufacturer
-            {
-                0x409,                                                              //lang
-                0x1,                                                                //index
-                sizeof(STRINGS_HEADER) +                                            //offset
-                LANG_SIZE
-            },
-            //product
-            {
-                0x409,                                                              //lang
-                0x2,                                                                //index
-                sizeof(STRINGS_HEADER) +                                            //offset
-                LANG_SIZE +
-                MANUFACTURER_SIZE
-            },
-            //serial
-            {
-                0x409,                                                              //lang
-                0x3,                                                                //index
-                sizeof(STRINGS_HEADER) +                                            //offset
-                LANG_SIZE +
-                MANUFACTURER_SIZE +
-                PRODUCT_SIZE
-            },
-            //configuration
-            {
-                0x409,                                                              //lang
-                0x4,                                                                //index
-                sizeof(STRINGS_HEADER) +                                            //offset
-                LANG_SIZE +
-                MANUFACTURER_SIZE +
-                PRODUCT_SIZE +
-                SERIAL_SIZE
-            },
-            //interface
-            {
-                0x409,                                                              //lang
-                0x5,                                                                //index
-                sizeof(STRINGS_HEADER) +                                            //offset
-                LANG_SIZE +
-                MANUFACTURER_SIZE +
-                PRODUCT_SIZE +
-                SERIAL_SIZE
-            }
-        }
-    },
-    //data
-    {
-        //wlangs
-        LANG_SIZE,                                                                  /*bLength*/
-        USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
-        0x09, 0x04,                                                                 // 0x409 - English
-        //manufacturer
-        MANUFACTURER_SIZE,                                                          /*bLength*/
-        USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
-        'R', 0,
-        'E', 0,
-        'x', 0,
-        ' ', 0,
-        'O', 0,
-        'S', 0,
-        //product
-        PRODUCT_SIZE,                                                               /*bLength*/
-        USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
-        'U', 0,
-        'S', 0,
-        'B', 0,
-        ' ', 0,
-        'C', 0,
-        'D', 0,
-        'C', 0,
-        //serial
-        SERIAL_SIZE,                                                                /*bLength*/
-        USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
-        '0', 0,
-        '1', 0,
-        '2', 0,
-        '3', 0,
-        '4', 0,
-        '5', 0,
-        '6', 0,
-        '7', 0,
-        '8', 0,
-        '9', 0,
-        'A', 0,
-        'B', 0,
-        DEFAULT_SIZE,                                                               /*bLength*/
-        USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
-        'D', 0,
-        'e', 0,
-        'f', 0,
-        'a', 0,
-        'u', 0,
-        'l', 0,
-        't', 0
-
-    }
+const char __STRING_DEFAULT[] = {
+    7 + 2,                                                                      /*bLength*/
+    USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
+    'D', 0,
+    'e', 0,
+    'f', 0,
+    'a', 0,
+    'u', 0,
+    'l', 0,
+    't', 0
 };
 
 #pragma pack(pop)

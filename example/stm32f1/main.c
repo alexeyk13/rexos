@@ -104,10 +104,13 @@ HANDLE usb_on(HANDLE core)
 
     libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_DEVICE_FS, 0, 0, &__DEVICE_DESCRIPTOR);
     libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_CONFIGURATION_FS, 0, 0, &__CONFIGURATION_DESCRIPTOR);
+    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 0, 0, &__STRING_WLANGS);
+    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 1, 0x0409, &__STRING_MANUFACTURER);
+    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 2, 0x0409, &__STRING_PRODUCT);
+    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 3, 0x0409, &__STRING_SERIAL);
+    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 4, 0x0409, &__STRING_DEFAULT);
     
     fopen(usbd, usb);
-    direct_enable_read(usbd, (void*)&__STRINGS, __STRINGS.header.header.total_size);
-    ack(usbd, USBD_SETUP_STRING_DESCRIPTORS, __STRINGS.header.header.total_size, 0, 0);
 
     //setup cdc
     cdc = process_create(&__CDC);

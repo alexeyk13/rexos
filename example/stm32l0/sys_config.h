@@ -27,4 +27,8 @@
 #define USB_DEBUG_CLASS_REQUESTS                            0
 #define USB_DEBUG_ERRORS                                    0
 
+//Sizeof USB device process. Remember, that process itself requires around 512 bytes
+#define USB_DEVICE_PROCESS_SIZE                             620
+#define USB_CDC_PROCESS_SIZE                                450
+
 #endif // SYS_CONFIG_H
