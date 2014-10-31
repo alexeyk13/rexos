@@ -46,7 +46,7 @@ const REX __CDC = {
     //name
     "CDC USB class",
     //size
-    512,
+    USB_CDC_PROCESS_SIZE,
     //priority - midware priority
     150,
     //flags

@@ -212,7 +212,7 @@ void stm32_usb()
 //            stm32_usb_write(&usb, &ipc);
             //generally posted with block, no return IPC
             break;
-        case USB_REGISTER_DEVICE:
+/*        case USB_REGISTER_DEVICE:
             if (usb.device == INVALID_HANDLE)
                 usb.device = ipc.process;
             else
@@ -225,7 +225,7 @@ void stm32_usb()
             else
                 error(ERROR_ACCESS_DENIED);
             ipc_post_or_error(&ipc);
-            break;
+            break;*/
         case USB_SET_TEST_MODE:
 //            stm32_usb_set_test_mode(&usb, ipc.param1);
             ipc_post_or_error(&ipc);
