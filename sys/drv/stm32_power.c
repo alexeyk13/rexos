@@ -467,7 +467,7 @@ void stm32_usb_power_on()
     //enable clock
     RCC->AHBENR |= RCC_AHBENR_OTGFSEN;
     //F100, F101, F103
-#elif defined(STM32F1) || defined(STM32L0)
+#elif defined(STM32F1)
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;
 #endif
 }
@@ -478,7 +478,7 @@ void stm32_usb_power_off()
     //disable clock
     RCC->AHBENR &= ~RCC_AHBENR_OTGFSEN;
     //F100, F101, F103
-#elif defined(STM32F1) || defined(STM32L0)
+#elif defined(STM32F1)
     RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
 #endif
 }
