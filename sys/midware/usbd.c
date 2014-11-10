@@ -576,7 +576,7 @@ static inline int usbd_get_descriptor(USBD* usbd)
         break;
     case USB_CONFIGURATION_DESCRIPTOR_INDEX:
 #if (USB_DEBUG_REQUESTS)
-        printf("USB get CONFIGURATION %d descriptor\n\r", num);
+        printf("USB get CONFIGURATION %d descriptor\n\r", index);
 #endif
         if (usbd->speed >= USB_HIGH_SPEED)
             res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_hs, index, USB_CONFIGURATION_DESCRIPTOR_INDEX);
@@ -600,7 +600,7 @@ static inline int usbd_get_descriptor(USBD* usbd)
         break;
     case USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX:
 #if (USB_DEBUG_REQUESTS)
-        printf("USB get other speed CONFIGURATION %d descriptor\n\r", num);
+        printf("USB get other speed CONFIGURATION %d descriptor\n\r", index);
 #endif
         if (usbd->speed >= USB_HIGH_SPEED)
             res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_fs, index, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX);
