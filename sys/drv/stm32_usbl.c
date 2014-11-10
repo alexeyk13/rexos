@@ -8,6 +8,7 @@
 #include "../sys.h"
 #include "../usb.h"
 #include "../../userspace/direct.h"
+#include "../../userspace/irq.h"
 #include "stm32_gpio.h"
 #include "stm32_power.h"
 #if (SYS_INFO)
@@ -63,15 +64,77 @@ const REX __STM32_USB = {
 
 #endif
 
+USB_SPEED stm32_usb_get_speed(SHARED_USB_DRV* drv)
+{
+    //according to datasheet STM32L0 doesn't support low speed mode...
+    return USB_FULL_SPEED;
+}
+
+static inline void stm32_usb_reset(SHARED_USB_DRV* drv)
+{
+    USB->CNTR |= USB_CNTR_SUSPM;
+
+    IPC ipc;
+    ipc.process = drv->usb.device;
+    ipc.param1 = stm32_usb_get_speed(drv);
+    ipc.cmd = USB_RESET;
+    ipc_ipost(&ipc);
+}
+
+static inline void stm32_usb_suspend(SHARED_USB_DRV* drv)
+{
+    IPC ipc;
+    USB->CNTR &= ~USB_CNTR_SUSPM;
+    ipc.process = drv->usb.device;
+    ipc.cmd = USB_SUSPEND;
+    ipc_ipost(&ipc);
+}
+
+static inline void stm32_usb_wakeup(SHARED_USB_DRV* drv)
+{
+    IPC ipc;
+    USB->CNTR |= USB_CNTR_SUSPM;
+    ipc.process = drv->usb.device;
+    ipc.cmd = USB_WAKEUP;
+    ipc_ipost(&ipc);
+}
+
+void stm32_usb_on_isr(int vector, void* param)
+{
+    SHARED_USB_DRV* drv = (SHARED_USB_DRV*)param;
+    uint16_t sta = USB->ISTR;
+
+    //rarely called
+    if (sta & USB_ISTR_RESET)
+    {
+        stm32_usb_reset(drv);
+        USB->ISTR &= ~USB_ISTR_RESET;
+        return;
+    }
+    if ((sta & USB_ISTR_SUSP) && (USB->CNTR & USB_CNTR_SUSPM))
+    {
+        stm32_usb_suspend(drv);
+        USB->ISTR &= ~USB_ISTR_SUSP;
+        return;
+    }
+    if (sta & USB_ISTR_WKUP)
+    {
+        stm32_usb_wakeup(drv);
+        USB->ISTR &= ~USB_ISTR_WKUP;
+    }
+    printk("USB unhandled!\n\r");
+}
+
+
 void stm32_usb_open_device(SHARED_USB_DRV* drv, USB_OPEN* uo)
 {
-    int trdt;
+    drv->usb.device = uo->device;
     //enable DM/DP
     ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, USB_DM, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, USB_DM, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
+    ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, USB_DP, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
 
-    //enable clock, setup prescaller
-    ack_power(drv, STM32_POWER_USB_ON, 0, 0, 0);
+    //enable clock
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
 
     //power up and wait tStartup
     USB->CNTR &= ~USB_CNTR_PDWN;
@@ -80,6 +143,8 @@ void stm32_usb_open_device(SHARED_USB_DRV* drv, USB_OPEN* uo)
 
     //clear any spurious pending interrupts
     USB->ISTR = 0;
+
+
 /*
     OTG_FS_GENERAL->CCFG = OTG_FS_GENERAL_CCFG_PWRDWN;
 
@@ -116,14 +181,16 @@ void stm32_usb_open_device(SHARED_USB_DRV* drv, USB_OPEN* uo)
 
     //Setup data FIFO
     OTG_FS_GENERAL->RXFSIZ = ((STM32_USB_MPS / 4) + 1) * 2 + 10 + 1;
+*/
 
     //enable interrupts
-    irq_register(OTG_FS_IRQn, usb_on_isr, (void*)usb);
-    NVIC_EnableIRQ(OTG_FS_IRQn);
-    NVIC_SetPriority(OTG_FS_IRQn, 15);
+    irq_register(USB_IRQn, stm32_usb_on_isr, drv);
+    NVIC_EnableIRQ(USB_IRQn);
+    NVIC_SetPriority(USB_IRQn, 13);
 
-    //Unmask global interrupts
-    OTG_FS_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_OTGM;*/
+    //Unmask common interrupts
+    //TODO: error handling
+    USB->CNTR |= USB_CNTR_SUSPM | USB_CNTR_RESETM;
 }
 
 void stm32_usb_open(SHARED_USB_DRV* drv, unsigned int handle, HANDLE process)
@@ -169,7 +236,7 @@ static inline void stm32_usb_close_device(SHARED_USB_DRV* drv)
     }
 
     //power down
-    ack(core, STM32_POWER_USB_OFF, 0, 0, 0);
+    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
 
     //disable pins
     ack(core, STM32_GPIO_DISABLE_PIN, A9, 0, 0);
@@ -216,7 +283,7 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         //message from isr, no response
         break;
     case USB_GET_SPEED:
-//        ipc->param1 = stm32_usb_get_speed(drv);
+        ipc->param1 = stm32_usb_get_speed(drv);
         need_post = true;
         break;
     case IPC_OPEN:
