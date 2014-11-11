@@ -539,7 +539,7 @@ static inline int usbd_device_clear_feature(USBD* usbd)
 static inline int usbd_set_address(USBD* usbd)
 {
 #if (USB_DEBUG_REQUESTS)
-    printf("USB set ADDRESS\n\r");
+    printf("USB set ADDRESS %#X\n\r", usbd->setup.wValue);
 #endif
     ack(usbd->usb, USB_SET_ADDRESS, usbd->setup.wValue, 0, 0);
     switch (usbd->state)
@@ -1014,7 +1014,7 @@ void usbd()
     USBD usbd;
     IPC ipc;
 
-#if (SYS_INFO)
+#if (SYS_INFO) || (USB_DEBUG_REQUESTS) || (USB_DEBUG_ERRORS)
     open_stdout();
 #endif
 
