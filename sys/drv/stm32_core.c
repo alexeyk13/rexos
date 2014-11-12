@@ -23,7 +23,11 @@
 #include "stm32_analog.h"
 #endif
 #if (MONOLITH_USB)
+#ifdef STM32L0
+#include "stm32_usbl.h"
+#else
 #include "stm32_usb.h"
+#endif
 #endif
 
 void stm32_core();
