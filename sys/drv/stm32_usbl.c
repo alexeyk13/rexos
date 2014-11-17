@@ -243,7 +243,7 @@ static inline void stm32_usb_ctr(SHARED_USB_DRV* drv)
     if ((*ep_reg_data(num)) & USB_EP_CTR_RX)
     {
         size = USB_BUFFER_DESCRIPTORS[num].COUNT_RX & 0x3ff;
-        memcpy16(drv->usb.out[num]->ptr + drv->usb.out[num]->processed, (void*)(USB_BUFFER_DESCRIPTORS[0].ADDR_RX + USB_PMAADDR), size);
+        memcpy16(drv->usb.out[num]->ptr + drv->usb.out[num]->processed, (void*)(USB_BUFFER_DESCRIPTORS[num].ADDR_RX + USB_PMAADDR), size);
         *ep_reg_data(num) = (*ep_reg_data(num)) & USB_EPREG_MASK & ~USB_EP_CTR_RX;
         drv->usb.out[num]->processed += size;
 
@@ -417,12 +417,12 @@ static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int nu
     //find free addr in FIFO
     unsigned int fifo, i;
     fifo = 0;
-    //No any words in ref. manual, but all FIFO RX is going to EP0 RX.
-    if (num & USB_EP_IN)
+    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
     {
-        for (i = 0; i < USB_EP_COUNT_MAX; ++i)
-            if (drv->usb.in[i])
-                fifo += drv->usb.in[i]->mps;
+        if (drv->usb.in[i])
+            fifo += drv->usb.in[i]->mps;
+        if (drv->usb.out[i])
+            fifo += drv->usb.out[i]->mps;
     }
     fifo += sizeof(USB_BUFFER_DESCRIPTOR) * USB_EP_COUNT_MAX;
 
