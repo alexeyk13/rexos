@@ -417,12 +417,12 @@ static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int nu
     //find free addr in FIFO
     unsigned int fifo, i;
     fifo = 0;
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
+    //No any words in ref. manual, but all FIFO RX is going to EP0 RX.
+    if (num & USB_EP_IN)
     {
-        if (drv->usb.in[USB_EP_NUM(num)])
-            fifo += drv->usb.in[USB_EP_NUM(num)]->mps;
-        if (drv->usb.out[USB_EP_NUM(num)])
-            fifo += drv->usb.out[USB_EP_NUM(num)]->mps;
+        for (i = 0; i < USB_EP_COUNT_MAX; ++i)
+            if (drv->usb.in[i])
+                fifo += drv->usb.in[i]->mps;
     }
     fifo += sizeof(USB_BUFFER_DESCRIPTOR) * USB_EP_COUNT_MAX;
 
