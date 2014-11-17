@@ -136,12 +136,12 @@ bool stm32_usb_ep_flush(SHARED_USB_DRV* drv, int num)
         error(ERROR_NOT_CONFIGURED);
         return false;
     }
+    if (num & USB_EP_IN)
+        ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_NAK);
+    else
+        ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_NAK);
     if (ep->block != INVALID_HANDLE)
     {
-        if (num & USB_EP_IN)
-            ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_NAK);
-        else
-            ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_NAK);
         block_send(ep->block, ep->process);
         ep->block = INVALID_HANDLE;
     }
