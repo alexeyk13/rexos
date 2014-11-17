@@ -1,9 +1,13 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2014, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #ifndef USB_DESC_H
 #define USB_DESC_H
 
 #include "../../rexos/sys/usb.h"
-#include "../../rexos/sys/midware/cdc.h"
-#include "../../rexos/sys/midware/usbd.h"
 
 #pragma pack(push, 1)
 
@@ -134,13 +138,13 @@ const CONFIGURATION __CONFIGURATION_DESCRIPTOR = {
 };
 
 const char __STRING_WLANGS[] = {
-    2 + 2,                                                                      /*bLength*/
+    1 * 2 + 2,                                                                      /*bLength*/
     USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
     0x09, 0x04                                                                  // 0x409 - English
 };
 
 const char __STRING_MANUFACTURER[] = {
-    6 + 2,                                                                      /*bLength*/
+    6 * 2 + 2,                                                                      /*bLength*/
     USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
     'R', 0,
     'E', 0,
@@ -151,7 +155,7 @@ const char __STRING_MANUFACTURER[] = {
 };
 
 const char __STRING_PRODUCT[] = {
-    7 + 2,                                                                      /*bLength*/
+    7 * 2 + 2,                                                                      /*bLength*/
     USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
     'U', 0,
     'S', 0,
@@ -163,7 +167,7 @@ const char __STRING_PRODUCT[] = {
 };
 
 const char __STRING_SERIAL[] = {
-    12 + 2,                                                                     /*bLength*/
+    12 * 2 + 2,                                                                     /*bLength*/
     USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
     '0', 0,
     '1', 0,
@@ -180,7 +184,7 @@ const char __STRING_SERIAL[] = {
 };
 
 const char __STRING_DEFAULT[] = {
-    7 + 2,                                                                      /*bLength*/
+    7 * 2 + 2,                                                                      /*bLength*/
     USB_STRING_DESCRIPTOR_INDEX,                                                /*bDescriptorType*/
     'D', 0,
     'e', 0,

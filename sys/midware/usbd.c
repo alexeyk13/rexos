@@ -465,7 +465,8 @@ int send_configuration_descriptor(USBD* usbd, ARRAY** ar, int index, uint8_t typ
     return send_descriptor(usbd, dst, type, dst->wTotalLength);
 }
 
-static inline int send_strings_descriptor(USBD* usbd, int index, int lang_id)
+//static inline int send_strings_descriptor(USBD* usbd, int index, int lang_id)
+int send_strings_descriptor(USBD* usbd, int index, int lang_id)
 {
     int i;
     USBD_STRING* item;
