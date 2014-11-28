@@ -8,8 +8,8 @@
 #include "stm32_core_private.h"
 #include "sys_config.h"
 #if (SYS_INFO)
-#include "../../userspace/lib/stdlib.h"
-#include "../../userspace/lib/stdio.h"
+#include "../../../userspace/lib/stdlib.h"
+#include "../../../userspace/lib/stdio.h"
 #endif
 #include <string.h>
 

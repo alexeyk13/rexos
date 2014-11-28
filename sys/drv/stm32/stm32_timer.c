@@ -8,12 +8,12 @@
 #include "stm32_gpio.h"
 #include "stm32_power.h"
 #include "stm32_core_private.h"
-#include "../../userspace/error.h"
-#include "../../userspace/timer.h"
-#include "../../userspace/irq.h"
+#include "../../../userspace/error.h"
+#include "../../../userspace/timer.h"
+#include "../../../userspace/irq.h"
 #include <string.h>
 #if (SYS_INFO)
-#include "../../userspace/lib/stdio.h"
+#include "../../../userspace/lib/stdio.h"
 #endif
 
 #define APB1                                    (unsigned int*)((unsigned int)RCC_BASE + offsetof(RCC_TypeDef, APB1ENR))

@@ -6,9 +6,9 @@
 #ifndef STM32_ANALOG_H
 #define STM32_ANALOG_H
 
-#include "../../userspace/process.h"
-#include "../../userspace/core/stm32.h"
-#include "../sys.h"
+#include "../../../userspace/process.h"
+#include "../../../userspace/core/stm32.h"
+#include "../../sys.h"
 #include "stm32_gpio.h"
 #include "stm32_timer.h"
 #include "stm32_config.h"

@@ -11,8 +11,8 @@
         STM32 UART driver
   */
 
-#include "../../userspace/process.h"
-#include "../uart.h"
+#include "../../../userspace/process.h"
+#include "../../uart.h"
 #include "stm32_gpio.h"
 #include "stm32_config.h"
 #include "sys_config.h"

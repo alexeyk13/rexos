@@ -7,8 +7,8 @@
 #ifndef STM32_USBL_H
 #define STM32_USBL_H
 
-#include "../../userspace/process.h"
-#include "../../userspace/ipc.h"
+#include "../../../userspace/process.h"
+#include "../../../userspace/ipc.h"
 #include "stm32_config.h"
 #include "sys_config.h"
 #if (MONOLITH_USB)

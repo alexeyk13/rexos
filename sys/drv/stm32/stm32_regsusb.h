@@ -7,7 +7,7 @@
 #ifndef STM32_REGSUSB_H
 #define STM32_REGSUSB_H
 
-#include "../../userspace/lib/types.h"
+#include <stdint.h>
 
 /******************************************************************************/
 /*                                                                            */

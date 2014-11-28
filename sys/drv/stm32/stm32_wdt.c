@@ -1,6 +1,6 @@
 #include "stm32_wdt.h"
-#include "../sys.h"
-#include "../wdt.h"
+#include "../../sys.h"
+#include "../../wdt.h"
 #include "stm32_config.h"
 
 #define KICK_KEY                                        0xaaaa

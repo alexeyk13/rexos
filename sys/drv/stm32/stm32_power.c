@@ -7,7 +7,7 @@
 #include "stm32_power.h"
 #include "stm32_core_private.h"
 #if (SYS_INFO)
-#include "../../userspace/lib/stdio.h"
+#include "../../../userspace/lib/stdio.h"
 #endif
 
 #if defined(STM32F1)

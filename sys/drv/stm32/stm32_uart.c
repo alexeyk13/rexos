@@ -6,14 +6,14 @@
 
 #include "stm32_uart.h"
 #include "stm32_power.h"
-#include "../sys.h"
+#include "../../sys.h"
 #include "error.h"
-#include "../../userspace/lib/stdlib.h"
-#include "../../userspace/lib/stdio.h"
-#include "../../userspace/stream.h"
-#include "../../userspace/direct.h"
-#include "../../userspace/irq.h"
-#include "../../userspace/object.h"
+#include "../../../userspace/lib/stdlib.h"
+#include "../../../userspace/lib/stdio.h"
+#include "../../../userspace/stream.h"
+#include "../../../userspace/direct.h"
+#include "../../../userspace/irq.h"
+#include "../../../userspace/object.h"
 #include <string.h>
 #if (MONOLITH_UART)
 #include "stm32_core_private.h"
