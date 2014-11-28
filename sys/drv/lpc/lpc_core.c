@@ -61,7 +61,7 @@ void lpc_core_loop(CORE* core)
             case IPC_GET_INFO:
                 need_post |= lpc_gpio_request(core, &ipc);
 //                need_post |= lpc_timer_request(core, &ipc);
-//                need_post |= lpc_power_request(core, &ipc);
+                need_post |= lpc_power_request(core, &ipc);
 //#if (MONOLITH_UART)
 //                need_post |= lpc_uart_request(core, &ipc);
 //#endif
@@ -91,7 +91,7 @@ void lpc_core_loop(CORE* core)
             switch (group)
             {
             case HAL_POWER:
-//                need_post = lpc_power_request(core, &ipc);
+                need_post = lpc_power_request(core, &ipc);
                 break;
             case HAL_GPIO:
                 need_post = lpc_gpio_request(&ipc);
@@ -120,7 +120,7 @@ void lpc_core()
     CORE core;
     object_set_self(SYS_OBJ_CORE);
 
-//    lpc_power_init(&core);
+    lpc_power_init(&core);
 //    lpc_timer_init(&core);
     lpc_gpio_init(&core);
 //#if (MONOLITH_UART)
