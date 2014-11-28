@@ -43,6 +43,8 @@ void lpc_core_loop(CORE* core)
         group = -1;
         ipc.cmd = 0;
         ipc_read_ms(&ipc, 0, 0);
+        //TODO: remove after timer setup
+        error(ERROR_OK);
 
         if (ipc.cmd < IPC_USER)
         {
@@ -97,7 +99,7 @@ void lpc_core_loop(CORE* core)
                 need_post = lpc_gpio_request(&ipc);
                 break;
             case HAL_TIMER:
-//                need_post = lpc_timer_request(core, &ipc);
+                need_post = lpc_timer_request(core, &ipc);
                 break;
 //#if (MONOLITH_UART)
             case HAL_UART:
@@ -121,8 +123,8 @@ void lpc_core()
     object_set_self(SYS_OBJ_CORE);
 
     lpc_power_init(&core);
-//    lpc_timer_init(&core);
     lpc_gpio_init(&core);
+    lpc_timer_init(&core);
 //#if (MONOLITH_UART)
 //    lpc_uart_init(&core);
 //#endif

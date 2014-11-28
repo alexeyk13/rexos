@@ -31,7 +31,7 @@ typedef struct {
 void lpc_power_init(CORE* core);
 bool lpc_power_request(CORE* core, IPC* ipc);
 
-__STATIC_INLINE unsigned int lpc_power_request_internal(CORE* core, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+__STATIC_INLINE unsigned int lpc_power_request_inside(CORE* core, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     IPC ipc;
     ipc.cmd = cmd;
@@ -41,6 +41,20 @@ __STATIC_INLINE unsigned int lpc_power_request_internal(CORE* core, unsigned int
     lpc_power_request(core, &ipc);
     return ipc.param1;
 }
+
+__STATIC_INLINE unsigned int lpc_power_get_system_clock_outside(void* unused)
+{
+    return lpc_core_request_outside(unused, LPC_POWER_GET_SYSTEM_CLOCK, 0, 0, 0);
+}
+
+__STATIC_INLINE unsigned int lpc_power_get_system_clock_inside(CORE* core)
+{
+    IPC ipc;
+    ipc.cmd = LPC_POWER_GET_SYSTEM_CLOCK;
+    lpc_power_request(core, &ipc);
+    return ipc.param1;
+}
+
 
 #endif // LPC_POWER_H
 

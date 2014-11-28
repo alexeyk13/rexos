@@ -10,14 +10,14 @@
 #include "lpc_config.h"
 #include "lpc_core.h"
 #include "lpc_power.h"
-//#include "lpc_timer.h"
+#include "lpc_timer.h"
 //#if (MONOLITH_UART)
 //#include "lpc_uart.h"
 //#endif
 
 typedef struct _CORE {
     POWER_DRV power;
-//    TIMER_DRV timer;
+    TIMER_DRV timer;
 //#if (MONOLITH_UART)
 //    UART_DRV uart;
 //#endif

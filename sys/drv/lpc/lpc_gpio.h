@@ -43,7 +43,7 @@ typedef enum {
 void lpc_gpio_init();
 bool lpc_gpio_request(IPC* ipc);
 
-__STATIC_INLINE unsigned int lpc_gpio_request_internal(unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+__STATIC_INLINE unsigned int lpc_gpio_request_inside(unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     IPC ipc;
     ipc.cmd = cmd;
