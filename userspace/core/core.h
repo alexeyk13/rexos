@@ -12,6 +12,7 @@
 */
 
 #include "stm32.h"
+#include "lpc.h"
 
 #ifdef CORTEX_M
 #ifndef SRAM_BASE
