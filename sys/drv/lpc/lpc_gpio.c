@@ -188,13 +188,6 @@ bool lpc_gpio_request(IPC* ipc)
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        //TODO:
-//        lpc_gpio_info(&core->gpio);
-        need_post = true;
-        break;
-#endif
     case GPIO_ENABLE_PIN:
         lpc_gpio_enable_pin((PIN)ipc->param1, (PIN_MODE)ipc->param2);
         need_post = true;

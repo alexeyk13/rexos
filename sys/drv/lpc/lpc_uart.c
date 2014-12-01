@@ -640,6 +640,22 @@ void lpc_uart_init(SHARED_UART_DRV* drv)
 #endif //UART_STDIO
 }
 
+#if (SYS_INFO)
+static inline void lpc_uart_info(SHARED_UART_DRV* drv)
+{
+    int i;
+    printu("LPC uart driver info\n\r\n\r");
+    printu("uarts count: %d\n\r", UARTS_COUNT);
+
+    for (i = 0; i < UARTS_COUNT; ++i)
+    {
+        if (drv->uart.uarts[i])
+            printu("UART_%d ", i);
+    }
+    printu("\n\r\n\r");
+}
+#endif //SYS_INFO
+
 bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
@@ -647,7 +663,7 @@ bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
     {
 #if (SYS_INFO)
     case IPC_GET_INFO:
-//        lpc_uart_info(drv);
+        lpc_uart_info(drv);
         need_post = true;
         break;
 #endif
