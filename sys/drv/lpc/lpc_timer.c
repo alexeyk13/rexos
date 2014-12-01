@@ -10,6 +10,9 @@
 #include "lpc_config.h"
 #include "../../../userspace/timer.h"
 #include "../../../userspace/irq.h"
+#if (SYS_INFO)
+#include "../../../userspace/lib/stdio.h"
+#endif
 
 #define TC16PC                                      15
 #define S1_US                                       1000000
@@ -208,6 +211,14 @@ void lpc_timer_init(CORE *core)
     timer_setup(&cb_svc_timer, core);
 }
 
+
+#if (SYS_INFO)
+void lpc_timer_info()
+{
+    printd("System timer: TC%dB%d\n\r", SECOND_TIMER >= TC32B0 ? 32 : 16, SECOND_TIMER & 1);
+}
+#endif
+
 bool lpc_timer_request(CORE* core, IPC* ipc)
 {
     bool need_post = false;
@@ -215,8 +226,7 @@ bool lpc_timer_request(CORE* core, IPC* ipc)
     {
 #if (SYS_INFO)
     case IPC_GET_INFO:
-        //TODO:
-//        stm32_timer_info();
+        lpc_timer_info();
         need_post = true;
         break;
 #endif

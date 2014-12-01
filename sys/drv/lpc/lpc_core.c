@@ -43,8 +43,6 @@ void lpc_core_loop(CORE* core)
         group = -1;
         ipc.cmd = 0;
         ipc_read_ms(&ipc, 0, 0);
-        //TODO: remove after timer setup
-        error(ERROR_OK);
 
         if (ipc.cmd < IPC_USER)
         {
