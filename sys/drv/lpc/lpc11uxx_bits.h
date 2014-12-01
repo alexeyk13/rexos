@@ -714,7 +714,7 @@
 #define USART4_CFG_RXPOL                        (1 << 22)
 #define USART4_CFG_TXPOL                        (1 << 23)
 
-/**********  Bit definition for CTL register  *********************************/
+/**********  Bit definition for CTL register  ********************************/
 #define USART4_CTL_TXBRKEN                      (1 << 1)
 #define USART4_CTL_ADDRDET                      (1 << 2)
 #define USART4_CTL_TXDIS                        (1 << 6)
@@ -722,7 +722,7 @@
 #define USART4_CTL_CLRCCONRX                    (1 << 9)
 #define USART4_CTL_AUTOBAUD                     (1 << 16)
 
-/**********  Bit definition for STAT register  ********************************/
+/**********  Bit definition for STAT register  *******************************/
 #define USART4_STAT_RXRDY                       (1 << 0)
 #define USART4_STAT_RXIDLE                      (1 << 1)
 #define USART4_STAT_TXRDY                       (1 << 2)
@@ -739,7 +739,7 @@
 #define USART4_STAT_RXNOISEINT                  (1 << 15)
 #define USART4_STAT_ABERR                       (1 << 16)
 
-/**********  Bit definition for INTENSET register  ******************************/
+/**********  Bit definition for INTENSET register  ****************************/
 #define USART4_INTENSET_RXRDYEN                 (1 << 0)
 #define USART4_INTENSET_TXRDYEN                 (1 << 2)
 #define USART4_INTENSET_TXIDLEEN                (1 << 3)
@@ -753,7 +753,7 @@
 #define USART4_INTENSET_RXNOISEEN               (1 << 15)
 #define USART4_INTENSET_ABERREN                 (1 << 16)
 
-/**********  Bit definition for INTENCLR register  ******************************/
+/**********  Bit definition for INTENCLR register  ****************************/
 #define USART4_INTENCLR_RXRDYCLR                (1 << 0)
 #define USART4_INTENCLR_TXRDYCLR                (1 << 2)
 #define USART4_INTENCLR_TXIDLECLR               (1 << 3)
@@ -767,7 +767,7 @@
 #define USART4_INTENCLR_RXNOISECLR              (1 << 15)
 #define USART4_INTENCLR_ABERRCLR                (1 << 16)
 
-/**********  Bit definition for RXDATSTAT register  *****************************/
+/**********  Bit definition for RXDATSTAT register  ***************************/
 #define USART4_RXDATSTAT_RXDAT_POS              0
 #define USART4_RXDATSTAT_RXDAT_MASK             (0xff << 0)
 
@@ -775,7 +775,7 @@
 #define USART4_RXDATSTAT_PERITYERR              (1 << 14)
 #define USART4_RXDATSTAT_RXNOISE                (1 << 15)
 
-/**********  Bit definition for INTSTAT register  *******************************/
+/**********  Bit definition for INTSTAT register  *****************************/
 #define USART4_INTSTAT_RXRDY                    (1 << 0)
 #define USART4_INTSTAT_TXRDY                    (1 << 2)
 #define USART4_INTSTAT_TXIDLE                   (1 << 3)
@@ -788,6 +788,79 @@
 #define USART4_INTSTAT_PERITYERRINT             (1 << 14)
 #define USART4_INTSTAT_RXNOISEINT               (1 << 15)
 #define USART4_INTSTAT_ABERR                    (1 << 16)
+
+/******************************************************************************/
+/*                                                                            */
+/*                                 I2C                                        */
+/*                                                                            */
+/******************************************************************************/
+
+/**********  Bit definition for CONSET register  ******************************/
+#define I2C_CONSET_AA                           (1 << 2)                /* Assert acknowledge flag */
+#define I2C_CONSET_SI                           (1 << 3)                /* I2C interrupt flag */
+#define I2C_CONSET_STO                          (1 << 4)                /* STOP flag */
+#define I2C_CONSET_STA                          (1 << 5)                /* START flag */
+#define I2C_CONSET_I2EN                         (1 << 6)                /* I2C interface enable */
+
+/***********  Bit definition for STAT register  *******************************/
+#define I2C_STAT_STATUS_MASK                    (0x1f << 3)
+
+#define I2C_STAT_START                          0x08                    /* A START condition has been transmitted */
+#define I2C_STAT_REPEATED_START                 0x10                    /* A Repeated START condition has been transmitted */
+#define I2C_STAT_SLAW_ACK                       0x18                    /* SLA+W has been transmitted; ACK has been received */
+#define I2C_STAT_SLAW_NACK                      0x20                    /* SLA+W has been transmitted; NOT ACK has been received */
+#define I2C_STAT_DATW_ACK                       0x28                    /* Data byte in DAT has been transmitted; ACK has been received */
+#define I2C_STAT_DATW_NACK                      0x30                    /* Data byte in DAT has been transmitted; NOT ACK has been received */
+#define I2C_STAT_ARBITRATION_LOST               0x38                    /* Arbitration lost in SLA+R/W or Data bytes */
+#define I2C_STAT_SLAR_ACK                       0x40                    /* SLA+R has been transmitted; ACK has been received */
+#define I2C_STAT_SLAR_NACK                      0x48                    /* SLA+R has been transmitted; NOT ACK has been received */
+#define I2C_STAT_DATR_ACK                       0x50                    /* Data byte has been received; ACK has been returned */
+#define I2C_STAT_DATR_NACK                      0x58                    /* Data byte has been received; NOT ACK has been returned */
+#define I2C_STAT_SLAVE_SLAW_ACK                 0x60                    /* Own SLA+W has been received; ACK has been returned */
+#define I2C_STAT_SLAVE_SLAW_NACK                0x68                    /* Arbitration lost in SLA+R/W as master;
+                                                                           Own SLA+W has been received, ACK returned */
+#define I2C_STAT_SLAVE_GCA_ACK                  0x70                    /* General call address (0x00) has been received; ACK has been returned*/
+#define I2C_STAT_SLAVE_GCA_NACK                 0x78                    /* Arbitration lost in SLA+R/W as master;
+                                                                           General call address has been received, ACK has been returned */
+#define I2C_STAT_SLAVE_DATW_ACK                 0x80                    /* Previously addressed with own SLV address;
+                                                                           DATA has been received; ACK has been returned */
+#define I2C_STAT_SLAVE_DATW_NACK                0x88                    /* Previously addressed with own SLV address;
+                                                                           DATA has been received; NOT ACK has been returned */
+#define I2C_STAT_SLAVE_GCA_DATW_ACK             0x90                    /* Previously addressed with General Call;
+                                                                           DATA byte has been received; ACK has been returned */
+#define I2C_STAT_SLAVE_GCA_DATW_NACK            0x98                    /* Previously addressed with General Call;
+                                                                           DATA byte has been received; NOT ACK has been returned */
+#define I2C_STAT_SLAVE_STOP                     0xA0                    /* A STOP condition or Repeated START condition has been
+                                                                           received while still addressed as SLV/REC or SLV/TRX */
+#define I2C_STAT_SLAVE_SLAR_ACK                 0xA8                    /* Own SLA+R has been received; ACK has been returned */
+#define I2C_STAT_SLAVE_SLAR_NACK                0xB0                    /* Arbitration lost in SLA+R/W as master;
+                                                                           Own SLA+R has beenreceived, ACK has been returned */
+#define I2C_STAT_SLAVE_DATR_ACK                 0xB8                    /* Data byte in DAT has been transmitted; ACK has been received */
+#define I2C_STAT_SLAVE_DATR_NACK                0xC0                    /* Data byte in DAT has been transmitted; NOT ACK has been received */
+#define I2C_STAT_SLAVE_DATR_LAST                0xC8                    /* Last data byte in DAT has been transmitted (AA = 0); ACK has been received */
+
+#define I2C_STAT_NO_INFO                        0xF8                    /* No relevant state information available; SI = 0 */
+#define I2C_STAT_ERROR                          0x00                    /* Bus error during MSTor selected slave modes, due to an illegal START or
+                                                                           STOP condition. State 0x00 can also occur when interference causes the I2C block
+                                                                           to enter an undefined state */
+
+
+/***********  Bit definition for ADR0 register  *******************************/
+#define I2C_ADR0_GC                             (1 << 0)                /* General Call enable bit */
+
+
+/**********  Bit definition for CONCLR register  ******************************/
+#define I2C_CONCLR_AAC                          (1 << 2)                /* Assert acknowledge flag */
+#define I2C_CONCLR_SIC                          (1 << 3)                /* I2C interrupt flag */
+#define I2C_CONCLR_STOC                         (1 << 4)                /* STOP flag */
+#define I2C_CONCLR_STAC                         (1 << 5)                /* START flag */
+#define I2C_CONCLR_I2EC                         (1 << 6)                /* I2C interface enable */
+
+/**********  Bit definition for MMCTRL register  ******************************/
+#define I2C_MMCTRL_MMENA                        (1 << 0)                /* Monitor mode enable */
+#define I2C_MMCTRL_ENASCL                       (1 << 1)                /* SCL output enable */
+#define I2C_MMCTRL_MATCH_ALL                    (1 << 2)                /* Select interrupt register match */
+
 
 /******************************************************************************/
 /*                                                                            */
