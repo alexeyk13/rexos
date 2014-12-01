@@ -9,34 +9,47 @@
 
 #include <stdint.h>
 #include "../../sys.h"
+#include "../../uart.h"
+#if (MONOLITH_UART)
+#include "lpc_core.h"
+#endif
 
-//TODO: adjust for driver
+typedef enum {
+    IPC_UART_SET_BAUDRATE = HAL_IPC(HAL_UART),
+    IPC_UART_GET_BAUDRATE,
+    IPC_UART_GET_LAST_ERROR,
+    IPC_UART_CLEAR_ERROR,
+    //used internally
+    IPC_UART_ISR_TX,
+    IPC_UART_ISR_RX
+} LPC_UART_IPCS;
+
 typedef struct {
     uint8_t tx_pin, rx_pin;
     uint16_t error;
-//    HANDLE tx_stream, tx_handle;
-//    uint16_t tx_total, tx_chunk_pos, tx_chunk_size;
-//    HANDLE rx_stream, rx_handle;
-//    uint16_t rx_free;
+    HANDLE tx_stream, tx_handle;
+    uint16_t tx_total, tx_chunk_pos, tx_chunk_size;
+    char tx_buf[UART_TX_BUF_SIZE];
+    HANDLE rx_stream, rx_handle;
+    uint16_t rx_free;
 } UART;
 
 typedef struct {
-    //TODO: '*'
-    UART uarts[UARTS_COUNT];
+    UART* uarts[UARTS_COUNT];
+#ifdef LPC11U6x
+    uint8_t uart13, uart24;
+#endif
 } UART_DRV;
 
+#if (MONOLITH_UART)
+#define SHARED_UART_DRV                    CORE
+#else
 
-//TODO: move to uart.h
 typedef struct {
-    //baudrate
-    uint32_t baud;
-    //data bits: 7, 8
-    uint8_t data_bits;
-    //parity: 'N', 'O', 'E'
-    char parity;
-    //stop bits: 1, 2
-    uint8_t stop_bits;
-}BAUD;
+    UART_DRV uart;
+} SHARED_UART_DRV;
+
+#endif
 
 typedef enum {
     UART_0 = 0,
@@ -53,9 +66,11 @@ typedef struct {
     BAUD baud;
 } UART_ENABLE;
 
-void lpc_uart_init(UART_DRV* drv);
-void lpc_uart_open_internal(UART_DRV *drv, UART_PORT port, UART_ENABLE *ue);
-
-void uart_write_kernel(const char *const buf, unsigned int size, void* param);
+#if (MONOLITH_UART)
+void lpc_uart_init(SHARED_UART_DRV* drv);
+bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc);
+#else
+extern const REX __LPC_UART;
+#endif
 
 #endif // LPC_UART_H
