@@ -6,6 +6,9 @@
 
 #include "lpc_power.h"
 #include "lpc_core_private.h"
+#if (SYS_INFO)
+#include "../../../userspace/lib/stdio.h"
+#endif
 
 #define IRC_VALUE                               12000000
 #define PLL_LOCK_TIMEOUT                        10000
@@ -27,7 +30,13 @@ void lpc_update_clock(int m, int p)
     LPC_SYSCON->MAINCLKUEN = 0;
     LPC_SYSCON->MAINCLKUEN = SYSCON_MAINCLKUEN_ENA;
 
-    //TODO: setup HSE
+
+#if (HSE_BYPASS)
+    LPC_SYSCON->SYSOSCCTRL |= SYSCON_SYSOSCCTRL_BYPASS;
+#endif
+#if (HSE_VALUE >= 15000000)
+    LPC_SYSCON->SYSOSCCTRL |= SYSCON_SYSOSCCTRL_FREQRANGE;
+#endif
     //enable and lock PLL
     LPC_SYSCON->SYSPLLCTRL = ((m - 1) << SYSCON_SYSPLLCTRL_MSEL_POS) | ((32 - __builtin_clz(p)) << SYSCON_SYSPLLCTRL_PSEL_POS);
 #if (HSE_VALUE)
@@ -124,6 +133,35 @@ static inline void lpc_decode_reset_reason(CORE* core)
     LPC_SYSCON->SYSRSTSTAT = SYSCON_SYSRSTSTAT_WDT | SYSCON_SYSRSTSTAT_BOD | SYSCON_SYSRSTSTAT_SYSRST | SYSCON_SYSRSTSTAT_EXTRST | SYSCON_SYSRSTSTAT_POR;
 }
 
+#if (SYS_INFO)
+void lpc_power_info(CORE* core)
+{
+    printd("System clock: %d\n\r", lpc_get_system_clock());
+    printd("Reset reason: ");
+    switch (core->power.reset_reason)
+    {
+    case RESET_REASON_BROWNOUT:
+        printd("brown out");
+        break;
+    case RESET_REASON_WATCHDOG:
+        printd("watchdog");
+        break;
+    case RESET_REASON_SOFTWARE:
+        printd("software");
+        break;
+    case RESET_REASON_POWERON:
+        printd("power ON");
+        break;
+    case RESET_REASON_EXTERNAL:
+        printd("external reset");
+        break;
+    default:
+        printd("unknown");
+    }
+    printd("\n\r");
+}
+#endif
+
 void lpc_power_init(CORE *core)
 {
     lpc_decode_reset_reason(core);
@@ -137,8 +175,7 @@ bool lpc_power_request(CORE* core, IPC* ipc)
     {
 #if (SYS_INFO)
     case IPC_GET_INFO:
-        //TODO:
-//        lpc_power_info(core);
+        lpc_power_info(core);
         need_post = true;
         break;
 #endif

@@ -10,9 +10,9 @@
 #include "lpc_gpio.h"
 //#include "lpc_power.h"
 #include "../../../userspace/object.h"
-//#if (MONOLITH_UART)
-//#include "lpc_uart.h"
-//#endif
+#if (MONOLITH_UART)
+#include "lpc_uart.h"
+#endif
 
 void lpc_core();
 
@@ -61,12 +61,12 @@ void lpc_core_loop(CORE* core)
                 break;
 #if (SYS_INFO)
             case IPC_GET_INFO:
-                need_post |= lpc_gpio_request(core, &ipc);
-//                need_post |= lpc_timer_request(core, &ipc);
+                need_post |= lpc_gpio_request(&ipc);
+                need_post |= lpc_timer_request(core, &ipc);
                 need_post |= lpc_power_request(core, &ipc);
-//#if (MONOLITH_UART)
-//                need_post |= lpc_uart_request(core, &ipc);
-//#endif
+#if (MONOLITH_UART)
+                need_post |= lpc_uart_request(core, &ipc);
+#endif
                 break;
 #endif
             case IPC_OPEN:
@@ -101,11 +101,11 @@ void lpc_core_loop(CORE* core)
             case HAL_TIMER:
                 need_post = lpc_timer_request(core, &ipc);
                 break;
-//#if (MONOLITH_UART)
+#if (MONOLITH_UART)
             case HAL_UART:
-//                need_post = lpc_uart_request(core, &ipc);
+                need_post = lpc_uart_request(core, &ipc);
                 break;
-//#endif //MONOLITH_UART
+#endif //MONOLITH_UART
             default:
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
                 need_post = true;
@@ -125,9 +125,9 @@ void lpc_core()
     lpc_power_init(&core);
     lpc_gpio_init(&core);
     lpc_timer_init(&core);
-//#if (MONOLITH_UART)
-//    lpc_uart_init(&core);
-//#endif
+#if (MONOLITH_UART)
+    lpc_uart_init(&core);
+#endif
 
     lpc_core_loop(&core);
 }

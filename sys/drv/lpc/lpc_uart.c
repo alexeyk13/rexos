@@ -11,6 +11,9 @@
 #include "../../../userspace/stream.h"
 #include "../../../userspace/direct.h"
 #include "../../../userspace/lib/stdlib.h"
+#if (SYS_INFO)
+#include "../../../userspace/lib/stdio.h"
+#endif
 
 #if (MONOLITH_UART)
 #include "lpc_core_private.h"
@@ -583,6 +586,17 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
 }
 
 #if (UART_STDIO)
+#if (SYS_INFO)
+//we can't use printf in uart driver, because this can halt driver loop
+void printu(const char *const fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    format(fmt, va, uart_write_kernel, (void*)UART_STDIO_PORT);
+    va_end(va);
+}
+#endif //(SYS_INFO)
+
 static inline void lpc_uart_open_stdio(SHARED_UART_DRV* drv)
 {
     UART_ENABLE ue;
