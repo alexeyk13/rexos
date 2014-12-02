@@ -20,15 +20,39 @@
     \brief open file
     \param process: process handle
     \param file: file handle
+    \param mode: file mode
     \retval handle on success, INVALID_HANDLE on error
 */
 
-__STATIC_INLINE HANDLE fopen(HANDLE process, HANDLE file)
+__STATIC_INLINE HANDLE fopen(HANDLE process, HANDLE file, unsigned int mode)
 {
     IPC ipc;
     ipc.cmd = IPC_OPEN;
     ipc.process = process;
     ipc.param1 = file;
+    ipc.param2 = mode;
+    if (call(&ipc))
+        return ipc.param1;
+    return INVALID_HANDLE;
+}
+
+/**
+    \brief open file with custom param
+    \param process: process handle
+    \param file: file handle
+    \param mode: file mode
+    \param param: custom extra param
+    \retval handle on success, INVALID_HANDLE on error
+*/
+
+__STATIC_INLINE HANDLE fopen_p(HANDLE process, HANDLE file, unsigned int mode, void* param)
+{
+    IPC ipc;
+    ipc.cmd = IPC_OPEN;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = mode;
+    ipc.param3 = (unsigned int)param;
     if (call(&ipc))
         return ipc.param1;
     return INVALID_HANDLE;
@@ -38,18 +62,21 @@ __STATIC_INLINE HANDLE fopen(HANDLE process, HANDLE file)
     \brief open file with custom initialization data
     \param process: process handle
     \param file: file handle
+    \param mode: file mode
     \param addr: address of direct read
     \param size: size of direct read
     \retval handle on success, INVALID_HANDLE on error
 */
 
-__STATIC_INLINE HANDLE fopen_ex(HANDLE process, HANDLE file, void* ptr, unsigned int size)
+__STATIC_INLINE HANDLE fopen_ex(HANDLE process, HANDLE file, unsigned int mode, void* ptr, unsigned int size)
 {
     IPC ipc;
     direct_enable_read(process, ptr, size);
     ipc.cmd = IPC_OPEN;
     ipc.process = process;
     ipc.param1 = file;
+    ipc.param2 = mode;
+    ipc.param3 = size;
     if (call(&ipc))
         return ipc.param1;
     return INVALID_HANDLE;
