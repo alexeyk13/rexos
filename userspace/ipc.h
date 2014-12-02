@@ -97,6 +97,21 @@ __STATIC_INLINE void ipc_post_error(HANDLE process, int code)
 }
 
 /**
+    \brief post IPC, isr version
+    \param process: IPC receiver
+    \param code: error code
+    \retval none
+*/
+__STATIC_INLINE void ipc_ipost_error(HANDLE process, int code)
+{
+    IPC ipc;
+    ipc.process = process;
+    ipc.cmd = IPC_CALL_ERROR;
+    ipc.param1 = code;
+    __GLOBAL->svc_irq(SVC_IPC_POST, (unsigned int)&ipc, 0, 0);
+}
+
+/**
     \brief post IPC or error if any
     \param ipc: IPC structure
     \retval none
