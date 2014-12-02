@@ -39,6 +39,10 @@ typedef enum {
 #define AF_DEFAULT                              1
 //PIN as UART IO pins. UART module must be enabled
 #define AF_UART                                 2
+//PIN as I2C IO pins. I2C module must be enabled
+#define AF_I2C                                  3
+//PIN as FAST I2C IO pins. I2C module must be enabled
+#define AF_FAST_I2C                             4
 
 void lpc_gpio_init();
 bool lpc_gpio_request(IPC* ipc);

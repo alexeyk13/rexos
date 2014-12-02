@@ -854,7 +854,7 @@
 #define I2C_CONCLR_SIC                          (1 << 3)                /* I2C interrupt flag */
 #define I2C_CONCLR_STOC                         (1 << 4)                /* STOP flag */
 #define I2C_CONCLR_STAC                         (1 << 5)                /* START flag */
-#define I2C_CONCLR_I2EC                         (1 << 6)                /* I2C interface enable */
+#define I2C_CONCLR_I2ENC                        (1 << 6)                /* I2C interface enable */
 
 /**********  Bit definition for MMCTRL register  ******************************/
 #define I2C_MMCTRL_MMENA                        (1 << 0)                /* Monitor mode enable */

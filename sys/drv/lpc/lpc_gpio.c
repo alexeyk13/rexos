@@ -87,7 +87,6 @@ static const uint8_t __GPIO_UART[PIN_DEFAULT / 2] =
                                        };
 #endif
 
-
 void lpc_gpio_enable_pin_system(PIN pin, unsigned int mode, unsigned int af)
 {
     if (pin >= PIN_DEFAULT)
@@ -110,6 +109,14 @@ void lpc_gpio_enable_pin_system(PIN pin, unsigned int mode, unsigned int af)
 #if (GPIO_UART)
     case AF_UART:
         func = GPIO_FUNC(__GPIO_UART, pin);
+        break;
+#endif
+#if (GPIO_I2C)
+    case AF_I2C:
+        func = PIN_MODE_I2C_SCL | GPIO_I2C_MODE_STANDART;
+        break;
+    case AF_FAST_I2C:
+        func = PIN_MODE_I2C_SCL | GPIO_I2C_MODE_FAST;
         break;
 #endif
     default:

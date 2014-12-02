@@ -87,6 +87,7 @@
 
 #if defined(LPC11U66) || defined(LPC11U67) || defined(LPC11U68)
 #define LPC11U6x
+#define I2C_COUNT                       2
 #endif
 
 #if defined(LPC11U12) || defined(LPC11U22)
@@ -162,6 +163,7 @@
 #if defined(LPC11U12) || defined(LPC11U13) || defined(LPC11U14) || defined(LPC11U22) || defined(LPC11U23) || defined(LPC11U24) || defined(LPC11U34) || \
     defined(LPC11U35) || defined(LPC11U36) || defined(LPC11U37)
 #define UARTS_COUNT                   1
+#define I2C_COUNT                     1
 #endif
 
 #if defined(LPC11U66) || defined(LPC11U67JBD48) || defined(LPC11U67JBD64) || defined(LPC11U68JBD48) || defined(LPC11U68JBD64)
