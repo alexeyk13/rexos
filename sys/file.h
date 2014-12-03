@@ -124,10 +124,10 @@ __STATIC_INLINE void fread_async(HANDLE process, HANDLE file, HANDLE block, unsi
     \param file: file handle
     \param block: file block
     \param size: size of transfer
-    \retval true on success
+    \retval size of bytes readed
 */
 
-__STATIC_INLINE bool fread(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE unsigned int fread(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
     ipc.cmd = IPC_READ;
@@ -137,7 +137,13 @@ __STATIC_INLINE bool fread(HANDLE process, HANDLE file, HANDLE block, unsigned i
     ipc.param3 = size;
     block_send_ipc(block, process, &ipc);
     ipc_read_ms(&ipc, 0, process);
-    return ipc.cmd == IPC_READ_COMPLETE;
+    if (ipc.cmd == IPC_READ_COMPLETE)
+        return ipc.param3;
+    else
+    {
+        error(ipc.param1);
+        return 0;
+    }
 }
 
 
@@ -176,7 +182,13 @@ __STATIC_INLINE bool fread_null(HANDLE process, HANDLE file)
     ipc.param3 = 0;
     ipc_post(&ipc);
     ipc_read_ms(&ipc, 0, process);
-    return ipc.cmd == IPC_READ_COMPLETE;
+    if (ipc.cmd == IPC_READ_COMPLETE)
+        return true;
+    else
+    {
+        error(ipc.param1);
+        return false;
+    }
 }
 
 /**
@@ -205,10 +217,10 @@ __STATIC_INLINE void fwrite_async(HANDLE process, HANDLE file, HANDLE block, uns
     \param file: file handle
     \param block: file block
     \param size: size of transfer
-    \retval true on success
+    \retval size of bytes written
 */
 
-__STATIC_INLINE bool fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE unsigned int fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
     ipc.cmd = IPC_WRITE;
@@ -218,7 +230,13 @@ __STATIC_INLINE bool fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned 
     ipc.param3 = size;
     block_send_ipc(block, process, &ipc);
     ipc_read_ms(&ipc, 0, process);
-    return ipc.cmd == IPC_WRITE_COMPLETE;
+    if (ipc.cmd == IPC_WRITE_COMPLETE)
+        return ipc.param3;
+    else
+    {
+        error(ipc.param1);
+        return 0;
+    }
 }
 
 /**
@@ -256,7 +274,13 @@ __STATIC_INLINE bool fwrite_null(HANDLE process, HANDLE file)
     ipc.param3 = 0;
     ipc_post(&ipc);
     ipc_read_ms(&ipc, 0, process);
-    return ipc.cmd == IPC_WRITE_COMPLETE;
+    if (ipc.cmd == IPC_WRITE_COMPLETE)
+        return true;
+    else
+    {
+        error(ipc.param1);
+        return false;
+    }
 }
 
 /**
@@ -272,6 +296,24 @@ __STATIC_INLINE bool fflush(HANDLE process, HANDLE file)
     ipc.cmd = IPC_FLUSH;
     ipc.process = process;
     ipc.param1 = file;
+    return call(&ipc);
+}
+
+/**
+    \brief seek file
+    \param process: process handle
+    \param file: file handle
+    \param pos to seek: file handle
+    \retval true on success
+*/
+
+__STATIC_INLINE bool fseek(HANDLE process, HANDLE file, unsigned int pos)
+{
+    IPC ipc;
+    ipc.cmd = IPC_SEEK;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = pos;
     return call(&ipc);
 }
 

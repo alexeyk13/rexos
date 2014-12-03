@@ -21,6 +21,7 @@ typedef enum {
     IPC_WRITE,
     IPC_WRITE_COMPLETE,
     IPC_FLUSH,
+    IPC_SEEK,
     IPC_OPEN,
     IPC_CLOSE,
     IPC_GET_RX_STREAM,
