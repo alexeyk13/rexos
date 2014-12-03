@@ -14,12 +14,19 @@
 #if (MONOLITH_UART)
 #include "lpc_uart.h"
 #endif
+#if (MONOLITH_I2C)
+#include "lpc_i2c.h"
+#endif
+
 
 typedef struct _CORE {
     POWER_DRV power;
     TIMER_DRV timer;
 #if (MONOLITH_UART)
     UART_DRV uart;
+#endif
+#if (MONOLITH_I2C)
+    I2C_DRV i2c;
 #endif
 }CORE;
 

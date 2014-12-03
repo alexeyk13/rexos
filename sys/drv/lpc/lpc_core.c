@@ -13,6 +13,9 @@
 #if (MONOLITH_UART)
 #include "lpc_uart.h"
 #endif
+#if (MONOLITH_I2C)
+#include "lpc_i2c.h"
+#endif
 
 void lpc_core();
 
@@ -65,6 +68,9 @@ void lpc_core_loop(CORE* core)
 #if (MONOLITH_UART)
                 need_post |= lpc_uart_request(core, &ipc);
 #endif
+#if (MONOLITH_I2C)
+                need_post |= lpc_i2c_request(core, &ipc);
+#endif
                 break;
 #endif
             case IPC_OPEN:
@@ -72,6 +78,7 @@ void lpc_core_loop(CORE* core)
             case IPC_FLUSH:
             case IPC_READ:
             case IPC_WRITE:
+            case IPC_SEEK:
             case IPC_GET_TX_STREAM:
             case IPC_GET_RX_STREAM:
                 group = HAL_GROUP(ipc.param1);
@@ -104,6 +111,11 @@ void lpc_core_loop(CORE* core)
                 need_post = lpc_uart_request(core, &ipc);
                 break;
 #endif //MONOLITH_UART
+#if (MONOLITH_I2C)
+            case HAL_I2C:
+                need_post = lpc_i2c_request(core, &ipc);
+                break;
+#endif //MONOLITH_I2C
             default:
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
                 need_post = true;
@@ -125,6 +137,9 @@ void lpc_core()
     lpc_timer_init(&core);
 #if (MONOLITH_UART)
     lpc_uart_init(&core);
+#endif
+#if (MONOLITH_I2C)
+    lpc_i2c_init(&core);
 #endif
 
     lpc_core_loop(&core);
