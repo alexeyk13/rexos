@@ -24,7 +24,7 @@
 #include "klib.h"
 #include <string.h>
 
-const char* const __KERNEL_NAME=                                                      "RExOS 0.1.2";
+const char* const __KERNEL_NAME=                                                      "RExOS 0.1.3";
 
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {
