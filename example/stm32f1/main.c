@@ -110,7 +110,7 @@ HANDLE usb_on(HANDLE core)
     libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 3, 0x0409, &__STRING_SERIAL);
     libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 4, 0x0409, &__STRING_DEFAULT);
     
-    fopen(usbd, usb);
+    fopen(usbd, usb, 0);
 
     //setup cdc
     cdc = process_create(&__CDC);
@@ -119,13 +119,13 @@ HANDLE usb_on(HANDLE core)
     cos.data_ep_size = 64;
     cos.control_ep_size = 16;
     cos.rx_stream_size = cos.tx_stream_size = 32;
-    fopen_ex(cdc, usbd, (void*)&cos, sizeof(CDC_OPEN_STRUCT));
+    fopen_ex(cdc, usbd, 0, (void*)&cos, sizeof(CDC_OPEN_STRUCT));
 
     //turn USB on
     USB_OPEN uo;
     uo.device = usbd;
 
-    fopen_ex(usb, HAL_HANDLE(HAL_USB, USB_HANDLE_DEVICE), &uo, sizeof(USB_OPEN));
+    fopen_ex(usb, HAL_HANDLE(HAL_USB, USB_HANDLE_DEVICE), 0, &uo, sizeof(USB_OPEN));
 
     HANDLE rx_stream = get(cdc, IPC_GET_RX_STREAM, 0, 0, 0);
     return stream_open(rx_stream);
@@ -141,7 +141,7 @@ void dac_on(HANDLE core, HANDLE analog)
     de.value = 1000;
     de.flags = DAC_FLAGS_TIMER;
     de.timer = TIM_6;
-    fopen_ex(analog, STM32_DAC1, &de, sizeof(STM32_DAC_ENABLE));
+    fopen_ex(analog, STM32_DAC1, 0, &de, sizeof(STM32_DAC_ENABLE));
 }
 
 void dac_test(HANDLE analog)
@@ -180,7 +180,7 @@ void app()
 #else
     analog = process_create(&__STM32_ANALOG);
 #endif
-    fopen(analog, HAL_HANDLE(HAL_ADC, 0));
+    fopen(analog, HAL_HANDLE(HAL_ADC, 0), 0);
 
     usb_rx = usb_on(core);
 

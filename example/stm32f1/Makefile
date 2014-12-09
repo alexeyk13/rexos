@@ -39,7 +39,7 @@ INCLUDE_FOLDERS				+= $(KERNEL) $(KERNEL)/core
 #lib
 INCLUDE_FOLDERS            += $(LIB)
 #sys
-INCLUDE_FOLDERS            += $(SYS) $(SYS)/drv $(SYS)/midware
+INCLUDE_FOLDERS            += $(SYS) $(SYS)/drv/stm32 $(SYS)/midware
 
 INCLUDES                    = $(INCLUDE_FOLDERS:%=-I%)
 VPATH                      += $(INCLUDE_FOLDERS)
