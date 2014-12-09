@@ -13,12 +13,6 @@
 #endif
 #include <string.h>
 
-#define GPIO_PORT(pin)                                          (pin / 16)
-#define GPIO_PIN(pin)                                           (pin & 15)
-
-typedef GPIO_TypeDef* GPIO_TypeDef_P;
-const GPIO_TypeDef_P GPIO[];
-
 #if defined(STM32F1)
 const GPIO_TypeDef_P GPIO[GPIO_COUNT] =							{GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF, GPIOG};
 static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {2, 3, 4, 5, 6, 7, 8};

@@ -43,6 +43,20 @@ typedef enum {
     PIN_UNUSED
 } PIN;
 
+typedef enum {
+    GPIO_PORT_A = 0,
+    GPIO_PORT_B,
+    GPIO_PORT_C,
+    GPIO_PORT_D,
+    GPIO_PORT_E,
+    GPIO_PORT_F,
+    GPIO_PORT_G,
+    GPIO_PORT_H,
+    GPIO_PORT_I,
+    GPIO_PORT_J,
+    GPIO_PORT_K
+} GPIO_PORT_NUM;
+
 #if defined(STM32F1)
 
 typedef enum {
@@ -116,6 +130,14 @@ typedef enum {
 #define EXTI_FLAGS_PULLUP                            (1 << 2)
 #define EXTI_FLAGS_PULLDOWN                          (1 << 3)
 #define EXTI_FLAGS_PULL_MASK                         (3 << 2)
+
+typedef GPIO_TypeDef* GPIO_TypeDef_P;
+extern const GPIO_TypeDef_P GPIO[];
+
+#define GPIO_MAKE_PIN(port, pin)                     ((port) * 16  + (pin))
+#define GPIO_PORT(pin)                               (pin / 16)
+#define GPIO_PIN(pin)                                (pin & 15)
+
 
 typedef struct {
     int* used_pins[GPIO_COUNT];
