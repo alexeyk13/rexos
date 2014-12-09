@@ -61,10 +61,17 @@ void lpc_i2c_isr_error(SHARED_I2C_DRV* drv, I2C_PORT port, int error)
 {
     LPC_I2C->CONSET = I2C_CONSET_STO;
     LPC_I2C->CONCLR = I2C_CLEAR ^ I2C_CONCLR_STOC;
-    block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
+    if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
+        block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
     ipc_ipost_error(drv->i2c.i2cs[port]->process, error);
-    drv->i2c.i2cs[port]->block = INVALID_HANDLE;
     drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
+}
+
+void lpc_i2c_error(SHARED_I2C_DRV* drv, I2C_PORT port, int error)
+{
+    if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
+        block_send(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
+    ipc_post_error(drv->i2c.i2cs[port]->process, error);
 }
 
 static inline void lpc_i2c_isr_tx(SHARED_I2C_DRV* drv, I2C_PORT port)
@@ -104,14 +111,14 @@ static inline void lpc_i2c_isr_tx(SHARED_I2C_DRV* drv, I2C_PORT port)
         {
             LPC_I2C->CONSET = I2C_CONSET_STO;
             LPC_I2C->CONCLR = I2C_CLEAR ^ I2C_CONCLR_STOC;
-            block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
+            if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
+                block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
             ipc.process = drv->i2c.i2cs[port]->process;
             ipc.cmd = IPC_WRITE_COMPLETE;
             ipc.param1 = HAL_HANDLE(HAL_I2C, port);
             ipc.param2 = drv->i2c.i2cs[port]->block;
             ipc.param3 = drv->i2c.i2cs[port]->processed;
             ipc_ipost(&ipc);
-            drv->i2c.i2cs[port]->block = INVALID_HANDLE;
             drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
         }
         break;
@@ -168,14 +175,14 @@ static inline void lpc_i2c_isr_rx(SHARED_I2C_DRV* drv, I2C_PORT port)
         //stop transmission
         LPC_I2C->CONSET = I2C_CONSET_STO;
         LPC_I2C->CONCLR = I2C_CLEAR ^ I2C_CONCLR_STOC;
-        block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
+        if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
+            block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
         ipc.process = drv->i2c.i2cs[port]->process;
         ipc.cmd = IPC_READ_COMPLETE;
         ipc.param1 = HAL_HANDLE(HAL_I2C, port);
         ipc.param2 = drv->i2c.i2cs[port]->block;
         ipc.param3 = drv->i2c.i2cs[port]->processed;
         ipc_ipost(&ipc);
-        drv->i2c.i2cs[port]->block = INVALID_HANDLE;
         drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
         break;
     case I2C_STAT_DATR_ACK:
@@ -280,37 +287,35 @@ void lpc_i2c_close(SHARED_I2C_DRV *drv, I2C_PORT port)
 
 void lpc_i2c_io_start(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block, unsigned int size, HANDLE process, I2C_IO io)
 {
-    if (port >= I2C_COUNT || block == INVALID_HANDLE)
+    drv->i2c.i2cs[port]->process = process;
+    drv->i2c.i2cs[port]->block = block;
+    if (port >= I2C_COUNT || (size && block == INVALID_HANDLE))
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_INVALID_PARAMS);
+        lpc_i2c_error(drv, port, ERROR_INVALID_PARAMS);
         return;
     }
     if (drv->i2c.i2cs[port] == NULL)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_NOT_CONFIGURED);
+        lpc_i2c_error(drv, port, ERROR_NOT_CONFIGURED);
         return;
     }
     if (drv->i2c.i2cs[port]->io != I2C_IO_IDLE)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_IN_PROGRESS);
+        lpc_i2c_error(drv, port, ERROR_IN_PROGRESS);
         return;
     }
-    drv->i2c.i2cs[port]->ptr = block_open(block);
-    if (drv->i2c.i2cs[port]->ptr == NULL)
+    if (size)
     {
-        block_send(block, process);
-        ipc_post_error(process, get_last_error());
-        return;
+        drv->i2c.i2cs[port]->ptr = block_open(block);
+        if (drv->i2c.i2cs[port]->ptr == NULL)
+        {
+            lpc_i2c_error(drv, port, get_last_error());
+            return;
+        }
     }
-    drv->i2c.i2cs[port]->ptr[250] = 0xaa;
-    drv->i2c.i2cs[port]->process = process;
     drv->i2c.i2cs[port]->size = size;
     drv->i2c.i2cs[port]->processed = 0;
     drv->i2c.i2cs[port]->addr_processed = 0;
-    drv->i2c.i2cs[port]->block = block;
     drv->i2c.i2cs[port]->io = io;
 
     //reset
