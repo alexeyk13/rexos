@@ -37,9 +37,19 @@ unavailable, another HPET timer can be used for RTC emulation
   * user objects range checking
   * thread profiling: name, uptime, stack allocated/used
   * memory profiling: red-markings, pool free/allocated size, objects fragmentation
-- Supported hardware:
+- Supported architecture:
+  * cortex-m0
+  * cortex-m3
+  * cortex-m4
   * ARM7
-  * cortex-m3, drivers for:STM32 F1/F2/F4/L0 - power, GPIO, UART, timer, RTC, WDT, analog, USB
+- Drivers:
+  * core (GPIO, UART, TIMER, POWER): STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx
+  * rtc: STM32F1, STM32F2, STM32F4, STM32L0
+  * wdt: STM32F1, STM32F2, STM32F4, STM32L0
+  * I2C: LPC1Uxx
+  * analog(ADC, DAC): STM32F1
+  * USB: STM32F1_CL, STM32L0
+  * bitbang: STM32F1, STM32F2, STM32F4, STM32L0
 
 Cortex-M3 features:
 ------------------
@@ -53,6 +63,11 @@ ARM7 features:
 
 History
 =======
+0.1.3
+- drivers for LPC11Uxx
+- STM32 bitbang driver template
+- file api mode support
+
 0.1.2
 - dynamic BLOCK links
 - some optimization in kernel_config.h
