@@ -7,21 +7,31 @@
 #include "mt.h"
 #include "stm32/stm32_bitbang.h"
 #include "../gpio.h"
-#include "mt_config.h"
+#if (SYS_INFO)
+#include "../../userspace/lib/stdio.h"
+#include "../../userspace/timer.h"
+#endif
+
+#if (MT_DRIVER)
+void mt();
+
+const REX __MT = {
+    //name
+    "MT LCD driver",
+    //size
+    MT_STACK_SIZE,
+    //priority - driver priority
+    90,
+    //flags
+    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    //ipc size
+    MT_IPC_COUNT,
+    //function
+    mt
+};
+#endif
 
 #define ADDSET_MASK                     (MT_CS1 | MT_CS2 | MT_RW | MT_A)
-
-
-//Address hold time
-#define TAS                             1
-//Data read prepare time
-#define TDDR                            17
-//Delay between commands
-#define TW                              256
-//Reset time (max)
-#define TR                              320
-//Reset impulse time (max)
-#define TRI                             32
 
 #define MT_PAGES_COUNT                  8
 #define MT_SIZE_X                       64
@@ -133,21 +143,6 @@ void mt_show(bool on)
         mt_cmd(MT_CS1 | MT_CS2, MT_CMD_DISPLAY_OFF);
 }
 
-void mt_init()
-{
-    stm32_bitbang_enable_mask(DATA_PORT, DATA_MASK);
-    stm32_bitbang_enable_mask(ADDSET_PORT, ADDSET_MASK);
-    stm32_bitbang_enable_pin(MT_RESET);
-    stm32_bitbang_enable_pin(MT_STROBE);
-    stm32_bitbang_set_pin(MT_STROBE);
-    //doesn't need to be so fast as others
-    gpio_enable_pin(MT_BACKLIGHT, PIN_MODE_OUT);
-
-    mt_reset();
-    mt_cls();
-
-}
-
 void mt_set_pixel(unsigned int x, unsigned int y, bool set)
 {
     uint8_t data;
@@ -211,147 +206,76 @@ bool mt_get_pixel(unsigned int x, unsigned int y)
     return (data >> (xr & 7)) & 1;
 }
 
+#if (MT_TEST)
+static void mt_poly_test(unsigned int y, unsigned int size)
+{
+    for (i = 0; i < MT_SIZE_X; ++i)
+    {
+        for (j = y; j < y + size; ++j)
+            mt_set_pixel(i, j, true);
+    }
+}
+
 void mt_pixel_test()
 {
-    unsigned int i, j, off, sz, k;
+    unsigned int i, j, off, sz;
     off = 0;
     sz = 8;
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
     sz = 6;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
     sz = 5;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
     sz = 4;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
     sz = 3;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
     sz = 2;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
 
-
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
     sz = 1;
 
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
 
-
-    for (i = 0; i < MT_SIZE_X; i += 8)
-    {
-        for (j = off; j < off + sz; ++j)
-            for (k = 0; k < 8; ++k)
-                mt_set_pixel(i + k, j, true);
-    }
+    mt_poly_test(off, sz);
     off += sz * 2;
 }
+#endif //MT_TEST
 
 void mt_image_test(const uint8_t* image)
 {
@@ -372,3 +296,96 @@ void mt_image_test(const uint8_t* image)
             mt_dataout(MT_CS2, image[(y + MT_SIZE_X) * MT_PAGES_COUNT + MT_PAGES_COUNT - page - 1]);
     }
 }
+
+void mt_init()
+{
+    stm32_bitbang_enable_mask(DATA_PORT, DATA_MASK);
+    stm32_bitbang_enable_mask(ADDSET_PORT, ADDSET_MASK);
+    stm32_bitbang_enable_pin(MT_RESET);
+    stm32_bitbang_enable_pin(MT_STROBE);
+    stm32_bitbang_set_pin(MT_STROBE);
+    //doesn't need to be so fast as others
+    gpio_enable_pin(MT_BACKLIGHT, PIN_MODE_OUT);
+
+    mt_reset();
+    mt_cls();
+
+}
+
+#if (MT_DRIVER)
+#if (SYS_INFO)
+static inline void mt_info()
+{
+    TIME uptime;
+    get_uptime(&uptime);
+
+    mt_pixel_test();
+    printf("pixel test time(us): %dus\n\r", time_elapsed_us(&uptime));
+}
+#endif
+
+void mt()
+{
+    mt_init();
+    IPC ipc;
+#if (SYS_INFO)
+    open_stdout();
+#endif
+    for (;;)
+    {
+        error(ERROR_OK);
+        need_post = false;
+        ipc_read_ms(&ipc, 0, 0);
+        switch (ipc.cmd)
+        {
+        case IPC_PING:
+            need_post = true;
+            break;
+        case IPC_CALL_ERROR:
+            break;
+#if (SYS_INFO)
+        case IPC_GET_INFO:
+            mt_info(drv);
+            need_post = true;
+            break;
+#endif
+        case MT_RESET:
+            mt_reset();
+            need_post = true;
+            break;
+        case MT_SHOW:
+            mt_show(ipc.param1);
+            need_post = true;
+            break;
+        case MT_BACKLIGHT:
+            mt_backlight(ipc.param1);
+            need_post = true;
+            break;
+        case MT_CLS:
+            mt_cls();
+            need_post = true;
+            break;
+        case MT_SET_PIXEL:
+            mt_set_pixel(ipc.param1, ipc.param2, ipc.param3);
+            need_post = true;
+            break;
+        case MT_GET_PIXEL:
+            ipc.param1 = mt_get_pixel(ipc.param1, ipc.param2);
+            need_post = true;
+            break;
+#if (MT_TEST)
+        case MT_PIXEL_TEST:
+            mt_pixel_test();
+            need_post = true;
+            break;
+#endif
+        default:
+            error(ERROR_NOT_SUPPORTED);
+            need_post = true;
+        }
+        if (need_post)
+            ipc_post_or_error(&ipc);
+    }
+}
+
+#endif
