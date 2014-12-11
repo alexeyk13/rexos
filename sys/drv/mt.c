@@ -55,7 +55,6 @@ const REX __MT = {
 #if (X_MIRROR)
 
 #define X_TRANSFORM(x, size)            (MT_SIZE_X - (x) - (size))
-#define BPL_MIRROR(bpl, x, size)        ((bpl) - (x) - (size))
 #define PAGE_TRANSFORM(page)            (MT_PAGES_COUNT - (page) - 1)
 #define BIT_OUT_TRANSFORM(byte)         (byte)
 
