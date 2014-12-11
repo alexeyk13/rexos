@@ -133,6 +133,48 @@ static inline void lpc_decode_reset_reason(CORE* core)
     LPC_SYSCON->SYSRSTSTAT = SYSCON_SYSRSTSTAT_WDT | SYSCON_SYSRSTSTAT_BOD | SYSCON_SYSRSTSTAT_SYSRST | SYSCON_SYSRSTSTAT_EXTRST | SYSCON_SYSRSTSTAT_POR;
 }
 
+static inline void lpc_power_usb_on()
+{
+    //power on. USBPLL must be turned on even in case of SYS PLL used. Why?
+    LPC_SYSCON->PDRUNCFG &= ~(SYSCON_PDRUNCFG_USBPLL_PD | SYSCON_PDRUNCFG_USBPAD_PD);
+#if (USB_DEDICATED_PLL)
+
+    int i;
+    //enable and lock PLL
+    LPC_SYSCON->USBPLLCTRL = ((USBPLL_M - 1) << SYSCON_USBPLLCTRL_MSEL_POS) | ((32 - __builtin_clz(USBPLL_P)) << SYSCON_USBPLLCTRL_PSEL_POS);
+    LPC_SYSCON->USBPLLCLKSEL = SYSCON_USBPLLCLKSEL_SYSOSC;
+
+    LPC_SYSCON->USBPLLCLKUEN = 0;
+    LPC_SYSCON->USBPLLCLKUEN = SYSCON_SYSPLLCLKUEN_ENA;
+    //wait for PLL lock
+    for (i = 0; i < PLL_LOCK_TIMEOUT; ++i)
+    {
+        if (LPC_SYSCON->USBPLLSTAT & SYSCON_USBPLLSTAT_LOCK)
+            break;
+    }
+
+    LPC_SYSCON->USBCLKSEL = SYSCON_USBCLKSEL_PLL;
+#else
+    LPC_SYSCON->USBCLKSEL = SYSCON_USBCLKSEL_MAIN;
+#endif
+    //switch to clock source
+    LPC_SYSCON->USBCLKUEN = 0;
+    LPC_SYSCON->USBCLKUEN = SYSCON_USBCLKUEN_ENA;
+    //turn clock on
+    LPC_SYSCON->SYSAHBCLKCTRL |= (1 << SYSCON_SYSAHBCLKCTRL_USB_POS) | (1 << SYSCON_SYSAHBCLKCTRL_USBRAM_POS);
+}
+
+static inline void lpc_power_usb_off()
+{
+    //turn clock off
+    LPC_SYSCON->SYSAHBCLKCTRL &= ~((1 << SYSCON_SYSAHBCLKCTRL_USB_POS) | (1 << SYSCON_SYSAHBCLKCTRL_USBRAM_POS));
+    //power down
+    LPC_SYSCON->PDRUNCFG |= SYSCON_PDRUNCFG_USBPAD_PD;
+#if (USB_DEDICATED_PLL)
+    LPC_SYSCON->PDRUNCFG |= SYSCON_PDRUNCFG_USBPLL_PD;
+#endif
+}
+
 #if (SYS_INFO)
 void lpc_power_info(CORE* core)
 {
@@ -189,6 +231,14 @@ bool lpc_power_request(CORE* core, IPC* ipc)
         break;
     case LPC_POWER_GET_RESET_REASON:
         ipc->param1 = lpc_get_reset_reason(core);
+        need_post = true;
+        break;
+    case LPC_POWER_USB_ON:
+        lpc_power_usb_on();
+        need_post = true;
+        break;
+    case LPC_POWER_USB_OFF:
+        lpc_power_usb_on();
         need_post = true;
         break;
     default:
