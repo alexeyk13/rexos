@@ -33,7 +33,7 @@ const REX __LPC_I2C = {
     //name
     "LPC I2C",
     //size
-    LPC_I2C_STACK_SIZE,
+    LPC_I2C_PROCESS_SIZE,
     //priority - driver priority. Setting priority lower than other drivers can cause IPC overflow on SYS_INFO
     90,
     //flags
