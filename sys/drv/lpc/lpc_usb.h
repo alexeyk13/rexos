@@ -19,9 +19,9 @@ typedef struct {
     HANDLE block;
     void* ptr;
     unsigned int size, processed;
-    uint16_t mps;
-    uint8_t io_active;
+    uint16_t mps, fifo_offset;
     HANDLE process;
+    uint8_t io_active;
 } EP;
 
 typedef struct {

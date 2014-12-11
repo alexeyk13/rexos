@@ -21,8 +21,17 @@
 #include "lpc_core_private.h"
 #endif
 
-#define USB_DM                          A11
-#define USB_DP                          A12
+#define VBUS                            PIO0_3
+#define SCONNECT                        PIO0_6
+
+#define USB_RAM_BASE                    0x20004000
+#define USB_HW_EP_COUNT                 5
+
+//status requiring 0x50 bytes, align is 0x40
+#define USB_BUF_BASE                    ((USB_RAM_BASE) + 0x80)
+//just first
+#define USB_SETUP_BUF_BASE              USB_BUF_BASE
+#define USB_FREE_BUF_BASE               (USB_SETUP_BUF_BASE + 0x40)
 
 typedef enum {
     LPC_USB_FIFO_TX = USB_HAL_MAX,
@@ -66,28 +75,27 @@ const REX __LPC_USB = {
 };
 
 #endif
-/*
+
 #pragma pack(push, 1)
 
 typedef struct {
-    uint16_t ADDR_TX;
-    uint16_t COUNT_TX;
-    uint16_t ADDR_RX;
-    uint16_t COUNT_RX;
+    uint32_t OUT[2];
+    uint32_t IN[2];
 } USB_BUFFER_DESCRIPTOR;
 
-#define USB_BUFFER_DESCRIPTORS                      ((USB_BUFFER_DESCRIPTOR*) USB_PMAADDR)
+#define USB_BUFFER_DESCRIPTORS                      ((USB_BUFFER_DESCRIPTOR*) USB_RAM_BASE)
 
 #pragma pack(pop)
-
-static inline uint16_t* ep_reg_data(int num)
-{
-    return (uint16_t*)(USB_BASE + USB_EP_NUM(num) * 4);
-}
 
 static inline EP* ep_data(SHARED_USB_DRV* drv, int num)
 {
     return (num & USB_EP_IN) ? (drv->usb.in[USB_EP_NUM(num)]) : (drv->usb.out[USB_EP_NUM(num)]);
+}
+
+/*
+static inline uint16_t* ep_reg_data(int num)
+{
+    return (uint16_t*)(USB_BASE + USB_EP_NUM(num) * 4);
 }
 
 static inline void ep_toggle_bits(int num, int mask, int value)
@@ -188,37 +196,27 @@ USB_SPEED lpc_usb_get_speed(SHARED_USB_DRV* drv)
 
 static inline void lpc_usb_reset(SHARED_USB_DRV* drv)
 {
-/*    USB->CNTR |= USB_CNTR_SUSPM;
-
-    //enable function
-    USB->DADDR = USB_DADDR_EF;
-
     IPC ipc;
     ipc.process = drv->usb.device;
-    ipc.param1 = stm32_usb_get_speed(drv);
+    ipc.param1 = lpc_usb_get_speed(drv);
     ipc.cmd = USB_RESET;
-    ipc_ipost(&ipc);*/
-    printk("USB reset\n\r");
+    ipc_ipost(&ipc);
 }
 
 static inline void lpc_usb_suspend(SHARED_USB_DRV* drv)
 {
-/*    IPC ipc;
-    USB->CNTR &= ~USB_CNTR_SUSPM;
+    IPC ipc;
     ipc.process = drv->usb.device;
     ipc.cmd = USB_SUSPEND;
-    ipc_ipost(&ipc);*/
-    printk("USB suspend\n\r");
+    ipc_ipost(&ipc);
 }
 
 static inline void lpc_usb_wakeup(SHARED_USB_DRV* drv)
 {
-/*    IPC ipc;
-    USB->CNTR |= USB_CNTR_SUSPM;
+    IPC ipc;
     ipc.process = drv->usb.device;
     ipc.cmd = USB_WAKEUP;
-    ipc_ipost(&ipc);*/
-    printk("USB suspend\n\r");
+    ipc_ipost(&ipc);
 }
 
 /*static inline void stm32_usb_ctr(SHARED_USB_DRV* drv)
@@ -306,36 +304,35 @@ static inline void lpc_usb_wakeup(SHARED_USB_DRV* drv)
     }
 }
 */
+static inline void lpc_usb_setup(SHARED_USB_DRV* drv)
+{
+    IPC ipc;
+    ipc.cmd = USB_SETUP;
+    ipc.process = drv->usb.device;
+    ipc.param1 = *((uint32_t*)(USB_SETUP_BUF_BASE));
+    ipc.param2 = *((uint32_t*)(USB_SETUP_BUF_BASE + 4));
+    ipc_ipost(&ipc);
+}
+
 void lpc_usb_on_isr(int vector, void* param)
 {
+    int i;
     SHARED_USB_DRV* drv = (SHARED_USB_DRV*)param;
-/*    uint16_t sta = USB->ISTR;
+    uint32_t sta = LPC_USB->INTSTAT;
 
-    //transfer complete. Most often called
-    if (sta & USB_ISTR_CTR)
+    if ((sta & USB_INTSTAT_EP0OUT) && (LPC_USB->DEVCMDSTAT & USB_DEVCMDSTAT_SETUP))
     {
-        stm32_usb_ctr(drv);
+        lpc_usb_setup(drv);
+        LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_SETUP;
+        LPC_USB->INTSTAT = USB_INTSTAT_EP0OUT;
         return;
     }
-    //rarely called
-    if (sta & USB_ISTR_RESET)
+
+    for (i = 1; i < USB_EP_COUNT_MAX; ++i)
     {
-        stm32_usb_reset(drv);
-        USB->ISTR &= ~USB_ISTR_RESET;
-        return;
+        //TODO: check for other EP
     }
-    if ((sta & USB_ISTR_SUSP) && (USB->CNTR & USB_CNTR_SUSPM))
-    {
-        stm32_usb_suspend(drv);
-        USB->ISTR &= ~USB_ISTR_SUSP;
-        return;
-    }
-    if (sta & USB_ISTR_WKUP)
-    {
-        stm32_usb_wakeup(drv);
-        USB->ISTR &= ~USB_ISTR_WKUP;
-        return;
-    }
+/*
 #if (USB_DEBUG_ERRORS)
     IPC ipc;
     if (sta & USB_ISTR_ERR)
@@ -353,52 +350,77 @@ void lpc_usb_on_isr(int vector, void* param)
         USB->ISTR &= ~USB_ISTR_PMAOVR;
     }
 #endif*/
+    if (sta & USB_INTSTAT_DEV_INT)
+    {
+        sta = LPC_USB->DEVCMDSTAT;
+        //Don't care on connection change, just clear pending bit
+        if (sta & USB_DEVCMDSTAT_DCON_C)
+            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DCON_C;
+        if (sta & USB_DEVCMDSTAT_DSUS_C)
+        {
+            if (sta & USB_DEVCMDSTAT_DSUS)
+                lpc_usb_suspend(drv);
+            else
+                lpc_usb_wakeup(drv);
+            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DSUS_C;
+        }
+        if (sta & USB_DEVCMDSTAT_DRES_C)
+        {
+            lpc_usb_reset(drv);
+            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DRES_C;
+        }
+        LPC_USB->INTSTAT = USB_INTSTAT_DEV_INT;
+    }
 }
 
 
 void lpc_usb_open_device(SHARED_USB_DRV* drv, USB_OPEN* uo)
 {
-/*    int i;
+    int i;
     drv->usb.device = uo->device;
-    //enable DM/DP
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, USB_DM, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, USB_DP, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
 
-    //enable clock
-    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+    ack_gpio(drv, LPC_GPIO_ENABLE_PIN_SYSTEM, VBUS, PIN_MODE_VBUS, AF_IGNORE);
+#if (USB_SOFT_CONNECT)
+    ack_gpio(drv, LPC_GPIO_ENABLE_PIN_SYSTEM, SCONNECT, PIN_MODE_USB_CONNECT, AF_IGNORE);
+#endif
 
-    //power up and wait tStartup
-    USB->CNTR &= ~USB_CNTR_PDWN;
-    sleep_us(1);
-    USB->CNTR &= ~USB_CNTR_FRES;
+    //enable clock, power up
+    ack_power(drv, LPC_POWER_USB_ON, 0, 0, 0);
 
     //clear any spurious pending interrupts
-    USB->ISTR = 0;
+    LPC_USB->DEVCMDSTAT = USB_DEVCMDSTAT_DCON_C | USB_DEVCMDSTAT_DSUS_C | USB_DEVCMDSTAT_DRES_C | USB_DEVCMDSTAT_SETUP;
+    LPC_USB->INTSTAT = USB_INTSTAT_EP0OUT | USB_INTSTAT_EP0IN | USB_INTSTAT_EP1OUT | USB_INTSTAT_EP1IN |
+                       USB_INTSTAT_EP2OUT | USB_INTSTAT_EP2IN | USB_INTSTAT_EP3OUT | USB_INTSTAT_EP3IN |
+                       USB_INTSTAT_EP4OUT | USB_INTSTAT_EP4IN | USB_INTSTAT_FRAME_INT | USB_INTSTAT_DEV_INT;
 
-    //buffer descriptor table at top
-    USB->BTABLE = 0;
+    //setup buffer descriptor table
+    LPC_USB->EPLISTSTART = USB_RAM_BASE & ~0xff;
+    LPC_USB->DATABUFSTART = USB_BUF_BASE & ~0x3fffff;
 
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
+    //clear descriptor table data
+    for (i = 0; i < USB_HW_EP_COUNT; ++i)
     {
-        USB_BUFFER_DESCRIPTORS[i].ADDR_TX = 0;
-        USB_BUFFER_DESCRIPTORS[i].COUNT_TX = 0;
-        USB_BUFFER_DESCRIPTORS[i].ADDR_RX = 0;
-        USB_BUFFER_DESCRIPTORS[i].COUNT_RX = 0;
+        USB_BUFFER_DESCRIPTORS[i].OUT[0] = USB_BUFFER_DESCRIPTORS[i].OUT[1] = 0;
+        USB_BUFFER_DESCRIPTORS[i].IN[0] = USB_BUFFER_DESCRIPTORS[i].IN[1] = 0;
     }
+    //SETUP buffer offset is not incremented
+    //TODO: check size increment
+    USB_BUFFER_DESCRIPTORS[0].OUT[1] = USB_EPLISTST_OFFSET_SET(USB_SETUP_BUF_BASE);
 
     //enable interrupts
-    irq_register(USB_IRQn, stm32_usb_on_isr, drv);
+    irq_register(USB_IRQn, lpc_usb_on_isr, drv);
     NVIC_EnableIRQ(USB_IRQn);
     NVIC_SetPriority(USB_IRQn, 13);
 
     //Unmask common interrupts
-    USB->CNTR |= USB_CNTR_SUSPM | USB_CNTR_RESETM | USB_CNTR_CTRM;
-#if (USB_DEBUG_ERRORS)
-    USB->CNTR |= USB_CNTR_PMAOVRM | USB_CNTR_ERRM;
-#endif
+    LPC_USB->INTEN = USB_INTSTAT_DEV_INT;
 
-    //pullup device
-    USB->BCDR |= USB_BCDR_DPPU;*/
+    //enable device
+    LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DEV_EN;
+#if (USB_SOFT_CONNECT)
+    //pullap
+    LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DCON;
+#endif
 }
 
 static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num, USB_EP_OPEN* ep_open)
@@ -408,7 +430,7 @@ static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num,
         error(ERROR_INVALID_PARAMS);
         return;
     }
-/*    if (ep_data(drv, num) != NULL)
+    if (ep_data(drv, num) != NULL)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
@@ -424,63 +446,41 @@ static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num,
         if (drv->usb.out[i])
             fifo += drv->usb.out[i]->mps;
     }
-    fifo += sizeof(USB_BUFFER_DESCRIPTOR) * USB_EP_COUNT_MAX;
+    fifo += USB_FREE_BUF_BASE;
 
     EP* ep = malloc(sizeof(EP));
     if (ep == NULL)
         return;
     num & USB_EP_IN ? (drv->usb.in[USB_EP_NUM(num)] = ep) : (drv->usb.out[USB_EP_NUM(num)] = ep);
     ep->block = INVALID_HANDLE;
-    ep->mps = 0;
-    ep->io_active = false;
-
-    uint16_t ctl = USB_EP_NUM(num);
-    //setup ep type
-    switch (ep_open->type)
-    {
-    case USB_EP_CONTROL:
-        ctl |= 1 << 9;
-        break;
-    case USB_EP_BULK:
-        ctl |= 0 << 9;
-        break;
-    case USB_EP_INTERRUPT:
-        ctl |= 3 << 9;
-        break;
-    case USB_EP_ISOCHRON:
-        ctl |= 2 << 9;
-        break;
-    }
-
-    //setup FIFO
-    if (num & USB_EP_IN)
-    {
-        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].ADDR_TX = fifo;
-        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_TX = 0;
-    }
-    else
-    {
-        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].ADDR_RX = fifo;
-        if (ep_open->size <= 62)
-            USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_RX = ((ep_open->size + 1) >> 1) << 10;
-        else
-            USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_RX = ((((ep_open->size + 3) >> 2) - 1) << 10) | (1 << 15);
-    }
-
     ep->mps = ep_open->size;
+    ep->fifo_offset = fifo;
+    ep->io_active = false;
     ep->process = process;
 
-    *ep_reg_data(num) = ctl;
-    //set NAK, clear DTOG
+    //TODO: isochron here
     if (num & USB_EP_IN)
-        ep_toggle_bits(num, USB_EPTX_STAT | USB_EP_DTOG_TX, USB_EP_TX_NAK);
+    {
+        //TODO: move to RX/TX because of increment
+        //TODO: refactor
+        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].IN[0] = USB_EPLISTST_OFFSET_SET(fifo) | USB_EPLISTST_NBYTES_SET(ep_open->size);
+        //TODO: except EP0
+//        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].IN[0] &= ~(1 << 30);
+    }
     else
-        ep_toggle_bits(num, USB_EPRX_STAT | USB_EP_DTOG_RX, USB_EP_RX_NAK);*/
+    {
+        //TODO: move to RX/TX because of increment
+        //TODO: refactor
+        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].OUT[0] = USB_EPLISTST_OFFSET_SET(fifo) | USB_EPLISTST_NBYTES_SET(ep_open->size);
+        //TODO: except EP0
+//        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].IN[0] &= ~(1 << 30);
+    }
+    LPC_USB->INTEN |= (USB_EP_NUM(num) << 1) + (num / USB_EP_IN);
 }
 
 void lpc_usb_open(SHARED_USB_DRV* drv, unsigned int handle, HANDLE process)
 {
-/*    union {
+    union {
         USB_EP_OPEN ep_open;
         USB_OPEN uo;
     } u;
@@ -488,27 +488,24 @@ void lpc_usb_open(SHARED_USB_DRV* drv, unsigned int handle, HANDLE process)
     if (handle == USB_HANDLE_DEVICE)
     {
         if (direct_read(process, (void*)&u.uo, sizeof(USB_OPEN)))
-           stm32_usb_open_device(drv, &u.uo);
+           lpc_usb_open_device(drv, &u.uo);
     }
     else
     {
         if (direct_read(process, (void*)&u.ep_open, sizeof(USB_EP_OPEN)))
-            stm32_usb_open_ep(drv, process, handle, &u.ep_open);
-    }*/
+            lpc_usb_open_ep(drv, process, handle, &u.ep_open);
+    }
 }
 
 static inline void lpc_usb_close_ep(SHARED_USB_DRV* drv, int num)
 {
+    LPC_USB->INTEN &= ~((USB_EP_NUM(num) << 1) + (num / USB_EP_IN));
     if (!lpc_usb_ep_flush(drv, num))
         return;
-/*    if (num & USB_EP_IN)
-        ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_DIS);
-    else
-        ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_DIS);
-
+    //TODO: clear here
     EP* ep = ep_data(drv, num);
     free(ep);
-    num & USB_EP_IN ? (drv->usb.in[USB_EP_NUM(num)] = NULL) : (drv->usb.out[USB_EP_NUM(num)] = NULL);*/
+    num & USB_EP_IN ? (drv->usb.in[USB_EP_NUM(num)] = NULL) : (drv->usb.out[USB_EP_NUM(num)] = NULL);
 }
 
 static inline void lpc_usb_close_device(SHARED_USB_DRV* drv)
@@ -568,6 +565,7 @@ static inline void lpc_usb_read(SHARED_USB_DRV* drv, unsigned int num, HANDLE bl
         ipc_post_error(process, ERROR_INVALID_PARAMS);
         return;
     }
+    printk("USB TX\n\r");
 /*    EP* ep = drv->usb.out[USB_EP_NUM(num)];
     if (ep == NULL)
     {
@@ -606,6 +604,7 @@ static inline void lpc_usb_write(SHARED_USB_DRV* drv, unsigned int num, HANDLE b
         ipc_post_error(process, ERROR_INVALID_PARAMS);
         return;
     }
+    printk("USB TX\n\r");
 /*    EP* ep = drv->usb.in[USB_EP_NUM(num)];
     if (ep == NULL)
     {
@@ -742,7 +741,7 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
 }
 
 #if !(MONOLITH_USB)
-void lpc_usbl()
+void lpc_usb()
 {
     IPC ipc;
     SHARED_USB_DRV drv;
