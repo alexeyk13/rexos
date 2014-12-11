@@ -11,6 +11,10 @@
 #include "../../userspace/lib/stdio.h"
 #include "../../userspace/timer.h"
 #endif
+#if (MT_DRIVER)
+#include "../../userspace/block.h"
+#include "../../userspace/direct.h"
+#endif
 
 #if (MT_DRIVER)
 void mt();
@@ -47,6 +51,29 @@ const REX __MT = {
 #define MT_CMD_DISPLAY_OFF              0x3e
 #define MT_CMD_SET_PAGE                 0xb8
 #define MT_CMD_SET_ADDRESS              0x40
+
+#if (X_MIRROR)
+
+#define X_TRANSFORM(x, size)            (MT_SIZE_X - (x) - (size))
+#define BPL_MIRROR(bpl, x, size)        ((bpl) - (x) - (size))
+#define PAGE_TRANSFORM(page)            (MT_PAGES_COUNT - (page) - 1)
+#define BIT_OUT_TRANSFORM(byte)         (byte)
+
+#else
+
+#define X_TRANSFORM(x, size)            (x)
+#define PAGE_TRANSFORM(page)            (page)
+#define BIT_OUT_TRANSFORM(byte)         (bitswap(byte))
+
+#endif
+
+uint8_t bitswap(uint8_t x)
+{
+    x = ((x & 0x55) << 1) | ((x & 0xAA) >> 1);
+    x = ((x & 0x33) << 2) | ((x & 0xCC) >> 2);
+    x = ((x & 0x0F) << 4) | ((x & 0xF0) >> 4);
+    return x;
+}
 
 __STATIC_INLINE void delay_clks(unsigned int clks)
 {
@@ -153,7 +180,7 @@ void mt_set_pixel(unsigned int x, unsigned int y, bool set)
         return;
     }
     //find page & CS
-    xr = MT_SIZE_X - x - 1;
+    xr = X_TRANSFORM(x, 1);
     page = xr >> 3;
     if (y >= MT_SIZE_X)
     {
@@ -187,7 +214,7 @@ bool mt_get_pixel(unsigned int x, unsigned int y)
         return false;
     }
     //find page & CS
-    xr = MT_SIZE_X - x - 1;
+    xr = X_TRANSFORM(x, 1);
     page = xr >> 3;
     if (y >= MT_SIZE_X)
     {
@@ -277,23 +304,191 @@ void mt_pixel_test()
 }
 #endif //MT_TEST
 
-void mt_image_test(const uint8_t* image)
+//here goes in each chip coords
+static void mt_clear_rect_cs(unsigned int cs, RECT* rect, unsigned int mode)
 {
-    unsigned int page, y;
+    uint8_t buf[rect->height];
+    uint8_t mask;
+    uint8_t shift;
+    unsigned int first_page, last_page, page, i;
+    first_page = rect->left >> 3;
+    last_page = ((rect->left + rect->width + 7) >> 3) - 1;
+    shift = rect->left & 7;
 
-    for (page = 0; page < MT_PAGES_COUNT; ++page)
+    for (page = first_page; page <= last_page; ++page)
     {
-        mt_cmd(MT_CS1, MT_CMD_SET_PAGE | page);
-        mt_cmd(MT_CS1, MT_CMD_SET_ADDRESS | 0);
-        for (y = 0; y < MT_SIZE_X; ++y)
-            mt_dataout(MT_CS1, image[y * MT_PAGES_COUNT + MT_PAGES_COUNT - page - 1]);
+        mask = 0xff;
+        if (mode != MT_MODE_IGNORE)
+        {
+            if (page == first_page)
+                mask >>= shift;
+            if (page == last_page)
+                mask &= ~((1 << (((last_page + 1) << 3) - (rect->left + rect->width))) - 1);
+            mask = BIT_OUT_TRANSFORM(mask);
+            //dump for masking
+            if (mask != 0xff)
+            {
+                mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
+                mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
+                mt_datain(cs);
+                for (i = 0; i < rect->height; ++i)
+                    buf[i] = mt_datain(cs);
+            }
+        }
+        mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
+        mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
+        for (i = 0; i < rect->height; ++i)
+        {
+            if (mode != MT_MODE_IGNORE && mask != 0xff)
+                mt_dataout(cs, buf[i] & ~mask);
+            else
+                mt_dataout(cs, 0x00);
+        }
     }
-    for (page = 0; page < MT_PAGES_COUNT; ++page)
+}
+
+void mt_clear_rect(RECT* rect, unsigned int mode)
+{
+    RECT csrect;
+    if (rect->left >= MT_SIZE_X || rect->top >= MT_SIZE_Y)
     {
-        mt_cmd(MT_CS2, MT_CMD_SET_PAGE | page);
-        mt_cmd(MT_CS2, MT_CMD_SET_ADDRESS | 0);
-        for (y = 0; y < MT_SIZE_X; ++y)
-            mt_dataout(MT_CS2, image[(y + MT_SIZE_X) * MT_PAGES_COUNT + MT_PAGES_COUNT - page - 1]);
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    csrect.width = rect->width;
+    if (rect->left + rect->height > MT_SIZE_X)
+        csrect.width = MT_SIZE_X - rect->left;
+    csrect.left = rect->left;
+    if (rect->left + rect->width > MT_SIZE_X)
+        csrect.width = MT_SIZE_X - rect->left;
+    //apply for CS1
+    if (rect->top < MT_SIZE_X)
+    {
+        csrect.top = rect->top;
+        csrect.height = rect->height;
+        if (csrect.top + rect->height > MT_SIZE_X)
+            csrect.height = MT_SIZE_X - rect->top;
+        mt_clear_rect_cs(MT_CS1, &csrect, mode);
+    }
+    //apply for CS2
+    if (rect->top + rect->height > MT_SIZE_X)
+    {
+        if (rect->top < MT_SIZE_X)
+        {
+            csrect.top = 0;
+            csrect.height = rect->height - (MT_SIZE_X - rect->top);
+        }
+        else
+        {
+            csrect.top = rect->top - MT_SIZE_X;
+            csrect.height = rect->height;
+        }
+        if (csrect.top + rect->height > MT_SIZE_X)
+            csrect.height = MT_SIZE_X - rect->top;
+        mt_clear_rect_cs(MT_CS2, &csrect, mode);
+    }
+}
+
+//here goes in each chip coords
+static void mt_write_rect_cs(unsigned int cs, RECT* rect, unsigned int mode, const uint8_t* data, unsigned int bpl, unsigned int offset)
+{
+    uint8_t buf[rect->height];
+    uint8_t byte, mask;
+    uint8_t shift = 0;
+    unsigned int first_page, last_page, page, i, cur, byte_pos, bit_pos;
+    first_page = rect->left >> 3;
+    last_page = ((rect->left + rect->width + 7) >> 3) - 1;
+    shift = rect->left & 7;
+
+    for (page = first_page; page <= last_page; ++page)
+    {
+        mask = 0xff;
+        if (page == first_page)
+            mask >>= shift;
+        if (page == last_page)
+            mask &= ~((1 << (((last_page + 1) << 3) - (rect->left + rect->width))) - 1);
+        mask = BIT_OUT_TRANSFORM(mask);
+        if (mode != MT_MODE_IGNORE)
+        {
+            mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
+            mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
+            mt_datain(cs);
+            for (i = 0; i < rect->height; ++i)
+                buf[i] = mt_datain(cs);
+        }
+        mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
+        mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
+        for (i = 0; i < rect->height; ++i)
+        {
+            //absolute first bit offset in data stream
+            cur = offset + i * bpl + ((page - first_page) << 3) + 8 - shift;
+            byte_pos = cur >> 3;
+            bit_pos = cur & 7;
+            byte = (data[byte_pos] << (bit_pos)) & 0xff;
+            if (bit_pos)
+                byte |= data[byte_pos + 1] >> (8 - bit_pos);
+            byte = BIT_OUT_TRANSFORM(byte) & mask;
+            switch (mode)
+            {
+            case MT_MODE_OR:
+                mt_dataout(cs, buf[i] | byte);
+                break;
+            case MT_MODE_XOR:
+                mt_dataout(cs, buf[i] ^ byte);
+                break;
+            case MT_MODE_FILL:
+                mt_dataout(cs, (buf[i] & ~mask) | byte);
+                break;
+            default:
+                mt_dataout(cs, byte);
+            }
+        }
+    }
+}
+
+void mt_write_rect(RECT* rect, unsigned int mode, const uint8_t* data)
+{
+    RECT csrect;
+    //bits per line
+    unsigned int offset;
+    if (rect->left >= MT_SIZE_X || rect->top >= MT_SIZE_Y)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    offset = 0;
+    csrect.width = rect->width;
+    if (rect->left + rect->height > MT_SIZE_X)
+        csrect.width = MT_SIZE_X - rect->left;
+    csrect.left = rect->left;
+    if (rect->left + rect->width > MT_SIZE_X)
+        csrect.width = MT_SIZE_X - rect->left;
+    //apply for CS1
+    if (rect->top < MT_SIZE_X)
+    {
+        csrect.top = rect->top;
+        csrect.height = rect->height;
+        if (csrect.top + rect->height > MT_SIZE_X)
+            csrect.height = MT_SIZE_X - rect->top;
+        offset = rect->width * csrect.height;
+        mt_write_rect_cs(MT_CS1, &csrect, mode, data, rect->width, 0);
+    }
+    //apply for CS2
+    if (rect->top + rect->height > MT_SIZE_X)
+    {
+        if (rect->top < MT_SIZE_X)
+        {
+            csrect.top = 0;
+            csrect.height = rect->height - (MT_SIZE_X - rect->top);
+        }
+        else
+        {
+            csrect.top = rect->top - MT_SIZE_X;
+            csrect.height = rect->height;
+        }
+        if (csrect.top + rect->height > MT_SIZE_X)
+            csrect.height = MT_SIZE_X - rect->top;
+        mt_write_rect_cs(MT_CS2, &csrect, mode, data, rect->width, offset);
     }
 }
 
@@ -323,6 +518,26 @@ static inline void mt_info()
     printf("pixel test time(us): %dus\n\r", time_elapsed_us(&uptime));
 }
 #endif
+
+
+void mt_clear_rect_driver(HANDLE process)
+{
+    MT_REQUEST req;
+    if (direct_read(process, (void*)&req, sizeof(MT_REQUEST)))
+        mt_clear_rect(&req.rect, req.mode);
+}
+
+void mt_write_rect_driver(HANDLE process)
+{
+    MT_REQUEST req;
+    uint8_t* ptr;
+    if (direct_read(process, (void*)&req, sizeof(MT_REQUEST)))
+    {
+        ptr = block_open(req.block);
+        if (ptr)
+            mt_write_rect(&req.rect, req.mode, ptr);
+    }
+}
 
 void mt()
 {
@@ -371,6 +586,14 @@ void mt()
             break;
         case MT_GET_PIXEL:
             ipc.param1 = mt_get_pixel(ipc.param1, ipc.param2);
+            need_post = true;
+            break;
+        case MT_CLEAR_RECT:
+            mt_clear_rect_driver(ipc.process);
+            need_post = true;
+            break;
+        case MT_WRITE_RECT:
+            mt_write_rect_driver(ipc.process);
             need_post = true;
             break;
 #if (MT_TEST)
