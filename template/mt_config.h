@@ -42,9 +42,11 @@
 #define TR                              320
 //Reset impulse time (max)
 #define TRI                             32
-//------------------------------ debug ---------------------------------------------
+//------------------------------ general ---------------------------------------------
 //pixel test api
 #define MT_TEST                         0
+
+#define X_MIRROR                        1
 
 //------------------------------ process -------------------------------------------
 //Use as driver or as library. Driver has some switch latency time and require stack memory. However,
