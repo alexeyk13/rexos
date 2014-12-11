@@ -995,4 +995,247 @@
 #define CT_PWMC_PWMEN2                         (1 << 2)                 /*  PWM mode enable for channel2 */
 #define CT_PWMC_PWMEN3                         (1 << 3)                 /*  PWM mode enable for channel3 */
 
+/******************************************************************************/
+/*                                                                            */
+/*                                USB                                         */
+/*                                                                            */
+/******************************************************************************/
+
+/************  Bit definition for DEVCMDSTAT register  ************************/
+#define USB_DEVCMDSTAT_DEV_ADDR_POS            0                        /* USB device address. After bus reset, the address is reset to
+                                                                           0x00. If the enable bit is set, the device will respond on packets
+                                                                           for function address DEV_ADDR. When receiving a SetAddress
+                                                                           Control Request from the USB host, software must program the
+                                                                           new address before completing the status phase of the
+                                                                           SetAddress Control Request */
+#define USB_DEVCMDSTAT_DEV_ADDR_MASK           (0x7f << 0)
+
+#define USB_DEVCMDSTAT_DEV_EN                  (1 << 7)                 /* USB device enable. If this bit is set, the HW will start respondingon
+                                                                           packets for function address DEV_ADDR */
+#define USB_DEVCMDSTAT_SETUP                   (1 << 8)                 /* SETUP token received. If a SETUP token is received and
+                                                                           acknowledged by the device, this bit is set. As long as this bit is
+                                                                           set all received IN and OUT tokens will be NAKed by HW. SW
+                                                                           must clear this bit by writing a one. If this bit is zero, HW will
+                                                                           handle the tokens to the CTRL EP0 as indicated by the CTRL
+                                                                           EP0 IN and OUT data information programmed by SW */
+#define USB_DEVCMDSTAT_PLL_ON                  (1 << 9)                 /* Always PLL Clock on:
+                                                                           0 - USB_NeedClk functional
+                                                                           1 - USB_NeedClk always 1. Clock will not be stopped in case of suspend */
+#define USB_DEVCMDSTAT_LPM_SUP                 (1 << 11)                /* LPM Supported:
+                                                                           0 - LPM not supported
+                                                                           1 - LPM supported */
+#define USB_DEVCMDSTAT_INTONNAK_AO             (1 << 12)                /* Interrupt on NAK for interrupt and bulk OUT EP
+                                                                           0 - Only acknowledged packets generate an interrupt
+                                                                           1 - Both acknowledged and NAKed packets generate interrupts */
+#define USB_DEVCMDSTAT_INTONNAK_AI             (1 << 13)                /* Interrupt on NAK for interrupt and bulk IN EP
+                                                                           0 - Only acknowledged packets generate an interrupt
+                                                                           1 - Both acknowledged and NAKed packets generate interrupts */
+#define USB_DEVCMDSTAT_INTONNAK_CO             (1 << 14)                /* Interrupt on NAK for interrupt and control OUT EP
+                                                                           0 - Only acknowledged packets generate an interrupt
+                                                                           1 - Both acknowledged and NAKed packets generate interrupts */
+#define USB_DEVCMDSTAT_INTONNAK_CI             (1 << 15)                /* Interrupt on NAK for interrupt and control IN EP
+                                                                           0 - Only acknowledged packets generate an interrupt
+                                                                           1 - Both acknowledged and NAKed packets generate interrupts */
+#define USB_DEVCMDSTAT_DCON                    (1 << 16)                /* Device status - connect.
+                                                                           The connect bit must be set by SW to indicate that the device
+                                                                           must signal a connect. The pull-up resistor on USB_DP will be
+                                                                           enabled when this bit is set and the VbusDebounced bit is one */
+#define USB_DEVCMDSTAT_DSUS                    (1 << 17)                /* Device status - suspend.
+                                                                           The suspend bit indicates the current suspend state. It is set to
+                                                                           1 when the device hasn’t seen any activity on its upstream port
+                                                                           for more than 3 milliseconds. It is reset to 0 on any activity.
+                                                                           When the device is suspended (Suspend bit DSUS = 1) and the
+                                                                           software writes a 0 to it, the device will generate a remote
+                                                                           wake-up. This will only happen when the device is connected
+                                                                           (Connect bit = 1). When the device is not connected or not
+                                                                           suspended, a writing a 0 has no effect. Writing a 1 never has an
+                                                                           effect */
+#define USB_DEVCMDSTAT_LPM_SUS                  (1 << 19)               /* Device status - LPM Suspend.
+                                                                           This bit represents the current LPM suspend state. It is set to 1
+                                                                           by HW when the device has acknowledged the LPM request
+                                                                           from the USB host and the Token Retry Time of 10 s has
+                                                                           elapsed. When the device is in the LPM suspended state (LPM
+                                                                           suspend bit = 1) and the software writes a zero to this bit, the
+                                                                           device will generate a remote walk-up. Software can only write
+                                                                           a zero to this bit when the LPM_REWP bit is set to 1. HW resets
+                                                                           this bit when it receives a host initiated resume. HW only
+                                                                           updates the LPM_SUS bit when the LPM_SUPP bit is equal to
+                                                                           one */
+#define USB_DEVCMDSTAT_LPM_REWP                 (1 << 20)               /* LPM Remote Wake-up Enabled by USB host.
+                                                                           HW sets this bit to one when the bRemoteWake bit in the LPM
+                                                                           extended token is set to 1. HW will reset this bit to 0 when it
+                                                                           receives the host initiated LPM resume, when a remote
+                                                                           wake-up is sent by the device or when a USB bus reset is
+                                                                           received. Software can use this bit to check if the remote
+                                                                           wake-up feature is enabled by the host for the LPM transaction */
+#define USB_DEVCMDSTAT_DCON_C                   (1 << 24)               /* Device status - connect change.
+                                                                           The Connect Change bit is set when the device’s pull-up
+                                                                           resistor is disconnected because VBus disappeared. The bit is
+                                                                           reset by writing a one to it */
+#define USB_DEVCMDSTAT_DSUS_C                   (1 << 25)               /* Device status - suspend change.
+                                                                           The suspend change bit is set to 1 when the suspend bit
+                                                                           toggles. The suspend bit can toggle because:
+                                                                           - The device goes in the suspended state
+                                                                           - The device is disconnected
+                                                                           - The device receives resume signaling on its upstream port.
+                                                                           The bit is reset by writing a one to it */
+#define USB_DEVCMDSTAT_DRES_C                   (1 << 25)               /* Device status - reset change.
+                                                                           This bit is set when the device received a bus reset. On a bus
+                                                                           reset the device will automatically go to the default state
+                                                                           (unconfigured and responding to address 0). The bit is reset by
+                                                                           writing a one to it */
+#define USB_DEVCMDSTAT_VBUSDEBOUNCED            (1 << 28)               /* This bit indicates if Vbus is detected or not. The bit raises
+                                                                           immediately when Vbus becomes high. It drops to zero if Vbus
+                                                                           is low for at least 3 ms. If this bit is high and the DCon bit is set,
+                                                                           the HW will enable the pull-up resistor to signal a connect */
+
+/************  Bit definition for INFO register  ******************************/
+#define USB_INFO_FRAME_NR_POS                   0                       /* Frame number. This contains the frame number of the last
+                                                                           successfully received SOF. In case no SOF was received by the
+                                                                           device at the beginning of a frame, the frame number returned is
+                                                                           that of the last successfully received SOF. In case the SOF frame
+                                                                           number contained a CRC error, the frame number returned will be
+                                                                           the corrupted frame number as received by the device */
+#define USB_INFO_FRAME_NR_MASK                  (0x7ff << 0)
+#define USB_INFO_ERR_CODE_MASK                  (0xf << 11)             /* The error code which last occurred */
+
+#define USB_INFO_ERR_CODE_NO_ERROR              (0x0 << 11)             /* No error */
+#define USB_INFO_ERR_CODE_PID_ENCODING          (0x1 << 11)             /* PID encoding error */
+#define USB_INFO_ERR_CODE_PID_UNKNOWN           (0x2 << 11)             /* PID unknown */
+#define USB_INFO_ERR_CODE_PACKET_UNEXPECTED     (0x3 << 11)             /* Packet unexpected */
+#define USB_INFO_ERR_CODE_TOKEN_CRC             (0x4 << 11)             /* Token CRC error */
+#define USB_INFO_ERR_CODE_DATA_CRC              (0x5 << 11)             /* Data CRC error */
+#define USB_INFO_ERR_CODE_TIME_OUT              (0x6 << 11)             /* Time out */
+#define USB_INFO_ERR_CODE_BABBLE                (0x7 << 11)             /* Babble */
+#define USB_INFO_ERR_CODE_TRUNCATED_EOP         (0x8 << 11)             /* Truncated EOP */
+#define USB_INFO_ERR_CODE_IONAK                 (0x9 << 11)             /* Sent/Received NAK */
+#define USB_INFO_ERR_CODE_STALL                 (0xa << 11)             /* Sent Stall */
+#define USB_INFO_ERR_CODE_OVERRUN               (0xb << 11)             /* Overrun */
+#define USB_INFO_ERR_CODE_EMPTY_PACKET          (0xc << 11)             /* Sent empty packet */
+#define USB_INFO_ERR_CODE_BITSTUFF              (0xd << 11)             /* Bitstuff error */
+#define USB_INFO_ERR_CODE_SYNC                  (0xe << 11)             /* Sync error */
+#define USB_INFO_ERR_CODE_WRONG_DATA_TOGGLE     (0xf << 11)             /* Wrong data toggle */
+
+/************  Bit definition for LPM register  *******************************/
+#define USB_LPM_HIRD_HW_POS                     0                       /* Host Initiated Resume Duration - HW. This is
+                                                                           the HIRD value from the last received LPM token */
+#define USB_LPM_HIRD_HW_MASK                    (0xf << 0)
+#define USB_LPM_HIRD_SW_POS                     4                       /* Host Initiated Resume Duration - SW. This is
+                                                                           the time duration required by the USB device
+                                                                           system to come out of LPM initiated suspend
+                                                                           after receiving the host initiated LPM resume */
+#define USB_LPM_HIRD_SW_MASK                    (0xf << 4)
+#define USB_LPM_DATA_PENDING                    (1 << 8)                /* As long as this bit is set to one and LPM
+                                                                           supported bit is set to one, HW will return a
+                                                                           NYET handshake on every LPM token it
+                                                                           receives.
+                                                                           If LPM supported bit is set to one and this bit is
+                                                                           zero, HW will return an ACK handshake on
+                                                                           every LPM token it receives.
+                                                                           If SW has still data pending and LPM is
+                                                                           supported, it must set this bit to 1 */
+/************  Bit definition for INTSTAT register  ***************************/
+#define USB_INTSTAT_EP0OUT                      (1 << 0)                /* Interrupt status register bit for the Control EP0 OUT direction.
+                                                                           This bit will be set if NBytes transitions to zero or the skip bit is set by software
+                                                                           or a SETUP packet is successfully received for the control EP0.
+                                                                           If the IntOnNAK_CO is set, this bit will also be set when a NAK is transmitted
+                                                                           for the Control EP0 OUT direction.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_EP0IN                       (1 << 1)                /* Interrupt status register bit for the Control EP0 IN direction.
+                                                                           This bit will be set if NBytes transitions to zero or the skip bit is set by
+                                                                           software.
+                                                                           If the IntOnNAK_CI is set, this bit will also be set when a NAK is transmitted
+                                                                           for the Control EP0 IN direction.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_EP1OUT                      (1 << 2)                /* Interrupt status register bit for the EP1 OUT direction.
+                                                                           This bit will be set if the corresponding Active bit is cleared by HW. This is
+                                                                           done in case the programmed NBytes transitions to zero or the skip bit is set
+                                                                           by software.
+                                                                           If the IntOnNAK_AO is set, this bit will also be set when a NAK is transmitted
+                                                                           for the EP1 OUT direction.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_EP1IN                       (1 << 3)                /* Interrupt status register bit for the EP1 IN direction.
+                                                                           This bit will be set if the corresponding Active bit is cleared by HW. This is
+                                                                           done in case the programmed NBytes transitions to zero or the skip bit is set
+                                                                           by software.
+                                                                           If the IntOnNAK_AI is set, this bit will also be set when a NAK is transmitted
+                                                                           for the EP1 IN direction.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_EP2OUT                      (1 << 4)                /* Interrupt status register bit for the EP2 OUT direction.
+                                                                           This bit will be set if the corresponding Active bit is cleared by HW. This is
+                                                                           done in case the programmed NBytes transitions to zero or the skip bit is set
+                                                                           by software.
+                                                                           If the IntOnNAK_AO is set, this bit will also be set when a NAK is transmitted
+                                                                           for the EP2 OUT direction.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_EP2IN                       (1 << 5)                /* Interrupt status register bit for the EP2 IN direction.
+                                                                           This bit will be set if the corresponding Active bit is cleared by HW. This is
+                                                                           done in case the programmed NBytes transitions to zero or the skip bit is set
+                                                                           by software.
+                                                                           If the IntOnNAK_AI is set, this bit will also be set when a NAK is transmitted
+                                                                           for the EP2 IN direction.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_EP3OUT                      (1 << 6)                /* Interrupt status register bit for the EP3 OUT direction.
+                                                                           This bit will be set if the corresponding Active bit is cleared by HW. This is
+                                                                           done in case the programmed NBytes transitions to zero or the skip bit is set
+                                                                           by software.
+                                                                           If the IntOnNAK_AO is set, this bit will also be set when a NAK is transmitted
+                                                                           for the EP3 OUT direction.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_EP3IN                       (1 << 7)                /* Interrupt status register bit for the EP3 IN direction.
+                                                                           This bit will be set if the corresponding Active bit is cleared by HW. This is
+                                                                           done in case the programmed NBytes transitions to zero or the skip bit is set
+                                                                           by software.
+                                                                           If the IntOnNAK_AI is set, this bit will also be set when a NAK is transmitted
+                                                                           for the EP3 IN direction.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_EP4OUT                      (1 << 8)                /* Interrupt status register bit for the EP4 OUT direction.
+                                                                           This bit will be set if the corresponding Active bit is cleared by HW. This is
+                                                                           done in case the programmed NBytes transitions to zero or the skip bit is set
+                                                                           by software.
+                                                                           If the IntOnNAK_AO is set, this bit will also be set when a NAK is transmitted
+                                                                           for the EP4 OUT direction.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_EP4IN                       (1 << 9)                /* Interrupt status register bit for the EP4 IN direction.
+                                                                           This bit will be set if the corresponding Active bit is cleared by HW. This is
+                                                                           done in case the programmed NBytes transitions to zero or the skip bit is set
+                                                                           by software.
+                                                                           If the IntOnNAK_AI is set, this bit will also be set when a NAK is transmitted
+                                                                           for the EP4 IN direction.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_FRAME_INT                   (1 << 30)               /* Frame interrupt.
+                                                                           This bit is set to one every millisecond when the VbusDebounced bit and the
+                                                                           DCON bit are set. This bit can be used by software when handling
+                                                                           isochronous endpoints.
+                                                                           Software can clear this bit by writing a one to it */
+#define USB_INTSTAT_DEV_INT                     (1 << 31)               /* Device status interrupt. This bit is set by HW when one of the bits in the
+                                                                           Device Status Change register are set. Software can clear this bit by writing a
+                                                                           one to it */
+
+/************  Bit definition for EPLISTST ************************************/
+#define USB_EPLISTST_OFFSET_POS                 0                       /* Bits 21 to 6 of the buffer start address.
+                                                                           The address offset is updated by hardware after each successful
+                                                                           reception/transmission of a packet. Hardware increments the original value
+                                                                           with the integer value when the packet size is divided by 64 */
+#define USB_EPLISTST_OFFSET_MASK                (0xffff << 0)
+#define USB_EPLISTST_OFFSET_SET(addr)           (((addr) >> 6) & 0xffff)
+#define USB_EPLISTST_NBYTES_POS                 16                      /* For OUT endpoints this is the number of bytes that can be received in this
+                                                                           buffer.
+                                                                           For IN endpoints this is the number of bytes that must be transmitted.
+                                                                           HW decrements this value with the packet size every time when a packet is
+                                                                           successfully transferred.
+                                                                           Note: If a short packet is received on an OUT endpoint, the active bit will be
+                                                                           cleared and the NBytes value indicates the remaining buffer space that is
+                                                                           not used. Software calculates the received number of bytes by subtracting
+                                                                           the remaining NBytes from the programmed value */
+#define USB_EPLISTST_NBYTES_MASK               (0x3ff < 16)
+#define USB_EPLISTST_NBYTES_SET(val)           (((val) & 0x3ff) << 16)
+#define USB_EPLISTST_TYPE                      (1 << 26)                /* Endpoint Type
+                                                                           0: Generic endpoint. The endpoint is configured as a bulk or interrupt
+                                                                           endpoint
+                                                                           1: Isochronous endpoint */
+
+//TODO: add other bytes
+
+
 #endif // LPC11UXX_BITS_H
