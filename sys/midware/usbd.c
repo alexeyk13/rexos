@@ -52,7 +52,9 @@ typedef struct {
     USBD_STATE state;
     bool suspended;
     bool self_powered, remote_wakeup;
+#if (USB_TEST_MODE)
     USB_TEST_MODES test_mode;
+#endif //USB_TEST_MODE
     USB_SPEED speed;
     uint8_t ep0_size;
     uint8_t configuration, iface, iface_alt;
@@ -484,6 +486,7 @@ static inline int usbd_device_get_status(USBD* usbd)
     return safecpy_write(usbd, &status, sizeof(uint16_t));
 }
 
+#if (USB_TEST_MODE)
 static inline int usbd_device_set_feature(USBD* usbd)
 {
     unsigned int res = -1;
@@ -505,6 +508,7 @@ static inline int usbd_device_set_feature(USBD* usbd)
         inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, usbd->setup.wIndex >> 16);
     return res;
 }
+#endif //USB_TEST_MODE
 
 static inline int usbd_device_clear_feature(USBD* usbd)
 {
@@ -647,9 +651,11 @@ static inline int usbd_device_request(USBD* usbd)
     case USB_REQUEST_GET_STATUS:
         res = usbd_device_get_status(usbd);
         break;
+#if (USB_TEST_MODE)
     case USB_REQUEST_SET_FEATURE:
         res = usbd_device_set_feature(usbd);
         break;
+#endif
     case USB_REQUEST_CLEAR_FEATURE:
         res = usbd_device_clear_feature(usbd);
         break;
@@ -1013,7 +1019,9 @@ void usbd()
     usbd.state = USBD_STATE_DEFAULT;
     usbd.suspended = false;
     usbd.self_powered = usbd.remote_wakeup = false;
+#if (USB_TEST_MODE)
     usbd.test_mode = USB_TEST_MODE_NORMAL;
+#endif //USB_TEST_MODE
 
     usbd.speed = USB_LOW_SPEED;
     usbd.ep0_size = 0;
