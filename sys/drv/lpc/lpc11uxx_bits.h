@@ -1098,6 +1098,7 @@
                                                                            the corrupted frame number as received by the device */
 #define USB_INFO_FRAME_NR_MASK                  (0x7ff << 0)
 #define USB_INFO_ERR_CODE_MASK                  (0xf << 11)             /* The error code which last occurred */
+#define USB_INFO_ERR_CODE_POS                   11
 
 #define USB_INFO_ERR_CODE_NO_ERROR              (0x0 << 11)             /* No error */
 #define USB_INFO_ERR_CODE_PID_ENCODING          (0x1 << 11)             /* PID encoding error */
@@ -1213,13 +1214,13 @@
                                                                            one to it */
 
 /************  Bit definition for EPLISTST ************************************/
-#define USB_EPLISTST_OFFSET_POS                 0                       /* Bits 21 to 6 of the buffer start address.
+#define USB_EP_LISTST_OFFSET_POS                0                       /* Bits 21 to 6 of the buffer start address.
                                                                            The address offset is updated by hardware after each successful
                                                                            reception/transmission of a packet. Hardware increments the original value
                                                                            with the integer value when the packet size is divided by 64 */
-#define USB_EPLISTST_OFFSET_MASK                (0xffff << 0)
-#define USB_EPLISTST_OFFSET_SET(addr)           (((addr) >> 6) & 0xffff)
-#define USB_EPLISTST_NBYTES_POS                 16                      /* For OUT endpoints this is the number of bytes that can be received in this
+#define USB_EP_LISTST_OFFSET_MASK               (0xffff << 0)
+#define USB_EP_LISTST_OFFSET_SET(addr)          ((((unsigned int)(addr)) >> 6) & 0xffff)
+#define USB_EP_LISTST_NBYTES_POS                16                      /* For OUT endpoints this is the number of bytes that can be received in this
                                                                            buffer.
                                                                            For IN endpoints this is the number of bytes that must be transmitted.
                                                                            HW decrements this value with the packet size every time when a packet is
@@ -1228,14 +1229,59 @@
                                                                            cleared and the NBytes value indicates the remaining buffer space that is
                                                                            not used. Software calculates the received number of bytes by subtracting
                                                                            the remaining NBytes from the programmed value */
-#define USB_EPLISTST_NBYTES_MASK               (0x3ff < 16)
-#define USB_EPLISTST_NBYTES_SET(val)           (((val) & 0x3ff) << 16)
-#define USB_EPLISTST_TYPE                      (1 << 26)                /* Endpoint Type
+#define USB_EP_LISTST_NBYTES_MASK              (0x3ff << 16)
+#define USB_EP_LISTST_NBYTES_SET(val)          (((val) & 0x3ff) << 16)
+#define USB_EP_LISTST_T                        (1 << 26)                /* Endpoint Type
                                                                            0: Generic endpoint. The endpoint is configured as a bulk or interrupt
                                                                            endpoint
                                                                            1: Isochronous endpoint */
+#define USB_EP_LISTST_RF                       (1 << 27)                /* When the endpoint is used as an interrupt endpoint, it can be set to the
+                                                                           following values.
+                                                                           0: Interrupt endpoint in ‘toggle mode’
+                                                                           1: Interrupt endpoint in ‘rate feedback mode’. This means that the data
+                                                                           toggle is fixed to zero for all data packets.
+                                                                           When the interrupt endpoint is in ‘rate feedback mode’, the TR bit must
+                                                                           always be set to zero */
+#define USB_EP_LISTST_TV                       (1 << 27)                /* When the endpoint is used as an interrupt endpoint, it can be set to the
+                                                                           For bulk endpoints and isochronous endpoints this bit is reserved and must
+                                                                           be set to zero.
+                                                                           For the control endpoint zero this bit is used as the toggle value. When the
+                                                                           toggle reset bit is set, the data toggle is updated with the value
+                                                                           programmed in this bit */
+#define USB_EP_LISTST_TR                       (1 << 28)                /* Toggle Reset
+                                                                           When software sets this bit to one, the HW will set the toggle value equal to
+                                                                           the value indicated in the “toggle value” (TV) bit.
+                                                                           For the control endpoint zero, this is not needed to be used because the
+                                                                           hardware resets the endpoint toggle to one for both directions when a
+                                                                           setup token is received.
+                                                                           For the other endpoints, the toggle can only be reset to zero when the
+                                                                           endpoint is reset */
+#define USB_EP_LISTST_S                        (1 << 29)                /* Stall
+                                                                           0: The selected endpoint is not stalled
+                                                                           1: The selected endpoint is stalled
+                                                                           The Active bit has always higher priority than the Stall bit. This means that
+                                                                           a Stall handshake is only sent when the active bit is zero and the stall bit is
+                                                                           one.
+                                                                           Software can only modify this bit when the active bit is zero */
 
-//TODO: add other bytes
+#define USB_EP_LISTST_D                        (1 << 30)                /* Disabled
+                                                                           0: The selected endpoint is enabled.
+                                                                           1: The selected endpoint is disabled.
+                                                                           If a USB token is received for an endpoint that has the disabled bit set,
+                                                                           hardware will ignore the token and not return any data or handshake.
+                                                                           When a bus reset is received, software must set the disable bit of all
+                                                                           endpoints to 1.
+                                                                           Software can only modify this bit when the active bit is zero */
+#define USB_EP_LISTST_A                        (1 << 31)                /* Active
+                                                                           The buffer is enabled. HW can use the buffer to store received OUT data or
+                                                                           to transmit data on the IN endpoint.
+                                                                           Software can only set this bit to ‘1’. As long as this bit is set to one,
+                                                                           software is not allowed to update any of the values in this 32-bit word. In
+                                                                           case software wants to deactivate the buffer, it must write a one to the
+                                                                           corresponding “skip” bit in the USB Endpoint skip register. Hardware can
+                                                                           only write this bit to zero. It will do this when it receives a short packet or
+                                                                           when the NBytes field transitions to zero or when software has written a
+                                                                           one to the “skip” bit */
 
 
 #endif // LPC11UXX_BITS_H
