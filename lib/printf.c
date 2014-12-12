@@ -96,12 +96,14 @@ int __utoa(char* buf, unsigned long value, int radix, bool uppercase)
 int size_in_bytes(unsigned int value, char* buf)
 {
     int i, size;
-    for(i = 0; i < 3 && value >= 1024; ++i)
+    for(i = 0; i < 3 && value >= 9999; ++i)
         value /= 1024;
     size = __utoa(buf, value, 10, false);
     if (i)
+    {
         buf[size++] = DIM[i - 1];
-    buf[size++] = 'B';
+        buf[size++] = 'B';
+    }
     buf[size] = '\x0';
 
     return size;
