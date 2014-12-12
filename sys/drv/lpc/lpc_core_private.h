@@ -17,6 +17,9 @@
 #if (MONOLITH_I2C)
 #include "lpc_i2c.h"
 #endif
+#if (MONOLITH_USB)
+#include "lpc_usb.h"
+#endif
 
 
 typedef struct _CORE {
@@ -27,6 +30,9 @@ typedef struct _CORE {
 #endif
 #if (MONOLITH_I2C)
     I2C_DRV i2c;
+#endif
+#if (MONOLITH_USB)
+    USB_DRV usb;
 #endif
 }CORE;
 

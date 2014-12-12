@@ -16,6 +16,9 @@
 #if (MONOLITH_I2C)
 #include "lpc_i2c.h"
 #endif
+#if (MONOLITH_USB)
+#include "lpc_usb.h"
+#endif
 
 void lpc_core();
 
@@ -71,6 +74,9 @@ void lpc_core_loop(CORE* core)
 #if (MONOLITH_I2C)
                 need_post |= lpc_i2c_request(core, &ipc);
 #endif
+#if (MONOLITH_USB)
+                need_post |= lpc_usb_request(core, &ipc);
+#endif
                 break;
 #endif
             case IPC_OPEN:
@@ -116,6 +122,11 @@ void lpc_core_loop(CORE* core)
                 need_post = lpc_i2c_request(core, &ipc);
                 break;
 #endif //MONOLITH_I2C
+#if (MONOLITH_USB)
+            case HAL_USB:
+                need_post = lpc_usb_request(core, &ipc);
+                break;
+#endif //MONOLITH_USB
             default:
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
                 need_post = true;
@@ -140,6 +151,9 @@ void lpc_core()
 #endif
 #if (MONOLITH_I2C)
     lpc_i2c_init(&core);
+#endif
+#if (MONOLITH_USB)
+    lpc_usb_init(&core);
 #endif
 
     lpc_core_loop(&core);
