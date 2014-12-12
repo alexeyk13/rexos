@@ -370,10 +370,10 @@ void lpc_usb_on_isr(int vector, void* param)
 }
 
 
-void lpc_usb_open_device(SHARED_USB_DRV* drv, USB_OPEN* uo)
+void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
 {
     int i;
-    drv->usb.device = uo->device;
+    drv->usb.device = device;
 
     ack_gpio(drv, LPC_GPIO_ENABLE_PIN_SYSTEM, VBUS, PIN_MODE_VBUS, AF_IGNORE);
 #if (USB_SOFT_CONNECT)
@@ -465,19 +465,10 @@ void lpc_usb_open(SHARED_USB_DRV* drv, unsigned int handle, HANDLE process)
 {
     union {
         USB_EP_OPEN ep_open;
-        USB_OPEN uo;
     } u;
 
-    if (handle == USB_HANDLE_DEVICE)
-    {
-        if (direct_read(process, (void*)&u.uo, sizeof(USB_OPEN)))
-           lpc_usb_open_device(drv, &u.uo);
-    }
-    else
-    {
-        if (direct_read(process, (void*)&u.ep_open, sizeof(USB_EP_OPEN)))
-            lpc_usb_open_ep(drv, process, handle, &u.ep_open);
-    }
+    if (direct_read(process, (void*)&u.ep_open, sizeof(USB_EP_OPEN)))
+        lpc_usb_open_ep(drv, process, handle, &u.ep_open);
 }
 
 static inline void lpc_usb_close_ep(SHARED_USB_DRV* drv, int num)
@@ -514,7 +505,6 @@ static inline void lpc_usb_close_device(SHARED_USB_DRV* drv)
     LPC_USB->INTEN = 0;
     //disable device
     LPC_USB->DEVCMDSTAT &= ~USB_DEVCMDSTAT_DEV_EN;
-    drv->usb.device = INVALID_HANDLE;
 
     //power down
     ack_power(drv, LPC_POWER_USB_OFF, 0, 0, 0);
@@ -676,7 +666,10 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case IPC_OPEN:
-        lpc_usb_open(drv, HAL_ITEM(ipc->param1), ipc->process);
+        if (HAL_ITEM(ipc->param1) == USB_HANDLE_DEVICE)
+            lpc_usb_open_device(drv, ipc->process);
+        else
+            lpc_usb_open(drv, HAL_ITEM(ipc->param1), ipc->process);
         need_post = true;
         break;
     case IPC_CLOSE:

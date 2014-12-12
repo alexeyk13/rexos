@@ -80,25 +80,16 @@ const REX __USBD = {
     usbd
 };
 
-static inline void usbd_open(USBD* usbd, HANDLE usb)
+static inline void usbd_open(USBD* usbd)
 {
-    if (usbd->usb != INVALID_HANDLE)
-    {
-        error(ERROR_ALREADY_CONFIGURED);
-        return;
-    }
     usbd->block = block_create(USBD_BLOCK_SIZE);
     if ((usbd->block = block_create(USBD_BLOCK_SIZE)) == INVALID_HANDLE)
         return;
-    usbd->usb = usb;
+    fopen(usbd->usb, HAL_HANDLE(HAL_USB, USB_HANDLE_DEVICE), 0);
 }
 
 static inline void usbd_close(USBD* usbd)
 {
-    if (usbd->usb == INVALID_HANDLE)
-        return;
-
-    if (usbd->ep0_size)
     {
         fclose(usbd->usb, HAL_HANDLE(HAL_USB, 0));
         fclose(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
@@ -110,7 +101,7 @@ static inline void usbd_close(USBD* usbd)
     while (usbd->classes->size)
         array_remove(&usbd->classes, usbd->classes->size - 1);
 
-    usbd->block = usbd->usb = INVALID_HANDLE;
+    usbd->block = INVALID_HANDLE;
 }
 
 static inline void usbd_register_object(ARRAY** ar, HANDLE handle)
@@ -1019,7 +1010,7 @@ void usbd()
     open_stdout();
 #endif
 
-    usbd.usb = INVALID_HANDLE;
+    usbd.usb = object_get(SYS_OBJ_USB);
     usbd.setup_state = USB_SETUP_STATE_REQUEST;
     usbd.state = USBD_STATE_DEFAULT;
     usbd.suspended = false;
@@ -1036,6 +1027,7 @@ void usbd()
     array_create(&usbd.conf_descriptors_hs, 1);
     array_create(&usbd.string_descriptors, 1);
 
+    object_set_self(SYS_OBJ_USBD);
     for (;;)
     {
         ipc_read_ms(&ipc, 0, 0);
@@ -1052,7 +1044,7 @@ void usbd()
             break;
 #endif
         case IPC_OPEN:
-            usbd_open(&usbd, (HANDLE)ipc.param1);
+            usbd_open(&usbd);
             ipc.param1 = 0;
             ipc_post_or_error(&ipc);
             break;
