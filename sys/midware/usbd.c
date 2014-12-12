@@ -365,11 +365,9 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
     usbd->speed = speed;
     usbd->ep0_size = usbd->speed == USB_LOW_SPEED ? 8 : 64;
 
-    USB_EP_OPEN ep_open;
-    ep_open.type = USB_EP_CONTROL;
-    ep_open.size = usbd->ep0_size;
-    fopen_ex(usbd->usb, HAL_HANDLE(HAL_USB, 0), 0, (void*)&ep_open, sizeof(USB_EP_OPEN));
-    fopen_ex(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), 0, (void*)&ep_open, sizeof(USB_EP_OPEN));
+    unsigned int size = usbd->ep0_size;
+    fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, 0), USB_EP_CONTROL, (void*)size);
+    fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), USB_EP_CONTROL, (void*)size);
 
     inform(usbd, USBD_ALERT_RESET, 0, 0);
 }

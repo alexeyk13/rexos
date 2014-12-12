@@ -51,15 +51,6 @@ typedef enum {
     USB_SUPER_SPEED
 } USB_SPEED;
 
-typedef struct {
-    USB_EP_TYPE type;
-    unsigned int size;
-} USB_EP_OPEN;
-
-typedef struct {
-    HANDLE device;
-} USB_OPEN;
-
 typedef enum {
     USB_TEST_MODE_NORMAL = 0,
     USB_TEST_MODE_J,

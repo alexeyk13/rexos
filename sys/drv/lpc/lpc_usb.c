@@ -7,7 +7,6 @@
 #include "lpc_usb.h"
 #include "../../sys.h"
 #include "../../usb.h"
-#include "../../../userspace/direct.h"
 #include "../../../userspace/irq.h"
 #include "../../../userspace/block.h"
 #include "lpc_gpio.h"
@@ -421,7 +420,7 @@ void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
 #endif
 }
 
-static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num, USB_EP_OPEN* ep_open)
+static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num, USB_EP_TYPE type, unsigned int size)
 {
     unsigned int i;
     if (USB_EP_NUM(num) >=  USB_EP_COUNT_MAX)
@@ -438,12 +437,11 @@ static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num,
     EP* ep = malloc(sizeof(EP));
     if (ep == NULL)
         return;
-    num & USB_EP_IN ? (drv->usb.in[USB_EP_NUM(num)] = ep) : (drv->usb.out[USB_EP_NUM(num)] = ep);
     ep->block = INVALID_HANDLE;
-    ep->mps = ep_open->size;
     ep->fifo = (void*)USB_FREE_BUF_BASE;
     ep->io_active = false;
     ep->process = process;
+    ep->mps = size;
 
     //find free addr in FIFO
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
@@ -454,21 +452,12 @@ static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num,
             ep->fifo += drv->usb.out[i]->mps;
     }
 
-    if (ep_open->type == USB_EP_ISOCHRON)
+    num & USB_EP_IN ? (drv->usb.in[USB_EP_NUM(num)] = ep) : (drv->usb.out[USB_EP_NUM(num)] = ep);
+    if (type == USB_EP_ISOCHRON)
         *USB_EP_LISTSTS(num, 0) |= USB_EP_LISTST_T;
     if (USB_EP_NUM(num))
         *USB_EP_LISTSTS(num, 0) &= USB_EP_LISTST_D;
     LPC_USB->INTEN |= USB_EP_INT_BIT(num);
-}
-
-void lpc_usb_open(SHARED_USB_DRV* drv, unsigned int handle, HANDLE process)
-{
-    union {
-        USB_EP_OPEN ep_open;
-    } u;
-
-    if (direct_read(process, (void*)&u.ep_open, sizeof(USB_EP_OPEN)))
-        lpc_usb_open_ep(drv, process, handle, &u.ep_open);
 }
 
 static inline void lpc_usb_close_ep(SHARED_USB_DRV* drv, int num)
@@ -514,14 +503,6 @@ static inline void lpc_usb_close_device(SHARED_USB_DRV* drv)
 #if (USB_SOFT_CONNECT)
     ack_gpio(drv, GPIO_DISABLE_PIN, SCONNECT, 0, 0);
 #endif
-}
-
-static inline void lpc_usb_close(SHARED_USB_DRV* drv, unsigned int handle)
-{
-    if (handle == USB_HANDLE_DEVICE)
-        lpc_usb_close_device(drv);
-    else
-        lpc_usb_close_ep(drv, handle);
 }
 
 static inline void lpc_usb_set_address(SHARED_USB_DRV* drv, int addr)
@@ -669,11 +650,14 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         if (HAL_ITEM(ipc->param1) == USB_HANDLE_DEVICE)
             lpc_usb_open_device(drv, ipc->process);
         else
-            lpc_usb_open(drv, HAL_ITEM(ipc->param1), ipc->process);
+            lpc_usb_open_ep(drv, ipc->process, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3);
         need_post = true;
         break;
     case IPC_CLOSE:
-        lpc_usb_close(drv, HAL_ITEM(ipc->param1));
+        if (HAL_ITEM(ipc->param1) == USB_HANDLE_DEVICE)
+            lpc_usb_close_device(drv);
+        else
+            lpc_usb_close_ep(drv, HAL_ITEM(ipc->param1));
         need_post = true;
         break;
     case USB_SET_ADDRESS:

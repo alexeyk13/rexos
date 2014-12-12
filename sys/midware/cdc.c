@@ -245,17 +245,14 @@ static inline void cdc_reset(CDC* cdc)
 
 static inline void cdc_configured(CDC* cdc)
 {
-    USB_EP_OPEN ep_open;
     //data
-    ep_open.size = cdc->data_ep_size;
-    ep_open.type = USB_EP_BULK;
-    fopen_ex(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), 0, (void*)&ep_open, sizeof(USB_EP_OPEN));
-    fopen_ex(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep), 0, (void*)&ep_open, sizeof(USB_EP_OPEN));
+    unsigned int size = cdc->data_ep_size;
+    fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), USB_EP_BULK, (void*)size);
+    fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep), USB_EP_BULK, (void*)size);
 
     //control
-    ep_open.size = cdc->control_ep_size;
-    ep_open.type = USB_EP_INTERRUPT;
-    fopen_ex(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep), 0, (void*)&ep_open, sizeof(USB_EP_OPEN));
+    size = cdc->control_ep_size;
+    fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep), USB_EP_INTERRUPT, (void*)size);
 
     fread_async(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), cdc->rx, 1);
     cdc_notify_serial_state(cdc, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
