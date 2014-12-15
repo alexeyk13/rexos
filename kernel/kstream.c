@@ -96,9 +96,9 @@ void kstream_create(STREAM** stream, unsigned int size)
 void kstream_open(STREAM* stream, STREAM_HANDLE** handle)
 {
     PROCESS* process = kprocess_get_current();
-    if (stream == INVALID_HANDLE)
+    if ((HANDLE)stream == INVALID_HANDLE)
     {
-        *handle = INVALID_HANDLE;
+        *handle = (STREAM_HANDLE*)INVALID_HANDLE;
         return;
     }
     CHECK_HANDLE(stream, sizeof(STREAM));
