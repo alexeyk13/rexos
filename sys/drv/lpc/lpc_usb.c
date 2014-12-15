@@ -33,9 +33,7 @@
 #define USB_FREE_BUF_BASE               (USB_SETUP_BUF_BASE + 0x40)
 
 typedef enum {
-    LPC_USB_FIFO_TX = USB_HAL_MAX,
-    LPC_USB_FIFO_RX,
-    LPC_USB_ERROR,
+    LPC_USB_ERROR = USB_HAL_MAX,
     LPC_USB_OVERFLOW
 }LPC_USB_IPCS;
 
@@ -100,36 +98,6 @@ void lpc_usb_rx_prepare(SHARED_USB_DRV* drv, int num)
     *USB_EP_LISTSTS(num, 0) &= ~(USB_EP_LISTST_OFFSET_MASK | USB_EP_LISTST_NBYTES_MASK);
     *USB_EP_LISTSTS(num, 0) |= USB_EP_LISTST_OFFSET_SET(ep->fifo) | USB_EP_LISTST_NBYTES_SET(ep->mps);
     *USB_EP_LISTSTS(num, 0) |= USB_EP_LISTST_A;
-}
-
-static inline void lpc_usb_rx(SHARED_USB_DRV* drv, int num)
-{
-    IPC ipc;
-    EP* ep = drv->usb.out[USB_EP_NUM(num)];
-    unsigned int cnt = ep->mps - (((*USB_EP_LISTSTS(num, 0)) & USB_EP_LISTST_NBYTES_MASK) >> USB_EP_LISTST_NBYTES_POS);
-
-    memcpy(ep->ptr + ep->processed, ep->fifo, cnt);
-    ep->processed += cnt;
-
-    if (ep->processed >= ep->size)
-    {
-        ipc.process = drv->usb.device;
-        ipc.cmd = IPC_READ_COMPLETE;
-        ipc.param1 = HAL_HANDLE(HAL_USB, num);
-        ipc.param2 = ep->block;
-        ipc.param3 = ep->processed;
-
-        if (ep->block != INVALID_HANDLE)
-        {
-            block_send_ipc(ep->block, drv->usb.device, &ipc);
-            ep->block = INVALID_HANDLE;
-        }
-        else
-            ipc_post(&ipc);
-        ep->io_active = false;
-    }
-    else
-        lpc_usb_rx_prepare(drv, num);
 }
 
 bool lpc_usb_ep_flush(SHARED_USB_DRV* drv, int num)
@@ -257,10 +225,31 @@ static inline void lpc_usb_setup(SHARED_USB_DRV* drv)
 static inline void lpc_usb_out(SHARED_USB_DRV* drv, int num)
 {
     IPC ipc;
-    ipc.process = process_iget_current();
-    ipc.param1 = HAL_HANDLE(HAL_USB, num);
-    ipc.cmd = LPC_USB_FIFO_RX;
-    ipc_ipost(&ipc);
+    EP* ep = drv->usb.out[USB_EP_NUM(num)];
+    unsigned int cnt = ep->mps - (((*USB_EP_LISTSTS(num, 0)) & USB_EP_LISTST_NBYTES_MASK) >> USB_EP_LISTST_NBYTES_POS);
+
+    memcpy(ep->ptr + ep->processed, ep->fifo, cnt);
+    ep->processed += cnt;
+
+    if (ep->processed >= ep->size)
+    {
+        ipc.process = drv->usb.device;
+        ipc.cmd = IPC_READ_COMPLETE;
+        ipc.param1 = HAL_HANDLE(HAL_USB, num);
+        ipc.param2 = ep->block;
+        ipc.param3 = ep->processed;
+
+        if (ep->block != INVALID_HANDLE)
+        {
+            block_isend_ipc(ep->block, drv->usb.device, &ipc);
+            ep->block = INVALID_HANDLE;
+        }
+        else
+            ipc_ipost(&ipc);
+        ep->io_active = false;
+    }
+    else
+        lpc_usb_rx_prepare(drv, num);
 }
 
 static inline void lpc_usb_in(SHARED_USB_DRV* drv, int num)
@@ -291,12 +280,7 @@ static inline void lpc_usb_in(SHARED_USB_DRV* drv, int num)
         ep->io_active = false;
     }
     else
-    {
-        ipc.process = process_iget_current();
-        ipc.cmd = LPC_USB_FIFO_TX;
-        ipc.param1 = HAL_HANDLE(HAL_USB, num);
-        ipc_ipost(&ipc);
-    }
+        lpc_usb_tx(drv, num);
 }
 
 void lpc_usb_on_isr(int vector, void* param)
@@ -633,14 +617,6 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         need_post = true;
         break;
 #endif
-    case LPC_USB_FIFO_RX:
-        lpc_usb_rx(drv, HAL_ITEM(ipc->param1));
-        //message from isr, no response
-        break;
-    case LPC_USB_FIFO_TX:
-        lpc_usb_tx(drv, HAL_ITEM(ipc->param1));
-        //message from isr, no response
-        break;
     case USB_GET_SPEED:
         ipc->param1 = lpc_usb_get_speed(drv);
         need_post = true;
