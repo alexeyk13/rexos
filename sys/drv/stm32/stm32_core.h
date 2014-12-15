@@ -7,7 +7,7 @@
 #ifndef STM32_CORE_H
 #define STM32_CORE_H
 
-#include "../../sys.h"
+#include "../../../userspace/sys.h"
 #include "../../../userspace/process.h"
 #include "stm32_config.h"
 #include "sys_config.h"

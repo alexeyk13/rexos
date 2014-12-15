@@ -12,7 +12,7 @@
 #include "../../../userspace/irq.h"
 #include "../../../userspace/object.h"
 #include "../../../userspace/stdlib.h"
-#include "../../sys.h"
+#include "../../../userspace/sys.h"
 #include <string.h>
 #if (SYS_INFO)
 #include "../../../userspace/stdio.h"

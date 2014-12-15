@@ -11,7 +11,7 @@
         STM32 BitBang module. Set of helpers to use GPIO as bitbang. Generally made for soft extmem manager for МЭЛТ display
 */
 
-#include "../../sys.h"
+#include "../../../userspace/sys.h"
 #include "../../../userspace/cc_macro.h"
 #include "stm32_config.h"
 #include "stm32_gpio.h"

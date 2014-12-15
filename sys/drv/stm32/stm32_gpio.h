@@ -8,7 +8,7 @@
 #define STM32_GPIO_H
 
 #include "stm32_core.h"
-#include "../../gpio.h"
+#include "../../../userspace/gpio.h"
 
 typedef enum {
     STM32_GPIO_ENABLE_PIN_SYSTEM = GPIO_HAL_MAX,

@@ -5,8 +5,8 @@
 */
 
 #include "stm32_usbl.h"
-#include "../../sys.h"
-#include "../../usb.h"
+#include "../../../userspace/sys.h"
+#include "../../../userspace/usb.h"
 #include "../../../userspace/direct.h"
 #include "../../../userspace/irq.h"
 #include "../../../userspace/block.h"
