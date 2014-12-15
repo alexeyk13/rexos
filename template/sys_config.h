@@ -34,8 +34,11 @@
 //USB test mode support. Not all hardware supported.
 #define USB_TEST_MODE                                       0
 
-//Sizeof USB device process. Remember, that process itself requires around 512 bytes
-#define USB_DEVICE_PROCESS_SIZE                             600
+//----------------------------- USB device--------------------------------------------
+#define USBD_PROCESS_SIZE                                   600
+#define USBD_BLOCK_SIZE                                     128
+
+
 #define USB_CDC_PROCESS_SIZE                                450
 
 #endif // SYS_CONFIG_H
