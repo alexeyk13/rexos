@@ -5,8 +5,8 @@
 */
 
 #include "usbd.h"
-#include "../sys.h"
-#include "../usb.h"
+#include "../../userspace/sys.h"
+#include "../../userspace/usb.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/block.h"
 #include "../../userspace/direct.h"
@@ -14,7 +14,10 @@
 #include "sys_config.h"
 #include <string.h>
 #include "../../userspace/array.h"
-#include "../file.h"
+#include "../../userspace/file.h"
+
+//TODO: remove me
+#include "cdc.h"
 
 #if (SYS_INFO)
 const char* const USBD_TEXT_STATES[] =              {"Default", "Addressed", "Configured"};
@@ -56,11 +59,12 @@ typedef struct {
     USB_SPEED speed;
     uint8_t ep0_size;
     uint8_t configuration, iface, iface_alt;
-    ARRAY* classes;
     //descriptors
     USB_DEVICE_DESCRIPTOR_TYPE *dev_descriptor_fs, *dev_descriptor_hs;
     ARRAY *conf_descriptors_fs, *conf_descriptors_hs;
     ARRAY *string_descriptors;
+    //TODO: refactor me
+    void* cdc_param;
 } USBD;
 
 void usbd();
@@ -90,6 +94,14 @@ static inline void usbd_open(USBD* usbd)
 
 static inline void usbd_close(USBD* usbd)
 {
+    if (usbd->state == USBD_STATE_CONFIGURED)
+    {
+        //TODO: refactor
+        //TODO: all interfaces
+        usbd_class_reset(usbd->cdc_param);
+        usbd->cdc_param = NULL;
+    }
+    if (usbd->ep0_size)
     {
         fclose(usbd->usb, HAL_HANDLE(HAL_USB, 0));
         fclose(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
@@ -97,10 +109,6 @@ static inline void usbd_close(USBD* usbd)
     }
 
     block_destroy(usbd->block);
-
-    while (usbd->classes->size)
-        array_remove(&usbd->classes, usbd->classes->size - 1);
-
     usbd->block = INVALID_HANDLE;
 }
 
@@ -299,21 +307,6 @@ void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned 
     }
 }
 
-void inform(USBD* usbd, unsigned int cmd, unsigned int param1, unsigned int param2)
-{
-    int i;
-    IPC ipc;
-    ipc.cmd = USBD_ALERT;
-    ipc.param1 = cmd;
-    ipc.param2 = param1;
-    ipc.param3 = param2;
-    for (i = 0; i < usbd->classes->size; ++i)
-    {
-        ipc.process = (HANDLE)usbd->classes->data[i];
-        ipc_post(&ipc);
-    }
-}
-
 static inline void usbd_set_feature(USBD* usbd, USBD_FEATURES feature, unsigned int param)
 {
     switch(feature)
@@ -352,7 +345,6 @@ static inline void usbd_clear_feature(USBD* usbd, USBD_FEATURES feature, unsigne
 
 static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
 {
-    usbd->state = USBD_STATE_DEFAULT;
     usbd->suspended = false;
 #if (USB_DEBUG_REQUESTS)
     printf("USB device reset\n\r");
@@ -369,7 +361,15 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
     fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, 0), USB_EP_CONTROL, (void*)size);
     fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), USB_EP_CONTROL, (void*)size);
 
-    inform(usbd, USBD_ALERT_RESET, 0, 0);
+    if (usbd->state == USBD_STATE_CONFIGURED)
+    {
+        usbd->state = USBD_STATE_DEFAULT;
+        //TODO: refactor
+        usbd_class_reset(usbd->cdc_param);
+        usbd->cdc_param = NULL;
+        //TODO: inform vendor
+        //TODO: inform handlers
+    }
 }
 
 static inline void usbd_suspend(USBD* usbd)
@@ -387,7 +387,12 @@ static inline void usbd_suspend(USBD* usbd)
         }
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
         if (usbd->state == USBD_STATE_CONFIGURED)
-            inform(usbd, USBD_ALERT_SUSPEND, 0, 0);
+        {
+            //TODO: refactor
+            usbd_class_suspend(usbd->cdc_param);
+            //TODO: inform vendor
+            //TODO: inform handlers
+        }
     }
 }
 
@@ -401,7 +406,12 @@ static inline void usbd_wakeup(USBD* usbd)
 #endif
 
         if (usbd->state == USBD_STATE_CONFIGURED)
-            inform(usbd, USBD_ALERT_WAKEUP, 0, 0);
+        {
+            //TODO: refactor
+            usbd_class_resume(usbd->cdc_param);
+            //TODO: inform vendor
+            //TODO: inform handlers
+        }
     }
 }
 
@@ -502,8 +512,6 @@ static inline int usbd_device_set_feature(USBD* usbd)
     default:
         break;
     }
-    if (res >= 0)
-        inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, usbd->setup.wIndex >> 16);
     return res;
 }
 #endif //USB_TEST_MODE
@@ -523,8 +531,6 @@ static inline int usbd_device_clear_feature(USBD* usbd)
     default:
         break;
     }
-    if (res >= 0)
-        inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, 0);
     return res;
 }
 
@@ -627,7 +633,11 @@ static inline int usbd_set_configuration(USBD* usbd)
 
         usbd->state = USBD_STATE_ADDRESSED;
 
-        inform(usbd, USBD_ALERT_RESET, 0, 0);
+        //TODO: refactor
+        usbd_class_reset(usbd->cdc_param);
+        usbd->cdc_param = NULL;
+        //TODO: inform vendor
+        //TODO: inform handlers
     }
     else if (usbd->state == USBD_STATE_ADDRESSED && usbd->setup.wValue)
     {
@@ -636,7 +646,11 @@ static inline int usbd_set_configuration(USBD* usbd)
         usbd->iface_alt = 0;
         usbd->state = USBD_STATE_CONFIGURED;
 
-        inform(usbd, USBD_ALERT_CONFIGURATION_SET, usbd->configuration, 0);
+        //TODO: find configuration
+        //TODO: refactor
+        usbd->cdc_param = usbd_class_configured((USB_CONFIGURATION_DESCRIPTOR_TYPE*)usbd->conf_descriptors_fs->data[0]);
+        //TODO: inform vendor
+        //TODO: inform handlers
     }
     return 0;
 }
@@ -690,7 +704,6 @@ static inline int usbd_set_interface(USBD* usbd)
 #endif
     usbd->iface = usbd->setup.wIndex;
     usbd->iface_alt = usbd->setup.wValue;
-    inform(usbd, USBD_ALERT_INTERFACE_SET, usbd->iface, usbd->iface_alt);
     return 0;
 }
 
@@ -747,8 +760,6 @@ static inline int usbd_endpoint_set_feature(USBD* usbd)
     default:
         break;
     }
-    if (res >= 0)
-        inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, usbd->setup.wIndex & 0xffff);
     return res;
 }
 
@@ -767,8 +778,6 @@ static inline int usbd_endpoint_clear_feature(USBD* usbd)
     default:
         break;
     }
-    if (res >= 0)
-        inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, usbd->setup.wIndex & 0xffff);
     return res;
 }
 
@@ -792,9 +801,7 @@ static inline int usbd_endpoint_request(USBD* usbd)
 
 void usbd_setup_process(USBD* usbd)
 {
-    int i;
     int res = -1;
-    IPC ipc, ipcIn;
     switch (usbd->setup.bmRequestType & BM_REQUEST_TYPE)
     {
     case BM_REQUEST_TYPE_STANDART:
@@ -812,19 +819,15 @@ void usbd_setup_process(USBD* usbd)
         }
         break;
     case BM_REQUEST_TYPE_CLASS:
-    case BM_REQUEST_TYPE_VENDOR:
-        ipc.cmd = USB_SETUP;
-        ipc.param1 = ((uint32_t*)(&usbd->setup))[0];
-        ipc.param2 = ((uint32_t*)(&usbd->setup))[1];
-        ipc.param3 = usbd->block;
-        for (i = 0; i < usbd->classes->size; ++i)
+        if ((usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT) == BM_REQUEST_RECIPIENT_INTERFACE)
         {
-            ipc.process = (HANDLE)(usbd->classes->data[i]);
-            block_send_ipc(usbd->block, ipc.process, &ipc);
-            ipc_read_ms(&ipcIn, 0, ipc.process);
-            if ((res = ipcIn.param1) >= 0)
-                break;
+            //TODO: refactor
+            //TOOD: find interface
+            res = usbd_class_setup(usbd->cdc_param, &usbd->setup, usbd->block);
         }
+        break;
+    case BM_REQUEST_TYPE_VENDOR:
+        //TODO:
         break;
     }
 
@@ -967,20 +970,10 @@ void usbd_read_complete(USBD* usbd)
     }
 }
 
-void usbd_class_read_complete(USBD* usbd, int num, HANDLE block, unsigned int size)
+void usbd_class_read_complete(USBD* usbd, IPC* ipc)
 {
     //TODO: temporaily solution for future refactoring
-    IPC ipc;
-    ipc.cmd = IPC_READ_COMPLETE;
-    ipc.param1 = HAL_HANDLE(HAL_USB, num);
-    ipc.param2 = block;
-    ipc.param3 = size;
-
-    ipc.process = (HANDLE)usbd->classes->data[0];
-    if (block != INVALID_HANDLE)
-        block_send_ipc(block, ipc.process, &ipc);
-    else
-        ipc_post(&ipc);
+    usbd_class_request(usbd->cdc_param, ipc);
 }
 
 void usbd_write_complete(USBD* usbd)
@@ -1008,20 +1001,10 @@ void usbd_write_complete(USBD* usbd)
     }
 }
 
-void usbd_class_write_complete(USBD* usbd, int num, HANDLE block, unsigned int size)
+void usbd_class_write_complete(USBD* usbd, IPC* ipc)
 {
     //TODO: temporaily solution for future refactoring
-    IPC ipc;
-    ipc.cmd = IPC_WRITE_COMPLETE;
-    ipc.param1 = HAL_HANDLE(HAL_USB, num);
-    ipc.param2 = block;
-    ipc.param3 = size;
-
-    ipc.process = (HANDLE)usbd->classes->data[0];
-    if (block != INVALID_HANDLE)
-        block_send_ipc(block, ipc.process, &ipc);
-    else
-        ipc_post(&ipc);
+    usbd_class_request(usbd->cdc_param, ipc);
 }
 
 
@@ -1059,10 +1042,12 @@ void usbd()
     usbd.configuration = 0;
     usbd.dev_descriptor_fs = usbd.dev_descriptor_hs = NULL;
 
-    array_create(&usbd.classes, 1);
     array_create(&usbd.conf_descriptors_fs, 1);
     array_create(&usbd.conf_descriptors_hs, 1);
     array_create(&usbd.string_descriptors, 1);
+
+    //TODO:
+    usbd.cdc_param = NULL;
 
     object_set_self(SYS_OBJ_USBD);
     for (;;)
@@ -1089,14 +1074,6 @@ void usbd()
             usbd_close(&usbd);
             ipc_post_or_error(&ipc);
             break;
-        case USBD_REGISTER_CLASS:
-            usbd_register_object(&usbd.classes, (HANDLE)ipc.process);
-            ipc_post_or_error(&ipc);
-            break;
-        case USBD_UNREGISTER_CLASS:
-            usbd_unregister_object(&usbd.classes, (HANDLE)ipc.process);
-            ipc_post_or_error(&ipc);
-            break;
         case USBD_REGISTER_DESCRIPTOR:
             usbd_register_descriptor(&usbd, ipc.param1, ipc.param2, ipc.process);
             ipc_post_or_error(&ipc);
@@ -1119,16 +1096,15 @@ void usbd()
             break;
         case IPC_READ_COMPLETE:
             if (USB_EP_NUM(HAL_ITEM(ipc.param1)))
-                usbd_class_read_complete(&usbd, USB_EP_NUM(HAL_ITEM(ipc.param1)), (HANDLE)ipc.param2, ipc.param3);
+                usbd_class_read_complete(&usbd, &ipc);
             else
                 usbd_read_complete(&usbd);
             break;
         case IPC_WRITE_COMPLETE:
             if (USB_EP_NUM(HAL_ITEM(ipc.param1)))
-                usbd_class_write_complete(&usbd, USB_EP_NUM(HAL_ITEM(ipc.param1)), (HANDLE)ipc.param2, ipc.param3);
+                usbd_class_write_complete(&usbd, &ipc);
             else
                 usbd_write_complete(&usbd);
-            break;
             break;
         case USB_SETUP:
             ((uint32_t*)(&usbd.setup))[0] = ipc.param1;

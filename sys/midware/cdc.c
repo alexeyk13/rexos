@@ -5,13 +5,14 @@
 */
 
 #include "cdc.h"
-#include "../sys.h"
-#include "../file.h"
 #include "usbd.h"
+#include "../../userspace/sys.h"
+#include "../../userspace/file.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/block.h"
 #include "../../userspace/direct.h"
-#include "../uart.h"
+#include "../../userspace/uart.h"
+#include "../../userspace/stdlib.h"
 #include "sys_config.h"
 
 #define CDC_BLOCK_SIZE                                                          64
@@ -29,117 +30,15 @@ const char* const ON_OFF[] =                                                    
 
 
 typedef struct {
-    SETUP setup;
-    HANDLE usbd, usb;
+    HANDLE usb;
     HANDLE rx, tx, notify, rx_stream, tx_stream;
     HANDLE tx_stream_handle, rx_stream_handle;
     uint8_t data_ep, control_ep;
     uint16_t data_ep_size, control_ep_size, rx_free, tx_size;
-    uint8_t DTR, RTS, tx_idle;
-    uint8_t suspended, configured;
+    uint8_t DTR, RTS, tx_idle, control_iface, data_iface;
+    uint8_t suspended;
     BAUD baud;
 } CDC;
-
-void cdc();
-
-const REX __CDC = {
-    //name
-    "CDC USB class",
-    //size
-    USB_CDC_PROCESS_SIZE,
-    //priority - midware priority
-    150,
-    //flags
-    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
-    //ipc size
-    10,
-    //function
-    cdc
-};
-
-static inline void cdc_open(CDC* cdc, HANDLE usbd, CDC_OPEN_STRUCT* cos)
-{
-    if (cdc->usbd != INVALID_HANDLE)
-    {
-        error(ERROR_ALREADY_CONFIGURED);
-        return;
-    }
-    cdc->tx = block_create(cos->data_ep_size);
-    cdc->rx = block_create(cos->data_ep_size);
-    cdc->notify = block_create(cos->control_ep_size);
-    cdc->rx_stream = stream_create(cos->rx_stream_size);
-    if (cdc->rx_stream != INVALID_HANDLE)
-        cdc->rx_stream_handle = stream_open(cdc->rx_stream);
-    cdc->tx_stream = stream_create(cos->tx_stream_size);
-    if (cdc->tx_stream != INVALID_HANDLE)
-        cdc->tx_stream_handle = stream_open(cdc->tx_stream);
-    if (cdc->tx == INVALID_HANDLE || cdc->rx == INVALID_HANDLE || cdc->notify == INVALID_HANDLE ||
-        cdc->rx_stream == INVALID_HANDLE || cdc->tx_stream == INVALID_HANDLE ||
-        cdc->rx_stream_handle == INVALID_HANDLE || cdc->tx_stream_handle == INVALID_HANDLE)
-    {
-        block_destroy(cdc->tx);
-        cdc->tx = INVALID_HANDLE;
-        block_destroy(cdc->rx);
-        cdc->rx = INVALID_HANDLE;
-        block_destroy(cdc->notify);
-        cdc->notify = INVALID_HANDLE;
-        stream_close(cdc->rx_stream_handle);
-        cdc->rx_stream_handle = INVALID_HANDLE;
-        stream_destroy(cdc->rx_stream);
-        cdc->rx_stream = INVALID_HANDLE;
-        stream_close(cdc->tx_stream_handle);
-        cdc->tx_stream_handle = INVALID_HANDLE;
-        stream_destroy(cdc->tx_stream);
-        cdc->tx_stream = INVALID_HANDLE;
-        error(ERROR_OUT_OF_PAGED_MEMORY);
-        return;
-    }
-    cdc->usbd = usbd;
-    ack(cdc->usbd, USBD_REGISTER_CLASS, 0, 0, 0);
-    cdc->usb = object_get(SYS_OBJ_USB);
-    cdc->data_ep = cos->data_ep;
-    cdc->control_ep = cos->control_ep;
-    cdc->data_ep_size = cos->data_ep_size;
-    cdc->control_ep_size = cos->control_ep_size;
-
-}
-
-static inline void cdc_close(CDC* cdc)
-{
-    if (cdc->usbd == INVALID_HANDLE)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
-
-    if (cdc->configured)
-    {
-        fclose(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep));
-        fclose(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep));
-        fclose(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep));
-        cdc->configured = false;
-    }
-
-    block_destroy(cdc->tx);
-    cdc->tx = INVALID_HANDLE;
-    block_destroy(cdc->rx);
-    cdc->rx = INVALID_HANDLE;
-    block_destroy(cdc->notify);
-    cdc->notify = INVALID_HANDLE;
-
-    stream_close(cdc->rx_stream_handle);
-    cdc->rx_stream_handle = INVALID_HANDLE;
-    stream_destroy(cdc->rx_stream);
-    cdc->rx_stream = INVALID_HANDLE;
-    stream_close(cdc->tx_stream_handle);
-    cdc->tx_stream_handle = INVALID_HANDLE;
-    stream_destroy(cdc->tx_stream);
-    cdc->tx_stream = INVALID_HANDLE;
-
-    ack(cdc->usbd, USBD_UNREGISTER_CLASS, 0, 0, 0);
-    cdc->usbd = INVALID_HANDLE;
-    cdc->usb = INVALID_HANDLE;
-}
 
 static inline void* cdc_notify_open(CDC* cdc)
 {
@@ -170,6 +69,181 @@ void cdc_notify_serial_state(CDC* cdc, unsigned int state)
     }
 }
 
+void cdc_destroy(CDC* cdc)
+{
+    block_destroy(cdc->tx);
+    stream_close(cdc->tx_stream_handle);
+    stream_destroy(cdc->tx_stream);
+
+    block_destroy(cdc->rx);
+    stream_close(cdc->rx_stream_handle);
+    stream_destroy(cdc->rx_stream);
+
+    block_destroy(cdc->notify);
+
+    free(cdc);
+}
+
+//TODO: pass interfaces here
+void* usbd_class_configured(USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
+{
+    USB_INTERFACE_DESCRIPTOR_TYPE* iface;
+    USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
+    uint8_t data_ep, control_ep, data_ep_size, control_ep_size, control_iface, data_iface;
+    unsigned int size;
+    data_ep = control_ep = data_ep_size = control_ep_size = data_iface = control_iface = 0;
+
+    //check control/data ep here
+    for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
+    {
+        ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
+        if (ep != NULL)
+        {
+            switch (iface->bInterfaceClass)
+            {
+            case CDC_DATA_INTERFACE_CLASS:
+                data_ep = USB_EP_NUM(ep->bEndpointAddress);
+                data_ep_size = ep->wMaxPacketSize;
+                data_iface = iface->bInterfaceNumber;
+                break;
+            case CDC_COMM_INTERFACE_CLASS:
+                control_ep = USB_EP_NUM(ep->bEndpointAddress);
+                control_ep_size = ep->wMaxPacketSize;
+                control_iface = iface->bInterfaceNumber;
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    //No CDC descriptors in interface
+    if (control_ep == 0)
+        return NULL;
+    CDC* cdc = (CDC*)malloc(sizeof(CDC));
+    if (cdc == NULL)
+        return NULL;
+    cdc->usb = object_get(SYS_OBJ_USB);
+    cdc->control_iface = control_iface;
+    cdc->control_ep = control_ep;
+    cdc->control_ep_size = control_ep_size;
+    cdc->data_iface = data_iface;
+    cdc->data_ep = data_ep;
+    cdc->data_ep_size = data_ep_size;
+    cdc->tx = cdc->rx = cdc->notify = cdc->tx_stream = cdc->rx_stream = cdc->tx_stream_handle = cdc->rx_stream_handle = INVALID_HANDLE;
+    cdc->suspended = false;
+
+#if (USB_DEBUG_CLASS_REQUESTS)
+    printf("Found USB CDC ACM class, EP%d, size: %d, iface: %d\n\r", cdc->data_ep, cdc->data_ep_size, cdc->data_iface);
+    if (cdc->control_ep)
+        printf("Has control EP%d, size: %d, iface: %d\n\r", cdc->control_ep, cdc->control_ep_size, cdc->control_iface);
+#endif //USB_DEBUG_CLASS_REQUESTS
+
+#if (USB_CDC_TX_STREAM_SIZE)
+    cdc->tx = block_create(cdc->data_ep_size);
+    cdc->tx_stream = stream_create(USB_CDC_RX_STREAM_SIZE);
+    cdc->tx_stream_handle = stream_open(cdc->tx_stream);
+    if (cdc->tx == INVALID_HANDLE || cdc->tx_stream_handle == INVALID_HANDLE)
+    {
+        cdc_destroy(cdc);
+        return NULL;
+    }
+    cdc->tx_size = 0;
+    cdc->tx_idle = true;
+    size = cdc->data_ep_size;
+    fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep), USB_EP_BULK, (void*)size);
+#endif
+
+#if (USB_CDC_RX_STREAM_SIZE)
+    cdc->rx = block_create(cdc->data_ep_size);
+    cdc->rx_stream = stream_create(USB_CDC_RX_STREAM_SIZE);
+    cdc->rx_stream_handle = stream_open(cdc->rx_stream);
+    if (cdc->rx == INVALID_HANDLE || cdc->rx_stream_handle == INVALID_HANDLE)
+    {
+        cdc_destroy(cdc);
+        return NULL;
+    }
+    cdc->rx_free = 0;
+    size = cdc->data_ep_size;
+    fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), USB_EP_BULK, (void*)size);
+    fread_async(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), cdc->rx, 1);
+    stream_listen(cdc->rx_stream, (void*)(HAL_HANDLE(HAL_USB, USB_HANDLE_INTERFACE + cdc->data_iface)));
+#endif
+
+    if (control_ep)
+    {
+        cdc->notify = block_create(cdc->control_ep_size);
+        if (cdc->notify == INVALID_HANDLE)
+        {
+            cdc_destroy(cdc);
+            return NULL;
+        }
+        size = cdc->control_ep_size;
+        fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep), USB_EP_INTERRUPT, (void*)size);
+        cdc_notify_serial_state(cdc, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
+    }
+
+    cdc->DTR = cdc->RTS = false;
+    cdc->baud.baud = 115200;
+    cdc->baud.data_bits = 8;
+    cdc->baud.parity = 'N';
+    cdc->baud.stop_bits = 1;
+    return cdc;
+}
+
+void usbd_class_reset(void* param)
+{
+    CDC* cdc = (CDC*)param;
+
+#if (USB_CDC_TX_STREAM_SIZE)
+    stream_flush(cdc->tx_stream);
+    fflush(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep));
+    fclose(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep));
+#endif
+#if (USB_CDC_RX_STREAM_SIZE)
+    stream_stop_listen(cdc->rx_stream);
+    stream_flush(cdc->rx_stream);
+    fflush(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep));
+    fclose(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep));
+#endif
+
+    if (cdc->control_ep)
+    {
+        fflush(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep));
+        fclose(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep));
+    }
+    cdc_destroy(cdc);
+}
+
+void usbd_class_suspend(void* param)
+{
+    CDC* cdc = (CDC*)param;
+#if (USB_CDC_TX_STREAM_SIZE)
+    stream_flush(cdc->tx_stream);
+    fflush(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep));
+    cdc->tx_idle = true;
+    cdc->tx_size = 0;
+#endif
+#if (USB_CDC_RX_STREAM_SIZE)
+    stream_stop_listen(cdc->rx_stream);
+    stream_flush(cdc->rx_stream);
+    fflush(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep));
+    cdc->rx_free = 0;
+#endif
+
+    if (cdc->control_ep)
+        fflush(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep));
+    cdc->suspended = true;
+}
+
+void usbd_class_resume(void* param)
+{
+    CDC* cdc = (CDC*)param;
+    cdc->suspended = false;
+#if (USB_CDC_RX_STREAM_SIZE)
+    stream_listen(cdc->rx_stream, (void*)(HAL_HANDLE(HAL_USB, USB_HANDLE_INTERFACE + cdc->data_iface)));
+#endif
+}
+
 static inline void cdc_read_complete(CDC* cdc, unsigned int size)
 {
     if (cdc->suspended)
@@ -183,6 +257,17 @@ static inline void cdc_read_complete(CDC* cdc, unsigned int size)
     if (to_read > cdc->rx_free)
         to_read = cdc->rx_free;
     ptr = block_open(cdc->rx);
+#if (USB_DEBUG_CLASS_REQUESTS)
+    int i;
+    printf("CDC rx: ");
+    for (i = 0; i < size; ++i)
+        if (((uint8_t*)ptr)[i] >= ' ' && ((uint8_t*)ptr)[i] <= '~')
+            printf("%c", ((char*)ptr)[i]);
+        else
+            printf("\\x%d", ((uint8_t*)ptr)[i]);
+    printf("\n\r");
+#endif //USB_DEBUG_CLASS_REQUESTS
+
     if (ptr && to_read && stream_write(cdc->rx_stream_handle, ptr, to_read))
         cdc->rx_free -= to_read;
     fread_async(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), cdc->rx, 1);
@@ -219,64 +304,6 @@ void cdc_write(CDC* cdc)
     }
     else
         stream_listen(cdc->tx_stream, (void*)0);
-}
-
-static inline void cdc_reset(CDC* cdc)
-{
-    cdc->suspended = false;
-    if (cdc->configured)
-    {
-        fclose(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep));
-        fclose(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep));
-        fclose(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep));
-        cdc->configured = false;
-    }
-    cdc->DTR = cdc->RTS = false;
-    cdc->baud.baud = 115200;
-    cdc->baud.data_bits = 8;
-    cdc->baud.parity = 'N';
-    cdc->baud.stop_bits = 1;
-
-    stream_flush(cdc->rx_stream);
-    stream_flush(cdc->tx_stream);
-    cdc->rx_free = stream_get_free(cdc->rx_stream);
-    cdc->tx_size = 0;
-}
-
-static inline void cdc_configured(CDC* cdc)
-{
-    //data
-    unsigned int size = cdc->data_ep_size;
-    fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), USB_EP_BULK, (void*)size);
-    fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep), USB_EP_BULK, (void*)size);
-
-    //control
-    size = cdc->control_ep_size;
-    fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep), USB_EP_INTERRUPT, (void*)size);
-
-    fread_async(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), cdc->rx, 1);
-    cdc_notify_serial_state(cdc, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
-    cdc->configured = true;
-}
-
-static inline void cdc_suspend(CDC* cdc)
-{
-    cdc->suspended = true;
-    stream_stop_listen(cdc->rx_stream);
-    if (cdc->configured)
-    {
-        fflush(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep));
-        fflush(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep));
-        fflush(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep));
-    }
-    cdc->tx_idle = true;
-    cdc->rx_free = cdc->tx_size = 0;
-}
-
-static inline void cdc_resume(CDC* cdc)
-{
-    cdc->suspended = false;
-    stream_listen(cdc->rx_stream, (void*)0);
 }
 
 static inline int set_line_coding(CDC* cdc, HANDLE block)
@@ -343,10 +370,10 @@ static inline int get_line_coding(CDC* cdc, HANDLE block)
     return sizeof(LINE_CODING_STRUCT);
 }
 
-static inline int set_control_line_state(CDC* cdc)
+static inline int set_control_line_state(CDC* cdc, SETUP* setup)
 {
-    cdc->DTR = (cdc->setup.wValue >> 0) & 1;
-    cdc->RTS = (cdc->setup.wValue >> 0) & 1;
+    cdc->DTR = (setup->wValue >> 0) & 1;
+    cdc->RTS = (setup->wValue >> 0) & 1;
 #if (USB_DEBUG_CLASS_REQUESTS)
     printf("CDC set control line state: DTR %s, RTS %s\n\r", ON_OFF[1 * cdc->DTR], ON_OFF[1 * cdc->RTS]);
 #endif
@@ -363,10 +390,11 @@ static inline int set_control_line_state(CDC* cdc)
     return 0;
 }
 
-static inline void cdc_setup(CDC* cdc, HANDLE block)
+int usbd_class_setup(void* param, SETUP* setup, HANDLE block)
 {
+    CDC* cdc = (CDC*)param;
     int res = -1;
-    switch (cdc->setup.bRequest)
+    switch (setup->bRequest)
     {
     case SET_LINE_CODING:
         res = set_line_coding(cdc, block);
@@ -375,40 +403,16 @@ static inline void cdc_setup(CDC* cdc, HANDLE block)
         res = get_line_coding(cdc, block);
         break;
     case SET_CONTROL_LINE_STATE:
-        res = set_control_line_state(cdc);
+        res = set_control_line_state(cdc, setup);
         break;
     }
-#if (USB_DEBUG_ERRORS)
-    if (res < 0)
-        printf("Unhandled CDC request: %#X\n\r", cdc->setup.bRequest);
-#endif
-    block_send_ipc_inline(block, cdc->usbd, USB_SETUP, (unsigned int)res, 0, 0);
+    return res;
 }
 
-static inline void usbd_alert(CDC* cdc, unsigned int cmd, unsigned int param1, unsigned int param2)
-{
-    switch (cmd)
-    {
-    case USBD_ALERT_RESET:
-        cdc_reset(cdc);
-        break;
-    case USBD_ALERT_SUSPEND:
-        cdc_suspend(cdc);
-        break;
-    case USBD_ALERT_WAKEUP:
-        cdc_resume(cdc);
-        break;
-    case USBD_ALERT_CONFIGURATION_SET:
-        cdc_configured(cdc);
-        break;
-#if (USB_DEBUG_ERRORS)
-    default:
-        printf("Unknown USB device alert: %d\n\r", cmd);
-#endif
-    }
-}
 
-#if (SYS_INFO)
+//TODO:
+/*
+ * #if (SYS_INFO)
 static inline void cdc_info(CDC* cdc)
 {
     printf("USB CDC info\n\r\n\r");
@@ -416,88 +420,49 @@ static inline void cdc_info(CDC* cdc)
     printf("line coding: %d %d%c%d\n\r", cdc->baud.baud, cdc->baud.data_bits, cdc->baud.parity, cdc->baud.stop_bits);
 }
 #endif
+*/
 
-void cdc()
+//TODO: pass interfaces here
+bool usbd_class_request(void* param, IPC* ipc)
 {
-    IPC ipc;
-    CDC cdc;
-    open_stdout();
-    CDC_OPEN_STRUCT cdc_open_struct;
-
-    cdc.usbd = cdc.usb = cdc.rx = cdc.tx = cdc.notify = INVALID_HANDLE;
-    cdc.rx_stream = cdc.tx_stream = INVALID_HANDLE;
-    cdc.rx_stream_handle = cdc.tx_stream_handle = INVALID_HANDLE;
-    cdc.data_ep = cdc.control_ep = 0;
-    cdc.data_ep_size = cdc.control_ep_size = 0;
-    cdc.rx_free = cdc.tx_size = 0;
-    cdc.tx_idle = true;
-    cdc.suspended = false;
-    cdc.configured = false;
-
-    for (;;)
+    CDC* cdc = (CDC*)param;
+    bool need_post = false;
+    switch (ipc->cmd)
     {
-        ipc_read_ms(&ipc, 0, 0);
-        error(ERROR_OK);
-        switch (ipc.cmd)
+    case IPC_READ_COMPLETE:
+        cdc_read_complete(cdc, ipc->param3);
+        break;
+    case IPC_WRITE_COMPLETE:
+        //ignore notify complete
+        if (ipc->param1 == HAL_HANDLE(HAL_USB, (cdc->data_ep | USB_EP_IN)))
         {
-        case IPC_PING:
-            ipc_post(&ipc);
-            break;
-#if (SYS_INFO)
-        case IPC_GET_INFO:
-            cdc_info(&cdc);
-            ipc_post(&ipc);
-            break;
-#endif
-        case IPC_OPEN:
-            if (direct_read(ipc.process, (void*)&cdc_open_struct, sizeof(CDC_OPEN_STRUCT)))
-                cdc_open(&cdc, (HANDLE)ipc.param1, &cdc_open_struct);
-            ipc_post_or_error(&ipc);
-            break;
-        case IPC_CLOSE:
-            cdc_close(&cdc);
-            ipc_post_or_error(&ipc);
-            break;
-        case USBD_ALERT:
-            usbd_alert(&cdc, ipc.param1, ipc.param2, ipc.param3);
-            //no response required
-            break;
-        case USB_SETUP:
-            ((uint32_t*)(&cdc.setup))[0] = ipc.param1;
-            ((uint32_t*)(&cdc.setup))[1] = ipc.param2;
-            cdc_setup(&cdc, ipc.param3);
-            break;
-        case IPC_READ_COMPLETE:
-            cdc_read_complete(&cdc, ipc.param3);
-            break;
-        case IPC_STREAM_WRITE:
-            cdc.tx_size = ipc.param2;
-            cdc_write(&cdc);
-            break;
-        case IPC_WRITE_COMPLETE:
-            //ignore notify complete
-            if (ipc.param1 == HAL_HANDLE(HAL_USB, (cdc.data_ep | USB_EP_IN)))
-            {
-                cdc.tx_idle = true;
-                cdc_write(&cdc);
-            }
-            break;
-        case IPC_GET_TX_STREAM:
-            ipc.param1 = cdc.tx_stream;
-            ipc_post(&ipc);
-            break;
-        case IPC_GET_RX_STREAM:
-            ipc.param1 = cdc.rx_stream;
-            ipc_post(&ipc);
-            break;
-        case CDC_SEND_BREAK:
-            cdc_notify_serial_state(&cdc, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_BREAK);
-            ipc_post_or_error(&ipc);
-            break;
-        default:
-            ipc_post_error(ipc.process, ERROR_NOT_SUPPORTED);
+            cdc->tx_idle = true;
+            cdc_write(cdc);
+        }
+        break;
+    case IPC_STREAM_WRITE:
+        cdc->tx_size = ipc->param2;
+        cdc_write(cdc);
+        break;
+    case IPC_GET_TX_STREAM:
+        ipc->param1 = cdc->tx_stream;
+        need_post = true;
+        break;
+    case IPC_GET_RX_STREAM:
+        ipc->param1 = cdc->rx_stream;
+        need_post = true;
+        break;
+    case USBD_INTERFACE_REQUEST:
+        if (ipc->param2 == USB_CDC_SEND_BREAK)
+        {
+            cdc_notify_serial_state(cdc, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_BREAK);
+            need_post = true;
             break;
         }
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
+        break;
     }
+    return need_post;
 }
-
