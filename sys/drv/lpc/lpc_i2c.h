@@ -8,7 +8,7 @@
 #define LPC_I2C_H
 
 #include "lpc_config.h"
-#include "../../sys.h"
+#include "../../../userspace/sys.h"
 #if (MONOLITH_I2C)
 #include "lpc_core.h"
 #endif

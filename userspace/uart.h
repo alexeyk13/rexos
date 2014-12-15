@@ -7,7 +7,7 @@
 #ifndef UART_H
 #define UART_H
 
-#include "../userspace/types.h"
+#include <stdint.h>
 
 typedef struct {
     //baudrate

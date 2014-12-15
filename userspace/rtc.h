@@ -9,9 +9,9 @@
 
 #include "sys.h"
 #include "sys_config.h"
-#include "../userspace/cc_macro.h"
-#include "../userspace/ipc.h"
-#include "../userspace/time.h"
+#include "cc_macro.h"
+#include "ipc.h"
+#include "time.h"
 
 typedef enum {
     RTC_GET = HAL_IPC(HAL_RTC),                             //!< Get RTC value

@@ -9,6 +9,8 @@
 
 #include "sys.h"
 
+//--------------------------------------------------- USB general --------------------------------------------------------------
+
 typedef enum {
     USB_SET_ADDRESS = HAL_IPC(HAL_USB),
     USB_GET_SPEED,
@@ -23,18 +25,6 @@ typedef enum {
 
     USB_HAL_MAX
 }USB_IPCS;
-
-typedef enum {
-    USBD_ALERT = IPC_USER,
-    USBD_REGISTER_CLASS,
-    USBD_UNREGISTER_CLASS,
-    USBD_REGISTER_DESCRIPTOR,
-    USBD_UNREGISTER_DESCRIPTOR,
-    USBD_SET_FEATURE,
-    USBD_CLEAR_FEATURE,
-
-    USBD_MAX
-}USBD_IPCS;
 
 typedef enum {
     USB_EP_CONTROL = 0,
@@ -101,6 +91,9 @@ typedef enum {
 #define USB_DEVICE_REMOTE_WAKEUP_FEATURE_INDEX                  1
 #define USB_ENDPOINT_HALT_FEATURE_INDEX                         0
 #define USB_TEST_MODE_FEATURE                                   2
+
+#define USB_EP_IN                                               0x80
+#define USB_EP_NUM(ep)                                          ((ep) & 0x7f)
 
 #pragma pack(push, 1)
 
@@ -191,10 +184,55 @@ typedef struct {
     uint16_t data[126];
 } USB_STRING_DESCRIPTOR_TYPE, *P_USB_STRING_DESCRIPTOR_TYPE, **PP_USB_STRING_DESCRIPTOR_TYPE, ***PPP_USB_STRING_DESCRIPTOR_TYPE;
 
+//--------------------------------------------------- USB device ---------------------------------------------------------------
+
+typedef enum {
+    USBD_ALERT = IPC_USER,
+    USBD_REGISTER_CLASS,
+    USBD_UNREGISTER_CLASS,
+    USBD_REGISTER_DESCRIPTOR,
+    USBD_UNREGISTER_DESCRIPTOR,
+    USBD_SET_FEATURE,
+    USBD_CLEAR_FEATURE,
+
+    USBD_MAX
+}USBD_IPCS;
+
+typedef enum {
+    USBD_ALERT_RESET,
+    USBD_ALERT_SUSPEND,
+    USBD_ALERT_WAKEUP,
+    USBD_ALERT_CONFIGURATION_SET,
+    USBD_ALERT_FEATURE_SET,
+    USBD_ALERT_FEATURE_CLEARED,
+    USBD_ALERT_INTERFACE_SET
+} USBD_ALERTS;
+
+typedef enum {
+    USBD_FEATURE_ENDPOINT_HALT = 0,
+    USBD_FEATURE_DEVICE_REMOTE_WAKEUP,
+    USBD_FEATURE_TEST_MODE,
+    USBD_FEATURE_SELF_POWERED
+} USBD_FEATURES;
+
+typedef enum {
+    USB_DESCRIPTOR_DEVICE_FS = 0,
+    USB_DESCRIPTOR_DEVICE_HS,
+    USB_DESCRIPTOR_CONFIGURATION_FS,
+    USB_DESCRIPTOR_CONFIGURATION_HS,
+    USB_DESCRIPTOR_STRING
+} USBD_DESCRIPTOR_TYPE;
+
+#define USBD_FLAG_PERSISTENT_DESCRIPTOR                 (1 << 0)
+
+typedef struct {
+    uint8_t flags;
+    uint16_t lang, index;
+    //data or pointer is following
+} USBD_DESCRIPTOR_REGISTER_STRUCT;
+
+#define USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED    ((sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT) + 3) & ~3)
+
 #pragma pack(pop)
-
-
-#define USB_EP_IN                                               0x80
-#define USB_EP_NUM(ep)                                          ((ep) & 0x7f)
 
 #endif // USB_H

@@ -28,7 +28,7 @@
  */
 
 #include "types.h"
-#include "../cc_macro.h"
+#include "cc_macro.h"
 
 /*
     dual-linked list type

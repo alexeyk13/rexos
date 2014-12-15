@@ -8,7 +8,7 @@
 #define STDLIB_H
 
 #include "lib.h"
-#include "../svc.h"
+#include "svc.h"
 #include "heap.h"
 
 typedef struct {

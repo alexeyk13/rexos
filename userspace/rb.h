@@ -14,7 +14,7 @@
  */
 
 #include "types.h"
-#include "../cc_macro.h"
+#include "cc_macro.h"
 
 #define RB_ROUND(rb, pos)                                ((pos) >= ((rb)->size) ? 0 : (pos))
 #define RB_ROUND_BACK(rb, pos)                           ((pos) < 0 ? ((rb)->size) - 1 : (pos))

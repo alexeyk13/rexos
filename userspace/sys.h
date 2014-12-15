@@ -7,10 +7,10 @@
 #ifndef SYS_H
 #define SYS_H
 
-#include "../userspace/ipc.h"
-#include "../userspace/stream.h"
-#include "../userspace/object.h"
-#include "../userspace/types.h"
+#include "ipc.h"
+#include "stream.h"
+#include "object.h"
+#include "types.h"
 #include "sys_config.h"
 
 typedef enum {

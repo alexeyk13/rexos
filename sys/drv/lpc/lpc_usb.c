@@ -5,8 +5,8 @@
 */
 
 #include "lpc_usb.h"
-#include "../../sys.h"
-#include "../../usb.h"
+#include "../../../userspace/sys.h"
+#include "../../../userspace/usb.h"
 #include "../../../userspace/irq.h"
 #include "../../../userspace/block.h"
 #include "lpc_gpio.h"

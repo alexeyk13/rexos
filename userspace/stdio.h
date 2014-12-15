@@ -8,7 +8,7 @@
 #define STDIO_H
 
 #include "lib.h"
-#include "../svc.h"
+#include "svc.h"
 #include <stdarg.h>
 #include <stdbool.h>
 

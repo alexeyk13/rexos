@@ -12,7 +12,7 @@
  */
 
 #include "lib.h"
-#include "../svc.h"
+#include "svc.h"
 
 //In 2037, please change this to unsigned long long. In 32 bits mcu changing this can significally decrease perfomance
 /**

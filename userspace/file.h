@@ -8,8 +8,8 @@
 #define FILE_H
 
 #include "sys.h"
-#include "../userspace/direct.h"
-#include "../userspace/block.h"
+#include "direct.h"
+#include "block.h"
 
 /** \addtogroup file file
     \{

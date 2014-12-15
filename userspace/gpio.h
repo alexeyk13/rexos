@@ -9,8 +9,8 @@
 
 #include "sys.h"
 #include "sys_config.h"
-#include "../userspace/cc_macro.h"
-#include "../userspace/ipc.h"
+#include "cc_macro.h"
+#include "ipc.h"
 
 typedef enum {
     GPIO_ENABLE_PIN = HAL_IPC(HAL_GPIO),

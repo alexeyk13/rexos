@@ -9,8 +9,8 @@
 
 #include <stdbool.h>
 #include "../../../userspace/cc_macro.h"
-#include "../../sys.h"
-#include "../../gpio.h"
+#include "../../../userspace/sys.h"
+#include "../../../userspace/gpio.h"
 
 typedef enum {
     LPC_GPIO_ENABLE_PIN_SYSTEM = GPIO_HAL_MAX

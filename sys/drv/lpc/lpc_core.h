@@ -7,7 +7,7 @@
 #ifndef LPC_CORE_H
 #define LPC_CORE_H
 
-#include "../../sys.h"
+#include "../../../userspace/sys.h"
 #include "../../../userspace/process.h"
 #include "lpc_config.h"
 #include "sys_config.h"

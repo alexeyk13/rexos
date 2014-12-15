@@ -5,8 +5,8 @@
 */
 
 #include "libusb.h"
-#include "../direct.h"
-#include "../../sys/usb.h"
+#include "direct.h"
+#include "usb.h"
 
 bool libusb_register_persistent_descriptor(HANDLE usbd, USBD_DESCRIPTOR_TYPE type, unsigned int index, unsigned int lang, const void* descriptor)
 {
