@@ -5,10 +5,10 @@
 */
 
 #include "../../rexos/sys/sys.h"
-#include "../../rexos/sys/drv/stm32_core.h"
 #include "../../rexos/sys/gpio.h"
-#include "../../rexos/sys/drv/stm32_power.h"
-#include "../../rexos/userspace/lib/stdio.h"
+#include "../../rexos/sys/drv/stm32/stm32_gpio.h"
+#include "../../rexos/sys/drv/stm32/stm32_power.h"
+#include "../../rexos/userspace/stdio.h"
 #include "../../rexos/userspace/object.h"
 #include "sys_config.h"
 

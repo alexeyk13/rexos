@@ -17,19 +17,20 @@ TARGET_NAME                 = rad
 #----------------------------------------------------------
 BUILD_DIR                   = build
 OUTPUT_DIR                  = output
-REXOS                       = ../../rexos
+REXOS                       = ../../../rexos
 KERNEL                      = $(REXOS)/kernel
 USERSPACE                   = $(REXOS)/userspace
 LIB                         = $(REXOS)/lib
 SYS                         = $(REXOS)/sys
 LDS_SCRIPT                  = $(KERNEL)/arm.ld.S
 #----------------------------------------------------------
-LIBS_DIR                    = ../../3rdparty
+LIBS_DIR                    = ../../../3rdparty
 CMSIS_DIR                   = $(LIBS_DIR)/CMSIS
 CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32L0xx
 #CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32F10x
 #CMSIS_DEVICE_DIR           = $(CMSIS_DIR)/Device/ST/STM32F2xx
 #CMSIS_DEVICE_DIR           = $(CMSIS_DIR)/Device/ST/STM32F4xx
+#CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/NXP/LPC11Uxx
 #----------------------------------------------------------
 #not used in kernel
 INCLUDE_FOLDERS             = $(CMSIS_DIR)/Include $(CMSIS_DEVICE_DIR)/Include
@@ -38,9 +39,9 @@ INCLUDE_FOLDERS            += $(KERNEL) $(KERNEL)/core
 #lib
 INCLUDE_FOLDERS            += $(LIB)
 #userspace
-INCLUDE_FOLDERS            += $(USERSPACE) $(USERSPACE)/core $(USERSPACE)/lib
+INCLUDE_FOLDERS            += $(USERSPACE) $(USERSPACE)/core
 #sys
-INCLUDE_FOLDERS            += $(SYS) $(SYS)/drv $(SYS)/midware
+INCLUDE_FOLDERS            += $(SYS) $(SYS)/drv/stm32 $(SYS)/midware
 
 INCLUDES                    = $(INCLUDE_FOLDERS:%=-I%)
 VPATH                      += $(INCLUDE_FOLDERS)
