@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#include "../../rexos/sys/sys.h"
-#include "../../rexos/sys/gpio.h"
+#include "../../rexos/userspace/sys.h"
+#include "../../rexos/userspace/gpio.h"
 #include "../../rexos/sys/drv/stm32/stm32_gpio.h"
 #include "../../rexos/sys/drv/stm32/stm32_power.h"
 #include "../../rexos/userspace/stdio.h"

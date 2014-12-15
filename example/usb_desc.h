@@ -7,7 +7,7 @@
 #ifndef USB_DESC_H
 #define USB_DESC_H
 
-#include "../../rexos/sys/usb.h"
+#include "../../rexos/userspace/usb.h"
 
 #pragma pack(push, 1)
 
