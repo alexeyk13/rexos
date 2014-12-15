@@ -1,21 +1,22 @@
 #include "../../rexos/userspace/process.h"
-#include "../../rexos/userspace/lib/time.h"
-#include "../../rexos/userspace/lib/stdlib.h"
-#include "../../rexos/userspace/lib/stdio.h"
-#include "../../rexos/userspace/lib/heap.h"
+#include "../../rexos/userspace/time.h"
+#include "../../rexos/userspace/stdlib.h"
+#include "../../rexos/userspace/stdio.h"
+#include "../../rexos/userspace/heap.h"
 #include "../../rexos/userspace/timer.h"
 #include "../../rexos/userspace/ipc.h"
 #include "../../rexos/userspace/stream.h"
 #include "../../rexos/userspace/direct.h"
 #include "../../rexos/userspace/object.h"
+#include "../../rexos/userspace/libusb.h"
 #include "string.h"
 #include "../../rexos/sys/sys.h"
 #include "../../rexos/sys/gpio.h"
 #include "../../rexos/sys/rtc.h"
 #include "../../rexos/sys/wdt.h"
-#include "../../rexos/sys/drv/stm32_uart.h"
-#include "../../rexos/sys/drv/stm32_analog.h"
-#include "../../rexos/sys/drv/stm32_usb.h"
+#include "../../rexos/sys/drv/stm32/stm32_uart.h"
+#include "../../rexos/sys/drv/stm32/stm32_analog.h"
+#include "../../rexos/sys/drv/stm32/stm32_usb.h"
 #include "../../rexos/sys/midware/cdc.h"
 #include "../../rexos/sys/midware/usbd.h"
 #include "../../rexos/sys/usb.h"
@@ -89,14 +90,12 @@ void te_usb_disable_power()
 
 HANDLE usb_on(HANDLE core)
 {
-    HANDLE usb, usbd, cdc;
+    HANDLE usbd, cdc;
     CDC_OPEN_STRUCT cos;
     te_usb_disable_power();
 
-#if (MONOLITH_USB)
-    usb = core;
-#else
-    usb = process_create(&__STM32_USB);
+#if !(MONOLITH_USB)
+    process_create(&__STM32_USB);
 #endif
 
     //setup usbd
@@ -110,8 +109,6 @@ HANDLE usb_on(HANDLE core)
     libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 3, 0x0409, &__STRING_SERIAL);
     libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 4, 0x0409, &__STRING_DEFAULT);
     
-    fopen(usbd, usb, 0);
-
     //setup cdc
     cdc = process_create(&__CDC);
     cos.data_ep = 1;
@@ -122,10 +119,7 @@ HANDLE usb_on(HANDLE core)
     fopen_ex(cdc, usbd, 0, (void*)&cos, sizeof(CDC_OPEN_STRUCT));
 
     //turn USB on
-    USB_OPEN uo;
-    uo.device = usbd;
-
-    fopen_ex(usb, HAL_HANDLE(HAL_USB, USB_HANDLE_DEVICE), 0, &uo, sizeof(USB_OPEN));
+    fopen(usbd, 0, 0);
 
     HANDLE rx_stream = get(cdc, IPC_GET_RX_STREAM, 0, 0, 0);
     return stream_open(rx_stream);

@@ -18,18 +18,27 @@
 #define SYS_OBJ_STDOUT                                      0
 #define SYS_OBJ_STDIN                                       1
 #define SYS_OBJ_CORE                                        2
-#define SYS_OBJ_UART                                        3
+#define SYS_OBJ_USBD                                        3
 
-#define STDIO_STREAM_SIZE                                   64
+#define SYS_OBJ_I2C                                         SYS_OBJ_CORE
+#define SYS_OBJ_UART                                        SYS_OBJ_CORE
+#define SYS_OBJ_USB                                         SYS_OBJ_CORE
+//------------------------------ stdio -----------------------------------------------
+#define STDIO_STREAM_SIZE                                   32
 //-------------------------------- USB -----------------------------------------------
 #define USB_EP_COUNT_MAX                                    3
 //low-level USB debug. Turn on only in case of IO problems
 #define USB_DEBUG_REQUESTS                                  0
 #define USB_DEBUG_CLASS_REQUESTS                            0
-#define USB_DEBUG_ERRORS                                    0
+#define USB_DEBUG_ERRORS                                    1
+//USB test mode support. Not all hardware supported.
+#define USB_TEST_MODE                                       0
 
-//Sizeof USB device process. Remember, that process itself requires around 512 bytes
-#define USB_DEVICE_PROCESS_SIZE                             620
+//----------------------------- USB device--------------------------------------------
+#define USBD_PROCESS_SIZE                                   620
+#define USBD_BLOCK_SIZE                                     128
+
+
 #define USB_CDC_PROCESS_SIZE                                450
 
 #endif // SYS_CONFIG_H
