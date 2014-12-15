@@ -24,9 +24,9 @@
 
 #if (KERNEL_PROFILING)
 #if (KERNEL_PROCESS_STAT)
-const char *const STAT_LINE="--------------------------------------------------------------------------\n\r";
+const char *const STAT_LINE="-------------------------------------------------------------------------\n\r";
 #else
-const char *const STAT_LINE="----------------------------------------------------------------\n\r";
+const char *const STAT_LINE="---------------------------------------------------------------\n\r";
 #endif
 const char *const DAMAGED="     !!!DAMAGED!!!     ";
 #endif //(KERNEL_PROFILING)
@@ -548,14 +548,14 @@ void process_stat(PROCESS* process)
     ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_stat(&process->heap->pool, &stat, process->sp);
     LIB_EXIT;
 
-    printk("%-16.16s ", kprocess_name(process));
+    printk("%-20.20s ", kprocess_name(process));
 
 #if (KERNEL_MES)
     printk("%03d(%03d)", process->current_priority, process->base_priority);
 #else
     printk("%03d     ", process->base_priority);
 #endif
-    printk("     %4b   ", stack_used((unsigned int)pool_free_ptr(&process->heap->pool), (unsigned int)process->heap + process->size));
+    printk("%4b  ", stack_used((unsigned int)pool_free_ptr(&process->heap->pool), (unsigned int)process->heap + process->size));
     printk("%4b ", process->size);
 
     if (__KERNEL->error != ERROR_OK)
@@ -565,8 +565,8 @@ void process_stat(PROCESS* process)
     }
     else
     {
-        printk("%4b(%02d)  ", stat.used, stat.used_slots);
-        printk("%4b/%4b(%02d)", stat.free, stat.largest_free, stat.free_slots);
+        printk(" %3b(%02d)   ", stat.used, stat.used_slots);
+        printk("%3b/%3b(%02d) ", stat.free, stat.largest_free, stat.free_slots);
     }
 
 #if (KERNEL_PROCESS_STAT)
@@ -585,9 +585,9 @@ static inline void kernel_stat()
     ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_stat(&__KERNEL->paged, &stat, get_sp());
     LIB_EXIT;
 
-    printk("%-16.16s         ", __KERNEL_NAME);
+    printk("%-20.20s         ", __KERNEL_NAME);
 
-    printk("     %4b   ", stack_used(SRAM_BASE + SRAM_SIZE - KERNEL_STACK_MAX, SRAM_BASE + SRAM_SIZE));
+    printk("%4b  ", stack_used(SRAM_BASE + SRAM_SIZE - KERNEL_STACK_MAX, SRAM_BASE + SRAM_SIZE));
     printk("%4b ", SRAM_SIZE - KERNEL_GLOBAL_SIZE - sizeof(KERNEL));
 
     if (__KERNEL->error != ERROR_OK)
@@ -597,8 +597,8 @@ static inline void kernel_stat()
     }
     else
     {
-        printk("%4b(%02d)  ", stat.used, stat.used_slots);
-        printk("%4b/%4b(%02d)", stat.free, stat.largest_free, stat.free_slots);
+        printk("%3b(%02d)  ", stat.used, stat.used_slots);
+        printk("%3b/%3b(%02d)", stat.free, stat.largest_free, stat.free_slots);
     }
 
 #if (KERNEL_PROCESS_STAT)
@@ -614,9 +614,9 @@ void kprocess_info()
     DLIST_ENUM de;
     PROCESS* cur;
 #if (KERNEL_PROCESS_STAT)
-    printk("\n\r    name         priority  stack max size   used         free       uptime\n\r");
+    printk("\n\r    name           priority  stack  size   used       free        uptime\n\r");
 #else
-    printk("\n\r    name         priority  stack max size   used         free\n\r");
+    printk("\n\r    name           priority  stack  size   used       free\n\r");
 #endif
     printk(STAT_LINE);
     disable_interrupts();
