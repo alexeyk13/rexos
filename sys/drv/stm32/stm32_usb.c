@@ -15,10 +15,10 @@
 #include "../../../userspace/block.h"
 #include "../../../userspace/direct.h"
 #include "../../../userspace/object.h"
-#include "../../../userspace/lib/stdlib.h"
+#include "../../../userspace/stdlib.h"
 #include <string.h>
 #if (SYS_INFO)
-#include "../../../userspace/lib/stdio.h"
+#include "../../../userspace/stdio.h"
 #endif
 #if (MONOLITH_USB)
 #include "stm32_core_private.h"

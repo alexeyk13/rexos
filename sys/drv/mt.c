@@ -8,7 +8,7 @@
 #include "stm32/stm32_bitbang.h"
 #include "../gpio.h"
 #if (SYS_INFO)
-#include "../../userspace/lib/stdio.h"
+#include "../../userspace/stdio.h"
 #include "../../userspace/timer.h"
 #endif
 #if (MT_DRIVER)

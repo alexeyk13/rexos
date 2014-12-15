@@ -9,8 +9,8 @@
 #include "stm32_core_private.h"
 #include "sys_config.h"
 #include "../../sys.h"
-#include "../../../userspace/lib/stdio.h"
-#include "../../../userspace/lib/time.h"
+#include "../../../userspace/stdio.h"
+#include "../../../userspace/time.h"
 #include "../../../userspace/irq.h"
 #include "../../../userspace/timer.h"
 
