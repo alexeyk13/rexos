@@ -14,6 +14,9 @@
 #if (KERNEL_LIB_ARRAY)
 #include "../lib/lib_array.h"
 #endif //KERNEL_LIB_ARRAY
+#if (KERNEL_LIB_USB)
+#include "../lib/lib_usb.h"
+#endif //KERNEL_LIB_USB
 
 void lib_stub ()
 {
@@ -30,10 +33,15 @@ const void *const __LIB[] = {
     //lib_heap.h
     (const void *const )&__LIB_HEAP,
 #if (KERNEL_LIB_ARRAY)
-    (const void *const)&__LIB_ARRAY
+    (const void *const)&__LIB_ARRAY,
+#else
+    (const void *const)NULL,
+#endif //KERNEL_LIB_ARRAY
+#if (KERNEL_LIB_USB)
+    (const void *const)&__LIB_USB
 #else
     (const void *const)NULL
-#endif //KERNEL_LIB_ARRAY
+#endif //KERNEL_LIB_USB
 };
 
 

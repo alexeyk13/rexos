@@ -7,9 +7,9 @@
 #ifndef LIB_H
 #define LIB_H
 
-#include "../cc_macro.h"
-#include "../svc.h"
-#include "../error.h"
+#include "cc_macro.h"
+#include "svc.h"
+#include "error.h"
 
 typedef enum {
     LIB_ID_STD = 0,
@@ -17,8 +17,11 @@ typedef enum {
     LIB_ID_TIME,
     LIB_ID_HEAP,
     LIB_ID_ARRAY,
+    LIB_ID_USB,
     LIB_ID_MAX
 } LIB_ID;
+
+#if (LIB_CHECK_PRESENCE)
 
 #define LIB_CHECK(id)                                       if (__GLOBAL->lib[(id)] == NULL) { \
                                                                 error(ERROR_STUB_CALLED); \
@@ -27,5 +30,12 @@ typedef enum {
 #define LIB_CHECK_RET(id)                                   if (__GLOBAL->lib[(id)] == NULL) { \
                                                                 error(ERROR_STUB_CALLED); \
                                                                 return 0;}
+
+#else
+
+#define LIB_CHECK(id)                                       ;
+#define LIB_CHECK_RET(id)                                   ;
+
+#endif
 
 #endif // LIB_H

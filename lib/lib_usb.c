@@ -4,12 +4,15 @@
     All rights reserved.
 */
 
-#include "libusb.h"
-#include "direct.h"
-#include "usb.h"
+#include "lib_usb.h"
+#include "../userspace/direct.h"
+#include "../userspace/object.h"
+#include "../userspace/usb.h"
+#include "sys_config.h"
 
-bool libusb_register_persistent_descriptor(HANDLE usbd, USBD_DESCRIPTOR_TYPE type, unsigned int index, unsigned int lang, const void* descriptor)
+bool lib_usb_register_persistent_descriptor(USBD_DESCRIPTOR_TYPE type, unsigned int index, unsigned int lang, const void* descriptor)
 {
+    HANDLE usbd = object_get(SYS_OBJ_USBD);
     char buf[USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED + sizeof(const void**)];
     USBD_DESCRIPTOR_REGISTER_STRUCT* udrs = (USBD_DESCRIPTOR_REGISTER_STRUCT*)buf;
 
@@ -21,3 +24,7 @@ bool libusb_register_persistent_descriptor(HANDLE usbd, USBD_DESCRIPTOR_TYPE typ
     ack(usbd, USBD_REGISTER_DESCRIPTOR, type, USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED + sizeof(const void**), 0);
     return get_last_error() == ERROR_OK;
 }
+
+const LIB_USB __LIB_USB = {
+    lib_usb_register_persistent_descriptor
+};

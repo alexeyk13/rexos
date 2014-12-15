@@ -8,6 +8,9 @@
 #define USB_H
 
 #include "sys.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include "lib.h"
 
 //--------------------------------------------------- USB general --------------------------------------------------------------
 
@@ -233,6 +236,20 @@ typedef struct {
 
 #define USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED    ((sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT) + 3) & ~3)
 
+//--------------------------------------------------- USB lib -----------------------------------------------------------------
+
+typedef struct {
+    bool (*lib_usb_register_persistent_descriptor)(USBD_DESCRIPTOR_TYPE, unsigned int, unsigned int, const void *);
+} LIB_USB;
+
+__STATIC_INLINE bool usb_register_persistent_descriptor(USBD_DESCRIPTOR_TYPE type, unsigned int index, unsigned int lang, const void *descriptor)
+{
+    LIB_CHECK_RET(LIB_ID_USB);
+    return ((const LIB_USB*)__GLOBAL->lib[LIB_ID_USB])->lib_usb_register_persistent_descriptor(type, index, lang, descriptor);
+}
+
 #pragma pack(pop)
+
+
 
 #endif // USB_H
