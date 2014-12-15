@@ -13,9 +13,9 @@
 #include "stm32_gpio.h"
 #include "stm32_power.h"
 #include <string.h>
-#include "../../../userspace/lib/stdlib.h"
+#include "../../../userspace/stdlib.h"
 #if (SYS_INFO) || (USB_DEBUG_ERRORS)
-#include "../../../userspace/lib/stdio.h"
+#include "../../../userspace/stdio.h"
 #endif
 #if (MONOLITH_USB)
 #include "stm32_core_private.h"
@@ -142,7 +142,7 @@ bool stm32_usb_ep_flush(SHARED_USB_DRV* drv, int num)
         ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_NAK);
     if (ep->block != INVALID_HANDLE)
     {
-        block_send(ep->block, ep->process);
+        block_send(ep->block, drv->usb.device);
         ep->block = INVALID_HANDLE;
     }
     ep->io_active = false;
@@ -249,7 +249,7 @@ static inline void stm32_usb_ctr(SHARED_USB_DRV* drv)
 
         if (drv->usb.out[num]->processed >= drv->usb.out[num]->size)
         {
-            ipc.process = drv->usb.out[num]->process;
+            ipc.process = drv->usb.device;
             ipc.cmd = IPC_READ_COMPLETE;
             ipc.param1 = HAL_HANDLE(HAL_USB, num);
             ipc.param2 = drv->usb.out[num]->block;
@@ -257,7 +257,7 @@ static inline void stm32_usb_ctr(SHARED_USB_DRV* drv)
 
             if (drv->usb.out[num]->block != INVALID_HANDLE)
             {
-                block_isend_ipc(drv->usb.out[num]->block, drv->usb.out[num]->process, &ipc);
+                block_isend_ipc(drv->usb.out[num]->block, drv->usb.device, &ipc);
                 drv->usb.out[num]->block = INVALID_HANDLE;
             }
             else
@@ -281,14 +281,14 @@ static inline void stm32_usb_ctr(SHARED_USB_DRV* drv)
 
         if (drv->usb.in[num]->processed >= drv->usb.in[num]->size)
         {
-            ipc.process = drv->usb.in[num]->process;
+            ipc.process = drv->usb.device;
             ipc.cmd = IPC_WRITE_COMPLETE;
             ipc.param1 = HAL_HANDLE(HAL_USB, USB_EP_IN | num);
             ipc.param2 = drv->usb.in[num]->block;
             ipc.param3 = drv->usb.in[num]->processed;
             if (drv->usb.in[num]->block != INVALID_HANDLE)
             {
-                block_isend_ipc(drv->usb.in[num]->block, drv->usb.in[num]->process, &ipc);
+                block_isend_ipc(drv->usb.in[num]->block, drv->usb.device, &ipc);
                 drv->usb.in[num]->block = INVALID_HANDLE;
             }
             else
@@ -356,10 +356,10 @@ void stm32_usb_on_isr(int vector, void* param)
 }
 
 
-void stm32_usb_open_device(SHARED_USB_DRV* drv, USB_OPEN* uo)
+void stm32_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
 {
     int i;
-    drv->usb.device = uo->device;
+    drv->usb.device = device;
     //enable DM/DP
     ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, USB_DM, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
     ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, USB_DP, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
@@ -401,7 +401,7 @@ void stm32_usb_open_device(SHARED_USB_DRV* drv, USB_OPEN* uo)
     USB->BCDR |= USB_BCDR_DPPU;
 }
 
-static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num, USB_EP_OPEN* ep_open)
+static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, int num, USB_EP_TYPE type, unsigned int size)
 {
     if (USB_EP_NUM(num) >=  USB_EP_COUNT_MAX)
     {
@@ -436,7 +436,7 @@ static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int nu
 
     uint16_t ctl = USB_EP_NUM(num);
     //setup ep type
-    switch (ep_open->type)
+    switch (type)
     {
     case USB_EP_CONTROL:
         ctl |= 1 << 9;
@@ -461,14 +461,13 @@ static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int nu
     else
     {
         USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].ADDR_RX = fifo;
-        if (ep_open->size <= 62)
-            USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_RX = ((ep_open->size + 1) >> 1) << 10;
+        if (size <= 62)
+            USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_RX = ((size + 1) >> 1) << 10;
         else
-            USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_RX = ((((ep_open->size + 3) >> 2) - 1) << 10) | (1 << 15);
+            USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_RX = ((((size + 3) >> 2) - 1) << 10) | (1 << 15);
     }
 
-    ep->mps = ep_open->size;
-    ep->process = process;
+    ep->mps = size;
 
     *ep_reg_data(num) = ctl;
     //set NAK, clear DTOG
@@ -476,25 +475,6 @@ static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int nu
         ep_toggle_bits(num, USB_EPTX_STAT | USB_EP_DTOG_TX, USB_EP_TX_NAK);
     else
         ep_toggle_bits(num, USB_EPRX_STAT | USB_EP_DTOG_RX, USB_EP_RX_NAK);
-}
-
-void stm32_usb_open(SHARED_USB_DRV* drv, unsigned int handle, HANDLE process)
-{
-    union {
-        USB_EP_OPEN ep_open;
-        USB_OPEN uo;
-    } u;
-
-    if (handle == USB_HANDLE_DEVICE)
-    {
-        if (direct_read(process, (void*)&u.uo, sizeof(USB_OPEN)))
-           stm32_usb_open_device(drv, &u.uo);
-    }
-    else
-    {
-        if (direct_read(process, (void*)&u.ep_open, sizeof(USB_EP_OPEN)))
-            stm32_usb_open_ep(drv, process, handle, &u.ep_open);
-    }
 }
 
 static inline void stm32_usb_close_ep(SHARED_USB_DRV* drv, int num)
@@ -541,14 +521,6 @@ static inline void stm32_usb_close_device(SHARED_USB_DRV* drv)
     //disable pins
     ack_gpio(drv, GPIO_DISABLE_PIN, USB_DM, 0, 0);
     ack_gpio(drv, GPIO_DISABLE_PIN, USB_DP, 0, 0);
-}
-
-static inline void stm32_usb_close(SHARED_USB_DRV* drv, unsigned int handle)
-{
-    if (handle == USB_HANDLE_DEVICE)
-        stm32_usb_close_device(drv);
-    else
-        stm32_usb_close_ep(drv, handle);
 }
 
 static inline void stm32_usb_set_address(SHARED_USB_DRV* drv, int addr)
@@ -688,11 +660,17 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case IPC_OPEN:
-        stm32_usb_open(drv, HAL_ITEM(ipc->param1), ipc->process);
+        if (HAL_ITEM(ipc->param1) == USB_HANDLE_DEVICE)
+            stm32_usb_open_device(drv, ipc->process);
+        else
+            stm32_usb_open_ep(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3);
         need_post = true;
         break;
     case IPC_CLOSE:
-        stm32_usb_close(drv, HAL_ITEM(ipc->param1));
+        if (HAL_ITEM(ipc->param1) == USB_HANDLE_DEVICE)
+            stm32_usb_close_device(drv);
+        else
+            stm32_usb_close_ep(drv, HAL_ITEM(ipc->param1));
         need_post = true;
         break;
     case USB_SET_ADDRESS:

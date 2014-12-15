@@ -21,7 +21,6 @@ typedef struct {
     unsigned int size, processed;
     uint16_t mps;
     uint8_t io_active;
-    HANDLE process;
 } EP;
 
 typedef struct {
