@@ -8,7 +8,7 @@
 #include "../userspace/error.h"
 #include <string.h>
 #include "../userspace/svc.h"
-#include "../userspace/lib/heap.h"
+#include "../userspace/heap.h"
 
 #if (KERNEL_RANGE_CHECKING)
 

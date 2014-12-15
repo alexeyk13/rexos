@@ -11,7 +11,7 @@
 #include "sys_config.h"
 #include "../userspace/cc_macro.h"
 #include "../userspace/ipc.h"
-#include "../userspace/lib/time.h"
+#include "../userspace/time.h"
 
 typedef enum {
     RTC_GET = HAL_IPC(HAL_RTC),                             //!< Get RTC value

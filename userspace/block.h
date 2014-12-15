@@ -7,7 +7,7 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
-#include "lib/types.h"
+#include "types.h"
 #include "cc_macro.h"
 #include "svc.h"
 #include "error.h"

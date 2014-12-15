@@ -7,7 +7,7 @@
 #ifndef KMALLOC_H
 #define KMALLOC_H
 
-#include "../userspace/lib/stdlib.h"
+#include "../userspace/stdlib.h"
 #include "../userspace/cc_macro.h"
 #include "kernel.h"
 

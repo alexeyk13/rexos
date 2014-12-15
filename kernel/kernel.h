@@ -50,7 +50,7 @@
 #include "kprocess.h"
 #include "kirq.h"
 #include "../lib/pool.h"
-#include "../userspace/lib/rb.h"
+#include "../userspace/rb.h"
 
 #ifndef IRQ_VECTORS_COUNT
 #error IRQ_VECTORS_COUNT is not decoded. Please specify it manually in Makefile

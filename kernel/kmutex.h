@@ -7,7 +7,7 @@
 #ifndef KMUTEX_H
 #define KMUTEX_H
 
-#include "../userspace/lib/dlist.h"
+#include "../userspace/dlist.h"
 #include "kprocess.h"
 #include "dbg.h"
 

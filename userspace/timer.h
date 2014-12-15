@@ -1,8 +1,8 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#include "lib/types.h"
-#include "lib/time.h"
+#include "types.h"
+#include "time.h"
 #include "cc_macro.h"
 #include "svc.h"
 

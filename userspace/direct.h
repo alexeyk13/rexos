@@ -7,7 +7,7 @@
 #ifndef DIRECT_H
 #define DIRECT_H
 
-#include "lib/types.h"
+#include "types.h"
 #include "cc_macro.h"
 #include "svc.h"
 #include "error.h"

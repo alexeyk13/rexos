@@ -8,11 +8,11 @@
 #include "lpc_gpio.h"
 #include "lpc_core.h"
 #include "lpc_power.h"
-#include "../../../userspace/lib/stdlib.h"
+#include "../../../userspace/stdlib.h"
 #include "../../../userspace/irq.h"
 #include "../../../userspace/block.h"
 #if (SYS_INFO)
-#include "../../../userspace/lib/stdio.h"
+#include "../../../userspace/stdio.h"
 #endif
 
 #if (MONOLITH_I2C)

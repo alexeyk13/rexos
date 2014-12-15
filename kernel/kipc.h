@@ -8,8 +8,8 @@
 #define KIPC_H
 
 #include "../userspace/ipc.h"
-#include "../userspace/lib/rb.h"
-#include "../userspace/lib/time.h"
+#include "../userspace/rb.h"
+#include "../userspace/time.h"
 
 typedef struct {
     RB rb;

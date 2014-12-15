@@ -7,7 +7,7 @@
 #include "dbg.h"
 #include "../userspace/error.h"
 #include "kernel.h"
-#include "../userspace/lib/stdio.h"
+#include "../userspace/stdio.h"
 
 void printk(const char *const fmt, ...)
 {

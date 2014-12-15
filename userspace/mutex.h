@@ -34,7 +34,7 @@
  */
 
 #include "svc.h"
-#include "lib/time.h"
+#include "time.h"
 #include "error.h"
 
 /**

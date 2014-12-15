@@ -7,8 +7,8 @@
 #ifndef KSTREAM_H
 #define KSTREAM_H
 
-#include "../userspace/lib/rb.h"
-#include "../userspace/lib/dlist.h"
+#include "../userspace/rb.h"
+#include "../userspace/dlist.h"
 #include "kprocess.h"
 #include "dbg.h"
 

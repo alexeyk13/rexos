@@ -26,8 +26,8 @@
  */
 
 #include "svc.h"
-#include "lib/time.h"
-#include "lib/heap.h"
+#include "time.h"
+#include "heap.h"
 
 #define PROCESS_FLAGS_ACTIVE                                     (1 << 0)
 #define PROCESS_FLAGS_WAITING                                    (1 << 1)

@@ -6,7 +6,7 @@
 
 #include "lib_time.h"
 #include "../userspace/timer.h"
-#include "../userspace/lib/types.h"
+#include "../userspace/types.h"
 
 //time_t = 0
 #define EPOCH_YEAR                        1970

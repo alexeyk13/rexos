@@ -20,7 +20,6 @@ typedef struct {
     void* ptr;
     void* fifo;
     unsigned int size, processed;
-    HANDLE process;
     uint16_t mps;
     uint8_t io_active;
 } EP;

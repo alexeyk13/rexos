@@ -7,7 +7,7 @@
 #ifndef LIB_ARRAY_H
 #define LIB_ARRAY_H
 
-#include "../userspace/lib/array.h"
+#include "../userspace/array.h"
 
 extern const LIB_ARRAY __LIB_ARRAY;
 

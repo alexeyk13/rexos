@@ -7,16 +7,14 @@
 #include "usbd.h"
 #include "../sys.h"
 #include "../usb.h"
-#include "../../userspace/lib/stdio.h"
+#include "../../userspace/stdio.h"
 #include "../../userspace/block.h"
 #include "../../userspace/direct.h"
-#include "../../userspace/lib/stdlib.h"
+#include "../../userspace/stdlib.h"
 #include "sys_config.h"
 #include <string.h>
-#include "../../userspace/lib/array.h"
+#include "../../userspace/array.h"
 #include "../file.h"
-
-#define USBD_BLOCK_SIZE                             256
 
 #if (SYS_INFO)
 const char* const USBD_TEXT_STATES[] =              {"Default", "Addressed", "Configured"};
@@ -71,7 +69,7 @@ const REX __USBD = {
     //name
     "USB device stack",
     //size
-    USB_DEVICE_PROCESS_SIZE,
+    USBD_PROCESS_SIZE,
     //priority - midware priority
     150,
     //flags
@@ -187,7 +185,7 @@ static inline bool usbd_register_string(USBD* usbd, unsigned int index, unsigned
 
 static inline void free_if_own(void* ptr)
 {
-    if ((unsigned int)ptr >= (unsigned int)(__GLOBAL->heap) && (unsigned int)ptr < (unsigned int)(__GLOBAL->heap) + USB_DEVICE_PROCESS_SIZE)
+    if ((unsigned int)ptr >= (unsigned int)(__GLOBAL->heap) && (unsigned int)ptr < (unsigned int)(__GLOBAL->heap) + USBD_PROCESS_SIZE)
         free(ptr);
 }
 
@@ -969,6 +967,22 @@ void usbd_read_complete(USBD* usbd)
     }
 }
 
+void usbd_class_read_complete(USBD* usbd, int num, HANDLE block, unsigned int size)
+{
+    //TODO: temporaily solution for future refactoring
+    IPC ipc;
+    ipc.cmd = IPC_READ_COMPLETE;
+    ipc.param1 = HAL_HANDLE(HAL_USB, num);
+    ipc.param2 = block;
+    ipc.param3 = size;
+
+    ipc.process = (HANDLE)usbd->classes->data[0];
+    if (block != INVALID_HANDLE)
+        block_send_ipc(block, ipc.process, &ipc);
+    else
+        ipc_post(&ipc);
+}
+
 void usbd_write_complete(USBD* usbd)
 {
     switch (usbd->setup_state)
@@ -993,6 +1007,23 @@ void usbd_write_complete(USBD* usbd)
         break;
     }
 }
+
+void usbd_class_write_complete(USBD* usbd, int num, HANDLE block, unsigned int size)
+{
+    //TODO: temporaily solution for future refactoring
+    IPC ipc;
+    ipc.cmd = IPC_WRITE_COMPLETE;
+    ipc.param1 = HAL_HANDLE(HAL_USB, num);
+    ipc.param2 = block;
+    ipc.param3 = size;
+
+    ipc.process = (HANDLE)usbd->classes->data[0];
+    if (block != INVALID_HANDLE)
+        block_send_ipc(block, ipc.process, &ipc);
+    else
+        ipc_post(&ipc);
+}
+
 
 #if (SYS_INFO)
 static inline void usbd_info(USBD* usbd)
@@ -1087,19 +1118,22 @@ void usbd()
             //called from ISR, no response
             break;
         case IPC_READ_COMPLETE:
-            usbd_read_complete(&usbd);
+            if (USB_EP_NUM(HAL_ITEM(ipc.param1)))
+                usbd_class_read_complete(&usbd, USB_EP_NUM(HAL_ITEM(ipc.param1)), (HANDLE)ipc.param2, ipc.param3);
+            else
+                usbd_read_complete(&usbd);
             break;
         case IPC_WRITE_COMPLETE:
-            usbd_write_complete(&usbd);
+            if (USB_EP_NUM(HAL_ITEM(ipc.param1)))
+                usbd_class_write_complete(&usbd, USB_EP_NUM(HAL_ITEM(ipc.param1)), (HANDLE)ipc.param2, ipc.param3);
+            else
+                usbd_write_complete(&usbd);
+            break;
             break;
         case USB_SETUP:
             ((uint32_t*)(&usbd.setup))[0] = ipc.param1;
             ((uint32_t*)(&usbd.setup))[1] = ipc.param2;
             usbd_setup_received(&usbd);
-            break;
-        case USBD_GET_DRIVER:
-            ipc.param1 = usbd.usb;
-            ipc_post(&ipc);
             break;
         case USBD_SET_FEATURE:
             usbd_set_feature(&usbd, ipc.param1, ipc.param2);

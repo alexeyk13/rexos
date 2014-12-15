@@ -7,7 +7,7 @@
 #ifndef LIB_STDIO_H
 #define LIB_STDIO_H
 
-#include "../userspace/lib/stdio.h"
+#include "../userspace/stdio.h"
 
 extern const LIB_STDIO __LIB_STDIO;
 

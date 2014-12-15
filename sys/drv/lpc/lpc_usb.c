@@ -12,9 +12,9 @@
 #include "lpc_gpio.h"
 #include "lpc_power.h"
 #include <string.h>
-#include "../../../userspace/lib/stdlib.h"
+#include "../../../userspace/stdlib.h"
 #if (SYS_INFO) || (USB_DEBUG_ERRORS)
-#include "../../../userspace/lib/stdio.h"
+#include "../../../userspace/stdio.h"
 #endif
 #if (MONOLITH_USB)
 #include "lpc_core_private.h"
@@ -113,7 +113,7 @@ static inline void lpc_usb_rx(SHARED_USB_DRV* drv, int num)
 
     if (ep->processed >= ep->size)
     {
-        ipc.process = ep->process;
+        ipc.process = drv->usb.device;
         ipc.cmd = IPC_READ_COMPLETE;
         ipc.param1 = HAL_HANDLE(HAL_USB, num);
         ipc.param2 = ep->block;
@@ -121,7 +121,7 @@ static inline void lpc_usb_rx(SHARED_USB_DRV* drv, int num)
 
         if (ep->block != INVALID_HANDLE)
         {
-            block_send_ipc(ep->block, ep->process, &ipc);
+            block_send_ipc(ep->block, drv->usb.device, &ipc);
             ep->block = INVALID_HANDLE;
         }
         else
@@ -160,7 +160,7 @@ bool lpc_usb_ep_flush(SHARED_USB_DRV* drv, int num)
     }
     if (ep->block != INVALID_HANDLE)
     {
-        block_send(ep->block, ep->process);
+        block_send(ep->block, drv->usb.device);
         ep->block = INVALID_HANDLE;
     }
     return true;
@@ -276,14 +276,14 @@ static inline void lpc_usb_in(SHARED_USB_DRV* drv, int num)
 
     if (ep->processed >= ep->size)
     {
-        ipc.process = ep->process;
+        ipc.process = drv->usb.device;
         ipc.cmd = IPC_WRITE_COMPLETE;
         ipc.param1 = HAL_HANDLE(HAL_USB, num);
         ipc.param2 = ep->block;
         ipc.param3 = ep->processed;
         if (ep->block != INVALID_HANDLE)
         {
-            block_isend_ipc(ep->block, ep->process, &ipc);
+            block_isend_ipc(ep->block, drv->usb.device, &ipc);
             ep->block = INVALID_HANDLE;
         }
         else
@@ -420,7 +420,7 @@ void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
 #endif
 }
 
-static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num, USB_EP_TYPE type, unsigned int size)
+static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, int num, USB_EP_TYPE type, unsigned int size)
 {
     unsigned int i;
     if (USB_EP_NUM(num) >=  USB_EP_COUNT_MAX)
@@ -440,7 +440,6 @@ static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num,
     ep->block = INVALID_HANDLE;
     ep->fifo = (void*)USB_FREE_BUF_BASE;
     ep->io_active = false;
-    ep->process = process;
     ep->mps = size;
 
     //find free addr in FIFO
@@ -650,7 +649,7 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         if (HAL_ITEM(ipc->param1) == USB_HANDLE_DEVICE)
             lpc_usb_open_device(drv, ipc->process);
         else
-            lpc_usb_open_ep(drv, ipc->process, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3);
+            lpc_usb_open_ep(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3);
         need_post = true;
         break;
     case IPC_CLOSE:

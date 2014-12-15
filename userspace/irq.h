@@ -7,7 +7,7 @@
 #ifndef IRQ_H
 #define IRQ_H
 
-#include "lib/types.h"
+#include "types.h"
 #include "svc.h"
 #include "cc_macro.h"
 #include "error.h"

@@ -7,8 +7,8 @@
 #ifndef IPC_H
 #define IPC_H
 
-#include "lib/types.h"
-#include "lib/heap.h"
+#include "types.h"
+#include "heap.h"
 
 typedef enum {
     IPC_COMMON = 0x0,
@@ -37,7 +37,7 @@ typedef struct {
 
 #include "svc.h"
 #include "error.h"
-#include "lib/time.h"
+#include "time.h"
 
 /**
     \brief post IPC

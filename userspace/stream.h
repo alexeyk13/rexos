@@ -7,7 +7,7 @@
 #ifndef STREAM_H
 #define STREAM_H
 
-#include "lib/types.h"
+#include "types.h"
 #include "svc.h"
 #include "error.h"
 

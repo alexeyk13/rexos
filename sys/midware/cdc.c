@@ -8,7 +8,7 @@
 #include "../sys.h"
 #include "../file.h"
 #include "usbd.h"
-#include "../../userspace/lib/stdio.h"
+#include "../../userspace/stdio.h"
 #include "../../userspace/block.h"
 #include "../../userspace/direct.h"
 #include "../uart.h"
@@ -96,7 +96,7 @@ static inline void cdc_open(CDC* cdc, HANDLE usbd, CDC_OPEN_STRUCT* cos)
     }
     cdc->usbd = usbd;
     ack(cdc->usbd, USBD_REGISTER_CLASS, 0, 0, 0);
-    cdc->usb = get(cdc->usbd, USBD_GET_DRIVER, 0, 0, 0);
+    cdc->usb = object_get(SYS_OBJ_USB);
     cdc->data_ep = cos->data_ep;
     cdc->control_ep = cos->control_ep;
     cdc->data_ep_size = cos->data_ep_size;

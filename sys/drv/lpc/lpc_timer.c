@@ -11,7 +11,7 @@
 #include "../../../userspace/timer.h"
 #include "../../../userspace/irq.h"
 #if (SYS_INFO)
-#include "../../../userspace/lib/stdio.h"
+#include "../../../userspace/stdio.h"
 #endif
 
 #define TC16PC                                      15

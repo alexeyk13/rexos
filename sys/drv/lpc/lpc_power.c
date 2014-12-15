@@ -7,7 +7,7 @@
 #include "lpc_power.h"
 #include "lpc_core_private.h"
 #if (SYS_INFO)
-#include "../../../userspace/lib/stdio.h"
+#include "../../../userspace/stdio.h"
 #endif
 
 #define IRC_VALUE                               12000000

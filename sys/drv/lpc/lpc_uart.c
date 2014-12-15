@@ -10,9 +10,9 @@
 #include "../../../userspace/irq.h"
 #include "../../../userspace/stream.h"
 #include "../../../userspace/direct.h"
-#include "../../../userspace/lib/stdlib.h"
+#include "../../../userspace/stdlib.h"
 #if (SYS_INFO)
-#include "../../../userspace/lib/stdio.h"
+#include "../../../userspace/stdio.h"
 #endif
 
 #if (MONOLITH_UART)

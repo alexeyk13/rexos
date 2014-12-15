@@ -7,7 +7,7 @@
 #ifndef KOBJECT_H
 #define KOBJECT_H
 
-#include "../userspace/lib/types.h"
+#include "../userspace/types.h"
 
 void kobject_init();
 void kobject_set(int idx, HANDLE handle);

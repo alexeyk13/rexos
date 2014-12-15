@@ -10,7 +10,7 @@
 #include "../userspace/ipc.h"
 #include "../userspace/stream.h"
 #include "../userspace/object.h"
-#include "../userspace/lib/types.h"
+#include "../userspace/types.h"
 #include "sys_config.h"
 
 typedef enum {

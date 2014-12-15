@@ -8,7 +8,7 @@
 #define KBLOCK_H
 
 #include "kipc.h"
-#include "../userspace/lib/dlist.h"
+#include "../userspace/dlist.h"
 #include "dbg.h"
 
 typedef struct _PROCESS PROCESS;

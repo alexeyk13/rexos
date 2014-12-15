@@ -7,7 +7,7 @@
 #ifndef LIB_HEAP_H
 #define LIB_HEAP_H
 
-#include "../userspace/lib/heap.h"
+#include "../userspace/heap.h"
 
 extern const LIB_HEAP __LIB_HEAP;
 

@@ -11,7 +11,9 @@
 #include "../lib/lib_stdio.h"
 #include "../lib/lib_time.h"
 #include "../lib/lib_heap.h"
+#if (KERNEL_LIB_ARRAY)
 #include "../lib/lib_array.h"
+#endif //KERNEL_LIB_ARRAY
 
 void lib_stub ()
 {

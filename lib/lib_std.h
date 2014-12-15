@@ -7,7 +7,7 @@
 #ifndef LIB_STD_H
 #define LIB_STD_H
 
-#include "../userspace/lib/stdlib.h"
+#include "../userspace/stdlib.h"
 
 extern const LIB_STD __LIB_STD;
 

@@ -7,8 +7,8 @@
 #ifndef KTIMER_H
 #define KTIMER_H
 
-#include "../userspace/lib/time.h"
-#include "../userspace/lib/dlist.h"
+#include "../userspace/time.h"
+#include "../userspace/dlist.h"
 #include "../userspace/timer.h"
 
 typedef struct {

@@ -7,7 +7,7 @@
 #ifndef POOL_H
 #define POOL_H
 
-#include "../userspace/lib/types.h"
+#include "../userspace/types.h"
 #include "kernel_config.h"
 
 void pool_init(POOL* pool, void* data);
