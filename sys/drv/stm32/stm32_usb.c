@@ -98,7 +98,7 @@ bool stm32_usb_ep_flush(SHARED_USB_DRV* drv, int num)
     if (ep->block != INVALID_HANDLE)
     {
         ep_reg_data(num)->CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_SNAK;
-        block_send(ep->block, ep->process);
+        block_send(ep->block, drv->usb.device);
         ep->block = INVALID_HANDLE;
     }
     ep->io_active = false;
@@ -174,7 +174,7 @@ static inline void stm32_usb_rx(SHARED_USB_DRV* drv)
     if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_RX)
     {
         //ignore all data on setup packet
-        ipc.process = ep->process;
+        ipc.process = drv->usb.device;
         ipc.cmd = USB_SETUP;
         ipc.param1 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[0];
         ipc.param2 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[1];
@@ -187,7 +187,7 @@ static inline void stm32_usb_rx(SHARED_USB_DRV* drv)
 
         if (ep->processed >= ep->size)
         {
-            ipc.process = ep->process;
+            ipc.process = drv->usb.device;
             ipc.cmd = IPC_READ_COMPLETE;
             ipc.param1 = HAL_HANDLE(HAL_USB, num);
             ipc.param2 = ep->block;
@@ -195,7 +195,7 @@ static inline void stm32_usb_rx(SHARED_USB_DRV* drv)
 
             if (ep->block != INVALID_HANDLE)
             {
-                block_send_ipc(ep->block, ep->process, &ipc);
+                block_send_ipc(ep->block, drv->usb.device, &ipc);
                 ep->block = INVALID_HANDLE;
             }
             else
@@ -262,14 +262,14 @@ void usb_on_isr(int vector, void* param)
             OTG_FS_DEVICE->INEP[i].INT = OTG_FS_DEVICE_ENDPOINT_INT_XFRC;
             if (drv->usb.in[i]->processed >= drv->usb.in[i]->size)
             {
-                ipc.process = drv->usb.in[i]->process;
+                ipc.process = drv->usb.device;
                 ipc.cmd = IPC_WRITE_COMPLETE;
                 ipc.param1 = HAL_HANDLE(HAL_USB, USB_EP_IN | i);
                 ipc.param2 = drv->usb.in[i]->block;
                 ipc.param3 = drv->usb.in[i]->processed;
                 if (drv->usb.in[i]->block != INVALID_HANDLE)
                 {
-                    block_isend_ipc(drv->usb.in[i]->block, drv->usb.in[i]->process, &ipc);
+                    block_isend_ipc(drv->usb.in[i]->block, drv->usb.device, &ipc);
                     drv->usb.in[i]->block = INVALID_HANDLE;
                 }
                 else
@@ -306,10 +306,10 @@ void usb_on_isr(int vector, void* param)
     }
 }
 
-void stm32_usb_open_device(SHARED_USB_DRV* drv, USB_OPEN* uo)
+void stm32_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
 {
     int trdt;
-    drv->usb.device = uo->device;
+    drv->usb.device = device;
 
     //enable GPIO
     ack_gpio(drv, GPIO_ENABLE_PIN, A9, PIN_MODE_IN_FLOAT, 0);
@@ -363,7 +363,7 @@ void stm32_usb_open_device(SHARED_USB_DRV* drv, USB_OPEN* uo)
     OTG_FS_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_OTGM;
 }
 
-static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num, USB_EP_OPEN* ep_open)
+static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, int num, USB_EP_TYPE type, unsigned int size)
 {
     if (USB_EP_NUM(num) >=  USB_EP_COUNT_MAX)
     {
@@ -387,7 +387,7 @@ static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int nu
     //enable, NAK
     uint32_t ctl = OTG_FS_DEVICE_ENDPOINT_CTL_USBAEP | OTG_FS_DEVICE_ENDPOINT_CTL_SNAK;
     //setup ep type, DATA0 for bulk/interrupt, EVEN frame for isochronous endpoint
-    switch (ep_open->type)
+    switch (type)
     {
     case USB_EP_CONTROL:
         ctl |= OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP_CONTROL;
@@ -410,9 +410,9 @@ static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int nu
         for (i = 0; i < USB_EP_NUM(num); ++i)
             fifo_used += drv->usb.in[i]->mps / 4;
         if (USB_EP_NUM(num))
-            OTG_FS_GENERAL->DIEPTXF[USB_EP_NUM(num) - 1] = ((ep_open->size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
+            OTG_FS_GENERAL->DIEPTXF[USB_EP_NUM(num) - 1] = ((size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
         else
-            OTG_FS_GENERAL->TX0FSIZ = ((ep_open->size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
+            OTG_FS_GENERAL->TX0FSIZ = ((size / 4)  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | ((fifo_used * 4) | OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
         ctl |= USB_EP_NUM(num) << OTG_FS_DEVICE_ENDPOINT_CTL_TXFNUM_POS;
         //enable interrupts for XFRCM
         OTG_FS_DEVICE->AINTMSK |= 1 << USB_EP_NUM(num);
@@ -421,7 +421,7 @@ static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int nu
     //EP_OUT0 has differrent mps structure
     if (USB_EP_NUM(num) == 0)
     {
-        switch (ep_open->size)
+        switch (size)
         {
         case 8:
             ctl |= OTG_FS_DEVICE_ENDPOINT_CTL_MPSIZ0_8;
@@ -437,30 +437,10 @@ static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int nu
         }
     }
     else
-        ctl |= ep_open->size;
+        ctl |= size;
 
-    ep->mps = ep_open->size;
-    ep->process = process;
+    ep->mps = size;
     ep_reg_data(num)->CTL = ctl;
-}
-
-void stm32_usb_open(SHARED_USB_DRV* drv, unsigned int handle, HANDLE process)
-{
-    union {
-        USB_EP_OPEN ep_open;
-        USB_OPEN uo;
-    } u;
-
-    if (handle == USB_HANDLE_DEVICE)
-    {
-        if (direct_read(process, (void*)&u.uo, sizeof(USB_OPEN)))
-           stm32_usb_open_device(drv, &u.uo);
-    }
-    else
-    {
-        if (direct_read(process, (void*)&u.ep_open, sizeof(USB_EP_OPEN)))
-            stm32_usb_open_ep(drv, process, handle, &u.ep_open);
-    }
 }
 
 static inline void stm32_usb_close_ep(SHARED_USB_DRV* drv, int num)
@@ -506,14 +486,6 @@ static inline void stm32_usb_close_device(SHARED_USB_DRV* drv)
     //disable pins
     ack_gpio(drv, GPIO_DISABLE_PIN, A9, 0, 0);
     ack_gpio(drv, GPIO_DISABLE_PIN, A10, 0, 0);
-}
-
-static inline void stm32_usb_close(SHARED_USB_DRV* drv, unsigned int handle)
-{
-    if (handle == USB_HANDLE_DEVICE)
-        stm32_usb_close_device(drv);
-    else
-        stm32_usb_close_ep(drv, handle);
 }
 
 static inline void stm32_usb_set_address(int addr)
@@ -665,11 +637,17 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case IPC_OPEN:
-        stm32_usb_open(drv, HAL_ITEM(ipc->param1), ipc->process);
+        if (HAL_ITEM(ipc->param1) == USB_HANDLE_DEVICE)
+            stm32_usb_open_device(drv, ipc->process);
+        else
+            stm32_usb_open_ep(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3);
         need_post = true;
         break;
     case IPC_CLOSE:
-        stm32_usb_close(drv, HAL_ITEM(ipc->param1));
+        if (HAL_ITEM(ipc->param1) == USB_HANDLE_DEVICE)
+            stm32_usb_close_device(drv);
+        else
+            stm32_usb_close_ep(drv, HAL_ITEM(ipc->param1));
         need_post = true;
         break;
     case USB_SET_ADDRESS:
