@@ -95,9 +95,14 @@ void kstream_create(STREAM** stream, unsigned int size)
 
 void kstream_open(STREAM* stream, STREAM_HANDLE** handle)
 {
+    PROCESS* process = kprocess_get_current();
+    if (stream == INVALID_HANDLE)
+    {
+        *handle = INVALID_HANDLE;
+        return;
+    }
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
-    PROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, handle, sizeof(void*));
     *handle = kmalloc(sizeof(STREAM_HANDLE));
     if (*handle != NULL)
