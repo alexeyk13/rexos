@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef KLIB_H
-#define KLIB_H
+#ifndef LIB_LIB_H
+#define LIB_LIB_H
 
 #include "kernel.h"
 
@@ -19,4 +19,4 @@ extern const void *const __LIB[];
 
 void lib_stub ();
 
-#endif // KLIB_H
+#endif // LIB_LIB_H

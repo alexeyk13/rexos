@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "klib.h"
+#include "lib_lib.h"
 #include "dbg.h"
 #include "kernel_config.h"
 #include "../lib/lib_std.h"

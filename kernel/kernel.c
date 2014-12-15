@@ -21,7 +21,7 @@
 #endif //KERNEL_MES
 
 #include "../userspace/error.h"
-#include "klib.h"
+#include "../lib/lib_lib.h"
 #include <string.h>
 
 const char* const __KERNEL_NAME=                                                      "RExOS 0.1.3";

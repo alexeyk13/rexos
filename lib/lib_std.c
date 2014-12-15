@@ -5,7 +5,7 @@
 */
 
 #include "kernel_config.h"
-#include "../kernel/klib.h"
+#include "lib_lib.h"
 #include "lib_std.h"
 #include "printf.h"
 #include "pool.h"

@@ -18,7 +18,7 @@
 #include "../userspace/error.h"
 #include "../lib/pool.h"
 #include "../userspace/ipc.h"
-#include "klib.h"
+#include "../lib/lib_lib.h"
 
 #define MAX_PROCESS_NAME_SIZE                                    128
 
