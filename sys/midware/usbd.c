@@ -70,6 +70,8 @@ typedef struct {
 } USBD_CLASS_ENTRY;
 
 #define IFACE(usbd, iface)                          (((USBD_CLASS_ENTRY*)(array_data((usbd)->ifaces)))[(iface)])
+#define STRING(usbd, i)                             (((USBD_STRING*)(array_data((usbd)->string_descriptors)))[(i)])
+#define STRINGS_COUNT(usbd)                         (array_size((usbd)->string_descriptors) / sizeof(USBD_STRING))
 
 #define USBD_INVALID_INTERFACE                      0xff
 
@@ -284,24 +286,19 @@ static inline bool usbd_register_configuration(ARRAY** ar, int index, void* ptr)
 static inline bool usbd_register_string(USBD* usbd, unsigned int index, unsigned int lang, void* ptr)
 {
     int i;
-    USBD_STRING* item;
-    for (i = 0; i < void_array_size(usbd->string_descriptors); ++i)
+    for (i = 0; i < STRINGS_COUNT(usbd); ++i)
     {
-        item = (USBD_STRING*)(void_array_data(usbd->string_descriptors)[i]);
-        if (item->index == index && item->lang == lang)
+        if (STRING(usbd, i).index == index && STRING(usbd, i).lang == lang)
         {
             error(ERROR_ALREADY_CONFIGURED);
             return false;
         }
     }
-    item = (USBD_STRING*)malloc(sizeof(USBD_STRING));
-    if (item == NULL)
-        return false;
-    void_array_add(&usbd->string_descriptors, 1);
-    void_array_data(usbd->string_descriptors)[void_array_size(usbd->string_descriptors) - 1] = item;
-    item->index = index;
-    item->lang = lang;
-    item->string = ptr;
+    array_add(&usbd->string_descriptors, sizeof(USBD_STRING));
+
+    STRING(usbd, STRINGS_COUNT(usbd) - 1).index = index;
+    STRING(usbd, STRINGS_COUNT(usbd) - 1).lang = lang;
+    STRING(usbd, STRINGS_COUNT(usbd) - 1).string = ptr;
     return true;
 }
 
@@ -339,15 +336,13 @@ static inline void usbd_unregister_configuration(ARRAY** ar, int index)
 static inline void usbd_unregister_string(USBD* usbd, unsigned int index, unsigned int lang)
 {
     int i;
-    USBD_STRING* item;
-    for (i = 0; i < void_array_size(usbd->string_descriptors); ++i)
+    for (i = 0; i < STRINGS_COUNT(usbd); ++i)
     {
-        item = (USBD_STRING*)(void_array_data(usbd->string_descriptors)[i]);
-        if (item->index == index && item->lang == lang)
+        if (STRING(usbd, i).index == index && STRING(usbd, i).lang == lang)
         {
             //free non-persistent
-            free_if_own(item->string);
-            void_array_remove(&usbd->string_descriptors, i, 1);
+            free_if_own(STRING(usbd, i).string);
+            array_remove(&usbd->string_descriptors, i * sizeof(USBD_STRING), sizeof(USBD_STRING));
         }
     }
     error(ERROR_NOT_CONFIGURED);
@@ -532,12 +527,10 @@ int send_configuration_descriptor(USBD* usbd, ARRAY** ar, int index, uint8_t typ
 int send_strings_descriptor(USBD* usbd, int index, int lang_id)
 {
     int i;
-    USBD_STRING* item;
-    for (i = 0; i < usbd->string_descriptors->size; ++i)
+    for (i = 0; i < STRINGS_COUNT(usbd); ++i)
     {
-        item = (USBD_STRING*)(void_array_data(usbd->string_descriptors)[i]);
-        if (item->index == index && item->lang == lang_id)
-            return send_descriptor(usbd, item->string, USB_STRING_DESCRIPTOR_INDEX, item->string->bLength);
+        if (STRING(usbd, i).index == index && STRING(usbd, i).lang == lang_id)
+            return send_descriptor(usbd, STRING(usbd, i).string, USB_STRING_DESCRIPTOR_INDEX, STRING(usbd, i).string->bLength);
     }
 #if (USB_DEBUG_ERRORS)
     printf("USB: STRING descriptor %d, lang_id: %#X not present\n\r", index, lang_id);
@@ -1086,7 +1079,7 @@ static inline void usbd_init(USBD* usbd)
     void_array_create(&usbd->conf_descriptors_fs, 1);
     void_array_create(&usbd->conf_descriptors_hs, 1);
     //at least 3: manufacturer, product, string 0
-    void_array_create(&usbd->string_descriptors, 3);
+    array_create(&usbd->string_descriptors, 3 * sizeof(USBD_STRING));
     array_create(&usbd->ifaces, sizeof(USBD_CLASS_ENTRY));
 
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
