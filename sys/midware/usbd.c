@@ -20,12 +20,6 @@
 #endif //USBD_CDC_CLASS
 
 typedef enum {
-    USBD_STATE_DEFAULT = 0,
-    USBD_STATE_ADDRESSED,
-    USBD_STATE_CONFIGURED
-} USBD_STATE;
-
-typedef enum {
     USB_SETUP_STATE_REQUEST = 0,
     USB_SETUP_STATE_DATA_IN,
     //in case response is less, than request
@@ -57,6 +51,7 @@ typedef struct _USBD {
     uint8_t configuration, iface, iface_alt;
     //descriptors
     USB_DEVICE_DESCRIPTOR_TYPE *dev_descriptor_fs, *dev_descriptor_hs;
+    ARRAY *handlers;
     ARRAY *conf_descriptors_fs, *conf_descriptors_hs;
     ARRAY *string_descriptors;
     ARRAY *ifaces;
@@ -103,6 +98,19 @@ const REX __USBD = {
     usbd
 };
 
+void usbd_inform(USBD* usbd, unsigned int alert)
+{
+    int i;
+    IPC ipc;
+    ipc.cmd = USBD_ALERT;
+    ipc.param1 = alert;
+    for (i = 0; i < void_array_size(usbd->handlers); ++i)
+    {
+        ipc.process = (HANDLE)void_array_data(usbd->handlers)[i];
+        ipc_post(&ipc);
+    }
+}
+
 void usbd_class_reset(USBD* usbd)
 {
     int i;
@@ -112,8 +120,7 @@ void usbd_class_reset(USBD* usbd)
             IFACE(usbd, i).usbd_class->usbd_class_reset(usbd, IFACE(usbd, i).param);
     }
     array_clear(&usbd->ifaces);
-    //TODO: inform vendor
-    //TODO: inform handlers
+    usbd_inform(usbd, USBD_ALERT_RESET);
 }
 
 static inline void usbd_class_suspend(USBD* usbd)
@@ -124,8 +131,7 @@ static inline void usbd_class_suspend(USBD* usbd)
         if (IFACE(usbd, i).usbd_class != NULL)
             IFACE(usbd, i).usbd_class->usbd_class_suspend(usbd, IFACE(usbd, i).param);
     }
-    //TODO: inform vendor
-    //TODO: inform handlers
+    usbd_inform(usbd, USBD_ALERT_SUSPEND);
 }
 
 void usbd_class_resume(USBD* usbd)
@@ -136,8 +142,7 @@ void usbd_class_resume(USBD* usbd)
         if (IFACE(usbd, i).usbd_class != NULL)
             IFACE(usbd, i).usbd_class->usbd_class_resume(usbd, IFACE(usbd, i).param);
     }
-    //TODO: inform vendor
-    //TODO: inform handlers
+    usbd_inform(usbd, USBD_ALERT_RESUME);
 }
 
 void usbd_fatal(USBD* usbd)
@@ -201,8 +206,7 @@ static inline void usbd_class_configured(USBD* usbd)
     for (i = 0; __USBD_CLASSES[i] != NULL; ++i)
         __USBD_CLASSES[i]->usbd_class_configured(usbd, cfg);
 
-    //TODO: inform vendor
-    //TODO: inform handlers
+    usbd_inform(usbd, USBD_ALERT_CONFIGURED);
 }
 
 static inline void usbd_open(USBD* usbd)
@@ -1076,6 +1080,7 @@ static inline void usbd_init(USBD* usbd)
     usbd->configuration = 0;
     usbd->dev_descriptor_fs = usbd->dev_descriptor_hs = NULL;
 
+    void_array_create(&usbd->handlers, 1);
     void_array_create(&usbd->conf_descriptors_fs, 1);
     void_array_create(&usbd->conf_descriptors_hs, 1);
     //at least 3: manufacturer, product, string 0
@@ -1097,6 +1102,18 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
         break;
     case USBD_UNREGISTER_DESCRIPTOR:
         usbd_unregister_descriptor(usbd, ipc->param1, ipc->param2, ipc->param3);
+        need_post = true;
+        break;
+    case USBD_REGISTER_HANDLER:
+        usbd_register_object(&usbd->handlers, ipc->process);
+        need_post = true;
+        break;
+    case USBD_UNREGISTER_HANDLER:
+        usbd_unregister_object(&usbd->handlers, ipc->process);
+        need_post = true;
+        break;
+    case USBD_GET_STATE:
+        ipc->param1 = usbd->state;
         need_post = true;
         break;
     case USB_RESET:
@@ -1208,7 +1225,8 @@ void usbd()
             }
             else
             {
-                //TODO: custom handle
+                error(ERROR_NOT_SUPPORTED);
+                need_post = true;
             }
             break;
         case IPC_WRITE_COMPLETE:

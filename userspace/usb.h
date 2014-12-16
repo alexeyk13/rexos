@@ -190,12 +190,13 @@ typedef struct {
 //--------------------------------------------------- USB device ---------------------------------------------------------------
 
 typedef enum {
-    USBD_ALERT = USB_HAL_MAX,
-    USBD_REGISTER_CLASS,
-    USBD_UNREGISTER_CLASS,
+    USBD_ALERT = HAL_IPC(HAL_USBD),
     USBD_REGISTER_DESCRIPTOR,
     USBD_UNREGISTER_DESCRIPTOR,
+    USBD_REGISTER_HANDLER,
+    USBD_UNREGISTER_HANDLER,
     USBD_INTERFACE_REQUEST,
+    USBD_GET_STATE,
 
     USBD_MAX
 }USBD_IPCS;
@@ -203,12 +204,15 @@ typedef enum {
 typedef enum {
     USBD_ALERT_RESET,
     USBD_ALERT_SUSPEND,
-    USBD_ALERT_WAKEUP,
-    USBD_ALERT_CONFIGURATION_SET,
-    USBD_ALERT_FEATURE_SET,
-    USBD_ALERT_FEATURE_CLEARED,
-    USBD_ALERT_INTERFACE_SET
+    USBD_ALERT_RESUME,
+    USBD_ALERT_CONFIGURED
 } USBD_ALERTS;
+
+typedef enum {
+    USBD_STATE_DEFAULT = 0,
+    USBD_STATE_ADDRESSED,
+    USBD_STATE_CONFIGURED
+} USBD_STATE;
 
 typedef enum {
     USBD_FEATURE_ENDPOINT_HALT = 0,
