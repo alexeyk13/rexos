@@ -7,17 +7,8 @@
 #ifndef CDC_H
 #define CDC_H
 
-#include "../../userspace/process.h"
-#include "../../userspace/usb.h"
+#include "usbd.h"
 
-
-//TODO: pass interfaces here
-void* usbd_class_configured(USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg);
-void usbd_class_reset(void* param);
-void usbd_class_suspend(void* param);
-void usbd_class_resume(void* param);
-
-int usbd_class_setup(void* param, SETUP* setup, HANDLE block);
-bool usbd_class_request(void* param, IPC* ipc);
+extern const USBD_CLASS __CDC_CLASS;
 
 #endif // CDC_H

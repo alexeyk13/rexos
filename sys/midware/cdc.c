@@ -84,8 +84,7 @@ void cdc_destroy(CDC* cdc)
     free(cdc);
 }
 
-//TODO: pass interfaces here
-void* usbd_class_configured(USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
+void cdc_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 {
     USB_INTERFACE_DESCRIPTOR_TYPE* iface;
     USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
@@ -118,10 +117,10 @@ void* usbd_class_configured(USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     }
     //No CDC descriptors in interface
     if (control_ep == 0)
-        return NULL;
+        return;
     CDC* cdc = (CDC*)malloc(sizeof(CDC));
     if (cdc == NULL)
-        return NULL;
+        return;
     cdc->usb = object_get(SYS_OBJ_USB);
     cdc->control_iface = control_iface;
     cdc->control_ep = control_ep;
@@ -145,7 +144,7 @@ void* usbd_class_configured(USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     if (cdc->tx == INVALID_HANDLE || cdc->tx_stream_handle == INVALID_HANDLE)
     {
         cdc_destroy(cdc);
-        return NULL;
+        return;
     }
     cdc->tx_size = 0;
     cdc->tx_idle = true;
@@ -160,7 +159,7 @@ void* usbd_class_configured(USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     if (cdc->rx == INVALID_HANDLE || cdc->rx_stream_handle == INVALID_HANDLE)
     {
         cdc_destroy(cdc);
-        return NULL;
+        return;
     }
     cdc->rx_free = 0;
     size = cdc->data_ep_size;
@@ -175,22 +174,23 @@ void* usbd_class_configured(USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
         if (cdc->notify == INVALID_HANDLE)
         {
             cdc_destroy(cdc);
-            return NULL;
+            return;
         }
         size = cdc->control_ep_size;
         fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep), USB_EP_INTERRUPT, (void*)size);
         cdc_notify_serial_state(cdc, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
+        usbd_register_interface(usbd, control_iface, &__CDC_CLASS, cdc);
     }
+    usbd_register_interface(usbd, data_iface, &__CDC_CLASS, cdc);
 
     cdc->DTR = cdc->RTS = false;
     cdc->baud.baud = 115200;
     cdc->baud.data_bits = 8;
     cdc->baud.parity = 'N';
     cdc->baud.stop_bits = 1;
-    return cdc;
 }
 
-void usbd_class_reset(void* param)
+void cdc_class_reset(USBD* usbd, void* param)
 {
     CDC* cdc = (CDC*)param;
 
@@ -206,15 +206,17 @@ void usbd_class_reset(void* param)
     fclose(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep));
 #endif
 
+    usbd_unregister_interface(usbd, cdc->data_iface, &__CDC_CLASS);
     if (cdc->control_ep)
     {
         fflush(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep));
         fclose(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->control_ep));
+        usbd_unregister_interface(usbd, cdc->control_iface, &__CDC_CLASS);
     }
     cdc_destroy(cdc);
 }
 
-void usbd_class_suspend(void* param)
+void cdc_class_suspend(USBD* usbd, void* param)
 {
     CDC* cdc = (CDC*)param;
 #if (USB_CDC_TX_STREAM_SIZE)
@@ -235,7 +237,7 @@ void usbd_class_suspend(void* param)
     cdc->suspended = true;
 }
 
-void usbd_class_resume(void* param)
+void cdc_class_resume(USBD* usbd, void* param)
 {
     CDC* cdc = (CDC*)param;
     cdc->suspended = false;
@@ -390,7 +392,7 @@ static inline int set_control_line_state(CDC* cdc, SETUP* setup)
     return 0;
 }
 
-int usbd_class_setup(void* param, SETUP* setup, HANDLE block)
+int cdc_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
 {
     CDC* cdc = (CDC*)param;
     int res = -1;
@@ -410,20 +412,8 @@ int usbd_class_setup(void* param, SETUP* setup, HANDLE block)
 }
 
 
-//TODO:
-/*
- * #if (SYS_INFO)
-static inline void cdc_info(CDC* cdc)
-{
-    printf("USB CDC info\n\r\n\r");
-    printf("DTR %s, RTS %s\n\r", ON_OFF[1 * cdc->DTR], ON_OFF[1 * cdc->RTS]);
-    printf("line coding: %d %d%c%d\n\r", cdc->baud.baud, cdc->baud.data_bits, cdc->baud.parity, cdc->baud.stop_bits);
-}
-#endif
-*/
 
-//TODO: pass interfaces here
-bool usbd_class_request(void* param, IPC* ipc)
+bool cdc_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     CDC* cdc = (CDC*)param;
     bool need_post = false;
@@ -466,3 +456,12 @@ bool usbd_class_request(void* param, IPC* ipc)
     }
     return need_post;
 }
+
+const USBD_CLASS __CDC_CLASS = {
+    cdc_class_configured,
+    cdc_class_reset,
+    cdc_class_suspend,
+    cdc_class_resume,
+    cdc_class_setup,
+    cdc_class_request,
+};
