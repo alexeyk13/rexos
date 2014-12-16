@@ -60,6 +60,7 @@ typedef struct _USBD {
     ARRAY *conf_descriptors_fs, *conf_descriptors_hs;
     ARRAY *string_descriptors;
     ARRAY *ifaces;
+    uint8_t ep_iface[USB_EP_COUNT_MAX];
     uint8_t ifacecnt;
 } USBD;
 
@@ -68,8 +69,9 @@ typedef struct {
     void* param;
 } USBD_CLASS_ENTRY;
 
-#define IFACE(usbd, iface)                          (((USBD_CLASS_ENTRY*)((usbd)->ifaces->data))[(iface)])
+#define IFACE(usbd, iface)                          (((USBD_CLASS_ENTRY*)(array_data((usbd)->ifaces)))[(iface)])
 
+#define USBD_INVALID_INTERFACE                      0xff
 
 #if (SYS_INFO)
 const char* const USBD_TEXT_STATES[] =              {"Default", "Addressed", "Configured"};
@@ -190,6 +192,8 @@ static inline void usbd_class_configured(USBD* usbd)
     }
     for (iface = usb_get_first_interface(cfg), i = 0; iface != NULL; iface = usb_get_next_interface(cfg, iface), ++i)
         IFACE(usbd, i).usbd_class = NULL;
+    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
+        usbd->ep_iface[i] = USBD_INVALID_INTERFACE;
 
     //check all classes for interface
     for (i = 0; __USBD_CLASSES[i] != NULL; ++i)
@@ -706,7 +710,7 @@ static inline int usbd_set_configuration(USBD* usbd)
     return 0;
 }
 
-static inline int usbd_device_request(USBD* usbd)
+static inline int usbd_standart_device_request(USBD* usbd)
 {
     int res = -1;
     switch (usbd->setup.bRequest)
@@ -767,7 +771,7 @@ static inline int usbd_get_interface(USBD* usbd)
     return safecpy_write(usbd, &alt, 1);
 }
 
-static inline int usbd_interface_request(USBD* usbd)
+static inline int usbd_standart_interface_request(USBD* usbd)
 {
     int res = -1;
     switch (usbd->setup.bRequest)
@@ -832,7 +836,7 @@ static inline int usbd_endpoint_clear_feature(USBD* usbd)
     return res;
 }
 
-static inline int usbd_endpoint_request(USBD* usbd)
+static inline int usbd_standart_endpoint_request(USBD* usbd)
 {
     int res = -1;
     switch (usbd->setup.bRequest)
@@ -850,7 +854,7 @@ static inline int usbd_endpoint_request(USBD* usbd)
     return res;
 }
 
-static inline int usbd_class_interface_request(USBD* usbd, unsigned int iface)
+static inline int usbd_class_interface_setup(USBD* usbd, unsigned int iface)
 {
     if (iface >= usbd->ifacecnt || IFACE(usbd, iface).usbd_class == NULL)
     {
@@ -871,19 +875,19 @@ void usbd_setup_process(USBD* usbd)
         switch (usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT)
         {
         case BM_REQUEST_RECIPIENT_DEVICE:
-            res = usbd_device_request(usbd);
+            res = usbd_standart_device_request(usbd);
             break;
         case BM_REQUEST_RECIPIENT_INTERFACE:
-            res = usbd_interface_request(usbd);
+            res = usbd_standart_interface_request(usbd);
             break;
         case BM_REQUEST_RECIPIENT_ENDPOINT:
-            res = usbd_endpoint_request(usbd);
+            res = usbd_standart_endpoint_request(usbd);
             break;
         }
         break;
     case BM_REQUEST_TYPE_CLASS:
         if ((usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT) == BM_REQUEST_RECIPIENT_INTERFACE)
-            res = usbd_class_interface_request(usbd, usbd->setup.wIndex);
+            res = usbd_class_interface_setup(usbd, usbd->setup.wIndex);
         break;
     case BM_REQUEST_TYPE_VENDOR:
         //TODO:
@@ -1026,12 +1030,6 @@ void usbd_read_complete(USBD* usbd)
     }
 }
 
-void usbd_class_read_complete(USBD* usbd, IPC* ipc)
-{
-    //TODO: temporaily solution for future refactoring
-    __USBD_CLASSES[0]->usbd_class_request(usbd, ((USBD_CLASS_ENTRY*)(array_data(usbd->ifaces)))[0].param, ipc);
-}
-
 void usbd_write_complete(USBD* usbd)
 {
     switch (usbd->setup_state)
@@ -1057,13 +1055,6 @@ void usbd_write_complete(USBD* usbd)
     }
 }
 
-void usbd_class_write_complete(USBD* usbd, IPC* ipc)
-{
-    //TODO: temporaily solution for future refactoring
-    __USBD_CLASSES[0]->usbd_class_request(usbd, ((USBD_CLASS_ENTRY*)(array_data(usbd->ifaces)))[0].param, ipc);
-}
-
-
 #if (SYS_INFO)
 static inline void usbd_info(USBD* usbd)
 {
@@ -1077,6 +1068,7 @@ static inline void usbd_info(USBD* usbd)
 
 static inline void usbd_init(USBD* usbd)
 {
+    int i;
     usbd->usb = object_get(SYS_OBJ_USB);
     usbd->setup_state = USB_SETUP_STATE_REQUEST;
     usbd->state = USBD_STATE_DEFAULT;
@@ -1096,9 +1088,12 @@ static inline void usbd_init(USBD* usbd)
     //at least 3: manufacturer, product, string 0
     void_array_create(&usbd->string_descriptors, 3);
     array_create(&usbd->ifaces, sizeof(USBD_CLASS_ENTRY));
+
+    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
+        usbd->ep_iface[i] = USBD_INVALID_INTERFACE;
 }
 
-static inline bool usbd_request(USBD* usbd, IPC* ipc)
+bool usbd_device_request(USBD* usbd, IPC* ipc)
 {
     bool need_post = false;
     switch (ipc->cmd)
@@ -1128,6 +1123,20 @@ static inline bool usbd_request(USBD* usbd, IPC* ipc)
         ((uint32_t*)(&usbd->setup))[1] = ipc->param2;
         usbd_setup_received(usbd);
         break;
+    case IPC_OPEN:
+        usbd_open(usbd);
+        need_post = true;
+        break;
+    case IPC_CLOSE:
+        usbd_close(usbd);
+        need_post = true;
+        break;
+    case IPC_READ_COMPLETE:
+        usbd_read_complete(usbd);
+        break;
+    case IPC_WRITE_COMPLETE:
+        usbd_write_complete(usbd);
+        break;
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;
@@ -1136,13 +1145,37 @@ static inline bool usbd_request(USBD* usbd, IPC* ipc)
     return need_post;
 }
 
+bool usbd_class_interface_request(USBD* usbd, IPC* ipc, unsigned int iface)
+{
+    if (iface >= usbd->ifacecnt || IFACE(usbd, iface).usbd_class == NULL)
+    {
+#if (USB_DEBUG_ERRORS)
+        printf("USBD class error: Interface %d not configured\n\r", iface);
+#endif
+        return false;
+    }
+    return IFACE(usbd, iface).usbd_class->usbd_class_request(usbd, IFACE(usbd, iface).param, ipc);
+}
+
+bool usbd_class_endpoint_request(USBD *usbd, IPC* ipc, unsigned int num)
+{
+    if (num >= USB_EP_COUNT_MAX || usbd->ep_iface[num] == USBD_INVALID_INTERFACE)
+    {
+#if (USB_DEBUG_ERRORS)
+        printf("USBD class error: EP%d interface not configured\n\r", num);
+#endif
+        return false;
+    }
+    return IFACE(usbd, usbd->ep_iface[num]).usbd_class->usbd_class_request(usbd, IFACE(usbd, usbd->ep_iface[num]).param, ipc);
+}
+
 void usbd()
 {
     USBD usbd;
     IPC ipc;
     bool need_post;
 
-#if (SYS_INFO) || (USB_DEBUG_REQUESTS) || (USB_DEBUG_ERRORS)
+#if (SYS_INFO) || (USB_DEBUG_REQUESTS) || (USB_DEBUG_ERRORS) || (USB_DEBUG_CLASS_REQUESTS) || (USB_DEBUG_CLASS_IO)
     open_stdout();
 #endif
     object_set_self(SYS_OBJ_USBD);
@@ -1164,28 +1197,39 @@ void usbd()
             need_post = true;
             break;
 #endif
+        case IPC_READ:
+        case IPC_WRITE:
+        case IPC_FLUSH:
+        case IPC_SEEK:
         case IPC_OPEN:
-            usbd_open(&usbd);
-            need_post = true;
-            break;
         case IPC_CLOSE:
-            usbd_close(&usbd);
-            need_post = true;
-            break;
-        case IPC_READ_COMPLETE:
-            if (USB_EP_NUM(HAL_ITEM(ipc.param1)))
-                usbd_class_read_complete(&usbd, &ipc);
+        case IPC_GET_RX_STREAM:
+        case IPC_GET_TX_STREAM:
+        case IPC_STREAM_WRITE:
+            if (HAL_GROUP(ipc.param1) == HAL_USBD)
+            {
+                if (HAL_ITEM(ipc.param1) == USBD_HANDLE_DEVICE)
+                    need_post = usbd_device_request(&usbd, &ipc);
+                else
+                    need_post = usbd_class_interface_request(&usbd, &ipc, HAL_ITEM(ipc.param1) - USBD_HANDLE_INTERFACE);
+            }
             else
-                usbd_read_complete(&usbd);
+            {
+                //TODO: custom handle
+            }
             break;
         case IPC_WRITE_COMPLETE:
+        case IPC_READ_COMPLETE:
             if (USB_EP_NUM(HAL_ITEM(ipc.param1)))
-                usbd_class_write_complete(&usbd, &ipc);
+                usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(HAL_ITEM(ipc.param1)));
             else
-                usbd_write_complete(&usbd);
+                need_post = usbd_device_request(&usbd, &ipc);
+            break;
+        case USBD_INTERFACE_REQUEST:
+            need_post = usbd_class_interface_request(&usbd, &ipc, HAL_ITEM(ipc.param1) - USBD_HANDLE_INTERFACE);
             break;
         default:
-            need_post = usbd_request(&usbd, &ipc);
+            need_post = usbd_device_request(&usbd, &ipc);
             break;
         }
         if (need_post)
@@ -1211,5 +1255,29 @@ bool usbd_unregister_interface(USBD* usbd, unsigned int iface, const USBD_CLASS*
     if (IFACE(usbd, iface).usbd_class != usbd_class)
         return false;
     IFACE(usbd, iface).usbd_class = NULL;
+    return true;
+}
+
+bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int num)
+{
+    if (iface >= usbd->ifacecnt || num >= USB_EP_COUNT_MAX)
+        return false;
+    if (IFACE(usbd, iface).usbd_class == NULL)
+        return false;
+    if (usbd->ep_iface[num] != USBD_INVALID_INTERFACE)
+        return false;
+    usbd->ep_iface[num] = iface;
+    return true;
+}
+
+bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int num)
+{
+    if (iface >= usbd->ifacecnt || num >= USB_EP_COUNT_MAX)
+        return false;
+    if (IFACE(usbd, iface).usbd_class == NULL)
+        return false;
+    if (usbd->ep_iface[num] != iface)
+        return false;
+    usbd->ep_iface[num] = USBD_INVALID_INTERFACE;
     return true;
 }

@@ -53,7 +53,6 @@ typedef enum {
 } USB_TEST_MODES;
 
 #define USB_HANDLE_DEVICE                                       0xff
-#define USB_HANDLE_INTERFACE                                    0x100
 
 #define USB_MAX_EP0_SIZE                                        64
 
@@ -196,8 +195,6 @@ typedef enum {
     USBD_UNREGISTER_CLASS,
     USBD_REGISTER_DESCRIPTOR,
     USBD_UNREGISTER_DESCRIPTOR,
-    USBD_SET_FEATURE,
-    USBD_CLEAR_FEATURE,
     USBD_INTERFACE_REQUEST,
 
     USBD_MAX
@@ -237,6 +234,9 @@ typedef struct {
 } USBD_DESCRIPTOR_REGISTER_STRUCT;
 
 #define USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED    ((sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT) + 3) & ~3)
+
+#define USBD_HANDLE_DEVICE                               0x0
+#define USBD_HANDLE_INTERFACE                            0x100
 
 //--------------------------------------------------- CDC class ---------------------------------------------------------------
 typedef enum {
