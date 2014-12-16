@@ -18,41 +18,48 @@ typedef struct {
 } ARRAY;
 
 typedef struct {
-    ARRAY* (*array_create)(ARRAY** ar, unsigned int reserved);
-    void (*array_destroy)(ARRAY** ar);
-    ARRAY* (*array_add)(ARRAY** ar, unsigned int size);
-    ARRAY* (*array_remove)(ARRAY** ar, unsigned int index);
-    ARRAY* (*array_squeeze)(ARRAY** ar);
+    ARRAY* (*lib_array_create)(ARRAY** ar, unsigned int reserved);
+    void (*lib_array_destroy)(ARRAY** ar);
+    ARRAY* (*lib_array_add)(ARRAY** ar, unsigned int size);
+    ARRAY* (*lib_array_clear)(ARRAY** ar);
+    ARRAY* (*lib_array_remove)(ARRAY** ar, unsigned int index);
+    ARRAY* (*lib_array_squeeze)(ARRAY** ar);
 } LIB_ARRAY;
 
 __STATIC_INLINE ARRAY* array_create(ARRAY** ar, unsigned int reserved)
 {
     LIB_CHECK_RET(LIB_ID_ARRAY);
-    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->array_create(ar, reserved);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_create(ar, reserved);
 }
 
 __STATIC_INLINE void array_destroy(ARRAY** ar)
 {
     LIB_CHECK(LIB_ID_ARRAY);
-    ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->array_destroy(ar);
+    ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_destroy(ar);
 }
 
 __STATIC_INLINE ARRAY* array_add(ARRAY** ar, unsigned int size)
 {
     LIB_CHECK_RET(LIB_ID_ARRAY);
-    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->array_add(ar, size);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_add(ar, size);
+}
+
+__STATIC_INLINE ARRAY* array_clear(ARRAY** ar)
+{
+    LIB_CHECK_RET(LIB_ID_ARRAY);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_clear(ar);
 }
 
 __STATIC_INLINE ARRAY* array_remove(ARRAY** ar, unsigned int index)
 {
     LIB_CHECK_RET(LIB_ID_ARRAY);
-    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->array_remove(ar, index);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_remove(ar, index);
 }
 
 __STATIC_INLINE ARRAY* array_squeeze(ARRAY** ar)
 {
     LIB_CHECK_RET(LIB_ID_ARRAY);
-    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->array_squeeze(ar);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_squeeze(ar);
 }
 
 #endif // ARRAY_H

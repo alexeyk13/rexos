@@ -10,7 +10,7 @@
 
 #define ARRAY_HEADER_SIZE                               (sizeof(unsigned int) * 2)
 
-ARRAY* __array_create(ARRAY** ar, unsigned int reserved)
+ARRAY* lib_array_create(ARRAY** ar, unsigned int reserved)
 {
     *ar = malloc(ARRAY_HEADER_SIZE + sizeof(void*) * reserved);
     if (*ar)
@@ -21,14 +21,16 @@ ARRAY* __array_create(ARRAY** ar, unsigned int reserved)
     return (*ar);
 }
 
-void __array_destroy(ARRAY **ar)
+void lib_array_destroy(ARRAY **ar)
 {
     free(*ar);
     *ar = NULL;
 }
 
-ARRAY* __array_add(ARRAY **ar, unsigned int size)
+ARRAY* lib_array_add(ARRAY **ar, unsigned int size)
 {
+    if (*ar == NULL)
+        return NULL;
     //already have space
     if ((*ar)->reserved - (*ar)->size >= size)
     {
@@ -46,8 +48,18 @@ ARRAY* __array_add(ARRAY **ar, unsigned int size)
     return (*ar);
 }
 
-ARRAY* __array_remove(ARRAY** ar, unsigned int index)
+ARRAY* lib_array_clear(ARRAY **ar)
 {
+    if (*ar == NULL)
+        return NULL;
+    (*ar)->size = 0;
+    return (*ar);
+}
+
+ARRAY* lib_array_remove(ARRAY** ar, unsigned int index)
+{
+    if (*ar == NULL)
+        return NULL;
     if (index < (*ar)->size - 1)
         (*ar)->data[index] = (*ar)->data[--(*ar)->size];
     else if (index == (*ar)->size - 1)
@@ -57,17 +69,20 @@ ARRAY* __array_remove(ARRAY** ar, unsigned int index)
     return (*ar);
 }
 
-ARRAY* __array_squeeze(ARRAY** ar)
+ARRAY* lib_array_squeeze(ARRAY** ar)
 {
+    if (*ar == NULL)
+        return NULL;
     *ar = realloc(*ar, ARRAY_HEADER_SIZE + sizeof(void*) * (*ar)->size);
     (*ar)->reserved = (*ar)->size;
     return (*ar);
 }
 
 const LIB_ARRAY __LIB_ARRAY = {
-    __array_create,
-    __array_destroy,
-    __array_add,
-    __array_remove,
-    __array_squeeze
+    lib_array_create,
+    lib_array_destroy,
+    lib_array_add,
+    lib_array_clear,
+    lib_array_remove,
+    lib_array_squeeze
 };
