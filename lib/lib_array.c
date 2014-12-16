@@ -7,12 +7,13 @@
 #include "lib_array.h"
 #include "stdlib.h"
 #include "../userspace/error.h"
+#include <string.h>
 
 #define ARRAY_HEADER_SIZE                               (sizeof(unsigned int) * 2)
 
 ARRAY* lib_array_create(ARRAY** ar, unsigned int reserved)
 {
-    *ar = malloc(ARRAY_HEADER_SIZE + sizeof(void*) * reserved);
+    *ar = malloc(ARRAY_HEADER_SIZE + reserved);
     if (*ar)
     {
         (*ar)->reserved = reserved;
@@ -39,7 +40,7 @@ ARRAY* lib_array_add(ARRAY **ar, unsigned int size)
     }
     size -= (*ar)->reserved - (*ar)->size;
     (*ar)->size = (*ar)->reserved;
-    (*ar) = realloc(*ar, ARRAY_HEADER_SIZE + sizeof(void*) * (size + (*ar)->size));
+    (*ar) = realloc(*ar, ARRAY_HEADER_SIZE + (size + (*ar)->size));
     if (*ar)
     {
         (*ar)->reserved += size;
@@ -56,16 +57,17 @@ ARRAY* lib_array_clear(ARRAY **ar)
     return (*ar);
 }
 
-ARRAY* lib_array_remove(ARRAY** ar, unsigned int index)
+ARRAY* lib_array_remove(ARRAY** ar, unsigned int index, unsigned int size)
 {
     if (*ar == NULL)
         return NULL;
-    if (index < (*ar)->size - 1)
-        (*ar)->data[index] = (*ar)->data[--(*ar)->size];
-    else if (index == (*ar)->size - 1)
-        --(*ar)->size;
-    else
+    if (index + size > (*ar)->size)
+    {
         error(ERROR_OUT_OF_RANGE);
+        return (*ar);
+    }
+    memmove((*ar)->data + index, (*ar)->data + index + size, (*ar)->size - index - size);
+    (*ar)->size -= size;
     return (*ar);
 }
 
@@ -73,7 +75,7 @@ ARRAY* lib_array_squeeze(ARRAY** ar)
 {
     if (*ar == NULL)
         return NULL;
-    *ar = realloc(*ar, ARRAY_HEADER_SIZE + sizeof(void*) * (*ar)->size);
+    *ar = realloc(*ar, ARRAY_HEADER_SIZE + (*ar)->size);
     (*ar)->reserved = (*ar)->size;
     return (*ar);
 }

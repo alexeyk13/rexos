@@ -14,7 +14,7 @@
 
 typedef struct {
     unsigned int size, reserved;
-    void* data[65535];
+    char data[65535];
 } ARRAY;
 
 typedef struct {
@@ -22,9 +22,19 @@ typedef struct {
     void (*lib_array_destroy)(ARRAY** ar);
     ARRAY* (*lib_array_add)(ARRAY** ar, unsigned int size);
     ARRAY* (*lib_array_clear)(ARRAY** ar);
-    ARRAY* (*lib_array_remove)(ARRAY** ar, unsigned int index);
+    ARRAY* (*lib_array_remove)(ARRAY** ar, unsigned int index, unsigned int size);
     ARRAY* (*lib_array_squeeze)(ARRAY** ar);
 } LIB_ARRAY;
+
+__STATIC_INLINE char* array_data(ARRAY* ar)
+{
+    return ar->data;
+}
+
+__STATIC_INLINE unsigned int array_size(ARRAY* ar)
+{
+    return ar->size;
+}
 
 __STATIC_INLINE ARRAY* array_create(ARRAY** ar, unsigned int reserved)
 {
@@ -50,16 +60,44 @@ __STATIC_INLINE ARRAY* array_clear(ARRAY** ar)
     return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_clear(ar);
 }
 
-__STATIC_INLINE ARRAY* array_remove(ARRAY** ar, unsigned int index)
+__STATIC_INLINE ARRAY* array_remove(ARRAY** ar, unsigned int index, unsigned int size)
 {
     LIB_CHECK_RET(LIB_ID_ARRAY);
-    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_remove(ar, index);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_remove(ar, index, size);
 }
 
 __STATIC_INLINE ARRAY* array_squeeze(ARRAY** ar)
 {
     LIB_CHECK_RET(LIB_ID_ARRAY);
     return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_squeeze(ar);
+}
+
+__STATIC_INLINE void** void_array_data(ARRAY* ar)
+{
+    return (void*)(ar->data);
+}
+
+__STATIC_INLINE unsigned int void_array_size(ARRAY* ar)
+{
+    return ar->size / sizeof(void*);
+}
+
+__STATIC_INLINE ARRAY* void_array_create(ARRAY** ar, unsigned int reserved)
+{
+    LIB_CHECK_RET(LIB_ID_ARRAY);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_create(ar, reserved * sizeof(void*));
+}
+
+__STATIC_INLINE ARRAY* void_array_add(ARRAY** ar, unsigned int size)
+{
+    LIB_CHECK_RET(LIB_ID_ARRAY);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_add(ar, size * sizeof(void*));
+}
+
+__STATIC_INLINE ARRAY* void_array_remove(ARRAY** ar, unsigned int index, unsigned int size)
+{
+    LIB_CHECK_RET(LIB_ID_ARRAY);
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_remove(ar, index * sizeof(void*), size * sizeof(void*));
 }
 
 #endif // ARRAY_H
