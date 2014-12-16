@@ -37,6 +37,7 @@ typedef enum {
     HAL_WDT,
     HAL_UART,
     HAL_USB,
+    HAL_USBD,
     HAL_ADC,
     HAL_DAC,
     HAL_I2C,
