@@ -5,7 +5,6 @@
 */
 
 #include "mt.h"
-#include "stm32/lib_bitbang.h"
 #include "../../userspace/gpio.h"
 #if (SYS_INFO) || (MT_TEST)
 #include "../../userspace/stdio.h"
@@ -88,18 +87,18 @@ static uint8_t mt_read(unsigned int mask)
 {
     delay_clks(TW);
 
-    stm32_bitbang_reset_mask(ADDSET_PORT, ADDSET_MASK);
-    stm32_bitbang_set_mask(ADDSET_PORT, mask | MT_RW);
-    stm32_bitbang_set_data_in(DATA_PORT);
+    gpio_reset_mask(ADDSET_PORT, ADDSET_MASK);
+    gpio_set_mask(ADDSET_PORT, mask | MT_RW);
+    gpio_set_data_in(DATA_PORT, 8);
 
     delay_clks(TAS);
-    stm32_bitbang_set_pin(MT_STROBE);
+    gpio_set_pin(MT_STROBE);
 
     delay_clks(TDDR);
-    uint8_t res = stm32_bitbang_get_mask(DATA_PORT, DATA_MASK) & 0xff;
+    uint8_t res = gpio_get_mask(DATA_PORT, DATA_MASK) & 0xff;
 
     delay_clks(PW - TDDR);
-    stm32_bitbang_reset_pin(MT_STROBE);
+    gpio_reset_pin(MT_STROBE);
     return res;
 }
 
@@ -111,17 +110,17 @@ static uint8_t mt_status(unsigned int cs)
 static void mt_write(unsigned int mask, uint8_t data)
 {
     delay_clks(TW);
-    stm32_bitbang_reset_mask(ADDSET_PORT, ADDSET_MASK);
-    stm32_bitbang_set_mask(ADDSET_PORT, mask);
-    stm32_bitbang_set_data_out(DATA_PORT);
-    stm32_bitbang_reset_mask(DATA_PORT, DATA_MASK);
+    gpio_reset_mask(ADDSET_PORT, ADDSET_MASK);
+    gpio_set_mask(ADDSET_PORT, mask);
+    gpio_set_data_out(DATA_PORT, 8);
+    gpio_reset_mask(DATA_PORT, DATA_MASK);
+    gpio_set_mask(DATA_PORT, data);
 
     delay_clks(TAS);
-    stm32_bitbang_set_pin(MT_STROBE);
+    gpio_set_pin(MT_STROBE);
 
-    stm32_bitbang_set_mask(DATA_PORT, data);
     delay_clks(PW);
-    stm32_bitbang_reset_pin(MT_STROBE);
+    gpio_reset_pin(MT_STROBE);
 }
 
 static void mt_cmd(unsigned int cs, uint8_t cmd)
@@ -143,7 +142,7 @@ static uint8_t mt_datain(unsigned int cs)
 
 void mt_set_backlight(bool on)
 {
-    gpio_set_pin(MT_BACKLIGHT, on);
+    gpio_set_pin(MT_BACKLIGHT);
 }
 
 void mt_cls()
@@ -164,9 +163,9 @@ void mt_cls()
 
 void mt_reset()
 {
-    stm32_bitbang_reset_pin(MT_RESET);
+    gpio_reset_pin(MT_RESET);
     delay_clks(TRI);
-    stm32_bitbang_set_pin(MT_RESET);
+    gpio_set_pin(MT_RESET);
     delay_clks(TR);
 }
 
@@ -519,13 +518,13 @@ void mt_write_rect(RECT* rect, unsigned int mode, const uint8_t* data)
 
 void mt_init()
 {
-    stm32_bitbang_enable_mask(DATA_PORT, DATA_MASK);
-    stm32_bitbang_enable_mask(ADDSET_PORT, ADDSET_MASK);
-    stm32_bitbang_enable_pin(MT_RESET);
-    stm32_bitbang_enable_pin(MT_STROBE);
-    stm32_bitbang_reset_pin(MT_STROBE);
+    gpio_enable_mask(DATA_PORT, GPIO_MODE_OUT, DATA_MASK);
+    gpio_enable_mask(ADDSET_PORT, GPIO_MODE_OUT, ADDSET_MASK);
+    gpio_enable_pin(MT_RESET, GPIO_MODE_OUT);
+    gpio_enable_pin(MT_STROBE, GPIO_MODE_OUT);
+    gpio_reset_pin(MT_STROBE);
     //doesn't need to be so fast as others
-    gpio_enable_pin(MT_BACKLIGHT, PIN_MODE_OUT);
+    gpio_enable_pin(MT_BACKLIGHT, GPIO_MODE_OUT);
 
     mt_reset();
     mt_cls();
