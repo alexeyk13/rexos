@@ -142,7 +142,7 @@ static uint8_t mt_datain(unsigned int cs)
 
 void mt_set_backlight(bool on)
 {
-    gpio_set_pin(MT_BACKLIGHT);
+    on ? gpio_set_pin(MT_BACKLIGHT) : gpio_reset_pin(MT_BACKLIGHT);
 }
 
 void mt_cls()
@@ -175,8 +175,6 @@ void mt_show(bool on)
         mt_cmd(MT_CS1 | MT_CS2, MT_CMD_DISPLAY_ON);
     else
         mt_cmd(MT_CS1 | MT_CS2, MT_CMD_DISPLAY_OFF);
-    mt_cmd(MT_CS1, MT_CMD_DISPLAY_ON);
-    mt_cmd(MT_CS2, MT_CMD_DISPLAY_ON);
 }
 
 bool mt_is_on()
