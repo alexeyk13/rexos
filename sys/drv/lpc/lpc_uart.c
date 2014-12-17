@@ -728,7 +728,7 @@ void lpc_uart()
     {
         error(ERROR_OK);
         need_post = false;
-        ipc_read_ms(&ipc, 0, 0);
+        ipc_read_ms(&ipc, 0, ANY_HANDLE);
         switch (ipc.cmd)
         {
         case IPC_PING:

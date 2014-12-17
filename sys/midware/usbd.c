@@ -1193,7 +1193,7 @@ void usbd()
     usbd_init(&usbd);
     for (;;)
     {
-        ipc_read_ms(&ipc, 0, 0);
+        ipc_read_ms(&ipc, 0, ANY_HANDLE);
         error(ERROR_OK);
         need_post = false;
         switch (ipc.cmd)

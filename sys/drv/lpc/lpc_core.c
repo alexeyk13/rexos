@@ -48,7 +48,7 @@ void lpc_core_loop(CORE* core)
         need_post = false;
         group = -1;
         ipc.cmd = 0;
-        ipc_read_ms(&ipc, 0, 0);
+        ipc_read_ms(&ipc, 0, ANY_HANDLE);
 
         if (ipc.cmd < IPC_USER)
         {

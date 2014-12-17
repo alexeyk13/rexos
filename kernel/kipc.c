@@ -23,7 +23,7 @@ static inline int kipc_index(PROCESS* process, HANDLE wait_process)
     int i;
     unsigned int head = process->kipc.rb.head;
     for (i = process->kipc.rb.tail; i != head; i = RB_ROUND_BACK(&process->kipc.rb, i - 1))
-        if (IPC_ITEM(process, i)->process == wait_process || wait_process == 0)
+        if (IPC_ITEM(process, i)->process == wait_process || wait_process == ANY_HANDLE)
             return i;
     return -1;
 }
@@ -70,7 +70,7 @@ void kipc_post_process(IPC* ipc, unsigned int sender)
     CHECK_HANDLE(receiver, sizeof(PROCESS));
     CHECK_MAGIC(receiver, MAGIC_PROCESS);
     disable_interrupts();
-    if ((wake = (receiver->kipc.wait_process == sender || receiver->kipc.wait_process == 0)))
+    if ((wake = (receiver->kipc.wait_process == sender || receiver->kipc.wait_process == ANY_HANDLE)))
         receiver->kipc.wait_process = INVALID_HANDLE;
     else if (!rb_is_full(&receiver->kipc.rb))
         cur = IPC_ITEM(receiver, rb_put(&receiver->kipc.rb));
