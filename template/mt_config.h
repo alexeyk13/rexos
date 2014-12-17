@@ -7,6 +7,8 @@
 #ifndef MT_CONFIG_H
 #define MT_CONFIG_H
 
+#include "../../../rexos/userspace/stm32_driver.h"
+
 //----------------------- pin definition -------------------------------------------
 //port for data lines D0..D7
 #define DATA_PORT                       GPIO_PORT_A
@@ -32,19 +34,21 @@
 
 //------------------------------ timeouts ------------------------------------------
 //all CLKS time. Refer to datasheet for more details
-//Address hold time
+//Address hold time, min 140ns
 #define TAS                             1
-//Data read prepare time
-#define TDDR                            17
-//Delay between commands
-#define TW                              256
-//Reset time (max)
-#define TR                              320
-//Reset impulse time (max)
-#define TRI                             32
+//Data read prepare time, max 320ns
+#define TDDR                            2
+//E high pulse time, min 450ns
+#define PW                              3
+//Delay between commands, min 8us
+#define TW                              40
+//Reset time, max 10us
+#define TR                              50
+//Reset impulse time, min 200ns
+#define TRI                             2
 //------------------------------ general ---------------------------------------------
 //pixel test api
-#define MT_TEST                         0
+#define MT_TEST                         1
 
 #define X_MIRROR                        1
 
