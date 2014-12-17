@@ -7,16 +7,19 @@
 #include "lib_lib.h"
 #include "dbg.h"
 #include "kernel_config.h"
-#include "../lib/lib_std.h"
-#include "../lib/lib_stdio.h"
-#include "../lib/lib_time.h"
-#include "../lib/lib_heap.h"
+#include "lib_std.h"
+#include "lib_stdio.h"
+#include "lib_time.h"
+#include "lib_heap.h"
 #if (KERNEL_LIB_ARRAY)
-#include "../lib/lib_array.h"
+#include "lib_array.h"
 #endif //KERNEL_LIB_ARRAY
 #if (KERNEL_LIB_USB)
-#include "../lib/lib_usb.h"
+#include "lib_usb.h"
 #endif //KERNEL_LIB_USB
+#if (KERNEL_LIB_GPIO)
+#include "lib_gpio.h"
+#endif //KERNEL_LIB_GPIO
 
 void lib_stub ()
 {
@@ -38,10 +41,15 @@ const void *const __LIB[] = {
     (const void *const)NULL,
 #endif //KERNEL_LIB_ARRAY
 #if (KERNEL_LIB_USB)
-    (const void *const)&__LIB_USB
+    (const void *const)&__LIB_USB,
+#else
+    (const void *const)NULL,
+#endif //KERNEL_LIB_GPIO
+#if (KERNEL_LIB_GPIO)
+    (const void *const)&__LIB_GPIO
 #else
     (const void *const)NULL
-#endif //KERNEL_LIB_USB
+#endif //KERNEL_LIB_GPIO
 };
 
 

@@ -7,6 +7,7 @@
 #include "stm32_uart.h"
 #include "stm32_power.h"
 #include "../../../userspace/sys.h"
+#include "../../../userspace/stm32_driver.h"
 #include "error.h"
 #include "../../../userspace/stdlib.h"
 #include "../../../userspace/stdio.h"
@@ -371,22 +372,22 @@ void stm32_uart_open_internal(SHARED_UART_DRV* drv, UART_PORT port, UART_ENABLE*
     if (drv->uart.uarts[port]->tx_pin != PIN_UNUSED)
     {
 #if defined(STM32F1)
-        ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart.uarts[port]->tx_pin, GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+        ack_gpio(drv, STM32_GPIO_ENABLE_PIN, drv->uart.uarts[port]->tx_pin, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
 #elif defined(STM32F2) || defined(STM32F4)
-        ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart.uarts[port]->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, drv->uart.uarts[port]->port < UART_4 ? AF7 : AF8);
+        ack_gpio(drv, STM32_GPIO_ENABLE_PIN, drv->uart.uarts[port]->tx_pin, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, drv->uart.uarts[port]->port < UART_4 ? AF7 : AF8);
 #elif defined(STM32L0)
-        ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart.uarts[port]->tx_pin, GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, drv->uart.uarts[port]->tx_pin == UART_TX_PINS[port] ? AF0 : AF4);
+        ack_gpio(drv, STM32_GPIO_ENABLE_PIN, drv->uart.uarts[port]->tx_pin, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL |  GPIO_SPEED_HIGH, drv->uart.uarts[port]->tx_pin == UART_TX_PINS[port] ? AF0 : AF4);
 #endif
     }
 
     if (drv->uart.uarts[port]->rx_pin != PIN_UNUSED)
     {
 #if defined(STM32F1)
-        ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart.uarts[port]->rx_pin, GPIO_MODE_INPUT_FLOAT, false);
+        ack_gpio(drv, STM32_GPIO_ENABLE_PIN, drv->uart.uarts[port]->rx_pin, STM32_GPIO_MODE_INPUT_FLOAT, false);
 #elif defined(STM32F2) || defined(STM32F4)
-        ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart.uarts[port]->rx_pin, , GPIO_MODE_AF | GPIO_SPEED_HIGH, drv->uart.uarts[port]->port < UART_4 ? AF7 : AF8);
+        ack_gpio(drv, STM32_GPIO_ENABLE_PIN, drv->uart.uarts[port]->rx_pin, STM32_GPIO_MODE_AF | GPIO_SPEED_HIGH, drv->uart.uarts[port]->port < UART_4 ? AF7 : AF8);
 #elif defined(STM32L0)
-        ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, drv->uart.uarts[port]->rx_pin, GPIO_MODE_AF | GPIO_SPEED_HIGH, drv->uart.uarts[port]->rx_pin == UART_RX_PINS[port] ? AF0 : AF4);
+        ack_gpio(drv, STM32_GPIO_ENABLE_PIN, drv->uart.uarts[port]->rx_pin, STM32_GPIO_MODE_AF | GPIO_SPEED_HIGH, drv->uart.uarts[port]->rx_pin == UART_RX_PINS[port] ? AF0 : AF4);
 #endif
     }
     //power up
@@ -447,13 +448,13 @@ static inline void stm32_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
     {
         stream_close(drv->uart.uarts[port]->tx_handle);
         stream_destroy(drv->uart.uarts[port]->tx_stream);
-        ack_gpio(drv, GPIO_DISABLE_PIN, drv->uart.uarts[port]->tx_pin, 0, 0);
+        ack_gpio(drv, STM32_GPIO_DISABLE_PIN, drv->uart.uarts[port]->tx_pin, 0, 0);
     }
     if (drv->uart.uarts[port]->rx_pin != PIN_UNUSED)
     {
         stream_close(drv->uart.uarts[port]->rx_handle);
         stream_destroy(drv->uart.uarts[port]->rx_stream);
-        ack_gpio(drv, GPIO_DISABLE_PIN, drv->uart.uarts[port]->rx_pin, 0, 0);
+        ack_gpio(drv, STM32_GPIO_DISABLE_PIN, drv->uart.uarts[port]->rx_pin, 0, 0);
     }
 
 #if defined(STM32F1)

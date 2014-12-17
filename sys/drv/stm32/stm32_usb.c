@@ -6,7 +6,7 @@
 
 #include "stm32_usb.h"
 #include "stm32_regsusb.h"
-#include "stm32_gpio.h"
+#include "../../../userspace/stm32_driver.h"
 #include "stm32_power.h"
 #include "../../../userspace/sys.h"
 #include "../../../userspace/usb.h"
@@ -312,8 +312,8 @@ void stm32_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     drv->usb.device = device;
 
     //enable GPIO
-    ack_gpio(drv, GPIO_ENABLE_PIN, A9, PIN_MODE_IN_FLOAT, 0);
-    ack_gpio(drv, GPIO_ENABLE_PIN, A10, PIN_MODE_IN_PULLUP, 0);
+    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, A9, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, A10, STM32_GPIO_MODE_INPUT_PULL, true);
 
     //enable clock, setup prescaller
     ack_power(drv, STM32_POWER_USB_ON, 0, 0, 0);
@@ -484,8 +484,8 @@ static inline void stm32_usb_close_device(SHARED_USB_DRV* drv)
     ack_power(drv, STM32_POWER_USB_OFF, 0, 0, 0);
 
     //disable pins
-    ack_gpio(drv, GPIO_DISABLE_PIN, A9, 0, 0);
-    ack_gpio(drv, GPIO_DISABLE_PIN, A10, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, A9, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, A10, 0, 0);
 }
 
 static inline void stm32_usb_set_address(int addr)

@@ -5,7 +5,7 @@
 */
 
 #include "stm32_timer.h"
-#include "stm32_gpio.h"
+#include "../../../userspace/stm32_driver.h"
 #include "stm32_power.h"
 #include "stm32_core_private.h"
 #include "../../../userspace/error.h"
@@ -230,14 +230,34 @@ void stm32_timer_enable_ext_clock(CORE *core, TIMER_NUM num, PIN pin, unsigned i
             //enable pin, decode pullup/down
             switch (flags & TIMER_FLAG_PULL_MASK)
             {
+#if defined(STM32F1)
             case TIMER_FLAG_PULLUP:
-                stm32_gpio_request_inside(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_PULLUP, 0);
+                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT_PULL, false);
                 break;
             case TIMER_FLAG_PULLDOWN:
-                stm32_gpio_request_inside(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_PULLDOWN, 0);
+                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT_PULL, true);
                 break;
             default:
-                stm32_gpio_request_inside(core, GPIO_ENABLE_PIN, pin, PIN_MODE_IN_FLOAT, 0);
+                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT_FLOAT, false);
+#elif  defined(STM32F2) || defined(STM32F4)
+            case TIMER_FLAG_PULLUP:
+                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_PULLUP, AF0);
+                break;
+            case TIMER_FLAG_PULLDOWN:
+                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_PULLDOWN, AF0);
+                break;
+            default:
+                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_NO_PULLUP, AF0);
+#elif  defined(STM32L0)
+            case TIMER_FLAG_PULLUP:
+                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_PULLUP, AF0);
+                break;
+            case TIMER_FLAG_PULLDOWN:
+                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_PULLDOWN, AF0);
+                break;
+            default:
+                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_NO_PULLUP, AF0);
+#endif
             }
             //map to input, no filter
             TIMER_REGS[num]->CCMR1 = 1 << (8 * (channel));
@@ -276,7 +296,7 @@ void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
             //disable timer
             stm32_timer_disable(core, num);
             //disable pin
-            stm32_gpio_request_inside(core, GPIO_DISABLE_PIN, pin, 0, 0);
+            stm32_gpio_request_inside(core, STM32_GPIO_DISABLE_PIN, pin, 0, 0);
 #if defined (STM32F1)
             //unmap AFIO
             if (i % 3)

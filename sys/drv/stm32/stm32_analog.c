@@ -351,7 +351,7 @@ void stm32_dac_open_channel(SHARED_ANALOG_DRV* drv, int channel)
 {
     uint32_t reg;
     //enable PIN analog mode
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN_SYSTEM, DAC_OUT[channel], GPIO_MODE_INPUT_ANALOG, false);
+    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, DAC_OUT[channel], STM32_GPIO_MODE_INPUT_ANALOG, false);
     DAC->CR &= ~(0xffff << (16 * channel));
     //EN
     reg = (1 << 0);
@@ -367,7 +367,7 @@ void stm32_dac_close_channel(SHARED_ANALOG_DRV* drv, int channel)
     //DIS
     DAC->CR &= ~(0xffff << (16 * channel));
     //disable PIN
-    ack_gpio(drv, GPIO_DISABLE_PIN, DAC_OUT[channel], 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, DAC_OUT[channel], 0, 0);
 }
 
 void stm32_dac_flush(SHARED_ANALOG_DRV* drv, STM32_DAC num)

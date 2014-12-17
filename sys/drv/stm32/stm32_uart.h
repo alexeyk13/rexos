@@ -13,7 +13,6 @@
 
 #include "../../../userspace/process.h"
 #include "../../../userspace/uart.h"
-#include "stm32_gpio.h"
 #include "stm32_config.h"
 #include "sys_config.h"
 #if (MONOLITH_UART)

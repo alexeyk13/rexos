@@ -7,9 +7,8 @@
 #define STM32_ANALOG_H
 
 #include "../../../userspace/process.h"
-#include "../../../userspace/core/stm32.h"
 #include "../../../userspace/sys.h"
-#include "stm32_gpio.h"
+#include "../../../userspace/stm32_driver.h"
 #include "stm32_timer.h"
 #include "stm32_config.h"
 #if (MONOLITH_ANALOG)
