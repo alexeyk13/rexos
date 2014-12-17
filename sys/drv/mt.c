@@ -5,9 +5,9 @@
 */
 
 #include "mt.h"
-#include "stm32/stm32_bitbang.h"
-#include "../gpio.h"
-#if (SYS_INFO)
+#include "stm32/lib_bitbang.h"
+#include "../../userspace/gpio.h"
+#if (SYS_INFO) || (MT_TEST)
 #include "../../userspace/stdio.h"
 #include "../../userspace/timer.h"
 #endif
@@ -15,6 +15,9 @@
 #include "../../userspace/block.h"
 #include "../../userspace/direct.h"
 #endif
+
+
+#define CLKS_TEST_ROUNDS                10000000
 
 #if (MT_DRIVER)
 void mt();
@@ -74,60 +77,66 @@ uint8_t bitswap(uint8_t x)
     return x;
 }
 
-__STATIC_INLINE void delay_clks(unsigned int clks)
+static void delay_clks(unsigned int clks)
 {
     int i;
     for (i = 0; i < clks; ++i)
         __NOP();
 }
 
-__STATIC_INLINE uint8_t mt_read(unsigned int mask)
+static uint8_t mt_read(unsigned int mask)
 {
     delay_clks(TW);
-    stm32_bitbang_set_data_in(DATA_PORT);
-    stm32_bitbang_reset_mask(DATA_PORT, DATA_MASK);
+
     stm32_bitbang_reset_mask(ADDSET_PORT, ADDSET_MASK);
-    stm32_bitbang_reset_pin(MT_STROBE);
-    //Tah is only 20ns
     stm32_bitbang_set_mask(ADDSET_PORT, mask | MT_RW);
+    stm32_bitbang_set_data_in(DATA_PORT);
+
     delay_clks(TAS);
     stm32_bitbang_set_pin(MT_STROBE);
+
     delay_clks(TDDR);
-    return stm32_bitbang_get_mask(DATA_PORT, DATA_MASK) & 0xff;
+    uint8_t res = stm32_bitbang_get_mask(DATA_PORT, DATA_MASK) & 0xff;
+
+    delay_clks(PW - TDDR);
+    stm32_bitbang_reset_pin(MT_STROBE);
+    return res;
 }
 
-__STATIC_INLINE uint8_t mt_status(unsigned int cs)
+static uint8_t mt_status(unsigned int cs)
 {
     return mt_read(cs);
 }
 
-__STATIC_INLINE void mt_write(unsigned int mask, uint8_t data)
+static void mt_write(unsigned int mask, uint8_t data)
 {
     delay_clks(TW);
+    stm32_bitbang_reset_mask(ADDSET_PORT, ADDSET_MASK);
+    stm32_bitbang_set_mask(ADDSET_PORT, mask);
     stm32_bitbang_set_data_out(DATA_PORT);
     stm32_bitbang_reset_mask(DATA_PORT, DATA_MASK);
-    stm32_bitbang_reset_mask(ADDSET_PORT, ADDSET_MASK);
-    stm32_bitbang_reset_pin(MT_STROBE);
-    //Tah is only 20ns
-    stm32_bitbang_set_mask(ADDSET_PORT, mask);
+
     delay_clks(TAS);
     stm32_bitbang_set_pin(MT_STROBE);
+
     stm32_bitbang_set_mask(DATA_PORT, data);
+    delay_clks(PW);
+    stm32_bitbang_reset_pin(MT_STROBE);
 }
 
-__STATIC_INLINE void mt_cmd(unsigned int cs, uint8_t cmd)
+static void mt_cmd(unsigned int cs, uint8_t cmd)
 {
     mt_write(cs, cmd);
     while(mt_status(cs) & MT_STATUS_BUSY) {}
 }
 
-__STATIC_INLINE void mt_dataout(unsigned int cs, uint8_t data)
+static void mt_dataout(unsigned int cs, uint8_t data)
 {
     mt_write(cs | MT_A, data);
     while(mt_status(cs) & MT_STATUS_BUSY) {}
 }
 
-__STATIC_INLINE uint8_t mt_datain(unsigned int cs)
+static uint8_t mt_datain(unsigned int cs)
 {
     return mt_read(cs | MT_A);
 }
@@ -167,6 +176,13 @@ void mt_show(bool on)
         mt_cmd(MT_CS1 | MT_CS2, MT_CMD_DISPLAY_ON);
     else
         mt_cmd(MT_CS1 | MT_CS2, MT_CMD_DISPLAY_OFF);
+    mt_cmd(MT_CS1, MT_CMD_DISPLAY_ON);
+    mt_cmd(MT_CS2, MT_CMD_DISPLAY_ON);
+}
+
+bool mt_is_on()
+{
+    return !(mt_status(MT_CS1) & MT_STATUS_OFF);
 }
 
 void mt_set_pixel(unsigned int x, unsigned int y, bool set)
@@ -233,8 +249,18 @@ bool mt_get_pixel(unsigned int x, unsigned int y)
 }
 
 #if (MT_TEST)
+void mt_clks_test()
+{
+    TIME uptime;
+    get_uptime(&uptime);
+    delay_clks(CLKS_TEST_ROUNDS);
+    printf("clks average time: %dns\n\r", time_elapsed_us(&uptime) * 1000 / CLKS_TEST_ROUNDS);
+}
+
+
 static void mt_poly_test(unsigned int y, unsigned int size)
 {
+    int i, j;
     for (i = 0; i < MT_SIZE_X; ++i)
     {
         for (j = y; j < y + size; ++j)
@@ -244,7 +270,7 @@ static void mt_poly_test(unsigned int y, unsigned int size)
 
 void mt_pixel_test()
 {
-    unsigned int i, j, off, sz;
+    unsigned int off, sz;
     off = 0;
     sz = 8;
     mt_poly_test(off, sz);
@@ -497,13 +523,12 @@ void mt_init()
     stm32_bitbang_enable_mask(ADDSET_PORT, ADDSET_MASK);
     stm32_bitbang_enable_pin(MT_RESET);
     stm32_bitbang_enable_pin(MT_STROBE);
-    stm32_bitbang_set_pin(MT_STROBE);
+    stm32_bitbang_reset_pin(MT_STROBE);
     //doesn't need to be so fast as others
     gpio_enable_pin(MT_BACKLIGHT, PIN_MODE_OUT);
 
     mt_reset();
     mt_cls();
-
 }
 
 #if (MT_DRIVER)
@@ -542,14 +567,14 @@ void mt()
 {
     mt_init();
     IPC ipc;
-#if (SYS_INFO)
+#if (SYS_INFO) || (MT_TEST)
     open_stdout();
 #endif
     for (;;)
     {
         error(ERROR_OK);
         need_post = false;
-        ipc_read_ms(&ipc, 0, 0);
+        ipc_read_ms(&ipc, 0, ANY_HANDLE);
         switch (ipc.cmd)
         {
         case IPC_PING:

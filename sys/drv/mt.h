@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "../../userspace/process.h"
-#include "../sys.h"
+#include "../../userspace/sys.h"
 #include "mt_config.h"
 
 #define MT_MODE_IGNORE                     0x0
@@ -50,10 +50,12 @@ void mt_set_backlight(bool on);
 void mt_set_pixel(unsigned int x, unsigned int y, bool set);
 bool mt_get_pixel(unsigned int x, unsigned int y);
 void mt_show(bool on);
+bool mt_is_on();
 void mt_cls();
 void mt_reset();
 void mt_init();
 #if (MT_TEST)
+void mt_clks_test();
 void mt_pixel_test();
 #endif
 void mt_clear_rect(RECT* rect, unsigned int mode);
