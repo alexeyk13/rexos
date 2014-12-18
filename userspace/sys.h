@@ -45,7 +45,7 @@ typedef enum {
 } HAL;
 
 #define HAL_HANDLE(group, item)                             ((group) << 16 | (item))
-#define HAL_ITEM(handle)                                    ((handle) & 0xff)
+#define HAL_ITEM(handle)                                    ((handle) & 0xffff)
 #define HAL_GROUP(handle)                                   ((handle) >> 16)
 
 #define HAL_IPC(hal)                                        (IPC_USER + ((hal) << 16))
