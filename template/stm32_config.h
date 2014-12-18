@@ -17,8 +17,6 @@
 #define MONOLITH_ANALOG                         0
 #define MONOLITH_USB                            1
 
-#define LIB_BITBANG_PULLAP                      0
-#define LIB_BITBANG_PULLDOWN                    0
 //------------------------------ POWER -----------------------------------------------
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
 #define HSE_VALUE                               8000000
@@ -87,7 +85,7 @@
 //High speed(STM32F2+): 64 if no high-speed bulk transfers, 512 in other case. 1024 in case of isochronous or high-speed interrupts
 #define STM32_USB_MPS                            64
 //Sizeof USB process stack. Remember, that process itself requires around 512 bytes
-#define STM32_USB_PROCESS_SIZE                   550
+#define STM32_USB_PROCESS_SIZE                   600
 //------------------------------- WDT ------------------------------------------------
 //if set by STM32 Option Bits, WDT is started by hardware on power-up
 #define HARDWARE_WATCHDOG                        0
