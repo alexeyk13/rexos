@@ -9,13 +9,14 @@
 
 //------------------------------ CORE ------------------------------------------------
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
-#define STM32_CORE_STACK_SIZE                   350
+#define STM32_CORE_STACK_SIZE                   820
 
 #define STM32_DRIVERS_IPC_COUNT                 3
 //UART driver is monolith. Enable for size, disable for perfomance
 #define MONOLITH_UART                           1
 #define MONOLITH_ANALOG                         0
 #define MONOLITH_USB                            0
+
 //------------------------------ POWER -----------------------------------------------
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
 #define HSE_VALUE                               8000000
@@ -44,18 +45,17 @@
 //PIN_DEFAULT and PIN_UNUSED can be also set.
 #define UART_STDIO_PORT                         UART_1
 #define UART_STDIO_TX                           A9
-#define UART_STDIO_RX                           A10
+#define UART_STDIO_RX                           PIN_UNUSED
 #define UART_STDIO_BAUD                         115200
 #define UART_STDIO_DATA_BITS                    8
 #define UART_STDIO_PARITY                       'N'
 #define UART_STDIO_STOP_BITS                    1
 
-//size of UART process. You will need to increase this, if you have many uarts opened at same time
-#define UART_PROCESS_SIZE                       1024
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
+//remember, that process itself requires around 256 bytes
 #define UART_TX_BUF_SIZE                        16ul
-//Sizeof UART process stack. Remember, that process itself requires around 500 bytes
-#define STM32_UART_STACK_SIZE                   512
+//Sizeof UART process stack. Remember, that process itself requires around 450 bytes
+#define STM32_UART_STACK_SIZE                   410 + (50 + UART_TX_BUF_SIZE) * 1
 //------------------------------ TIMER -----------------------------------------------
 #define HPET_TIMER                               TIM_21
 #define TIMER_SOFT_RTC                           0
@@ -78,8 +78,6 @@
 //Copy data to internal buffer, using M2M DMA. Ignored if DAC_DMA is not set
 #define DAC_M2M_DMA                              1
 
-//Sizeof ANALOG process stack. Remember, that process itself requires around 512 bytes
-#define STM32_ANALOG_STACK_SIZE                  512
 //------------------------------- USB ------------------------------------------------
 //Maximum packet size for USB.
 //Must be 8 for Low-speed devices
@@ -87,7 +85,7 @@
 //High speed(STM32F2+): 64 if no high-speed bulk transfers, 512 in other case. 1024 in case of isochronous or high-speed interrupts
 #define STM32_USB_MPS                            64
 //Sizeof USB process stack. Remember, that process itself requires around 512 bytes
-#define STM32_USB_STACK_SIZE                    550
+#define STM32_USB_PROCESS_SIZE                   600
 //------------------------------- WDT ------------------------------------------------
 //if set by STM32 Option Bits, WDT is started by hardware on power-up
 #define HARDWARE_WATCHDOG                        0
