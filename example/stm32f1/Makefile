@@ -17,27 +17,25 @@ TARGET_NAME                 = stm32f1
 #----------------------------------------------------------
 BUILD_DIR                   = build
 OUTPUT_DIR                  = output
-REXOS                       = ../../../rexos
+REXOS                       = ../../rexos
 KERNEL                      = $(REXOS)/kernel
-USERSPACE                   = $(REXOS)/userspace
-LIB                         = $(REXOS)/lib
-SYS                         = $(REXOS)/sys
+USERSPACE					 	 = $(REXOS)/userspace
+LIB								 = $(REXOS)/lib
+SYS								 = $(REXOS)/sys
 LDS_SCRIPT                  = $(KERNEL)/arm.ld.S
 #----------------------------------------------------------
-LIBS_DIR                    = ../../../3rdparty
+LIBS_DIR                    = ../../3rdparty
 CMSIS_DIR                   = $(LIBS_DIR)/CMSIS
-#CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32L0xx
 CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32F10x
 #CMSIS_DEVICE_DIR           = $(CMSIS_DIR)/Device/ST/STM32F2xx
 #CMSIS_DEVICE_DIR           = $(CMSIS_DIR)/Device/ST/STM32F4xx
-#CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/NXP/LPC11Uxx
 #----------------------------------------------------------
 #not used in kernel
 INCLUDE_FOLDERS             = $(CMSIS_DIR)/Include $(CMSIS_DEVICE_DIR)/Include
 #userspace
-INCLUDE_FOLDERS            += $(USERSPACE) $(USERSPACE)/core
+INCLUDE_FOLDERS				+= $(USERSPACE) $(USERSPACE)/core
 #kernel
-INCLUDE_FOLDERS            += $(KERNEL) $(KERNEL)/core
+INCLUDE_FOLDERS				+= $(KERNEL) $(KERNEL)/core
 #lib
 INCLUDE_FOLDERS            += $(LIB)
 #sys
@@ -54,13 +52,13 @@ SRC_C                      += kernel.c dbg.c kirq.c kprocess.c ktimer.c kipc.c k
 #kernel MES
 #SRC_C                      += kmutex.c kevent.c ksem.c
 #lib
-SRC_C                      += klib.c lib_time.c pool.c printf.c lib_array.c lib_std.c lib_stdio.c lib_heap.c
+SRC_C                      += lib_lib.c lib_time.c lib_stdio.c lib_std.c pool.c printf.c lib_array.c lib_heap.c lib_usb.c stm32_lib_gpio.c
 #userspace
-SRC_C                      += stdio.c main.c libusb.c
+SRC_C                      += stdio.c main.c comm.c
 #drv
 SRC_C                      += stm32_power.c stm32_gpio.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_analog.c stm32_usb.c stm32_wdt.c
 #midware
-SRC_C                      += usbd.c cdc.c
+SRC_C								+= usbd.c cdc.c
 
 OBJ                         = $(SRC_AS:%.S=%.o) $(SRC_C:%.c=%.o)
 #----------------------------------------------------------
@@ -100,7 +98,7 @@ asm_defines.h: asm_defines.c
 	$(GCC) $(FLAGS_CC) -S $< -o - | awk '($$1 == "->") { print "#define " $$2 " " $$3 }' > $@
 
 program:
-	@st-flash write $(OUTPUT_DIR)/$(TARGET_NAME).bin 0x08000000
+	@st-flash write $(OUTPUT_DIR)/$(TARGET_NAME).bin 0x8000000
 
 clean:
 	@echo '-----------------------------------------------------------'

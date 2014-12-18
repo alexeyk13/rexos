@@ -8,8 +8,6 @@
 #include "../../rexos/userspace/stream.h"
 #include "../../rexos/userspace/direct.h"
 #include "../../rexos/userspace/object.h"
-#include "../../rexos/userspace/libusb.h"
-#include <string.h>
 #include "../../rexos/userspace/sys.h"
 #include "../../rexos/userspace/gpio.h"
 #include "../../rexos/userspace/rtc.h"
@@ -21,12 +19,16 @@
 #include "../../rexos/sys/midware/usbd.h"
 #include "../../rexos/userspace/usb.h"
 #include "../../rexos/userspace/file.h"
-#include "usb_desc.h"
+#include "comm.h"
 
 #define TEST_ROUNDS                                 10000
 
 void app();
 void test_thread3();
+void test_thread4();
+void test_thread5();
+void test_thread6();
+void test_thread7();
 
 const REX __APP = {
     //name
@@ -34,7 +36,7 @@ const REX __APP = {
     //size
     512,
     //priority
-    120,
+    200,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
@@ -49,7 +51,7 @@ const REX test3 = {
     //size
     512,
     //priority
-    119,
+    202,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
@@ -58,6 +60,99 @@ const REX test3 = {
     test_thread3
 };
 
+const REX test4 = {
+    //name
+    "test4",
+    //size
+    512,
+    //priority
+    203,
+    //flags
+    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    //ipc size
+    10,
+    //function
+    test_thread4
+};
+
+const REX test5 = {
+    //name
+    "test5",
+    //size
+    512,
+    //priority
+    204,
+    //flags
+    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    //ipc size
+    10,
+    //function
+    test_thread5
+};
+
+const REX test6 = {
+    //name
+    "test6",
+    //size
+    512,
+    //priority
+    205,
+    //flags
+    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    //ipc size
+    10,
+    //function
+    test_thread6
+};
+
+const REX test7 = {
+    //name
+    "test7",
+    //size
+    512,
+    //priority
+    206,
+    //flags
+    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    //ipc size
+    10,
+    //function
+    test_thread7
+};
+
+
+void test_thread4()
+{
+    for (;;)
+    {
+        sleep_us(123);
+    }
+}
+
+void test_thread5()
+{
+    for (;;)
+    {
+        sleep_us(456);
+    }
+}
+
+void test_thread6()
+{
+    for (;;)
+    {
+        sleep_us(789);
+    }
+}
+
+void test_thread7()
+{
+    for (;;)
+    {
+        sleep_us(1012);
+    }
+}
+
 void test_thread3()
 {
     TIME uptime;
@@ -65,93 +160,62 @@ void test_thread3()
     printf("test thread3 started\n\r");
     printf("my name is: %s\n\r", process_name());
 
-    gpio_enable_pin(B9, PIN_MODE_OUT);
+    gpio_enable_pin(B9, GPIO_MODE_OUT);
 
     wdt_kick();
     process_info();
+
+    process_create(&test4);
+    process_create(&test5);
+    process_create(&test6);
+    process_create(&test7);
+
     bool set = true;
     for (;;)
     {
         get_uptime(&uptime);
         printf("uptime: %02d:%02d.%06d\n\r", uptime.sec / 60, uptime.sec % 60, uptime.usec);
         printf("rtc: %d\n\r", rtc_get());
-        gpio_set_pin(B9, set);
+        set ? gpio_set_pin(B9) : gpio_reset_pin(B9);
         wdt_kick();
         set = !set;
-        sleep_ms(700);
+        sleep_ms(1700);
+        process_info();
     }
 }
 
-void te_usb_disable_power()
-{
-    gpio_enable_pin(C9, PIN_MODE_OUT);
-    gpio_set_pin(C9, true);
-}
 
-HANDLE usb_on(HANDLE core)
-{
-    HANDLE usbd, cdc;
-    CDC_OPEN_STRUCT cos;
-    te_usb_disable_power();
-
-#if !(MONOLITH_USB)
-    process_create(&__STM32_USB);
-#endif
-
-    //setup usbd
-    usbd = process_create(&__USBD);
-
-    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_DEVICE_FS, 0, 0, &__DEVICE_DESCRIPTOR);
-    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_CONFIGURATION_FS, 0, 0, &__CONFIGURATION_DESCRIPTOR);
-    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 0, 0, &__STRING_WLANGS);
-    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 1, 0x0409, &__STRING_MANUFACTURER);
-    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 2, 0x0409, &__STRING_PRODUCT);
-    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 3, 0x0409, &__STRING_SERIAL);
-    libusb_register_persistent_descriptor(usbd, USB_DESCRIPTOR_STRING, 4, 0x0409, &__STRING_DEFAULT);
-    
-    //setup cdc
-    cdc = process_create(&__CDC);
-    cos.data_ep = 1;
-    cos.control_ep = 2;
-    cos.data_ep_size = 64;
-    cos.control_ep_size = 16;
-    cos.rx_stream_size = cos.tx_stream_size = 32;
-    fopen_ex(cdc, usbd, 0, (void*)&cos, sizeof(CDC_OPEN_STRUCT));
-
-    //turn USB on
-    fopen(usbd, 0, 0);
-
-    HANDLE rx_stream = get(cdc, IPC_GET_RX_STREAM, 0, 0, 0);
-    return stream_open(rx_stream);
-}
-
-void dac_on(HANDLE core, HANDLE analog)
+void dac_on(HANDLE analog)
 {
     //TE pin enable power
-    gpio_enable_pin(C13, PIN_MODE_OUT);
-    gpio_set_pin(C13, false);
+    gpio_enable_pin(C13, GPIO_MODE_OUT);
+    gpio_reset_pin(C13);
 
     STM32_DAC_ENABLE de;
     de.value = 1000;
     de.flags = DAC_FLAGS_TIMER;
     de.timer = TIM_6;
-    fopen_ex(analog, STM32_DAC1, 0, &de, sizeof(STM32_DAC_ENABLE));
+    fopen_ex(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), 0, &de, sizeof(STM32_DAC_ENABLE));
 }
 
 void dac_test(HANDLE analog)
 {
-    HANDLE block = block_create(1024);
+    HANDLE block = block_create(256);
     int i;
     uint32_t *ptr = block_open(block);
-    for (i = 0; i < 1024; ++i)
+    for (i = 0; i < 256 / 4; ++i)
         ptr[i] = 0xfff * (i & 1);
-    fwrite(analog, STM32_DAC1, block, 1024);
-    fwrite(analog, STM32_DAC1, block, 1024);
+    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
+    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
+    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
+    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
+    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
+    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
 }
 
 void app()
 {
-    HANDLE core, analog, usb_rx;
+    HANDLE core, analog;
 
     core = process_create(&__STM32_CORE);
 #if !(MONOLITH_UART)
@@ -167,8 +231,6 @@ void app()
     printf("App started\n\r");
     wdt_kick();
 
-    char c;
-
 #if (MONOLITH_ANALOG)
     analog = core;
 #else
@@ -176,7 +238,6 @@ void app()
 #endif
     fopen(analog, HAL_HANDLE(HAL_ADC, 0), 0);
 
-    usb_rx = usb_on(core);
 
     //first second signal may go faster
     sleep_ms(1000);
@@ -198,22 +259,21 @@ void app()
 
     process_create(&test3);
 
+    process_create(&__COMM);
+
     ack(core, IPC_GET_INFO, 0, 0, 0);
-    //uart info in direct mode. Make sure all data is sent before
-    sleep_ms(50);
 #if !(MONOLITH_UART)
     ack(uart, IPC_GET_INFO, 0, 0, 0);
 #endif
 
-    dac_on(core, analog);
+    dac_on(analog);
     dac_test(analog);
 
     int temp = get(analog, STM32_ADC_TEMP, 0, 0, 0);
-    printf("Temp (raw): %d.%d\n\r", temp / 10, temp % 10);
+    printf("Temp: %d.%d\n\r", temp / 10, temp % 10);
 
     for (;;)
     {
-        stream_read(usb_rx, &c, 1);
-        putc(c);
+        sleep_ms(1000);
     }
 }

@@ -23,21 +23,15 @@
 #define KERNEL_PROCESS_STAT                         1
 //Enable this only if you have problems with IPC oferflow.
 #define KERNEL_IPC_DEBUG                            0
-//maximum number of blocks, that can be opened at same time. Generally, it's MPU blocks count - 2
-#define KERNEL_BLOCKS_COUNT                         6
 //maximum number of global handles. Must be at least 1
 #define KERNEL_OBJECTS_COUNT                        4
 //mutex, event, semaphore are now deprecated. Use stream, direct, block instead
 #define KERNEL_MES                                  0
 
-//size of GLOBAL consts. For MPU must be pow of 2, starting from 32
-//you must have good reason to changing this
-#define KERNEL_GLOBAL_SIZE                          32
-
-//------------------------------------- lib --------------------------------------------------------------------
-//stdio, stdlib and time are required libs, all rest is optional
+//save stdio, stdlib and time are required libs, all rest is optional
 #define KERNEL_LIB_ARRAY                            1
 #define KERNEL_LIB_SOFT_RAND                        0
-
+#define KERNEL_LIB_USB                              1
+#define KERNEL_LIB_GPIO                             1
 
 #endif // KERNEL_CONFIG_H
