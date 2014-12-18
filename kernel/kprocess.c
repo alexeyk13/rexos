@@ -472,7 +472,7 @@ bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size)
     DLIST_ENUM de;
     BLOCK* cur;
     //don't check on IRQ or kernel post
-    if ((HANDLE)process == INVALID_HANDLE || __KERNEL->context >= 0)
+    if ((HANDLE)process == KERNEL_HANDLE || __KERNEL->context >= 0)
         return true;
     //check HEAP
     if ((unsigned int)addr >= (unsigned int)process->heap && (unsigned int)addr + size < (unsigned int)process->heap + process->size)
@@ -492,7 +492,7 @@ bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size
     DLIST_ENUM de;
     BLOCK* cur;
     //don't check on IRQ or kernel post
-    if ((HANDLE)process == INVALID_HANDLE || __KERNEL->context >= 0)
+    if ((HANDLE)process == KERNEL_HANDLE || __KERNEL->context >= 0)
         return true;
     //check HEAP
     if ((unsigned int)addr >= (unsigned int)process->heap && (unsigned int)addr + size < (unsigned int)process->heap + process->size)
