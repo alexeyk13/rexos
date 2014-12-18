@@ -133,7 +133,7 @@ void stm32_uart_on_isr(int vector, void* param)
         }
     }
     //transmission completed and no more data. Disable transmitter
-    else if ((UART_REGS[port]->CR1 & USART_CR1_TCIE) && (sr & USART_SR_TC) &&  (drv->uart.uarts[port]->tx_total == 0))
+    else if ((UART_REGS[port]->CR1 & USART_CR1_TCIE) && (sr & USART_SR_TC))
         UART_REGS[port]->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
     //decode error, if any
     if ((sr & (USART_SR_PE | USART_SR_FE | USART_SR_NE | USART_SR_ORE)))
