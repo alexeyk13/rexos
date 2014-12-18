@@ -106,7 +106,7 @@ void usbd_inform(USBD* usbd, unsigned int alert)
     ipc.param1 = alert;
     for (i = 0; i < void_array_size(usbd->handlers); ++i)
     {
-        ipc.process = (HANDLE)void_array_data(usbd->handlers)[i];
+        ipc.process = (HANDLE)(void_array_data(usbd->handlers)[i]);
         ipc_post(&ipc);
     }
 }
@@ -1083,9 +1083,9 @@ static inline void usbd_init(USBD* usbd)
     void_array_create(&usbd->handlers, 1);
     void_array_create(&usbd->conf_descriptors_fs, 1);
     void_array_create(&usbd->conf_descriptors_hs, 1);
+    array_create(&usbd->ifaces, sizeof(USBD_CLASS_ENTRY));
     //at least 3: manufacturer, product, string 0
     array_create(&usbd->string_descriptors, 3 * sizeof(USBD_STRING));
-    array_create(&usbd->ifaces, sizeof(USBD_CLASS_ENTRY));
 
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
         usbd->ep_iface[i] = USBD_INVALID_INTERFACE;

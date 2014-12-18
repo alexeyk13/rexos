@@ -71,21 +71,22 @@ void cdc_notify_serial_state(CDC* cdc, unsigned int state)
 
 void cdc_destroy(CDC* cdc)
 {
-    block_destroy(cdc->tx);
-    stream_close(cdc->tx_stream_handle);
-    stream_destroy(cdc->tx_stream);
+    block_destroy(cdc->notify);
 
     block_destroy(cdc->rx);
     stream_close(cdc->rx_stream_handle);
     stream_destroy(cdc->rx_stream);
 
-    block_destroy(cdc->notify);
+    block_destroy(cdc->tx);
+    stream_close(cdc->tx_stream_handle);
+    stream_destroy(cdc->tx_stream);
 
     free(cdc);
 }
 
 void cdc_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 {
+
     USB_INTERFACE_DESCRIPTOR_TYPE* iface;
     USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
     uint8_t data_ep, control_ep, data_ep_size, control_ep_size, control_iface, data_iface;
@@ -115,12 +116,14 @@ void cdc_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
             }
         }
     }
+
     //No CDC descriptors in interface
     if (control_ep == 0)
         return;
     CDC* cdc = (CDC*)malloc(sizeof(CDC));
     if (cdc == NULL)
         return;
+
     cdc->usb = object_get(SYS_OBJ_USB);
     cdc->control_iface = control_iface;
     cdc->control_ep = control_ep;
