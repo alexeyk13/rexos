@@ -308,10 +308,10 @@ void cdc_write(CDC* cdc)
         }
         //just in case of driver failure
         else
-            stream_listen(cdc->tx_stream, (void*)0);
+            stream_listen(cdc->tx_stream, (void*)(HAL_HANDLE(HAL_USBD, USBD_HANDLE_INTERFACE + cdc->data_iface)));
     }
     else
-        stream_listen(cdc->tx_stream, (void*)0);
+        stream_listen(cdc->tx_stream, (void*)(HAL_HANDLE(HAL_USBD, USBD_HANDLE_INTERFACE + cdc->data_iface)));
 }
 
 static inline int set_line_coding(CDC* cdc, HANDLE block)
