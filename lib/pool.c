@@ -274,6 +274,7 @@ void pool_free(POOL* pool, void* ptr)
         CLEAR_MARK(free_after);
         NEXT_SLOT(ptr) = NEXT_SLOT(free_after);
         NEXT_FREE(ptr) = NEXT_FREE(free_after);
+        free_after = NEXT_FREE(free_after);
         SET_MARK(ptr);
     }
 
