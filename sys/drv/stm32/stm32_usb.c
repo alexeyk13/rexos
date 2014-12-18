@@ -700,6 +700,7 @@ void stm32_usb()
 #if (SYS_INFO)
     open_stdout();
 #endif
+    object_set_self(SYS_OBJ_USB);
     for (;;)
     {
         error(ERROR_OK);
