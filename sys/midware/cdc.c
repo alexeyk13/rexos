@@ -276,10 +276,6 @@ static inline void cdc_read_complete(CDC* cdc, unsigned int size)
             printf("\\x%d", ((uint8_t*)ptr)[i]);
     printf("\n\r");
 #endif //USB_DEBUG_CLASS_IO
-
-//    printf("ptr: %#X\n\r", ptr);
-//    printf("to_read: %d\n\r", to_read);
-
     if (ptr && to_read && stream_write(cdc->rx_stream_handle, ptr, to_read))
         cdc->rx_free -= to_read;
     fread_async(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), cdc->rx, 1);
