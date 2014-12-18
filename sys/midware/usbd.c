@@ -114,24 +114,24 @@ void usbd_inform(USBD* usbd, unsigned int alert)
 void usbd_class_reset(USBD* usbd)
 {
     int i;
+    usbd_inform(usbd, USBD_ALERT_RESET);
     for (i = 0; i < usbd->ifacecnt; ++i)
     {
         if (IFACE(usbd, i).usbd_class != NULL)
             IFACE(usbd, i).usbd_class->usbd_class_reset(usbd, IFACE(usbd, i).param);
     }
     array_clear(&usbd->ifaces);
-    usbd_inform(usbd, USBD_ALERT_RESET);
 }
 
 static inline void usbd_class_suspend(USBD* usbd)
 {
     int i;
+    usbd_inform(usbd, USBD_ALERT_SUSPEND);
     for (i = 0; i < usbd->ifacecnt; ++i)
     {
         if (IFACE(usbd, i).usbd_class != NULL)
             IFACE(usbd, i).usbd_class->usbd_class_suspend(usbd, IFACE(usbd, i).param);
     }
-    usbd_inform(usbd, USBD_ALERT_SUSPEND);
 }
 
 void usbd_class_resume(USBD* usbd)
@@ -1160,7 +1160,7 @@ bool usbd_class_interface_request(USBD* usbd, IPC* ipc, unsigned int iface)
     if (iface >= usbd->ifacecnt || IFACE(usbd, iface).usbd_class == NULL)
     {
 #if (USB_DEBUG_ERRORS)
-        printf("USBD class error: Interface %d not configured\n\r", iface);
+        printf("USBD class error: Interface %u not configured\n\r", iface);
 #endif
         return false;
     }
@@ -1172,7 +1172,7 @@ bool usbd_class_endpoint_request(USBD *usbd, IPC* ipc, unsigned int num)
     if (num >= USB_EP_COUNT_MAX || usbd->ep_iface[num] == USBD_INVALID_INTERFACE)
     {
 #if (USB_DEBUG_ERRORS)
-        printf("USBD class error: EP%d interface not configured\n\r", num);
+        printf("USBD class error: EP%u interface not configured\n\r", num);
 #endif
         return false;
     }
