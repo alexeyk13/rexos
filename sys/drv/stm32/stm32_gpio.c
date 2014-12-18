@@ -163,7 +163,7 @@ void stm32_gpio_enable_exti(GPIO_DRV* gpio, PIN pin, unsigned int flags)
 void stm32_gpio_disable_pin(GPIO_DRV* gpio, PIN pin)
 {
 #if defined(STM32F1)
-    GPIO_CR_SET(pin, GPIO_PIN_MODE_IN_FLOAT);
+    GPIO_CR_SET(pin, GPIO_MODE_IN_FLOAT);
 #elif defined(STM32F2) || defined(STM32F4) || defined(STM3L0)
     GPIO_SET_MODE(pin, STM32_GPIO_MODE_INPUT >> 0);
 #if defined(STM32L0)
