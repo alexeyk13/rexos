@@ -153,6 +153,7 @@ void cdc_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     cdc->tx_idle = true;
     size = cdc->data_ep_size;
     fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep), USB_EP_BULK, (void*)size);
+    stream_listen(cdc->tx_stream, (void*)(HAL_HANDLE(HAL_USBD, USBD_HANDLE_INTERFACE + cdc->data_iface)));
 #endif
 
 #if (USB_CDC_RX_STREAM_SIZE)
@@ -168,7 +169,6 @@ void cdc_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     size = cdc->data_ep_size;
     fopen_p(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), USB_EP_BULK, (void*)size);
     fread_async(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), cdc->rx, 1);
-    stream_listen(cdc->rx_stream, (void*)(HAL_HANDLE(HAL_USBD, USBD_HANDLE_INTERFACE + cdc->data_iface)));
 #endif
 
     if (control_ep)
@@ -200,12 +200,12 @@ void cdc_class_reset(USBD* usbd, void* param)
     CDC* cdc = (CDC*)param;
 
 #if (USB_CDC_TX_STREAM_SIZE)
+    stream_stop_listen(cdc->tx_stream);
     stream_flush(cdc->tx_stream);
     fflush(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep));
     fclose(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep));
 #endif
 #if (USB_CDC_RX_STREAM_SIZE)
-    stream_stop_listen(cdc->rx_stream);
     stream_flush(cdc->rx_stream);
     fflush(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep));
     fclose(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep));
@@ -227,13 +227,13 @@ void cdc_class_suspend(USBD* usbd, void* param)
 {
     CDC* cdc = (CDC*)param;
 #if (USB_CDC_TX_STREAM_SIZE)
+    stream_stop_listen(cdc->tx_stream);
     stream_flush(cdc->tx_stream);
     fflush(cdc->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | cdc->data_ep));
     cdc->tx_idle = true;
     cdc->tx_size = 0;
 #endif
 #if (USB_CDC_RX_STREAM_SIZE)
-    stream_stop_listen(cdc->rx_stream);
     stream_flush(cdc->rx_stream);
     fflush(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep));
     cdc->rx_free = 0;
@@ -249,7 +249,7 @@ void cdc_class_resume(USBD* usbd, void* param)
     CDC* cdc = (CDC*)param;
     cdc->suspended = false;
 #if (USB_CDC_RX_STREAM_SIZE)
-    stream_listen(cdc->rx_stream, (void*)(HAL_HANDLE(HAL_USBD, USBD_HANDLE_INTERFACE + cdc->data_iface)));
+    stream_listen(cdc->tx_stream, (void*)(HAL_HANDLE(HAL_USBD, USBD_HANDLE_INTERFACE + cdc->data_iface)));
 #endif
 }
 
