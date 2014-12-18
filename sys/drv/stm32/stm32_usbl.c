@@ -729,6 +729,7 @@ void stm32_usbl()
 #if (SYS_INFO) || (USB_DEBUG_ERRORS)
     open_stdout();
 #endif
+    object_set_self(SYS_OBJ_USB);
     for (;;)
     {
         error(ERROR_OK);
