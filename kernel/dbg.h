@@ -109,7 +109,7 @@
 #if (KERNEL_DEVELOPER_MODE)
 #define CHECK_HANDLE(handle, size)     if ((HANDLE)(handle) == INVALID_HANDLE || ((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
                                        || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (SRAM_SIZE))) \
-                                          {printk("INVALID HANDLE at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+                                          {printk("INVALID HANDLE at %s, line %d, caller process: %s\n\r", __FILE__, __LINE__, kprocess_name(kprocess_get_current()));    HALT();}
 #else
 #define CHECK_HANDLE(handle, size)     if ((HANDLE)(handle) == INVALID_HANDLE || ((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
                                        || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (SRAM_SIZE))) \
