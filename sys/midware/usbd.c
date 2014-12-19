@@ -35,7 +35,7 @@ typedef struct {
 } USBD_STRING;
 
 typedef struct _USBD {
-    HANDLE usb, block;
+    HANDLE usb, block, vendor;
     //SETUP state machine
     SETUP setup;
     USB_SETUP_STATE setup_state;
@@ -418,6 +418,31 @@ void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned 
         error(ERROR_NOT_SUPPORTED);
         break;
     }
+}
+
+static inline void usbd_register_vendor(USBD* usbd, HANDLE vendor)
+{
+    if (usbd->vendor != INVALID_HANDLE)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    usbd->vendor = vendor;
+}
+
+static inline void usbd_unregister_vendor(USBD* usbd, HANDLE vendor)
+{
+    if (usbd->vendor == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (usbd->vendor != vendor)
+    {
+        error(ERROR_ACCESS_DENIED);
+        return;
+    }
+    usbd->vendor = INVALID_HANDLE;
 }
 
 static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
@@ -887,7 +912,8 @@ void usbd_setup_process(USBD* usbd)
             res = usbd_class_interface_setup(usbd, usbd->setup.wIndex);
         break;
     case BM_REQUEST_TYPE_VENDOR:
-        //TODO:
+        if (usbd->vendor != INVALID_HANDLE)
+            res = get(usbd->vendor, USBD_VENDOR_REQUEST, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
         break;
     }
 
@@ -1066,6 +1092,7 @@ static inline void usbd_info(USBD* usbd)
 static inline void usbd_init(USBD* usbd)
 {
     int i;
+    usbd->vendor = INVALID_HANDLE;
     usbd->usb = object_get(SYS_OBJ_USB);
     usbd->setup_state = USB_SETUP_STATE_REQUEST;
     usbd->state = USBD_STATE_DEFAULT;
@@ -1110,6 +1137,14 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
         break;
     case USBD_UNREGISTER_HANDLER:
         usbd_unregister_object(&usbd->handlers, ipc->process);
+        need_post = true;
+        break;
+    case USBD_REGISTER_VENDOR:
+        usbd_register_vendor(usbd, (HANDLE)ipc->process);
+        need_post = true;
+        break;
+    case USBD_UNREGISTER_VENDOR:
+        usbd_unregister_vendor(usbd, (HANDLE)ipc->process);
         need_post = true;
         break;
     case USBD_GET_STATE:

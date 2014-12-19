@@ -191,12 +191,15 @@ typedef struct {
 
 typedef enum {
     USBD_ALERT = HAL_IPC(HAL_USBD),
-    USBD_REGISTER_DESCRIPTOR,
-    USBD_UNREGISTER_DESCRIPTOR,
-    USBD_REGISTER_HANDLER,
-    USBD_UNREGISTER_HANDLER,
-    USBD_INTERFACE_REQUEST,
-    USBD_GET_STATE,
+    USBD_REGISTER_DESCRIPTOR,                                    /* register USB device descriptor of type USBD_DESCRIPTOR_TYPE */
+    USBD_UNREGISTER_DESCRIPTOR,                                  /* unregister USB device descriptor*/
+    USBD_REGISTER_HANDLER,                                       /* register USB device state handler for USBD_ALERTS */
+    USBD_UNREGISTER_HANDLER,                                     /* unregister USB device state handler */
+    USBD_REGISTER_VENDOR,                                        /* register USB device vendor-specific requests handler */
+    USBD_UNREGISTER_VENDOR,                                      /* unregister USB device vendor-specific requests handler */
+    USBD_INTERFACE_REQUEST,                                      /* request from application to USB device interface */
+    USBD_VENDOR_REQUEST,                                         /* IPC callback requset from usb device to vendor handler. */
+    USBD_GET_STATE,                                              /* return current USB device state in terms of USBD_ALERTS */
 
     USBD_MAX
 }USBD_IPCS;
