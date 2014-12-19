@@ -8,27 +8,7 @@
 #define LPC_POWER_H
 
 #include "lpc_core.h"
-
-typedef enum {
-    LPC_POWER_GET_SYSTEM_CLOCK = HAL_IPC(HAL_POWER),
-    LPC_POWER_UPDATE_CLOCK,
-    LPC_POWER_GET_RESET_REASON,
-    LPC_POWER_USB_ON,
-    LPC_POWER_USB_OFF
-} LPC_POWER_IPCS;
-
-typedef enum {
-    RESET_REASON_POWERON = 0,
-    RESET_REASON_EXTERNAL,
-    RESET_REASON_WATCHDOG,
-    RESET_REASON_BROWNOUT,
-    RESET_REASON_SOFTWARE,
-    RESET_REASON_UNKNOWN
-} RESET_REASON;
-
-typedef struct {
-    RESET_REASON reset_reason;
-}POWER_DRV;
+#include "../../../userspace/lpc_driver.h"
 
 void lpc_power_init(CORE* core);
 bool lpc_power_request(CORE* core, IPC* ipc);

@@ -8,6 +8,7 @@
 #define LPC_DRIVER_H
 
 #include "sys.h"
+#include "uart.h"
 
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 typedef enum {
@@ -86,6 +87,78 @@ typedef enum {
 #define TIMER_MODE_CLK                               2
 //stop counter after one pulse. Only for channel 0
 #define TIMER_MODE_ONE_PULSE                         (1  << 5)
+
+//------------------------------------------------ Power ---------------------------------------------------------------------
+typedef enum {
+    LPC_POWER_GET_SYSTEM_CLOCK = HAL_IPC(HAL_POWER),
+    LPC_POWER_UPDATE_CLOCK,
+    LPC_POWER_GET_RESET_REASON,
+    LPC_POWER_USB_ON,
+    LPC_POWER_USB_OFF
+} LPC_POWER_IPCS;
+
+typedef enum {
+    RESET_REASON_POWERON = 0,
+    RESET_REASON_EXTERNAL,
+    RESET_REASON_WATCHDOG,
+    RESET_REASON_BROWNOUT,
+    RESET_REASON_SOFTWARE,
+    RESET_REASON_UNKNOWN
+} RESET_REASON;
+
+typedef struct {
+    RESET_REASON reset_reason;
+}POWER_DRV;
+
+//------------------------------------------------- UART ---------------------------------------------------------------------
+
+typedef enum {
+    IPC_UART_SET_BAUDRATE = HAL_IPC(HAL_UART),
+    IPC_UART_GET_BAUDRATE,
+    IPC_UART_GET_LAST_ERROR,
+    IPC_UART_CLEAR_ERROR,
+    //used internally
+    IPC_UART_ISR_TX,
+    IPC_UART_ISR_RX
+} LPC_UART_IPCS;
+
+typedef enum {
+    UART_0 = 0,
+    UART_1,
+    UART_2,
+    UART_3,
+    UART_4,
+    UART_MAX
+}UART_PORT;
+
+typedef struct {
+    uint8_t tx, rx;
+    uint16_t stream_size;
+    BAUD baud;
+} UART_ENABLE;
+
+//-------------------------------------------------- I2C ---------------------------------------------------------------------
+
+typedef enum {
+    I2C_0,
+    I2C_1
+} I2C_PORT;
+
+#define I2C_MASTER                  (1 << 8)
+#define I2C_SLAVE                   (0 << 8)
+
+#define I2C_NORMAL_SPEED            (0 << 9)
+#define I2C_FAST_SPEED              (1 << 9)
+
+//size of address. If 0, no Rs condition will be used. MSB goes first
+#define I2C_ADDR_SIZE_POS           0
+#define I2C_ADDR_SIZE_MASK          (0xf << 0)
+
+typedef enum {
+    I2C_IO_IDLE = 0,
+    I2C_IO_TX,
+    I2C_IO_RX
+} I2C_IO;
 
 
 #endif // LPC_DRIVER_H

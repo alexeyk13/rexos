@@ -8,7 +8,6 @@
 #include "lpc_gpio.h"
 #include "lpc_core.h"
 #include "lpc_power.h"
-#include "../../../userspace/lpc_driver.h"
 #include "../../../userspace/stdlib.h"
 #include "../../../userspace/irq.h"
 #include "../../../userspace/block.h"

@@ -12,27 +12,7 @@
 #if (MONOLITH_I2C)
 #include "lpc_core.h"
 #endif
-
-typedef enum {
-    I2C_0,
-    I2C_1
-} I2C_PORT;
-
-#define I2C_MASTER                  (1 << 8)
-#define I2C_SLAVE                   (0 << 8)
-
-#define I2C_NORMAL_SPEED            (0 << 9)
-#define I2C_FAST_SPEED              (1 << 9)
-
-//size of address. If 0, no Rs condition will be used. MSB goes first
-#define I2C_ADDR_SIZE_POS           0
-#define I2C_ADDR_SIZE_MASK          (0xf << 0)
-
-typedef enum {
-    I2C_IO_IDLE = 0,
-    I2C_IO_TX,
-    I2C_IO_RX
-} I2C_IO;
+#include "../../../userspace/lpc_driver.h"
 
 typedef struct  {
     HANDLE block, process;

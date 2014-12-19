@@ -15,16 +15,6 @@
 #include "lpc_core.h"
 #endif
 
-typedef enum {
-    IPC_UART_SET_BAUDRATE = HAL_IPC(HAL_UART),
-    IPC_UART_GET_BAUDRATE,
-    IPC_UART_GET_LAST_ERROR,
-    IPC_UART_CLEAR_ERROR,
-    //used internally
-    IPC_UART_ISR_TX,
-    IPC_UART_ISR_RX
-} LPC_UART_IPCS;
-
 typedef struct {
     uint8_t tx_pin, rx_pin;
     uint16_t error;
@@ -51,21 +41,6 @@ typedef struct {
 } SHARED_UART_DRV;
 
 #endif
-
-typedef enum {
-    UART_0 = 0,
-    UART_1,
-    UART_2,
-    UART_3,
-    UART_4,
-    UART_MAX
-}UART_PORT;
-
-typedef struct {
-    uint8_t tx, rx;
-    uint16_t stream_size;
-    BAUD baud;
-} UART_ENABLE;
 
 #if (MONOLITH_UART)
 void lpc_uart_init(SHARED_UART_DRV* drv);
