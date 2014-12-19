@@ -8,6 +8,7 @@
 #include "lpc_core_private.h"
 #include "lpc_power.h"
 #include "lpc_config.h"
+#include "../../../userspace/lpc_driver.h"
 #include "../../../userspace/timer.h"
 #include "../../../userspace/irq.h"
 #if (SYS_INFO)
