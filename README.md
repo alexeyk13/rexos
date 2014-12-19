@@ -22,10 +22,13 @@ unavailable, another HPET timer can be used for RTC emulation
 - Embedded libraries:
   * ustdio: printf, sprintf. Around 2k of code.
   * ustdlib: time, rand.
-  * single-linked list, double linked list, ring buffer, dynamic arrays
+  * single-linked list, double linked list, ring buffer, 
+  * dynamic arrays
+  * USB routines library
+  * GPIO bitbang library
 - Device stacks:
-  * USB device stack
-  * USB CDC class
+  * USB device stack with USB composite and vendor requests support
+  * USB device CDC ACM class
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -48,8 +51,9 @@ unavailable, another HPET timer can be used for RTC emulation
   * wdt: STM32F1, STM32F2, STM32F4, STM32L0
   * I2C: LPC1Uxx
   * analog(ADC, DAC): STM32F1
-  * USB: STM32F1_CL, STM32L0
-  * bitbang: STM32F1, STM32F2, STM32F4, STM32L0
+  * USB: STM32F1_CL, STM32L0, LPC11Uxx
+  * bitbang: STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx
+  * МЭЛТ mt12864j LCD display
 
 Cortex-M3 features:
 ------------------
@@ -63,6 +67,18 @@ ARM7 features:
 
 History
 =======
+0.2.0
+- drivers for LPC11Uxx USB device, МЭЛТ LCD display
+- GPIO bitbang is now library for fast IO (lib_gpio), implementation is hw-specific
+- USB helpers implemented as library (lib_usb)
+- ARRAY (lib_array) supports custom data size
+- USB classes now interface of USB device
+- USB composite device support
+- KERNEL_OBJECTS more standartized, requiring less parameter transfer
+- most of headers are going to /userspace, less dependancy required
+- critical fixes in memory pool, stream, ipc.
+- new virtual handles: ANY_HANDLE, KERNEL_HANDLE
+
 0.1.3
 - drivers for LPC11Uxx
 - STM32 bitbang driver template

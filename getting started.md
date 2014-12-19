@@ -44,7 +44,6 @@ Critical options are:
 \b KERNEL					- relative (recommended) or absolute path to RExOS files\n
 
 \b MCU_NAME 				- name of target MCU. Supported MCU you can find inside /arch folder. Or you can add your own custom MCU. Refer to porting help.\n
-\b EXT_OSCILLATOR_FREQ	- frequency in Hz of target crystall. If no external crystall is used, you need to set this value to 0\n
 
 cortex-m3 specific:\n
 
@@ -55,23 +54,6 @@ Hardware config
 ---------------
 
 It is hardware-dependent part of configuration. File name starts with hw_config_<your architecture>.h. For getting started it's enough to have this file in project
-
-Writing first kernel
-====================
-
-For start, you need only 2 functions to write. 
-
-idle_task
----------
-
-This task is running, while other tasks are sleeping. Because RExOS is tickless, there is no need to call system 100 times in second and you can use idle_task for wery good power saving.
-
-For start, following code from example will be good enough
-
-void idle_task(void)
-{
-	for (;;)	{__WFI();}
-}
 
 application_init
 ----------------
