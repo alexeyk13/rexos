@@ -9,6 +9,7 @@
 #include "../../../userspace/usb.h"
 #include "../../../userspace/irq.h"
 #include "../../../userspace/block.h"
+#include "../../../userspace/lpc_driver.h"
 #include "lpc_gpio.h"
 #include "lpc_power.h"
 #include <string.h>
@@ -358,9 +359,9 @@ void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     int i;
     drv->usb.device = device;
 
-    ack_gpio(drv, LPC_GPIO_ENABLE_PIN_SYSTEM, VBUS, PIN_MODE_VBUS, AF_IGNORE);
+    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, VBUS, PIN_MODE_VBUS, AF_IGNORE);
 #if (USB_SOFT_CONNECT)
-    ack_gpio(drv, LPC_GPIO_ENABLE_PIN_SYSTEM, SCONNECT, PIN_MODE_USB_CONNECT, AF_IGNORE);
+    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, SCONNECT, PIN_MODE_USB_CONNECT, AF_IGNORE);
 #endif
 
     //enable clock, power up
@@ -482,9 +483,9 @@ static inline void lpc_usb_close_device(SHARED_USB_DRV* drv)
     ack_power(drv, LPC_POWER_USB_OFF, 0, 0, 0);
 
     //disable pins
-    ack_gpio(drv, GPIO_DISABLE_PIN, VBUS, 0, 0);
+    ack_gpio(drv, LPC_GPIO_DISABLE_PIN, VBUS, 0, 0);
 #if (USB_SOFT_CONNECT)
-    ack_gpio(drv, GPIO_DISABLE_PIN, SCONNECT, 0, 0);
+    ack_gpio(drv, LPC_GPIO_DISABLE_PIN, SCONNECT, 0, 0);
 #endif
 }
 

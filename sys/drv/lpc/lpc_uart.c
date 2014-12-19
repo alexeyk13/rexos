@@ -7,6 +7,7 @@
 #include "lpc_uart.h"
 #include "lpc_gpio.h"
 #include "lpc_power.h"
+#include "../../../userspace/lpc_driver.h"
 #include "../../../userspace/irq.h"
 #include "../../../userspace/stream.h"
 #include "../../../userspace/direct.h"
@@ -305,10 +306,10 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
 
     //setup pins
     if (drv->uart.uarts[port]->tx_pin != PIN_UNUSED)
-        ack_gpio(drv, LPC_GPIO_ENABLE_PIN_SYSTEM, drv->uart.uarts[port]->tx_pin, GPIO_MODE_OUT, AF_UART);
+        ack_gpio(drv, LPC_GPIO_ENABLE_PIN, drv->uart.uarts[port]->tx_pin, GPIO_MODE_OUT, AF_UART);
 
     if (drv->uart.uarts[port]->rx_pin != PIN_UNUSED)
-        ack_gpio(drv, LPC_GPIO_ENABLE_PIN_SYSTEM, drv->uart.uarts[port]->rx_pin, GPIO_MODE_NOPULL, AF_UART);
+        ack_gpio(drv, LPC_GPIO_ENABLE_PIN, drv->uart.uarts[port]->rx_pin, GPIO_MODE_NOPULL, AF_UART);
     //power up
     LPC_SYSCON->SYSAHBCLKCTRL |= 1 << __UART_POWER_PINS[port];
     //remove reset state. Only for LPC11U6x
@@ -404,10 +405,10 @@ static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
 
     //disable pins
     if (drv->uart.uarts[port]->tx_pin != PIN_UNUSED)
-        ack_gpio(drv, GPIO_DISABLE_PIN, drv->uart.uarts[port]->tx_pin, 0, 0);
+        ack_gpio(drv, LPC_GPIO_DISABLE_PIN, drv->uart.uarts[port]->tx_pin, 0, 0);
 
     if (drv->uart.uarts[port]->rx_pin != PIN_UNUSED)
-        ack_gpio(drv, GPIO_DISABLE_PIN, drv->uart.uarts[port]->rx_pin, 0, 0);
+        ack_gpio(drv, LPC_GPIO_DISABLE_PIN, drv->uart.uarts[port]->rx_pin, 0, 0);
 
     free(drv->uart.uarts[port]);
     drv->uart.uarts[port] = NULL;

@@ -8,6 +8,7 @@
 #include "lpc_gpio.h"
 #include "lpc_core.h"
 #include "lpc_power.h"
+#include "../../../userspace/lpc_driver.h"
 #include "../../../userspace/stdlib.h"
 #include "../../../userspace/irq.h"
 #include "../../../userspace/block.h"
@@ -244,8 +245,8 @@ void lpc_i2c_open(SHARED_I2C_DRV *drv, I2C_PORT port, unsigned int mode, unsigne
     drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
     drv->i2c.i2cs[port]->addr = 0;
     //setup pins
-    ack_gpio(drv, LPC_GPIO_ENABLE_PIN_SYSTEM, __I2C_SCL[port], 0, mode & I2C_FAST_SPEED ? AF_FAST_I2C : AF_I2C);
-    ack_gpio(drv, LPC_GPIO_ENABLE_PIN_SYSTEM, __I2C_SDA[port], 0, mode & I2C_FAST_SPEED ? AF_FAST_I2C : AF_I2C);
+    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, __I2C_SCL[port], 0, mode & I2C_FAST_SPEED ? AF_FAST_I2C : AF_I2C);
+    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, __I2C_SDA[port], 0, mode & I2C_FAST_SPEED ? AF_FAST_I2C : AF_I2C);
     //power up
     LPC_SYSCON->SYSAHBCLKCTRL |= 1 << SYSCON_SYSAHBCLKCTRL_I2C0_POS;
     //remove reset state
@@ -281,8 +282,8 @@ void lpc_i2c_close(SHARED_I2C_DRV *drv, I2C_PORT port)
     //power down
     LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << SYSCON_SYSAHBCLKCTRL_I2C0_POS);
     //disable pins
-    ack_gpio(drv, GPIO_DISABLE_PIN, __I2C_SCL[port], 0, 0);
-    ack_gpio(drv, GPIO_DISABLE_PIN, __I2C_SDA[port], 0, 0);
+    ack_gpio(drv, LPC_GPIO_DISABLE_PIN, __I2C_SCL[port], 0, 0);
+    ack_gpio(drv, LPC_GPIO_DISABLE_PIN, __I2C_SDA[port], 0, 0);
 }
 
 void lpc_i2c_io_start(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block, unsigned int size, HANDLE process, I2C_IO io)

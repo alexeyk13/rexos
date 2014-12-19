@@ -5,6 +5,7 @@
 */
 
 #include "lpc_gpio.h"
+#include "../../../userspace/lpc_driver.h"
 #include "lpc_config.h"
 #include <stdint.h>
 
@@ -14,9 +15,6 @@
 
 #define GPIO_FUNC(arr, pin)             (((arr)[(pin) >> 1] >> (((pin) & 1) << 2)) & 0xf)
 #define GF(low, high)                   ((low) | ((high) << 4))
-
-#define GPIO_PORT(pin)                  ((pin) >> 5)
-#define GPIO_PIN(pin)                   ((pin) & 0x1f)
 
 static const uint8_t __GPIO_DEFAULT[PIN_DEFAULT / 2] =
                                        {
@@ -87,7 +85,7 @@ static const uint8_t __GPIO_UART[PIN_DEFAULT / 2] =
                                        };
 #endif
 
-void lpc_gpio_enable_pin_system(PIN pin, unsigned int mode, unsigned int af)
+void lpc_gpio_enable_pin(PIN pin, unsigned int mode, unsigned int af)
 {
     if (pin >= PIN_DEFAULT)
     {
@@ -127,30 +125,11 @@ void lpc_gpio_enable_pin_system(PIN pin, unsigned int mode, unsigned int af)
     if (func == PIN_MODE_INVALID)
         return;
 
-    IOCON[pin] = (mode & GPIO_MODE_MASK) | func;
-    if (mode & GPIO_MODE_OUT)
+    IOCON[pin] = (mode & LPC_GPIO_MODE_MASK) | func;
+    if (mode & LPC_GPIO_MODE_OUT)
         LPC_GPIO->DIR[GPIO_PORT(pin)] |= 1 << GPIO_PIN(pin);
     else
         LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
-}
-
-__STATIC_INLINE void lpc_gpio_enable_pin(PIN pin, PIN_MODE mode)
-{
-    switch (mode)
-    {
-    case PIN_MODE_OUT:
-        lpc_gpio_enable_pin_system(pin, GPIO_MODE_OUT, AF_DEFAULT);
-        break;
-    case PIN_MODE_IN_FLOAT:
-        lpc_gpio_enable_pin_system(pin, GPIO_MODE_NOPULL, AF_DEFAULT);
-        break;
-    case PIN_MODE_IN_PULLUP:
-        lpc_gpio_enable_pin_system(pin, GPIO_MODE_PULLUP, AF_DEFAULT);
-        break;
-    case PIN_MODE_IN_PULLDOWN:
-        lpc_gpio_enable_pin_system(pin, GPIO_MODE_PULLDOWN, AF_DEFAULT);
-        break;
-    }
 }
 
 __STATIC_INLINE void lpc_gpio_disable_pin(PIN pin)
@@ -165,26 +144,6 @@ __STATIC_INLINE void lpc_gpio_disable_pin(PIN pin)
     LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
 }
 
-__STATIC_INLINE void lpc_gpio_set_pin(PIN pin, bool set)
-{
-    if (pin >= PIN_DEFAULT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
-    LPC_GPIO->B[pin] = set ? 1 : 0;
-}
-
-__STATIC_INLINE bool lpc_gpio_get_pin(PIN pin)
-{
-    if (pin >= PIN_DEFAULT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return false;
-    }
-    return LPC_GPIO->B[pin] & 1;
-}
-
 void lpc_gpio_init()
 {
     LPC_SYSCON->SYSAHBCLKCTRL |= (1 << SYSCON_SYSAHBCLKCTRL_GPIO_POS) | (1 << SYSCON_SYSAHBCLKCTRL_IOCON_POS);
@@ -195,24 +154,12 @@ bool lpc_gpio_request(IPC* ipc)
     bool need_post = false;
     switch (ipc->cmd)
     {
-    case GPIO_ENABLE_PIN:
-        lpc_gpio_enable_pin((PIN)ipc->param1, (PIN_MODE)ipc->param2);
+    case LPC_GPIO_ENABLE_PIN:
+        lpc_gpio_enable_pin((PIN)ipc->param1, ipc->param2, ipc->param3);
         need_post = true;
         break;
-    case GPIO_SET_PIN:
-        lpc_gpio_set_pin((PIN)ipc->param1, (bool)ipc->param2);
-        need_post = true;
-        break;
-    case GPIO_GET_PIN:
-        ipc->param1 = lpc_gpio_get_pin((PIN)ipc->param1);
-        ipc_post_or_error(ipc);
-        break;
-    case GPIO_DISABLE_PIN:
+    case LPC_GPIO_DISABLE_PIN:
         lpc_gpio_disable_pin((PIN)ipc->param1);
-        need_post = true;
-        break;
-    case LPC_GPIO_ENABLE_PIN_SYSTEM:
-        lpc_gpio_enable_pin_system((PIN)ipc->param1, ipc->param2, ipc->param3);
         need_post = true;
         break;
     default:

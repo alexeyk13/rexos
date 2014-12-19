@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2014, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #include "lib_gpio.h"
 #include "../userspace/stm32_driver.h"
 
