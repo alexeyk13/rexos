@@ -41,7 +41,8 @@ typedef enum {
     HAL_ADC,
     HAL_DAC,
     HAL_I2C,
-    HAL_LCD
+    HAL_LCD,
+    HAL_PINBOARD
 } HAL;
 
 #define HAL_HANDLE(group, item)                             ((group) << 16 | (item))
