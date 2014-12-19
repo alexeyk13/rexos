@@ -101,6 +101,26 @@ void lpc_usb_rx_prepare(SHARED_USB_DRV* drv, int num)
     *USB_EP_LISTSTS(num, 0) |= USB_EP_LISTST_A;
 }
 
+void lpc_usb_ep_reset(SHARED_USB_DRV* drv, int num)
+{
+    //disabling IO is required co access S, TR bits
+    //active bit can't be reset directly
+    if ((*USB_EP_LISTSTS(num, 0)) & USB_EP_LISTST_A)
+    {
+        //ignore this interrupt source
+        LPC_USB->INTEN &= ~USB_EP_INT_BIT(num);
+        LPC_USB->EPSKIP |= USB_EP_INT_BIT(num);
+        while (LPC_USB->EPSKIP & USB_EP_INT_BIT(num)) {}
+        //clear and unmask int
+        LPC_USB->INTSTAT = USB_EP_INT_BIT(num);
+        LPC_USB->INTEN |= USB_EP_INT_BIT(num);
+    }
+    *USB_EP_LISTSTS(num, 0) &= ~(USB_EP_LISTST_TV | USB_EP_LISTST_S);
+    *USB_EP_LISTSTS(num, 0) |= USB_EP_LISTST_TR;
+    *USB_EP_LISTSTS(num, 0) &= ~USB_EP_LISTST_TR;
+}
+
+
 bool lpc_usb_ep_flush(SHARED_USB_DRV* drv, int num)
 {
     if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
@@ -116,17 +136,7 @@ bool lpc_usb_ep_flush(SHARED_USB_DRV* drv, int num)
     }
 
     ep->io_active = false;
-    //active bit can't be reset directly
-    if ((*USB_EP_LISTSTS(num, 0)) & USB_EP_LISTST_A)
-    {
-        //ignore this interrupt source
-        LPC_USB->INTEN &= ~USB_EP_INT_BIT(num);
-        LPC_USB->EPSKIP |= USB_EP_INT_BIT(num);
-        while (LPC_USB->EPSKIP & USB_EP_INT_BIT(num)) {}
-        //clear and unmask int
-        LPC_USB->INTSTAT = USB_EP_INT_BIT(num);
-        LPC_USB->INTEN |= USB_EP_INT_BIT(num);
-    }
+    lpc_usb_ep_reset(drv, num);
     if (ep->block != INVALID_HANDLE)
     {
         block_send(ep->block, drv->usb.device);
@@ -174,18 +184,8 @@ static inline void lpc_usb_reset(SHARED_USB_DRV* drv)
     //reset all endpoints
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
     {
-        //flush (required to access S, TR), clear stall, reset
-        if (drv->usb.in[i])
-            lpc_usb_ep_flush(drv, i | USB_EP_IN);
-        if (drv->usb.out[i])
-            lpc_usb_ep_flush(drv, i);
-        *USB_EP_LISTSTS(i | USB_EP_IN, 0) &= ~(USB_EP_LISTST_TV | USB_EP_LISTST_S);
-        *USB_EP_LISTSTS(i | USB_EP_IN, 0) |= USB_EP_LISTST_TR;
-        *USB_EP_LISTSTS(i | USB_EP_IN, 0) &= ~USB_EP_LISTST_TR;
-
-        *USB_EP_LISTSTS(i, 0) &= ~(USB_EP_LISTST_TV | USB_EP_LISTST_S);
-        *USB_EP_LISTSTS(i, 0) |= USB_EP_LISTST_TR;
-        *USB_EP_LISTSTS(i, 0) &= ~USB_EP_LISTST_TR;
+        lpc_usb_ep_reset(drv, i);
+        lpc_usb_ep_reset(drv, i | USB_EP_IN);
     }
 
     IPC ipc;
