@@ -120,9 +120,8 @@ void kprocess_wakeup_internal(PROCESS* process)
     if  (process->flags & PROCESS_FLAGS_WAITING)
     {
         //if timer is still active, kill him
-        if (process->flags & PROCESS_FLAGS_TIMER_ACTIVE)
-            ktimer_stop(&process->timer);
-        process->flags &= ~(PROCESS_FLAGS_TIMER_ACTIVE | PROCESS_SYNC_MASK);
+        ktimer_stop_internal(&process->timer);
+        process->flags &= ~PROCESS_SYNC_MASK;
 
         switch (process->flags & PROCESS_MODE_MASK)
         {
@@ -138,35 +137,40 @@ void kprocess_wakeup_internal(PROCESS* process)
 void kprocess_timeout(void* param)
 {
     PROCESS* process = param;
-    process->flags &= ~PROCESS_FLAGS_TIMER_ACTIVE;
-    //say sync object to release us
-    switch (process->flags & PROCESS_SYNC_MASK)
+    disable_interrupts();
+    //because timeout is not atomic anymore
+    if (process->flags & PROCESS_FLAGS_WAITING)
     {
-    case PROCESS_SYNC_TIMER_ONLY:
-        break;
-    case PROCESS_SYNC_IPC:
-        kipc_lock_release((HANDLE)process);
-        break;
-    case PROCESS_SYNC_STREAM:
-        kstream_lock_release((STREAM_HANDLE*)process->sync_object, process);
-        break;
-#if (KERNEL_MES)
-    case PROCESS_SYNC_MUTEX:
-        kmutex_lock_release((MUTEX*)process->sync_object, process);
-        break;
-    case PROCESS_SYNC_EVENT:
-        kevent_lock_release((EVENT*)process->sync_object, process);
-        break;
-    case PROCESS_SYNC_SEM:
-        ksem_lock_release((SEM*)process->sync_object, process);
-        break;
-#endif //KERNEL_MES
-    default:
-        ASSERT(false);
+        //say sync object to release us
+        switch (process->flags & PROCESS_SYNC_MASK)
+        {
+        case PROCESS_SYNC_TIMER_ONLY:
+            break;
+        case PROCESS_SYNC_IPC:
+            kipc_lock_release((HANDLE)process);
+            break;
+        case PROCESS_SYNC_STREAM:
+            kstream_lock_release((STREAM_HANDLE*)process->sync_object, process);
+            break;
+    #if (KERNEL_MES)
+        case PROCESS_SYNC_MUTEX:
+            kmutex_lock_release((MUTEX*)process->sync_object, process);
+            break;
+        case PROCESS_SYNC_EVENT:
+            kevent_lock_release((EVENT*)process->sync_object, process);
+            break;
+        case PROCESS_SYNC_SEM:
+            ksem_lock_release((SEM*)process->sync_object, process);
+            break;
+    #endif //KERNEL_MES
+        default:
+            ASSERT(false);
+        }
+        if ((process->flags & PROCESS_SYNC_MASK) != PROCESS_SYNC_TIMER_ONLY)
+            process->heap->error =  ERROR_TIMEOUT;
+        kprocess_wakeup_internal(process);
     }
-    if ((process->flags & PROCESS_SYNC_MASK) != PROCESS_SYNC_TIMER_ONLY)
-        process->heap->error =  ERROR_TIMEOUT;
-    kprocess_wakeup_internal(process);
+    enable_interrupts();
 }
 
 void kprocess_abnormal_exit()
@@ -197,8 +201,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->current_priority = rex->priority;
 #endif //KERNEL_MES
             (*process)->sp = (void*)((unsigned int)(*process)->heap + rex->size);
-            (*process)->timer.callback = kprocess_timeout;
-            (*process)->timer.param = (*process);
+            ktimer_init_internal(&(*process)->timer, kprocess_timeout, (*process));
             (*process)->size = rex->size;
             dlist_clear((DLIST**)&((*process)->blocks));
             kipc_init((HANDLE)*process, rex->ipc_size);
@@ -340,8 +343,7 @@ void kprocess_destroy(PROCESS* process)
     if  (process->flags & PROCESS_FLAGS_WAITING)
     {
         //if timer is still active, kill him
-        if (process->flags & PROCESS_FLAGS_TIMER_ACTIVE)
-            ktimer_stop(&process->timer);
+        ktimer_stop_internal(&process->timer);
         //say sync object to release us
         switch (process->flags & PROCESS_SYNC_MASK)
         {
@@ -393,15 +395,10 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
         kprocess_set_current_priority(((MUTEX*)sync_object)->owner, process->current_priority);
 #endif //KERNEL_MES
 
+    enable_interrupts();
     //create timer if not infinite
     if (time->sec || time->usec)
-    {
-        process->flags |= PROCESS_FLAGS_TIMER_ACTIVE;
-        process->timer.time.sec = time->sec;
-        process->timer.time.usec = time->usec;
-        ktimer_start(&process->timer);
-    }
-    enable_interrupts();
+        ktimer_start_internal(&process->timer, time);
 }
 
 void kprocess_wakeup(PROCESS* process)

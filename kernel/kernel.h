@@ -104,7 +104,6 @@ typedef struct {
     void* cb_ktimer_param;
 
     KTIMER* timers;
-    volatile bool timer_executed;
     //HPET value, set before call
     unsigned int hpet_value;
     //----------------------- paged memory related ---------------------

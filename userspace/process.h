@@ -31,7 +31,6 @@
 
 #define PROCESS_FLAGS_ACTIVE                                     (1 << 0)
 #define PROCESS_FLAGS_WAITING                                    (1 << 1)
-#define PROCESS_FLAGS_TIMER_ACTIVE                               (1 << 2)
 
 #define PROCESS_MODE_MASK                                        0x3
 #define PROCESS_MODE_FROZEN                                      (0)

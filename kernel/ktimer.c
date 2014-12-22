@@ -10,6 +10,10 @@
 #include "kernel.h"
 #include <string.h>
 #include "../userspace/error.h"
+#if (KERNEL_SOFT_TIMERS)
+#include "kmalloc.h"
+#include "kipc.h"
+#endif //KERNEL_SOFT_TIMERS
 
 #define FREE_RUN                                        2000000
 
@@ -51,37 +55,42 @@ void ktimer_get_uptime(TIME* res)
 
 static inline void find_shoot_next()
 {
-    KTIMER* to_shoot;
+    KTIMER* timers_to_shoot = NULL;
+    KTIMER* cur;
     TIME uptime;
 
-    do {
-        to_shoot = NULL;
-        if (__KERNEL->timers)
+    disable_interrupts();
+    while (__KERNEL->timers)
+    {
+        //ignore seconds adjustment
+        uptime.sec = __KERNEL->uptime.sec;
+        uptime.usec = __KERNEL->uptime.usec + __KERNEL->cb_ktimer.elapsed(__KERNEL->cb_ktimer_param);
+        if (time_compare(&__KERNEL->timers->time, &uptime) >= 0)
         {
-            //ignore seconds adjustment
-            uptime.sec = __KERNEL->uptime.sec;
-            uptime.usec = __KERNEL->uptime.usec + __KERNEL->cb_ktimer.elapsed(__KERNEL->cb_ktimer_param);
-            if (time_compare(&__KERNEL->timers->time, &uptime) >= 0)
-            {
-                to_shoot = __KERNEL->timers;
-                dlist_remove_head((DLIST**)&__KERNEL->timers);
-            }
-            //add to this second events
-            else if (__KERNEL->timers->time.sec == uptime.sec)
-            {
-                __KERNEL->uptime.usec += __KERNEL->cb_ktimer.elapsed(__KERNEL->cb_ktimer_param);
-                __KERNEL->cb_ktimer.stop(__KERNEL->cb_ktimer_param);
-                __KERNEL->hpet_value = __KERNEL->timers->time.usec - __KERNEL->uptime.usec;
-                __KERNEL->cb_ktimer.start(__KERNEL->hpet_value, __KERNEL->cb_ktimer_param);
-            }
-            if (to_shoot)
-            {
-                __KERNEL->timer_executed = true;
-                to_shoot->callback(to_shoot->param);
-                __KERNEL->timer_executed = false;
-            }
+            cur = __KERNEL->timers;
+            cur->active = false;
+            dlist_remove_head((DLIST**)&__KERNEL->timers);
+            dlist_add_tail((DLIST**)&timers_to_shoot, (DLIST*)cur);
         }
-    } while (to_shoot);
+        //add to this second events
+        else if (__KERNEL->timers->time.sec == uptime.sec)
+        {
+            __KERNEL->uptime.usec += __KERNEL->cb_ktimer.elapsed(__KERNEL->cb_ktimer_param);
+            __KERNEL->cb_ktimer.stop(__KERNEL->cb_ktimer_param);
+            __KERNEL->hpet_value = __KERNEL->timers->time.usec - __KERNEL->uptime.usec;
+            __KERNEL->cb_ktimer.start(__KERNEL->hpet_value, __KERNEL->cb_ktimer_param);
+            break;
+        }
+        else
+            break;
+    }
+    enable_interrupts();
+    while (timers_to_shoot)
+    {
+        cur = timers_to_shoot;
+        dlist_remove_head((DLIST**)&timers_to_shoot);
+        cur->callback(cur->param);
+    }
 }
 
 void ktimer_second_pulse()
@@ -92,9 +101,9 @@ void ktimer_second_pulse()
     __KERNEL->cb_ktimer.stop(__KERNEL->cb_ktimer_param);
     __KERNEL->cb_ktimer.start(FREE_RUN, __KERNEL->cb_ktimer_param);
     __KERNEL->uptime.usec = 0;
+    enable_interrupts();
 
     find_shoot_next();
-    enable_interrupts();
 }
 
 void ktimer_hpet_timeout()
@@ -107,9 +116,9 @@ void ktimer_hpet_timeout()
     __KERNEL->uptime.usec += __KERNEL->hpet_value;
     __KERNEL->hpet_value = 0;
     __KERNEL->cb_ktimer.start(FREE_RUN, __KERNEL->cb_ktimer_param);
+    enable_interrupts();
 
     find_shoot_next();
-    enable_interrupts();
 }
 
 void ktimer_setup(const CB_SVC_TIMER *cb_ktimer, void *cb_ktimer_param)
@@ -126,14 +135,17 @@ void ktimer_setup(const CB_SVC_TIMER *cb_ktimer, void *cb_ktimer_param)
         kprocess_error_current(ERROR_INVALID_SVC);
 }
 
-void ktimer_start(KTIMER* timer)
+void ktimer_start_internal(KTIMER* timer, TIME *time)
 {
     TIME uptime;
     DLIST_ENUM de;
     KTIMER* cur;
     bool found = false;
     ktimer_get_uptime(&uptime);
+    timer->time.sec = time->sec;
+    timer->time.usec = time->usec;
     time_add(&uptime, &timer->time, &timer->time);
+    disable_interrupts();
     dlist_enum_start((DLIST**)&__KERNEL->timers, &de);
     while (dlist_enum(&de, (DLIST**)&cur))
         if (time_compare(&cur->time, &timer->time) < 0)
@@ -144,14 +156,86 @@ void ktimer_start(KTIMER* timer)
         }
     if (!found)
         dlist_add_tail((DLIST**)&__KERNEL->timers, (DLIST*)timer);
-    if (!__KERNEL->timer_executed)
-        find_shoot_next();
+    timer->active = true;
+    enable_interrupts();
+    find_shoot_next();
 }
 
-void ktimer_stop(KTIMER* timer)
+void ktimer_stop_internal(KTIMER* timer)
 {
-    dlist_remove((DLIST**)&__KERNEL->timers, (DLIST*)timer);
+    if (timer->active)
+        dlist_remove((DLIST**)&__KERNEL->timers, (DLIST*)timer);
 }
+
+void ktimer_init_internal(KTIMER* timer, void (*callback)(void*), void* param)
+{
+    timer->callback = callback;
+    timer->param = param;
+}
+
+#if (KERNEL_SOFT_TIMERS)
+void ktimer_timeout(void* param)
+{
+    SOFT_TIMER* timer = (SOFT_TIMER*)param;
+    IPC ipc;
+    ipc.process = timer->owner;
+    ipc.cmd = IPC_TIMEOUT;
+    ipc.param1 = (unsigned int)param;
+    kipc_post_process(&ipc, KERNEL_HANDLE);
+    if (timer->mode & TIMER_MODE_PERIODIC)
+        ktimer_start_internal(&timer->timer, &timer->time);
+}
+
+void ktimer_create(SOFT_TIMER** timer)
+{
+    PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, timer, sizeof(void*));
+    *timer = kmalloc(sizeof(SOFT_TIMER));
+    if ((*timer) == NULL)
+    {
+        kprocess_error(process, ERROR_OUT_OF_SYSTEM_MEMORY);
+        return;
+    }
+    DO_MAGIC((*timer), MAGIC_TIMER);
+    (*timer)->owner = (HANDLE)process;
+    ktimer_init_internal(&(*timer)->timer, ktimer_timeout, (*timer));
+}
+
+void ktimer_destroy(SOFT_TIMER *timer)
+{
+    if ((HANDLE)timer == INVALID_HANDLE)
+        return;
+    CHECK_HANDLE(timer, sizeof(SOFT_TIMER));
+    CHECK_MAGIC(timer, MAGIC_TIMER);
+    CLEAR_MAGIC(timer);
+    kfree(timer);
+}
+
+void ktimer_start(SOFT_TIMER* timer, TIME* time, unsigned int mode)
+{
+    CHECK_HANDLE(timer, sizeof(SOFT_TIMER));
+    CHECK_MAGIC(timer, MAGIC_TIMER);
+    CHECK_ADDRESS(kprocess_get_current(), *time, sizeof(TIME));
+    timer->mode = mode;
+    if (timer->mode & TIMER_MODE_PERIODIC)
+    {
+        timer->time.sec = time->sec;
+        timer->time.usec = time->usec;
+    }
+    ktimer_start_internal(&timer->timer, time);
+}
+
+void ktimer_stop(SOFT_TIMER* timer)
+{
+    CHECK_HANDLE(timer, sizeof(SOFT_TIMER));
+    CHECK_MAGIC(timer, MAGIC_TIMER);
+    //in case it shouting right now
+    disable_interrupts();
+    timer->mode &= ~TIMER_MODE_PERIODIC;
+    ktimer_stop_internal(&timer->timer);
+    enable_interrupts();
+}
+#endif //KERNEL_SOFT_TIMERS
 
 void ktimer_init()
 {

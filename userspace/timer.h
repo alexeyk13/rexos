@@ -5,6 +5,7 @@
 #include "time.h"
 #include "cc_macro.h"
 #include "svc.h"
+#include "heap.h"
 
 /** \addtogroup timer timer
     interface to system timer
@@ -22,6 +23,8 @@ typedef struct {
     unsigned int (*elapsed) (void*);                                       //!< return elapsed time from last start in us
 } CB_SVC_TIMER;
 
+
+#define TIMER_MODE_PERIODIC                                                (1 << 0)
 
 /**
     \brief get uptime up to 1us
@@ -61,6 +64,78 @@ __STATIC_INLINE void timer_second_pulse()
 __STATIC_INLINE void timer_hpet_timeout()
 {
     __GLOBAL->svc_irq(SVC_TIMER_HPET_TIMEOUT, 0, 0, 0);
+}
+
+
+/**
+    \brief create soft timer. Make sure, enalbed in kernel
+    \retval HANDLE of timer, or invalid handle
+*/
+__STATIC_INLINE HANDLE timer_create()
+{
+    HANDLE handle;
+    svc_call(SVC_TIMER_CREATE, (unsigned int)&handle, 0, 0);
+    return handle;
+}
+
+/**
+    \brief start soft timer
+    \param timer soft timer handle
+    \param time pointer to TIME structure
+    \param mode soft timer. Mode TIMER_MODE_PERIODIC is only supported for now.
+    \retval none.
+*/
+__STATIC_INLINE void timer_start(HANDLE timer, TIME* time, unsigned int mode)
+{
+    svc_call(SVC_TIMER_START, (unsigned int)timer, (unsigned int)time, mode);
+}
+
+/**
+    \brief start soft timer in ms units
+    \param timer soft timer handle
+    \param time_ms time in ms units
+    \param mode soft timer. Mode TIMER_MODE_PERIODIC is only supported for now.
+    \retval none.
+*/
+__STATIC_INLINE void timer_start_ms(HANDLE timer, unsigned int time_ms, unsigned int mode)
+{
+    TIME time;
+    ms_to_time(time_ms, &time);
+    timer_start(timer, &time, mode);
+}
+
+/**
+    \brief start soft timer in us units
+    \param timer soft timer handle
+    \param time_ms time in ms units
+    \param mode soft timer. Mode TIMER_MODE_PERIODIC is only supported for now.
+    \retval none.
+*/
+__STATIC_INLINE void timer_start_us(HANDLE timer, unsigned int time_us, unsigned int mode)
+{
+    TIME time;
+    us_to_time(time_us, &time);
+    timer_start(timer, &time, mode);
+}
+
+/**
+    \brief stop soft timer
+    \param timer soft timer handle
+    \retval none.
+*/
+__STATIC_INLINE void timer_stop(HANDLE timer)
+{
+    svc_call(SVC_TIMER_STOP, (unsigned int)timer, 0, 0);
+}
+
+/**
+    \brief destroy soft timer
+    \param timer soft timer handle
+    \retval none.
+*/
+__STATIC_INLINE void timer_destroy(HANDLE timer)
+{
+    svc_call(SVC_TIMER_DESTROY, (unsigned int)timer, 0, 0);
 }
 
 /** \} */ // end of timer group
