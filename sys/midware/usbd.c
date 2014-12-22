@@ -98,23 +98,20 @@ const REX __USBD = {
     usbd
 };
 
-void usbd_inform(USBD* usbd, unsigned int alert)
+void usbd_inform(USBD* usbd, unsigned int alert, bool need_wait)
 {
     int i;
-    IPC ipc;
-    ipc.cmd = USBD_ALERT;
-    ipc.param1 = alert;
     for (i = 0; i < void_array_size(usbd->handlers); ++i)
-    {
-        ipc.process = (HANDLE)(void_array_data(usbd->handlers)[i]);
-        ipc_post(&ipc);
-    }
+        if (need_wait)
+            ack((HANDLE)(void_array_data(usbd->handlers)[i]), USBD_ALERT, alert, 0, 0);
+        else
+            ipc_post_inline((HANDLE)(void_array_data(usbd->handlers)[i]), USBD_ALERT, alert, 0, 0);
 }
 
 void usbd_class_reset(USBD* usbd)
 {
     int i;
-    usbd_inform(usbd, USBD_ALERT_RESET);
+    usbd_inform(usbd, USBD_ALERT_RESET, true);
     for (i = 0; i < usbd->ifacecnt; ++i)
     {
         if (IFACE(usbd, i).usbd_class != NULL)
@@ -126,7 +123,7 @@ void usbd_class_reset(USBD* usbd)
 static inline void usbd_class_suspend(USBD* usbd)
 {
     int i;
-    usbd_inform(usbd, USBD_ALERT_SUSPEND);
+    usbd_inform(usbd, USBD_ALERT_SUSPEND, true);
     for (i = 0; i < usbd->ifacecnt; ++i)
     {
         if (IFACE(usbd, i).usbd_class != NULL)
@@ -142,7 +139,7 @@ void usbd_class_resume(USBD* usbd)
         if (IFACE(usbd, i).usbd_class != NULL)
             IFACE(usbd, i).usbd_class->usbd_class_resume(usbd, IFACE(usbd, i).param);
     }
-    usbd_inform(usbd, USBD_ALERT_RESUME);
+    usbd_inform(usbd, USBD_ALERT_RESUME, false);
 }
 
 void usbd_fatal(USBD* usbd)
@@ -206,7 +203,7 @@ static inline void usbd_class_configured(USBD* usbd)
     for (i = 0; __USBD_CLASSES[i] != NULL; ++i)
         __USBD_CLASSES[i]->usbd_class_configured(usbd, cfg);
 
-    usbd_inform(usbd, USBD_ALERT_CONFIGURED);
+    usbd_inform(usbd, USBD_ALERT_CONFIGURED, false);
 }
 
 static inline void usbd_open(USBD* usbd)
@@ -451,6 +448,12 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
 #if (USB_DEBUG_REQUESTS)
     printf("USB device reset\n\r");
 #endif
+    if (usbd->state == USBD_STATE_CONFIGURED)
+    {
+        usbd->state = USBD_STATE_DEFAULT;
+        usbd_class_reset(usbd);
+    }
+
     if (usbd->ep0_size)
     {
         fclose(usbd->usb, HAL_HANDLE(HAL_USB, 0));
@@ -462,12 +465,6 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
     unsigned int size = usbd->ep0_size;
     fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, 0), USB_EP_CONTROL, (void*)size);
     fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), USB_EP_CONTROL, (void*)size);
-
-    if (usbd->state == USBD_STATE_CONFIGURED)
-    {
-        usbd->state = USBD_STATE_DEFAULT;
-        usbd_class_reset(usbd);
-    }
 }
 
 static inline void usbd_suspend(USBD* usbd)
@@ -478,14 +475,14 @@ static inline void usbd_suspend(USBD* usbd)
 #if (USB_DEBUG_REQUESTS)
         printf("USB device suspend\n\r");
 #endif
+        if (usbd->state == USBD_STATE_CONFIGURED)
+            usbd_class_suspend(usbd);
         if (usbd->ep0_size)
         {
             fflush(usbd->usb, HAL_HANDLE(HAL_USB, 0));
             fflush(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
         }
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
-        if (usbd->state == USBD_STATE_CONFIGURED)
-            usbd_class_suspend(usbd);
     }
 }
 
