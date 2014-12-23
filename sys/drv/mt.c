@@ -64,11 +64,11 @@ const REX __MT = {
 
 #define X_TRANSFORM(x, size)            (x)
 #define PAGE_TRANSFORM(page)            (page)
-#define BIT_OUT_TRANSFORM(byte)         (bitswap(byte))
+#define BIT_OUT_TRANSFORM(byte)         (mt_bitswap(byte))
 
 #endif
 
-uint8_t bitswap(uint8_t x)
+uint8_t mt_bitswap(uint8_t x)
 {
     x = ((x & 0x55) << 1) | ((x & 0xAA) >> 1);
     x = ((x & 0x33) << 2) | ((x & 0xCC) >> 2);
@@ -182,7 +182,16 @@ bool mt_is_on()
     return !(mt_status(MT_CS1) & MT_STATUS_OFF);
 }
 
-void mt_set_pixel(unsigned int x, unsigned int y, bool set)
+#if (MT_TEST)
+void mt_clks_test()
+{
+    TIME uptime;
+    get_uptime(&uptime);
+    delay_clks(CLKS_TEST_ROUNDS);
+    printf("clks average time: %dns\n\r", time_elapsed_us(&uptime) * 1000 / CLKS_TEST_ROUNDS);
+}
+
+static inline void mt_set_pixel(unsigned int x, unsigned int y, bool set)
 {
     uint8_t data;
     unsigned int cs, page, xr, yr;
@@ -215,45 +224,6 @@ void mt_set_pixel(unsigned int x, unsigned int y, bool set)
     mt_cmd(cs, MT_CMD_SET_ADDRESS | yr);
     mt_dataout(cs, data);
 }
-
-bool mt_get_pixel(unsigned int x, unsigned int y)
-{
-    uint8_t data;
-    unsigned int cs, page, xr, yr;
-    if (x >= MT_SIZE_X || y >= MT_SIZE_Y)
-    {
-        error(ERROR_OUT_OF_RANGE);
-        return false;
-    }
-    //find page & CS
-    xr = X_TRANSFORM(x, 1);
-    page = xr >> 3;
-    if (y >= MT_SIZE_X)
-    {
-        yr = y - MT_SIZE_X;
-        cs = MT_CS2;
-    }
-    else
-    {
-        yr = y;
-        cs = MT_CS1;
-    }
-    mt_cmd(cs, MT_CMD_SET_PAGE | page);
-    mt_cmd(cs, MT_CMD_SET_ADDRESS | yr);
-    mt_datain(cs);
-    data = mt_datain(cs);
-    return (data >> (xr & 7)) & 1;
-}
-
-#if (MT_TEST)
-void mt_clks_test()
-{
-    TIME uptime;
-    get_uptime(&uptime);
-    delay_clks(CLKS_TEST_ROUNDS);
-    printf("clks average time: %dns\n\r", time_elapsed_us(&uptime) * 1000 / CLKS_TEST_ROUNDS);
-}
-
 
 static void mt_poly_test(unsigned int y, unsigned int size)
 {
@@ -327,49 +297,22 @@ void mt_pixel_test()
 #endif //MT_TEST
 
 //here goes in each chip coords
-static void mt_clear_rect_cs(unsigned int cs, RECT* rect, unsigned int mode)
+static void mt_clear_rect_cs(unsigned int cs, RECT* rect)
 {
-    uint8_t buf[rect->height];
-    uint8_t mask;
-    uint8_t shift;
     unsigned int first_page, last_page, page, i;
     first_page = rect->left >> 3;
     last_page = ((rect->left + rect->width + 7) >> 3) - 1;
-    shift = rect->left & 7;
 
     for (page = first_page; page <= last_page; ++page)
     {
-        mask = 0xff;
-        if (mode != MT_MODE_IGNORE)
-        {
-            if (page == first_page)
-                mask >>= shift;
-            if (page == last_page)
-                mask &= ~((1 << (((last_page + 1) << 3) - (rect->left + rect->width))) - 1);
-            mask = BIT_OUT_TRANSFORM(mask);
-            //dump for masking
-            if (mask != 0xff)
-            {
-                mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
-                mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
-                mt_datain(cs);
-                for (i = 0; i < rect->height; ++i)
-                    buf[i] = mt_datain(cs);
-            }
-        }
         mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
         mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
         for (i = 0; i < rect->height; ++i)
-        {
-            if (mode != MT_MODE_IGNORE && mask != 0xff)
-                mt_dataout(cs, buf[i] & ~mask);
-            else
-                mt_dataout(cs, 0x00);
-        }
+            mt_dataout(cs, 0x00);
     }
 }
 
-void mt_clear_rect(RECT* rect, unsigned int mode)
+void mt_clear_rect(RECT* rect)
 {
     RECT csrect;
     if (rect->left >= MT_SIZE_X || rect->top >= MT_SIZE_Y)
@@ -390,7 +333,7 @@ void mt_clear_rect(RECT* rect, unsigned int mode)
         csrect.height = rect->height;
         if (csrect.top + rect->height > MT_SIZE_X)
             csrect.height = MT_SIZE_X - rect->top;
-        mt_clear_rect_cs(MT_CS1, &csrect, mode);
+        mt_clear_rect_cs(MT_CS1, &csrect);
     }
     //apply for CS2
     if (rect->top + rect->height > MT_SIZE_X)
@@ -407,14 +350,13 @@ void mt_clear_rect(RECT* rect, unsigned int mode)
         }
         if (csrect.top + rect->height > MT_SIZE_X)
             csrect.height = MT_SIZE_X - rect->top;
-        mt_clear_rect_cs(MT_CS2, &csrect, mode);
+        mt_clear_rect_cs(MT_CS2, &csrect);
     }
 }
 
 //here goes in each chip coords
-static void mt_write_rect_cs(unsigned int cs, RECT* rect, unsigned int mode, const uint8_t* data, unsigned int bpl, unsigned int offset)
+static void mt_read_rect_cs(unsigned int cs, RECT* rect, uint8_t* data, unsigned int bpl, unsigned int offset)
 {
-    uint8_t buf[rect->height];
     uint8_t byte, mask;
     uint8_t shift = 0;
     unsigned int first_page, last_page, page, i, cur, byte_pos, bit_pos;
@@ -430,45 +372,25 @@ static void mt_write_rect_cs(unsigned int cs, RECT* rect, unsigned int mode, con
         if (page == last_page)
             mask &= ~((1 << (((last_page + 1) << 3) - (rect->left + rect->width))) - 1);
         mask = BIT_OUT_TRANSFORM(mask);
-        if (mode != MT_MODE_IGNORE)
-        {
-            mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
-            mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
-            mt_datain(cs);
-            for (i = 0; i < rect->height; ++i)
-                buf[i] = mt_datain(cs);
-        }
         mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
         mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
+        mt_datain(cs);
         for (i = 0; i < rect->height; ++i)
         {
+            byte = mt_datain(cs);
+            byte = BIT_OUT_TRANSFORM(byte) & mask;
             //absolute first bit offset in data stream
             cur = offset + i * bpl + ((page - first_page) << 3) + 8 - shift;
             byte_pos = cur >> 3;
             bit_pos = cur & 7;
-            byte = (data[byte_pos] << (bit_pos)) & 0xff;
+            data[byte_pos] = (data[byte_pos] & ~((1 << bit_pos) - 1)) | (byte >> bit_pos);
             if (bit_pos)
-                byte |= data[byte_pos + 1] >> (8 - bit_pos);
-            byte = BIT_OUT_TRANSFORM(byte) & mask;
-            switch (mode)
-            {
-            case MT_MODE_OR:
-                mt_dataout(cs, buf[i] | byte);
-                break;
-            case MT_MODE_XOR:
-                mt_dataout(cs, buf[i] ^ byte);
-                break;
-            case MT_MODE_FILL:
-                mt_dataout(cs, (buf[i] & ~mask) | byte);
-                break;
-            default:
-                mt_dataout(cs, byte);
-            }
+                data[byte_pos + 1] = ((data[byte_pos + 1]  >> (8 - bit_pos)) << (8 - bit_pos)) | (byte & ~((1 << bit_pos) - 1));
         }
     }
 }
 
-void mt_write_rect(RECT* rect, unsigned int mode, const uint8_t* data)
+static inline void mt_read_rect(RECT* rect, uint8_t *data)
 {
     RECT csrect;
     //bits per line
@@ -493,7 +415,7 @@ void mt_write_rect(RECT* rect, unsigned int mode, const uint8_t* data)
         if (csrect.top + rect->height > MT_SIZE_X)
             csrect.height = MT_SIZE_X - rect->top;
         offset = rect->width * csrect.height;
-        mt_write_rect_cs(MT_CS1, &csrect, mode, data, rect->width, 0);
+        mt_read_rect_cs(MT_CS1, &csrect, data, rect->width, 0);
     }
     //apply for CS2
     if (rect->top + rect->height > MT_SIZE_X)
@@ -510,8 +432,109 @@ void mt_write_rect(RECT* rect, unsigned int mode, const uint8_t* data)
         }
         if (csrect.top + rect->height > MT_SIZE_X)
             csrect.height = MT_SIZE_X - rect->top;
-        mt_write_rect_cs(MT_CS2, &csrect, mode, data, rect->width, offset);
+        mt_read_rect_cs(MT_CS2, &csrect, data, rect->width, offset);
     }
+}
+
+//here goes in each chip coords
+static void mt_write_rect_cs(unsigned int cs, RECT* rect, const uint8_t* data, unsigned int bpl, unsigned int offset)
+{
+    uint8_t byte, mask;
+    uint8_t shift = 0;
+    unsigned int first_page, last_page, page, i, cur, byte_pos, bit_pos;
+    first_page = rect->left >> 3;
+    last_page = ((rect->left + rect->width + 7) >> 3) - 1;
+    shift = rect->left & 7;
+
+    for (page = first_page; page <= last_page; ++page)
+    {
+        mask = 0xff;
+        if (page == first_page)
+            mask >>= shift;
+        if (page == last_page)
+            mask &= ~((1 << (((last_page + 1) << 3) - (rect->left + rect->width))) - 1);
+        mask = BIT_OUT_TRANSFORM(mask);
+        mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
+        mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
+        for (i = 0; i < rect->height; ++i)
+        {
+            //absolute first bit offset in data stream
+            cur = offset + i * bpl + ((page - first_page) << 3) + 8 - shift;
+            byte_pos = cur >> 3;
+            bit_pos = cur & 7;
+            byte = (data[byte_pos] << (bit_pos)) & 0xff;
+            if (bit_pos)
+                byte |= data[byte_pos + 1] >> (8 - bit_pos);
+            byte = BIT_OUT_TRANSFORM(byte) & mask;
+            mt_dataout(cs, byte);
+        }
+    }
+}
+
+void mt_write_rect(RECT* rect, const uint8_t* data)
+{
+    RECT csrect;
+    //bits per line
+    unsigned int offset;
+    if (rect->left >= MT_SIZE_X || rect->top >= MT_SIZE_Y)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    offset = 0;
+    csrect.width = rect->width;
+    if (rect->left + rect->height > MT_SIZE_X)
+        csrect.width = MT_SIZE_X - rect->left;
+    csrect.left = rect->left;
+    if (rect->left + rect->width > MT_SIZE_X)
+        csrect.width = MT_SIZE_X - rect->left;
+    //apply for CS1
+    if (rect->top < MT_SIZE_X)
+    {
+        csrect.top = rect->top;
+        csrect.height = rect->height;
+        if (csrect.top + rect->height > MT_SIZE_X)
+            csrect.height = MT_SIZE_X - rect->top;
+        offset = rect->width * csrect.height;
+        mt_write_rect_cs(MT_CS1, &csrect, data, rect->width, 0);
+    }
+    //apply for CS2
+    if (rect->top + rect->height > MT_SIZE_X)
+    {
+        if (rect->top < MT_SIZE_X)
+        {
+            csrect.top = 0;
+            csrect.height = rect->height - (MT_SIZE_X - rect->top);
+        }
+        else
+        {
+            csrect.top = rect->top - MT_SIZE_X;
+            csrect.height = rect->height;
+        }
+        if (csrect.top + rect->height > MT_SIZE_X)
+            csrect.height = MT_SIZE_X - rect->top;
+        mt_write_rect_cs(MT_CS2, &csrect, data, rect->width, offset);
+    }
+}
+
+void mt_read_canvas(CANVAS* canvas, unsigned short x, unsigned short y)
+{
+    RECT rect;
+    rect.left = x;
+    rect.top = y;
+    rect.width = canvas->width;
+    rect.height = canvas->height;
+    mt_read_rect(&rect, CANVAS_DATA(canvas));
+}
+
+void mt_write_canvas(CANVAS* canvas, unsigned short x, unsigned short y)
+{
+    RECT rect;
+    rect.left = x;
+    rect.top = y;
+    rect.width = canvas->width;
+    rect.height = canvas->height;
+    mt_write_rect(&rect, CANVAS_DATA(canvas));
 }
 
 void mt_init()
@@ -541,14 +564,14 @@ static inline void mt_info()
 #endif
 
 
-void mt_clear_rect_driver(HANDLE process)
+static inline void mt_clear_rect_driver(HANDLE process)
 {
     MT_REQUEST req;
     if (direct_read(process, (void*)&req, sizeof(MT_REQUEST)))
-        mt_clear_rect(&req.rect, req.mode);
+        mt_clear_rect(&req.rect);
 }
 
-void mt_write_rect_driver(HANDLE process)
+static inline void mt_write_rect_driver(HANDLE process)
 {
     MT_REQUEST req;
     uint8_t* ptr;
@@ -556,8 +579,24 @@ void mt_write_rect_driver(HANDLE process)
     {
         ptr = block_open(req.block);
         if (ptr)
-            mt_write_rect(&req.rect, req.mode, ptr);
+            mt_write_rect(&req.rect, ptr);
     }
+}
+
+static inline void mt_read_canvas_driver(HANDLE block, unsigned short x, unsigned short y)
+{
+    CANVAS* canvas = (CANVAS*)block_open(block);
+    if (canvas == NULL)
+        return;
+    mt_read_canvas(canvas, x, y);
+}
+
+static inline void mt_write_canvas_driver(HANDLE block, unsigned short x, unsigned short y)
+{
+    CANVAS* canvas = (CANVAS*)block_open(block);
+    if (canvas == NULL)
+        return;
+    mt_write_canvas(canvas, x, y);
 }
 
 void mt()
@@ -601,20 +640,20 @@ void mt()
             mt_cls();
             need_post = true;
             break;
-        case MT_SET_PIXEL:
-            mt_set_pixel(ipc.param1, ipc.param2, ipc.param3);
-            need_post = true;
-            break;
-        case MT_GET_PIXEL:
-            ipc.param1 = mt_get_pixel(ipc.param1, ipc.param2);
-            need_post = true;
-            break;
         case MT_CLEAR_RECT:
             mt_clear_rect_driver(ipc.process);
             need_post = true;
             break;
         case MT_WRITE_RECT:
             mt_write_rect_driver(ipc.process);
+            need_post = true;
+            break;
+        case MT_READ_CANVAS:
+            mt_read_canvas_driver((HANDLE)ipc.param1, ipc.param2, ipc.param3);
+            need_post = true;
+            break;
+        case MT_WRITE_CANVAS:
+            mt_write_canvas_driver((HANDLE)ipc.param1, ipc.param2, ipc.param3);
             need_post = true;
             break;
 #if (MT_TEST)
