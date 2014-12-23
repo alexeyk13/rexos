@@ -19,6 +19,7 @@ typedef enum {
     LIB_ID_ARRAY,
     LIB_ID_USB,
     LIB_ID_GPIO,
+    LIB_ID_GUI,
     LIB_ID_MAX
 } LIB_ID;
 

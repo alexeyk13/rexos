@@ -5,7 +5,7 @@
 */
 
 #include "lib_lib.h"
-#include "dbg.h"
+#include "../kernel/dbg.h"
 #include "kernel_config.h"
 #include "lib_std.h"
 #include "lib_stdio.h"
@@ -20,6 +20,9 @@
 #if (KERNEL_LIB_GPIO)
 #include "lib_gpio.h"
 #endif //KERNEL_LIB_GPIO
+#if (KERNEL_LIB_GUI)
+#include "lib_gui.h"
+#endif //KERNEL_LIB_GUI
 
 void lib_stub ()
 {
@@ -46,10 +49,15 @@ const void *const __LIB[] = {
     (const void *const)NULL,
 #endif //KERNEL_LIB_GPIO
 #if (KERNEL_LIB_GPIO)
-    (const void *const)&__LIB_GPIO
+    (const void *const)&__LIB_GPIO,
+#else
+    (const void *const)NULL,
+#endif //KERNEL_LIB_GPIO
+#if (KERNEL_LIB_GUI)
+    (const void *const)&__LIB_GUI
 #else
     (const void *const)NULL
-#endif //KERNEL_LIB_GPIO
+#endif //KERNEL_LIB_GUI
 };
 
 
