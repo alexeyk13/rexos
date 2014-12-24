@@ -43,6 +43,25 @@ void lib_font_render_glyph(CANVAS* canvas, POINT* point, FACE* face, unsigned sh
     lib_graphics_write_rect(canvas, &rect, &data_rect, FACE_DATA(face), GUI_MODE_FILL);
 }
 
+unsigned short lib_font_get_char_width(FONT* font, const char* utf8)
+{
+    int i;
+    FACE* face;
+    //convert to utf32
+    uint32_t utf32 = lib_utf8_to_utf32(utf8);
+    //find face in font
+    face = (FACE*)((unsigned int)font + sizeof(FONT));
+    for (i = 0; i < font->face_count; ++i)
+    {
+        if (face->char_offset <= utf32 && face->char_offset + face->count > utf32)
+            return lib_font_get_glyph_width(face, utf32 - face->char_offset);
+        face = (FACE*)((unsigned int)face + face->total_size);
+    }
+    //render nil symbol
+    face = (FACE*)((unsigned int)font + sizeof(FONT));
+    return lib_font_get_glyph_width(face, 0);
+}
+
 void lib_font_render_char(CANVAS* canvas, POINT* point, FONT* font, const char* utf8)
 {
     int i;
@@ -63,4 +82,18 @@ void lib_font_render_char(CANVAS* canvas, POINT* point, FONT* font, const char* 
     //render nil symbol
     face = (FACE*)((unsigned int)font + sizeof(FONT));
     lib_font_render_glyph(canvas, point, face, font->height, 0);
+}
+
+void lib_font_render_text(CANVAS* canvas, POINT* point, FONT* font, const char* utf8)
+{
+    unsigned int cur = 0;
+    POINT cur_point;
+    cur_point.x = point->x;
+    cur_point.y = point->y;
+    while (utf8[cur])
+    {
+        lib_font_render_char(canvas, &cur_point, font, utf8 + cur);
+        cur_point.x += lib_font_get_char_width(font, utf8 + cur);
+        cur += lib_utf8_char_len(utf8 + cur);
+    }
 }

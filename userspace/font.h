@@ -22,10 +22,22 @@ __STATIC_INLINE void font_render_glyph(CANVAS* canvas, POINT* point, FACE* face,
     ((const LIB_GUI*)__GLOBAL->lib[LIB_ID_GUI])->lib_font_render_glyph(canvas, point, face, height, num);
 }
 
+__STATIC_INLINE unsigned short font_get_char_width(FONT* font, const char* utf8)
+{
+    LIB_CHECK_RET(LIB_ID_GUI);
+    return ((const LIB_GUI*)__GLOBAL->lib[LIB_ID_GUI])->lib_font_get_char_width(font, utf8);
+}
+
 __STATIC_INLINE void font_render_char(CANVAS* canvas, POINT* point, FONT* font, const char* utf8)
 {
     LIB_CHECK(LIB_ID_GUI);
     ((const LIB_GUI*)__GLOBAL->lib[LIB_ID_GUI])->lib_font_render_char(canvas, point, font, utf8);
+}
+
+__STATIC_INLINE void font_render_text(CANVAS* canvas, POINT* point, FONT* font, const char* utf8)
+{
+    LIB_CHECK(LIB_ID_GUI);
+    ((const LIB_GUI*)__GLOBAL->lib[LIB_ID_GUI])->lib_font_render_text(canvas, point, font, utf8);
 }
 
 #endif // FONT_H

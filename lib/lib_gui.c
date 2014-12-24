@@ -24,7 +24,9 @@ const LIB_GUI __LIB_GUI = {
 
     lib_font_get_glyph_width,
     lib_font_render_glyph,
+    lib_font_get_char_width,
     lib_font_render_char,
+    lib_font_render_text,
 
     lib_utf8_char_len,
     lib_utf8_to_utf32,
