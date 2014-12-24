@@ -517,21 +517,21 @@ void mt_write_rect(RECT* rect, const uint8_t* data)
     }
 }
 
-void mt_read_canvas(CANVAS* canvas, unsigned short x, unsigned short y)
+void mt_read_canvas(CANVAS* canvas, POINT* point)
 {
     RECT rect;
-    rect.left = x;
-    rect.top = y;
+    rect.left = point->x;
+    rect.top = point->y;
     rect.width = canvas->width;
     rect.height = canvas->height;
     mt_read_rect(&rect, CANVAS_DATA(canvas));
 }
 
-void mt_write_canvas(CANVAS* canvas, unsigned short x, unsigned short y)
+void mt_write_canvas(CANVAS* canvas, POINT* point)
 {
     RECT rect;
-    rect.left = x;
-    rect.top = y;
+    rect.left = point->x;
+    rect.top = point->y;
     rect.width = canvas->width;
     rect.height = canvas->height;
     mt_write_rect(&rect, CANVAS_DATA(canvas));
@@ -586,17 +586,23 @@ static inline void mt_write_rect_driver(HANDLE process)
 static inline void mt_read_canvas_driver(HANDLE block, unsigned short x, unsigned short y)
 {
     CANVAS* canvas = (CANVAS*)block_open(block);
+    POINT point;
+    point.x = x;
+    point.y = y;
     if (canvas == NULL)
         return;
-    mt_read_canvas(canvas, x, y);
+    mt_read_canvas(canvas, &point);
 }
 
 static inline void mt_write_canvas_driver(HANDLE block, unsigned short x, unsigned short y)
 {
     CANVAS* canvas = (CANVAS*)block_open(block);
+    POINT point;
+    point.x = x;
+    point.y = y;
     if (canvas == NULL)
         return;
-    mt_write_canvas(canvas, x, y);
+    mt_write_canvas(canvas, &point);
 }
 
 void mt()

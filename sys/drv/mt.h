@@ -54,8 +54,8 @@ void mt_pixel_test();
 #endif
 void mt_clear_rect(RECT* rect);
 void mt_write_rect(RECT* rect, const uint8_t *data);
-void mt_read_canvas(CANVAS* canvas, unsigned short x, unsigned short y);
-void mt_write_canvas(CANVAS* canvas, unsigned short x, unsigned short y);
+void mt_read_canvas(CANVAS* canvas, POINT* point);
+void mt_write_canvas(CANVAS* canvas, POINT* point);
 
 #endif //MT_DRIVER
 
