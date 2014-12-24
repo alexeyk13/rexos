@@ -3,148 +3,133 @@
 #include "../userspace/error.h"
 #include "../userspace/canvas.h"
 
-static uint8_t bitswap(uint8_t x)
+static void graphics_write(uint8_t* pix, unsigned short pix_width, unsigned short bpp, POINT* point, unsigned int data, unsigned int data_width)
 {
-    x = ((x & 0x55) << 1) | ((x & 0xAA) >> 1);
-    x = ((x & 0x33) << 2) | ((x & 0xCC) >> 2);
-    x = ((x & 0x0F) << 4) | ((x & 0xF0) >> 4);
-    return x;
+    unsigned short byte_pos, bit_pos, width_left, cur_width;
+    unsigned int data_pos = (pix_width * point->y + point->x) * bpp;
+    for (width_left = data_width, byte_pos = (data_pos >> 3) + 1; width_left; width_left -= cur_width, ++byte_pos, data_pos += cur_width)
+    {
+        bit_pos = data_pos & 7;
+        cur_width = 8 - bit_pos;
+        if (cur_width > width_left)
+            cur_width = width_left;
+        pix[byte_pos] &= ~(((1 << cur_width) - 1) << (8 - bit_pos - cur_width));
+        pix[byte_pos] |= ((data >> (width_left - cur_width)) & ((1 << cur_width) - 1)) << (8 - bit_pos - cur_width);
+    }
 }
 
-void lib_graphics_put_pixel(CANVAS* canvas, unsigned short x, unsigned short y, unsigned int color)
+static unsigned int graphics_read(const uint8_t* pix, unsigned short pix_width, unsigned short bpp, POINT* point, unsigned int data_width)
 {
-    unsigned int pixelpos, byte, bit;
-    if (x >= canvas->width || y >= canvas->height)
+    unsigned short byte_pos, bit_pos, width_left, cur_width;
+    unsigned int data = 0;
+    unsigned int data_pos = (pix_width * point->y + point->x) * bpp;
+    for (width_left = data_width, byte_pos = (data_pos >> 3) + 1; width_left; width_left -= cur_width, ++byte_pos, data_pos += cur_width)
+    {
+        bit_pos = data_pos & 7;
+        cur_width = 8 - bit_pos;
+        if (cur_width > width_left)
+            cur_width = width_left;
+        data = data << cur_width;
+        data |= (pix[byte_pos] >> (8 - bit_pos - cur_width)) & ((1 << cur_width) - 1);
+    }
+    return data;
+}
+
+void lib_graphics_put_pixel(CANVAS* canvas, POINT* point, unsigned int color)
+{
+    if (point->x >= canvas->width || point->y >= canvas->height)
     {
         error(ERROR_OUT_OF_RANGE);
         return;
     }
-    pixelpos = (y * canvas->width + x) * canvas->bits_per_pixel;
-    byte = (pixelpos >> 3) + 1;
-    bit = 7 - (pixelpos & 7);
-    if (color)
-        CANVAS_DATA(canvas)[byte] |= 1 << bit;
-    else
-        CANVAS_DATA(canvas)[byte] &= ~(1 << bit);
+    graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, color, canvas->bits_per_pixel);
 }
 
-unsigned int lib_graphics_get_pixel(CANVAS* canvas, unsigned short x, unsigned short y)
+unsigned int lib_graphics_get_pixel(CANVAS* canvas, POINT* point)
 {
-    unsigned int pixelpos, byte, bit;
-    if (x >= canvas->width || y >= canvas->height)
+    if (point->x >= canvas->width || point->y >= canvas->height)
     {
         error(ERROR_OUT_OF_RANGE);
         return 0;
     }
-    pixelpos = (y * canvas->width + x) * canvas->bits_per_pixel;
-    byte = (pixelpos >> 3) + 1;
-    //faster than bitswap
-    bit = 7 - (pixelpos & 7);
-    return (CANVAS_DATA(canvas)[byte] >> bit) & 1;
-}
-
-static bool lib_graphics_normalize_rect(CANVAS* canvas, RECT* in, RECT* out)
-{
-    if (in->left >= canvas->width || in->top >= canvas->height)
-    {
-        error(ERROR_OUT_OF_RANGE);
-        return false;
-    }
-    out->left = in->left;
-    out->top = in->top;
-    out->width = in->width;
-    if (out->left + out->width > canvas->width)
-        out->width = canvas->width - out->left;
-    out->height = in->height;
-    if (out->top + out->height > canvas->height)
-        out->height = canvas->height - out->top;
-    return true;
+    return graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, canvas->bits_per_pixel);
 }
 
 void lib_graphics_clear_rect(CANVAS* canvas, RECT* rect)
 {
-    RECT nrect;
-    unsigned short line, column, cur_width, pixelpos, byte, bit;
-    uint8_t mask;
-    if (!lib_graphics_normalize_rect(canvas, rect, &nrect))
-        return;
-    for (line = nrect.top; line < nrect.top + nrect.height; ++line)
+    POINT point;
+    unsigned short width, height, cur_width;
+    unsigned int ppi = (sizeof(int) << 3) / canvas->bits_per_pixel;
+    if (rect->left >= canvas->width || rect->top >= canvas->height)
     {
-        for (column = nrect.left; column < nrect.left + nrect.width; column += cur_width)
+        error(ERROR_OUT_OF_RANGE);
+        return;
+    }
+    width = rect->width;
+    if (rect->left + width > canvas->width)
+        width = canvas->width - rect->left;
+    height = rect->height;
+    if (rect->top + height > canvas->height)
+        height = canvas->height - rect->top;
+    for (point.y = rect->top; point.y < rect->top + height; ++point.y)
+    {
+        for (point.x = rect->left; point.x < rect->left + width; point.x += cur_width)
         {
-            cur_width = 8 - (column & 7);
-            if (column + cur_width > nrect.left + nrect.width)
-                cur_width = nrect.left + nrect.width - column;
-            pixelpos = (line * canvas->width + column) * canvas->bits_per_pixel;
-            byte = (pixelpos >> 3) + 1;
-            bit = (pixelpos & 7);
-            mask = (0xff & ((1 << cur_width) - 1)) << bit;
-            CANVAS_DATA(canvas)[byte] &= ~(bitswap(mask));
+            cur_width = ppi;
+            if (point.x + cur_width > rect->left + width)
+                cur_width = rect->left + width - point.x;
+            graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, 0x0, cur_width * canvas->bits_per_pixel);
         }
     }
 }
 
-void lib_graphics_write_rect(CANVAS* canvas, RECT* rect, uint8_t* data, RECT* data_rect, unsigned int mode)
+void lib_graphics_write_rect(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode)
 {
-
-}
-
-
-/*
-static void mt_write_rect_cs(unsigned int cs, RECT* rect, const uint8_t* data, unsigned int bpl, unsigned int offset)
-{
-    uint8_t buf[rect->height];
-    uint8_t byte, mask;
-    uint8_t shift = 0;
-    unsigned int first_page, last_page, page, i, cur, byte_pos, bit_pos;
-    first_page = rect->left >> 3;
-    last_page = ((rect->left + rect->width + 7) >> 3) - 1;
-    shift = rect->left & 7;
-
-    for (page = first_page; page <= last_page; ++page)
+    POINT point, data_point;
+    unsigned short width, height, cur_width;
+    unsigned int data;
+    unsigned int ppi = (sizeof(int) << 3) / canvas->bits_per_pixel;
+    if (rect->left >= canvas->width || rect->top >= canvas->height || data_rect->left >= data_rect->width || data_rect->top >= data_rect->height)
     {
-        mask = 0xff;
-        if (page == first_page)
-            mask >>= shift;
-        if (page == last_page)
-            mask &= ~((1 << (((last_page + 1) << 3) - (rect->left + rect->width))) - 1);
-        mask = BIT_OUT_TRANSFORM(mask);
-        if (mode != MT_MODE_IGNORE)
+        error(ERROR_OUT_OF_RANGE);
+        return;
+    }
+    width = rect->width;
+    if (rect->left + width > canvas->width)
+        width = canvas->width - rect->left;
+    if (data_rect->left + width > data_rect->width)
+        width = data_rect->width - data_rect->left;
+    height = rect->height;
+    if (rect->top + height > canvas->height)
+        height = canvas->height - rect->top;
+    if (data_rect->top + height > data_rect->height)
+        height = data_rect->height - data_rect->top;
+    for (point.y = rect->top; point.y < rect->top + height; ++point.y)
+    {
+        for (point.x = rect->left; point.x < rect->left + width; point.x += cur_width)
         {
-            mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
-            mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
-            mt_datain(cs);
-            for (i = 0; i < rect->height; ++i)
-                buf[i] = mt_datain(cs);
-        }
-        mt_cmd(cs, MT_CMD_SET_PAGE | PAGE_TRANSFORM(page));
-        mt_cmd(cs, MT_CMD_SET_ADDRESS | rect->top);
-        for (i = 0; i < rect->height; ++i)
-        {
-            //absolute first bit offset in data stream
-            cur = offset + i * bpl + ((page - first_page) << 3) + 8 - shift;
-            byte_pos = cur >> 3;
-            bit_pos = cur & 7;
-            byte = (data[byte_pos] << (bit_pos)) & 0xff;
-            if (bit_pos)
-                byte |= data[byte_pos + 1] >> (8 - bit_pos);
-            byte = BIT_OUT_TRANSFORM(byte) & mask;
+            cur_width = ppi;
+            if (point.x + cur_width > rect->left + width)
+                cur_width = rect->left + width - point.x;
+            data_point.x = point.x - rect->left + data_rect->left;
+            data_point.y = point.y - rect->top + data_rect->top;
+            data = graphics_read(pix, data_rect->width, canvas->bits_per_pixel, &data_point, cur_width * canvas->bits_per_pixel);
             switch (mode)
             {
-            case MT_MODE_OR:
-                mt_dataout(cs, buf[i] | byte);
+            case GUI_MODE_OR:
+                data |= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, cur_width * canvas->bits_per_pixel);
                 break;
-            case MT_MODE_XOR:
-                mt_dataout(cs, buf[i] ^ byte);
+            case GUI_MODE_XOR:
+                data ^= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, cur_width * canvas->bits_per_pixel);
                 break;
-            case MT_MODE_FILL:
-                mt_dataout(cs, (buf[i] & ~mask) | byte);
+            case GUI_MODE_AND:
+                data &= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, cur_width * canvas->bits_per_pixel);
                 break;
             default:
-                mt_dataout(cs, byte);
+                break;
             }
+            graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, data, cur_width * canvas->bits_per_pixel);
         }
     }
 }
 
- */

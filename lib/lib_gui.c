@@ -17,5 +17,6 @@ const LIB_GUI __LIB_GUI = {
 
     lib_graphics_put_pixel,
     lib_graphics_get_pixel,
-    lib_graphics_clear_rect
+    lib_graphics_clear_rect,
+    lib_graphics_write_rect
 };

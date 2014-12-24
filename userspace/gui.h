@@ -12,6 +12,10 @@
 #include <stdbool.h>
 
 typedef struct {
+    unsigned short x, y;
+} POINT;
+
+typedef struct {
     unsigned short left, top, width, height;
 } RECT;
 
@@ -27,15 +31,15 @@ typedef struct {
     bool (*lib_canvas_resize)(CANVAS*, unsigned short, unsigned short, unsigned short);
     void (*lib_canvas_clear)(CANVAS*);
     void (*lib_canvas_destroy)(HANDLE block);
-    void (*lib_graphics_put_pixel)(CANVAS*, unsigned short, unsigned short, unsigned int);
-    unsigned int (*lib_graphics_get_pixel)(CANVAS*, unsigned short, unsigned short);
+    void (*lib_graphics_put_pixel)(CANVAS*, POINT*, unsigned int);
+    unsigned int (*lib_graphics_get_pixel)(CANVAS*, POINT*);
     void (*lib_graphics_clear_rect)(CANVAS*, RECT*);
+    void (*lib_graphics_write_rect)(CANVAS*, RECT*, RECT*, const uint8_t*, unsigned int);
 } LIB_GUI;
 
-#define GUI_MODE_IGNORE                     0x0
-#define GUI_MODE_OR                         0x1
-#define GUI_MODE_XOR                        0x2
-#define GUI_MODE_AND                        0x3
-#define GUI_MODE_FILL                       0x4
+#define GUI_MODE_OR                         0x0
+#define GUI_MODE_XOR                        0x1
+#define GUI_MODE_AND                        0x2
+#define GUI_MODE_FILL                       0x3
 
 #endif // GUI_H
