@@ -11,5 +11,6 @@
 
 unsigned short lib_font_get_glyph_width(FACE* face, unsigned short num);
 void lib_font_render_glyph(CANVAS* canvas, POINT* point, FACE* face, unsigned short height, unsigned short num);
+void lib_font_render_char(CANVAS* canvas, POINT* point, FONT* font, const char* utf8);
 
 #endif // LIB_FONT_H

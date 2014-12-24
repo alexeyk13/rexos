@@ -34,7 +34,7 @@ typedef struct {
 
 typedef struct {
     uint16_t face_count;
-    uint16_t heights;
+    uint16_t height;
     //face 0, than other faces
 } FONT;
 
@@ -53,6 +53,12 @@ typedef struct {
     //font
     unsigned short (*lib_font_get_glyph_width)(FACE*, unsigned short);
     void (*lib_font_render_glyph)(CANVAS*, POINT*, FACE*, unsigned short, unsigned short);
+    void (*lib_font_render_char)(CANVAS*, POINT*, FONT*, const char*);
+    //utf8
+    unsigned int (*lib_utf8_char_len)(const char*);
+    uint32_t (*lib_utf8_to_utf32)(const char*);
+    unsigned int (*lib_utf8_len)(const char*);
+
 } LIB_GUI;
 
 #define GUI_MODE_OR                         0x0
