@@ -9,10 +9,6 @@
 
 #include "../userspace/gui.h"
 
-/*
-    Graphics libraty. Only monochrome display is supported right now
- */
-
 void lib_graphics_put_pixel(CANVAS* canvas, POINT* point, unsigned int color);
 unsigned int lib_graphics_get_pixel(CANVAS* canvas, POINT* point);
 void lib_graphics_clear_rect(CANVAS* canvas, RECT* rect);
