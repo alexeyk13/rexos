@@ -9,6 +9,7 @@
 #include "lib_utf8.h"
 #include "../userspace/error.h"
 #include "../userspace/heap.h"
+#include "../userspace/font.h"
 
 #define FACE_OFFSET(face, num)              (*((uint16_t*)((unsigned int)(face) + sizeof(FACE) + ((num) << 1))))
 #define FACE_DATA(face)                     ((uint8_t*)((unsigned int)(face) + sizeof(FACE) + (((face)->count  + 1) << 1)))
@@ -84,6 +85,18 @@ void lib_font_render_char(CANVAS* canvas, POINT* point, FONT* font, const char* 
     lib_font_render_glyph(canvas, point, face, font->height, 0);
 }
 
+unsigned short lib_font_get_text_width(FONT* font, const char* utf8)
+{
+    unsigned int cur = 0;
+    unsigned short len = 0;
+    while (utf8[cur])
+    {
+        len += lib_font_get_char_width(font, utf8 + cur);
+        cur += lib_utf8_char_len(utf8 + cur);
+    }
+    return len;
+}
+
 void lib_font_render_text(CANVAS* canvas, POINT* point, FONT* font, const char* utf8)
 {
     unsigned int cur = 0;
@@ -96,4 +109,39 @@ void lib_font_render_text(CANVAS* canvas, POINT* point, FONT* font, const char* 
         cur_point.x += lib_font_get_char_width(font, utf8 + cur);
         cur += lib_utf8_char_len(utf8 + cur);
     }
+}
+
+void lib_font_render(CANVAS* canvas, RECT* rect, FONT* font, const char* utf8, unsigned int align)
+{
+    unsigned short width, height;
+    POINT point;
+    width = lib_font_get_text_width(font, utf8);
+    height = font->height;
+    if (width > rect->width)
+        width = rect->width;
+    if (height > rect->height)
+        height = rect->height;
+    switch (align & FONT_ALIGN_HMASK)
+    {
+    case FONT_ALIGN_RIGHT:
+        point.x = rect->left + rect->width - width;
+        break;
+    case FONT_ALIGN_HCENTER:
+        point.x = ((rect->width - width) >> 1) + rect->left;
+        break;
+    default:
+        point.x = rect->left;
+    }
+    switch (align & FONT_ALIGN_VMASK)
+    {
+    case FONT_ALIGN_BOTTOM:
+        point.y = rect->top + rect->height - height;
+        break;
+    case FONT_ALIGN_VCENTER:
+        point.y = ((rect->height - height) >> 1) + rect->top;
+        break;
+    default:
+        point.y = rect->top;
+    }
+    lib_font_render_text(canvas, &point, font, utf8);
 }

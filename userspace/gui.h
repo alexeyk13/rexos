@@ -55,7 +55,9 @@ typedef struct {
     void (*lib_font_render_glyph)(CANVAS*, POINT*, FACE*, unsigned short, unsigned short);
     unsigned short (*lib_font_get_char_width)(FONT*, const char*);
     void (*lib_font_render_char)(CANVAS*, POINT*, FONT*, const char*);
+    unsigned short (*lib_font_get_text_width)(FONT*, const char*);
     void (*lib_font_render_text)(CANVAS*, POINT*, FONT*, const char*);
+    void (*lib_font_render)(CANVAS*, RECT*, FONT*, const char*, unsigned int);
     //utf8
     unsigned int (*lib_utf8_char_len)(const char*);
     uint32_t (*lib_utf8_to_utf32)(const char*);

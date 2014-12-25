@@ -13,6 +13,8 @@ unsigned short lib_font_get_glyph_width(FACE* face, unsigned short num);
 void lib_font_render_glyph(CANVAS* canvas, POINT* point, FACE* face, unsigned short height, unsigned short num);
 unsigned short lib_font_get_char_width(FONT* font, const char* utf8);
 void lib_font_render_char(CANVAS* canvas, POINT* point, FONT* font, const char* utf8);
+unsigned short lib_font_get_text_width(FONT* font, const char* utf8);
 void lib_font_render_text(CANVAS* canvas, POINT* point, FONT* font, const char* utf8);
+void lib_font_render(CANVAS* canvas, RECT* rect, FONT* font, const char* utf8, unsigned int align);
 
 #endif // LIB_FONT_H
