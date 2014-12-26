@@ -617,10 +617,14 @@ static inline void lpc_uart_open_stdio(SHARED_UART_DRV* drv)
 #if (UART_STDIO_RX != PIN_UNUSED)
     object_set(SYS_OBJ_STDIN, drv->uart.uarts[UART_STDIO_PORT]->rx_stream);
 #endif
-#if (SYS_INFO) && !(MONOLITH_UART)
+#if (MONOLITH_UART)
+#if (SYS_INFO) || ((MONOLITH_USB) && (USB_DEBUG_ERRORS))
+    open_stdout();
+#endif
+#else
     //inform early process (core) about stdio.
     ack(object_get(SYS_OBJ_CORE), IPC_SET_STDIO, 0, 0, 0);
-#endif //SYS_INFO && !MONOLITH_UART
+#endif //MONOLITH_UART
 }
 #endif
 

@@ -59,10 +59,12 @@ void lpc_core_loop(CORE* core)
                 break;
             case IPC_CALL_ERROR:
                 break;
+#if !(MONOLITH_UART)
             case IPC_SET_STDIO:
                 open_stdout();
                 need_post = true;
                 break;
+#endif //!(MONOLITH_UART)
 #if (SYS_INFO)
             case IPC_GET_INFO:
                 need_post |= lpc_gpio_request(&ipc);
