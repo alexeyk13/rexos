@@ -33,6 +33,8 @@
 #define USB_SETUP_BUF_BASE              USB_BUF_BASE
 #define USB_FREE_BUF_BASE               (USB_SETUP_BUF_BASE + 0x40)
 
+#define USB_EP_RESET_TIMEOUT            1000
+
 typedef enum {
     LPC_USB_ERROR = USB_HAL_MAX,
     LPC_USB_OVERFLOW
@@ -101,8 +103,9 @@ void lpc_usb_rx_prepare(SHARED_USB_DRV* drv, int num)
     *USB_EP_LISTSTS(num, 0) |= USB_EP_LISTST_A;
 }
 
-void lpc_usb_ep_reset(SHARED_USB_DRV* drv, int num)
+static void lpc_usb_ep_reset(SHARED_USB_DRV* drv, int num)
 {
+    int i;
     //disabling IO is required co access S, TR bits
     //active bit can't be reset directly
     if ((*USB_EP_LISTSTS(num, 0)) & USB_EP_LISTST_A)
@@ -110,7 +113,9 @@ void lpc_usb_ep_reset(SHARED_USB_DRV* drv, int num)
         //ignore this interrupt source
         LPC_USB->INTEN &= ~USB_EP_INT_BIT(num);
         LPC_USB->EPSKIP |= USB_EP_INT_BIT(num);
-        while (LPC_USB->EPSKIP & USB_EP_INT_BIT(num)) {}
+        for (i = 0; i < USB_EP_RESET_TIMEOUT; ++i)
+            if (LPC_USB->EPSKIP & USB_EP_INT_BIT(num))
+                break;
         //clear and unmask int
         LPC_USB->INTSTAT = USB_EP_INT_BIT(num);
         LPC_USB->INTEN |= USB_EP_INT_BIT(num);
@@ -181,11 +186,15 @@ USB_SPEED lpc_usb_get_speed(SHARED_USB_DRV* drv)
 static inline void lpc_usb_reset(SHARED_USB_DRV* drv)
 {
     int i;
+    //enable device
+    LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DEV_EN;
     //reset all endpoints
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
     {
         lpc_usb_ep_reset(drv, i);
         lpc_usb_ep_reset(drv, i | USB_EP_IN);
+        *USB_EP_LISTSTS(i, 0) = 0;
+        *USB_EP_LISTSTS(i | USB_EP_IN, 0) = 0;
     }
 
     IPC ipc;
@@ -398,7 +407,7 @@ void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     LPC_USB->INTEN = USB_INTSTAT_DEV_INT;
 
     //enable device
-    LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DEV_EN;
+//    LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DEV_EN;
 #if (USB_SOFT_CONNECT)
     //pullap
     LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DCON;
@@ -448,8 +457,8 @@ static inline void lpc_usb_close_ep(SHARED_USB_DRV* drv, int num)
 {
     if (!lpc_usb_ep_flush(drv, num))
         return;
-    LPC_USB->INTEN &= ~USB_EP_INT_BIT(num);
     *USB_EP_LISTSTS(num, 0) |= USB_EP_LISTST_D;
+    LPC_USB->INTEN &= ~USB_EP_INT_BIT(num);
 
     EP* ep = USB_EP_DATA(drv, num);
     free(ep);
