@@ -26,6 +26,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * dynamic arrays
   * USB routines library
   * GPIO bitbang library
+  * GUI library: canvas, font, graphics, utf8 decoding
 - Device stacks:
   * USB device stack with USB composite and vendor requests support
   * USB device CDC ACM class
@@ -67,6 +68,11 @@ ARM7 features:
 
 History
 =======
+0.2.1
+- GUI library
+- MT driver update for GUI objects support
+- LPC USB minor fixes
+
 0.2.0
 - drivers for LPC11Uxx USB device, МЭЛТ LCD display
 - GPIO bitbang is now library for fast IO (lib_gpio), implementation is hw-specific
