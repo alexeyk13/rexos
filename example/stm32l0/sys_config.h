@@ -31,14 +31,16 @@
 //-------------------------------- USB -----------------------------------------------
 #define USB_EP_COUNT_MAX                                    3
 //low-level USB debug. Turn on only in case of IO problems
-#define USB_DEBUG_REQUESTS                                  0
-#define USB_DEBUG_CLASS_REQUESTS                            0
-#define USB_DEBUG_CLASS_IO                                  0
-#define USB_DEBUG_ERRORS                                    1
+#define USB_DEBUG_ERRORS                                    0
 //USB test mode support. Not all hardware supported.
 #define USB_TEST_MODE                                       0
 
 //----------------------------- USB device--------------------------------------------
+#define USBD_DEBUG_ERRORS                                   1
+#define USBD_DEBUG_REQUESTS                                 0
+#define USBD_DEBUG_CLASS_REQUESTS                           0
+#define USBD_DEBUG_CLASS_IO                                 0
+
 #define USBD_PROCESS_SIZE                                   900
 #define USBD_BLOCK_SIZE                                     128
 

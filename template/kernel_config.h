@@ -33,6 +33,6 @@
 #define KERNEL_LIB_SOFT_RAND                        0
 #define KERNEL_LIB_USB                              1
 #define KERNEL_LIB_GPIO                             1
-
+#define KERNEL_LIB_GUI                              1
 
 #endif // KERNEL_CONFIG_H
