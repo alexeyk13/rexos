@@ -24,7 +24,7 @@ static const int LC_BAUD_STOP_BITS[LC_BAUD_STOP_BITS_SIZE] =                    
 #define LC_BAUD_PARITY_SIZE                                                     5
 static const char LC_BAUD_PARITY[LC_BAUD_PARITY_SIZE] =                         "NOEMS";
 
-#if (USB_DEBUG_CLASS_REQUESTS) || (SYS_INFO)
+#if (USBD_DEBUG_CLASS_REQUESTS) || (SYS_INFO)
 const char* const ON_OFF[] =                                                    {"off", "on"};
 #endif
 
@@ -134,11 +134,11 @@ void cdc_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     cdc->tx = cdc->rx = cdc->notify = cdc->tx_stream = cdc->rx_stream = cdc->tx_stream_handle = cdc->rx_stream_handle = INVALID_HANDLE;
     cdc->suspended = false;
 
-#if (USB_DEBUG_CLASS_REQUESTS)
+#if (USBD_DEBUG_CLASS_REQUESTS)
     printf("Found USB CDC ACM class, EP%d, size: %d, iface: %d\n\r", cdc->data_ep, cdc->data_ep_size, cdc->data_iface);
     if (cdc->control_ep)
         printf("Has control EP%d, size: %d, iface: %d\n\r", cdc->control_ep, cdc->control_ep_size, cdc->control_iface);
-#endif //USB_DEBUG_CLASS_REQUESTS
+#endif //USBD_DEBUG_CLASS_REQUESTS
 
 #if (USB_CDC_TX_STREAM_SIZE)
     cdc->tx = block_create(cdc->data_ep_size);
@@ -266,7 +266,7 @@ static inline void cdc_read_complete(CDC* cdc, unsigned int size)
     if (to_read > cdc->rx_free)
         to_read = cdc->rx_free;
     ptr = block_open(cdc->rx);
-#if (USB_DEBUG_CLASS_IO)
+#if (USBD_DEBUG_CLASS_IO)
     int i;
     printf("CDC rx: ");
     for (i = 0; i < size; ++i)
@@ -275,7 +275,7 @@ static inline void cdc_read_complete(CDC* cdc, unsigned int size)
         else
             printf("\\x%d", ((uint8_t*)ptr)[i]);
     printf("\n\r");
-#endif //USB_DEBUG_CLASS_IO
+#endif //USBD_DEBUG_CLASS_IO
     if (ptr && to_read && stream_write(cdc->rx_stream_handle, ptr, to_read))
         cdc->rx_free -= to_read;
     fread_async(cdc->usb, HAL_HANDLE(HAL_USB, cdc->data_ep), cdc->rx, 1);
@@ -328,7 +328,7 @@ static inline int set_line_coding(CDC* cdc, HANDLE block)
     cdc->baud.parity = LC_BAUD_PARITY[lc->bParityType];
     cdc->baud.data_bits = lc->bDataBits;
 
-#if (USB_DEBUG_CLASS_REQUESTS)
+#if (USBD_DEBUG_CLASS_REQUESTS)
     printf("CDC set line coding: %d %d%c%d\n\r", cdc->baud.baud, cdc->baud.data_bits, cdc->baud.parity, cdc->baud.stop_bits);
 #endif
     return 0;
@@ -372,7 +372,7 @@ static inline int get_line_coding(CDC* cdc, HANDLE block)
     }
     lc->bDataBits = cdc->baud.data_bits;
 
-#if (USB_DEBUG_CLASS_REQUESTS)
+#if (USBD_DEBUG_CLASS_REQUESTS)
     printf("CDC get line coding: %d %d%c%d\n\r", cdc->baud.baud, cdc->baud.data_bits, cdc->baud.parity, cdc->baud.stop_bits);
 #endif
     return sizeof(LINE_CODING_STRUCT);
@@ -382,7 +382,7 @@ static inline int set_control_line_state(CDC* cdc, SETUP* setup)
 {
     cdc->DTR = (setup->wValue >> 0) & 1;
     cdc->RTS = (setup->wValue >> 0) & 1;
-#if (USB_DEBUG_CLASS_REQUESTS)
+#if (USBD_DEBUG_CLASS_REQUESTS)
     printf("CDC set control line state: DTR %s, RTS %s\n\r", ON_OFF[1 * cdc->DTR], ON_OFF[1 * cdc->RTS]);
 #endif
 
