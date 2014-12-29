@@ -5,7 +5,7 @@
 */
 
 #include "lpc_gpio.h"
-#include "../../../userspace/lpc_driver.h"
+#include "../../userspace/lpc_driver.h"
 #include "lpc_config.h"
 #include <stdint.h>
 

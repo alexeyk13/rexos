@@ -7,13 +7,13 @@
 #include "lpc_uart.h"
 #include "lpc_gpio.h"
 #include "lpc_power.h"
-#include "../../../userspace/lpc_driver.h"
-#include "../../../userspace/irq.h"
-#include "../../../userspace/stream.h"
-#include "../../../userspace/direct.h"
-#include "../../../userspace/stdlib.h"
+#include "../../userspace/lpc_driver.h"
+#include "../../userspace/irq.h"
+#include "../../userspace/stream.h"
+#include "../../userspace/direct.h"
+#include "../../userspace/stdlib.h"
 #if (SYS_INFO)
-#include "../../../userspace/stdio.h"
+#include "../../userspace/stdio.h"
 #endif
 
 #if (MONOLITH_UART)

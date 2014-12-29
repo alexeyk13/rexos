@@ -8,8 +8,8 @@
 #define LPC_UART_H
 
 #include <stdint.h>
-#include "../../../userspace/sys.h"
-#include "../../../userspace/uart.h"
+#include "../../userspace/sys.h"
+#include "../../userspace/uart.h"
 #include "lpc_config.h"
 #if (MONOLITH_UART)
 #include "lpc_core.h"

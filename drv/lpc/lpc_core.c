@@ -9,7 +9,7 @@
 //#include "lpc_timer.h"
 #include "lpc_gpio.h"
 //#include "lpc_power.h"
-#include "../../../userspace/object.h"
+#include "../../userspace/object.h"
 #if (MONOLITH_UART)
 #include "lpc_uart.h"
 #endif

@@ -7,8 +7,8 @@
 #ifndef LPC_USB_H
 #define LPC_USB_H
 
-#include "../../../userspace/process.h"
-#include "../../../userspace/ipc.h"
+#include "../../userspace/process.h"
+#include "../../userspace/ipc.h"
 #include "lpc_config.h"
 #include "sys_config.h"
 #if (MONOLITH_USB)

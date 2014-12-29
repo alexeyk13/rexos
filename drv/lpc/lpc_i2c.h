@@ -8,11 +8,11 @@
 #define LPC_I2C_H
 
 #include "lpc_config.h"
-#include "../../../userspace/sys.h"
+#include "../../userspace/sys.h"
 #if (MONOLITH_I2C)
 #include "lpc_core.h"
 #endif
-#include "../../../userspace/lpc_driver.h"
+#include "../../userspace/lpc_driver.h"
 
 typedef struct  {
     HANDLE block, process;

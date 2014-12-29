@@ -8,9 +8,9 @@
 #define LPC_GPIO_H
 
 #include <stdbool.h>
-#include "../../../userspace/cc_macro.h"
-#include "../../../userspace/sys.h"
-#include "../../../userspace/gpio.h"
+#include "../../userspace/cc_macro.h"
+#include "../../userspace/sys.h"
+#include "../../userspace/gpio.h"
 
 void lpc_gpio_init();
 bool lpc_gpio_request(IPC* ipc);

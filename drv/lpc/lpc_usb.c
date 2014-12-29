@@ -5,17 +5,17 @@
 */
 
 #include "lpc_usb.h"
-#include "../../../userspace/sys.h"
-#include "../../../userspace/usb.h"
-#include "../../../userspace/irq.h"
-#include "../../../userspace/block.h"
-#include "../../../userspace/lpc_driver.h"
+#include "../../userspace/sys.h"
+#include "../../userspace/usb.h"
+#include "../../userspace/irq.h"
+#include "../../userspace/block.h"
+#include "../../userspace/lpc_driver.h"
 #include "lpc_gpio.h"
 #include "lpc_power.h"
 #include <string.h>
-#include "../../../userspace/stdlib.h"
+#include "../../userspace/stdlib.h"
 #if (SYS_INFO) || (USB_DEBUG_ERRORS)
-#include "../../../userspace/stdio.h"
+#include "../../userspace/stdio.h"
 #endif
 #if (MONOLITH_USB)
 #include "lpc_core_private.h"
