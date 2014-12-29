@@ -959,8 +959,6 @@ void usbd_setup_process(USBD* usbd)
     {
         if ((usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT) == BM_REQUEST_RECIPIENT_ENDPOINT)
             ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex), 0, 0);
-        else
-            usbd_fatal(usbd);
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
 #if (USBD_DEBUG_ERRORS)
         printf("Unhandled ");
