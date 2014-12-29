@@ -7,8 +7,8 @@
 #ifndef USBD_H
 #define USBD_H
 
-#include "../../userspace/process.h"
-#include "../../userspace/usb.h"
+#include "../userspace/process.h"
+#include "../userspace/usb.h"
 
 typedef struct _USBD USBD;
 

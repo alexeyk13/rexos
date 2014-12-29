@@ -5,19 +5,22 @@
 */
 
 #include "usbd.h"
-#include "../../userspace/sys.h"
-#include "../../userspace/usb.h"
-#include "../../userspace/stdio.h"
-#include "../../userspace/block.h"
-#include "../../userspace/direct.h"
-#include "../../userspace/stdlib.h"
+#include "../userspace/sys.h"
+#include "../userspace/usb.h"
+#include "../userspace/stdio.h"
+#include "../userspace/block.h"
+#include "../userspace/direct.h"
+#include "../userspace/stdlib.h"
 #include "sys_config.h"
 #include <string.h>
-#include "../../userspace/array.h"
-#include "../../userspace/file.h"
+#include "../userspace/array.h"
+#include "../userspace/file.h"
 #if (USBD_CDC_CLASS)
 #include "cdc.h"
 #endif //USBD_CDC_CLASS
+#if (USBD_HID_CLASS)
+#include "hidd.h"
+#endif //USBD_HID_CLASS
 
 typedef enum {
     USB_SETUP_STATE_REQUEST = 0,
@@ -48,7 +51,7 @@ typedef struct _USBD {
 #endif //USB_TEST_MODE
     USB_SPEED speed;
     uint8_t ep0_size;
-    uint8_t configuration, iface, iface_alt;
+    uint8_t configuration;
     //descriptors
     USB_DEVICE_DESCRIPTOR_TYPE *dev_descriptor_fs, *dev_descriptor_hs;
     ARRAY *handlers;
@@ -78,6 +81,9 @@ static const USBD_CLASS* __USBD_CLASSES[] =         {
 #if (USBD_CDC_CLASS)
                                                         &__CDC_CLASS,
 #endif //USBD_CDC_CLASS
+#if (USBD_HID_CLASS)
+                                                        &__HIDD_CLASS,
+#endif //USBD_HID_CLASS
                                                         (const USBD_CLASS*)NULL
                                                     };
 
@@ -711,8 +717,6 @@ static inline int usbd_set_configuration(USBD* usbd)
     if (usbd->state == USBD_STATE_CONFIGURED)
     {
         usbd->configuration = 0;
-        usbd->iface = 0;
-        usbd->iface_alt = 0;
 
         usbd->state = USBD_STATE_ADDRESSED;
         usbd_class_reset(usbd);
@@ -720,8 +724,6 @@ static inline int usbd_set_configuration(USBD* usbd)
     else if (usbd->state == USBD_STATE_ADDRESSED && usbd->setup.wValue)
     {
         usbd->configuration = usbd->setup.wValue;
-        usbd->iface = 0;
-        usbd->iface_alt = 0;
         usbd->state = USBD_STATE_CONFIGURED;
 
         usbd_class_configured(usbd);
@@ -759,52 +761,6 @@ static inline int usbd_standart_device_request(USBD* usbd)
         break;
     }
 
-    return res;
-}
-
-static inline int usbd_interface_get_status(USBD* usbd)
-{
-#if (USBD_DEBUG_REQUESTS)
-    printf("USB: get interface status\n\r");
-#endif
-    uint16_t status = 0;
-    return safecpy_write(usbd, &status, sizeof(uint16_t));
-}
-
-static inline int usbd_set_interface(USBD* usbd)
-{
-#if (USBD_DEBUG_REQUESTS)
-    printf("USB: interface set\n\r");
-#endif
-    usbd->iface = usbd->setup.wIndex;
-    usbd->iface_alt = usbd->setup.wValue;
-    return 0;
-}
-
-static inline int usbd_get_interface(USBD* usbd)
-{
-#if (USBD_DEBUG_REQUESTS)
-    printf("USB: interface get\n\r");
-#endif
-    uint8_t alt = usbd->iface_alt;
-    return safecpy_write(usbd, &alt, 1);
-}
-
-static inline int usbd_standart_interface_request(USBD* usbd)
-{
-    int res = -1;
-    switch (usbd->setup.bRequest)
-    {
-    case USB_REQUEST_GET_STATUS:
-        res = usbd_interface_get_status(usbd);
-        break;
-    case USB_REQUEST_SET_INTERFACE:
-        res = usbd_set_interface(usbd);
-        break;
-    case USB_REQUEST_GET_INTERFACE:
-        res = usbd_get_interface(usbd);
-        break;
-    }
     return res;
 }
 
@@ -855,7 +811,7 @@ static inline int usbd_endpoint_clear_feature(USBD* usbd)
     return res;
 }
 
-static inline int usbd_standart_endpoint_request(USBD* usbd)
+static inline int usbd_endpoint_request(USBD* usbd)
 {
     int res = -1;
     switch (usbd->setup.bRequest)
@@ -873,7 +829,7 @@ static inline int usbd_standart_endpoint_request(USBD* usbd)
     return res;
 }
 
-static inline int usbd_class_interface_setup(USBD* usbd, unsigned int iface)
+static inline int usbd_interface_setup(USBD* usbd, unsigned int iface)
 {
     if (iface >= usbd->ifacecnt || IFACE(usbd, iface).usbd_class == NULL)
     {
@@ -888,29 +844,19 @@ static inline int usbd_class_interface_setup(USBD* usbd, unsigned int iface)
 void usbd_setup_process(USBD* usbd)
 {
     int res = -1;
-    switch (usbd->setup.bmRequestType & BM_REQUEST_TYPE)
+    switch (usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT)
     {
-    case BM_REQUEST_TYPE_STANDART:
-        switch (usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT)
-        {
-        case BM_REQUEST_RECIPIENT_DEVICE:
+    case BM_REQUEST_RECIPIENT_DEVICE:
+        if ((usbd->setup.bmRequestType & BM_REQUEST_TYPE) == BM_REQUEST_TYPE_STANDART)
             res = usbd_standart_device_request(usbd);
-            break;
-        case BM_REQUEST_RECIPIENT_INTERFACE:
-            res = usbd_standart_interface_request(usbd);
-            break;
-        case BM_REQUEST_RECIPIENT_ENDPOINT:
-            res = usbd_standart_endpoint_request(usbd);
-            break;
-        }
-        break;
-    case BM_REQUEST_TYPE_CLASS:
-        if ((usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT) == BM_REQUEST_RECIPIENT_INTERFACE)
-            res = usbd_class_interface_setup(usbd, usbd->setup.wIndex);
-        break;
-    case BM_REQUEST_TYPE_VENDOR:
-        if (usbd->vendor != INVALID_HANDLE)
+        else if (usbd->vendor != INVALID_HANDLE)
             res = get(usbd->vendor, USBD_VENDOR_REQUEST, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
+        break;
+    case BM_REQUEST_RECIPIENT_INTERFACE:
+        res = usbd_interface_setup(usbd, usbd->setup.wIndex);
+        break;
+    case BM_REQUEST_RECIPIENT_ENDPOINT:
+        res = usbd_endpoint_request(usbd);
         break;
     }
 
@@ -962,16 +908,16 @@ void usbd_setup_process(USBD* usbd)
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
 #if (USBD_DEBUG_ERRORS)
         printf("Unhandled ");
-        switch (usbd->setup.bmRequestType & BM_REQUEST_TYPE)
+        switch (usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT)
         {
-        case BM_REQUEST_TYPE_STANDART:
-            printf("STANDART");
+        case BM_REQUEST_RECIPIENT_DEVICE:
+            printf("DEVICE");
             break;
-        case BM_REQUEST_TYPE_CLASS:
-            printf("CLASS");
+        case BM_REQUEST_RECIPIENT_INTERFACE:
+            printf("INTERFACE");
             break;
-        case BM_REQUEST_TYPE_VENDOR:
-            printf("VENDOR");
+        case BM_REQUEST_RECIPIENT_ENDPOINT:
+            printf("ENDPOINT");
             break;
         }
         printf(" request\n\r");
