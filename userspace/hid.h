@@ -21,6 +21,13 @@
 #define HID_DESCRIPTOR_TYPE                                                             0x21
 #define HID_REPORT_DESCRIPTOR_TYPE                                                      0x22
 
+#define HID_GET_REPORT                                                                  0x01
+#define HID_GET_IDLE                                                                    0x02
+#define HID_GET_PROTOCOL                                                                0x03
+#define HID_SET_REPORT                                                                  0x09
+#define HID_SET_IDLE                                                                    0x0a
+#define HID_SET_PROTOCOL                                                                0x0b
+
 typedef struct {
     uint8_t bLength;                                                                    /* Size of this descriptor in bytes */
     uint8_t bDescriptorType;                                                            /* HID descriptor type (assigned by USB) */
