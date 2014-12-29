@@ -540,6 +540,4 @@ __STATIC_INLINE USB_DESCRIPTOR_TYPE* usb_interface_get_next_descriptor(const USB
 
 #pragma pack(pop)
 
-
-
 #endif // USB_H
