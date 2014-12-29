@@ -6,13 +6,13 @@
 
 #include "cdc.h"
 #include "usbd.h"
-#include "../../userspace/sys.h"
-#include "../../userspace/file.h"
-#include "../../userspace/stdio.h"
-#include "../../userspace/block.h"
-#include "../../userspace/direct.h"
-#include "../../userspace/uart.h"
-#include "../../userspace/stdlib.h"
+#include "../userspace/sys.h"
+#include "../userspace/file.h"
+#include "../userspace/stdio.h"
+#include "../userspace/block.h"
+#include "../userspace/direct.h"
+#include "../userspace/uart.h"
+#include "../userspace/stdlib.h"
 #include "sys_config.h"
 
 #define CDC_BLOCK_SIZE                                                          64
