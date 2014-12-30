@@ -28,6 +28,10 @@
 #define HID_SET_IDLE                                                                    0x0a
 #define HID_SET_PROTOCOL                                                                0x0b
 
+#define HID_REPORT_TYPE_INPUT                                                           0x01
+#define HID_REPORT_TYPE_OUTPUT                                                          0x02
+#define HID_REPORT_TYPE_FEATURE                                                         0x03
+
 typedef struct {
     uint8_t bLength;                                                                    /* Size of this descriptor in bytes */
     uint8_t bDescriptorType;                                                            /* HID descriptor type (assigned by USB) */
@@ -80,7 +84,7 @@ typedef struct {
 #define HID_ITEM_SIZE_0                                                                 (0 << 0)
 #define HID_ITEM_SIZE_1                                                                 (1 << 0)
 #define HID_ITEM_SIZE_2                                                                 (2 << 0)
-#define HID_ITEM_SIZE_4                                                                 (4 << 0)
+#define HID_ITEM_SIZE_4                                                                 (3 << 0)
 
 #define HID_ITEM_MAIN                                                                   (0 << 2)
 #define HID_ITEM_GLOBAL                                                                 (1 << 2)
@@ -579,6 +583,14 @@ typedef struct {
 #define HID_LED_SYSTEM_SUSPEND                                                          0x4c
 #define HID_LED_EXTERNAL_POWER_CONNECTED                                                0x4d
 
+typedef struct {
+    uint8_t modifier;
+    uint8_t reserved;
+    uint8_t leds;
+    uint8_t keys[6];
+} BOOT_KEYBOARD;
+
+#define HID_BOOT_KEYBOARD_REPORT_SIZE                                                   0x3f
 
 #pragma pack(pop)
 
