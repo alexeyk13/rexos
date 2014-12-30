@@ -592,6 +592,18 @@ typedef struct {
 
 #define HID_BOOT_KEYBOARD_REPORT_SIZE                                                   0x3f
 
+typedef enum {
+    //reserved for system use
+    USB_HID_KBD_IDLE = 0,
+    USB_HID_KBD_MODIFIER_CHANGE,
+    USB_HID_KBD_KEY_PRESS,
+    USB_HID_KBD_KEY_RELEASE,
+    USB_HID_KBD_GET_LEDS_STATE,
+    USB_HID_KBD_LEDS_STATE_CHANGED,
+    USB_HID_KBD_MAX
+} USB_HID_KBD_REQUESTS;
+
+
 #pragma pack(pop)
 
 #endif // HID_H
