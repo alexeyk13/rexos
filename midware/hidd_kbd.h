@@ -15,6 +15,7 @@
 
     1. No custom REPORT descriptor is supported
     2. Only standart 101 key boot keyboard is supported
+    3. No IDLE report is supported
  */
 
 extern const USBD_CLASS __HIDD_KBD_CLASS;

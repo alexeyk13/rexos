@@ -260,9 +260,7 @@ static inline int hidd_kbd_set_idle(HIDD_KBD* hidd, unsigned int value)
 #if (USBD_DEBUG_CLASS_REQUESTS)
     printf("HIDD KBD: set idle %dms\n\r", value << 2);
 #endif
-    //TODO: stop timer here
-    hidd->idle = value;
-    //TODO: start timer, if required
+    //no IDLE report is supported
     return 0;
 }
 
