@@ -583,6 +583,15 @@ typedef struct {
 #define HID_LED_SYSTEM_SUSPEND                                                          0x4c
 #define HID_LED_EXTERNAL_POWER_CONNECTED                                                0x4d
 
+#define HID_LEFT_CONTROL                                                                (1 << 0)
+#define HID_LEFT_SHIFT                                                                  (1 << 1)
+#define HID_LEFT_ALT                                                                    (1 << 2)
+#define HID_LEFT_GUI                                                                    (1 << 3)
+#define HID_RIGHT_CONTROL                                                               (1 << 0)
+#define HID_RIGHT_SHIFT                                                                 (1 << 1)
+#define HID_RIGHT_ALT                                                                   (1 << 2)
+#define HID_RIGHT_GUI                                                                   (1 << 3)
+
 typedef struct {
     uint8_t modifier;
     uint8_t reserved;
