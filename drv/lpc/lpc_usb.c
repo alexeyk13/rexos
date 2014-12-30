@@ -440,9 +440,9 @@ static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, int num, USB_EP_TYPE typ
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
     {
         if (drv->usb.in[i])
-            ep->fifo += drv->usb.in[i]->mps;
+            ep->fifo += ((drv->usb.in[i]->mps + 63) & ~63);
         if (drv->usb.out[i])
-            ep->fifo += drv->usb.out[i]->mps;
+            ep->fifo += ((drv->usb.out[i]->mps + 63) & ~63);
     }
 
     num & USB_EP_IN ? (drv->usb.in[USB_EP_NUM(num)] = ep) : (drv->usb.out[USB_EP_NUM(num)] = ep);
