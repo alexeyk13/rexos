@@ -18,9 +18,9 @@
 #if (USBD_CDC_CLASS)
 #include "cdc.h"
 #endif //USBD_CDC_CLASS
-#if (USBD_HID_CLASS)
-#include "hidd.h"
-#endif //USBD_HID_CLASS
+#if (USBD_HID_KBD_CLASS)
+#include "hidd_kbd.h"
+#endif //USBD_HID_KBD_CLASS
 
 typedef enum {
     USB_SETUP_STATE_REQUEST = 0,
@@ -81,9 +81,9 @@ static const USBD_CLASS* __USBD_CLASSES[] =         {
 #if (USBD_CDC_CLASS)
                                                         &__CDC_CLASS,
 #endif //USBD_CDC_CLASS
-#if (USBD_HID_CLASS)
-                                                        &__HIDD_CLASS,
-#endif //USBD_HID_CLASS
+#if (USBD_HID_KBD_CLASS)
+                                                        &__HIDD_KBD_CLASS,
+#endif //USBD_HID_KBD_CLASS
                                                         (const USBD_CLASS*)NULL
                                                     };
 
@@ -1191,6 +1191,8 @@ void usbd()
         case IPC_CLOSE:
         case IPC_GET_RX_STREAM:
         case IPC_GET_TX_STREAM:
+        case USBD_REGISTER_HANDLER:
+        case USBD_UNREGISTER_HANDLER:
             if (HAL_GROUP(ipc.param1) == HAL_USBD)
             {
                 if (HAL_ITEM(ipc.param1) == USBD_HANDLE_DEVICE)
