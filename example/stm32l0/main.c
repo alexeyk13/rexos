@@ -6,8 +6,8 @@
 
 #include "../../rexos/userspace/sys.h"
 #include "../../rexos/userspace/gpio.h"
-#include "../../rexos/sys/drv/stm32/stm32_core.h"
-#include "../../rexos/sys/drv/stm32/stm32_power.h"
+#include "../../rexos/drv/stm32/stm32_core.h"
+#include "../../rexos/drv/stm32/stm32_power.h"
 #include "../../rexos/userspace/stm32_driver.h"
 #include "../../rexos/userspace/stdio.h"
 #include "../../rexos/userspace/object.h"

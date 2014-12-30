@@ -45,6 +45,7 @@
 #define USBD_BLOCK_SIZE                                     128
 
 #define USBD_CDC_CLASS                                      1
+#define USBD_HID_KBD_CLASS                                  1
 
 //----------------------------- CDC class --------------------------------------------
 //At least EP size required, or data will be lost. Double EP size is recommended

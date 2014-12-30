@@ -27,6 +27,8 @@
 #define KERNEL_OBJECTS_COUNT                        4
 //mutex, event, semaphore are now deprecated. Use stream, direct, block instead
 #define KERNEL_MES                                  0
+//soft timers if sleep or ipc_read with timeout is not enough
+#define KERNEL_SOFT_TIMERS                          1
 
 //save stdio, stdlib and time are required libs, all rest is optional
 #define KERNEL_LIB_ARRAY                            1

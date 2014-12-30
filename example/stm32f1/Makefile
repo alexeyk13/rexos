@@ -21,7 +21,6 @@ REXOS                       = ../../rexos
 KERNEL                      = $(REXOS)/kernel
 USERSPACE					 	 = $(REXOS)/userspace
 LIB								 = $(REXOS)/lib
-SYS								 = $(REXOS)/sys
 LDS_SCRIPT                  = $(KERNEL)/arm.ld.S
 #----------------------------------------------------------
 LIBS_DIR                    = ../../3rdparty
@@ -33,13 +32,13 @@ CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32F10x
 #not used in kernel
 INCLUDE_FOLDERS             = $(CMSIS_DIR)/Include $(CMSIS_DEVICE_DIR)/Include
 #userspace
-INCLUDE_FOLDERS				+= $(USERSPACE) $(USERSPACE)/core
+INCLUDE_FOLDERS		+= $(USERSPACE) $(USERSPACE)/core
 #kernel
 INCLUDE_FOLDERS				+= $(KERNEL) $(KERNEL)/core
 #lib
 INCLUDE_FOLDERS            += $(LIB)
 #sys
-INCLUDE_FOLDERS            += $(SYS) $(SYS)/drv/stm32 $(SYS)/midware
+INCLUDE_FOLDERS            += $(REXOS)/drv/stm32 $(REXOS)/midware
 
 INCLUDES                    = $(INCLUDE_FOLDERS:%=-I%)
 VPATH                      += $(INCLUDE_FOLDERS)

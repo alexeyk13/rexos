@@ -21,7 +21,6 @@ REXOS                       = ../../../rexos
 KERNEL                      = $(REXOS)/kernel
 USERSPACE                   = $(REXOS)/userspace
 LIB                         = $(REXOS)/lib
-SYS                         = $(REXOS)/sys
 LDS_SCRIPT                  = $(KERNEL)/arm.ld.S
 #----------------------------------------------------------
 LIBS_DIR                    = ../../../3rdparty
@@ -41,7 +40,7 @@ INCLUDE_FOLDERS            += $(LIB)
 #userspace
 INCLUDE_FOLDERS            += $(USERSPACE) $(USERSPACE)/core
 #sys
-INCLUDE_FOLDERS            += $(SYS) $(SYS)/drv/stm32 $(SYS)/midware
+INCLUDE_FOLDERS            += $(REXOS)/drv/stm32 $(REXOS)/midware
 
 INCLUDES                    = $(INCLUDE_FOLDERS:%=-I%)
 VPATH                      += $(INCLUDE_FOLDERS)

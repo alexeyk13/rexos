@@ -16,6 +16,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Independent system and drivers in userspace
 - Exokernel syncronization: ipc, stream, direct IO, block
 - Standart microkernel syncronization: mutexes, events, semaphores. Nested mutex priority inheritance.
+- Soft timers
 - Embedded dynamic memory manager, for every process
 - Safe and MPU ready. All supervisor-specific calls are wrapped around 
   swi/svc calls for context rising.
@@ -30,6 +31,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Device stacks:
   * USB device stack with USB composite and vendor requests support
   * USB device CDC ACM class
+  * USB device HID Boot Keyboard class
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -68,6 +70,11 @@ ARM7 features:
 
 History
 =======
+0.2.2
+- kernel soft timers
+- USB device HID Boot keyboard class
+- fix fifo alignment in LPC USB driver
+
 0.2.1
 - GUI library
 - MT driver update for GUI objects support

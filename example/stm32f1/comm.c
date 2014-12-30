@@ -3,10 +3,10 @@
 #include "../../rexos/userspace/file.h"
 #include "../../rexos/userspace/sys.h"
 #include "../../rexos/userspace/stream.h"
-#include "../../rexos/sys/midware/usbd.h"
+#include "../../rexos/midware/usbd.h"
 #include "../../rexos/userspace/gpio.h"
 #include "../../rexos/userspace/stm32_driver.h"
-#include "../../rexos/sys/drv/stm32/stm32_usb.h"
+#include "../../rexos/drv/stm32/stm32_usb.h"
 #include "usb_desc.h"
 #include "sys_config.h"
 #include "stm32_config.h"
@@ -141,7 +141,7 @@ void comm_init(COMM *comm)
     //turn USB on
     fopen(usbd, HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), 0);
 
-    ack(usbd, USBD_REGISTER_HANDLER, 0, 0, 0);
+    ack(usbd, USBD_REGISTER_HANDLER, HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), 0, 0);
 
     printf("USB activated\n\r");
 }
