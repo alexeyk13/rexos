@@ -26,6 +26,7 @@ typedef struct {
     MAGIC;
     KTIMER timer;
     HANDLE owner;
+    HANDLE handle;
     unsigned int mode;
     TIME time;
 } SOFT_TIMER;
@@ -45,7 +46,7 @@ void ktimer_get_uptime(TIME* res);
 void ktimer_setup(const CB_SVC_TIMER* cb_ktimer, void* cb_ktimer_param);
 
 #if (KERNEL_SOFT_TIMERS)
-void ktimer_create(SOFT_TIMER **timer);
+void ktimer_create(SOFT_TIMER **timer, HANDLE handle);
 void ktimer_destroy(SOFT_TIMER* timer);
 void ktimer_start(SOFT_TIMER* timer, TIME* time, unsigned int mode);
 void ktimer_stop(SOFT_TIMER* timer);

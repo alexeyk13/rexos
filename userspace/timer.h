@@ -69,12 +69,13 @@ __STATIC_INLINE void timer_hpet_timeout()
 
 /**
     \brief create soft timer. Make sure, enalbed in kernel
+    \param app_handle application provided handle
     \retval HANDLE of timer, or invalid handle
 */
-__STATIC_INLINE HANDLE timer_create()
+__STATIC_INLINE HANDLE timer_create(HANDLE app_handle)
 {
     HANDLE handle;
-    svc_call(SVC_TIMER_CREATE, (unsigned int)&handle, 0, 0);
+    svc_call(SVC_TIMER_CREATE, (unsigned int)&handle, app_handle, 0);
     return handle;
 }
 

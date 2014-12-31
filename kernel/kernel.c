@@ -104,7 +104,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         break;
 #if (KERNEL_SOFT_TIMERS)
     case SVC_TIMER_CREATE:
-        ktimer_create((SOFT_TIMER**)param1);
+        ktimer_create((SOFT_TIMER**)param1, (HANDLE)param2);
         break;
     case SVC_TIMER_START:
         ktimer_start((SOFT_TIMER*)param1, (TIME*)param2, param3);
