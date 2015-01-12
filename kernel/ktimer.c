@@ -164,7 +164,10 @@ void ktimer_start_internal(KTIMER* timer, TIME *time)
 void ktimer_stop_internal(KTIMER* timer)
 {
     if (timer->active)
+    {
         dlist_remove((DLIST**)&__KERNEL->timers, (DLIST*)timer);
+        timer->active = false;
+    }
 }
 
 void ktimer_init_internal(KTIMER* timer, void (*callback)(void*), void* param)
