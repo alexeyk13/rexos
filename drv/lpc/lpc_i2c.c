@@ -48,8 +48,12 @@ const REX __LPC_I2C = {
 #define I2C_NORMAL_CLOCK                            100000
 #define I2C_FAST_CLOCK                              400000
 
+#define ADDR_SIZE(drv, port)                        (((drv)->i2c.i2cs[(port)]->mode & I2C_ADDR_SIZE_MASK) >> I2C_ADDR_SIZE_POS)
 #define ADDR_BYTE(drv, port)                        (((drv)->i2c.i2cs[(port)]->addr >> ((((drv)->i2c.i2cs[(port)]->mode & I2C_ADDR_SIZE_MASK) - \
                                                     ++(drv)->i2c.i2cs[(port)]->addr_processed) << 3)) & 0xff)
+
+#define RX_LEN_SIZE(drv, port)                      (((drv)->i2c.i2cs[(port)]->mode & I2C_LEN_SIZE_MASK) >> I2C_LEN_SIZE_POS)
+#define RX_LEN_SET_BYTE(drv, port, byte)            ((drv)->i2c.i2cs[(port)]->rx_len = (((drv)->i2c.i2cs[(port)]->rx_len) << 8) | ((byte) & 0xff))
 
 static const PIN __I2C_SCL[] =                      {PIO0_4};
 static const PIN __I2C_SDA[] =                      {PIO0_5};
@@ -60,7 +64,6 @@ static const uint8_t __I2C_VECTORS[] =              {15};
 void lpc_i2c_isr_error(SHARED_I2C_DRV* drv, I2C_PORT port, int error)
 {
     LPC_I2C->CONSET = I2C_CONSET_STO;
-    LPC_I2C->CONCLR = I2C_CLEAR ^ I2C_CONCLR_STOC;
     if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
         block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
     ipc_ipost_error(drv->i2c.i2cs[port]->process, error);
@@ -77,55 +80,48 @@ void lpc_i2c_error(SHARED_I2C_DRV* drv, I2C_PORT port, int error)
 static inline void lpc_i2c_isr_tx(SHARED_I2C_DRV* drv, I2C_PORT port)
 {
     IPC ipc;
-    switch(LPC_I2C->STAT)
-    {
-    case I2C_STAT_START:
-        //transmit address
-        LPC_I2C->DAT = (drv->i2c.i2cs[port]->sla << 1) | 0;
-        LPC_I2C->CONCLR = I2C_CLEAR;
-        break;
-    case I2C_STAT_SLAW_NACK:
-        lpc_i2c_isr_error(drv, port, ERROR_NAK);
-        break;
-    case I2C_STAT_DATW_NACK:
-        //only acceptable for last byte
-        if (drv->i2c.i2cs[port]->processed < drv->i2c.i2cs[port]->size || drv->i2c.i2cs[port]->addr_processed < (drv->i2c.i2cs[port]->mode & I2C_ADDR_SIZE_MASK))
-        {
-            lpc_i2c_isr_error(drv, port, ERROR_NAK);
-            break;
-        }
-    case I2C_STAT_SLAW_ACK:
-    case I2C_STAT_DATW_ACK:
-        if (drv->i2c.i2cs[port]->addr_processed < (drv->i2c.i2cs[port]->mode & I2C_ADDR_SIZE_MASK))
-        {
-            LPC_I2C->DAT = ADDR_BYTE(drv, port);
-            LPC_I2C->CONCLR = I2C_CLEAR;
-        }
-        else if (drv->i2c.i2cs[port]->processed < drv->i2c.i2cs[port]->size)
-        {
-            LPC_I2C->DAT = drv->i2c.i2cs[port]->ptr[drv->i2c.i2cs[port]->processed++];
-            LPC_I2C->CONCLR = I2C_CLEAR;
-        }
-        //last byte
-        else
-        {
-            LPC_I2C->CONSET = I2C_CONSET_STO;
-            LPC_I2C->CONCLR = I2C_CLEAR ^ I2C_CONCLR_STOC;
-            if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
-                block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
-            ipc.process = drv->i2c.i2cs[port]->process;
-            ipc.cmd = IPC_WRITE_COMPLETE;
-            ipc.param1 = HAL_HANDLE(HAL_I2C, port);
-            ipc.param2 = drv->i2c.i2cs[port]->block;
-            ipc.param3 = drv->i2c.i2cs[port]->processed;
-            ipc_ipost(&ipc);
-            drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
-        }
-        break;
-    default:
-        lpc_i2c_isr_error(drv, port, ERROR_INVALID_STATE);
-        break;
-    }
+     switch(LPC_I2C->STAT)
+     {
+     case I2C_STAT_START:
+         //transmit address
+         LPC_I2C->DAT = (drv->i2c.i2cs[port]->sla << 1) | 0;
+         LPC_I2C->CONCLR = I2C_CONCLR_STAC;
+         break;
+     case I2C_STAT_SLAW_NACK:
+         lpc_i2c_isr_error(drv, port, ERROR_NAK);
+         break;
+     case I2C_STAT_DATW_NACK:
+         //only acceptable for last byte
+         if (drv->i2c.i2cs[port]->processed < drv->i2c.i2cs[port]->size || drv->i2c.i2cs[port]->addr_processed < ADDR_SIZE(drv, port))
+         {
+             lpc_i2c_isr_error(drv, port, ERROR_NAK);
+             break;
+         }
+     case I2C_STAT_SLAW_ACK:
+     case I2C_STAT_DATW_ACK:
+         if (drv->i2c.i2cs[port]->addr_processed < ADDR_SIZE(drv, port))
+             LPC_I2C->DAT = ADDR_BYTE(drv, port);
+         else if (drv->i2c.i2cs[port]->processed < drv->i2c.i2cs[port]->size)
+             LPC_I2C->DAT = drv->i2c.i2cs[port]->ptr[drv->i2c.i2cs[port]->processed++];
+         //last byte
+         else
+         {
+             LPC_I2C->CONSET = I2C_CONSET_STO;
+             if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
+                 block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
+             ipc.process = drv->i2c.i2cs[port]->process;
+             ipc.cmd = IPC_WRITE_COMPLETE;
+             ipc.param1 = HAL_HANDLE(HAL_I2C, port);
+             ipc.param2 = drv->i2c.i2cs[port]->block;
+             ipc.param3 = drv->i2c.i2cs[port]->processed;
+             ipc_ipost(&ipc);
+             drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
+         }
+         break;
+     default:
+         lpc_i2c_isr_error(drv, port, ERROR_INVALID_STATE);
+         break;
+     }
 }
 
 static inline void lpc_i2c_isr_rx(SHARED_I2C_DRV* drv, I2C_PORT port)
@@ -135,16 +131,16 @@ static inline void lpc_i2c_isr_rx(SHARED_I2C_DRV* drv, I2C_PORT port)
     {
     case I2C_STAT_START:
         //transmit address W
-        if (drv->i2c.i2cs[port]->mode & I2C_ADDR_SIZE_MASK)
+        if (ADDR_SIZE(drv, port))
         {
             LPC_I2C->DAT = (drv->i2c.i2cs[port]->sla << 1) | 0;
-            LPC_I2C->CONCLR = I2C_CLEAR;
+            LPC_I2C->CONCLR = I2C_CONCLR_STAC;
             break;
         }
     case I2C_STAT_REPEATED_START:
         //transmit address R
+        LPC_I2C->CONCLR = I2C_CONCLR_STAC;
         LPC_I2C->DAT = (drv->i2c.i2cs[port]->sla << 1) | 1;
-        LPC_I2C->CONCLR = I2C_CLEAR;
         break;
     case I2C_STAT_SLAR_NACK:
     case I2C_STAT_SLAW_NACK:
@@ -152,29 +148,46 @@ static inline void lpc_i2c_isr_rx(SHARED_I2C_DRV* drv, I2C_PORT port)
         break;
     case I2C_STAT_DATW_NACK:
         //only acceptable for last W byte
-        if (drv->i2c.i2cs[port]->addr_processed < (drv->i2c.i2cs[port]->mode & I2C_ADDR_SIZE_MASK))
+        if (drv->i2c.i2cs[port]->addr_processed < ADDR_SIZE(drv, port))
         {
             lpc_i2c_isr_error(drv, port, ERROR_NAK);
             break;
         }
     case I2C_STAT_SLAW_ACK:
     case I2C_STAT_DATW_ACK:
-        if (drv->i2c.i2cs[port]->addr_processed < (drv->i2c.i2cs[port]->mode & I2C_ADDR_SIZE_MASK))
-        {
+        if (drv->i2c.i2cs[port]->addr_processed < ADDR_SIZE(drv, port))
             LPC_I2C->DAT = ADDR_BYTE(drv, port);
-            LPC_I2C->CONCLR = I2C_CLEAR;
-        }
         //last addr byte, rS
         else
-        {
             LPC_I2C->CONSET = I2C_CONSET_STA;
-            LPC_I2C->CONCLR = I2C_CLEAR ^ I2C_CONCLR_STAC;
+        break;
+    case I2C_STAT_SLAR_ACK:
+        LPC_I2C->CONSET = I2C_CONSET_AA;
+        break;
+    case I2C_STAT_DATR_ACK:
+        if (drv->i2c.i2cs[port]->rx_len_processed < RX_LEN_SIZE(drv, port))
+        {
+            RX_LEN_SET_BYTE(drv, port, LPC_I2C->DAT);
+            if (++(drv->i2c.i2cs[port]->rx_len_processed) >= RX_LEN_SIZE(drv, port))
+            {
+                if (drv->i2c.i2cs[port]->size > drv->i2c.i2cs[port]->rx_len)
+                    drv->i2c.i2cs[port]->size = drv->i2c.i2cs[port]->rx_len;
+            }
         }
+        else
+            drv->i2c.i2cs[port]->ptr[drv->i2c.i2cs[port]->processed++] = LPC_I2C->DAT;
+        //need more? send ACK
+        if (drv->i2c.i2cs[port]->processed + 1 < drv->i2c.i2cs[port]->size)
+            LPC_I2C->CONSET = I2C_CONSET_AA;
+        //received all - send NAK
+        else
+            LPC_I2C->CONCLR = I2C_CONCLR_AAC;
         break;
     case I2C_STAT_DATR_NACK:
+        //last byte
+        drv->i2c.i2cs[port]->ptr[drv->i2c.i2cs[port]->processed++] = LPC_I2C->DAT;
         //stop transmission
         LPC_I2C->CONSET = I2C_CONSET_STO;
-        LPC_I2C->CONCLR = I2C_CLEAR ^ I2C_CONCLR_STOC;
         if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
             block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
         ipc.process = drv->i2c.i2cs[port]->process;
@@ -184,19 +197,6 @@ static inline void lpc_i2c_isr_rx(SHARED_I2C_DRV* drv, I2C_PORT port)
         ipc.param3 = drv->i2c.i2cs[port]->processed;
         ipc_ipost(&ipc);
         drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
-        break;
-    case I2C_STAT_DATR_ACK:
-        drv->i2c.i2cs[port]->ptr[drv->i2c.i2cs[port]->processed++] = LPC_I2C->DAT;
-    case I2C_STAT_SLAR_ACK:
-        //need more? send ACK
-        if (drv->i2c.i2cs[port]->processed < drv->i2c.i2cs[port]->size)
-        {
-            LPC_I2C->CONSET = I2C_CONSET_AA;
-            LPC_I2C->CONCLR = I2C_CLEAR ^ I2C_CONCLR_AAC;
-        }
-        //received all - send NAK
-        else
-            LPC_I2C->CONCLR = I2C_CLEAR;
         break;
     default:
         lpc_i2c_isr_error(drv, port, ERROR_INVALID_STATE);
@@ -218,6 +218,7 @@ void lpc_i2c_on_isr(int vector, void* param)
     default:
         lpc_i2c_isr_error(drv, I2C_0, ERROR_INVALID_STATE);
     }
+    LPC_I2C->CONCLR = I2C_CONCLR_SIC;
 }
 
 void lpc_i2c_open(SHARED_I2C_DRV *drv, I2C_PORT port, unsigned int mode, unsigned int sla)
@@ -316,6 +317,8 @@ void lpc_i2c_io_start(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block, unsigned
     drv->i2c.i2cs[port]->size = size;
     drv->i2c.i2cs[port]->processed = 0;
     drv->i2c.i2cs[port]->addr_processed = 0;
+    drv->i2c.i2cs[port]->rx_len_processed = 0;
+    drv->i2c.i2cs[port]->rx_len = 0;
     drv->i2c.i2cs[port]->io = io;
 
     //reset

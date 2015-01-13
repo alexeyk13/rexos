@@ -144,15 +144,19 @@ typedef enum {
     I2C_1
 } I2C_PORT;
 
-#define I2C_MASTER                  (1 << 8)
-#define I2C_SLAVE                   (0 << 8)
+#define I2C_MASTER                  (1 << 16)
+#define I2C_SLAVE                   (0 << 16)
 
-#define I2C_NORMAL_SPEED            (0 << 9)
-#define I2C_FAST_SPEED              (1 << 9)
+#define I2C_NORMAL_SPEED            (0 << 17)
+#define I2C_FAST_SPEED              (1 << 17)
 
 //size of address. If 0, no Rs condition will be used. MSB goes first
 #define I2C_ADDR_SIZE_POS           0
 #define I2C_ADDR_SIZE_MASK          (0xf << 0)
+
+//size of len. Used for some smartcards IO
+#define I2C_LEN_SIZE_POS            8
+#define I2C_LEN_SIZE_MASK           (0xf << 8)
 
 typedef enum {
     I2C_IO_IDLE = 0,

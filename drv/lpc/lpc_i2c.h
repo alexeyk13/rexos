@@ -18,10 +18,10 @@ typedef struct  {
     HANDLE block, process;
     char* ptr;
     I2C_IO io;
-    unsigned int addr;
+    unsigned int addr, rx_len;
     uint16_t mode;
     uint16_t processed, size;
-    uint8_t sla, addr_processed;
+    uint8_t sla, addr_processed, rx_len_processed;
 } I2C;
 
 typedef struct  {
