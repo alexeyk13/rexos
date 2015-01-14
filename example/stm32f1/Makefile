@@ -17,13 +17,13 @@ TARGET_NAME                 = stm32f1
 #----------------------------------------------------------
 BUILD_DIR                   = build
 OUTPUT_DIR                  = output
-REXOS                       = ../../rexos
+REXOS                       = ../../../rexos
 KERNEL                      = $(REXOS)/kernel
 USERSPACE					 	 = $(REXOS)/userspace
 LIB								 = $(REXOS)/lib
 LDS_SCRIPT                  = $(KERNEL)/arm.ld.S
 #----------------------------------------------------------
-LIBS_DIR                    = ../../3rdparty
+LIBS_DIR                    = ../../../3rdparty
 CMSIS_DIR                   = $(LIBS_DIR)/CMSIS
 CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32F10x
 #CMSIS_DEVICE_DIR           = $(CMSIS_DIR)/Device/ST/STM32F2xx
@@ -32,9 +32,9 @@ CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32F10x
 #not used in kernel
 INCLUDE_FOLDERS             = $(CMSIS_DIR)/Include $(CMSIS_DEVICE_DIR)/Include
 #userspace
-INCLUDE_FOLDERS		+= $(USERSPACE) $(USERSPACE)/core
+INCLUDE_FOLDERS		   += $(USERSPACE) $(USERSPACE)/core
 #kernel
-INCLUDE_FOLDERS				+= $(KERNEL) $(KERNEL)/core
+INCLUDE_FOLDERS		   += $(KERNEL) $(KERNEL)/core
 #lib
 INCLUDE_FOLDERS            += $(LIB)
 #sys
@@ -57,7 +57,7 @@ SRC_C                      += stdio.c main.c comm.c
 #drv
 SRC_C                      += stm32_power.c stm32_gpio.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_analog.c stm32_usb.c stm32_wdt.c
 #midware
-SRC_C								+= usbd.c cdc.c
+SRC_C                      += usbd.c cdc.c
 
 OBJ                         = $(SRC_AS:%.S=%.o) $(SRC_C:%.c=%.o)
 #----------------------------------------------------------

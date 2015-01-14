@@ -14,7 +14,7 @@
 const USB_DEVICE_DESCRIPTOR_TYPE __DEVICE_DESCRIPTOR = {
     USB_DEVICE_DESCRIPTOR_SIZE,                                               /*bLength */
     USB_DEVICE_DESCRIPTOR_INDEX,                                              /*bDescriptorType*/
-    0x0110,                                                                   /*bcdUSB */
+    0x0200,                                                                   /*bcdUSB */
     0x02,                                                                     /*bDeviceClass*/
     0x00,                                                                     /*bDeviceSubClass*/
     0x00,                                                                     /*bDeviceProtocol*/
