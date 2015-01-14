@@ -127,7 +127,7 @@ __STATIC_INLINE void fread_async(HANDLE process, HANDLE file, HANDLE block, unsi
     \retval size of bytes readed
 */
 
-__STATIC_INLINE unsigned int fread(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE int fread(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
     ipc.cmd = IPC_READ;
@@ -138,11 +138,11 @@ __STATIC_INLINE unsigned int fread(HANDLE process, HANDLE file, HANDLE block, un
     block_send_ipc(block, process, &ipc);
     ipc_read_ms(&ipc, 0, process);
     if (ipc.cmd == IPC_READ_COMPLETE)
-        return ipc.param3;
+        return (int)ipc.param3;
     else
     {
         error(ipc.param1);
-        return 0;
+        return -1;
     }
 }
 
@@ -220,7 +220,7 @@ __STATIC_INLINE void fwrite_async(HANDLE process, HANDLE file, HANDLE block, uns
     \retval size of bytes written
 */
 
-__STATIC_INLINE unsigned int fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE int fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
     ipc.cmd = IPC_WRITE;
@@ -231,11 +231,11 @@ __STATIC_INLINE unsigned int fwrite(HANDLE process, HANDLE file, HANDLE block, u
     block_send_ipc(block, process, &ipc);
     ipc_read_ms(&ipc, 0, process);
     if (ipc.cmd == IPC_WRITE_COMPLETE)
-        return ipc.param3;
+        return (int)ipc.param3;
     else
     {
         error(ipc.param1);
-        return 0;
+        return -1;
     }
 }
 
