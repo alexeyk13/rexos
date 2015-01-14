@@ -220,7 +220,7 @@ void ktimer_start(SOFT_TIMER* timer, TIME* time, unsigned int mode)
 {
     CHECK_HANDLE(timer, sizeof(SOFT_TIMER));
     CHECK_MAGIC(timer, MAGIC_TIMER);
-    CHECK_ADDRESS(kprocess_get_current(), *time, sizeof(TIME));
+    CHECK_ADDRESS(kprocess_get_current(), time, sizeof(TIME));
     timer->mode = mode;
     if (timer->mode & TIMER_MODE_PERIODIC)
     {
