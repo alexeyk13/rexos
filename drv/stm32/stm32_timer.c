@@ -5,15 +5,15 @@
 */
 
 #include "stm32_timer.h"
-#include "../../../userspace/stm32_driver.h"
+#include "../../userspace/stm32_driver.h"
 #include "stm32_power.h"
 #include "stm32_core_private.h"
-#include "../../../userspace/error.h"
-#include "../../../userspace/timer.h"
-#include "../../../userspace/irq.h"
+#include "../../userspace/error.h"
+#include "../../userspace/timer.h"
+#include "../../userspace/irq.h"
 #include <string.h>
 #if (SYS_INFO)
-#include "../../../userspace/stdio.h"
+#include "../../userspace/stdio.h"
 #endif
 
 #define APB1                                    (unsigned int*)((unsigned int)RCC_BASE + offsetof(RCC_TypeDef, APB1ENR))

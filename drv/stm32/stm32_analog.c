@@ -7,15 +7,15 @@
 #include "stm32_analog.h"
 #include "stm32_power.h"
 #include "stm32_config.h"
-#include "../../../userspace/direct.h"
-#include "../../../userspace/block.h"
-#include "../../../userspace/irq.h"
-#include "../../../userspace/object.h"
-#include "../../../userspace/stdlib.h"
-#include "../../../userspace/sys.h"
+#include "../../userspace/direct.h"
+#include "../../userspace/block.h"
+#include "../../userspace/irq.h"
+#include "../../userspace/object.h"
+#include "../../userspace/stdlib.h"
+#include "../../userspace/sys.h"
 #include <string.h>
 #if (SYS_INFO)
-#include "../../../userspace/stdio.h"
+#include "../../userspace/stdio.h"
 #endif
 #if (MONOLITH_ANALOG)
 #include "stm32_core_private.h"

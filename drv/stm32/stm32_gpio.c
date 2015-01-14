@@ -5,12 +5,12 @@
 */
 
 #include "stm32_gpio.h"
-#include "../../../userspace/stm32_driver.h"
+#include "../../userspace/stm32_driver.h"
 #include "stm32_core_private.h"
 #include "sys_config.h"
 #if (SYS_INFO)
-#include "../../../userspace/stdlib.h"
-#include "../../../userspace/stdio.h"
+#include "../../userspace/stdlib.h"
+#include "../../userspace/stdio.h"
 #endif
 #include <string.h>
 

@@ -4,15 +4,15 @@
     All rights reserved.
 */
 #include "stm32_rtc.h"
-#include "../../../userspace/rtc.h"
+#include "../../userspace/rtc.h"
 #include "stm32_config.h"
 #include "stm32_core_private.h"
 #include "sys_config.h"
-#include "../../../userspace/sys.h"
-#include "../../../userspace/stdio.h"
-#include "../../../userspace/time.h"
-#include "../../../userspace/irq.h"
-#include "../../../userspace/timer.h"
+#include "../../userspace/sys.h"
+#include "../../userspace/stdio.h"
+#include "../../userspace/time.h"
+#include "../../userspace/irq.h"
+#include "../../userspace/timer.h"
 
 #if defined(STM32L0)
 #define RTC_EXTI_LINE                               20

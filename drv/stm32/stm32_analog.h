@@ -6,9 +6,9 @@
 #ifndef STM32_ANALOG_H
 #define STM32_ANALOG_H
 
-#include "../../../userspace/process.h"
-#include "../../../userspace/sys.h"
-#include "../../../userspace/stm32_driver.h"
+#include "../../userspace/process.h"
+#include "../../userspace/sys.h"
+#include "../../userspace/stm32_driver.h"
 #include "stm32_timer.h"
 #include "stm32_config.h"
 #if (MONOLITH_ANALOG)

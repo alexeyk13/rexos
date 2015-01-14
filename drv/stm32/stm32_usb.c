@@ -6,19 +6,19 @@
 
 #include "stm32_usb.h"
 #include "stm32_regsusb.h"
-#include "../../../userspace/stm32_driver.h"
+#include "../../userspace/stm32_driver.h"
 #include "stm32_power.h"
-#include "../../../userspace/sys.h"
-#include "../../../userspace/usb.h"
-#include "../../../userspace/error.h"
-#include "../../../userspace/irq.h"
-#include "../../../userspace/block.h"
-#include "../../../userspace/direct.h"
-#include "../../../userspace/object.h"
-#include "../../../userspace/stdlib.h"
+#include "../../userspace/sys.h"
+#include "../../userspace/usb.h"
+#include "../../userspace/error.h"
+#include "../../userspace/irq.h"
+#include "../../userspace/block.h"
+#include "../../userspace/direct.h"
+#include "../../userspace/object.h"
+#include "../../userspace/stdlib.h"
 #include <string.h>
 #if (SYS_INFO)
-#include "../../../userspace/stdio.h"
+#include "../../userspace/stdio.h"
 #endif
 #if (MONOLITH_USB)
 #include "stm32_core_private.h"

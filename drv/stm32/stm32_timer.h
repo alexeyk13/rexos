@@ -12,7 +12,7 @@
   */
 
 #include "stm32_core.h"
-#include "../../../userspace/gpio.h"
+#include "../../userspace/gpio.h"
 
 typedef enum {
     //timer
