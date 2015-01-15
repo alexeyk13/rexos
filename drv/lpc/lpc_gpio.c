@@ -84,6 +84,43 @@ static const uint8_t __GPIO_UART[PIN_DEFAULT / 2] =
                                         GF(PIN_MODE_SCLK_1,  PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
                                        };
 #endif
+#if (GPIO_TIMER)
+static const uint8_t __GPIO_TIMER[PIN_DEFAULT / 2] =
+                                       {
+                                        //PIO0_0
+                                        GF(PIN_MODE_INVALID,         PIN_MODE_CT32B0_MAT2),     GF(PIN_MODE_CT16B0_CAP0,    PIN_MODE_INVALID),
+                                        //PIO0_4
+                                        GF(PIN_MODE_INVALID,         PIN_MODE_INVALID),         GF(PIN_MODE_INVALID,        PIN_MODE_INVALID),
+                                        //PIO0_8
+                                        GF(PIN_MODE_CT16B0_MAT0,     PIN_MODE_CT16B0_MAT1),     GF(PIN_MODE_CT16B0_MAT2,    PIN_MODE_CT32B0_MAT3),
+                                        //PIO0_12
+                                        GF(PIN_MODE_CT32B1_CAP0,     PIN_MODE_CT32B1_MAT0),     GF(PIN_MODE_CT32B1_MAT1,    PIN_MODE_CT32B1_MAT2),
+                                        //PIO0_16
+                                        GF(PIN_MODE_CT32B1_MAT3,     PIN_MODE_CT32B0_CAP0),     GF(PIN_MODE_CT32B0_MAT0,    PIN_MODE_CT32B0_MAT1),
+                                        //PIO0_20
+                                        GF(PIN_MODE_CT16B1_CAP0,     PIN_MODE_CT16B1_MAT0),     GF(PIN_MODE_CT16B1_MAT1,    PIN_MODE_INVALID),
+                                        //PIO0_24
+                                        GF(PIN_MODE_INVALID,         PIN_MODE_INVALID),         GF(PIN_MODE_INVALID,        PIN_MODE_INVALID),
+                                        //PIO0_28
+                                        GF(PIN_MODE_INVALID,         PIN_MODE_INVALID),         GF(PIN_MODE_INVALID,        PIN_MODE_INVALID),
+                                        //PIO1_0
+                                        GF(PIN_MODE_CT32B1_MAT1_0,   PIN_MODE_CT32B1_MAT1_1),   GF(PIN_MODE_CT32B1_MAT2_1,  PIN_MODE_CT32B1_MAT3_1),
+                                        //PIO1_4
+                                        GF(PIN_MODE_CT32B1_CAP0_1_4, PIN_MODE_CT32B1_CAP1_1_5), GF(PIN_MODE_INVALID,        PIN_MODE_INVALID),
+                                        //PIO1_8
+                                        GF(PIN_MODE_INVALID,         PIN_MODE_INVALID),         GF(PIN_MODE_INVALID,        PIN_MODE_INVALID),
+                                        //PIO1_12
+                                        GF(PIN_MODE_INVALID,         PIN_MODE_CT16B0_MAT0_1),   GF(PIN_MODE_CT16B0_MAT1_1,  PIN_MODE_CT16B0_MAT2_1),
+                                        //PIO1_16
+                                        GF(PIN_MODE_CT16B0_CAP0_1,   PIN_MODE_CT16B0_CAP1_1),   GF(PIN_MODE_CT16B1_CAP1_1,  PIN_MODE_INVALID),
+                                        //PIO1_20
+                                        GF(PIN_MODE_INVALID,         PIN_MODE_INVALID),         GF(PIN_MODE_INVALID,        PIN_MODE_CT16B1_MAT1_1),
+                                        //PIO1_24
+                                        GF(PIN_MODE_CT32B0_MAT0_1,   PIN_MODE_CT32B0_MAT1_1),   GF(PIN_MODE_CT32B0_MAT2_1,  PIN_MODE_CT32B0_MAT3_1),
+                                        //PIO1_28
+                                        GF(PIN_MODE_CT32B0_CAP0_1,   PIN_MODE_CT32B0_CAP1_1),   GF(PIN_MODE_INVALID,        PIN_MODE_INVALID),
+                                       };
+#endif //GPIO_TIMER
 
 void lpc_gpio_enable_pin(PIN pin, unsigned int mode, unsigned int af)
 {
@@ -115,6 +152,11 @@ void lpc_gpio_enable_pin(PIN pin, unsigned int mode, unsigned int af)
         break;
     case AF_FAST_I2C:
         func = PIN_MODE_I2C_SCL | GPIO_I2C_MODE_FAST;
+        break;
+#endif
+#if (GPIO_TIMER)
+    case AF_TIMER:
+        func = GPIO_FUNC(__GPIO_TIMER, pin);
         break;
 #endif
     default:

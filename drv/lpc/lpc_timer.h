@@ -8,10 +8,11 @@
 #define LPC_TIMER_H
 
 #include "lpc_core.h"
+#include "../../userspace/lpc_driver.h"
 
 typedef struct {
     unsigned int hpet_start;
-
+    uint8_t main_channel[TIMER_MAX];
 } TIMER_DRV;
 
 void lpc_timer_init(CORE* core);

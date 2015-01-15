@@ -43,6 +43,8 @@ typedef enum {
 #define AF_I2C                                  3
 //PIN as FAST I2C IO pins. I2C module must be enabled
 #define AF_FAST_I2C                             4
+//PIN as timer input/output
+#define AF_TIMER                                5
 
 #define GPIO_PORT(pin)                  ((pin) >> 5)
 #define GPIO_PIN(pin)                   ((pin) & 0x1f)
@@ -63,30 +65,40 @@ typedef enum {
     LPC_TIMER_STOP
 } LPC_TIMER_IPCS;
 
-#define TIMER_FLAG_ENABLE_IRQ                        (1 << 0)
-#define TIMER_FLAG_PRIORITY_POS                      16
-#define TIMER_FLAG_PRIORITY_MASK                     (0xff << 16)
-
-#define TIMER_CHANNEL_POS                            0
-#define TIMER_CHANNEL_MASK                           (3 << 0)
-
 #define TIMER_CHANNEL0                               0
 #define TIMER_CHANNEL1                               1
 #define TIMER_CHANNEL2                               2
 #define TIMER_CHANNEL3                               3
+#define TIMER_CHANNEL_INVALID                        0xff
 
-//timer mode. Always relative to channel0 for channels 1-3
-#define TIMER_MODE_POS                               2
-#define TIMER_MODE_MASK                              (7 << 2)
 
-//value in us units
-#define TIMER_MODE_US                                0
-//value in hz units
-#define TIMER_MODE_HZ                                1
-//time in raw clk units
-#define TIMER_MODE_CLK                               2
+#define TIMER_FLAG_ENABLE_IRQ                        (1 << 0)
+#define TIMER_FLAG_PRIORITY_POS                      16
+#define TIMER_FLAG_PRIORITY_MASK                     (0xff << 16)
+
+#define TIMER_MODE_CHANNEL_POS                       16
+#define TIMER_MODE_CHANNEL_MASK                      (3 << TIMER_MODE_CHANNEL_POS)
+
+#define TIMER_MODE_CHANNEL0                          (TIMER_CHANNEL0 << TIMER_CHANNEL_POS)
+#define TIMER_MODE_CHANNEL1                          (TIMER_CHANNEL1 << TIMER_CHANNEL_POS)
+#define TIMER_MODE_CHANNEL2                          (TIMER_CHANNEL2 << TIMER_CHANNEL_POS)
+#define TIMER_MODE_CHANNEL3                          (TIMER_CHANNEL3 << TIMER_CHANNEL_POS)
+
 //stop counter after one pulse. Only for channel 0
-#define TIMER_MODE_ONE_PULSE                         (1  << 5)
+#define TIMER_MODE_ONE_PULSE                         (1  << 20)
+
+#define TIMER_MODE_TYPE_MASK                         (7 << 21)
+#define TIMER_MODE_TYPE_SLAVE                        (0  << 21)
+//value in us units
+#define TIMER_MODE_TYPE_MASTER_US                    (1  << 21)
+//value in hz units
+#define TIMER_MODE_TYPE_MASTER_HZ                    (2  << 21)
+//time in raw clk units
+#define TIMER_MODE_TYPE_MASTER_CLK                   (3  << 21)
+#define TIMER_MODE_TYPE_PWM                          (4  << 21)
+#define TIMER_MODE_TYPE_PWM_UPDATE                   (5  << 21)
+
+#define TIMER_MODE_PIN_MASK                          (0xff)
 
 //------------------------------------------------ Power ---------------------------------------------------------------------
 typedef enum {
