@@ -100,6 +100,21 @@ void kblock_close(BLOCK* block)
         kprocess_error(process, ERROR_ACCESS_DENIED);
 }
 
+void kblock_get_size(BLOCK* block, unsigned int* size)
+{
+    PROCESS* process = kprocess_get_current();
+    CHECK_HANDLE(block, sizeof(BLOCK));
+    CHECK_MAGIC(block, MAGIC_BLOCK);
+    CHECK_ADDRESS(process, size, sizeof(unsigned int));
+    if (block->granted == process)
+        *size = block->size;
+    else
+    {
+        kprocess_error(process, ERROR_ACCESS_DENIED);
+        *size = 0;
+    }
+}
+
 void kblock_send(BLOCK* block, PROCESS* receiver)
 {
     PROCESS* process = kprocess_get_current();

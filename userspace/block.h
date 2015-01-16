@@ -45,6 +45,19 @@ __STATIC_INLINE void* block_open(HANDLE block)
 }
 
 /**
+    \brief get block data size. Process must have access to block
+    \param block: block handle
+    \retval data size
+*/
+__STATIC_INLINE unsigned int block_get_size(HANDLE block)
+{
+    unsigned int size;
+    svc_call(SVC_BLOCK_GET_SIZE, (unsigned int)block, (unsigned int)(&size), 0);
+    return size;
+}
+
+
+/**
     \brief send block to another process
     \param block: block handle
     \param receiver: receiver process

@@ -177,6 +177,9 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_BLOCK_CLOSE:
         kblock_close((BLOCK*)param1);
         break;
+    case SVC_BLOCK_GET_SIZE:
+        kblock_get_size((BLOCK*)param1, (unsigned int*)param2);
+        break;
     case SVC_BLOCK_SEND:
         kblock_send((BLOCK*)param1, (PROCESS*)param2);
         break;

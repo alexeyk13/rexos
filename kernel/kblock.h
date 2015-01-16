@@ -27,6 +27,7 @@ typedef struct {
 void kblock_create(BLOCK** block, unsigned int size);
 void kblock_open(BLOCK* block, void **ptr);
 void kblock_close(BLOCK* block);
+void kblock_get_size(BLOCK* block, unsigned int* size);
 void kblock_send(BLOCK* block, PROCESS* receiver);
 void kblock_send_ipc(BLOCK* block, PROCESS* receiver, IPC* ipc);
 void kblock_return(BLOCK* block);
