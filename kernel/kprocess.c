@@ -46,6 +46,7 @@ void kprocess_add_to_active_list(PROCESS* process)
     DLIST_ENUM de;
     PROCESS* cur;
 #if (KERNEL_PROCESS_STAT)
+    ktimer_get_uptime(&process->uptime_start);
     dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
 #endif
     //return from core HALT
@@ -61,14 +62,6 @@ void kprocess_add_to_active_list(PROCESS* process)
     if (process->base_priority < __KERNEL->processes->base_priority)
 #endif //KERNEL_MES
     {
-#if (KERNEL_PROCESS_STAT)
-        if (__KERNEL->processes != NULL)
-        {
-            ktimer_get_uptime(&process->uptime_start);
-            time_sub(&__KERNEL->processes->uptime_start, &process->uptime_start, &__KERNEL->processes->uptime_start);
-            time_add(&__KERNEL->processes->uptime_start, &__KERNEL->processes->uptime, &__KERNEL->processes->uptime);
-        }
-#endif //KERNEL_PROCESS_STAT
         process_to_save = __KERNEL->processes;
         dlist_remove_head((DLIST**)&__KERNEL->processes);
         dlist_add_head((DLIST**)&__KERNEL->processes, (DLIST*)process);
@@ -97,14 +90,6 @@ void kprocess_remove_from_active_list(PROCESS* process)
     //freeze active task
     if (process == __KERNEL->processes)
     {
-#if (KERNEL_PROCESS_STAT)
-        if (((DLIST*)__KERNEL->processes)->next != (DLIST*)__KERNEL->processes)
-        {
-            ktimer_get_uptime(&((PROCESS*)(((DLIST*)__KERNEL->processes)->next))->uptime_start);
-            time_sub(&__KERNEL->processes->uptime_start, &((PROCESS*)(((DLIST*)__KERNEL->processes)->next))->uptime_start, &__KERNEL->processes->uptime_start);
-            time_add(&__KERNEL->processes->uptime_start, &__KERNEL->processes->uptime, &__KERNEL->processes->uptime);
-        }
-#endif //KERNEL_PROCESS_STAT
         dlist_remove_head((DLIST**)&__KERNEL->processes);
         switch_to_process(__KERNEL->processes);
     }
@@ -112,6 +97,10 @@ void kprocess_remove_from_active_list(PROCESS* process)
         dlist_remove((DLIST**)&__KERNEL->processes, (DLIST*)process);
 #if (KERNEL_PROCESS_STAT)
     dlist_add_tail((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
+    TIME time;
+    ktimer_get_uptime(&time);
+    time_sub(&(process->uptime_start), &time, &time);
+    time_add(&time, &(process->uptime), &(process->uptime));
 #endif
 }
 
@@ -138,6 +127,7 @@ void kprocess_timeout(void* param)
 {
     PROCESS* process = param;
     disable_interrupts();
+    process->flags |= 1 << 27;
     //because timeout is not atomic anymore
     if (process->flags & PROCESS_FLAGS_WAITING)
     {
@@ -406,6 +396,7 @@ void kprocess_wakeup(PROCESS* process)
     CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
+    process->flags |= 5 << 27;
     kprocess_wakeup_internal(process);
     enable_interrupts();
 }
