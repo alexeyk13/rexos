@@ -170,7 +170,6 @@ void lpc_timer_stop(CORE* core, TIMER timer, unsigned int mode)
     //disable match interrupt
     __TIMER_REGS[timer]->MCR &= ~(7 << (channel * 3));
     //disable timer on main channel disable
-    //TODO: PWM stop
     if (channel == core->timer.main_channel[timer])
     {
         __TIMER_REGS[timer]->TCR &= ~CT_TCR_CEN;
@@ -178,6 +177,9 @@ void lpc_timer_stop(CORE* core, TIMER timer, unsigned int mode)
     }
     //clear pending match interrupt
     __TIMER_REGS[timer]->IR = 1 << channel;
+    //disable pin if set
+    if ((mode & TIMER_MODE_TYPE_MASK) == TIMER_MODE_TYPE_PWM)
+        lpc_gpio_request_inside(core, LPC_GPIO_DISABLE_PIN, mode & TIMER_MODE_PIN_MASK, 0, 0);
 }
 
 void hpet_start(unsigned int value, void* param)
