@@ -523,13 +523,6 @@ static inline int safecpy_write(USBD* usbd, void* src, int size)
 int send_descriptor(USBD* usbd, void* descriptor, uint8_t type, int size)
 {
     USB_DESCRIPTOR_TYPE* dst;
-    if (descriptor == NULL)
-    {
-#if (USBD_DEBUG_ERRORS)
-        printf("USB descriptor type %d not present\n\r", type);
-#endif
-        return -1;
-    }
     dst = block_open(usbd->block);
     if (dst == NULL)
         return -1;
@@ -543,14 +536,6 @@ int send_descriptor(USBD* usbd, void* descriptor, uint8_t type, int size)
 int send_configuration_descriptor(USBD* usbd, ARRAY** ar, int index, uint8_t type)
 {
     USB_CONFIGURATION_DESCRIPTOR_TYPE* dst;
-    if (index >= (*ar)->size)
-    {
-#if (USBD_DEBUG_ERRORS)
-        printf("USB CONFIGURATION %d descriptor not present\n\r", index);
-#endif
-        error(ERROR_NOT_CONFIGURED);
-        return -1;
-    }
     dst = (USB_CONFIGURATION_DESCRIPTOR_TYPE*)(void_array_data(*ar)[index]);
     return send_descriptor(usbd, dst, type, dst->wTotalLength);
 }
@@ -656,19 +641,23 @@ static inline int usbd_get_descriptor(USBD* usbd)
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get DEVICE descriptor\n\r");
 #endif
-        if (usbd->speed >= USB_HIGH_SPEED)
+        if (usbd->speed >= USB_HIGH_SPEED && usbd->dev_descriptor_hs)
             res = send_descriptor(usbd, usbd->dev_descriptor_hs, USB_DEVICE_DESCRIPTOR_INDEX, usbd->dev_descriptor_hs->bLength);
-        else
+        else if (usbd->dev_descriptor_fs)
             res = send_descriptor(usbd, usbd->dev_descriptor_fs, USB_DEVICE_DESCRIPTOR_INDEX, usbd->dev_descriptor_fs->bLength);
+        else if (usbd->dev_descriptor_hs)
+            res = send_descriptor(usbd, usbd->dev_descriptor_hs, USB_DEVICE_DESCRIPTOR_INDEX, usbd->dev_descriptor_hs->bLength);
         break;
     case USB_CONFIGURATION_DESCRIPTOR_INDEX:
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get CONFIGURATION %d descriptor\n\r", index);
 #endif
-        if (usbd->speed >= USB_HIGH_SPEED)
+        if (usbd->speed >= USB_HIGH_SPEED && index < usbd->conf_descriptors_hs->size)
             res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_hs, index, USB_CONFIGURATION_DESCRIPTOR_INDEX);
-        else
+        else if (index < usbd->conf_descriptors_fs->size)
             res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_fs, index, USB_CONFIGURATION_DESCRIPTOR_INDEX);
+        else if (index < usbd->conf_descriptors_hs->size)
+            res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_hs, index, USB_CONFIGURATION_DESCRIPTOR_INDEX);
         break;
     case USB_STRING_DESCRIPTOR_INDEX:
 #if (USBD_DEBUG_REQUESTS)
@@ -680,19 +669,23 @@ static inline int usbd_get_descriptor(USBD* usbd)
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get DEVICE qualifier descriptor\n\r");
 #endif
-        if (usbd->speed >= USB_HIGH_SPEED)
+        if (usbd->speed >= USB_HIGH_SPEED && usbd->dev_descriptor_fs)
             res = send_descriptor(usbd, usbd->dev_descriptor_fs, USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX, usbd->dev_descriptor_fs->bLength);
-        else
+        else if (usbd->dev_descriptor_hs)
             res = send_descriptor(usbd, usbd->dev_descriptor_hs, USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX, usbd->dev_descriptor_hs->bLength);
+        else if (usbd->dev_descriptor_fs)
+            res = send_descriptor(usbd, usbd->dev_descriptor_fs, USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX, usbd->dev_descriptor_fs->bLength);
         break;
     case USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX:
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get other speed CONFIGURATION %d descriptor\n\r", index);
 #endif
-        if (usbd->speed >= USB_HIGH_SPEED)
+        if (usbd->speed >= USB_HIGH_SPEED && index < usbd->conf_descriptors_fs->size)
             res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_fs, index, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX);
-        else
+        else if (index < usbd->conf_descriptors_hs->size)
             res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_hs, index, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX);
+        else if (index < usbd->conf_descriptors_fs->size)
+            res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_fs, index, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX);
         break;
     }
 
