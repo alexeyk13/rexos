@@ -201,7 +201,7 @@ unsigned int hpet_elapsed(void* param)
 {
     CORE* core = (CORE*)param;
     unsigned int tc = __TIMER_REGS[SECOND_TIMER]->TC;
-    unsigned int value = core->timer.hpet_start < tc ? tc - core->timer.hpet_start : __TIMER_REGS[SECOND_TIMER]->MR[0] + 1 - core->timer.hpet_start + tc;
+    unsigned int value = core->timer.hpet_start < tc ? tc - core->timer.hpet_start : __TIMER_REGS[SECOND_TIMER]->MR[HPET_CHANNEL] + 1 - core->timer.hpet_start + tc;
     return SECOND_TIMER >= TC32B0 ? value : value / TC16PC;
 }
 
