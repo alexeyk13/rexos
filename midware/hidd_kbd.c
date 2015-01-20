@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -173,6 +173,7 @@ void hidd_kbd_class_suspend(USBD* usbd, void* param)
     HIDD_KBD* hidd = (HIDD_KBD*)param;
     fflush(hidd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | hidd->in_ep));
     hidd->state = USB_HID_KBD_IDLE;
+    hidd->user = INVALID_HANDLE;
     hidd->suspended = true;
 }
 
