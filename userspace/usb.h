@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -90,6 +90,8 @@ typedef enum {
 #define USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX                   6
 #define USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX          7
 #define USB_INTERFACE_POWER_DESCRIPTOR_INDEX                    8
+
+#define USB_FUNCTIONAL_DESCRIPTOR                               0x21
 
 #define USB_DEVICE_REMOTE_WAKEUP_FEATURE_INDEX                  1
 #define USB_ENDPOINT_HALT_FEATURE_INDEX                         0
