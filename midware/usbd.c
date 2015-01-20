@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -21,6 +21,9 @@
 #if (USBD_HID_KBD_CLASS)
 #include "hidd_kbd.h"
 #endif //USBD_HID_KBD_CLASS
+#if (USBD_CCID_CLASS)
+#include "ccidd.h"
+#endif //USBD_CCID_CLASS
 
 typedef enum {
     USB_SETUP_STATE_REQUEST = 0,
@@ -46,16 +49,22 @@ typedef struct _USBD {
     USBD_STATE state;
     bool suspended;
     bool self_powered, remote_wakeup;
-#if (USB_TEST_MODE)
+#if (USB_2_0)
     USB_TEST_MODES test_mode;
-#endif //USB_TEST_MODE
+#endif //USB_2_0
     USB_SPEED speed;
     uint8_t ep0_size;
     uint8_t configuration;
     //descriptors
-    USB_DEVICE_DESCRIPTOR_TYPE *dev_descriptor_fs, *dev_descriptor_hs;
+    USB_DEVICE_DESCRIPTOR_TYPE *dev_descriptor_fs;
+#if (USB_2_0)
+    USB_DEVICE_DESCRIPTOR_TYPE *dev_descriptor_hs;
+#endif //USB_2_0
     ARRAY *handlers;
-    ARRAY *conf_descriptors_fs, *conf_descriptors_hs;
+    ARRAY *conf_descriptors_fs;
+#if (USB_2_0)
+    ARRAY *conf_descriptors_hs;
+#endif //USB_2_0
     ARRAY *string_descriptors;
     ARRAY *ifaces;
     uint8_t ep_iface[USB_EP_COUNT_MAX];
@@ -84,6 +93,9 @@ static const USBD_CLASS* __USBD_CLASSES[] =         {
 #if (USBD_HID_KBD_CLASS)
                                                         &__HIDD_KBD_CLASS,
 #endif //USBD_HID_KBD_CLASS
+#if (USBD_CCID_CLASS)
+                                                        &__CCIDD_CLASS,
+#endif //USBD_CCID_CLASS
                                                         (const USBD_CLASS*)NULL
                                                     };
 
@@ -170,7 +182,12 @@ void usbd_fatal_stub(USBD* usbd)
 static inline void usbd_class_configured(USBD* usbd)
 {
     int i;
+#if (USB_2_0)
     ARRAY* cfg_array = (usbd->speed >= USB_HIGH_SPEED) ? usbd->conf_descriptors_hs : usbd->conf_descriptors_fs;
+#else
+    ARRAY* cfg_array = usbd->conf_descriptors_fs;
+#endif //#if (USB_2_0)
+
     USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg = NULL;
     USB_INTERFACE_DESCRIPTOR_TYPE* iface;
     //find configuration
@@ -378,14 +395,16 @@ void usbd_register_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned in
     case USB_DESCRIPTOR_DEVICE_FS:
         res = usbd_register_device(&usbd->dev_descriptor_fs, ptr);
         break;
+#if (USB_2_0)
     case USB_DESCRIPTOR_DEVICE_HS:
         res = usbd_register_device(&usbd->dev_descriptor_hs, ptr);
         break;
-    case USB_DESCRIPTOR_CONFIGURATION_FS:
-        res = usbd_register_configuration(&usbd->conf_descriptors_fs, udrs->index, ptr);
-        break;
     case USB_DESCRIPTOR_CONFIGURATION_HS:
         res = usbd_register_configuration(&usbd->conf_descriptors_hs, udrs->index, ptr);
+        break;
+#endif //USB_2_0
+    case USB_DESCRIPTOR_CONFIGURATION_FS:
+        res = usbd_register_configuration(&usbd->conf_descriptors_fs, udrs->index, ptr);
         break;
     case USB_DESCRIPTOR_STRING:
         res = usbd_register_string(usbd, udrs->index, udrs->lang, ptr);
@@ -405,15 +424,17 @@ void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned 
     case USB_DESCRIPTOR_DEVICE_FS:
         usbd_unregister_device(&usbd->dev_descriptor_fs);
         break;
-    case USB_DESCRIPTOR_DEVICE_HS:
-        usbd_unregister_device(&usbd->dev_descriptor_hs);
-        break;
     case USB_DESCRIPTOR_CONFIGURATION_FS:
         usbd_unregister_configuration(&usbd->conf_descriptors_fs, index);
+        break;
+#if (USB_2_0)
+    case USB_DESCRIPTOR_DEVICE_HS:
+        usbd_unregister_device(&usbd->dev_descriptor_hs);
         break;
     case USB_DESCRIPTOR_CONFIGURATION_HS:
         usbd_unregister_configuration(&usbd->conf_descriptors_hs, index);
         break;
+#endif //USB_2_0
     case USB_DESCRIPTOR_STRING:
         usbd_unregister_string(usbd, index, lang);
         break;
@@ -568,7 +589,7 @@ static inline int usbd_device_get_status(USBD* usbd)
     return safecpy_write(usbd, &status, sizeof(uint16_t));
 }
 
-#if (USB_TEST_MODE)
+#if (USB_2_0)
 static inline int usbd_device_set_feature(USBD* usbd)
 {
     unsigned int res = -1;
@@ -588,7 +609,7 @@ static inline int usbd_device_set_feature(USBD* usbd)
     }
     return res;
 }
-#endif //USB_TEST_MODE
+#endif //USB_2_0
 
 static inline int usbd_device_clear_feature(USBD* usbd)
 {
@@ -641,23 +662,25 @@ static inline int usbd_get_descriptor(USBD* usbd)
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get DEVICE descriptor\n\r");
 #endif
+#if (USB_2_0)
         if (usbd->speed >= USB_HIGH_SPEED && usbd->dev_descriptor_hs)
             res = send_descriptor(usbd, usbd->dev_descriptor_hs, USB_DEVICE_DESCRIPTOR_INDEX, usbd->dev_descriptor_hs->bLength);
-        else if (usbd->dev_descriptor_fs)
-            res = send_descriptor(usbd, usbd->dev_descriptor_fs, USB_DEVICE_DESCRIPTOR_INDEX, usbd->dev_descriptor_fs->bLength);
-        else if (usbd->dev_descriptor_hs)
-            res = send_descriptor(usbd, usbd->dev_descriptor_hs, USB_DEVICE_DESCRIPTOR_INDEX, usbd->dev_descriptor_hs->bLength);
+        else
+#endif //USB_2_0
+            if (usbd->dev_descriptor_fs)
+                res = send_descriptor(usbd, usbd->dev_descriptor_fs, USB_DEVICE_DESCRIPTOR_INDEX, usbd->dev_descriptor_fs->bLength);
         break;
     case USB_CONFIGURATION_DESCRIPTOR_INDEX:
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get CONFIGURATION %d descriptor\n\r", index);
 #endif
+#if (USB_2_0)
         if (usbd->speed >= USB_HIGH_SPEED && index < usbd->conf_descriptors_hs->size)
             res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_hs, index, USB_CONFIGURATION_DESCRIPTOR_INDEX);
-        else if (index < usbd->conf_descriptors_fs->size)
-            res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_fs, index, USB_CONFIGURATION_DESCRIPTOR_INDEX);
-        else if (index < usbd->conf_descriptors_hs->size)
-            res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_hs, index, USB_CONFIGURATION_DESCRIPTOR_INDEX);
+        else
+#endif //USB_2_0
+            if (index < usbd->conf_descriptors_fs->size)
+                res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_fs, index, USB_CONFIGURATION_DESCRIPTOR_INDEX);
         break;
     case USB_STRING_DESCRIPTOR_INDEX:
 #if (USBD_DEBUG_REQUESTS)
@@ -665,6 +688,7 @@ static inline int usbd_get_descriptor(USBD* usbd)
 #endif
         res = send_strings_descriptor(usbd, index, usbd->setup.wIndex);
         break;
+#if (USB_2_0)
     case USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX:
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get DEVICE qualifier descriptor\n\r");
@@ -687,6 +711,7 @@ static inline int usbd_get_descriptor(USBD* usbd)
         else if (index < usbd->conf_descriptors_fs->size)
             res = send_configuration_descriptor(usbd, &usbd->conf_descriptors_fs, index, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX);
         break;
+#endif
     }
 
     return res;
@@ -732,11 +757,11 @@ static inline int usbd_standart_device_request(USBD* usbd)
     case USB_REQUEST_GET_STATUS:
         res = usbd_device_get_status(usbd);
         break;
-#if (USB_TEST_MODE)
+#if (USB_2_0)
     case USB_REQUEST_SET_FEATURE:
         res = usbd_device_set_feature(usbd);
         break;
-#endif
+#endif //USB_2_0
     case USB_REQUEST_CLEAR_FEATURE:
         res = usbd_device_clear_feature(usbd);
         break;
@@ -1032,18 +1057,23 @@ static inline void usbd_init(USBD* usbd)
     usbd->state = USBD_STATE_DEFAULT;
     usbd->suspended = false;
     usbd->self_powered = usbd->remote_wakeup = false;
-#if (USB_TEST_MODE)
+#if (USB_2_0)
     usbd->test_mode = USB_TEST_MODE_NORMAL;
-#endif //USB_TEST_MODE
+#endif //USB_2_0
 
     usbd->speed = USB_LOW_SPEED;
     usbd->ep0_size = 0;
     usbd->configuration = 0;
-    usbd->dev_descriptor_fs = usbd->dev_descriptor_hs = NULL;
+    usbd->dev_descriptor_fs = NULL;
+#if (USB_2_0)
+    usbd->dev_descriptor_hs = NULL;
+#endif //USB_2_0
 
     void_array_create(&usbd->handlers, 1);
     void_array_create(&usbd->conf_descriptors_fs, 1);
+#if (USB_2_0)
     void_array_create(&usbd->conf_descriptors_hs, 1);
+#endif //USB_2_0
     array_create(&usbd->ifaces, sizeof(USBD_CLASS_ENTRY));
     //at least 3: manufacturer, product, string 0
     array_create(&usbd->string_descriptors, 3 * sizeof(USBD_STRING));
