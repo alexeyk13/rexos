@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -29,7 +29,6 @@ void kblock_create(BLOCK** block, unsigned int size)
             (*block) = NULL;
             kprocess_error(process, ERROR_OUT_OF_PAGED_MEMORY);
         }
-
     }
     else
         kprocess_error(process, ERROR_OUT_OF_SYSTEM_MEMORY);
@@ -42,8 +41,10 @@ void kblock_destroy(BLOCK* block)
     CHECK_HANDLE(block, sizeof(BLOCK));
     CHECK_MAGIC(block, MAGIC_BLOCK);
     CLEAR_MAGIC(block);
+    disable_interrupts();
     if (block->open)
-        kprocess_block_close(block->granted, block->data);
+        kprocess_block_close(block->granted, block);
+    enable_interrupts();
     kfree(block->data);
     kfree(block);
 }
@@ -144,7 +145,7 @@ void kblock_return(BLOCK* block)
     CHECK_MAGIC(block, MAGIC_BLOCK);
     if (block->owner == process)
     {
-        kblock_close_internal(block, process);
+        kblock_close_internal(block, block->granted);
         block->granted = block->owner;
     }
     else
