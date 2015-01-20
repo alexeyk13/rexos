@@ -72,7 +72,7 @@ static void hidd_kbd_inform_user(HIDD_KBD* hidd, unsigned int cmd, unsigned int 
     IPC ipc;
     ipc.cmd = USBD_INTERFACE_REQUEST;
     ipc.process = hidd->user;
-    ipc.param1 = HAL_HANDLE(HAL_USBD, USBD_HANDLE_INTERFACE + hidd->iface);
+    ipc.param1 = HAL_HANDLE(HAL_USBD, HAL_USBD_INTERFACE(hidd->iface, 0));
     ipc.param2 = cmd;
     ipc.param3 = param;
     ipc_post_or_error(&ipc);

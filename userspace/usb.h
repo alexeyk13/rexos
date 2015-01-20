@@ -247,6 +247,10 @@ typedef struct {
 #define USBD_HANDLE_DEVICE                               0x0
 #define USBD_HANDLE_INTERFACE                            0x100
 
+#define HAL_USBD_INTERFACE(num, user)                    HAL_HANDLE(HAL_USBD, ((num) << 8) + ((user) & 0xff) + USBD_HANDLE_INTERFACE)
+#define HAL_USBD_INTERFACE_NUM(hal)                      ((HAL_ITEM(hal) - USBD_HANDLE_INTERFACE) >> 8)
+#define HAL_USBD_INTERFACE_USER(hal)                     ((HAL_ITEM(hal) & 0xff)
+
 //--------------------------------------------------- CDC class ---------------------------------------------------------------
 typedef enum {
     USB_CDC_SEND_BREAK = 0,

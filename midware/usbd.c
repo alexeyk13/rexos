@@ -1221,7 +1221,7 @@ void usbd()
                 if (HAL_ITEM(ipc.param1) == USBD_HANDLE_DEVICE)
                     need_post = usbd_device_request(&usbd, &ipc);
                 else
-                    need_post = usbd_class_interface_request(&usbd, &ipc, HAL_ITEM(ipc.param1) - USBD_HANDLE_INTERFACE);
+                    need_post = usbd_class_interface_request(&usbd, &ipc, HAL_USBD_INTERFACE_NUM(ipc.param1));
             }
             else
             {
@@ -1231,7 +1231,7 @@ void usbd()
             break;
         case IPC_STREAM_WRITE:
             if (HAL_GROUP(ipc.param3) == HAL_USBD && HAL_ITEM(ipc.param3) >= USBD_HANDLE_INTERFACE)
-                usbd_class_interface_request(&usbd, &ipc, HAL_ITEM(ipc.param3) - USBD_HANDLE_INTERFACE);
+                usbd_class_interface_request(&usbd, &ipc, HAL_USBD_INTERFACE_NUM(ipc.param3));
 #if (USBD_DEBUG_ERRORS)
             else
                 printf("USBD warning - invalid stream: %#X. Maybe USB CLASS configured wrong?\n\r", ipc.param3);
@@ -1246,7 +1246,7 @@ void usbd()
                 need_post = usbd_device_request(&usbd, &ipc);
             break;
         case USBD_INTERFACE_REQUEST:
-            need_post = usbd_class_interface_request(&usbd, &ipc, HAL_ITEM(ipc.param1) - USBD_HANDLE_INTERFACE);
+            need_post = usbd_class_interface_request(&usbd, &ipc, HAL_USBD_INTERFACE_NUM(ipc.param1));
             break;
         default:
             need_post = usbd_device_request(&usbd, &ipc);

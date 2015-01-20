@@ -147,6 +147,41 @@ typedef struct {
 #define CCID_PIN_VERIFY                         0x01
 #define CCID_PIN_MODIFY                         0x02
 
+typedef struct {
+    uint8_t bMessageType;
+    uint32_t dwLength;
+    uint8_t bSlot;
+    uint8_t bSeq;
+    uint8_t msg_specific[3];
+} CCID_MESSAGE;
+
+//CCID bulk out
+#define PC_TO_RDR_ICC_POWER_ON                  0x62
+#define PC_TO_RDR_ICC_POWER_OFF                 0x63
+#define PC_TO_RDR_GET_SLOT_STATUS               0x65
+#define PC_TO_RDR_XFER_BLOCK                    0x6f
+#define PC_TO_RDR_GET_PARAMETERS                0x6c
+#define PC_TO_RDR_RESET_PARAMETERS              0x6d
+#define PC_TO_RDR_SET_PARAMETERS                0x61
+#define PC_TO_RDR_ESCAPE                        0x6b
+#define PC_TO_RDR_ICC_CLOCK                     0x6e
+#define PC_TO_RDR_T0APDU                        0x6a
+#define PC_TO_RDR_SECURE                        0x69
+#define PC_TO_RDR_MECHANICAL                    0x71
+#define PC_TO_RDR_ABORT                         0x72
+#define PC_TO_RDR_SET_DATA_RATE_AND_CLOCK       0x73
+
+//CCID bulk in
+#define RDR_TO_PC_DATA_BLOCK                    0x80
+#define RDR_TO_PC_SLOT_STATUS                   0x81
+#define RDR_TO_PC_PARAMETERS                    0x82
+#define RDR_TO_PC_ESCAPE                        0x83
+#define RDR_TO_PC_RATE_AND_CLOCK                0x84
+
+//CCID interrupt in
+#define RDR_TO_PC_NOTIFY_SLOT_CHANGE            0x50
+#define RDR_TO_PC_HARDWARE_ERROR                0x51
+
 #pragma pack(pop)
 
 #endif // CCID_H
