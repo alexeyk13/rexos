@@ -11,7 +11,7 @@
 
 #pragma pack(push, 1)
 
-#define CCID_INTERFACE_CLASS                    0x0b
+#define CCID_INTERFACE_CLASS                            0x0b
 
 typedef struct {
     uint8_t bLength;                                                                    /* Size of this descriptor in bytes */
@@ -112,40 +112,40 @@ typedef struct {
     uint8_t bMaxCCIDBusySlots;                                                          /* Maximum number5 of slots which can be simultaneously busy */
 } CCID_DESCRIPTOR_TYPE;
 
-#define CCID_VOLTAGE_5_0V                       0x1
-#define CCID_VOLTAGE_3_0V                       0x2
-#define CCID_VOLTAGE_1_8V                       0x4
+#define CCID_VOLTAGE_5_0V                               0x1
+#define CCID_VOLTAGE_3_0V                               0x2
+#define CCID_VOLTAGE_1_8V                               0x4
 
-#define CCID_PROTOCOL_T0                        0x0001
-#define CCID_PROTOCOL_T1                        0x0002
+#define CCID_PROTOCOL_T0                                0x0001
+#define CCID_PROTOCOL_T1                                0x0002
 
-#define CCID_HW_PROTOCOL_2WIRE                  0x0001
-#define CCID_HW_PROTOCOL_3WIRE                  0x0002
-#define CCID_HW_PROTOCOL_I2C                    0x0004
+#define CCID_HW_PROTOCOL_2WIRE                          0x0001
+#define CCID_HW_PROTOCOL_3WIRE                          0x0002
+#define CCID_HW_PROTOCOL_I2C                            0x0004
 
-#define CCID_MECHANICAL_NO                      0x00000000
-#define CCID_MECHANICAL_ACCEPT                  0x00000001
-#define CCID_MECHANICAL_EJECT                   0x00000002
-#define CCID_MECHANICAL_CAPTURE                 0x00000004
-#define CCID_MECHANICAL_LOCK                    0x00000008
+#define CCID_MECHANICAL_NO                              0x00000000
+#define CCID_MECHANICAL_ACCEPT                          0x00000001
+#define CCID_MECHANICAL_EJECT                           0x00000002
+#define CCID_MECHANICAL_CAPTURE                         0x00000004
+#define CCID_MECHANICAL_LOCK                            0x00000008
 
-#define CCID_FEATURE_NO                         0x00000000
-#define CCID_FEATURE_AUTO_CONFIG                0x00000002
-#define CCID_FEATURE_AUTO_ACTIVATE              0x00000004
-#define CCID_FEATURE_AUTO_VOLTAGE               0x00000008
-#define CCID_FEATURE_AUTO_CLOCK                 0x00000010
-#define CCID_FEATURE_AUTO_BAUD                  0x00000020
-#define CCID_FEATURE_AUTO_PPS                   0x00000040
-#define CCID_FEATURE_AUTO_PPS_ACTIVE            0x00000080
-#define CCID_FEATURE_CAN_STOP                   0x00000100
+#define CCID_FEATURE_NO                                 0x00000000
+#define CCID_FEATURE_AUTO_CONFIG                        0x00000002
+#define CCID_FEATURE_AUTO_ACTIVATE                      0x00000004
+#define CCID_FEATURE_AUTO_VOLTAGE                       0x00000008
+#define CCID_FEATURE_AUTO_CLOCK                         0x00000010
+#define CCID_FEATURE_AUTO_BAUD                          0x00000020
+#define CCID_FEATURE_AUTO_PPS                           0x00000040
+#define CCID_FEATURE_AUTO_PPS_ACTIVE                    0x00000080
+#define CCID_FEATURE_CAN_STOP                           0x00000100
 
-#define CCID_FEATURE_TPDU                       0x00010000
-#define CCID_FEATURE_APDU                       0x00020000
-#define CCID_FEATURE_EXT_APDU                   0x00040000
+#define CCID_FEATURE_TPDU                               0x00010000
+#define CCID_FEATURE_APDU                               0x00020000
+#define CCID_FEATURE_EXT_APDU                           0x00040000
 
-#define CCID_PIN_NO_SUPPORTED                   0x00
-#define CCID_PIN_VERIFY                         0x01
-#define CCID_PIN_MODIFY                         0x02
+#define CCID_PIN_NO_SUPPORTED                           0x00
+#define CCID_PIN_VERIFY                                 0x01
+#define CCID_PIN_MODIFY                                 0x02
 
 typedef struct {
     uint8_t bMessageType;
@@ -156,32 +156,75 @@ typedef struct {
 } CCID_MESSAGE;
 
 //CCID bulk out
-#define PC_TO_RDR_ICC_POWER_ON                  0x62
-#define PC_TO_RDR_ICC_POWER_OFF                 0x63
-#define PC_TO_RDR_GET_SLOT_STATUS               0x65
-#define PC_TO_RDR_XFER_BLOCK                    0x6f
-#define PC_TO_RDR_GET_PARAMETERS                0x6c
-#define PC_TO_RDR_RESET_PARAMETERS              0x6d
-#define PC_TO_RDR_SET_PARAMETERS                0x61
-#define PC_TO_RDR_ESCAPE                        0x6b
-#define PC_TO_RDR_ICC_CLOCK                     0x6e
-#define PC_TO_RDR_T0APDU                        0x6a
-#define PC_TO_RDR_SECURE                        0x69
-#define PC_TO_RDR_MECHANICAL                    0x71
-#define PC_TO_RDR_ABORT                         0x72
-#define PC_TO_RDR_SET_DATA_RATE_AND_CLOCK       0x73
+#define PC_TO_RDR_ICC_POWER_ON                          0x62
+#define PC_TO_RDR_ICC_POWER_OFF                         0x63
+#define PC_TO_RDR_GET_SLOT_STATUS                       0x65
+#define PC_TO_RDR_XFER_BLOCK                            0x6f
+#define PC_TO_RDR_GET_PARAMETERS                        0x6c
+#define PC_TO_RDR_RESET_PARAMETERS                      0x6d
+#define PC_TO_RDR_SET_PARAMETERS                        0x61
+#define PC_TO_RDR_ESCAPE                                0x6b
+#define PC_TO_RDR_ICC_CLOCK                             0x6e
+#define PC_TO_RDR_T0APDU                                0x6a
+#define PC_TO_RDR_SECURE                                0x69
+#define PC_TO_RDR_MECHANICAL                            0x71
+#define PC_TO_RDR_ABORT                                 0x72
+#define PC_TO_RDR_SET_DATA_RATE_AND_CLOCK               0x73
 
 //CCID bulk in
-#define RDR_TO_PC_DATA_BLOCK                    0x80
-#define RDR_TO_PC_SLOT_STATUS                   0x81
-#define RDR_TO_PC_PARAMETERS                    0x82
-#define RDR_TO_PC_ESCAPE                        0x83
-#define RDR_TO_PC_RATE_AND_CLOCK                0x84
+#define RDR_TO_PC_DATA_BLOCK                            0x80
+#define RDR_TO_PC_SLOT_STATUS                           0x81
+#define RDR_TO_PC_PARAMETERS                            0x82
+#define RDR_TO_PC_ESCAPE                                0x83
+#define RDR_TO_PC_RATE_AND_CLOCK                        0x84
 
 //CCID interrupt in
-#define RDR_TO_PC_NOTIFY_SLOT_CHANGE            0x50
-#define RDR_TO_PC_HARDWARE_ERROR                0x51
+#define RDR_TO_PC_NOTIFY_SLOT_CHANGE                    0x50
+#define RDR_TO_PC_HARDWARE_ERROR                        0x51
+
+typedef enum {
+    //requests from application
+    USB_CCID_CARD_INSERT = 0,
+    USB_CCID_CARD_REMOVE,
+    USB_CCID_CARD_POWER_ON,
+    USB_CCID_CARD_POWER_OFF,
+    //requests from host
+    USB_CCID_HOST_POWER_ON,
+    USB_CCID_HOST_POWER_OFF,
+    USB_CCID_MAX
+} USB_CCID_REQUESTS;
+
+#define CCID_SLOT_ERROR_CMD_ABORTED                     0xff
+#define CCID_SLOT_ERROR_ICC_MUTE                        0xfe
+#define CCID_SLOT_ERROR_XFR_PARITY_ERROR                0xfd
+#define CCID_SLOT_ERROR_XFR_OVERRUN                     0xfc
+#define CCID_SLOT_ERROR_HW_ERROR                        0xfb
+#define CCID_SLOT_ERROR_BAD_ATR_TS                      0xf8
+#define CCID_SLOT_ERROR_BAD_ATR_TCK                     0xf7
+#define CCID_SLOT_ERROR_ICC_PROTOCOL_NOT_SUPPORT        0xf6
+#define CCID_SLOT_ERROR_ICC_CLASS_NOT_SUPPORT           0xf5
+#define CCID_SLOT_ERROR_PROCEDURE_BYTE_CONFLICT         0xf4
+#define CCID_SLOT_ERROR_DEACTIVATED_PROTOCOL            0xf3
+#define CCID_SLOT_ERROR_BUSY_WITH_AUTO_SEQUENCE         0xf2
+#define CCID_SLOT_ERROR_PIN_TIMEOUT                     0xf0
+#define CCID_SLOT_ERROR_PIN_CANCELLED                   0xef
+#define CCID_SLOT_ERROR_CMD_SLOT_BUSY                   0xe0
+#define CCID_SLOT_ERROR_CMD_NOT_SUPPORTED               0x00
+
+#define CCID_SLOT_STATUS_ICC_PRESENT_AND_ACTIVE         (0 << 0)
+#define CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE       (1 << 0)
+#define CCID_SLOT_STATUS_ICC_NOT_PRESENT                (2 << 0)
+
+#define CCID_SLOT_STATUS_NO_ERROR                       (0 << 6)
+#define CCID_SLOT_STATUS_FAIL                           (1 << 6)
+#define CCID_SLOT_STATUS_TIMEOUT                        (2 << 6)
+
+#define CCID_CLOCK_STATUS_RUNNING                       0
+#define CCID_CLOCK_STATUS_STOPPED_H                     1
+#define CCID_CLOCK_STATUS_STOPPED_L                     2
+#define CCID_CLOCK_STATUS_STOPPED_UNKNOWN               3
 
 #pragma pack(pop)
 
 #endif // CCID_H
+
