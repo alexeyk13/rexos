@@ -54,7 +54,7 @@ static const uint8_t __KBD_REPORT[HID_BOOT_KEYBOARD_REPORT_SIZE] =
 
 typedef struct {
     HANDLE usb;
-    HANDLE block, user;
+    HANDLE block;
     BOOT_KEYBOARD kbd;
     uint8_t in_ep, iface;
     uint8_t idle;
@@ -65,19 +65,6 @@ static void hidd_kbd_destroy(HIDD_KBD* hidd)
 {
     block_destroy(hidd->block);
     free(hidd);
-}
-
-static void hidd_kbd_inform_user(HIDD_KBD* hidd, unsigned int cmd, unsigned int param)
-{
-    if (hidd->user == INVALID_HANDLE)
-        return;
-    IPC ipc;
-    ipc.cmd = USBD_INTERFACE_REQUEST;
-    ipc.process = hidd->user;
-    ipc.param1 = HAL_HANDLE(HAL_USBD, HAL_USBD_INTERFACE(hidd->iface, 0));
-    ipc.param2 = cmd;
-    ipc.param3 = param;
-    ipc_post_or_error(&ipc);
 }
 
 static void hidd_kbd_send_report(HIDD_KBD* hidd)
@@ -138,7 +125,6 @@ void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cf
         return;
     }
     hidd->usb = object_get(SYS_OBJ_USB);
-    hidd->user = INVALID_HANDLE;
     hidd->iface = hid_iface;
     hidd->in_ep = in_ep;
     hidd->suspended = false;
@@ -175,7 +161,6 @@ void hidd_kbd_class_suspend(USBD* usbd, void* param)
     HIDD_KBD* hidd = (HIDD_KBD*)param;
     fflush(hidd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | hidd->in_ep));
     hidd->state = USB_HID_KBD_IDLE;
-    hidd->user = INVALID_HANDLE;
     hidd->suspended = true;
 }
 
@@ -232,7 +217,7 @@ static inline int hidd_kbd_get_report(HIDD_KBD* hidd, unsigned int type, HANDLE 
     return res;
 }
 
-static inline int hidd_kbd_set_report(HIDD_KBD* hidd, HANDLE block, unsigned int length)
+static inline int hidd_kbd_set_report(USBD* usbd, HIDD_KBD* hidd, HANDLE block, unsigned int length)
 {
     uint8_t* report = block_open(block);
     if (report == NULL)
@@ -241,7 +226,7 @@ static inline int hidd_kbd_set_report(HIDD_KBD* hidd, HANDLE block, unsigned int
     printf("HIDD KBD: set LEDs %#X\n\r", report[0]);
 #endif
     if (hidd->kbd.leds != report[0])
-        hidd_kbd_inform_user(hidd, USB_HID_KBD_LEDS_STATE_CHANGED, report[0]);
+        usbd_post_user(usbd, hidd->iface, USB_HID_KBD_LEDS_STATE_CHANGED, report[0]);
     hidd->kbd.leds = report[0];
     return 0;
 }
@@ -304,7 +289,7 @@ int hidd_kbd_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
         res = hidd_kbd_get_idle(hidd, block);
         break;
     case HID_SET_REPORT:
-        res = hidd_kbd_set_report(hidd, block, setup->wLength);
+        res = hidd_kbd_set_report(usbd, hidd, block, setup->wLength);
         break;
     case HID_SET_IDLE:
         res = hidd_kbd_set_idle(hidd, setup->wValue >> 8);
@@ -319,35 +304,18 @@ int hidd_kbd_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
     return res;
 }
 
-static inline void hidd_kbd_write_complete(HIDD_KBD* hidd)
+static inline void hidd_kbd_write_complete(USBD* usbd, HIDD_KBD* hidd)
 {
-
-    hidd_kbd_inform_user(hidd, hidd->state, 0);
+    usbd_post_user(usbd, hidd->iface, hidd->state, 0);
     hidd->state = USB_HID_KBD_IDLE;
 }
 
-static inline void hidd_kbd_register_handler(HIDD_KBD* hidd, HANDLE process)
-{
-    if (hidd->user == INVALID_HANDLE)
-        hidd->user = process;
-    else
-        error(ERROR_ACCESS_DENIED);
-}
-
-static inline void hidd_kbd_unregister_handler(HIDD_KBD* hidd, HANDLE process)
-{
-    if (hidd->user == process)
-        hidd->user = INVALID_HANDLE;
-    else
-        error(ERROR_ACCESS_DENIED);
-}
-
-static inline void hidd_kbd_modifier_change(HIDD_KBD* hidd, uint8_t modifier)
+static inline void hidd_kbd_modifier_change(USBD* usbd, HIDD_KBD* hidd, uint8_t modifier)
 {
     if (hidd->state != USB_HID_KBD_IDLE)
     {
         error(ERROR_IN_PROGRESS);
-        hidd_kbd_inform_user(hidd, USB_HID_KBD_MODIFIER_CHANGE, 0);
+        usbd_post_user(usbd, hidd->iface, USB_HID_KBD_MODIFIER_CHANGE, 0);
         return;
     }
     hidd->kbd.modifier = modifier;
@@ -355,21 +323,21 @@ static inline void hidd_kbd_modifier_change(HIDD_KBD* hidd, uint8_t modifier)
     hidd_kbd_send_report(hidd);
 }
 
-static inline void hidd_kbd_key_press(HIDD_KBD* hidd, unsigned int key)
+static inline void hidd_kbd_key_press(USBD* usbd, HIDD_KBD* hidd, unsigned int key)
 {
     unsigned int swap, tmp;
     int i;
     if (hidd->state != USB_HID_KBD_IDLE)
     {
         error(ERROR_IN_PROGRESS);
-        hidd_kbd_inform_user(hidd, USB_HID_KBD_KEY_PRESS, 0);
+        usbd_post_user(usbd, hidd->iface, USB_HID_KBD_KEY_PRESS, 0);
         return;
     }
     for (i = 0; i < 6 && hidd->kbd.keys[i]; ++i)
         if (hidd->kbd.keys[i] == key)
         {
             error(ERROR_ALREADY_CONFIGURED);
-            hidd_kbd_inform_user(hidd, USB_HID_KBD_KEY_PRESS, 0);
+            usbd_post_user(usbd, hidd->iface, USB_HID_KBD_KEY_PRESS, 0);
             return;
         }
 
@@ -397,13 +365,13 @@ static inline void hidd_kbd_key_press(HIDD_KBD* hidd, unsigned int key)
     hidd_kbd_send_report(hidd);
 }
 
-static inline void hidd_kbd_key_release(HIDD_KBD* hidd, unsigned int key)
+static inline void hidd_kbd_key_release(USBD* usbd, HIDD_KBD* hidd, unsigned int key)
 {
     int i;
     if (hidd->state != USB_HID_KBD_IDLE)
     {
         error(ERROR_IN_PROGRESS);
-        hidd_kbd_inform_user(hidd, USB_HID_KBD_KEY_RELEASE, 0);
+        usbd_post_user(usbd, hidd->iface, USB_HID_KBD_KEY_RELEASE, 0);
         return;
     }
     hidd->over = false;
@@ -435,27 +403,19 @@ bool hidd_kbd_class_request(USBD* usbd, void* param, IPC* ipc)
     switch (ipc->cmd)
     {
     case IPC_WRITE_COMPLETE:
-        hidd_kbd_write_complete(hidd);
-        break;
-    case USBD_REGISTER_HANDLER:
-        hidd_kbd_register_handler(hidd, ipc->process);
-        need_post = true;
-        break;
-    case USBD_UNREGISTER_HANDLER:
-        hidd_kbd_unregister_handler(hidd, ipc->process);
-        need_post = true;
+        hidd_kbd_write_complete(usbd, hidd);
         break;
     case USBD_INTERFACE_REQUEST:
         switch (ipc->param2)
         {
         case USB_HID_KBD_MODIFIER_CHANGE:
-            hidd_kbd_modifier_change(hidd, ipc->param3);
+            hidd_kbd_modifier_change(usbd, hidd, ipc->param3);
             break;
         case USB_HID_KBD_KEY_PRESS:
-            hidd_kbd_key_press(hidd, ipc->param3);
+            hidd_kbd_key_press(usbd, hidd, ipc->param3);
             break;
         case USB_HID_KBD_KEY_RELEASE:
-            hidd_kbd_key_release(hidd, ipc->param3);
+            hidd_kbd_key_release(usbd, hidd, ipc->param3);
             break;
         case USB_HID_KBD_GET_LEDS_STATE:
             hidd_kbd_get_leds_state(hidd, ipc);

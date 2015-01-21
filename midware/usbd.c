@@ -41,7 +41,7 @@ typedef struct {
 } USBD_STRING;
 
 typedef struct _USBD {
-    HANDLE usb, block, vendor;
+    HANDLE usb, block, user;
     //SETUP state machine
     SETUP setup;
     USB_SETUP_STATE setup_state;
@@ -60,7 +60,6 @@ typedef struct _USBD {
 #if (USB_2_0)
     USB_DEVICE_DESCRIPTOR_TYPE *dev_descriptor_hs;
 #endif //USB_2_0
-    ARRAY *handlers;
     ARRAY *conf_descriptors_fs;
 #if (USB_2_0)
     ARRAY *conf_descriptors_hs;
@@ -74,9 +73,9 @@ typedef struct _USBD {
 typedef struct {
     const USBD_CLASS* usbd_class;
     void* param;
-} USBD_CLASS_ENTRY;
+} USBD_IFACE_ENTRY;
 
-#define IFACE(usbd, iface)                          (((USBD_CLASS_ENTRY*)(array_data((usbd)->ifaces)))[(iface)])
+#define IFACE(usbd, iface)                          (((USBD_IFACE_ENTRY*)(array_data((usbd)->ifaces)))[(iface)])
 #define STRING(usbd, i)                             (((USBD_STRING*)(array_data((usbd)->string_descriptors)))[(i)])
 #define STRINGS_COUNT(usbd)                         (array_size((usbd)->string_descriptors) / sizeof(USBD_STRING))
 
@@ -155,12 +154,13 @@ bool usbd_stub_class_request(USBD* usbd, void* param, IPC* ipc)
 
 void usbd_inform(USBD* usbd, unsigned int alert, bool need_wait)
 {
-    int i;
-    for (i = 0; i < void_array_size(usbd->handlers); ++i)
+    if (usbd->user != INVALID_HANDLE)
+    {
         if (need_wait)
-            ack((HANDLE)(void_array_data(usbd->handlers)[i]), USBD_ALERT, alert, 0, 0);
+            ack(usbd->user, USBD_ALERT, alert, 0, 0);
         else
-            ipc_post_inline((HANDLE)(void_array_data(usbd->handlers)[i]), USBD_ALERT, alert, 0, 0);
+            ipc_post_inline(usbd->user, USBD_ALERT, alert, 0, 0);
+    }
 }
 
 void usbd_class_reset(USBD* usbd)
@@ -237,7 +237,7 @@ static inline void usbd_class_configured(USBD* usbd)
     for (iface = usb_get_first_interface(cfg), usbd->ifacecnt = 0; iface != NULL; iface = usb_get_next_interface(cfg, iface))
         if (iface->bInterfaceNumber >= usbd->ifacecnt)
             usbd->ifacecnt = iface->bInterfaceNumber + 1;
-    if (array_add(&usbd->ifaces, usbd->ifacecnt * sizeof(USBD_CLASS_ENTRY)) == NULL)
+    if (array_add(&usbd->ifaces, usbd->ifacecnt * sizeof(USBD_IFACE_ENTRY)) == NULL)
     {
 #if (USB_DEBUG_ERRORS)
         printf("USBD fatal: Out of memory\n\r");
@@ -278,31 +278,6 @@ static inline void usbd_close(USBD* usbd)
 
     block_destroy(usbd->block);
     usbd->block = INVALID_HANDLE;
-}
-
-static inline void usbd_register_object(ARRAY** ar, HANDLE handle)
-{
-    int i;
-    for (i = 0; i < void_array_size(*ar); ++i)
-        if ((HANDLE)(void_array_data(*ar)[i]) == handle)
-        {
-            error(ERROR_ALREADY_CONFIGURED);
-            return;
-        }
-    if (void_array_add(ar, 1))
-        void_array_data(*ar)[void_array_size(*ar) - 1] = (void*)handle;
-}
-
-static inline void usbd_unregister_object(ARRAY** ar, HANDLE handle)
-{
-    int i;
-    for (i = 0; i < void_array_size(*ar); ++i)
-        if ((HANDLE)(void_array_data(*ar)[i]) == handle)
-        {
-            void_array_remove(ar, i, 1);
-            return;
-        }
-    error(ERROR_NOT_CONFIGURED);
 }
 
 static inline bool usbd_register_device(USB_DEVICE_DESCRIPTOR_TYPE** descriptor, void* ptr)
@@ -470,31 +445,6 @@ void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned 
         error(ERROR_NOT_SUPPORTED);
         break;
     }
-}
-
-static inline void usbd_register_vendor(USBD* usbd, HANDLE vendor)
-{
-    if (usbd->vendor != INVALID_HANDLE)
-    {
-        error(ERROR_ALREADY_CONFIGURED);
-        return;
-    }
-    usbd->vendor = vendor;
-}
-
-static inline void usbd_unregister_vendor(USBD* usbd, HANDLE vendor)
-{
-    if (usbd->vendor == INVALID_HANDLE)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
-    if (usbd->vendor != vendor)
-    {
-        error(ERROR_ACCESS_DENIED);
-        return;
-    }
-    usbd->vendor = INVALID_HANDLE;
 }
 
 static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
@@ -883,8 +833,8 @@ void usbd_setup_process(USBD* usbd)
     case BM_REQUEST_RECIPIENT_DEVICE:
         if ((usbd->setup.bmRequestType & BM_REQUEST_TYPE) == BM_REQUEST_TYPE_STANDART)
             res = usbd_standart_device_request(usbd);
-        else if (usbd->vendor != INVALID_HANDLE)
-            res = get(usbd->vendor, USBD_VENDOR_REQUEST, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
+        else if (usbd->user != INVALID_HANDLE)
+            res = get(usbd->user, USBD_VENDOR_REQUEST, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
         break;
     case BM_REQUEST_RECIPIENT_INTERFACE:
         res = IFACE(usbd, usbd->setup.wIndex).usbd_class->usbd_class_setup(usbd, IFACE(usbd, usbd->setup.wIndex).param, &usbd->setup, usbd->block);;
@@ -1067,7 +1017,7 @@ static inline void usbd_info(USBD* usbd)
 static inline void usbd_init(USBD* usbd)
 {
     int i;
-    usbd->vendor = INVALID_HANDLE;
+    usbd->user = INVALID_HANDLE;
     usbd->usb = object_get(SYS_OBJ_USB);
     usbd->setup_state = USB_SETUP_STATE_REQUEST;
     usbd->state = USBD_STATE_DEFAULT;
@@ -1084,18 +1034,32 @@ static inline void usbd_init(USBD* usbd)
 #if (USB_2_0)
     usbd->dev_descriptor_hs = NULL;
 #endif //USB_2_0
-
-    void_array_create(&usbd->handlers, 1);
     void_array_create(&usbd->conf_descriptors_fs, 1);
 #if (USB_2_0)
     void_array_create(&usbd->conf_descriptors_hs, 1);
 #endif //USB_2_0
-    array_create(&usbd->ifaces, sizeof(USBD_CLASS_ENTRY));
+    array_create(&usbd->ifaces, sizeof(USBD_IFACE_ENTRY));
     //at least 3: manufacturer, product, string 0
     array_create(&usbd->string_descriptors, 3 * sizeof(USBD_STRING));
 
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
         usbd->ep_iface[i] = USBD_INVALID_INTERFACE;
+}
+
+static inline void usbd_register_user(USBD* usbd, HANDLE process)
+{
+    if (usbd->user != INVALID_HANDLE)
+        error(ERROR_ALREADY_CONFIGURED);
+    else
+        usbd->user = process;
+}
+
+static inline void usbd_unregister_user(USBD* usbd, HANDLE process)
+{
+    if (usbd->user != process)
+        error(ERROR_ACCESS_DENIED);
+    else
+        usbd->user = process;
 }
 
 bool usbd_device_request(USBD* usbd, IPC* ipc)
@@ -1112,19 +1076,11 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
         need_post = true;
         break;
     case USBD_REGISTER_HANDLER:
-        usbd_register_object(&usbd->handlers, ipc->process);
+        usbd_register_user(usbd, ipc->process);
         need_post = true;
         break;
     case USBD_UNREGISTER_HANDLER:
-        usbd_unregister_object(&usbd->handlers, ipc->process);
-        need_post = true;
-        break;
-    case USBD_REGISTER_VENDOR:
-        usbd_register_vendor(usbd, (HANDLE)ipc->process);
-        need_post = true;
-        break;
-    case USBD_UNREGISTER_VENDOR:
-        usbd_unregister_vendor(usbd, (HANDLE)ipc->process);
+        usbd_register_user(usbd, ipc->process);
         need_post = true;
         break;
     case USBD_GET_STATE:
@@ -1226,8 +1182,6 @@ void usbd()
         case IPC_CLOSE:
         case IPC_GET_RX_STREAM:
         case IPC_GET_TX_STREAM:
-        case USBD_REGISTER_HANDLER:
-        case USBD_UNREGISTER_HANDLER:
             if (HAL_GROUP(ipc.param1) == HAL_USBD)
             {
                 if (HAL_ITEM(ipc.param1) == USBD_HANDLE_DEVICE)
@@ -1312,4 +1266,17 @@ bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int num)
         return false;
     usbd->ep_iface[num] = USBD_INVALID_INTERFACE;
     return true;
+}
+
+void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int cmd, unsigned int param)
+{
+    if (usbd->user == INVALID_HANDLE)
+        return;
+    IPC ipc;
+    ipc.cmd = USBD_INTERFACE_REQUEST;
+    ipc.process = usbd->user;
+    ipc.param1 = HAL_HANDLE(HAL_USBD, HAL_USBD_INTERFACE(iface, 0));
+    ipc.param2 = cmd;
+    ipc.param3 = param;
+    ipc_post_or_error(&ipc);
 }
