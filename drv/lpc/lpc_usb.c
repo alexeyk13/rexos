@@ -241,7 +241,7 @@ static inline void lpc_usb_out(SHARED_USB_DRV* drv, int num)
     memcpy(ep->ptr + ep->processed, ep->fifo, cnt);
     ep->processed += cnt;
 
-    if (ep->processed >= ep->size)
+    if (ep->processed >= ep->size || cnt < ep->mps)
     {
         ipc.process = drv->usb.device;
         ipc.cmd = IPC_READ_COMPLETE;
