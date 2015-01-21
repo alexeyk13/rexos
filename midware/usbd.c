@@ -16,7 +16,7 @@
 #include "../userspace/array.h"
 #include "../userspace/file.h"
 #if (USBD_CDC_CLASS)
-#include "cdc.h"
+#include "cdcd.h"
 #endif //USBD_CDC_CLASS
 #if (USBD_HID_KBD_CLASS)
 #include "hidd_kbd.h"
@@ -86,9 +86,22 @@ typedef struct {
 const char* const USBD_TEXT_STATES[] =              {"Default", "Addressed", "Configured"};
 #endif
 
+void usbd_stub_class_state_change(USBD* usbd, void* param);
+int usbd_stub_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block);
+bool usbd_stub_class_request(USBD* usbd, void* param, IPC* ipc);
+
+const USBD_CLASS __USBD_STUB_CLASS = {
+    NULL,
+    usbd_stub_class_state_change,
+    usbd_stub_class_state_change,
+    usbd_stub_class_state_change,
+    usbd_stub_class_setup,
+    usbd_stub_class_request,
+};
+
 static const USBD_CLASS* __USBD_CLASSES[] =         {
 #if (USBD_CDC_CLASS)
-                                                        &__CDC_CLASS,
+                                                        &__CDCD_CLASS,
 #endif //USBD_CDC_CLASS
 #if (USBD_HID_KBD_CLASS)
                                                         &__HIDD_KBD_CLASS,
@@ -96,7 +109,7 @@ static const USBD_CLASS* __USBD_CLASSES[] =         {
 #if (USBD_CCID_CLASS)
                                                         &__CCIDD_CLASS,
 #endif //USBD_CCID_CLASS
-                                                        (const USBD_CLASS*)NULL
+                                                        &__USBD_STUB_CLASS
                                                     };
 
 void usbd();
@@ -116,6 +129,30 @@ const REX __USBD = {
     usbd
 };
 
+void usbd_stub_class_state_change(USBD* usbd, void* param)
+{
+#if (USBD_DEBUG_ERRORS)
+    printf("USBD class USB state change stub!\n\r");
+#endif
+}
+
+int usbd_stub_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
+{
+#if (USBD_DEBUG_ERRORS)
+    printf("USBD class SETUP stub!\n\r");
+#endif
+    return -1;
+}
+
+bool usbd_stub_class_request(USBD* usbd, void* param, IPC* ipc)
+{
+#if (USBD_DEBUG_ERRORS)
+    printf("USBD class request stub!\n\r");
+#endif
+    //less chance to halt app
+    return true;
+}
+
 void usbd_inform(USBD* usbd, unsigned int alert, bool need_wait)
 {
     int i;
@@ -131,10 +168,7 @@ void usbd_class_reset(USBD* usbd)
     int i;
     usbd_inform(usbd, USBD_ALERT_RESET, true);
     for (i = 0; i < usbd->ifacecnt; ++i)
-    {
-        if (IFACE(usbd, i).usbd_class != NULL)
-            IFACE(usbd, i).usbd_class->usbd_class_reset(usbd, IFACE(usbd, i).param);
-    }
+        IFACE(usbd, i).usbd_class->usbd_class_reset(usbd, IFACE(usbd, i).param);
     array_clear(&usbd->ifaces);
 }
 
@@ -143,20 +177,14 @@ static inline void usbd_class_suspend(USBD* usbd)
     int i;
     usbd_inform(usbd, USBD_ALERT_SUSPEND, true);
     for (i = 0; i < usbd->ifacecnt; ++i)
-    {
-        if (IFACE(usbd, i).usbd_class != NULL)
-            IFACE(usbd, i).usbd_class->usbd_class_suspend(usbd, IFACE(usbd, i).param);
-    }
+        IFACE(usbd, i).usbd_class->usbd_class_suspend(usbd, IFACE(usbd, i).param);
 }
 
 void usbd_class_resume(USBD* usbd)
 {
     int i;
     for (i = 0; i < usbd->ifacecnt; ++i)
-    {
-        if (IFACE(usbd, i).usbd_class != NULL)
-            IFACE(usbd, i).usbd_class->usbd_class_resume(usbd, IFACE(usbd, i).param);
-    }
+        IFACE(usbd, i).usbd_class->usbd_class_resume(usbd, IFACE(usbd, i).param);
     usbd_inform(usbd, USBD_ALERT_RESUME, false);
 }
 
@@ -217,13 +245,13 @@ static inline void usbd_class_configured(USBD* usbd)
         process_exit();
         return;
     }
-    for (iface = usb_get_first_interface(cfg), i = 0; iface != NULL; iface = usb_get_next_interface(cfg, iface), ++i)
-        IFACE(usbd, i).usbd_class = NULL;
+    for (i = 0; i < usbd->ifacecnt; ++i)
+        IFACE(usbd, i).usbd_class = &__USBD_STUB_CLASS;
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
         usbd->ep_iface[i] = USBD_INVALID_INTERFACE;
 
     //check all classes for interface
-    for (i = 0; __USBD_CLASSES[i] != NULL; ++i)
+    for (i = 0; __USBD_CLASSES[i] != &__USBD_STUB_CLASS; ++i)
         __USBD_CLASSES[i]->usbd_class_configured(usbd, cfg);
 
     usbd_inform(usbd, USBD_ALERT_CONFIGURED, false);
@@ -847,18 +875,6 @@ static inline int usbd_endpoint_request(USBD* usbd)
     return res;
 }
 
-static inline int usbd_interface_setup(USBD* usbd, unsigned int iface)
-{
-    if (iface >= usbd->ifacecnt || IFACE(usbd, iface).usbd_class == NULL)
-    {
-#if (USBD_DEBUG_ERRORS)
-        printf("USBD class error: Interface %d not configured\n\r", iface);
-#endif
-        return -1;
-    }
-    return IFACE(usbd, iface).usbd_class->usbd_class_setup(usbd, IFACE(usbd, iface).param, &usbd->setup, usbd->block);
-}
-
 void usbd_setup_process(USBD* usbd)
 {
     int res = -1;
@@ -871,7 +887,7 @@ void usbd_setup_process(USBD* usbd)
             res = get(usbd->vendor, USBD_VENDOR_REQUEST, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
         break;
     case BM_REQUEST_RECIPIENT_INTERFACE:
-        res = usbd_interface_setup(usbd, usbd->setup.wIndex);
+        res = IFACE(usbd, usbd->setup.wIndex).usbd_class->usbd_class_setup(usbd, IFACE(usbd, usbd->setup.wIndex).param, &usbd->setup, usbd->block);;
         break;
     case BM_REQUEST_RECIPIENT_ENDPOINT:
         res = usbd_endpoint_request(usbd);
@@ -1156,24 +1172,20 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
 
 bool usbd_class_interface_request(USBD* usbd, IPC* ipc, unsigned int iface)
 {
-    if (iface >= usbd->ifacecnt || IFACE(usbd, iface).usbd_class == NULL)
+    if (iface >= usbd->ifacecnt)
     {
-#if (USBD_DEBUG_ERRORS)
-        printf("USBD class error: Interface %u not configured\n\r", iface);
-#endif
-        return false;
+        error(ERROR_INVALID_PARAMS);
+        return true;
     }
     return IFACE(usbd, iface).usbd_class->usbd_class_request(usbd, IFACE(usbd, iface).param, ipc);
 }
 
 bool usbd_class_endpoint_request(USBD *usbd, IPC* ipc, unsigned int num)
 {
-    if (num >= USB_EP_COUNT_MAX || usbd->ep_iface[num] == USBD_INVALID_INTERFACE)
+    if (num >= USB_EP_COUNT_MAX || usbd->ep_iface[num] >= usbd->ifacecnt)
     {
-#if (USBD_DEBUG_ERRORS)
-        printf("USBD class error: EP%u interface not configured\n\r", num);
-#endif
-        return false;
+        error(ERROR_INVALID_PARAMS);
+        return true;
     }
     return IFACE(usbd, usbd->ep_iface[num]).usbd_class->usbd_class_request(usbd, IFACE(usbd, usbd->ep_iface[num]).param, ipc);
 }
@@ -1184,7 +1196,7 @@ void usbd()
     IPC ipc;
     bool need_post;
 
-#if (SYS_INFO) || (USBD_DEBUG_REQUESTS) || (USBD_DEBUG_ERRORS) || (USBD_DEBUG_CLASS_REQUESTS) || (USBD_DEBUG_CLASS_IO)
+#if (SYS_INFO) || (USBD_DEBUG)
     open_stdout();
 #endif
     object_set_self(SYS_OBJ_USBD);
@@ -1261,7 +1273,7 @@ bool usbd_register_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* u
 {
     if (iface >= usbd->ifacecnt)
         return false;
-    if (IFACE(usbd, iface).usbd_class != NULL)
+    if (IFACE(usbd, iface).usbd_class != &__USBD_STUB_CLASS)
         return false;
     IFACE(usbd, iface).usbd_class = usbd_class;
     IFACE(usbd, iface).param = param;
@@ -1274,7 +1286,7 @@ bool usbd_unregister_interface(USBD* usbd, unsigned int iface, const USBD_CLASS*
         return false;
     if (IFACE(usbd, iface).usbd_class != usbd_class)
         return false;
-    IFACE(usbd, iface).usbd_class = NULL;
+    IFACE(usbd, iface).usbd_class = &__USBD_STUB_CLASS;
     return true;
 }
 
@@ -1282,7 +1294,7 @@ bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int num)
 {
     if (iface >= usbd->ifacecnt || num >= USB_EP_COUNT_MAX)
         return false;
-    if (IFACE(usbd, iface).usbd_class == NULL)
+    if (IFACE(usbd, iface).usbd_class == &__USBD_STUB_CLASS)
         return false;
     if (usbd->ep_iface[num] != USBD_INVALID_INTERFACE)
         return false;
@@ -1294,7 +1306,7 @@ bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int num)
 {
     if (iface >= usbd->ifacecnt || num >= USB_EP_COUNT_MAX)
         return false;
-    if (IFACE(usbd, iface).usbd_class == NULL)
+    if (IFACE(usbd, iface).usbd_class == &__USBD_STUB_CLASS)
         return false;
     if (usbd->ep_iface[num] != iface)
         return false;
