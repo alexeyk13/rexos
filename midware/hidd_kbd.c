@@ -8,6 +8,8 @@
 #include "../userspace/hid.h"
 #include "../userspace/stdlib.h"
 #include "../userspace/file.h"
+#include "sys_config.h"
+
 #include "../userspace/stdio.h"
 #include "../userspace/block.h"
 #include "../userspace/sys.h"
@@ -146,9 +148,9 @@ void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cf
     hidd->state = USB_HID_KBD_IDLE;
     memset(&hidd->kbd, 0x00, sizeof(BOOT_KEYBOARD));
 
-#if (USBD_DEBUG_CLASS_REQUESTS)
+#if (USBD_HID_DEBUG_REQUESTS)
     printf("Found USB HID device class, EP%d, iface: %d\n\r", hidd->in_ep, hidd->iface);
-#endif //USBD_DEBUG_CLASS_REQUESTS
+#endif //USBD_HID_DEBUG_REQUESTS
 
     size = in_ep_size;
     fopen_p(hidd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | hidd->in_ep), USB_EP_INTERRUPT, (void*)size);
@@ -192,7 +194,7 @@ static inline int hidd_kbd_get_descriptor(HIDD_KBD* hidd, unsigned int value, un
     switch (value)
     {
     case HID_REPORT_DESCRIPTOR_TYPE:
-#if (USBD_DEBUG_CLASS_REQUESTS)
+#if (USBD_HID_DEBUG_REQUESTS)
         printf("HIDD KBD: get REPORT DESCRIPTOR\n\r");
 #endif
         memcpy(descriptor, &__KBD_REPORT, HID_BOOT_KEYBOARD_REPORT_SIZE);
@@ -211,7 +213,7 @@ static inline int hidd_kbd_get_report(HIDD_KBD* hidd, unsigned int type, HANDLE 
     switch (type)
     {
     case HID_REPORT_TYPE_INPUT:
-#if (USBD_DEBUG_CLASS_REQUESTS)
+#if (USBD_HID_DEBUG_REQUESTS)
         printf("HIDD KBD: get INPUT report\n\r");
 #endif
         report[0] = hidd->kbd.modifier;
@@ -220,7 +222,7 @@ static inline int hidd_kbd_get_report(HIDD_KBD* hidd, unsigned int type, HANDLE 
         res = 8;
         break;
     case HID_REPORT_TYPE_OUTPUT:
-#if (USBD_DEBUG_CLASS_REQUESTS)
+#if (USBD_HID_DEBUG_REQUESTS)
         printf("HIDD KBD: get OUTPUT report\n\r");
 #endif
         report[0] = hidd->kbd.leds;
@@ -235,7 +237,7 @@ static inline int hidd_kbd_set_report(HIDD_KBD* hidd, HANDLE block, unsigned int
     uint8_t* report = block_open(block);
     if (report == NULL)
         return -1;
-#if (USBD_DEBUG_CLASS_REQUESTS)
+#if (USBD_HID_DEBUG_REQUESTS)
     printf("HIDD KBD: set LEDs %#X\n\r", report[0]);
 #endif
     if (hidd->kbd.leds != report[0])
@@ -246,7 +248,7 @@ static inline int hidd_kbd_set_report(HIDD_KBD* hidd, HANDLE block, unsigned int
 
 static inline int hidd_kbd_get_idle(HIDD_KBD* hidd, HANDLE block)
 {
-#if (USBD_DEBUG_CLASS_REQUESTS)
+#if (USBD_HID_DEBUG_REQUESTS)
     printf("HIDD KBD: get idle\n\r");
 #endif
     uint8_t* ptr = block_open(block);
@@ -258,7 +260,7 @@ static inline int hidd_kbd_get_idle(HIDD_KBD* hidd, HANDLE block)
 
 static inline int hidd_kbd_set_idle(HIDD_KBD* hidd, unsigned int value)
 {
-#if (USBD_DEBUG_CLASS_REQUESTS)
+#if (USBD_HID_DEBUG_REQUESTS)
     printf("HIDD KBD: set idle %dms\n\r", value << 2);
 #endif
     //no IDLE report is supported
@@ -267,7 +269,7 @@ static inline int hidd_kbd_set_idle(HIDD_KBD* hidd, unsigned int value)
 
 static inline int hidd_kbd_get_protocol(HIDD_KBD* hidd, HANDLE block)
 {
-#if (USBD_DEBUG_CLASS_REQUESTS)
+#if (USBD_HID_DEBUG_REQUESTS)
     printf("HIDD KBD: get protocol\n\r");
 #endif
     uint8_t* ptr = block_open(block);
@@ -279,7 +281,7 @@ static inline int hidd_kbd_get_protocol(HIDD_KBD* hidd, HANDLE block)
 
 static inline int hidd_kbd_set_protocol(HIDD_KBD* hidd, unsigned int protocol, HANDLE block)
 {
-#if (USBD_DEBUG_CLASS_REQUESTS)
+#if (USBD_HID_DEBUG_REQUESTS)
     printf("HIDD KBD: set protocol: %d\n\r", protocol & 1);
 #endif
     hidd->boot_protocol = protocol & 1;
