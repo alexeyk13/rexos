@@ -17,6 +17,7 @@ typedef enum {
     CCIDD_STATE_CARD_POWERED,
     CCIDD_STATE_CARD_POWERING_OFF,
     CCIDD_STATE_ABORTING,
+    CCIDD_STATE_READY,
     CCIDD_STATE_RX,
     CCIDD_STATE_SC_REQUEST,
     CCIDD_STATE_TX,
@@ -150,6 +151,23 @@ void ccidd_class_reset(USBD* usbd, void* param)
     ccidd_destroy(ccidd);
 }
 
+static void ccidd_notify_state_change(USBD* usbd, CCIDD* ccidd)
+{
+    if (ccidd->status_ep && !ccidd->status_busy)
+    {
+        uint8_t* buf = block_open(ccidd->usb_status_block);
+        //bMessageType
+        buf[0] = RDR_TO_PC_NOTIFY_SLOT_CHANGE;
+        //changed status
+        buf[1] = 1 << 1;
+        //card present
+        if (ccidd->state != CCIDD_STATE_NO_CARD)
+            buf[1] |= 1 << 0;
+        fwrite_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->status_ep), ccidd->usb_status_block, 2);
+        ccidd->status_busy = true;
+    }
+}
+
 void ccidd_class_suspend(USBD* usbd, void* param)
 {
     CCIDD* ccidd = (CCIDD*)param;
@@ -167,7 +185,9 @@ void ccidd_class_resume(USBD* usbd, void* param)
 {
     CCIDD* ccidd = (CCIDD*)param;
     ccidd->suspended = false;
-    fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
+    if (ccidd->state != CCIDD_STATE_CARD_POWERED)
+        fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
+    ccidd_notify_state_change(usbd, ccidd);
 }
 
 int ccidd_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
@@ -197,23 +217,6 @@ int ccidd_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
         break;
     }
     return res;
-}
-
-void ccidd_notify_state_change(USBD* usbd, CCIDD* ccidd)
-{
-    if (ccidd->status_ep && !ccidd->status_busy)
-    {
-        uint8_t* buf = block_open(ccidd->usb_status_block);
-        //bMessageType
-        buf[0] = RDR_TO_PC_NOTIFY_SLOT_CHANGE;
-        //changed status
-        buf[1] = 1 << 1;
-        //card present
-        if (ccidd->state != CCIDD_STATE_NO_CARD)
-            buf[1] |= 1 << 0;
-        fwrite_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->status_ep), ccidd->usb_status_block, 2);
-        ccidd->status_busy = true;
-    }
 }
 
 static void ccidd_tx(USBD* usbd, CCIDD* ccidd, unsigned int err, unsigned int size)
@@ -329,7 +332,7 @@ static inline void ccidd_xfer_block(USBD* usbd, CCIDD* ccidd)
 #endif //USBD_CCID_DEBUG_REQUESTS
     switch (ccidd->state)
     {
-    case CCIDD_STATE_CARD_POWERED:
+    case CCIDD_STATE_READY:
         if (ccidd->msg->dwLength <= ccidd->data_block_size)
         {
             ccidd->data_block_size = ccidd->msg->dwLength;
@@ -473,7 +476,6 @@ static void ccidd_tx_complete(USBD* usbd, CCIDD* ccidd)
     ccidd->data_block = INVALID_HANDLE;
     ccidd->data_block_size = ccidd->data_processed = 0;
     ccidd->state = CCIDD_STATE_CARD_POWERED;
-    fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
 }
 
 static inline void ccidd_message_tx(USBD* usbd, CCIDD* ccidd)
@@ -507,6 +509,9 @@ static inline void ccidd_message_tx(USBD* usbd, CCIDD* ccidd)
         break;
     case CCIDD_STATE_TX_ZLP:
         ccidd_tx_complete(usbd, ccidd);
+        break;
+    case CCIDD_STATE_CARD_POWERED:
+        //NACK until next fread
         break;
     default:
         fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
@@ -604,7 +609,7 @@ static inline void ccidd_card_power_off(USBD* usbd, CCIDD* ccidd)
 
 static inline void ccidd_card_hw_error(USBD* usbd, CCIDD* ccidd)
 {
-    if (ccidd->data_block)
+    if (ccidd->data_block != INVALID_HANDLE)
     {
         block_send(ccidd->data_block, usbd_user(usbd));
         ccidd->data_block = INVALID_HANDLE;
@@ -665,6 +670,8 @@ static inline void ccidd_read(USBD* usbd, CCIDD* ccidd, HANDLE block, unsigned i
     ccidd->data_block = block;
     ccidd->data_block_size = max_size;
     ccidd->data_processed = 0;
+    ccidd->state = CCIDD_STATE_READY;
+    fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
 }
 
 static inline void ccidd_card_set_params(USBD* usbd, CCIDD* ccidd, HANDLE process, CCID_PROTOCOL protocol)
