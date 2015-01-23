@@ -141,7 +141,7 @@ __STATIC_INLINE int fread(HANDLE process, HANDLE file, HANDLE block, unsigned in
         return (int)ipc.param3;
     else
     {
-        error(ipc.param1);
+        error(ipc.param3);
         return -1;
     }
 }
@@ -186,7 +186,7 @@ __STATIC_INLINE bool fread_null(HANDLE process, HANDLE file)
         return true;
     else
     {
-        error(ipc.param1);
+        error(ipc.param3);
         return false;
     }
 }
@@ -234,7 +234,7 @@ __STATIC_INLINE int fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned i
         return (int)ipc.param3;
     else
     {
-        error(ipc.param1);
+        error(ipc.param3);
         return -1;
     }
 }
@@ -278,7 +278,7 @@ __STATIC_INLINE bool fwrite_null(HANDLE process, HANDLE file)
         return true;
     else
     {
-        error(ipc.param1);
+        error(ipc.param3);
         return false;
     }
 }
@@ -315,6 +315,91 @@ __STATIC_INLINE bool fseek(HANDLE process, HANDLE file, unsigned int pos)
     ipc.param1 = file;
     ipc.param2 = pos;
     return call(&ipc);
+}
+
+/**
+    \brief callback for read complete
+    \param process: host process
+    \param file: file handle
+    \param block: file block
+    \param size: size of transfer. <0 on error
+    \retval none
+*/
+
+__STATIC_INLINE void fread_complete(HANDLE process, HANDLE file, HANDLE block, int size)
+{
+    IPC ipc;
+    ipc.cmd = IPC_READ_COMPLETE;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = block;
+    ipc.param3 = (unsigned int)size;
+    if (block != INVALID_HANDLE)
+        block_send_ipc(block, process, &ipc);
+    else
+        ipc_post(&ipc);
+}
+
+/**
+    \brief callback for write complete
+    \param process: host process
+    \param file: file handle
+    \param block: file block
+    \param size: size of transfer. <0 on error
+    \retval none
+*/
+
+__STATIC_INLINE void fwrite_complete(HANDLE process, HANDLE file, HANDLE block, int size)
+{
+    IPC ipc;
+    ipc.cmd = IPC_WRITE_COMPLETE;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = block;
+    ipc.param3 = (unsigned int)size;
+    if (block != INVALID_HANDLE)
+        block_send_ipc(block, process, &ipc);
+    else
+        ipc_post(&ipc);
+}
+
+/**
+    \brief callback for cancel IO
+    \param process: host process
+    \param file: file handle
+    \retval none
+*/
+
+__STATIC_INLINE void fcancel_io(HANDLE process, HANDLE file)
+{
+    IPC ipc;
+    ipc.cmd = IPC_READ_COMPLETE;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc_post(&ipc);
+}
+
+/**
+    \brief callback for IO cancelled
+    \param process: host process
+    \param file: file handle
+    \param block: file block
+    \param error: error to respond
+    \retval none
+*/
+
+__STATIC_INLINE void fio_cancelled(HANDLE process, HANDLE file, HANDLE block, unsigned int error)
+{
+    IPC ipc;
+    ipc.cmd = IPC_IO_CANCELLED;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = block;
+    ipc.param3 = error;
+    if (block != INVALID_HANDLE)
+        block_send_ipc(block, process, &ipc);
+    else
+        ipc_post(&ipc);
 }
 
 /** \} */ // end of file group
