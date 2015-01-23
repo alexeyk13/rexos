@@ -29,27 +29,50 @@
 //------------------------------ stdio -----------------------------------------------
 #define STDIO_STREAM_SIZE                                   32
 //-------------------------------- USB -----------------------------------------------
-#define USB_EP_COUNT_MAX                                    3
+#define USB_EP_COUNT_MAX                                    4
 //low-level USB debug. Turn on only in case of IO problems
-#define USB_DEBUG_ERRORS                                    0
+#define USB_DEBUG_ERRORS                                    1
 //USB test mode support. Not all hardware supported.
 #define USB_TEST_MODE                                       0
+//support for high speed, qualifier, other speed, test, etc
+#define USB_2_0                                             0
 
 //----------------------------- USB device--------------------------------------------
+//all other device-related debug depends on this
+#define USBD_DEBUG                                          1
 #define USBD_DEBUG_ERRORS                                   1
 #define USBD_DEBUG_REQUESTS                                 0
-#define USBD_DEBUG_CLASS_REQUESTS                           0
-#define USBD_DEBUG_CLASS_IO                                 0
 
 #define USBD_PROCESS_SIZE                                   900
-#define USBD_BLOCK_SIZE                                     128
+#define USBD_BLOCK_SIZE                                     256
 
-#define USBD_CDC_CLASS                                      1
+#define USBD_CDC_CLASS                                      0
 #define USBD_HID_KBD_CLASS                                  1
+#define USBD_CCID_CLASS                                     1
 
-//----------------------------- CDC class --------------------------------------------
+//----------------------------- CDCD class --------------------------------------------
 //At least EP size required, or data will be lost. Double EP size is recommended
-#define USB_CDC_TX_STREAM_SIZE                              64
-#define USB_CDC_RX_STREAM_SIZE                              64
+#define USBD_CDC_TX_STREAM_SIZE                             64
+#define USBD_CDC_RX_STREAM_SIZE                             64
+
+#define USBD_CDC_DEBUG_ERRORS                               1
+#define USBD_CDC_DEBUG_REQUESTS                             1
+#define USBD_CDC_DEBUG_IO                                   0
+
+//------------------------------ HIDD class -------------------------------------------
+#define USBD_HID_DEBUG_ERRORS                               1
+#define USBD_HID_DEBUG_REQUESTS                             1
+#define USBD_HID_DEBUG_IO                                   0
+
+//----------------------------- CCIDD class -------------------------------------------
+#define USBD_CCID_MAX_ATR_SIZE                              32
+
+#define USBD_CCID_DEBUG_ERRORS                              1
+#define USBD_CCID_DEBUG_REQUESTS                            1
+#define USBD_CCID_DEBUG_IO                                  0
+
+//------------------------------ PIN board -------------------------------------------
+#define PINBOARD_PROCESS_SIZE                               400
+#define PINBOARD_POLL_TIME_MS                               100
 
 #endif // SYS_CONFIG_H

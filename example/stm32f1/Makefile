@@ -57,7 +57,7 @@ SRC_C                      += stdio.c main.c comm.c
 #drv
 SRC_C                      += stm32_power.c stm32_gpio.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_analog.c stm32_usb.c stm32_wdt.c
 #midware
-SRC_C                      += usbd.c cdc.c
+SRC_C                      += usbd.c cdcd.c
 
 OBJ                         = $(SRC_AS:%.S=%.o) $(SRC_C:%.c=%.o)
 #----------------------------------------------------------

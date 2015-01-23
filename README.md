@@ -32,6 +32,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * USB device stack with USB composite and vendor requests support
   * USB device CDC ACM class
   * USB device HID Boot Keyboard class
+  * USB device CCID class
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -70,6 +71,13 @@ ARM7 features:
 
 History
 =======
+0.2.3
+- USB CCID device class
+- USB device support wakeup/resume on linux
+- LPC USB driver fixes
+- IPC_IO_CANCEL, IPC_IO_CANCELLED file abstraction
+- kprocess time statistics fixed
+
 0.2.2
 - kernel soft timers
 - USB device HID Boot keyboard class
