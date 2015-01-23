@@ -299,6 +299,28 @@ void lpc_usb_on_isr(int vector, void* param)
     SHARED_USB_DRV* drv = (SHARED_USB_DRV*)param;
     uint32_t sta = LPC_USB->INTSTAT;
 
+    if (sta & USB_INTSTAT_DEV_INT)
+    {
+        sta = LPC_USB->DEVCMDSTAT;
+        //Don't care on connection change, just clear pending bit
+        if (sta & USB_DEVCMDSTAT_DCON_C)
+            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DCON_C;
+        if (sta & USB_DEVCMDSTAT_DSUS_C)
+        {
+            if (sta & USB_DEVCMDSTAT_DSUS)
+                lpc_usb_suspend(drv);
+            else
+                lpc_usb_wakeup(drv);
+            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DSUS_C;
+        }
+        if (sta & USB_DEVCMDSTAT_DRES_C)
+        {
+            lpc_usb_reset(drv);
+            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DRES_C;
+        }
+        LPC_USB->INTSTAT = USB_INTSTAT_DEV_INT;
+        return;
+    }
     if ((sta & USB_INTSTAT_EP0OUT) && (LPC_USB->DEVCMDSTAT & USB_DEVCMDSTAT_SETUP))
     {
         lpc_usb_setup(drv);
@@ -321,27 +343,6 @@ void lpc_usb_on_isr(int vector, void* param)
                 lpc_usb_in(drv, i | USB_EP_IN);
             LPC_USB->INTSTAT = USB_EP_INT_BIT(USB_EP_IN | i);
         }
-    }
-    if (sta & USB_INTSTAT_DEV_INT)
-    {
-        sta = LPC_USB->DEVCMDSTAT;
-        //Don't care on connection change, just clear pending bit
-        if (sta & USB_DEVCMDSTAT_DCON_C)
-            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DCON_C;
-        if (sta & USB_DEVCMDSTAT_DSUS_C)
-        {
-            if (sta & USB_DEVCMDSTAT_DSUS)
-                lpc_usb_suspend(drv);
-            else
-                lpc_usb_wakeup(drv);
-            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DSUS_C;
-        }
-        if (sta & USB_DEVCMDSTAT_DRES_C)
-        {
-            lpc_usb_reset(drv);
-            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DRES_C;
-        }
-        LPC_USB->INTSTAT = USB_INTSTAT_DEV_INT;
     }
 #if (USB_DEBUG_ERRORS)
     IPC ipc;
