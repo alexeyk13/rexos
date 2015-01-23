@@ -20,6 +20,8 @@ typedef enum {
     IPC_READ_COMPLETE,
     IPC_WRITE,
     IPC_WRITE_COMPLETE,
+    IPC_CANCEL_IO,
+    IPC_IO_CANCELLED,
     IPC_FLUSH,
     IPC_SEEK,
     IPC_OPEN,
