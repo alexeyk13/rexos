@@ -13,6 +13,10 @@
 
 #define CCID_INTERFACE_CLASS                            0x0b
 
+#define CCID_CMD_ABORT                                  0x01
+#define CCID_CMD_GET_CLOCK_FREQUENCIES                  0x02
+#define CCID_CMD_GET_DATA_RATES                         0x03
+
 typedef struct {
     uint8_t bLength;                                                                    /* Size of this descriptor in bytes */
     uint8_t bDescriptorType;                                                            /* functional descriptor type */
@@ -190,14 +194,14 @@ typedef enum {
     USB_CCID_CARD_POWER_OFF,
     USB_CCID_CARD_HW_ERROR,
     USB_CCID_CARD_RESET,
-    USB_CCID_CARD_SET_T0,
-    USB_CCID_CARD_SET_T1,
+    USB_CCID_CARD_SET_PARAMS,
+    USB_CCID_CARD_GET_PARAMS,
     //requests from host
     USB_CCID_HOST_POWER_ON,
     USB_CCID_HOST_POWER_OFF,
-    USB_CCID_HOST_SET_T0,
-    USB_CCID_HOST_SET_T1,
+    USB_CCID_HOST_SET_PARAMS,
     USB_CCID_HOST_RESET_PARAMS,
+    USB_CCID_HOST_ABORT,
     USB_CCID_MAX
 } USB_CCID_REQUESTS;
 
@@ -269,6 +273,12 @@ typedef struct {
     uint8_t bIFSC;                                      /*  Size of negotiated IFSC */
     uint8_t bNadValue;                                  /* Nad value used by CCID */
 } CCID_T1_PARAMS;
+
+typedef enum {
+    CCID_T_0 = 0,
+    CCID_T_1,
+    CCID_T_MAX
+} CCID_PROTOCOL;
 
 #pragma pack(pop)
 

@@ -100,6 +100,12 @@ typedef enum {
 #define USB_EP_IN                                               0x80
 #define USB_EP_NUM(ep)                                          ((ep) & 0x7f)
 
+#define USB_EP_BM_ATTRIBUTES_CONTROL                            0x0
+#define USB_EP_BM_ATTRIBUTES_ISOCHRONOUS                        0x1
+#define USB_EP_BM_ATTRIBUTES_BULK                               0x2
+#define USB_EP_BM_ATTRIBUTES_INTERRUPT                          0x3
+#define USB_EP_BM_ATTRIBUTES_TYPE_MASK                          0x3
+
 #pragma pack(push, 1)
 
 typedef struct {

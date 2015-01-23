@@ -21,14 +21,9 @@ typedef enum {
     CCIDD_STATE_SC_REQUEST,
     CCIDD_STATE_TX,
     CCIDD_STATE_TX_ZLP,
-    CCIDD_STATE_HW_ERROR
+    CCIDD_STATE_HW_ERROR,
+    CCIDD_STATE_PARAMS_REQUEST
 } CCIDD_STATE;
-
-typedef enum {
-    CCID_T_0 = 0,
-    CCID_T_1,
-    CCID_T_INVALID
-} CCID_PROTOCOL;
 
 typedef struct {
     HANDLE usb_data_block, usb_status_block, data_block;
@@ -52,35 +47,52 @@ static void ccidd_destroy(CCIDD* ccidd)
 void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 {
     USB_INTERFACE_DESCRIPTOR_TYPE* iface;
-//    USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
+    USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
     unsigned int size, status_ep_size;
 
     for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
     {
         if (iface->bInterfaceClass == CCID_INTERFACE_CLASS)
         {
-/*            ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
-            if (ep != NULL)
-            {
-                in_ep = USB_EP_NUM(ep->bEndpointAddress);
-                in_ep_size = ep->wMaxPacketSize;
-                hid_iface = iface->bInterfaceNumber;
-                break;
-            }*/
-            //No CCID descriptors in interface
             CCIDD* ccidd = (CCIDD*)malloc(sizeof(CCIDD));
             if (ccidd == NULL)
                 return;
-
             ccidd->iface = iface->bInterfaceNumber;
-            //TODO: decode
-            ccidd->data_ep = 2;
-            ccidd->data_ep_size = 64;
-            status_ep_size = 8;
-            ccidd->status_ep = 1;
+
+            ccidd->data_ep = 0;
+            ccidd->status_ep = 0;
+            status_ep_size = 0;
+            for (ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX); ep != NULL;
+                 ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_next_descriptor(cfg, (USB_DESCRIPTOR_TYPE*)ep, USB_ENDPOINT_DESCRIPTOR_INDEX))
+            {
+                switch (ep->bmAttributes & USB_EP_BM_ATTRIBUTES_TYPE_MASK)
+                {
+                case USB_EP_BM_ATTRIBUTES_BULK:
+                    if (ccidd->data_ep == 0)
+                    {
+                        ccidd->data_ep = USB_EP_NUM(ep->bEndpointAddress);
+                        ccidd->data_ep_size = ep->wMaxPacketSize;
+                    }
+                    break;
+                case USB_EP_BM_ATTRIBUTES_INTERRUPT:
+                    if (ccidd->status_ep == 0)
+                    {
+                        ccidd->status_ep = USB_EP_NUM(ep->bEndpointAddress);
+                        status_ep_size = ep->wMaxPacketSize;
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+            //invalid configuration
+            if (ccidd->data_ep == 0)
+            {
+                free(ccidd);
+                continue;
+            }
 
             ccidd->usb_data_block = block_create(ccidd->data_ep_size);
-            //TODO: decode
             if (ccidd->status_ep)
                 ccidd->usb_status_block = block_create(status_ep_size);
             else
@@ -97,7 +109,7 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
             ccidd->data_block_size = 0;
             ccidd->data_processed = 0;
             ccidd->status_busy = false;
-            ccidd->protocol = CCID_T_INVALID;
+            ccidd->protocol = CCID_T_MAX;
 
 #if (USBD_CCID_DEBUG_REQUESTS)
             printf("Found USB CCID device class, data: EP%d, iface: %d\n\r", ccidd->data_ep, ccidd->iface);
@@ -164,10 +176,25 @@ int ccidd_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
     unsigned int res = -1;
     switch (setup->bRequest)
     {
+    case CCID_CMD_ABORT:
+        switch (ccidd->state)
+        {
+        case CCIDD_STATE_SC_REQUEST:
+        case CCIDD_STATE_CARD_POWERING_ON:
+        case CCIDD_STATE_CARD_POWERING_OFF:
+        case CCIDD_STATE_PARAMS_REQUEST:
+            ccidd->state = CCIDD_STATE_ABORTING;
+            break;
+        default:
+            break;
+        }
+        res = 0;
+        break;
     default:
 #if (USBD_CCID_DEBUG_REQUESTS)
         printf("CCIDD SETUP request\n\r");
 #endif //USBD_CCID_DEBUG_REQUESTS
+        break;
     }
     return res;
 }
@@ -249,7 +276,6 @@ static inline void ccidd_icc_power_on(USBD* usbd, CCIDD* ccidd)
 #endif //USBD_CCID_DEBUG_REQUESTS
     if (ccidd->state == CCIDD_STATE_CARD_POWERED)
         ccidd_data_block(usbd, ccidd, ccidd->atr, ccidd->atr_size, 0);
-    //TODO: wrong state
     else
     {
         ccidd->state = CCIDD_STATE_CARD_POWERING_ON;
@@ -264,7 +290,6 @@ static inline void ccidd_icc_power_off(USBD* usbd, CCIDD* ccidd)
 #endif //USBD_CCID_DEBUG_REQUESTS
     if (ccidd->state == CCIDD_STATE_CARD_INSERTED || ccidd->state == CCIDD_STATE_NO_CARD)
         ccidd_slot_status(usbd, ccidd);
-    //TODO: wrong state
     else
     {
         ccidd->state = CCIDD_STATE_CARD_POWERING_OFF;
@@ -322,9 +347,6 @@ static inline void ccidd_xfer_block(USBD* usbd, CCIDD* ccidd)
 #endif //USBD_CCID_DEBUG_REQUESTS
         }
         break;
-    case CCIDD_STATE_SC_REQUEST:
-        ccidd_data_block_error(usbd, ccidd, CCID_SLOT_ERROR_SLOT_BUSY);
-        break;
     default:
         ccidd_data_block_error(usbd, ccidd, CCID_SLOT_ERROR_ICC_MUTE);
         break;
@@ -358,6 +380,41 @@ static inline void ccidd_get_params(USBD* usbd, CCIDD* ccidd)
     }
 }
 
+static inline void ccidd_set_params(USBD* usbd, CCIDD* ccidd)
+{
+    ccidd->protocol = ccidd->msg->msg_specific[2];
+    memcpy(ccidd->params, (uint8_t*)ccidd->msg + sizeof(CCID_MESSAGE), ccidd->msg->dwLength);
+    usbd_post_user(usbd, ccidd->iface, USB_CCID_HOST_SET_PARAMS, ccidd->protocol);
+    ccidd->state = CCIDD_STATE_PARAMS_REQUEST;
+#if (USBD_CCID_DEBUG_REQUESTS)
+    printf("CCIDD: set params - T%d\n\r", ccidd->protocol);
+#endif //USBD_CCID_DEBUG_REQUESTS
+}
+
+static inline void ccidd_reset_params(USBD* usbd, CCIDD* ccidd)
+{
+    usbd_post_user(usbd, ccidd->iface, USB_CCID_HOST_RESET_PARAMS, 0);
+    ccidd->state = CCIDD_STATE_PARAMS_REQUEST;
+#if (USBD_CCID_DEBUG_REQUESTS)
+    printf("CCIDD: reset params\n\r");
+#endif //USBD_CCID_DEBUG_REQUESTS
+}
+
+static inline void ccidd_abort(USBD* usbd, CCIDD* ccidd)
+{
+#if (USBD_CCID_DEBUG_REQUESTS)
+    printf("CCIDD: Abort\n\r");
+#endif //USBD_CCID_DEBUG_REQUESTS
+    if (ccidd->state == CCIDD_STATE_ABORTING)
+    {
+        usbd_post_user(usbd, ccidd->iface, USB_CCID_HOST_ABORT, ccidd->msg->bSlot);
+        ccidd->state = CCIDD_STATE_CARD_POWERED;
+        ccidd_slot_status(usbd, ccidd);
+    }
+    else
+        ccidd_data_block_error(usbd, ccidd, CCID_SLOT_ERROR_CMD_ABORTED);
+}
+
 static inline void ccidd_message_rx(USBD* usbd, CCIDD* ccidd)
 {
     ccidd->msg = (CCID_MESSAGE*)block_open(ccidd->usb_data_block);
@@ -384,16 +441,21 @@ static inline void ccidd_message_rx(USBD* usbd, CCIDD* ccidd)
     case PC_TO_RDR_GET_PARAMETERS:
         ccidd_get_params(usbd, ccidd);
         break;
-//    case PC_TO_RDR_RESET_PARAMETERS:
-//    case PC_TO_RDR_SET_PARAMETERS:
-//    case PC_TO_RDR_ABORT:
+    case PC_TO_RDR_RESET_PARAMETERS:
+        ccidd_reset_params(usbd, ccidd);
+        break;
+    case PC_TO_RDR_SET_PARAMETERS:
+        ccidd_set_params(usbd, ccidd);
+        break;
+    case PC_TO_RDR_ABORT:
+        ccidd_abort(usbd, ccidd);
+        break;
     default:
-#if (USBD_CCID_DEBUG_REQUESTS)
+#if (USBD_CCID_DEBUG_ERRORS)
         printf("CCIDD: unsupported CMD: %#X\n\r", ccidd->msg->bMessageType);
 #endif //USBD_DEBUG_CLASS_REQUESTS
         ccidd_data_block_error(usbd, ccidd, CCID_SLOT_ERROR_CMD_NOT_SUPPORTED | 0x100);
     }
-
 }
 
 static inline void ccidd_rx_more(USBD* usbd, CCIDD* ccidd, int size)
@@ -554,7 +616,7 @@ static inline void ccidd_card_hw_error(USBD* usbd, CCIDD* ccidd)
     case CCIDD_STATE_SC_REQUEST:
     case CCIDD_STATE_CARD_POWERING_ON:
     case CCIDD_STATE_CARD_POWERING_OFF:
-    //TODO: set/reset params
+    case CCIDD_STATE_PARAMS_REQUEST:
         ccidd_data_block_error(usbd, ccidd, CCID_SLOT_ERROR_HW_ERROR);
         break;
     default:
@@ -577,7 +639,7 @@ static inline void ccidd_card_reset(USBD* usbd, CCIDD* ccidd)
     case CCIDD_STATE_SC_REQUEST:
     case CCIDD_STATE_CARD_POWERING_ON:
     case CCIDD_STATE_CARD_POWERING_OFF:
-    //TODO: set/reset params
+    case CCIDD_STATE_PARAMS_REQUEST:
         ccidd_data_block_error(usbd, ccidd, CCID_SLOT_ERROR_CMD_ABORTED);
         break;
     default:
@@ -605,11 +667,16 @@ static inline void ccidd_read(USBD* usbd, CCIDD* ccidd, HANDLE block, unsigned i
     ccidd->data_processed = 0;
 }
 
-static inline void ccidd_card_set_protocol(USBD* usbd, CCIDD* ccidd, HANDLE process, CCID_PROTOCOL protocol)
+static inline void ccidd_card_set_params(USBD* usbd, CCIDD* ccidd, HANDLE process, CCID_PROTOCOL protocol)
 {
     direct_read(process, ccidd->params, protocol == CCID_T_0 ? sizeof(CCID_T0_PARAMS) : sizeof(CCID_T1_PARAMS));
     ccidd->protocol = protocol;
-    //TODO: if setting, update
+}
+
+static inline CCID_PROTOCOL ccidd_card_get_params(USBD* usbd, CCIDD* ccidd, HANDLE process)
+{
+    direct_write(process, ccidd->params, ccidd->protocol == CCID_T_0 ? sizeof(CCID_T0_PARAMS) : sizeof(CCID_T1_PARAMS));
+    return ccidd->protocol;
 }
 
 static inline void ccidd_write(USBD* usbd, CCIDD* ccidd, HANDLE block, unsigned int size)
@@ -665,11 +732,11 @@ bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
         case USB_CCID_CARD_RESET:
             ccidd_card_reset(usbd, ccidd);
             break;
-        case USB_CCID_CARD_SET_T0:
-            ccidd_card_set_protocol(usbd, ccidd, ipc->process, CCID_T_0);
+        case USB_CCID_CARD_SET_PARAMS:
+            ccidd_card_set_params(usbd, ccidd, ipc->process, ipc->param3);
             break;
-        case USB_CCID_CARD_SET_T1:
-            ccidd_card_set_protocol(usbd, ccidd, ipc->process, CCID_T_1);
+        case USB_CCID_CARD_GET_PARAMS:
+            ipc->param3 = ccidd_card_get_params(usbd, ccidd, ipc->process);
             break;
         }
         need_post = true;
@@ -700,6 +767,7 @@ bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
 #if (USBD_CCID_DEBUG_REQUESTS)
         printf("CCIDD class request: %#X\n\r", ipc->cmd);
 #endif //USBD_CCID_DEBUG_REQUESTS
+        break;
     }
     return need_post;
 }
