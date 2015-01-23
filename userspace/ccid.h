@@ -188,9 +188,16 @@ typedef enum {
     USB_CCID_CARD_REMOVE,
     USB_CCID_CARD_POWER_ON,
     USB_CCID_CARD_POWER_OFF,
+    USB_CCID_CARD_HW_ERROR,
+    USB_CCID_CARD_RESET,
+    USB_CCID_CARD_SET_T0,
+    USB_CCID_CARD_SET_T1,
     //requests from host
     USB_CCID_HOST_POWER_ON,
     USB_CCID_HOST_POWER_OFF,
+    USB_CCID_HOST_SET_T0,
+    USB_CCID_HOST_SET_T1,
+    USB_CCID_HOST_RESET_PARAMS,
     USB_CCID_MAX
 } USB_CCID_REQUESTS;
 
@@ -208,7 +215,7 @@ typedef enum {
 #define CCID_SLOT_ERROR_BUSY_WITH_AUTO_SEQUENCE         0xf2
 #define CCID_SLOT_ERROR_PIN_TIMEOUT                     0xf0
 #define CCID_SLOT_ERROR_PIN_CANCELLED                   0xef
-#define CCID_SLOT_ERROR_CMD_SLOT_BUSY                   0xe0
+#define CCID_SLOT_ERROR_SLOT_BUSY                       0xe0
 #define CCID_SLOT_ERROR_CMD_NOT_SUPPORTED               0x00
 
 #define CCID_SLOT_STATUS_ICC_PRESENT_AND_ACTIVE         (0 << 0)
@@ -223,6 +230,45 @@ typedef enum {
 #define CCID_CLOCK_STATUS_STOPPED_H                     1
 #define CCID_CLOCK_STATUS_STOPPED_L                     2
 #define CCID_CLOCK_STATUS_STOPPED_UNKNOWN               3
+
+#define CCID_EXT_APDU_BEGIN_END                         0x00
+#define CCID_EXT_APDU_BEGIN                             0x01
+#define CCID_EXT_APDU_END                               0x02
+#define CCID_EXT_APDU_MORE                              0x03
+#define CCID_EXT_APDU_NULL                              0x10
+
+typedef struct {
+    uint8_t bmFindexDindex;                             /* B7-4 – FI – Index into the table 7 in ISO/IEC  7816-3:1997 selecting a clock rate conversion factor
+                                                           B3-0 – DI - Index into the table 8 in ISO/IEC  7816-3:1997 selecting a baud rate conversion factor */
+    uint8_t bmTCCKST0;                                  /* For T=0 ,B0 – 0b, B7-2 – 000000b
+                                                           B1 – Convention used (b1=0 for direct, b1=1 for inverse) */
+    uint8_t bGuardTimeT0;                               /* Extra Guardtime between two characters. Add 0 to 254 etu to the normal guardtime of 12etu.
+                                                           FFh is the same as 00h */
+    uint8_t bWaitingIntegerT0;                          /* WI for T=0 used to define WWT */
+    uint8_t bClockStop;                                 /* ICC Clock Stop Support
+                                                            00 = Stopping the Clock is not allowed
+                                                            01 = Stop with Clock signal Low
+                                                            02 = Stop with Clock signal High
+                                                            03 = Stop with Clock either High or Low */
+} CCID_T0_PARAMS;
+
+typedef struct {
+    uint8_t bmFindexDindex;                             /* B7-4 – FI – Index into the table 7 in ISO/IEC  7816-3:1997 selecting a clock rate conversion factor
+                                                           B3-0 – DI - Index into the table 8 in ISO/IEC  7816-3:1997 selecting a baud rate conversion factor */
+    uint8_t bmTCCKST1;                                  /* For T=1, B7-2 – 000100b
+                                                           B0 – Checksum type (b0=0 for LRC, b0=1 for CRC
+                                                           B1 – Convention used (b1=0 for direct, b1=1 for inverse) */
+    uint8_t bGuardTimeT1;                               /* Extra Guardtime (0 to 254 etu between two characters). If value is FFh, then guardtime is reduced by 1 */
+    uint8_t bmWaitingIntegersT1;                        /* B7-4 = BWI
+                                                           B3-0 = CWI */
+    uint8_t bClockStop;                                 /* ICC Clock Stop Support
+                                                            00 = Stopping the Clock is not allowed
+                                                            01 = Stop with Clock signal Low
+                                                            02 = Stop with Clock signal High
+                                                            03 = Stop with Clock either High or Low */
+    uint8_t bIFSC;                                      /*  Size of negotiated IFSC */
+    uint8_t bNadValue;                                  /* Nad value used by CCID */
+} CCID_T1_PARAMS;
 
 #pragma pack(pop)
 
