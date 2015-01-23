@@ -11,7 +11,6 @@
 #include "../userspace/block.h"
 #include "../userspace/direct.h"
 #include "../userspace/stdlib.h"
-#include "sys_config.h"
 #include <string.h>
 #include "../userspace/array.h"
 #include "../userspace/file.h"
@@ -47,7 +46,7 @@ typedef struct _USBD {
     USB_SETUP_STATE setup_state;
     // USBD state machine
     USBD_STATE state;
-    bool suspended;
+    bool suspended, resume_reset;
     bool self_powered, remote_wakeup;
 #if (USB_2_0)
     USB_TEST_MODES test_mode;
@@ -130,9 +129,8 @@ const REX __USBD = {
 
 void usbd_stub_class_state_change(USBD* usbd, void* param)
 {
-#if (USBD_DEBUG_ERRORS)
-    printf("USBD class USB state change stub!\n\r");
-#endif
+    //state changing request stub calling is not error in case of some interfaces are not used
+    //Moreover, it's normal condition to avoid MS Windows bug for composite devices, where interfaces are starting from 1
 }
 
 int usbd_stub_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
@@ -169,6 +167,7 @@ void usbd_class_reset(USBD* usbd)
     usbd_inform(usbd, USBD_ALERT_RESET, true);
     for (i = 0; i < usbd->ifacecnt; ++i)
         IFACE(usbd, i).usbd_class->usbd_class_reset(usbd, IFACE(usbd, i).param);
+    usbd->ifacecnt = 0;
     array_clear(&usbd->ifaces);
 }
 
@@ -450,7 +449,15 @@ void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned 
 static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
 {
     usbd->suspended = false;
-#if (USB_DEBUG_REQUESTS)
+    if (usbd->resume_reset)
+    {
+#if (USBD_DEBUG_REQUESTS)
+        printf("USB resume_reset\n\r");
+#endif
+        usbd->resume_reset = false;
+        return;
+    }
+#if (USBD_DEBUG_REQUESTS)
     printf("USB device reset\n\r");
 #endif
     if (usbd->state == USBD_STATE_CONFIGURED)
@@ -496,6 +503,7 @@ static inline void usbd_wakeup(USBD* usbd)
     if (usbd->suspended)
     {
         usbd->suspended = false;
+        usbd->resume_reset = true;
 #if (USBD_DEBUG_REQUESTS)
         printf("USB device wakeup\n\r");
 #endif
@@ -567,27 +575,36 @@ static inline int usbd_device_get_status(USBD* usbd)
     return safecpy_write(usbd, &status, sizeof(uint16_t));
 }
 
-#if (USB_2_0)
 static inline int usbd_device_set_feature(USBD* usbd)
 {
     unsigned int res = -1;
-#if (USBD_DEBUG_REQUESTS)
-    printf("USB: device set feature\n\r");
-#endif
     //According to documentation the only feature can be set is TEST_MODE
+    //However, linux is issuing feature REMOTE_WAKEUP, so we must handle it to proper
+    //remote wakeup
     switch (usbd->setup.wValue)
     {
+    case USBD_FEATURE_DEVICE_REMOTE_WAKEUP:
+#if (USBD_DEBUG_REQUESTS)
+        printf("USB: device set feature REMOTE WAKEUP\n\r");
+#endif
+        usbd->remote_wakeup = true;
+        res = 0;
+        break;
+#if (USB_2_0)
     case USBD_FEATURE_TEST_MODE:
+#if (USBD_DEBUG_REQUESTS)
+        printf("USB: device set feature TEST_MODE\n\r");
+#endif
         usbd->test_mode = usbd->setup.wIndex >> 16;
         ack(usbd->usb, USB_SET_TEST_MODE, usbd->test_mode, 0, 0);
         res = 0;
         break;
+#endif //USB_2_0
     default:
         break;
     }
     return res;
 }
-#endif //USB_2_0
 
 static inline int usbd_device_clear_feature(USBD* usbd)
 {
@@ -709,7 +726,6 @@ static inline int usbd_set_configuration(USBD* usbd)
 #if (USBD_DEBUG_REQUESTS)
     printf("USB: set configuration %d\n\r", usbd->setup.wValue);
 #endif
-    //read USB 2.0 specification for more details
     if (usbd->state == USBD_STATE_CONFIGURED)
     {
         usbd->configuration = 0;
@@ -717,7 +733,10 @@ static inline int usbd_set_configuration(USBD* usbd)
         usbd->state = USBD_STATE_ADDRESSED;
         usbd_class_reset(usbd);
     }
-    else if (usbd->state == USBD_STATE_ADDRESSED && usbd->setup.wValue)
+    //USB 2.0 specification is required to set USB state addressed if it was already configured
+    //However, due to virtualbox bug - if device is switching connection between VMs, it's issuing
+    //SET CONFIGURATION without prior reset, causing logical reset, so this feature is disabled
+    if (usbd->state == USBD_STATE_ADDRESSED && usbd->setup.wValue)
     {
         usbd->configuration = usbd->setup.wValue;
         usbd->state = USBD_STATE_CONFIGURED;
@@ -735,11 +754,9 @@ static inline int usbd_standart_device_request(USBD* usbd)
     case USB_REQUEST_GET_STATUS:
         res = usbd_device_get_status(usbd);
         break;
-#if (USB_2_0)
     case USB_REQUEST_SET_FEATURE:
         res = usbd_device_set_feature(usbd);
         break;
-#endif //USB_2_0
     case USB_REQUEST_CLEAR_FEATURE:
         res = usbd_device_clear_feature(usbd);
         break;
@@ -756,7 +773,6 @@ static inline int usbd_standart_device_request(USBD* usbd)
         res = usbd_set_configuration(usbd);
         break;
     }
-
     return res;
 }
 
@@ -807,6 +823,18 @@ static inline int usbd_endpoint_clear_feature(USBD* usbd)
     return res;
 }
 
+static inline int usbd_interface_request(USBD* usbd, int iface)
+{
+    int res = -1;
+    if (iface < usbd->ifacecnt)
+        res = IFACE(usbd, iface).usbd_class->usbd_class_setup(usbd, IFACE(usbd, iface).param, &usbd->setup, usbd->block);
+#if (USBD_DEBUG_ERRORS)
+    else
+        printf("USBD: Interface %d is not configured\n\r");
+#endif
+    return res;
+}
+
 static inline int usbd_endpoint_request(USBD* usbd)
 {
     int res = -1;
@@ -837,7 +865,7 @@ void usbd_setup_process(USBD* usbd)
             res = get(usbd->user, USBD_VENDOR_REQUEST, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
         break;
     case BM_REQUEST_RECIPIENT_INTERFACE:
-        res = IFACE(usbd, usbd->setup.wIndex).usbd_class->usbd_class_setup(usbd, IFACE(usbd, usbd->setup.wIndex).param, &usbd->setup, usbd->block);;
+        res = usbd_interface_request(usbd, usbd->setup.wIndex);
         break;
     case BM_REQUEST_RECIPIENT_ENDPOINT:
         res = usbd_endpoint_request(usbd);
@@ -918,6 +946,11 @@ void usbd_setup_process(USBD* usbd)
 
 static inline void usbd_setup_received(USBD* usbd)
 {
+    //noise on line
+    if (usbd->suspended)
+        return;
+    usbd->resume_reset = false;
+
     //Back2Back setup received
     if (usbd->setup_state != USB_SETUP_STATE_REQUEST)
     {
@@ -1022,6 +1055,7 @@ static inline void usbd_init(USBD* usbd)
     usbd->setup_state = USB_SETUP_STATE_REQUEST;
     usbd->state = USBD_STATE_DEFAULT;
     usbd->suspended = false;
+    usbd->resume_reset = false;
     usbd->self_powered = usbd->remote_wakeup = false;
 #if (USB_2_0)
     usbd->test_mode = USB_TEST_MODE_NORMAL;
@@ -1042,6 +1076,7 @@ static inline void usbd_init(USBD* usbd)
     //at least 3: manufacturer, product, string 0
     array_create(&usbd->string_descriptors, 3 * sizeof(USBD_STRING));
 
+    usbd->ifacecnt = 0;
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
         usbd->ep_iface[i] = USBD_INVALID_INTERFACE;
 }
@@ -1275,8 +1310,29 @@ void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int cmd, unsigned i
     IPC ipc;
     ipc.cmd = USBD_INTERFACE_REQUEST;
     ipc.process = usbd->user;
-    ipc.param1 = HAL_HANDLE(HAL_USBD, HAL_USBD_INTERFACE(iface, 0));
+    ipc.param1 = HAL_USBD_INTERFACE(iface, 0);
     ipc.param2 = cmd;
     ipc.param3 = param;
-    ipc_post_or_error(&ipc);
+    ipc_post(&ipc);
 }
+
+HANDLE usbd_user(USBD* usbd)
+{
+    return usbd->user;
+}
+
+HANDLE usbd_usb(USBD* usbd)
+{
+    return usbd->usb;
+}
+
+#if (USBD_DEBUG)
+void usbd_dump(const uint8_t* buf, unsigned int size, const char* header)
+{
+    int i;
+    printf("%s: ", header);
+    for (i = 0; i < size; ++i)
+        printf("%02X ", buf[i]);
+    printf("\n\r");
+}
+#endif

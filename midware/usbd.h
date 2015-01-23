@@ -9,6 +9,7 @@
 
 #include "../userspace/process.h"
 #include "../userspace/usb.h"
+#include "sys_config.h"
 
 typedef struct _USBD USBD;
 
@@ -29,5 +30,10 @@ bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int num);
 bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int num);
 //post IPC to user, if configured
 void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int cmd, unsigned int param);
+HANDLE usbd_user(USBD* usbd);
+HANDLE usbd_usb(USBD* usbd);
+#if (USBD_DEBUG)
+void usbd_dump(const uint8_t* buf, unsigned int size, const char* header);
+#endif
 
 #endif // USBD_H
