@@ -156,6 +156,9 @@ void lpc_core()
 #if (MONOLITH_USB)
     lpc_usb_init(&core);
 #endif
+#if (LPC_EEPROM_DRIVER)
+    lpc_eep_init(&core);
+#endif
 
     lpc_core_loop(&core);
 }

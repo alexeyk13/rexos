@@ -11,15 +11,11 @@
 #include "lpc_core.h"
 #include "lpc_power.h"
 #include "lpc_timer.h"
-#if (MONOLITH_UART)
+
 #include "lpc_uart.h"
-#endif
-#if (MONOLITH_I2C)
 #include "lpc_i2c.h"
-#endif
-#if (MONOLITH_USB)
 #include "lpc_usb.h"
-#endif
+#include "lpc_eep.h"
 
 
 typedef struct _CORE {
@@ -33,6 +29,9 @@ typedef struct _CORE {
 #endif
 #if (MONOLITH_USB)
     USB_DRV usb;
+#endif
+#if (LPC_EEPROM_DRIVER)
+    EEP eep;
 #endif
 }CORE;
 
