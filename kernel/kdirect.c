@@ -21,7 +21,13 @@ void kdirect_read(PROCESS* other, void* addr, int size)
     if (other->heap->direct_mode & DIRECT_READ && other->heap->direct_size >= size)
     {
         memcpy(addr, other->heap->direct_addr, size);
-        other->heap->direct_mode &= ~DIRECT_READ;
+        if (other->heap->direct_size == size)
+            other->heap->direct_mode &= ~DIRECT_READ;
+        else
+        {
+            other->heap->direct_addr += size;
+            other->heap->direct_size -= size;
+        }
     }
     else
         kprocess_error(process, ERROR_ACCESS_DENIED);
@@ -34,7 +40,13 @@ void kdirect_write(PROCESS* other, void* addr, int size)
     if (other->heap->direct_mode & DIRECT_WRITE && other->heap->direct_size >= size)
     {
         memcpy(other->heap->direct_addr, addr, size);
-        other->heap->direct_mode &= ~DIRECT_WRITE;
+        if (other->heap->direct_size == size)
+            other->heap->direct_mode &= ~DIRECT_WRITE;
+        else
+        {
+            other->heap->direct_addr += size;
+            other->heap->direct_size -= size;
+        }
     }
     else
         kprocess_error(process, ERROR_ACCESS_DENIED);
