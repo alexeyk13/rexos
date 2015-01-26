@@ -27,8 +27,10 @@ SECTIONS
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
 		. = ALIGN(4);
 		_etext = .;
+		PROVIDE(__ETEXT = .);
 	} > FLASH
 
 	_end = . ;
+	PROVIDE(__END = .);
 }
 
