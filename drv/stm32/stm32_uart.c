@@ -124,8 +124,8 @@ void stm32_uart_on_isr(int vector, void* param)
             drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
             ipc.process = process_iget_current();
             ipc.cmd = IPC_UART_ISR_TX;
-            ipc.param2 = 0;
-            ipc.param3 = HAL_HANDLE(HAL_UART, port);
+            ipc.param1 = HAL_HANDLE(HAL_UART, port);
+            ipc.param3 = 0;
             ipc_ipost(&ipc);
             UART_REGS[port]->CR1 &= ~USART_CR1_TXEIE;
             UART_REGS[port]->CR1 |= USART_CR1_TCIE;
@@ -160,13 +160,13 @@ void stm32_uart_on_isr(int vector, void* param)
     if (sr & USART_SR_RXNE)
     {
 #if defined(STM32L0)
-        ipc.param1 = UART_REGS[port]->RDR;
+        ipc.param3 = UART_REGS[port]->RDR;
 #else
-        ipc.param1 = UART_REGS[port]->DR;
+        ipc.param3 = UART_REGS[port]->DR;
 #endif
         ipc.process = process_iget_current();
         ipc.cmd = IPC_UART_ISR_RX;
-        ipc.param3 = HAL_HANDLE(HAL_UART, port);
+        ipc.param1 = HAL_HANDLE(HAL_UART, port);
         ipc_ipost(&ipc);
     }
 }
@@ -676,11 +676,11 @@ bool stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
         break;
     case IPC_STREAM_WRITE:
     case IPC_UART_ISR_TX:
-        stm32_uart_write(drv, HAL_ITEM(ipc->param3), ipc->param2);
+        stm32_uart_write(drv, HAL_ITEM(ipc->param1), ipc->param3);
         //message from kernel (or ISR), no response
         break;
     case IPC_UART_ISR_RX:
-        stm32_uart_read(drv, HAL_ITEM(ipc->param3), ipc->param1);
+        stm32_uart_read(drv, HAL_ITEM(ipc->param1), ipc->param3);
         //message from ISR, no response
         break;
     default:

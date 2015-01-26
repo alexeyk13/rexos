@@ -85,10 +85,10 @@ void lpc_uart_on_isr(int vector, void* param)
         break;
     case USART_IIR_INTID_RDA:
         //receive data
-        ipc.param1 = LPC_USART->RBR;
+        ipc.param3 = LPC_USART->RBR;
         ipc.process = process_iget_current();
         ipc.cmd = IPC_UART_ISR_RX;
-        ipc.param3 = HAL_HANDLE(HAL_UART, UART_0);
+        ipc.param1 = HAL_HANDLE(HAL_UART, UART_0);
         ipc_ipost(&ipc);
         break;
     case USART_IIR_INTID_THRE:
@@ -103,8 +103,8 @@ void lpc_uart_on_isr(int vector, void* param)
                 drv->uart.uarts[UART_0]->tx_chunk_pos = drv->uart.uarts[UART_0]->tx_chunk_size = 0;
                 ipc.process = process_iget_current();
                 ipc.cmd = IPC_UART_ISR_TX;
-                ipc.param2 = 0;
-                ipc.param3 = HAL_HANDLE(HAL_UART, UART_0);
+                ipc.param1 = HAL_HANDLE(HAL_UART, UART_0);
+                ipc.param3 = 0;
                 ipc_ipost(&ipc);
                 LPC_USART->IER &= ~USART_IER_THRINTEN;
             }
@@ -152,10 +152,10 @@ void lpc_uart4_on_isr(int vector, void* param)
         //ready to rx
         if (__USART_REGS[port]->STAT & USART4_STAT_RXRDY)
         {
-            ipc.param1 = __USART_REGS[port]->RXDAT;
+            ipc.param3 = __USART_REGS[port]->RXDAT;
             ipc.process = process_iget_current();
             ipc.cmd = IPC_UART_ISR_RX;
-            ipc.param3 = HAL_HANDLE(HAL_UART, UART_0);
+            ipc.param1 = HAL_HANDLE(HAL_UART, UART_0);
             ipc_ipost(&ipc);
         }
         //tx
@@ -169,8 +169,8 @@ void lpc_uart4_on_isr(int vector, void* param)
                 drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
                 ipc.process = process_iget_current();
                 ipc.cmd = IPC_UART_ISR_TX;
-                ipc.param2 = 0;
-                ipc.param3 = HAL_HANDLE(HAL_UART, UART_0);
+                ipc.param1 = HAL_HANDLE(HAL_UART, UART_0);
+                ipc.param3 = 0;
                 ipc_ipost(&ipc);
                 LPC_USART->IER &= ~USART_IER_THRINTEN;
             }
@@ -706,11 +706,11 @@ bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
         break;
     case IPC_STREAM_WRITE:
     case IPC_UART_ISR_TX:
-        lpc_uart_write(drv, HAL_ITEM(ipc->param3), ipc->param2);
+        lpc_uart_write(drv, HAL_ITEM(ipc->param1), ipc->param3);
         //message from kernel (or ISR), no response
         break;
     case IPC_UART_ISR_RX:
-        lpc_uart_read(drv, HAL_ITEM(ipc->param3), ipc->param1);
+        lpc_uart_read(drv, HAL_ITEM(ipc->param1), ipc->param3);
         //message from ISR, no response
         break;
     default:

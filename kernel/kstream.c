@@ -180,9 +180,9 @@ void kstream_listen(STREAM* stream, void* param)
         {
             ipc.process = (HANDLE)process;
             ipc.cmd = IPC_STREAM_WRITE;
-            ipc.param1 = (HANDLE)stream;
-            ipc.param2 = size;
-            ipc.param3 = (unsigned int)param;
+            ipc.param1 = (unsigned int)param;
+            ipc.param2 = (HANDLE)stream;
+            ipc.param3 = size;
             kipc_post_process(&ipc, KERNEL_HANDLE);
 
         }
@@ -263,9 +263,9 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
     {
         ipc.process = handle->stream->listener;
         ipc.cmd = IPC_STREAM_WRITE;
-        ipc.param1 = (HANDLE)handle->stream;
-        ipc.param2 = kstream_get_size_internal(handle->stream);
-        ipc.param3 = (unsigned int)handle->stream->listener_param;
+        ipc.param1 = (unsigned int)handle->stream->listener_param;
+        ipc.param2 = (HANDLE)handle->stream;
+        ipc.param3 = kstream_get_size_internal(handle->stream);
         handle->stream->listener = INVALID_HANDLE;
         kipc_post_process(&ipc, KERNEL_HANDLE);
     }

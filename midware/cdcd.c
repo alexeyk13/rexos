@@ -435,7 +435,7 @@ bool cdcd_class_request(USBD* usbd, void* param, IPC* ipc)
         }
         break;
     case IPC_STREAM_WRITE:
-        cdcd->tx_size = ipc->param2;
+        cdcd->tx_size = ipc->param3;
         cdcd_write(usbd, cdcd);
         break;
     case IPC_GET_TX_STREAM:

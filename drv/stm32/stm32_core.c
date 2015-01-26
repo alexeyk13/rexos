@@ -99,10 +99,8 @@ void stm32_core_loop(CORE* core)
             case IPC_WRITE:
             case IPC_GET_TX_STREAM:
             case IPC_GET_RX_STREAM:
-                group = HAL_GROUP(ipc.param1);
-                break;
             case IPC_STREAM_WRITE:
-                group = HAL_GROUP(ipc.param3);
+                group = HAL_GROUP(ipc.param1);
                 break;
             default:
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);

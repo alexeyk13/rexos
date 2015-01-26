@@ -1231,11 +1231,11 @@ void usbd()
             }
             break;
         case IPC_STREAM_WRITE:
-            if (HAL_GROUP(ipc.param3) == HAL_USBD && HAL_ITEM(ipc.param3) >= USBD_HANDLE_INTERFACE)
-                usbd_class_interface_request(&usbd, &ipc, HAL_USBD_INTERFACE_NUM(ipc.param3));
+            if (HAL_GROUP(ipc.param1) == HAL_USBD && HAL_ITEM(ipc.param1) >= USBD_HANDLE_INTERFACE)
+                usbd_class_interface_request(&usbd, &ipc, HAL_USBD_INTERFACE_NUM(ipc.param1));
 #if (USBD_DEBUG_ERRORS)
             else
-                printf("USBD warning - invalid stream: %#X. Maybe USB CLASS configured wrong?\n\r", ipc.param3);
+                printf("USBD warning - invalid stream: %#X. Maybe USB CLASS configured wrong?\n\r", ipc.param1);
 #endif //USB_DEBUG_ERRORS
             //message from kernel, no response
             break;

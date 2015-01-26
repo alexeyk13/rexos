@@ -10,15 +10,11 @@
 #include "lpc_gpio.h"
 //#include "lpc_power.h"
 #include "../../userspace/object.h"
-#if (MONOLITH_UART)
+
 #include "lpc_uart.h"
-#endif
-#if (MONOLITH_I2C)
 #include "lpc_i2c.h"
-#endif
-#if (MONOLITH_USB)
 #include "lpc_usb.h"
-#endif
+#include "lpc_eep.h"
 
 void lpc_core();
 
@@ -89,10 +85,8 @@ void lpc_core_loop(CORE* core)
             case IPC_SEEK:
             case IPC_GET_TX_STREAM:
             case IPC_GET_RX_STREAM:
-                group = HAL_GROUP(ipc.param1);
-                break;
             case IPC_STREAM_WRITE:
-                group = HAL_GROUP(ipc.param3);
+                group = HAL_GROUP(ipc.param1);
                 break;
             default:
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
@@ -129,6 +123,11 @@ void lpc_core_loop(CORE* core)
                 need_post = lpc_usb_request(core, &ipc);
                 break;
 #endif //MONOLITH_USB
+#if (LPC_EEPROM_DRIVER)
+            case HAL_EEPROM:
+                need_post = lpc_eep_request(core, &ipc);
+                break;
+#endif //LPC_EEPROM_DRIVER
             default:
                 ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
                 need_post = true;
