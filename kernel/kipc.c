@@ -98,7 +98,11 @@ void kipc_post_process(IPC* ipc, unsigned int sender)
         kprocess_error(receiver, ERROR_OVERFLOW);
 #if (KERNEL_IPC_DEBUG)
         printk("Error: receiver %s IPC overflow!\n\r", kprocess_name(receiver));
-        printk("Sender: %s, cmd: %#X, p1: %#X, p2: %#X, p3: %#X\n\r", kprocess_name((PROCESS*)sender), ipc->cmd, ipc->param1, ipc->param2, ipc->param3);
+        if (sender == KERNEL_HANDLE)
+            printk("Sender: kernel\n\r");
+        else
+            printk("Sender: %s\n\r", kprocess_name((PROCESS*)sender));
+        printk("cmd: %#X, p1: %#X, p2: %#X, p3: %#X\n\r", ipc->cmd, ipc->param1, ipc->param2, ipc->param3);
 #if (KERNEL_DEVELOPER_MODE)
         HALT();
 #endif
