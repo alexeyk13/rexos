@@ -7,8 +7,8 @@
 #ifndef PINBOARD_H
 #define PINBOARD_H
 
-#include "../../userspace/process.h"
-#include "../../userspace/sys.h"
+#include "../userspace/process.h"
+#include "../userspace/sys.h"
 
 typedef enum {
     PINBOARD_KEY_DOWN = HAL_IPC(HAL_PINBOARD),
