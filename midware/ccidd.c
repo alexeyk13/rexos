@@ -115,6 +115,8 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 
 #if (USBD_CCID_DEBUG_REQUESTS)
             printf("Found USB CCID device class, data: EP%d, iface: %d\n\r", ccidd->data_ep, ccidd->iface);
+            if (ccidd->status_ep)
+                printf("Status: EP%d\n\r", ccidd->status_ep);
 #endif //USBD_CCID_DEBUG_REQUESTS
 
             size = ccidd->data_ep_size;
