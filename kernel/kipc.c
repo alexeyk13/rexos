@@ -22,8 +22,8 @@ static inline int kipc_index(PROCESS* process, HANDLE wait_process)
 {
     int i;
     unsigned int head = process->kipc.rb.head;
-    for (i = process->kipc.rb.tail; i != head; i = RB_ROUND_BACK(&process->kipc.rb, i - 1))
-        if (IPC_ITEM(process, i)->process == wait_process || wait_process == ANY_HANDLE)
+    for (i = process->kipc.rb.tail; i != head; i = RB_ROUND(&process->kipc.rb, i + 1))
+        if ((IPC_ITEM(process, i)->process == wait_process) || (wait_process == ANY_HANDLE))
             return i;
     return -1;
 }
@@ -49,12 +49,12 @@ void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_proce
     //maybe already on queue? Peek.
     if (i >= 0)
     {
-        for(; i != process->kipc.rb.tail; i= RB_ROUND(&process->kipc.rb, i + 1))
+        for(; i != process->kipc.rb.tail; i= RB_ROUND_BACK(&process->kipc.rb, i - 1))
         {
             //swap
             memcpy(&tmp, IPC_ITEM(process, i), sizeof(IPC));
-            memcpy(IPC_ITEM(process, i), IPC_ITEM(process, RB_ROUND(&process->kipc.rb, i + 1)), sizeof(IPC));
-            memcpy(IPC_ITEM(process, RB_ROUND(&process->kipc.rb, i + 1)), &tmp, sizeof(IPC));
+            memcpy(IPC_ITEM(process, i), IPC_ITEM(process, RB_ROUND_BACK(&process->kipc.rb, i - 1)), sizeof(IPC));
+            memcpy(IPC_ITEM(process, RB_ROUND_BACK(&process->kipc.rb, i - 1)), &tmp, sizeof(IPC));
         }
         memcpy(ipc, IPC_ITEM(process, rb_get(&process->kipc.rb)), sizeof(IPC));
         kprocess_wakeup(process);
