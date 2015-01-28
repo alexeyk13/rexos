@@ -659,15 +659,15 @@ bool stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case IPC_GET_TX_STREAM:
-        ipc->param1 = stm32_uart_get_tx_stream(drv, HAL_ITEM(ipc->param1));
+        ipc->param2 = stm32_uart_get_tx_stream(drv, HAL_ITEM(ipc->param1));
         need_post = true;
         break;
     case IPC_GET_RX_STREAM:
-        ipc->param1 = stm32_uart_get_rx_stream(drv, HAL_ITEM(ipc->param1));
+        ipc->param2 = stm32_uart_get_rx_stream(drv, HAL_ITEM(ipc->param1));
         need_post = true;
         break;
     case IPC_UART_GET_LAST_ERROR:
-        ipc->param1 = stm32_uart_get_last_error(drv, HAL_ITEM(ipc->param1));
+        ipc->param2 = stm32_uart_get_last_error(drv, HAL_ITEM(ipc->param1));
         need_post = true;
         break;
     case IPC_UART_CLEAR_ERROR:
@@ -745,8 +745,6 @@ void stm32_uart()
         {
         case IPC_PING:
             need_post = true;
-            break;
-        case IPC_CALL_ERROR:
             break;
         case IPC_SET_STDIO:
             open_stdout();

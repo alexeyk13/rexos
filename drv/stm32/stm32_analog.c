@@ -13,6 +13,7 @@
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/sys.h"
+#include "../../userspace/file.h"
 #include <string.h>
 #if (SYS_INFO)
 #include "../../userspace/stdio.h"
@@ -270,7 +271,6 @@ static inline void stm32_dac_trigger_stop(DAC_STRUCT* dac)
 #if (DAC_DMA)
 void stm32_dac_dma_isr(int vector, void* param)
 {
-    IPC ipc;
     DAC_STRUCT* dac = (DAC_STRUCT*)param;
     int channel = dac->num == STM32_DAC2 ? 1 : 0;
     DAC_DMA_GLOBAL_REGS->IFCR |= 0xf << (8 + 4 * channel);
@@ -286,12 +286,7 @@ void stm32_dac_dma_isr(int vector, void* param)
         }
         else
         {
-            ipc.process = dac->process;
-            ipc.cmd = IPC_WRITE_COMPLETE;
-            ipc.param1 = HAL_HANDLE(HAL_DAC, dac->num);
-            ipc.param2 = dac->block;
-            ipc.param3 = dac->size;
-            block_isend_ipc(dac->block, dac->process, &ipc);
+            fiwrite_complete(dac->process, HAL_HANDLE(HAL_DAC, dac->num), dac->block, dac->size);
             dac->block = INVALID_HANDLE;
         }
     }
@@ -372,7 +367,6 @@ void stm32_dac_close_channel(SHARED_ANALOG_DRV* drv, int channel)
 
 void stm32_dac_flush(SHARED_ANALOG_DRV* drv, STM32_DAC num)
 {
-    IPC ipc;
     int channel = num == STM32_DAC2 ? 1 : 0;
     DAC_STRUCT* dac = drv->analog.dac[channel];
     stm32_dac_trigger_stop(dac);
@@ -385,14 +379,7 @@ void stm32_dac_flush(SHARED_ANALOG_DRV* drv, STM32_DAC num)
 #endif
     __enable_irq();
     if (block != INVALID_HANDLE)
-    {
-        ipc.process = dac->process;
-        ipc.cmd = IPC_WRITE_COMPLETE;
-        ipc.param1 = num;
-        ipc.param2 = block;
-        ipc.param3 = dac->size;
-        ipc_post(&ipc);
-    }
+        block_send(block, dac->process);
 }
 
 static inline void stm32_dac_open_internal(SHARED_ANALOG_DRV* drv, STM32_DAC dac_num, STM32_DAC_ENABLE* de)
@@ -517,17 +504,16 @@ static inline void stm32_dac_write(SHARED_ANALOG_DRV* drv, STM32_DAC num, HANDLE
 {
     if (num >= STM32_DAC_MAX || size == 0)
     {
-        ipc_post_error(process, ERROR_INVALID_PARAMS);
+        fwrite_complete(process, HAL_HANDLE(HAL_DAC, num), block, ERROR_INVALID_PARAMS);
         return;
     }
     int channel = num == STM32_DAC2 ? 1 : 0;
 
     if (drv->analog.dac[channel] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        fwrite_complete(process, HAL_HANDLE(HAL_DAC, num), block, ERROR_NOT_CONFIGURED);
         return;
     }
-    IPC ipc;
     bool need_start = true;
     DAC_STRUCT* dac = drv->analog.dac[channel];
 #if (DAC_DMA)
@@ -536,12 +522,12 @@ static inline void stm32_dac_write(SHARED_ANALOG_DRV* drv, STM32_DAC num, HANDLE
     if (dac->block != INVALID_HANDLE)
 #endif
     {
-        ipc_post_error(process, ERROR_IN_PROGRESS);
+        fwrite_complete(process, HAL_HANDLE(HAL_DAC, num), block, ERROR_IN_PROGRESS);
         return;
     }
     if ((dac->ptr = block_open(block)) == NULL)
     {
-        ipc_post_error(process, get_last_error());
+        fwrite_complete(process, HAL_HANDLE(HAL_DAC, num), block, get_last_error());
         return;
     }
     dac->block = block;
@@ -568,12 +554,7 @@ static inline void stm32_dac_write(SHARED_ANALOG_DRV* drv, STM32_DAC num, HANDLE
     if (!cnt_left)
     {
         //ready for next
-        ipc.cmd = IPC_WRITE_COMPLETE;
-        ipc.process = dac->process;
-        ipc.param1 = HAL_HANDLE(HAL_DAC, dac->num);
-        ipc.param2 = dac->block;
-        ipc.param3 = dac->size;
-        block_send_ipc(dac->block, dac->process, &ipc);
+        fwrite_complete(process, HAL_HANDLE(HAL_DAC, dac->num), dac->block, dac->size);
     }
 
     __disable_irq();
@@ -631,11 +612,11 @@ bool stm32_analog_request(SHARED_ANALOG_DRV* drv, IPC* ipc)
         break;
 #endif
     case STM32_ADC_SINGLE_CHANNEL:
-        ipc->param1 = stm32_adc_get_single_sample(ipc->param1, ipc->param2);
+        ipc->param2 = stm32_adc_get_single_sample(ipc->param1, ipc->param2);
         need_post = true;
         break;
     case STM32_ADC_TEMP:
-        ipc->param1 = stm32_adc_get_temp();
+        ipc->param2 = stm32_adc_get_temp();
         need_post = true;
         break;
     case IPC_OPEN:
@@ -718,8 +699,6 @@ void stm32_analog()
         {
         case IPC_PING:
             need_post = true;
-            break;
-        case IPC_CALL_ERROR:
             break;
         case IPC_SET_STDIO:
             open_stdout();

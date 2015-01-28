@@ -67,8 +67,6 @@ void stm32_core_loop(CORE* core)
             case IPC_PING:
                 need_post = true;
                 break;
-            case IPC_CALL_ERROR:
-                break;
             case IPC_SET_STDIO:
                 open_stdout();
                 need_post = true;
@@ -103,7 +101,7 @@ void stm32_core_loop(CORE* core)
                 group = HAL_GROUP(ipc.param1);
                 break;
             default:
-                ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
+                error(ERROR_NOT_SUPPORTED);
                 need_post = true;
             }
         }
@@ -149,7 +147,7 @@ void stm32_core_loop(CORE* core)
                 break;
 #endif //MONOLITH_USB
             default:
-                ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
+                error(ERROR_NOT_SUPPORTED);
                 need_post = true;
                 break;
             }

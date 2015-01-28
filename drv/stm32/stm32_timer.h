@@ -93,7 +93,7 @@ __STATIC_INLINE unsigned int stm32_timer_request_inside(CORE* core, unsigned int
     ipc.param2 = param2;
     ipc.param3 = param3;
     stm32_timer_request(core, &ipc);
-    return ipc.param1;
+    return ipc.param2;
 }
 
 

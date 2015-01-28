@@ -547,7 +547,7 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         break;
 #endif
     case STM32_POWER_GET_CLOCK:
-        ipc->param1 = get_clock(ipc->param1);
+        ipc->param2 = get_clock(ipc->param1);
         need_post = true;
         break;
     case STM32_POWER_UPDATE_CLOCK:
@@ -555,7 +555,7 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
     case STM32_POWER_GET_RESET_REASON:
-        ipc->param1 = get_reset_reason(core);
+        ipc->param2 = get_reset_reason(core);
         need_post = true;
         break;
 #if defined(STM32F1)
@@ -579,7 +579,7 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         break;
 #endif //STM32F1
     default:
-        ipc_set_error(ipc, ERROR_NOT_SUPPORTED);
+        error(ERROR_NOT_SUPPORTED);
         need_post = true;
     }
     return need_post;

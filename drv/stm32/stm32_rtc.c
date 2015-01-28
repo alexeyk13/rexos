@@ -243,7 +243,7 @@ bool stm32_rtc_request(IPC* ipc)
         break;
 #endif
     case RTC_GET:
-        ipc->param1 = (unsigned int)stm32_rtc_get();
+        ipc->param2 = (unsigned int)stm32_rtc_get();
         need_post = true;
         break;
     case RTC_SET:

@@ -508,11 +508,11 @@ bool stm32_timer_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
     case STM32_TIMER_GET_CLOCK:
-        ipc->param1 = stm32_timer_get_clock(core, ipc->param1);
+        ipc->param2 = stm32_timer_get_clock(core, ipc->param1);
         need_post = true;
         break;
     default:
-        ipc_set_error(ipc, ERROR_NOT_SUPPORTED);
+        error(ERROR_NOT_SUPPORTED);
         need_post = true;
         break;
     }

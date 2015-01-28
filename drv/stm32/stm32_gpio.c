@@ -303,7 +303,7 @@ bool stm32_gpio_request(CORE* core, IPC* ipc)
         break;
 #endif
     default:
-        ipc_set_error(ipc, ERROR_NOT_SUPPORTED);
+        error(ERROR_NOT_SUPPORTED);
         need_post = true;
         break;
     }

@@ -65,7 +65,7 @@ __STATIC_INLINE unsigned int stm32_power_request_inside(CORE* core, unsigned int
     ipc.param2 = param2;
     ipc.param3 = param3;
     stm32_power_request(core, &ipc);
-    return ipc.param1;
+    return ipc.param2;
 }
 
 __STATIC_INLINE unsigned int stm32_power_get_clock_outside(void* unused, STM32_POWER_CLOCKS type)
@@ -79,7 +79,7 @@ __STATIC_INLINE unsigned int stm32_power_get_clock_inside(CORE* core, STM32_POWE
     ipc.cmd = STM32_POWER_GET_CLOCK;
     ipc.param1 = (unsigned int)type;
     stm32_power_request(core, &ipc);
-    return ipc.param1;
+    return ipc.param2;
 }
 
 #endif // STM32_POWER_H

@@ -16,6 +16,7 @@
 #include "../../userspace/direct.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"
+#include "../../userspace/file.h"
 #include <string.h>
 #if (SYS_INFO)
 #include "../../userspace/stdio.h"
@@ -187,20 +188,9 @@ static inline void stm32_usb_rx(SHARED_USB_DRV* drv)
 
         if (ep->processed >= ep->size)
         {
-            ipc.process = drv->usb.device;
-            ipc.cmd = IPC_READ_COMPLETE;
-            ipc.param1 = HAL_HANDLE(HAL_USB, num);
-            ipc.param2 = ep->block;
-            ipc.param3 = ep->processed;
-
-            if (ep->block != INVALID_HANDLE)
-            {
-                block_send_ipc(ep->block, drv->usb.device, &ipc);
-                ep->block = INVALID_HANDLE;
-            }
-            else
-                ipc_post(&ipc);
             ep->io_active = false;
+            firead_complete(drv->usb.device, HAL_HANDLE(HAL_USB, num), ep->block, ep->processed);
+            ep->block = INVALID_HANDLE;
         }
         else
             stm32_usb_rx_prepare(drv, num);
@@ -262,20 +252,9 @@ void usb_on_isr(int vector, void* param)
             OTG_FS_DEVICE->INEP[i].INT = OTG_FS_DEVICE_ENDPOINT_INT_XFRC;
             if (drv->usb.in[i]->processed >= drv->usb.in[i]->size)
             {
-                ipc.process = drv->usb.device;
-                ipc.cmd = IPC_WRITE_COMPLETE;
-                ipc.param1 = HAL_HANDLE(HAL_USB, USB_EP_IN | i);
-                ipc.param2 = drv->usb.in[i]->block;
-                ipc.param3 = drv->usb.in[i]->processed;
-                if (drv->usb.in[i]->block != INVALID_HANDLE)
-                {
-                    block_isend_ipc(drv->usb.in[i]->block, drv->usb.device, &ipc);
-                    drv->usb.in[i]->block = INVALID_HANDLE;
-                }
-                else
-                    ipc_ipost(&ipc);
                 drv->usb.in[i]->io_active = false;
-
+                fiwrite_complete(drv->usb.device, HAL_HANDLE(HAL_USB, USB_EP_IN | i), drv->usb.in[i]->block, drv->usb.in[i]->processed);
+                drv->usb.in[i]->block = INVALID_HANDLE;
             }
             else
             {
@@ -498,35 +477,31 @@ static inline void stm32_usb_read(SHARED_USB_DRV* drv, unsigned int num, HANDLE 
 {
     if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_INVALID_PARAMS);
+        fread_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_INVALID_PARAMS);
         return;
     }
     EP* ep = drv->usb.out[USB_EP_NUM(num)];
     if (ep == NULL)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_NOT_CONFIGURED);
+        fread_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_NOT_CONFIGURED);
         return;
     }
     if (ep->io_active)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_IN_PROGRESS);
+        fread_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_IN_PROGRESS);
         return;
     }
     //no blocks for ZLP
-    ep->size = size;
-    if (ep->size)
+    if (size)
     {
-        ep->block = block;
-        if ((ep->ptr = block_open(ep->block)) == NULL)
+        if ((ep->ptr = block_open(block)) == NULL)
         {
-            block_send(block, process);
-            ipc_post_error(process, get_last_error());
+            fread_complete(process, HAL_HANDLE(HAL_USB, num), block, get_last_error());
             return;
         }
     }
+    ep->size = size;
+    ep->block = block;
     ep->processed = 0;
     ep->io_active = true;
     stm32_usb_rx_prepare(drv, num);
@@ -536,35 +511,31 @@ static inline void stm32_usb_write(SHARED_USB_DRV* drv, unsigned int num, HANDLE
 {
     if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_INVALID_PARAMS);
+        fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_INVALID_PARAMS);
         return;
     }
     EP* ep = drv->usb.in[USB_EP_NUM(num)];
     if (ep == NULL)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_NOT_CONFIGURED);
+        fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_NOT_CONFIGURED);
         return;
     }
     if (ep->io_active)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_IN_PROGRESS);
+        fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_IN_PROGRESS);
         return;
     }
     ep->size = size;
     //no blocks for ZLP
     if (ep->size)
     {
-        ep->block = block;
-        if ((ep->ptr = block_open(ep->block)) == NULL)
+        if ((ep->ptr = block_open(block)) == NULL)
         {
-            block_send(block, process);
-            ipc_post_error(process, get_last_error());
+            fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, get_last_error());
             return;
         }
     }
+    ep->block = block;
     ep->processed = 0;
     ep->io_active = true;
 
@@ -633,7 +604,7 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         //message from isr, no response
         break;
     case USB_GET_SPEED:
-        ipc->param1 = stm32_usb_get_speed(drv);
+        ipc->param2 = stm32_usb_get_speed(drv);
         need_post = true;
         break;
     case IPC_OPEN:
@@ -667,14 +638,18 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case USB_EP_IS_STALL:
-        ipc->param1 = stm32_usb_ep_is_stall(HAL_ITEM(ipc->param1));
+        ipc->param2 = stm32_usb_ep_is_stall(HAL_ITEM(ipc->param1));
         need_post = true;
         break;
     case IPC_READ:
+        if ((int)ipc->param3 < 0)
+            break;
         stm32_usb_read(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
         //generally posted with block, no return IPC
         break;
     case IPC_WRITE:
+        if ((int)ipc->param3 < 0)
+            break;
         stm32_usb_write(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
         //generally posted with block, no return IPC
         break;
@@ -710,8 +685,6 @@ void stm32_usb()
         {
         case IPC_PING:
             need_post = true;
-            break;
-        case IPC_CALL_ERROR:
             break;
         default:
             need_post = stm32_usb_request(&drv, &ipc);

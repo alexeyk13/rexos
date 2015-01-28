@@ -62,7 +62,7 @@ bool stm32_wdt_request(IPC* ipc)
         need_post = true;
         break;
     default:
-        ipc_set_error(ipc, ERROR_NOT_SUPPORTED);
+        error(ERROR_NOT_SUPPORTED);
         need_post = true;
         break;
     }
