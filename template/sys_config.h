@@ -29,8 +29,6 @@
 #define USB_EP_COUNT_MAX                                    4
 //low-level USB debug. Turn on only in case of IO problems
 #define USB_DEBUG_ERRORS                                    1
-//USB test mode support. Not all hardware supported.
-#define USB_TEST_MODE                                       0
 //support for high speed, qualifier, other speed, test, etc
 #define USB_2_0                                             0
 
@@ -40,7 +38,10 @@
 #define USBD_DEBUG_ERRORS                                   1
 #define USBD_DEBUG_REQUESTS                                 0
 
-#define USBD_PROCESS_SIZE                                   900
+//vendor-specific requests support
+#define USBD_VSR                                            1
+
+#define USBD_PROCESS_SIZE                                   800
 #define USBD_BLOCK_SIZE                                     256
 
 #define USBD_CDC_CLASS                                      0
@@ -52,20 +53,21 @@
 #define USBD_CDC_TX_STREAM_SIZE                             64
 #define USBD_CDC_RX_STREAM_SIZE                             64
 
-#define USBD_CDC_DEBUG_ERRORS                               1
-#define USBD_CDC_DEBUG_REQUESTS                             1
+#define USBD_CDC_DEBUG_ERRORS                               0
+#define USBD_CDC_DEBUG_REQUESTS                             0
 #define USBD_CDC_DEBUG_IO                                   0
 
 //------------------------------ HIDD class -------------------------------------------
-#define USBD_HID_DEBUG_ERRORS                               1
-#define USBD_HID_DEBUG_REQUESTS                             1
+#define USBD_HID_DEBUG_ERRORS                               0
+#define USBD_HID_DEBUG_REQUESTS                             0
 #define USBD_HID_DEBUG_IO                                   0
 
 //----------------------------- CCIDD class -------------------------------------------
 #define USBD_CCID_MAX_ATR_SIZE                              32
+#define USBD_CCID_BLOCK_SIZE                                512
 
-#define USBD_CCID_DEBUG_ERRORS                              1
-#define USBD_CCID_DEBUG_REQUESTS                            1
+#define USBD_CCID_DEBUG_ERRORS                              0
+#define USBD_CCID_DEBUG_REQUESTS                            0
 #define USBD_CCID_DEBUG_IO                                  0
 
 //------------------------------ PIN board -------------------------------------------

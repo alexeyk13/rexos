@@ -30,11 +30,9 @@
 //------------------------------ stdio -----------------------------------------------
 #define STDIO_STREAM_SIZE                                   32
 //-------------------------------- USB -----------------------------------------------
-#define USB_EP_COUNT_MAX                                    3
+#define USB_EP_COUNT_MAX                                    4
 //low-level USB debug. Turn on only in case of IO problems
 #define USB_DEBUG_ERRORS                                    1
-//USB test mode support. Not all hardware supported.
-#define USB_TEST_MODE                                       0
 //support for high speed, qualifier, other speed, test, etc
 #define USB_2_0                                             0
 
@@ -43,6 +41,9 @@
 #define USBD_DEBUG                                          1
 #define USBD_DEBUG_ERRORS                                   1
 #define USBD_DEBUG_REQUESTS                                 0
+
+//vendor-specific requests support
+#define USBD_VSR                                            1
 
 #define USBD_PROCESS_SIZE                                   900
 #define USBD_BLOCK_SIZE                                     256

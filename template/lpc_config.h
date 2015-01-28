@@ -35,6 +35,11 @@
 //second pulse timer. Unused if RTC is configured
 #define HPET_CHANNEL                        TIMER_CHANNEL1
 
+//------------------------------------- EEPROM --------------------------------------------
+#define LPC_EEPROM_DRIVER                   1
+
+//increase for perfomance, decrease for memory saving. Must be 4 bytes aligned.
+#define LPC_EEPROM_BUF_SIZE                 20
 //-------------------------------------- GPIO ---------------------------------------------
 #define GPIO_HYSTERESIS                     1
 //GPIO pin constants for specific module. If not used can save 32 bytes per block

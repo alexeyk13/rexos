@@ -37,8 +37,8 @@ static inline void comm_usb_configured(COMM* comm)
 {
     HANDLE usbd, tx_stream;
     usbd = object_get(SYS_OBJ_USBD);
-    tx_stream = get(usbd, IPC_GET_TX_STREAM, HAL_HANDLE(HAL_USBD, USBD_HANDLE_INTERFACE + 1), 0, 0);
-    comm->rx_stream = get(usbd, IPC_GET_RX_STREAM, HAL_HANDLE(HAL_USBD, USBD_HANDLE_INTERFACE + 1), 0, 0);
+    tx_stream = get(usbd, IPC_GET_TX_STREAM, HAL_USBD_INTERFACE(0, 0), 0, 0);
+    comm->rx_stream = get(usbd, IPC_GET_RX_STREAM, HAL_USBD_INTERFACE(0, 0), 0, 0);
 
     comm->tx = stream_open(tx_stream);
     comm->rx = stream_open(comm->rx_stream);
@@ -129,19 +129,19 @@ void comm_init(COMM *comm)
     //setup usbd
     usbd = process_create(&__USBD);
 
-    usb_register_persistent_descriptor(USB_DESCRIPTOR_DEVICE_FS, 0, 0, &__DEVICE_DESCRIPTOR);
-    usb_register_persistent_descriptor(USB_DESCRIPTOR_CONFIGURATION_FS, 0, 0, &__CONFIGURATION_DESCRIPTOR);
-    usb_register_persistent_descriptor(USB_DESCRIPTOR_STRING, 0, 0, &__STRING_WLANGS);
-    usb_register_persistent_descriptor(USB_DESCRIPTOR_STRING, 1, 0x0409, &__STRING_MANUFACTURER);
-    usb_register_persistent_descriptor(USB_DESCRIPTOR_STRING, 2, 0x0409, &__STRING_PRODUCT);
-    usb_register_persistent_descriptor(USB_DESCRIPTOR_STRING, 3, 0x0409, &__STRING_SERIAL);
-    usb_register_persistent_descriptor(USB_DESCRIPTOR_STRING, 4, 0x0409, &__STRING_DEFAULT);
+    ack(usbd, USBD_REGISTER_HANDLER, HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), 0, 0);
+
+    usb_register_descriptor(USB_DESCRIPTOR_DEVICE_FS, 0, 0, &__DEVICE_DESCRIPTOR, sizeof(__DEVICE_DESCRIPTOR), USBD_FLAG_PERSISTENT_DESCRIPTOR);
+    usb_register_descriptor(USB_DESCRIPTOR_CONFIGURATION_FS, 0, 0, &__CONFIGURATION_DESCRIPTOR, sizeof(__CONFIGURATION_DESCRIPTOR), USBD_FLAG_PERSISTENT_DESCRIPTOR);
+    usb_register_descriptor(USB_DESCRIPTOR_STRING, 0, 0, &__STRING_WLANGS, __STRING_WLANGS[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
+    usb_register_descriptor(USB_DESCRIPTOR_STRING, 1, 0x0409, &__STRING_MANUFACTURER, __STRING_MANUFACTURER[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
+    usb_register_descriptor(USB_DESCRIPTOR_STRING, 2, 0x0409, &__STRING_PRODUCT, __STRING_PRODUCT[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
+    usb_register_descriptor(USB_DESCRIPTOR_STRING, 3, 0x0409, &__STRING_SERIAL, __STRING_SERIAL[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
+    usb_register_descriptor(USB_DESCRIPTOR_STRING, 4, 0x0409, &__STRING_DEFAULT, __STRING_DEFAULT[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
 
     te_usb_disable_power();
     //turn USB on
     fopen(usbd, HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), 0);
-
-    ack(usbd, USBD_REGISTER_HANDLER, HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), 0, 0);
 
     printf("USB activated\n\r");
 }
@@ -163,8 +163,6 @@ void comm()
         case IPC_PING:
             need_post = true;
             break;
-        case IPC_CALL_ERROR:
-            break;
         case USBD_ALERT:
             comm_usbd_alert(&comm, ipc.param1);
             break;
@@ -172,7 +170,6 @@ void comm()
             comm_usbd_stream_rx(&comm, ipc.param2);
             break;
         default:
-            need_post = true;
             break;
         }
         if (need_post)

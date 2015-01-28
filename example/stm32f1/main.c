@@ -12,11 +12,9 @@
 #include "../../rexos/userspace/gpio.h"
 #include "../../rexos/userspace/rtc.h"
 #include "../../rexos/userspace/wdt.h"
+#include "../../rexos/userspace/stm32_driver.h"
 #include "../../rexos/drv/stm32/stm32_uart.h"
 #include "../../rexos/drv/stm32/stm32_analog.h"
-#include "../../rexos/drv/stm32/stm32_usb.h"
-#include "../../rexos/midware/usbd.h"
-#include "../../rexos/userspace/usb.h"
 #include "../../rexos/userspace/file.h"
 #include "comm.h"
 
