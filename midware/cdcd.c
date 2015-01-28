@@ -439,11 +439,11 @@ bool cdcd_class_request(USBD* usbd, void* param, IPC* ipc)
         cdcd_write(usbd, cdcd);
         break;
     case IPC_GET_TX_STREAM:
-        ipc->param1 = cdcd->tx_stream;
+        ipc->param2 = cdcd->tx_stream;
         need_post = true;
         break;
     case IPC_GET_RX_STREAM:
-        ipc->param1 = cdcd->rx_stream;
+        ipc->param2 = cdcd->rx_stream;
         need_post = true;
         break;
     case USBD_INTERFACE_REQUEST:

@@ -1097,7 +1097,7 @@ static inline void usbd_unregister_user(USBD* usbd, HANDLE process)
     if (usbd->user != process)
         error(ERROR_ACCESS_DENIED);
     else
-        usbd->user = process;
+        usbd->user = INVALID_HANDLE;
 }
 
 bool usbd_device_request(USBD* usbd, IPC* ipc)
@@ -1118,15 +1118,15 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
         need_post = true;
         break;
     case USBD_UNREGISTER_HANDLER:
-        usbd_register_user(usbd, ipc->process);
+        usbd_unregister_user(usbd, ipc->process);
         need_post = true;
         break;
     case USBD_GET_STATE:
-        ipc->param1 = usbd->state;
+        ipc->param2 = usbd->state;
         need_post = true;
         break;
     case USB_RESET:
-        usbd_reset(usbd, ipc->param1);
+        usbd_reset(usbd, ipc->param2);
         //called from ISR, no response
         break;
     case USB_SUSPEND:

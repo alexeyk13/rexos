@@ -233,7 +233,7 @@ __STATIC_INLINE unsigned int get(HANDLE process, unsigned int cmd, unsigned int 
     ipc.param2 = param2;
     ipc.param3 = param3;
     if (call(&ipc))
-        return ipc.param1;
+        return ipc.param2;
     return INVALID_HANDLE;
 }
 

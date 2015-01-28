@@ -44,14 +44,12 @@ typedef enum {
 #if (MONOLITH_USB)
 
 #define _printd                 printd
-#define get_clock               lpc_power_get_clock_inside
 #define ack_gpio                lpc_gpio_request_inside
 #define ack_power               lpc_power_request_inside
 
 #else
 
 #define _printd                 printf
-#define get_clock               lpc_power_get_clock_outside
 #define ack_gpio                lpc_core_request_outside
 #define ack_power               lpc_core_request_outside
 
@@ -200,7 +198,7 @@ static inline void lpc_usb_reset(SHARED_USB_DRV* drv)
 
     IPC ipc;
     ipc.process = drv->usb.device;
-    ipc.param1 = lpc_usb_get_speed(drv);
+    ipc.param2 = lpc_usb_get_speed(drv);
     ipc.cmd = USB_RESET;
     ipc_ipost(&ipc);
 
@@ -244,9 +242,6 @@ static inline void lpc_usb_out(SHARED_USB_DRV* drv, int num)
 
     if (ep->processed >= ep->size || cnt < ep->mps)
     {
-        if (num == 2)
-            printk("rx 2 ok\n\r");
-
         ipc.process = drv->usb.device;
         ipc.cmd = IPC_READ_COMPLETE;
         ipc.param1 = HAL_HANDLE(HAL_USB, num);
@@ -358,7 +353,7 @@ void lpc_usb_on_isr(int vector, void* param)
         break;
     default:
         ipc.process = process_iget_current();
-        ipc.param1 = (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK) >> USB_INFO_ERR_CODE_POS;
+        ipc.param2 = (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK) >> USB_INFO_ERR_CODE_POS;
         ipc.cmd = LPC_USB_ERROR;
         ipc_ipost(&ipc);
         LPC_USB->INFO &= ~USB_INFO_ERR_CODE_MASK;
@@ -518,11 +513,6 @@ static inline void lpc_usb_read(SHARED_USB_DRV* drv, unsigned int num, HANDLE bl
         return;
     }
     EP* ep = drv->usb.out[USB_EP_NUM(num)];
-    if (num == 2 && ep->io_active)
-        printk("this shit\n\r");
-    if (num == 2 && !ep->io_active)
-        printk("rx 2 start\n\r");
-
     if (ep == NULL)
     {
         fread_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_NOT_CONFIGURED);
@@ -628,7 +618,7 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         break;
 #endif
     case USB_GET_SPEED:
-        ipc->param1 = lpc_usb_get_speed(drv);
+        ipc->param2 = lpc_usb_get_speed(drv);
         need_post = true;
         break;
     case IPC_OPEN:
@@ -662,7 +652,7 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case USB_EP_IS_STALL:
-        ipc->param1 = lpc_usb_ep_is_stall(HAL_ITEM(ipc->param1));
+        ipc->param2 = lpc_usb_ep_is_stall(HAL_ITEM(ipc->param1));
         need_post = true;
         break;
     case IPC_READ:
@@ -675,7 +665,7 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         break;
 #if (USB_DEBUG_ERRORS)
     case LPC_USB_ERROR:
-        printf("USB driver error: %#x\n\r", ipc->param1);
+        printf("USB driver error: %#x\n\r", ipc->param2);
         //posted from isr
         break;
 #endif

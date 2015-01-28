@@ -393,7 +393,7 @@ static inline void hidd_kbd_key_release(USBD* usbd, HIDD_KBD* hidd, unsigned int
 
 static inline void hidd_kbd_get_leds_state(HIDD_KBD* hidd, IPC* ipc)
 {
-    ipc->param1 = hidd->kbd.leds;
+    ipc->param2 = hidd->kbd.leds;
 }
 
 bool hidd_kbd_class_request(USBD* usbd, void* param, IPC* ipc)

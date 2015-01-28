@@ -222,7 +222,7 @@ bool lpc_power_request(CORE* core, IPC* ipc)
         break;
 #endif
     case LPC_POWER_GET_SYSTEM_CLOCK:
-        ipc->param1 = lpc_get_system_clock();
+        ipc->param2 = lpc_get_system_clock();
         need_post = true;
         break;
     case LPC_POWER_UPDATE_CLOCK:
@@ -230,7 +230,7 @@ bool lpc_power_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
     case LPC_POWER_GET_RESET_REASON:
-        ipc->param1 = lpc_get_reset_reason(core);
+        ipc->param2 = lpc_get_reset_reason(core);
         need_post = true;
         break;
     case LPC_POWER_USB_ON:

@@ -23,7 +23,7 @@ __STATIC_INLINE unsigned int lpc_gpio_request_inside(void* unused, unsigned int 
     ipc.param2 = param2;
     ipc.param3 = param3;
     lpc_gpio_request(&ipc);
-    return ipc.param1;
+    return ipc.param2;
 }
 
 #endif // LPC_GPIO_H

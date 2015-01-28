@@ -580,7 +580,6 @@ static inline void ccidd_card_power_on(USBD* usbd, CCIDD* ccidd, HANDLE process,
     switch (ccidd->state)
     {
     case CCIDD_STATE_CARD_POWERING_ON:
-        printf("powering on\n\r");
         ccidd_card_power_on_internal(ccidd, process, size);
         ccidd_data_block(usbd, ccidd, ccidd->atr, ccidd->atr_size, 0);
         break;

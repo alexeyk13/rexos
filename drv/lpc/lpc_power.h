@@ -21,7 +21,7 @@ __STATIC_INLINE unsigned int lpc_power_request_inside(CORE* core, unsigned int c
     ipc.param2 = param2;
     ipc.param3 = param3;
     lpc_power_request(core, &ipc);
-    return ipc.param1;
+    return ipc.param2;
 }
 
 __STATIC_INLINE unsigned int lpc_power_get_system_clock_outside(void* unused)
@@ -34,7 +34,7 @@ __STATIC_INLINE unsigned int lpc_power_get_system_clock_inside(CORE* core)
     IPC ipc;
     ipc.cmd = LPC_POWER_GET_SYSTEM_CLOCK;
     lpc_power_request(core, &ipc);
-    return ipc.param1;
+    return ipc.param2;
 }
 
 
