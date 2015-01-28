@@ -861,11 +861,13 @@ void usbd_setup_process(USBD* usbd)
     case BM_REQUEST_RECIPIENT_DEVICE:
         if ((usbd->setup.bmRequestType & BM_REQUEST_TYPE) == BM_REQUEST_TYPE_STANDART)
             res = usbd_standart_device_request(usbd);
+#if (USBD_VSR)
         else if (usbd->user != INVALID_HANDLE)
         {
             block_send(usbd->block, usbd->user);
             res = get(usbd->user, USBD_VENDOR_REQUEST, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
         }
+#endif
         break;
     case BM_REQUEST_RECIPIENT_INTERFACE:
         res = usbd_interface_request(usbd, usbd->setup.wIndex);
