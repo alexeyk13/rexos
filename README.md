@@ -53,6 +53,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * core (GPIO, UART, TIMER, POWER): STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx
   * rtc: STM32F1, STM32F2, STM32F4, STM32L0
   * wdt: STM32F1, STM32F2, STM32F4, STM32L0
+  * EEPROM: LPC11Uxx
   * I2C: LPC1Uxx
   * analog(ADC, DAC): STM32F1
   * USB: STM32F1_CL, STM32L0, LPC11Uxx
@@ -71,6 +72,19 @@ ARM7 features:
 
 History
 =======
+0.2.4
+- LPC 11Uxx EEPROM driver
+- no more splitted calls. Response is same as request
+- direct read/write can work in partial mode
+- new file API. IPC_IO_CANCELLED, IPC_READ_COMPLETE, IPC_WRITE_COMPLETE is now obsolete.
+- file API supports direct mode
+- new sys interface. Recommended abstraction: param1 - handle, param2 - object, param3 - size or error. 
+  Get returns value in param2.
+- critical fix in IPC queue
+- USB CCID device state machine fix
+- USB device support for vendor specific requests
+- USB device suspend/resume support
+
 0.2.3
 - USB CCID device class
 - USB device support wakeup/resume on linux
