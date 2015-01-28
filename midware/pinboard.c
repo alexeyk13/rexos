@@ -1,15 +1,15 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
 #include "pinboard.h"
-#include "../../userspace/array.h"
-#include "../../userspace/time.h"
-#include "../../userspace/timer.h"
-#include "../../userspace/sys.h"
-#include "../../userspace/gpio.h"
+#include "../userspace/array.h"
+#include "../userspace/time.h"
+#include "../userspace/timer.h"
+#include "../userspace/sys.h"
+#include "../userspace/gpio.h"
 #include "sys_config.h"
 #if (SYS_INFO)
 #include "../../userspace/stdio.h"
@@ -161,7 +161,7 @@ static inline bool pinboard_request(ARRAY** pins, IPC* ipc)
         need_post = true;
         break;
     case PINBOARD_GET_KEY_STATE:
-        ipc->param1 = pinboard_get_key_state(pins, HAL_ITEM(ipc->param1));
+        ipc->param2 = pinboard_get_key_state(pins, HAL_ITEM(ipc->param1));
         need_post = true;
         break;
     default:
@@ -211,7 +211,7 @@ void pinboard()
                 break;
             }
             if (need_post)
-                ipc_post(&ipc);
+                ipc_post_or_error(&ipc);
         }
         else
             pinboard_poll(&pins);
