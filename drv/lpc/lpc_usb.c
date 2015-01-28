@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -9,6 +9,7 @@
 #include "../../userspace/usb.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/block.h"
+#include "../../userspace/file.h"
 #include "../../userspace/lpc_driver.h"
 #include "lpc_gpio.h"
 #include "lpc_power.h"
@@ -243,11 +244,15 @@ static inline void lpc_usb_out(SHARED_USB_DRV* drv, int num)
 
     if (ep->processed >= ep->size || cnt < ep->mps)
     {
+        if (num == 2)
+            printk("rx 2 ok\n\r");
+
         ipc.process = drv->usb.device;
         ipc.cmd = IPC_READ_COMPLETE;
         ipc.param1 = HAL_HANDLE(HAL_USB, num);
         ipc.param2 = ep->block;
         ipc.param3 = ep->processed;
+        ep->io_active = false;
 
         if (ep->block != INVALID_HANDLE)
         {
@@ -256,7 +261,6 @@ static inline void lpc_usb_out(SHARED_USB_DRV* drv, int num)
         }
         else
             ipc_ipost(&ipc);
-        ep->io_active = false;
     }
     else
         lpc_usb_rx_prepare(drv, num);
@@ -280,6 +284,7 @@ static inline void lpc_usb_in(SHARED_USB_DRV* drv, int num)
         ipc.param1 = HAL_HANDLE(HAL_USB, num);
         ipc.param2 = ep->block;
         ipc.param3 = ep->processed;
+        ep->io_active = false;
         if (ep->block != INVALID_HANDLE)
         {
             block_isend_ipc(ep->block, drv->usb.device, &ipc);
@@ -287,7 +292,6 @@ static inline void lpc_usb_in(SHARED_USB_DRV* drv, int num)
         }
         else
             ipc_ipost(&ipc);
-        ep->io_active = false;
     }
     else
         lpc_usb_tx(drv, num);
@@ -407,8 +411,6 @@ void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     //Unmask common interrupts
     LPC_USB->INTEN = USB_INTSTAT_DEV_INT;
 
-    //enable device
-//    LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DEV_EN;
 #if (USB_SOFT_CONNECT)
     //pullap
     LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DCON;
@@ -512,21 +514,23 @@ static inline void lpc_usb_read(SHARED_USB_DRV* drv, unsigned int num, HANDLE bl
 {
     if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_INVALID_PARAMS);
+        fread_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_INVALID_PARAMS);
         return;
     }
     EP* ep = drv->usb.out[USB_EP_NUM(num)];
+    if (num == 2 && ep->io_active)
+        printk("this shit\n\r");
+    if (num == 2 && !ep->io_active)
+        printk("rx 2 start\n\r");
+
     if (ep == NULL)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_NOT_CONFIGURED);
+        fread_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_NOT_CONFIGURED);
         return;
     }
     if (ep->io_active)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_IN_PROGRESS);
+        fread_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_IN_PROGRESS);
         return;
     }
     //no blocks for ZLP
@@ -536,8 +540,7 @@ static inline void lpc_usb_read(SHARED_USB_DRV* drv, unsigned int num, HANDLE bl
         ep->block = block;
         if ((ep->ptr = block_open(ep->block)) == NULL)
         {
-            block_send(block, process);
-            ipc_post_error(process, get_last_error());
+            fread_complete(process, HAL_HANDLE(HAL_USB, num), block, get_last_error());
             return;
         }
     }
@@ -551,21 +554,18 @@ static inline void lpc_usb_write(SHARED_USB_DRV* drv, unsigned int num, HANDLE b
 {
     if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_INVALID_PARAMS);
+        fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_INVALID_PARAMS);
         return;
     }
     EP* ep = drv->usb.in[USB_EP_NUM(num)];
     if (ep == NULL)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_NOT_CONFIGURED);
+        fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_NOT_CONFIGURED);
         return;
     }
     if (ep->io_active)
     {
-        block_send(block, process);
-        ipc_post_error(process, ERROR_IN_PROGRESS);
+        fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_IN_PROGRESS);
         return;
     }
     ep->size = size;
@@ -575,8 +575,7 @@ static inline void lpc_usb_write(SHARED_USB_DRV* drv, unsigned int num, HANDLE b
         ep->block = block;
         if ((ep->ptr = block_open(ep->block)) == NULL)
         {
-            block_send(block, process);
-            ipc_post_error(process, get_last_error());
+            fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, get_last_error());
             return;
         }
     }
@@ -681,8 +680,6 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         break;
 #endif
     default:
-        error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
     return need_post;
@@ -708,8 +705,6 @@ void lpc_usb()
         {
         case IPC_PING:
             need_post = true;
-            break;
-        case IPC_CALL_ERROR:
             break;
         default:
             need_post = lpc_usb_request(&drv, &ipc);

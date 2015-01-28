@@ -535,6 +535,7 @@ static inline void ccidd_message_tx(USBD* usbd, CCIDD* ccidd)
         //NACK until next fread
         break;
     default:
+        printk("read point 3\n\r");
         fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
         break;
     }
@@ -589,6 +590,7 @@ static inline void ccidd_card_power_on(USBD* usbd, CCIDD* ccidd, HANDLE process,
     switch (ccidd->state)
     {
     case CCIDD_STATE_CARD_POWERING_ON:
+        printf("powering on\n\r");
         ccidd_card_power_on_internal(ccidd, process, size);
         ccidd_data_block(usbd, ccidd, ccidd->atr, ccidd->atr_size, 0);
         break;
@@ -679,19 +681,20 @@ static inline void ccidd_read(USBD* usbd, CCIDD* ccidd, HANDLE block, unsigned i
 {
     if (ccidd->state != CCIDD_STATE_CARD_POWERED)
     {
-        fio_cancelled(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), block, ERROR_INVALID_STATE);
+        fread_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), block, ERROR_INVALID_STATE);
         return;
     }
     ccidd->data_buf = block_open(block);
     if (max_size && (block == INVALID_HANDLE || ccidd->data_buf == NULL))
     {
-        fio_cancelled(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), block, get_last_error());
+        fread_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), block, get_last_error());
         return;
     }
     ccidd->data_block = block;
     ccidd->data_block_size = max_size;
     ccidd->data_processed = ccidd->rx_size = 0;
     ccidd->state = CCIDD_STATE_READY;
+    printk("read point 4\n\r");
     fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
 }
 
@@ -712,13 +715,13 @@ static inline void ccidd_write(USBD* usbd, CCIDD* ccidd, HANDLE block, unsigned 
     unsigned int chunk_size;
     if (ccidd->state != CCIDD_STATE_SC_REQUEST)
     {
-        fio_cancelled(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), block, ERROR_INVALID_STATE);
+        fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), block, ERROR_INVALID_STATE);
         return;
     }
     ccidd->data_buf = block_open(block);
     if (size && (block == INVALID_HANDLE || ccidd->data_buf == NULL))
     {
-        fio_cancelled(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), block, get_last_error());
+        fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), block, get_last_error());
         return;
     }
     ccidd->data_block = block;
@@ -776,12 +779,19 @@ bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
         ccidd_write(usbd, ccidd, ipc->param2, ipc->param3);
         break;
     case IPC_READ_COMPLETE:
+        if ((int)ipc->param3 < 0)
+        {
+            printf("read error!!!!!\n\r");
+            break;
+        }
         if (USB_EP_NUM(HAL_ITEM(ipc->param1)) == ccidd->data_ep)
         {
             if (ccidd->state == CCIDD_STATE_RX)
                 ccidd_rx_more(usbd, ccidd, ipc->param3);
             else
+            {
                 ccidd_message_rx(usbd, ccidd);
+            }
         }
         break;
     case IPC_WRITE_COMPLETE:
@@ -789,7 +799,9 @@ bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
             ccidd_message_tx(usbd, ccidd);
         //status notify complete
         else
+        {
             ccidd->status_busy = false;
+        }
         break;
     default:
 #if (USBD_CCID_DEBUG_REQUESTS)

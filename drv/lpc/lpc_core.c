@@ -53,8 +53,6 @@ void lpc_core_loop(CORE* core)
             case IPC_PING:
                 need_post = true;
                 break;
-            case IPC_CALL_ERROR:
-                break;
 #if !(MONOLITH_UART)
             case IPC_SET_STDIO:
                 open_stdout();
@@ -129,8 +127,6 @@ void lpc_core_loop(CORE* core)
                 break;
 #endif //LPC_EEPROM_DRIVER
             default:
-                ipc_set_error(&ipc, ERROR_NOT_SUPPORTED);
-                need_post = true;
                 break;
             }
         }

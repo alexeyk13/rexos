@@ -8,23 +8,39 @@
 #include "../userspace/direct.h"
 #include "../userspace/object.h"
 #include "../userspace/usb.h"
+#include "../userspace/stdlib.h"
+#include <string.h>
 #include "sys_config.h"
 
 #define D_OFFSET(d, cfg)                            (((unsigned int)(d)) - ((unsigned int)(cfg)))
 #define D_NEXT(d, cfg)                              ((USB_DESCRIPTOR_TYPE*)(((unsigned int)(d)) + (d)->bLength))
 
-bool lib_usb_register_persistent_descriptor(USBD_DESCRIPTOR_TYPE type, unsigned int index, unsigned int lang, const void* d)
+bool lib_usb_register_descriptor(USBD_DESCRIPTOR_TYPE type, unsigned int index, unsigned int lang, const void* d, unsigned int data_size, unsigned int flags)
 {
     HANDLE usbd = object_get(SYS_OBJ_USBD);
-    char buf[USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED + sizeof(const void**)];
+    uint8_t* buf;
+    unsigned int size;
+    if (flags & USBD_FLAG_PERSISTENT_DESCRIPTOR)
+        size = USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED + sizeof(const void**);
+    else
+        size = USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED + data_size;
+    buf = malloc(size);
+    if (buf == NULL)
+        return false;
     USBD_DESCRIPTOR_REGISTER_STRUCT* udrs = (USBD_DESCRIPTOR_REGISTER_STRUCT*)buf;
 
-    udrs->flags = USBD_FLAG_PERSISTENT_DESCRIPTOR;
+    udrs->flags = flags;
     udrs->index = index;
     udrs->lang = lang;
-    *(const void**)(buf + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED) = d;
+
+    if (flags & USBD_FLAG_PERSISTENT_DESCRIPTOR)
+        *(const void**)(buf + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED) = d;
+    else
+        memcpy(buf + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED, d, size);
+
     direct_enable_read(usbd, buf, USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED + sizeof(const void**));
     ack(usbd, USBD_REGISTER_DESCRIPTOR, type, USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED + sizeof(const void**), 0);
+    free(buf);
     return get_last_error() == ERROR_OK;
 }
 
@@ -69,7 +85,7 @@ USB_DESCRIPTOR_TYPE* lib_usb_interface_get_next_descriptor(const USB_CONFIGURATI
 }
 
 const LIB_USB __LIB_USB = {
-    lib_usb_register_persistent_descriptor,
+    lib_usb_register_descriptor,
     lib_usb_get_first_interface,
     lib_usb_get_next_interface,
     lib_usb_interface_get_first_descriptor,

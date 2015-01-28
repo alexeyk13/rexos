@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -11,10 +11,7 @@
 #include "heap.h"
 
 typedef enum {
-    IPC_COMMON = 0x0,
-    IPC_CALL_ERROR,                                     //!< IPC caller returned error. Check value in param1. Never answer to this IPC
-    IPC_INVALID_PARAM,
-    IPC_PING,
+    IPC_PING = 0x0,
     IPC_STREAM_WRITE,                                   //!< Sent by kernel when stream write is complete. Param1: handle, Param2: size, Param3: application specific
     IPC_TIMEOUT,                                        //!< Sent by kernel when soft timer is timed out. Param1: handle
 
@@ -78,38 +75,7 @@ __STATIC_INLINE void ipc_post_inline(HANDLE process, unsigned int cmd, unsigned 
 */
 __STATIC_INLINE void ipc_set_error(IPC* ipc, int code)
 {
-    ipc->cmd = IPC_CALL_ERROR;
-    ipc->param1 = code;
-}
-
-/**
-    \brief post IPC
-    \param process: IPC receiver
-    \param code: error code
-    \retval none
-*/
-__STATIC_INLINE void ipc_post_error(HANDLE process, int code)
-{
-    IPC ipc;
-    ipc.process = process;
-    ipc.cmd = IPC_CALL_ERROR;
-    ipc.param1 = code;
-    svc_call(SVC_IPC_POST, (unsigned int)&ipc, 0, 0);
-}
-
-/**
-    \brief post IPC, isr version
-    \param process: IPC receiver
-    \param code: error code
-    \retval none
-*/
-__STATIC_INLINE void ipc_ipost_error(HANDLE process, int code)
-{
-    IPC ipc;
-    ipc.process = process;
-    ipc.cmd = IPC_CALL_ERROR;
-    ipc.param1 = code;
-    __GLOBAL->svc_irq(SVC_IPC_POST, (unsigned int)&ipc, 0, 0);
+    ipc->param3 = code;
 }
 
 /**
@@ -119,11 +85,7 @@ __STATIC_INLINE void ipc_ipost_error(HANDLE process, int code)
 */
 __STATIC_INLINE void ipc_post_or_error(IPC* ipc)
 {
-    if (get_last_error() != ERROR_OK)
-    {
-        ipc->param1 = get_last_error();
-        ipc->cmd = IPC_CALL_ERROR;
-    }
+    ipc->param3 = get_last_error();
     svc_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
 }
 
@@ -224,12 +186,10 @@ __STATIC_INLINE void ipc_call_us(IPC* ipc, unsigned int us)
 
 __STATIC_INLINE bool call(IPC* ipc)
 {
-    unsigned int cmd = ipc->cmd;
     ipc_call_ms(ipc, 0);
-    if (ipc->cmd == cmd)
+    if (ipc->param3 == ERROR_OK)
         return true;
-    if (ipc->cmd == IPC_CALL_ERROR)
-        error(ipc->param1);
+    error(ipc->param3);
     return false;
 }
 

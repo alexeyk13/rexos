@@ -456,9 +456,9 @@ __STATIC_INLINE void fwrite_complete(HANDLE process, HANDLE file, HANDLE block, 
     ipc.param2 = block;
     ipc.param3 = (unsigned int)size;
     if (block != INVALID_HANDLE)
-    block_send_ipc(block, process, &ipc);
+        block_send_ipc(block, process, &ipc);
     else
-    ipc_post(&ipc);
+        ipc_post(&ipc);
 }
 
 /**

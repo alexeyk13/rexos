@@ -11,51 +11,47 @@
     error.h - error handling
 */
 
-typedef enum {
-    //kernel-specific
-    ERROR_OK = 0,
-    ERROR_IN_PROGRESS,
-    ERROR_NOT_SUPPORTED,
-    ERROR_NOT_FOUND,
-    ERROR_NOT_ACTIVE,
-    ERROR_NOT_CONFIGURED,
-    ERROR_ALREADY_CONFIGURED,
-    ERROR_INVALID_PARAMS,
-    ERROR_INVALID_MAGIC,
-    ERROR_TIMEOUT,
-    ERROR_INVALID_SVC,
-    ERROR_SYNC_OBJECT_DESTROYED,
-    ERROR_STUB_CALLED,
-    ERROR_OUT_OF_RANGE,
-    ERROR_ACCESS_DENIED,
-    ERROR_OVERFLOW,
-    ERROR_UNDERFLOW,
-    ERROR_IPC_CALL_ERROR,
-    ERROR_NAK,
-    ERROR_INVALID_STATE,
+#define ERROR_OK                                        0
+#define ERROR_IN_PROGRESS                               -1
+#define ERROR_NOT_SUPPORTED                             -2
+#define ERROR_NOT_FOUND                                 -3
+#define ERROR_NOT_ACTIVE                                -4
+#define ERROR_NOT_CONFIGURED                            -5
+#define ERROR_ALREADY_CONFIGURED                        -6
+#define ERROR_INVALID_PARAMS                            -7
+#define ERROR_INVALID_MAGIC                             -8
+#define ERROR_TIMEOUT                                   -9
+#define ERROR_INVALID_SVC                               -10
+#define ERROR_SYNC_OBJECT_DESTROYED                     -11
+#define ERROR_STUB_CALLED                               -12
+#define ERROR_OUT_OF_RANGE                              -13
+#define ERROR_ACCESS_DENIED                             -14
+#define ERROR_OVERFLOW                                  -15
+#define ERROR_UNDERFLOW                                 -16
+#define ERROR_NAK                                       -17
+#define ERROR_INVALID_STATE                             -18
 
-    ERROR_FILE_PATH_NOT_FOUND,
-    ERROR_FILE_SHARING_VIOLATION,
-    ERROR_FILE_ACCESS_DENIED,
-    ERROR_FILE_INVALID_NAME,
-    ERROR_FILE_PATH_ALREADY_EXISTS,
-    ERROR_FILE_PATH_IN_USE,
-    ERROR_FOLDER_NOT_EMPTY,
-    ERROR_NOT_MOUNTED,
-    ERROR_ALREADY_MOUNTED,
+#define ERROR_FILE_PATH_NOT_FOUND                       -19
+#define ERROR_FILE_SHARING_VIOLATION                    -20
+#define ERROR_FILE_ACCESS_DENIED                        -21
+#define ERROR_FILE_INVALID_NAME                         -22
+#define ERROR_FILE_PATH_ALREADY_EXISTS                  -23
+#define ERROR_FILE_PATH_IN_USE                          -24
+#define ERROR_FOLDER_NOT_EMPTY                          -25
+#define ERROR_NOT_MOUNTED                               -26
+#define ERROR_ALREADY_MOUNTED                           -27
 
-    ERROR_OUT_OF_MEMORY,
-    ERROR_OUT_OF_SYSTEM_MEMORY,
-    ERROR_OUT_OF_PAGED_MEMORY,
-    ERROR_POOL_CORRUPTED,
-    ERROR_POOL_RANGE_CHECK_FAILED,
+#define ERROR_OUT_OF_MEMORY                             -28
+#define ERROR_OUT_OF_SYSTEM_MEMORY                      -29
+#define ERROR_OUT_OF_PAGED_MEMORY                       -30
+#define ERROR_POOL_CORRUPTED                            -31
+#define ERROR_POOL_RANGE_CHECK_FAILED                   -32
 
-    ERROR_UART_NOISE,
-    ERROR_UART_FRAME,
-    ERROR_UART_PARITY,
-    ERROR_UART_BREAK,
+#define ERROR_UART_NOISE                                -33
+#define ERROR_UART_FRAME                                -34
+#define ERROR_UART_PARITY                               -35
+#define ERROR_UART_BREAK                                -36
 
-    ERROR_USB_STALL
-}ERROR_CODE;
+#define ERROR_USB_STALL                                 -37
 
 #endif // ERROR_H

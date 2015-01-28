@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -11,6 +11,7 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/block.h"
+#include "../../userspace/file.h"
 #if (SYS_INFO)
 #include "../../userspace/stdio.h"
 #endif
@@ -63,18 +64,26 @@ static const uint8_t __I2C_VECTORS[] =              {15};
 
 void lpc_i2c_isr_error(SHARED_I2C_DRV* drv, I2C_PORT port, int error)
 {
+    IPC ipc;
     LPC_I2C->CONSET = I2C_CONSET_STO;
+    switch (drv->i2c.i2cs[I2C_0]->io)
+    {
+    case I2C_IO_TX:
+        ipc.cmd = IPC_WRITE_COMPLETE;
+        break;
+    default:
+        ipc.cmd = IPC_READ_COMPLETE;
+        break;
+    }
+    ipc.process = drv->i2c.i2cs[port]->process;
+    ipc.param1 = HAL_HANDLE(HAL_I2C, port);
+    ipc.param2 = drv->i2c.i2cs[port]->block;
+    ipc.param3 = error;
     if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
-        block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
-    ipc_ipost_error(drv->i2c.i2cs[port]->process, error);
+        block_isend_ipc(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process, &ipc);
+    else
+        ipc_ipost(&ipc);
     drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
-}
-
-void lpc_i2c_error(SHARED_I2C_DRV* drv, I2C_PORT port, int error)
-{
-    if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
-        block_send(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
-    ipc_post_error(drv->i2c.i2cs[port]->process, error);
 }
 
 static inline void lpc_i2c_isr_tx(SHARED_I2C_DRV* drv, I2C_PORT port)
@@ -216,7 +225,7 @@ void lpc_i2c_on_isr(int vector, void* param)
         lpc_i2c_isr_rx(drv, I2C_0);
         break;
     default:
-        lpc_i2c_isr_error(drv, I2C_0, ERROR_INVALID_STATE);
+        break;
     }
     LPC_I2C->CONCLR = I2C_CONCLR_SIC;
 }
@@ -286,23 +295,21 @@ void lpc_i2c_close(SHARED_I2C_DRV *drv, I2C_PORT port)
     ack_gpio(drv, LPC_GPIO_DISABLE_PIN, __I2C_SDA[port], 0, 0);
 }
 
-void lpc_i2c_io_start(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block, unsigned int size, HANDLE process, I2C_IO io)
+static inline void lpc_i2c_read(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block, unsigned int size, HANDLE process)
 {
-    drv->i2c.i2cs[port]->process = process;
-    drv->i2c.i2cs[port]->block = block;
     if (port >= I2C_COUNT || (size && block == INVALID_HANDLE))
     {
-        lpc_i2c_error(drv, port, ERROR_INVALID_PARAMS);
+        fread_complete(process, HAL_HANDLE(HAL_I2C, port), block, ERROR_INVALID_PARAMS);
         return;
     }
     if (drv->i2c.i2cs[port] == NULL)
     {
-        lpc_i2c_error(drv, port, ERROR_NOT_CONFIGURED);
+        fread_complete(process, HAL_HANDLE(HAL_I2C, port), block, ERROR_NOT_CONFIGURED);
         return;
     }
     if (drv->i2c.i2cs[port]->io != I2C_IO_IDLE)
     {
-        lpc_i2c_error(drv, port, ERROR_IN_PROGRESS);
+        fread_complete(process, HAL_HANDLE(HAL_I2C, port), block, ERROR_IN_PROGRESS);
         return;
     }
     if (size)
@@ -310,16 +317,60 @@ void lpc_i2c_io_start(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block, unsigned
         drv->i2c.i2cs[port]->ptr = block_open(block);
         if (drv->i2c.i2cs[port]->ptr == NULL)
         {
-            lpc_i2c_error(drv, port, get_last_error());
+            fread_complete(process, HAL_HANDLE(HAL_I2C, port), block, get_last_error());
             return;
         }
     }
+    drv->i2c.i2cs[port]->process = process;
+    drv->i2c.i2cs[port]->block = block;
     drv->i2c.i2cs[port]->size = size;
     drv->i2c.i2cs[port]->processed = 0;
     drv->i2c.i2cs[port]->addr_processed = 0;
     drv->i2c.i2cs[port]->rx_len_processed = 0;
     drv->i2c.i2cs[port]->rx_len = 0;
-    drv->i2c.i2cs[port]->io = io;
+    drv->i2c.i2cs[port]->io = I2C_IO_RX;
+
+    //reset
+    LPC_I2C->CONCLR = I2C_CLEAR;
+    //set START
+    LPC_I2C->CONSET = I2C_CONSET_I2EN | I2C_CONSET_STA;
+    //all rest in isr
+}
+
+static inline void lpc_i2c_write(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block, unsigned int size, HANDLE process)
+{
+    if (port >= I2C_COUNT || (size && block == INVALID_HANDLE))
+    {
+        fwrite_complete(process, HAL_HANDLE(HAL_I2C, port), block, ERROR_INVALID_PARAMS);
+        return;
+    }
+    if (drv->i2c.i2cs[port] == NULL)
+    {
+        fwrite_complete(process, HAL_HANDLE(HAL_I2C, port), block, ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (drv->i2c.i2cs[port]->io != I2C_IO_IDLE)
+    {
+        fwrite_complete(process, HAL_HANDLE(HAL_I2C, port), block, ERROR_IN_PROGRESS);
+        return;
+    }
+    if (size)
+    {
+        drv->i2c.i2cs[port]->ptr = block_open(block);
+        if (drv->i2c.i2cs[port]->ptr == NULL)
+        {
+            fwrite_complete(process, HAL_HANDLE(HAL_I2C, port), block, get_last_error());
+            return;
+        }
+    }
+    drv->i2c.i2cs[port]->process = process;
+    drv->i2c.i2cs[port]->block = block;
+    drv->i2c.i2cs[port]->size = size;
+    drv->i2c.i2cs[port]->processed = 0;
+    drv->i2c.i2cs[port]->addr_processed = 0;
+    drv->i2c.i2cs[port]->rx_len_processed = 0;
+    drv->i2c.i2cs[port]->rx_len = 0;
+    drv->i2c.i2cs[port]->io = I2C_IO_TX;
 
     //reset
     LPC_I2C->CONCLR = I2C_CLEAR;
@@ -386,21 +437,18 @@ bool lpc_i2c_request(SHARED_I2C_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case IPC_WRITE:
-        lpc_i2c_io_start(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process, I2C_IO_TX);
+        lpc_i2c_write(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
         //async message, no write
         break;
     case IPC_READ:
-        lpc_i2c_io_start(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process, I2C_IO_RX);
+        lpc_i2c_read(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
         //async message, no write
         break;
     case IPC_SEEK:
         lpc_i2c_seek(drv, HAL_ITEM(ipc->param1), ipc->param2);
         need_post = true;
         break;
-    //TODO: I2C_SET_ADDRESS
     default:
-        error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
     return need_post;
@@ -423,8 +471,6 @@ void lpc_i2c()
         {
         case IPC_PING:
             need_post = true;
-            break;
-        case IPC_CALL_ERROR:
             break;
         default:
             need_post = lpc_i2c_request(&drv, &ipc);

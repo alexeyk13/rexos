@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -714,8 +714,6 @@ bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
         //message from ISR, no response
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
     return need_post;
@@ -738,8 +736,6 @@ void lpc_uart()
         {
         case IPC_PING:
             need_post = true;
-            break;
-        case IPC_CALL_ERROR:
             break;
         case IPC_SET_STDIO:
             open_stdout();

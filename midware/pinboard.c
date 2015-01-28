@@ -206,8 +206,6 @@ void pinboard()
             case IPC_PING:
                 need_post = true;
                 break;
-            case IPC_CALL_ERROR:
-                break;
             default:
                 need_post = pinboard_request(&pins, &ipc);
                 break;
