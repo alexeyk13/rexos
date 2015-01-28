@@ -17,11 +17,8 @@ typedef enum {
     IPC_SET_STDIO = IPC_SYSTEM + 1,                             //!< Will be called for objects, created before global stdout STREAM is set
     IPC_GET_INFO,
     IPC_READ,
-    IPC_READ_COMPLETE,
     IPC_WRITE,
-    IPC_WRITE_COMPLETE,
     IPC_CANCEL_IO,
-    IPC_IO_CANCELLED,
     IPC_FLUSH,
     IPC_SEEK,
     IPC_OPEN,

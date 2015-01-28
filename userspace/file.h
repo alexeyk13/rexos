@@ -115,8 +115,38 @@ __STATIC_INLINE void fread_async(HANDLE process, HANDLE file, HANDLE block, unsi
     ipc.param1 = file;
     ipc.param2 = block;
     ipc.param3 = size;
-    block_send_ipc(block, process, &ipc);
+    if (block != INVALID_HANDLE)
+        block_send_ipc(block, process, &ipc);
+    else
+        ipc_post(&ipc);
 }
+
+#define fread_complete             fread_async
+
+/**
+    \brief read from file (async), isr version
+    \param process: process handle
+    \param file: file handle
+    \param block: file block
+    \param size: size of transfer
+    \retval none. Check corresponding IPC.
+*/
+
+__STATIC_INLINE void firead_async(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+{
+    IPC ipc;
+    ipc.cmd = IPC_READ;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = block;
+    ipc.param3 = size;
+    if (block != INVALID_HANDLE)
+        block_isend_ipc(block, process, &ipc);
+    else
+        ipc_ipost(&ipc);
+}
+
+#define firead_complete             firead_async
 
 /**
     \brief read from file
@@ -135,15 +165,12 @@ __STATIC_INLINE int fread(HANDLE process, HANDLE file, HANDLE block, unsigned in
     ipc.param1 = file;
     ipc.param2 = block;
     ipc.param3 = size;
-    block_send_ipc(block, process, &ipc);
-    ipc_read_ms(&ipc, 0, process);
-    if (ipc.cmd == IPC_READ_COMPLETE)
-        return (int)ipc.param3;
-    else
-    {
+
+    if (block != INVALID_HANDLE)
+        block_send(block, process);
+    if (!call(&ipc))
         error(ipc.param3);
-        return -1;
-    }
+    return ipc.param3;
 }
 
 /**
@@ -185,59 +212,9 @@ __STATIC_INLINE int fdread(HANDLE process, HANDLE file, void* addr, unsigned int
     ipc.param2 = INVALID_HANDLE;
     ipc.param3 = size;
     direct_enable_write(process, addr, size);
-    ipc_post(&ipc);
-    ipc_read_ms(&ipc, 0, process);
-    if (ipc.cmd == IPC_READ_COMPLETE)
-        return (int)ipc.param3;
-    else
-    {
+    if (!call(&ipc))
         error(ipc.param3);
-        return -1;
-    }
-}
-
-/**
-    \brief read from file (async) with no data
-    \param process: process handle
-    \param file: file handle
-    \retval none. Check corresponding IPC.
-*/
-
-__STATIC_INLINE void fread_async_null(HANDLE process, HANDLE file)
-{
-    IPC ipc;
-    ipc.cmd = IPC_READ;
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = INVALID_HANDLE;
-    ipc.param3 = 0;
-    ipc_post(&ipc);
-}
-
-/**
-    \brief read from file with no data
-    \param process: process handle
-    \param file: file handle
-    \retval true on success
-*/
-
-__STATIC_INLINE bool fread_null(HANDLE process, HANDLE file)
-{
-    IPC ipc;
-    ipc.cmd = IPC_READ;
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = INVALID_HANDLE;
-    ipc.param3 = 0;
-    ipc_post(&ipc);
-    ipc_read_ms(&ipc, 0, process);
-    if (ipc.cmd == IPC_READ_COMPLETE)
-        return true;
-    else
-    {
-        error(ipc.param3);
-        return false;
-    }
+    return ipc.param3;
 }
 
 /**
@@ -257,8 +234,39 @@ __STATIC_INLINE void fwrite_async(HANDLE process, HANDLE file, HANDLE block, uns
     ipc.param1 = file;
     ipc.param2 = block;
     ipc.param3 = size;
-    block_send_ipc(block, process, &ipc);
+    if (block != INVALID_HANDLE)
+        block_send_ipc(block, process, &ipc);
+    else
+        ipc_post(&ipc);
 }
+
+#define fwrite_complete                fwrite_async
+
+/**
+    \brief write to file (async), isr version
+    \param process: process handle
+    \param file: file handle
+    \param block: file block
+    \param size: size of transfer
+    \retval none. Check corresponding IPC.
+*/
+
+__STATIC_INLINE void fiwrite_async(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+{
+    IPC ipc;
+    ipc.cmd = IPC_WRITE;
+    ipc.process = process;
+    ipc.param1 = file;
+    ipc.param2 = block;
+    ipc.param3 = size;
+    if (block != INVALID_HANDLE)
+        block_isend_ipc(block, process, &ipc);
+    else
+        ipc_ipost(&ipc);
+}
+
+#define fiwrite_complete                fiwrite_async
+
 
 /**
     \brief write to file
@@ -277,15 +285,11 @@ __STATIC_INLINE int fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned i
     ipc.param1 = file;
     ipc.param2 = block;
     ipc.param3 = size;
-    block_send_ipc(block, process, &ipc);
-    ipc_read_ms(&ipc, 0, process);
-    if (ipc.cmd == IPC_WRITE_COMPLETE)
-        return (int)ipc.param3;
-    else
-    {
+    if (block != INVALID_HANDLE)
+        block_send(block, process);
+    if (!call(&ipc))
         error(ipc.param3);
-        return -1;
-    }
+    return ipc.param3;
 }
 
 /**
@@ -327,59 +331,9 @@ __STATIC_INLINE int fdwrite(HANDLE process, HANDLE file, void* addr, unsigned in
     ipc.param2 = INVALID_HANDLE;
     ipc.param3 = size;
     direct_enable_read(process, addr, size);
-    ipc_post(&ipc);
-    ipc_read_ms(&ipc, 0, process);
-    if (ipc.cmd == IPC_WRITE_COMPLETE)
-        return (int)ipc.param3;
-    else
-    {
+    if (!call(&ipc))
         error(ipc.param3);
-        return -1;
-    }
-}
-
-/**
-    \brief write to file (async) with no data
-    \param process: process handle
-    \param file: file handle
-    \retval none. Check corresponding IPC.
-*/
-
-__STATIC_INLINE void fwrite_async_null(HANDLE process, HANDLE file)
-{
-    IPC ipc;
-    ipc.cmd = IPC_WRITE;
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = INVALID_HANDLE;
-    ipc.param3 = 0;
-    ipc_post(&ipc);
-}
-
-/**
-    \brief write to file (async) with no data
-    \param process: process handle
-    \param file: file handle
-    \retval true on success
-*/
-
-__STATIC_INLINE bool fwrite_null(HANDLE process, HANDLE file)
-{
-    IPC ipc;
-    ipc.cmd = IPC_WRITE;
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = INVALID_HANDLE;
-    ipc.param3 = 0;
-    ipc_post(&ipc);
-    ipc_read_ms(&ipc, 0, process);
-    if (ipc.cmd == IPC_WRITE_COMPLETE)
-        return true;
-    else
-    {
-        error(ipc.param3);
-        return false;
-    }
+    return ipc.param3;
 }
 
 /**
@@ -417,90 +371,7 @@ __STATIC_INLINE bool fseek(HANDLE process, HANDLE file, unsigned int pos)
 }
 
 /**
-    \brief callback for read complete
-    \param process: host process
-    \param file: file handle
-    \param block: file block
-    \param size: size of transfer. <0 on error
-    \retval none
-*/
-
-__STATIC_INLINE void fread_complete(HANDLE process, HANDLE file, HANDLE block, int size)
-{
-    IPC ipc;
-    ipc.cmd = IPC_READ_COMPLETE;
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = block;
-    ipc.param3 = (unsigned int)size;
-    if (block != INVALID_HANDLE)
-        block_send_ipc(block, process, &ipc);
-    else
-        ipc_post(&ipc);
-}
-
-/**
-    \brief callback for write complete
-    \param process: host process
-    \param file: file handle
-    \param block: file block
-    \param size: size of transfer. <0 on error
-    \retval none
-*/
-__STATIC_INLINE void fwrite_complete(HANDLE process, HANDLE file, HANDLE block, int size)
-{
-    IPC ipc;
-    ipc.cmd = IPC_WRITE_COMPLETE;
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = block;
-    ipc.param3 = (unsigned int)size;
-    if (block != INVALID_HANDLE)
-        block_send_ipc(block, process, &ipc);
-    else
-        ipc_post(&ipc);
-}
-
-/**
-    \brief callback for direct read complete
-    \param process: host process
-    \param file: file handle
-    \param size: size of transfer. <0 on error
-    \retval none
-*/
-
-__STATIC_INLINE void fdread_complete(HANDLE process, HANDLE file, int size)
-{
-    IPC ipc;
-    ipc.cmd = IPC_READ_COMPLETE;
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = INVALID_HANDLE;
-    ipc.param3 = (unsigned int)size;
-    ipc_post(&ipc);
-}
-
-/**
-    \brief callback for direct write complete
-    \param process: host process
-    \param file: file handle
-    \param size: size of transfer. <0 on error
-    \retval none
-*/
-
-__STATIC_INLINE void fdwrite_complete(HANDLE process, HANDLE file, int size)
-{
-    IPC ipc;
-    ipc.cmd = IPC_WRITE_COMPLETE;
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = INVALID_HANDLE;
-    ipc.param3 = (unsigned int)size;
-    ipc_post(&ipc);
-}
-
-/**
-    \brief callback for cancel IO
+    \brief cancel IO
     \param process: host process
     \param file: file handle
     \retval none
@@ -516,61 +387,19 @@ __STATIC_INLINE void fcancel_io(HANDLE process, HANDLE file)
 }
 
 /**
-    \brief callback for IO cancelled
-    \param process: host process
-    \param file: file handle
-    \param block: file block
-    \param error: error to respond
-    \retval none
-*/
-
-__STATIC_INLINE void fio_cancelled(HANDLE process, HANDLE file, HANDLE block, unsigned int error)
-{
-    IPC ipc;
-    ipc.cmd = IPC_IO_CANCELLED;
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = block;
-    ipc.param3 = error;
-    if (block != INVALID_HANDLE)
-        block_send_ipc(block, process, &ipc);
-    else
-        ipc_post(&ipc);
-}
-
-/**
-    \brief callback for cancel direct IO
+    \brief cancel direct IO, isr version
     \param process: host process
     \param file: file handle
     \retval none
 */
 
-__STATIC_INLINE void fdcancel_io(HANDLE process, HANDLE file)
+__STATIC_INLINE void ficancel_io(HANDLE process, HANDLE file)
 {
     IPC ipc;
     ipc.cmd = IPC_CANCEL_IO;
     ipc.process = process;
     ipc.param1 = file;
-    ipc_post(&ipc);
-}
-
-/**
-    \brief callback for IO cancelled
-    \param process: host process
-    \param file: file handle
-    \param error: error to respond
-    \retval none
-*/
-
-__STATIC_INLINE void fdio_cancelled(HANDLE process, HANDLE file, unsigned int error)
-{
-    IPC ipc;
-    ipc.cmd = IPC_IO_CANCELLED;
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = INVALID_HANDLE;
-    ipc.param3 = error;
-    ipc_post(&ipc);
+    ipc_ipost(&ipc);
 }
 
 /** \} */ // end of file group

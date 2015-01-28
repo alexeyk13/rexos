@@ -402,7 +402,7 @@ bool hidd_kbd_class_request(USBD* usbd, void* param, IPC* ipc)
     bool need_post = false;
     switch (ipc->cmd)
     {
-    case IPC_WRITE_COMPLETE:
+    case IPC_WRITE:
         hidd_kbd_write_complete(usbd, hidd);
         break;
     case USBD_INTERFACE_REQUEST:

@@ -423,10 +423,10 @@ bool cdcd_class_request(USBD* usbd, void* param, IPC* ipc)
     bool need_post = false;
     switch (ipc->cmd)
     {
-    case IPC_READ_COMPLETE:
+    case IPC_READ:
         cdcd_read_complete(usbd, cdcd, ipc->param3);
         break;
-    case IPC_WRITE_COMPLETE:
+    case IPC_WRITE:
         //ignore notify complete
         if (ipc->param1 == HAL_HANDLE(HAL_USB, (cdcd->data_ep | USB_EP_IN)))
         {

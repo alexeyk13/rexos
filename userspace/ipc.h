@@ -187,7 +187,7 @@ __STATIC_INLINE void ipc_call_us(IPC* ipc, unsigned int us)
 __STATIC_INLINE bool call(IPC* ipc)
 {
     ipc_call_ms(ipc, 0);
-    if (ipc->param3 == ERROR_OK)
+    if (ipc->param3 >= 0)
         return true;
     error(ipc->param3);
     return false;

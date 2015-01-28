@@ -506,7 +506,7 @@ static inline void ccidd_message_tx(USBD* usbd, CCIDD* ccidd)
                 ccidd_tx_complete(usbd, ccidd);
             else
             {
-                fwrite_async_null(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->data_ep));
+                fwrite_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->data_ep), INVALID_HANDLE, 0);
                 ccidd->state = CCIDD_STATE_TX_ZLP;
             }
         }
@@ -738,17 +738,10 @@ bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
         need_post = true;
         break;
     case IPC_READ:
-        break;
-    case IPC_WRITE:
-        ccidd_write(usbd, ccidd, ipc->param2, ipc->param3);
-        break;
-    case IPC_READ_COMPLETE:
-        if ((int)ipc->param3 < 0)
-        {
-            printf("read error!!!!!\n\r");
+        if (ipc->param3 < 0)
             break;
-        }
-        if (USB_EP_NUM(HAL_ITEM(ipc->param1)) == ccidd->data_ep)
+        //only data EP we are waiting for
+        if (HAL_GROUP(ipc->param1) == HAL_USB && USB_EP_NUM(HAL_ITEM(ipc->param1)) == ccidd->data_ep)
         {
             if (ccidd->state == CCIDD_STATE_RX)
                 ccidd_rx(usbd, ccidd, (uint8_t*)block_open(ccidd->usb_data_block), ipc->param3);
@@ -756,13 +749,23 @@ bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
                 ccidd_message_rx(usbd, ccidd);
         }
         break;
-    case IPC_WRITE_COMPLETE:
-        if (USB_EP_NUM(HAL_ITEM(ipc->param1)) == ccidd->data_ep)
-            ccidd_message_tx(usbd, ccidd);
-        //status notify complete
-        else
+    case IPC_WRITE:
+        if (ipc->param3 < 0)
+            break;
+        switch (HAL_GROUP(ipc->param1))
         {
-            ccidd->status_busy = false;
+        case HAL_USB:
+            if (USB_EP_NUM(HAL_ITEM(ipc->param1)) == ccidd->data_ep)
+                ccidd_message_tx(usbd, ccidd);
+            //status notify complete
+            else
+                ccidd->status_busy = false;
+            break;
+        case HAL_USBD:
+            ccidd_write(usbd, ccidd, ipc->param2, ipc->param3);
+            break;
+        default:
+            break;
         }
         break;
     default:

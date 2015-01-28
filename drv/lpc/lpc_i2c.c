@@ -64,31 +64,21 @@ static const uint8_t __I2C_VECTORS[] =              {15};
 
 void lpc_i2c_isr_error(SHARED_I2C_DRV* drv, I2C_PORT port, int error)
 {
-    IPC ipc;
     LPC_I2C->CONSET = I2C_CONSET_STO;
     switch (drv->i2c.i2cs[I2C_0]->io)
     {
     case I2C_IO_TX:
-        ipc.cmd = IPC_WRITE_COMPLETE;
+        fiwrite_complete(drv->i2c.i2cs[port]->process, HAL_HANDLE(HAL_I2C, port), drv->i2c.i2cs[port]->block, error);
         break;
     default:
-        ipc.cmd = IPC_READ_COMPLETE;
+        firead_complete(drv->i2c.i2cs[port]->process, HAL_HANDLE(HAL_I2C, port), drv->i2c.i2cs[port]->block, error);
         break;
     }
-    ipc.process = drv->i2c.i2cs[port]->process;
-    ipc.param1 = HAL_HANDLE(HAL_I2C, port);
-    ipc.param2 = drv->i2c.i2cs[port]->block;
-    ipc.param3 = error;
-    if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
-        block_isend_ipc(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process, &ipc);
-    else
-        ipc_ipost(&ipc);
     drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
 }
 
 static inline void lpc_i2c_isr_tx(SHARED_I2C_DRV* drv, I2C_PORT port)
 {
-    IPC ipc;
      switch(LPC_I2C->STAT)
      {
      case I2C_STAT_START:
@@ -116,14 +106,7 @@ static inline void lpc_i2c_isr_tx(SHARED_I2C_DRV* drv, I2C_PORT port)
          else
          {
              LPC_I2C->CONSET = I2C_CONSET_STO;
-             if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
-                 block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
-             ipc.process = drv->i2c.i2cs[port]->process;
-             ipc.cmd = IPC_WRITE_COMPLETE;
-             ipc.param1 = HAL_HANDLE(HAL_I2C, port);
-             ipc.param2 = drv->i2c.i2cs[port]->block;
-             ipc.param3 = drv->i2c.i2cs[port]->processed;
-             ipc_ipost(&ipc);
+             fiwrite_complete(drv->i2c.i2cs[port]->process, HAL_HANDLE(HAL_I2C, port), drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->processed);
              drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
          }
          break;
@@ -135,7 +118,6 @@ static inline void lpc_i2c_isr_tx(SHARED_I2C_DRV* drv, I2C_PORT port)
 
 static inline void lpc_i2c_isr_rx(SHARED_I2C_DRV* drv, I2C_PORT port)
 {
-    IPC ipc;
     switch(LPC_I2C->STAT)
     {
     case I2C_STAT_START:
@@ -197,14 +179,7 @@ static inline void lpc_i2c_isr_rx(SHARED_I2C_DRV* drv, I2C_PORT port)
         drv->i2c.i2cs[port]->ptr[drv->i2c.i2cs[port]->processed++] = LPC_I2C->DAT;
         //stop transmission
         LPC_I2C->CONSET = I2C_CONSET_STO;
-        if (drv->i2c.i2cs[port]->block != INVALID_HANDLE)
-            block_isend(drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->process);
-        ipc.process = drv->i2c.i2cs[port]->process;
-        ipc.cmd = IPC_READ_COMPLETE;
-        ipc.param1 = HAL_HANDLE(HAL_I2C, port);
-        ipc.param2 = drv->i2c.i2cs[port]->block;
-        ipc.param3 = drv->i2c.i2cs[port]->processed;
-        ipc_ipost(&ipc);
+        firead_complete(drv->i2c.i2cs[port]->process, HAL_HANDLE(HAL_I2C, port), drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->processed);
         drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
         break;
     default:
@@ -405,12 +380,11 @@ void lpc_i2c_init(SHARED_I2C_DRV* drv)
 void lpc_i2c_info(SHARED_I2C_DRV* drv)
 {
     int i;
-    //TODO:
     for (i = 0; i < I2C_COUNT; ++i)
     {
         if (drv->i2c.i2cs[i])
         {
-
+            printd("State: %d\n\r", drv->i2c.i2cs[i]->io)
         }
     }
 }
@@ -437,10 +411,14 @@ bool lpc_i2c_request(SHARED_I2C_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case IPC_WRITE:
+        if (ipc->param3 < 0)
+            break;
         lpc_i2c_write(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
         //async message, no write
         break;
     case IPC_READ:
+        if (ipc->param3 < 0)
+            break;
         lpc_i2c_read(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
         //async message, no write
         break;

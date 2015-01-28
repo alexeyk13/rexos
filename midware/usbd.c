@@ -884,7 +884,7 @@ void usbd_setup_process(USBD* usbd)
         {
             //data already received, sending status
             usbd->setup_state = USB_SETUP_STATE_STATUS_IN;
-            fwrite_async_null(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
+            fwrite_async(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), INVALID_HANDLE, 0);
         }
         else
         {
@@ -900,7 +900,7 @@ void usbd_setup_process(USBD* usbd)
                 else
                 {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-                    fwrite_async_null(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
+                    fwrite_async(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), INVALID_HANDLE, 0);
                 }
             }
             else if (res)
@@ -912,7 +912,7 @@ void usbd_setup_process(USBD* usbd)
             else
             {
                 usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
-                fread_async_null(usbd->usb, HAL_HANDLE(HAL_USB, 0));
+                fread_async(usbd->usb, HAL_HANDLE(HAL_USB, 0), INVALID_HANDLE, 0);
             }
         }
     }
@@ -1021,11 +1021,11 @@ void usbd_write_complete(USBD* usbd)
     case USB_SETUP_STATE_DATA_IN_ZLP:
         //TX ZLP and switch to normal state
         usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-        fwrite_async_null(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
+        fwrite_async(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), INVALID_HANDLE, 0);
         break;
     case USB_SETUP_STATE_DATA_IN:
         usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
-        fread_async_null(usbd->usb, HAL_HANDLE(HAL_USB, 0));
+        fread_async(usbd->usb, HAL_HANDLE(HAL_USB, 0), INVALID_HANDLE, 0);
         break;
     case USB_SETUP_STATE_STATUS_IN:
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
@@ -1150,10 +1150,10 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
         usbd_close(usbd);
         need_post = true;
         break;
-    case IPC_READ_COMPLETE:
+    case IPC_READ:
         usbd_read_complete(usbd);
         break;
-    case IPC_WRITE_COMPLETE:
+    case IPC_WRITE:
         usbd_write_complete(usbd);
         break;
     default:
@@ -1220,37 +1220,27 @@ void usbd()
         case IPC_CLOSE:
         case IPC_GET_RX_STREAM:
         case IPC_GET_TX_STREAM:
-            if (HAL_GROUP(ipc.param1) == HAL_USBD)
+        case IPC_STREAM_WRITE:
+        case USBD_INTERFACE_REQUEST:
+            switch (HAL_GROUP(ipc.param1))
             {
+            case HAL_USBD:
                 if (HAL_ITEM(ipc.param1) == USBD_HANDLE_DEVICE)
                     need_post = usbd_device_request(&usbd, &ipc);
                 else
                     need_post = usbd_class_interface_request(&usbd, &ipc, HAL_USBD_INTERFACE_NUM(ipc.param1));
-            }
-            else
-            {
+                break;
+            case HAL_USB:
+                if (USB_EP_NUM(HAL_ITEM(ipc.param1)))
+                    usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(HAL_ITEM(ipc.param1)));
+                else
+                    need_post = usbd_device_request(&usbd, &ipc);
+                break;
+            default:
                 error(ERROR_NOT_SUPPORTED);
                 need_post = true;
+                break;
             }
-            break;
-        case IPC_STREAM_WRITE:
-            if (HAL_GROUP(ipc.param1) == HAL_USBD && HAL_ITEM(ipc.param1) >= USBD_HANDLE_INTERFACE)
-                usbd_class_interface_request(&usbd, &ipc, HAL_USBD_INTERFACE_NUM(ipc.param1));
-#if (USBD_DEBUG_ERRORS)
-            else
-                printf("USBD warning - invalid stream: %#X. Maybe USB CLASS configured wrong?\n\r", ipc.param1);
-#endif //USB_DEBUG_ERRORS
-            //message from kernel, no response
-            break;
-        case IPC_WRITE_COMPLETE:
-        case IPC_READ_COMPLETE:
-            if (USB_EP_NUM(HAL_ITEM(ipc.param1)))
-                usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(HAL_ITEM(ipc.param1)));
-            else
-                need_post = usbd_device_request(&usbd, &ipc);
-            break;
-        case USBD_INTERFACE_REQUEST:
-            need_post = usbd_class_interface_request(&usbd, &ipc, HAL_USBD_INTERFACE_NUM(ipc.param1));
             break;
         default:
             need_post = usbd_device_request(&usbd, &ipc);
