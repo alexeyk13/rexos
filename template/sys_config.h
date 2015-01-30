@@ -28,7 +28,7 @@
 //-------------------------------- USB -----------------------------------------------
 #define USB_EP_COUNT_MAX                                    4
 //low-level USB debug. Turn on only in case of IO problems
-#define USB_DEBUG_ERRORS                                    1
+#define USB_DEBUG_ERRORS                                    0
 //support for high speed, qualifier, other speed, test, etc
 #define USB_2_0                                             0
 
@@ -42,6 +42,7 @@
 #define USBD_VSR                                            1
 
 #define USBD_PROCESS_SIZE                                   800
+#define USBD_IPC_COUNT                                      10
 #define USBD_BLOCK_SIZE                                     256
 
 #define USBD_CDC_CLASS                                      0
@@ -58,7 +59,7 @@
 #define USBD_CDC_DEBUG_IO                                   0
 
 //------------------------------ HIDD class -------------------------------------------
-#define USBD_HID_DEBUG_ERRORS                               0
+#define USBD_HID_DEBUG_ERRORS                               1
 #define USBD_HID_DEBUG_REQUESTS                             0
 #define USBD_HID_DEBUG_IO                                   0
 
@@ -66,7 +67,7 @@
 #define USBD_CCID_MAX_ATR_SIZE                              32
 #define USBD_CCID_BLOCK_SIZE                                512
 
-#define USBD_CCID_DEBUG_ERRORS                              0
+#define USBD_CCID_DEBUG_ERRORS                              1
 #define USBD_CCID_DEBUG_REQUESTS                            0
 #define USBD_CCID_DEBUG_IO                                  0
 

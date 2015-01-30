@@ -45,6 +45,7 @@
 #define USBD_VSR                                            1
 
 #define USBD_PROCESS_SIZE                                   800
+#define USBD_IPC_COUNT                                      10
 #define USBD_BLOCK_SIZE                                     256
 
 #define USBD_CDC_CLASS                                      0

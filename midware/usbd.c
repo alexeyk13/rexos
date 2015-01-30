@@ -26,6 +26,7 @@
 
 typedef enum {
     USB_SETUP_STATE_REQUEST = 0,
+    USB_SETUP_STATE_VENDOR_REQUEST,
     USB_SETUP_STATE_DATA_IN,
     //in case response is less, than request
     USB_SETUP_STATE_DATA_IN_ZLP,
@@ -122,7 +123,7 @@ const REX __USBD = {
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
-    10,
+    USBD_IPC_COUNT,
     //function
     usbd
 };
@@ -853,30 +854,8 @@ static inline int usbd_endpoint_request(USBD* usbd)
     return res;
 }
 
-void usbd_setup_process(USBD* usbd)
+static void usbd_setup_response(USBD* usbd, int res)
 {
-    int res = -1;
-    switch (usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT)
-    {
-    case BM_REQUEST_RECIPIENT_DEVICE:
-        if ((usbd->setup.bmRequestType & BM_REQUEST_TYPE) == BM_REQUEST_TYPE_STANDART)
-            res = usbd_standart_device_request(usbd);
-#if (USBD_VSR)
-        else if (usbd->user != INVALID_HANDLE)
-        {
-            block_send(usbd->block, usbd->user);
-            res = get(usbd->user, USBD_VENDOR_REQUEST, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
-        }
-#endif
-        break;
-    case BM_REQUEST_RECIPIENT_INTERFACE:
-        res = usbd_interface_request(usbd, usbd->setup.wIndex);
-        break;
-    case BM_REQUEST_RECIPIENT_ENDPOINT:
-        res = usbd_endpoint_request(usbd);
-        break;
-    }
-
     if (res > usbd->setup.wLength)
         res = usbd->setup.wLength;
     //success. start transfers
@@ -945,8 +924,35 @@ void usbd_setup_process(USBD* usbd)
         printf("wIndex: %X\n\r", usbd->setup.wIndex);
         printf("wLength: %X\n\r", usbd->setup.wLength);
 #endif
-
     }
+}
+
+void usbd_setup_process(USBD* usbd)
+{
+    int res = -1;
+    switch (usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT)
+    {
+    case BM_REQUEST_RECIPIENT_DEVICE:
+        if ((usbd->setup.bmRequestType & BM_REQUEST_TYPE) == BM_REQUEST_TYPE_STANDART)
+            res = usbd_standart_device_request(usbd);
+#if (USBD_VSR)
+        else if (usbd->user != INVALID_HANDLE)
+        {
+            usbd->setup_state = USB_SETUP_STATE_VENDOR_REQUEST;
+            block_send(usbd->block, usbd->user);
+            ipc_post_inline(usbd->user, USBD_VENDOR_REQUEST, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
+            return;
+        }
+#endif
+        break;
+    case BM_REQUEST_RECIPIENT_INTERFACE:
+        res = usbd_interface_request(usbd, usbd->setup.wIndex);
+        break;
+    case BM_REQUEST_RECIPIENT_ENDPOINT:
+        res = usbd_endpoint_request(usbd);
+        break;
+    }
+    usbd_setup_response(usbd, res);
 }
 
 static inline void usbd_setup_received(USBD* usbd)
@@ -1102,6 +1108,21 @@ static inline void usbd_unregister_user(USBD* usbd, HANDLE process)
         usbd->user = INVALID_HANDLE;
 }
 
+#if (USBD_VSR)
+static inline void usbd_vendor_response(USBD* usbd, int res)
+{
+    if (usbd->setup_state == USB_SETUP_STATE_VENDOR_REQUEST)
+    {
+        usbd->setup_state = USB_SETUP_STATE_REQUEST;
+        usbd_setup_response(usbd, res);
+    }
+#if (USBD_DEBUG_ERRORS)
+    else
+        printf("USBD: Unexpected vendor response\n\r");
+#endif
+}
+#endif //USBD_VSR
+
 bool usbd_device_request(USBD* usbd, IPC* ipc)
 {
     bool need_post = false;
@@ -1144,6 +1165,11 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
         ((uint32_t*)(&usbd->setup))[1] = ipc->param2;
         usbd_setup_received(usbd);
         break;
+#if (USBD_VSR)
+    case USBD_VENDOR_REQUEST:
+        usbd_vendor_response(usbd, ipc->param2);
+        break;
+#endif //USBD_VSR
     case IPC_OPEN:
         usbd_open(usbd);
         need_post = true;
