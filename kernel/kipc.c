@@ -56,7 +56,10 @@ void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_proce
             memcpy(IPC_ITEM(process, i), IPC_ITEM(process, RB_ROUND_BACK(&process->kipc.rb, i - 1)), sizeof(IPC));
             memcpy(IPC_ITEM(process, RB_ROUND_BACK(&process->kipc.rb, i - 1)), &tmp, sizeof(IPC));
         }
-        memcpy(ipc, IPC_ITEM(process, rb_get(&process->kipc.rb)), sizeof(IPC));
+        memcpy(ipc, IPC_ITEM(process, process->kipc.rb.tail), sizeof(IPC));
+        disable_interrupts();
+        rb_get(&process->kipc.rb);
+        enable_interrupts();
         kprocess_wakeup(process);
     }
 }
