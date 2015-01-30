@@ -38,8 +38,41 @@ bool lib_usb_register_descriptor(USBD_DESCRIPTOR_TYPE type, unsigned int index, 
     else
         memcpy(buf + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED, d, size);
 
-    direct_enable_read(usbd, buf, USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED + sizeof(const void**));
-    ack(usbd, USBD_REGISTER_DESCRIPTOR, type, USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED + sizeof(const void**), 0);
+    direct_enable_read(usbd, buf, size);
+    ack(usbd, USBD_REGISTER_DESCRIPTOR, type, size, 0);
+    free(buf);
+    return get_last_error() == ERROR_OK;
+}
+
+bool lib_usb_register_ascii_string(unsigned int index, unsigned int lang, const char* str)
+{
+    int i, len;
+    void* buf;
+    USBD_DESCRIPTOR_REGISTER_STRUCT* udrs;
+    USB_DESCRIPTOR_TYPE* descr;
+    HANDLE usbd = object_get(SYS_OBJ_USBD);
+    len = strlen(str);
+    //size in utf-16 + header
+    buf = malloc(len * 2 + 2 + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED);
+    if (buf == NULL)
+        return false;
+    udrs = (USBD_DESCRIPTOR_REGISTER_STRUCT*)buf;
+
+    udrs->flags = 0;
+    udrs->index = index;
+    udrs->lang = lang;
+
+    descr = (USB_DESCRIPTOR_TYPE*)(buf + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED);
+    descr->bDescriptorType = USB_STRING_DESCRIPTOR_INDEX;
+    descr->bLength = len * 2 + 2;
+
+    for (i = 0; i < len; ++i)
+    {
+        descr->data[i * 2] = str[i];
+        descr->data[i * 2 + 1] = 0x00;
+    }
+    direct_enable_read(usbd, buf, len * 2 + 2 + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED);
+    ack(usbd, USBD_REGISTER_DESCRIPTOR, USB_DESCRIPTOR_STRING, len * 2 + 2 + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED, 0);
     free(buf);
     return get_last_error() == ERROR_OK;
 }
@@ -86,6 +119,7 @@ USB_DESCRIPTOR_TYPE* lib_usb_interface_get_next_descriptor(const USB_CONFIGURATI
 
 const LIB_USB __LIB_USB = {
     lib_usb_register_descriptor,
+    lib_usb_register_ascii_string,
     lib_usb_get_first_interface,
     lib_usb_get_next_interface,
     lib_usb_interface_get_first_descriptor,

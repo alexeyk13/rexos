@@ -512,6 +512,7 @@ typedef struct {
 
 typedef struct {
     bool (*lib_usb_register_descriptor)(USBD_DESCRIPTOR_TYPE, unsigned int, unsigned int, const void*, unsigned int, unsigned int);
+    bool (*lib_usb_register_ascii_string)(unsigned int, unsigned int, const char*);
     USB_INTERFACE_DESCRIPTOR_TYPE* (*lib_usb_get_first_interface)(const USB_CONFIGURATION_DESCRIPTOR_TYPE*);
     USB_INTERFACE_DESCRIPTOR_TYPE* (*lib_usb_get_next_interface)(const USB_CONFIGURATION_DESCRIPTOR_TYPE*, const USB_INTERFACE_DESCRIPTOR_TYPE*);
     USB_DESCRIPTOR_TYPE* (*lib_usb_interface_get_first_descriptor)(const USB_CONFIGURATION_DESCRIPTOR_TYPE*, const USB_INTERFACE_DESCRIPTOR_TYPE*, unsigned int);
@@ -522,6 +523,12 @@ __STATIC_INLINE bool usb_register_descriptor(USBD_DESCRIPTOR_TYPE type, unsigned
 {
     LIB_CHECK_RET(LIB_ID_USB);
     return ((const LIB_USB*)__GLOBAL->lib[LIB_ID_USB])->lib_usb_register_descriptor(type, index, lang, descriptor, data_size, flags);
+}
+
+__STATIC_INLINE bool usb_register_ascii_string(unsigned int index, unsigned int lang, const char* str)
+{
+    LIB_CHECK_RET(LIB_ID_USB);
+    return ((const LIB_USB*)__GLOBAL->lib[LIB_ID_USB])->lib_usb_register_ascii_string(index, lang, str);
 }
 
 __STATIC_INLINE USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_first_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
