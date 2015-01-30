@@ -676,18 +676,28 @@ static inline CCID_PROTOCOL ccidd_card_get_params(USBD* usbd, CCIDD* ccidd, HAND
     return ccidd->protocol;
 }
 
-static inline void ccidd_write(USBD* usbd, CCIDD* ccidd, HANDLE block, unsigned int size)
+static inline void ccidd_write(USBD* usbd, CCIDD* ccidd, HANDLE block, int size)
 {
     unsigned int chunk_size;
     if (ccidd->state != CCIDD_STATE_SC_REQUEST)
     {
-        fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), block, ERROR_INVALID_STATE);
+        fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), INVALID_HANDLE, ERROR_INVALID_STATE);
         return;
     }
     ccidd->data_buf = block_open(block);
     if (ccidd->data_buf == NULL)
     {
-        fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), block, get_last_error());
+        fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), INVALID_HANDLE, get_last_error());
+        ccidd_data_block(usbd, ccidd, NULL, 0, CCID_SLOT_ERROR_HW_ERROR);
+        return;
+    }
+    if (size < 0)
+    {
+#if (USBD_CCID_DEBUG_ERRORS)
+        printf("CCIDD: hardware error: %d\n\r", size);
+#endif //USBD_DEBUG_CLASS_REQUESTS
+        fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), INVALID_HANDLE, 0);
+        ccidd_data_block(usbd, ccidd, NULL, 0, CCID_SLOT_ERROR_HW_ERROR);
         return;
     }
     ccidd->data_processed = 0;
@@ -762,7 +772,7 @@ bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
                 ccidd->status_busy = false;
             break;
         case HAL_USBD:
-            ccidd_write(usbd, ccidd, ipc->param2, ipc->param3);
+            ccidd_write(usbd, ccidd, ipc->param2, (int)ipc->param3);
             break;
         default:
             break;
