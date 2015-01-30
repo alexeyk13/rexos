@@ -317,7 +317,7 @@ static void ccidd_rx(USBD* usbd, CCIDD* ccidd, uint8_t* buf, int size)
         if (ccidd->rx_more)
         {
             ccidd->state = CCIDD_STATE_CARD_POWERED;
-            ccidd_tx(usbd, ccidd, 0, 0);
+            ccidd_data_block(usbd, ccidd,  NULL, 0, 0);
         }
         else
         {
