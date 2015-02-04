@@ -12,6 +12,7 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/block.h"
 #include "../../userspace/file.h"
+#include "../../userspace/timer.h"
 #if (SYS_INFO)
 #include "../../userspace/stdio.h"
 #endif
@@ -65,6 +66,9 @@ static const uint8_t __I2C_VECTORS[] =              {15};
 void lpc_i2c_isr_error(SHARED_I2C_DRV* drv, I2C_PORT port, int error)
 {
     LPC_I2C->CONSET = I2C_CONSET_STO;
+#if (LPC_I2C_TIMEOUT_MS)
+    timer_istop(drv->i2c.i2cs[port]->timer);
+#endif
     switch (drv->i2c.i2cs[I2C_0]->io)
     {
     case I2C_IO_TX:
@@ -106,6 +110,9 @@ static inline void lpc_i2c_isr_tx(SHARED_I2C_DRV* drv, I2C_PORT port)
          else
          {
              LPC_I2C->CONSET = I2C_CONSET_STO;
+#if (LPC_I2C_TIMEOUT_MS)
+             timer_istop(drv->i2c.i2cs[port]->timer);
+#endif
              fiwrite_complete(drv->i2c.i2cs[port]->process, HAL_HANDLE(HAL_I2C, port), drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->processed);
              drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
          }
@@ -179,6 +186,9 @@ static inline void lpc_i2c_isr_rx(SHARED_I2C_DRV* drv, I2C_PORT port)
         drv->i2c.i2cs[port]->ptr[drv->i2c.i2cs[port]->processed++] = LPC_I2C->DAT;
         //stop transmission
         LPC_I2C->CONSET = I2C_CONSET_STO;
+#if (LPC_I2C_TIMEOUT_MS)
+        timer_istop(drv->i2c.i2cs[port]->timer);
+#endif
         firead_complete(drv->i2c.i2cs[port]->process, HAL_HANDLE(HAL_I2C, port), drv->i2c.i2cs[port]->block, drv->i2c.i2cs[port]->processed);
         drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
         break;
@@ -223,6 +233,15 @@ void lpc_i2c_open(SHARED_I2C_DRV *drv, I2C_PORT port, unsigned int mode, unsigne
         error(ERROR_OUT_OF_MEMORY);
         return;
     }
+#if (LPC_I2C_TIMEOUT_MS)
+    drv->i2c.i2cs[port]->timer = timer_create(HAL_HANDLE(HAL_I2C, port));
+    if (drv->i2c.i2cs[port]->timer == INVALID_HANDLE)
+    {
+        free(drv->i2c.i2cs[port]);
+        drv->i2c.i2cs[port] = NULL;
+        return;
+    }
+#endif
     drv->i2c.i2cs[port]->sla = sla & 0x7f;
     drv->i2c.i2cs[port]->mode = mode;
     drv->i2c.i2cs[port]->block = INVALID_HANDLE;
@@ -307,6 +326,10 @@ static inline void lpc_i2c_read(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block
 
     //reset
     LPC_I2C->CONCLR = I2C_CLEAR;
+#if (LPC_I2C_TIMEOUT_MS)
+    timer_start_ms(drv->i2c.i2cs[port]->timer, LPC_I2C_TIMEOUT_MS, 0);
+#endif
+
     //set START
     LPC_I2C->CONSET = I2C_CONSET_I2EN | I2C_CONSET_STA;
     //all rest in isr
@@ -349,6 +372,9 @@ static inline void lpc_i2c_write(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE bloc
 
     //reset
     LPC_I2C->CONCLR = I2C_CLEAR;
+#if (LPC_I2C_TIMEOUT_MS)
+    timer_start_ms(drv->i2c.i2cs[port]->timer, LPC_I2C_TIMEOUT_MS, 0);
+#endif
     //set START
     LPC_I2C->CONSET = I2C_CONSET_I2EN | I2C_CONSET_STA;
     //all rest in isr
@@ -368,6 +394,30 @@ static inline void lpc_i2c_seek(SHARED_I2C_DRV* drv, I2C_PORT port, unsigned int
     }
     drv->i2c.i2cs[port]->addr = pos;
 }
+
+#if (LPC_I2C_TIMEOUT_MS)
+static inline void lpc_i2c_timeout(SHARED_I2C_DRV* drv, I2C_PORT port)
+{
+    I2C_IO io;
+    __disable_irq();
+    io = drv->i2c.i2cs[port]->io;
+    drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
+    __enable_irq();
+    //handled right now in isr
+    if (io == I2C_IO_IDLE)
+        return;
+    LPC_I2C->CONSET = I2C_CONSET_STO;
+    switch (io)
+    {
+    case I2C_IO_TX:
+        fiwrite_complete(drv->i2c.i2cs[port]->process, HAL_HANDLE(HAL_I2C, port), drv->i2c.i2cs[port]->block, ERROR_TIMEOUT);
+        break;
+    default:
+        firead_complete(drv->i2c.i2cs[port]->process, HAL_HANDLE(HAL_I2C, port), drv->i2c.i2cs[port]->block, ERROR_TIMEOUT);
+        break;
+    }
+}
+#endif
 
 void lpc_i2c_init(SHARED_I2C_DRV* drv)
 {
@@ -426,6 +476,11 @@ bool lpc_i2c_request(SHARED_I2C_DRV* drv, IPC* ipc)
         lpc_i2c_seek(drv, HAL_ITEM(ipc->param1), ipc->param2);
         need_post = true;
         break;
+#if (LPC_I2C_TIMEOUT_MS)
+    case IPC_TIMEOUT:
+        lpc_i2c_timeout(drv, HAL_ITEM(ipc->param1));
+        break;
+#endif
     default:
         break;
     }

@@ -84,6 +84,7 @@ void lpc_core_loop(CORE* core)
             case IPC_GET_TX_STREAM:
             case IPC_GET_RX_STREAM:
             case IPC_STREAM_WRITE:
+            case IPC_TIMEOUT:
                 group = HAL_GROUP(ipc.param1);
                 break;
             default:

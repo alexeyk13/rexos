@@ -9,8 +9,8 @@
 
 //------------------------------------- CORE ----------------------------------------------
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
-#define LPC_CORE_STACK_SIZE                 580
-#define LPC_DRIVERS_IPC_COUNT               3
+#define LPC_CORE_STACK_SIZE                 800
+#define LPC_DRIVERS_IPC_COUNT               10
 
 //UART driver is monolith. Enable for size, disable for perfomance
 #define MONOLITH_UART                       1
@@ -31,8 +31,8 @@
 //------------------------------------- timer ---------------------------------------------
 //Second pulse generation timer. Use 32 bit for fine tune.
 #define SECOND_TIMER                        TC32B0
-//Don't change this if you are not sure. Can't be channel 0, cause channel 0 is used for
-//second pulse timer. Unused if RTC is configured
+//Don't change this if you are not sure. Unused if RTC is configured
+#define SECOND_CHANNEL                      TIMER_CHANNEL0
 #define HPET_CHANNEL                        TIMER_CHANNEL1
 
 //------------------------------------- EEPROM --------------------------------------------
@@ -45,6 +45,7 @@
 //GPIO pin constants for specific module. If not used can save 32 bytes per block
 #define GPIO_UART                           1
 #define GPIO_I2C                            1
+#define GPIO_TIMER                          1
 //SCLK/RTS for PIO0_17
 #define GPIO_PIO0_17_SCLK                   1
 //TXD/DTR for PIO1_13
@@ -80,5 +81,9 @@
 #define USB_SOFT_CONNECT                    1
 //-------------------------------------- I2C ----------------------------------------------
 #define LPC_I2C_PROCESS_SIZE                480
+
+//in some application slave devices may hang bus for infinite time.
+//Set this value greater than 0 to solve problem. Soft timers is required.
+#define LPC_I2C_TIMEOUT_MS                  3000
 
 #endif //LPC_CONFIG_H

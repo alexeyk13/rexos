@@ -275,6 +275,23 @@ void lpc_usb_on_isr(int vector, void* param)
     SHARED_USB_DRV* drv = (SHARED_USB_DRV*)param;
     uint32_t sta = LPC_USB->INTSTAT;
 
+#if (USB_DEBUG_ERRORS)
+    IPC ipc;
+    switch (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK)
+    {
+    case USB_INFO_ERR_CODE_NO_ERROR:
+    case USB_INFO_ERR_CODE_IONAK:
+        //no error
+        break;
+    default:
+        ipc.process = process_iget_current();
+        ipc.param2 = (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK) >> USB_INFO_ERR_CODE_POS;
+        ipc.cmd = LPC_USB_ERROR;
+        ipc_ipost(&ipc);
+        LPC_USB->INFO &= ~USB_INFO_ERR_CODE_MASK;
+    }
+#endif
+
     if (sta & USB_INTSTAT_DEV_INT)
     {
         sta = LPC_USB->DEVCMDSTAT;
@@ -320,23 +337,6 @@ void lpc_usb_on_isr(int vector, void* param)
             LPC_USB->INTSTAT = USB_EP_INT_BIT(USB_EP_IN | i);
         }
     }
-#if (USB_DEBUG_ERRORS)
-    IPC ipc;
-    switch (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK)
-    {
-    case USB_INFO_ERR_CODE_NO_ERROR:
-    case USB_INFO_ERR_CODE_IONAK:
-        //no error
-        break;
-    default:
-        ipc.process = process_iget_current();
-        ipc.param2 = (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK) >> USB_INFO_ERR_CODE_POS;
-        ipc.cmd = LPC_USB_ERROR;
-        ipc_ipost(&ipc);
-        LPC_USB->INFO &= ~USB_INFO_ERR_CODE_MASK;
-
-    }
-#endif
 }
 
 

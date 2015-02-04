@@ -16,6 +16,9 @@
 
 typedef struct  {
     HANDLE block, process;
+#if (LPC_I2C_TIMEOUT_MS)
+    HANDLE timer;
+#endif
     char* ptr;
     I2C_IO io;
     unsigned int addr, rx_len;
