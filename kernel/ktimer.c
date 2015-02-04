@@ -219,9 +219,19 @@ void ktimer_destroy(SOFT_TIMER *timer)
 
 void ktimer_start(SOFT_TIMER* timer, TIME* time, unsigned int mode)
 {
+    bool active;
+    PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(timer, sizeof(SOFT_TIMER));
     CHECK_MAGIC(timer, MAGIC_TIMER);
-    CHECK_ADDRESS(kprocess_get_current(), time, sizeof(TIME));
+    CHECK_ADDRESS(process, time, sizeof(TIME));
+    disable_interrupts();
+    active = timer->active;
+    enable_interrupts();
+    if (active)
+    {
+        kprocess_error(process, ERROR_ALREADY_CONFIGURED);
+        return;
+    }
     timer->mode = mode;
     if (timer->mode & TIMER_MODE_PERIODIC)
     {
