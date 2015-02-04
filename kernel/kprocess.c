@@ -127,7 +127,6 @@ void kprocess_timeout(void* param)
 {
     PROCESS* process = param;
     disable_interrupts();
-    process->flags |= 1 << 27;
     //because timeout is not atomic anymore
     if (process->flags & PROCESS_FLAGS_WAITING)
     {
@@ -396,7 +395,6 @@ void kprocess_wakeup(PROCESS* process)
     CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
-    process->flags |= 5 << 27;
     kprocess_wakeup_internal(process);
     enable_interrupts();
 }

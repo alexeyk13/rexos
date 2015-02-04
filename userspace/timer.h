@@ -130,6 +130,16 @@ __STATIC_INLINE void timer_stop(HANDLE timer)
 }
 
 /**
+    \brief stop soft timer, isr version
+    \param timer soft timer handle
+    \retval none.
+*/
+__STATIC_INLINE void timer_istop(HANDLE timer)
+{
+    __GLOBAL->svc_irq(SVC_TIMER_STOP, (unsigned int)timer, 0, 0);
+}
+
+/**
     \brief destroy soft timer
     \param timer soft timer handle
     \retval none.

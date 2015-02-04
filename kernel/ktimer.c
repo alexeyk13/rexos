@@ -174,6 +174,7 @@ void ktimer_init_internal(KTIMER* timer, void (*callback)(void*), void* param)
 {
     timer->callback = callback;
     timer->param = param;
+    timer->active = false;
 }
 
 #if (KERNEL_SOFT_TIMERS)
