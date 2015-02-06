@@ -42,15 +42,19 @@ unsigned int hpet_elapsed_stub(void* param)
     return 0;
 }
 
-void ktimer_get_uptime(TIME* res)
+void ktimer_get_uptime_internal(TIME* res)
 {
     res->sec = __KERNEL->uptime.sec;
     res->usec = __KERNEL->uptime.usec + __KERNEL->cb_ktimer.elapsed(__KERNEL->cb_ktimer_param);
-    while (res->usec >= 1000000)
-    {
-        res->sec++;
-        res->usec -= 1000000;
-    }
+    if (res->usec >= 1000000)
+        res->usec = 999999;
+}
+
+void ktimer_get_uptime(TIME* res)
+{
+    disable_interrupts();
+    ktimer_get_uptime_internal(res);
+    enable_interrupts();
 }
 
 static inline void find_shoot_next()
@@ -62,9 +66,7 @@ static inline void find_shoot_next()
     disable_interrupts();
     while (__KERNEL->timers)
     {
-        //ignore seconds adjustment
-        uptime.sec = __KERNEL->uptime.sec;
-        uptime.usec = __KERNEL->uptime.usec + __KERNEL->cb_ktimer.elapsed(__KERNEL->cb_ktimer_param);
+        ktimer_get_uptime_internal(&uptime);
         if (time_compare(&__KERNEL->timers->time, &uptime) >= 0)
         {
             cur = __KERNEL->timers;
@@ -225,7 +227,7 @@ void ktimer_start(SOFT_TIMER* timer, TIME* time, unsigned int mode)
     CHECK_MAGIC(timer, MAGIC_TIMER);
     CHECK_ADDRESS(process, time, sizeof(TIME));
     disable_interrupts();
-    active = timer->active;
+    active = timer->timer.active;
     enable_interrupts();
     if (active)
     {
