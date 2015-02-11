@@ -19,6 +19,8 @@ typedef enum {
     ETH_10_FULL,
     ETH_100_HALF,
     ETH_100_FULL,
+    ETH_AUTO,
+    ETH_LOOPBACK,
     ETH_NOT_CONNECTED
 } ETH_CONN_TYPE;
 
@@ -35,16 +37,12 @@ typedef struct {
 #define ETH_PHY_FEATURE_AUTO_NEGOTIATION                (1 << 1)
 #define ETH_PHY_FEATURE_LOOPBACK                        (1 << 2)
 
-//list of modes, that can be passed on power_on
-#define ETH_PHY_MODE_AUTO_NEGOTIATION                   (1 << 1)
-#define ETH_PHY_MODE_LOOPBACK                           (1 << 2)
-
 //List of status bits
 #define ETH_PHY_STATUS_LINK_ACTIVE                      (1 << 0)
 #define ETH_PHY_STATUS_FAULT                            (1 << 1)
 
 typedef struct {
-    bool (*eth_phy_power_on)(uint8_t, ETH_CONN_TYPE, unsigned int, ETH_SMI_CALLBACKS*, void*);
+    bool (*eth_phy_power_on)(uint8_t, ETH_CONN_TYPE, ETH_SMI_CALLBACKS*, void*);
     void (*eth_phy_power_off)(uint8_t, ETH_SMI_CALLBACKS*, void*);
     unsigned int (*eth_phy_get_status)(uint8_t, ETH_SMI_CALLBACKS*, void*);
     ETH_CONN_TYPE (*eth_phy_get_conn_status)(uint8_t, ETH_SMI_CALLBACKS*, void*);
