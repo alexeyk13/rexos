@@ -9,6 +9,10 @@
 
 #include "../../userspace/process.h"
 
+typedef struct {
+    unsigned int stub;
+} ETH_DRV;
+
 extern const REX __STM32_ETH;
 
 
