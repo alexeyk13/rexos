@@ -40,6 +40,7 @@ typedef enum {
     HAL_DAC,
     HAL_I2C,
     HAL_LCD,
+    HAL_ETH,
     HAL_FLASH,
     HAL_EEPROM,
     HAL_USBD,
