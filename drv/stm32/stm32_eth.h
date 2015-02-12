@@ -7,10 +7,16 @@
 #ifndef STM32_ETH_H
 #define STM32_ETH_H
 
+/*
+    STM32 Ethernet driver. Warning! It's just scratch, not ready yet.
+*/
+
 #include "../../userspace/process.h"
 
 typedef struct {
-    unsigned int stub;
+    bool active;
+    HANDLE rx_block[2], tx_block[2];
+    uint8_t rx_block_count, tx_block_count;
 } ETH_DRV;
 
 extern const REX __STM32_ETH;
