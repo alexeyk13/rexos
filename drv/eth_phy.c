@@ -79,7 +79,7 @@ ETH_CONN_TYPE eth_phy_get_conn_status(uint8_t phy_addr)
     while (((sta & ETH_STATUS_AUTO_NEGOTIATION_COMPLETE) == 0) && (time_elapsed_ms(&uptime) < ETH_AUTO_NEGOTIATION_TIME))
     {
         sta = eth_phy_read(phy_addr, ETH_PHY_REG_STATUS);
-        sleep_ms(100);
+        sleep_ms(1);
     }
     //auto negotiation failure
     anlpar = eth_phy_read(phy_addr, ETH_PHY_REG_ANLPAR);

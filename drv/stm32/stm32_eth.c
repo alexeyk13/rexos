@@ -11,11 +11,13 @@
 #include "../../userspace/ipc.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/direct.h"
-#include "../../userspace/eth.h"
+#include "../../userspace/timer.h"
 #include "../../userspace/stm32_driver.h"
 #include "../eth_phy.h"
 #include "stm32_gpio.h"
+#include "stm32_power.h"
 #include <stdbool.h>
+#include <string.h>
 
 #define _printd                 printf
 #define get_clock               stm32_power_get_clock_outside
@@ -90,8 +92,21 @@ uint16_t eth_phy_read(uint8_t phy_addr, uint8_t reg_addr)
     return ETH->MACMIIDR & ETH_MACMIIDR_MD;
 }
 
-static inline void stm32_eth_open_internal(ETH_DRV* drv, ETH_OPEN_STRUCT* eos)
+static void stm32_eth_conn_check(ETH_DRV* drv)
 {
+    ETH_CONN_TYPE new_conn;
+    new_conn = eth_phy_get_conn_status(ETH_PHY_ADDRESS);
+    if (new_conn != drv->conn)
+    {
+        drv->conn = new_conn;
+        ipc_post_inline(drv->arp, ETH_NOTIFY_LINK_CHANGED, HAL_HANDLE(HAL_ETH, 0), drv->conn, 0);
+    }
+    timer_start_ms(drv->timer, 1000, 0);
+}
+
+static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE arp)
+{
+    unsigned int clock;
     if (drv->active)
     {
         error(ERROR_ALREADY_CONFIGURED);
@@ -128,62 +143,56 @@ static inline void stm32_eth_open_internal(ETH_DRV* drv, ETH_OPEN_STRUCT* eos)
     //enable clocks
     RCC->AHBENR |= RCC_AHBENR_ETHMACEN | RCC_AHBENR_ETHMACTXEN | RCC_AHBENR_ETHMACRXEN;
 
-    //TODO: register isr
-    //TODO: setup PHY clock
-//#define ETH_MACMIIAR_CR   ((uint32_t)0x0000001C)  /* CR clock range: 6 cases */
-//  #define ETH_MACMIIAR_CR_Div42   ((uint32_t)0x00000000)  /* HCLK:60-72 MHz; MDC clock= HCLK/42 */
-//  #define ETH_MACMIIAR_CR_Div16   ((uint32_t)0x00000008)  /* HCLK:20-35 MHz; MDC clock= HCLK/16 */
-//  #define ETH_MACMIIAR_CR_Div26   ((uint32_t)0x0000000C)  /* HCLK:35-60 MHz; MDC clock= HCLK/26 */
+    drv->active = true;
+    drv->arp = arp;
+
+    //configure clock for SMI
+    clock = get_clock(drv, STM32_CLOCK_AHB);
+    if (clock <= 35000000)
+        ETH->MACMIIAR = ETH_MACMIIAR_CR_Div16;
+    else if (clock <= 60000000)
+        ETH->MACMIIAR = ETH_MACMIIAR_CR_Div26;
+    else
+        ETH->MACMIIAR = ETH_MACMIIAR_CR_Div42;
     //turn phy on
-    if (!eth_phy_power_on(ETH_PHY_ADDRESS, eos->conn))
+    if (!eth_phy_power_on(ETH_PHY_ADDRESS, conn))
     {
         error(ERROR_NOT_FOUND);
         //TODO: disable internal
         return;
     }
 
-    drv->active = true;
-
-    //TODO: move to higher level
-    ETH_CONN_TYPE conn = eth_phy_get_conn_status(ETH_PHY_ADDRESS);
-    while (conn == ETH_NO_LINK)
-    {
-        sleep_ms(1000);
-        conn = eth_phy_get_conn_status(ETH_PHY_ADDRESS);
-    }
-    printf("ETH connected ");
-    switch (conn)
-    {
-    case ETH_10_HALF:
-        printf("10BASE_T Half duplex");
-        break;
-    case ETH_10_FULL:
-        printf("10BASE_T Full duplex");
-        break;
-    case ETH_100_HALF:
-        printf("100BASE_TX Half duplex");
-        break;
-    case ETH_100_FULL:
-        printf("100BASE_TX Full duplex");
-        break;
-    default:
-        printf("remote fault");
-        break;
-    }
-    printf("\n\r");
+    stm32_eth_conn_check(drv);
 }
 
-static inline void stm32_eth_open(ETH_DRV* drv, HANDLE process)
+static inline void stm32_eth_set_mac(ETH_DRV* drv, unsigned int param1, unsigned int param2)
 {
-    ETH_OPEN_STRUCT eos;
-    if (!direct_read(process, &eos, sizeof(ETH_OPEN_STRUCT)))
+    if (drv->active)
+    {
+        error(ERROR_IN_PROGRESS);
         return;
-    stm32_eth_open_internal(drv, &eos);
+    }
+    drv->mac[0] = (param1 >> 24) & 0xff;
+    drv->mac[1] = (param1 >> 16) & 0xff;
+    drv->mac[2] = (param1 >> 8) & 0xff;
+    drv->mac[3] = (param1 >> 0) & 0xff;
+    drv->mac[4] = (param2 >> 8) & 0xff;
+    drv->mac[5] = (param2 >> 0) & 0xff;
+}
+
+static inline void stm32_eth_get_mac(ETH_DRV* drv, IPC* ipc)
+{
+    ipc->param1 = (drv->mac[0] << 24) | (drv->mac[1] << 16) | (drv->mac[2] << 8) | drv->mac[3];
+    ipc->param2 = (drv->mac[4] << 8) | drv->mac[5];
 }
 
 void stm32_eth_init(ETH_DRV* drv)
 {
     drv->active = false;
+    drv->timer = timer_create(HAL_HANDLE(HAL_ETH, 0));
+    drv->arp = INVALID_HANDLE;
+    drv->conn = ETH_NO_LINK;
+    memset(drv->mac, 0x00, MAC_SIZE);
     drv->rx_block_count = drv->tx_block_count = 0;
 }
 
@@ -199,7 +208,7 @@ bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
         break;
 #endif
     case IPC_OPEN:
-        stm32_eth_open(drv, ipc->process);
+        stm32_eth_open(drv, ipc->param2, ipc->process);
         need_post = true;
         break;
     case IPC_CLOSE:
@@ -222,6 +231,17 @@ bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
         //TODO:
         //generally posted with block, no return IPC
         break;
+    case IPC_TIMEOUT:
+        stm32_eth_conn_check(drv);
+        break;
+    case ETH_SET_MAC:
+        stm32_eth_set_mac(drv, ipc->param1, ipc->param2);
+        need_post = true;
+        break;
+    case ETH_GET_MAC:
+        stm32_eth_get_mac(drv, ipc);
+        need_post = true;
+        break;
     default:
         break;
     }
@@ -241,6 +261,7 @@ void stm32_eth()
     for (;;)
     {
         error(ERROR_OK);
+
         need_post = false;
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
         switch (ipc.cmd)
