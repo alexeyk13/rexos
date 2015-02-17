@@ -45,31 +45,21 @@ typedef union {
     }u32;
 } MAC;
 
-typedef struct {
-    MAC src;
-    MAC dst;
-    uint16_t len;
-} MAC_FRAME_HEADER;
-
 #pragma pack(pop)
 
-__STATIC_INLINE void eth_set_mac(const uint8_t* mac)
+__STATIC_INLINE void eth_set_mac(const MAC* mac)
 {
-    ack(object_get(SYS_OBJ_ETH), ETH_SET_MAC, (mac[0] << 24) | (mac[1] << 16) | (mac[2] << 8) | mac[3], (mac[4] << 8) | mac[5], 0);
+    ack(object_get(SYS_OBJ_ETH), ETH_SET_MAC, mac->u32.hi, mac->u32.lo, 0);
 }
 
-__STATIC_INLINE void eth_get_mac(uint8_t* mac)
+__STATIC_INLINE void eth_get_mac(MAC* mac)
 {
     IPC ipc;
     ipc.process = object_get(SYS_OBJ_ETH);
     ipc.cmd = ETH_GET_MAC;
     ipc_call_ms(&ipc, 0);
-    mac[0] = (ipc.param1 >> 24) & 0xff;
-    mac[1] = (ipc.param1 >> 16) & 0xff;
-    mac[2] = (ipc.param1 >> 8) & 0xff;
-    mac[3] = (ipc.param1 >> 0) & 0xff;
-    mac[4] = (ipc.param2 >> 8) & 0xff;
-    mac[5] = (ipc.param2 >> 0) & 0xff;
+    mac->u32.hi = ipc.param1;
+    mac->u32.lo = ipc.param2;
 }
 
 #endif // ETH_H

@@ -29,6 +29,7 @@ typedef enum {
 }SYS_IPCS;
 
 typedef enum {
+    //real hardware
     HAL_GPIO = 0,
     HAL_POWER,
     HAL_TIMER,
@@ -43,8 +44,13 @@ typedef enum {
     HAL_ETH,
     HAL_FLASH,
     HAL_EEPROM,
+    //device stacks
     HAL_USBD,
+    HAL_TCPIP,
+    HAL_TCPIP_MAC,
+    HAL_TCPIP_IP,
     HAL_PINBOARD,
+    //application level
     HAL_APP
 } HAL;
 

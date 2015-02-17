@@ -5,26 +5,17 @@
 */
 
 #include "tcpip.h"
+#include "tcpip_private.h"
 #include "../../userspace/ipc.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/object.h"
-#include "../../userspace/eth.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/file.h"
-#include "../../userspace/array.h"
 #include "../../userspace/block.h"
 #include "sys_config.h"
+#include "mac.h"
 
-#define FRAME_MAX_SIZE                          (TCPIP_MTU + sizeof(MAC_FRAME_HEADER))
-
-typedef struct {
-    HANDLE eth;
-    ETH_CONN_TYPE conn;
-    unsigned int blocks_allocated;
-    ARRAY* free_blocks;
-    bool active, connected;
-    uint8_t own_mac[MAC_SIZE];
-} TCPIP;
+#define FRAME_MAX_SIZE                          (TCPIP_MTU + MAC_HEADER_SIZE)
 
 void tcpip_main();
 
@@ -32,16 +23,13 @@ const REX __TCPIP = {
     //name
     "TCP/IP stack",
     //size
-    //TODO: variable in sys_config
-    700,
+    TCPIP_PROCESS_SIZE,
     //priority - midware priority
-    //TODO: variable in sys_config
-    150,
+    TCPIP_PROCESS_PRIORITY,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
     //ipc size
-    //TODO: variable in sys_config
-    10,
+    TCPIP_PROCESS_IPC_COUNT,
     //function
     tcpip_main
 };
@@ -106,6 +94,15 @@ void tcpip_release_block(TCPIP* tcpip, HANDLE block)
     void_array_data(tcpip->free_blocks)[void_array_size(tcpip->free_blocks) - 1] = (void*)block;
 }
 
+static void tcpip_rx_next_block(TCPIP* tcpip)
+{
+    HANDLE block;
+    block = tcpip_allocate_block(tcpip);
+    if (block == INVALID_HANDLE)
+        return;
+    fread_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), block, FRAME_MAX_SIZE);
+}
+
 static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
 {
     if (tcpip->active)
@@ -117,22 +114,20 @@ static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
     tcpip->active = true;
 }
 
-static inline void tcpip_packet_received(TCPIP* tcpip, HANDLE block, unsigned int size)
+static inline void tcpip_rx(TCPIP* tcpip, HANDLE block, int size)
 {
-    int i;
+    tcpip_rx_next_block(tcpip);
+    if (size < 0)
+        return;
     uint8_t* buf = block_open(block);
-    printf("Got packet, size: %d\n\r", size);
-    for (i = 0; i < size; ++i)
-        printf("%X ", buf[i]);
-    printf("\n\r");
-
-//    tcpip_release_block(tcpip, block);
-    fread_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), block, FRAME_MAX_SIZE);
+    if (buf == NULL)
+        return;
+    //forward to MAC
+    mac_rx(tcpip, buf, size, block);
 }
 
 static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
 {
-    HANDLE block;
     tcpip->conn = conn;
     tcpip->connected = ((conn != ETH_NO_LINK) && (conn != ETH_REMOTE_FAULT));
 
@@ -140,13 +135,10 @@ static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
     print_conn_status(tcpip, "ETH link changed");
 #endif
 
-    //TODO: double buffering
     if (tcpip->connected)
     {
-        block = tcpip_allocate_block(tcpip);
-        if (block == INVALID_HANDLE)
-            return;
-        fread_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), block, FRAME_MAX_SIZE);
+        //TODO: double buffering
+        tcpip_rx_next_block(tcpip);
     }
 }
 
@@ -154,15 +146,7 @@ static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
 static inline void tcpip_info(TCPIP* tcpip)
 {
     print_conn_status(tcpip, "ETH connect status");
-    printf("MAC: ");
-    int i;
-    for (i = 0; i < 6; ++i)
-    {
-        printf("%X", tcpip->own_mac[i]);
-        if (i < 5)
-            printf(":");
-    }
-    printf("\n\r");
+    mac_info(tcpip);
 }
 #endif
 
@@ -172,14 +156,14 @@ void tcpip_init(TCPIP* tcpip)
     tcpip->conn = ETH_NO_LINK;
     tcpip->connected = tcpip->active = false;
     tcpip->blocks_allocated = 0;
-#if (TCPIP_DOUBLE_BUFFERING)
-    //2 rx + 1 for processing
-    void_array_create(&tcpip->free_blocks, 3);
+#if (ETH_DOUBLE_BUFFERING)
+    //2 rx + 2 tx + 1 for processing
+    void_array_create(&tcpip->free_blocks, 5);
 #else
-    //1 rx + 1 for processing
-    void_array_create(&tcpip->free_blocks, 2);
+    //1 rx + 1 tx + 1 for processing
+    void_array_create(&tcpip->free_blocks, 3);
 #endif
-    eth_get_mac(tcpip->own_mac);
+    mac_init(tcpip);
 }
 
 bool tcpip_request(TCPIP* tcpip, IPC* ipc)
@@ -202,9 +186,10 @@ bool tcpip_request(TCPIP* tcpip, IPC* ipc)
         need_post = true;
         break;
     case IPC_READ:
-        if ((int)ipc->param3 < 0)
-            break;
-        tcpip_packet_received(tcpip, ipc->param2, ipc->param3);
+        tcpip_rx(tcpip, ipc->param2, (int)ipc->param3);
+        break;
+    case IPC_WRITE:
+        //TODO:
         break;
     case ETH_NOTIFY_LINK_CHANGED:
         tcpip_link_changed(tcpip, ipc->param2);
@@ -224,8 +209,7 @@ void tcpip_main()
 #if (SYS_INFO) || (TCPIP_DEBUG)
     open_stdout();
 #endif
-    //TODO: maybe self object?
-//    object_set_self(SYS_OBJ_TCPIP);
+    object_set_self(SYS_OBJ_TCPIP);
     for (;;)
     {
         error(ERROR_OK);

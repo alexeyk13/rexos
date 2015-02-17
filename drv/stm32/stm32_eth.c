@@ -208,10 +208,11 @@ static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE tcpip
     //disable receiver/transmitter before link established
     ETH->MACCR = 0x8000;
     //setup MAC
-    ETH->MACA0HR = drv->mac.u32.hi;
-    ETH->MACA0LR = drv->mac.u32.lo;
+    ETH->MACA0HR = (drv->mac.u8[5] << 8) | (drv->mac.u8[4] << 0) |  (1 << 31);
+    ETH->MACA0LR = (drv->mac.u8[3] << 24) | (drv->mac.u8[2] << 16) | (drv->mac.u8[1] << 8) | (drv->mac.u8[0] << 0);
     //apply MAC unicast filter
-    ETH->MACFFR = 0;
+    ETH->MACFFR = ETH_MACFFR_RA;
+///    ETH->MACFFR = 0;
 
     //configure clock for SMI
     clock = get_clock(drv, STM32_CLOCK_AHB);
