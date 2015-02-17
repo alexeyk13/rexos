@@ -219,9 +219,9 @@ static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE tcpip
     drv->rx_des[1].size = ETH_RDES_RCH;
     drv->rx_des[1].buf2_ndes = &drv->rx_des[0];
 
-    drv->tx_des[0].ctl = ETH_TDES_TCH;
+    drv->tx_des[0].ctl = ETH_TDES_TCH | ETH_TDES_IC;
     drv->tx_des[0].buf2_ndes = &drv->tx_des[1];
-    drv->tx_des[1].ctl = ETH_TDES_TCH;
+    drv->tx_des[1].ctl = ETH_TDES_TCH | ETH_TDES_IC;
     drv->tx_des[1].buf2_ndes = &drv->tx_des[0];
 
     drv->cur_rx = drv->cur_tx = 0;
@@ -328,6 +328,61 @@ static inline void stm32_eth_read(ETH_DRV* drv, HANDLE block, unsigned int size)
     ETH->DMARPDR = 0;
 }
 
+static inline void stm32_eth_write(ETH_DRV* drv, HANDLE block, unsigned int size)
+{
+    if (!drv->connected)
+    {
+        fwrite_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_NOT_ACTIVE);
+        return;
+    }
+#if (ETH_DOUBLE_BUFFERING)
+    int i = -1;
+    uint8_t cur_tx = drv->cur_tx;
+
+    if (drv->tx_block[cur_tx] == INVALID_HANDLE)
+        i = cur_tx;
+    else if (drv->tx_block[(cur_tx + 1) & 1] == INVALID_HANDLE)
+        i = (cur_tx + 1) & 1;
+    if (i < 0)
+    {
+        fwrite_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_IN_PROGRESS);
+        return;
+    }
+    drv->tx_des[i].buf1 = block_open(block);
+    if (drv->tx_des[i].buf1 == NULL)
+    {
+        fwrite_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, get_last_error());
+        return;
+    }
+    drv->tx_des[i].size = ((size << ETH_TDES_TBS1_POS) & ETH_TDES_TBS1_MASK);
+    drv->tx_des[i].ctl = ETH_TDES_TCH | ETH_TDES_FS | ETH_TDES_LS | ETH_TDES_IC;
+    __disable_irq();
+    drv->tx_block[i] = block;
+    //give descriptor to DMA
+    drv->tx_des[i].ctl |= ETH_TDES_OWN;
+    __enable_irq();
+#else
+    if (drv->tx_block != INVALID_HANDLE)
+    {
+        fwrite_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_IN_PROGRESS);
+        return;
+    }
+    drv->tx_des.buf1 = block_open(block);
+    if (drv->tx_des.buf1 == NULL)
+    {
+        fwrite_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, get_last_error());
+        return;
+    }
+    drv->tx_block = block;
+    drv->tx_des.size = ((size << ETH_TDES_TBS1_POS) & ETH_TDES_TBS1_MASK);
+    //give descriptor to DMA
+    drv->tx_des.ctl = ETH_TDES_TCH | ETH_TDES_FS | ETH_TDES_LS | ETH_TDES_IC;
+    drv->tx_des.ctl |= ETH_TDES_OWN;
+#endif
+    //enable and poll DMA. Value is doesn't matter
+    ETH->DMATPDR = 0;
+}
+
 static inline void stm32_eth_set_mac(ETH_DRV* drv, unsigned int param1, unsigned int param2)
 {
     drv->mac.u32.hi = param1;
@@ -388,7 +443,7 @@ bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
     case IPC_WRITE:
         if ((int)ipc->param3 < 0)
             break;
-        //TODO:
+        stm32_eth_write(drv, ipc->param2, ipc->param3);
         //generally posted with block, no return IPC
         break;
     case IPC_TIMEOUT:
