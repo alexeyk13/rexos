@@ -9,6 +9,10 @@
 #include "../../userspace/stdio.h"
 #include "arp.h"
 
+#define MAC_DST(buf)                                        ((MAC*)(buf))
+#define MAC_SRC(buf)                                        ((MAC*)((buf) + MAC_SIZE))
+#define MAC_LENTYPE(buf)                                    (((buf)[2 * MAC_SIZE] << 8) | ((buf)[2 * MAC_SIZE + 1]))
+
 void mac_init(TCPIP* tcpip)
 {
     eth_get_mac(&tcpip->mac.mac);
@@ -52,22 +56,25 @@ bool mac_compare(MAC* src, MAC* dst)
     return (src->u32.hi == dst->u32.hi) && (src->u32.lo == dst->u32.lo);
 }
 
+MAC *mac_get(TCPIP* tcpip)
+{
+    return &tcpip->mac.mac;
+}
+
 void mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block)
 {
-    uint16_t lentype;
     if (size < MAC_HEADER_SIZE)
     {
         tcpip_release_block(tcpip, block);
         return;
     }
-    lentype = (buf[MAC_HEADER_LENTYPE_OFFSET] << 8) | buf[MAC_HEADER_LENTYPE_OFFSET + 1];
 
 #if (MAC_FILTER)
-    switch (((MAC*)buf)->u8[0] & MAC_CAST_MASK)
+    switch (MAC_DST(buf)->u8[0] & MAC_CAST_MASK)
     {
     case MAC_BROADCAST_ADDRESS:
         //enable broadcast only for ARP
-        if (lentype != ETHERTYPE_ARP)
+        if (MAC_LENTYPE(buf) != ETHERTYPE_ARP)
         {
             tcpip_release_block(tcpip, block);
             return;
@@ -79,7 +86,7 @@ void mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block)
         return;
     default:
         //enable unicast only on address compare
-        if (!mac_compare(&tcpip->mac.mac, (MAC*)buf))
+        if (!mac_compare(&tcpip->mac.mac, MAC_DST(buf)))
         {
             tcpip_release_block(tcpip, block);
             return;
@@ -90,13 +97,13 @@ void mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block)
 
 #if (MAC_DEBUG)
     printf("MAC RX: ");
-    print_mac((MAC*)(buf + MAC_SIZE));
+    print_mac(MAC_SRC(buf));
     printf(" -> ");
-    print_mac((MAC*)buf);
-    printf(", len/type: %04X, size: %d\n\r", lentype, size - MAC_HEADER_SIZE);
+    print_mac(MAC_DST(buf));
+    printf(", len/type: %04X, size: %d\n\r", MAC_LENTYPE(buf), size - MAC_HEADER_SIZE);
 #endif
     //TODO: forward to IP
-    switch (lentype)
+    switch (MAC_LENTYPE(buf))
     {
     case ETHERTYPE_IP:
 ///        printf("IP\n\r");
@@ -107,9 +114,22 @@ void mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block)
         break;
     default:
 #if (MAC_DEBUG)
-        printf("MAC: dropped lentype: %04X\n\r", lentype);
+        printf("MAC: dropped lentype: %04X\n\r", MAC_LENTYPE(buf));
 #endif
         tcpip_release_block(tcpip, block);
         break;
     }
+}
+
+unsigned int mac_prepare_tx(TCPIP* tcpip, uint8_t* raw, const MAC *dst, uint16_t lentype)
+{
+    MAC_DST(raw)->u32.hi = dst->u32.hi;
+    MAC_DST(raw)->u32.lo = dst->u32.lo;
+    MAC_SRC(raw)->u32.hi = tcpip->mac.mac.u32.hi;
+    MAC_SRC(raw)->u32.lo = tcpip->mac.mac.u32.lo;
+
+    raw[2 * MAC_SIZE] = (lentype >> 8) & 0xff;
+    raw[2 * MAC_SIZE +  1] = lentype & 0xff;
+
+    return MAC_HEADER_SIZE;
 }

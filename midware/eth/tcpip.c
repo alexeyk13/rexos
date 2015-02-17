@@ -14,6 +14,7 @@
 #include "../../userspace/block.h"
 #include "sys_config.h"
 #include "mac.h"
+#include "arp.h"
 
 #define FRAME_MAX_SIZE                          (TCPIP_MTU + MAC_HEADER_SIZE)
 
@@ -103,6 +104,12 @@ static void tcpip_rx_next_block(TCPIP* tcpip)
     fread_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), block, FRAME_MAX_SIZE);
 }
 
+void tcpip_tx(TCPIP* tcpip, HANDLE block, unsigned int size)
+{
+    //TODO: queue
+    fwrite_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), block, size);
+}
+
 static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
 {
     if (tcpip->active)
@@ -118,12 +125,21 @@ static inline void tcpip_rx(TCPIP* tcpip, HANDLE block, int size)
 {
     tcpip_rx_next_block(tcpip);
     if (size < 0)
+    {
+        tcpip_release_block(tcpip, block);
         return;
+    }
     uint8_t* buf = block_open(block);
     if (buf == NULL)
         return;
     //forward to MAC
     mac_rx(tcpip, buf, size, block);
+}
+
+static inline void tcpip_tx_complete(TCPIP* tcpip, HANDLE block)
+{
+    tcpip_release_block(tcpip, block);
+    //TODO: send next in queue
 }
 
 static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
@@ -137,8 +153,10 @@ static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
 
     if (tcpip->connected)
     {
-        //TODO: double buffering
         tcpip_rx_next_block(tcpip);
+#if (ETH_DOUBLE_BUFFERING)
+        tcpip_rx_next_block(tcpip);
+#endif
     }
 }
 
@@ -164,6 +182,7 @@ void tcpip_init(TCPIP* tcpip)
     void_array_create(&tcpip->free_blocks, 3);
 #endif
     mac_init(tcpip);
+    arp_init(tcpip);
 }
 
 bool tcpip_request(TCPIP* tcpip, IPC* ipc)
@@ -189,7 +208,7 @@ bool tcpip_request(TCPIP* tcpip, IPC* ipc)
         tcpip_rx(tcpip, ipc->param2, (int)ipc->param3);
         break;
     case IPC_WRITE:
-        //TODO:
+        tcpip_tx_complete(tcpip, ipc->param2);
         break;
     case ETH_NOTIFY_LINK_CHANGED:
         tcpip_link_changed(tcpip, ipc->param2);

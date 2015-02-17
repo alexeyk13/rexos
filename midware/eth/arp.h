@@ -9,6 +9,7 @@
 
 #include "tcpip.h"
 #include "../../userspace/eth.h"
+#include "../../userspace/inet.h"
 #include <stdint.h>
 #include "sys_config.h"
 
@@ -37,9 +38,12 @@
 typedef struct {
     unsigned int stub;
 } TCPIP_ARP;
-//TODO: arp_init(TCPIP* tcpip);
+void arp_init(TCPIP* tcpip);
 //TODO: arp_info(TCPIP* tcpip);
 
 void arp_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block);
+
+//called from ip. If NULL returned, ip must queue request for asynchronous answer
+const MAC* arp_resolve(TCPIP* tcpip, const IP* ip);
 
 #endif // ARP_H
