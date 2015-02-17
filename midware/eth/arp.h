@@ -9,19 +9,30 @@
 
 #include "tcpip.h"
 #include "../../userspace/eth.h"
+#include <stdint.h>
 #include "sys_config.h"
 
-#pragma pack(push, 1)
+/*
+    ARP packet structure
 
-typedef struct {
-    uint16_t hrd;
-    uint16_t pro;
-    uint8_t hln;
-    uint8_t pln;
-    uint16_t op;
-} ARP_HEADER;
+    uint16_t hrd
+    uint16_t pro
+    uint8_t hln
+    uint16_t pln
+    uint16_t op
+    uint8_t sha[]
+    uint8_t spa[]
+    uint8_t tha[]
+    uint8_t tpa[]
+ */
 
-#pragma pack(pop)
+#define ARP_HRD_ETHERNET                1
+#define ARP_HRD_IEEE802                 6
+
+#define ARP_REQUEST                     1
+#define ARP_REPLY                       2
+#define RARP_REQUEST                    3
+#define RARP_REPLY                      4
 
 typedef struct {
     unsigned int stub;
@@ -29,6 +40,6 @@ typedef struct {
 //TODO: arp_init(TCPIP* tcpip);
 //TODO: arp_info(TCPIP* tcpip);
 
-void arp_rx(TCPIP* tcpip, MAC* src, void* buf, unsigned int size, HANDLE block);
+void arp_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block);
 
 #endif // ARP_H

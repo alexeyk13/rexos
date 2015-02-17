@@ -15,7 +15,7 @@ void mac_init(TCPIP* tcpip)
 }
 
 #if (SYS_INFO) || (TCPIP_DEBUG)
-static void print_mac(MAC* mac)
+void print_mac(MAC* mac)
 {
     int i;
     switch (mac->u8[0] & MAC_CAST_MASK)
@@ -47,11 +47,10 @@ void mac_info(TCPIP* tcpip)
 }
 #endif
 
-static inline bool mac_compare(MAC* src, MAC* dst)
+bool mac_compare(MAC* src, MAC* dst)
 {
     return (src->u32.hi == dst->u32.hi) && (src->u32.lo == dst->u32.lo);
 }
-
 
 void mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block)
 {
@@ -104,7 +103,7 @@ void mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block)
         tcpip_release_block(tcpip, block);
         break;
     case ETHERTYPE_ARP:
-        arp_rx(tcpip, (MAC*)(buf + MAC_SIZE), buf + MAC_HEADER_SIZE, size - MAC_HEADER_SIZE, block);
+        arp_rx(tcpip, buf + MAC_HEADER_SIZE, size - MAC_HEADER_SIZE, block);
         break;
     default:
 #if (MAC_DEBUG)
