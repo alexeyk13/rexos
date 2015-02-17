@@ -4,11 +4,11 @@
     All rights reserved.
 */
 
-#ifndef ARP_H
-#define ARP_H
+#ifndef TCPIP_H
+#define TCPIP_H
 
 #include "../../userspace/process.h"
 
-extern const REX __ARP;
+extern const REX __TCPIP;
 
-#endif // ARP_H
+#endif // TCPIP_H

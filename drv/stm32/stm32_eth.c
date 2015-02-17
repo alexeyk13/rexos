@@ -9,10 +9,12 @@
 #include "sys_config.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/ipc.h"
+#include "../../userspace/irq.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/direct.h"
 #include "../../userspace/timer.h"
 #include "../../userspace/stm32_driver.h"
+#include "../../userspace/file.h"
 #include "../eth_phy.h"
 #include "stm32_gpio.h"
 #include "stm32_power.h"
@@ -99,19 +101,66 @@ static void stm32_eth_conn_check(ETH_DRV* drv)
     if (new_conn != drv->conn)
     {
         drv->conn = new_conn;
-        ipc_post_inline(drv->arp, ETH_NOTIFY_LINK_CHANGED, HAL_HANDLE(HAL_ETH, 0), drv->conn, 0);
+        drv->connected = ((drv->conn != ETH_NO_LINK) && (drv->conn != ETH_REMOTE_FAULT));
+        if (drv->connected)
+        {
+            //set speed and duplex
+            switch (drv->conn)
+            {
+            case ETH_10_HALF:
+                ETH->MACCR &= ~(ETH_MACCR_FES | ETH_MACCR_DM);
+                break;
+            case ETH_10_FULL:
+                ETH->MACCR &= ~ETH_MACCR_FES;
+                ETH->MACCR |= ETH_MACCR_DM;
+                break;
+            case ETH_100_HALF:
+                ETH->MACCR &= ~(ETH_MACCR_DM);
+                ETH->MACCR |= ETH_MACCR_FES;
+                break;
+            case ETH_100_FULL:
+                ETH->MACCR |= ETH_MACCR_FES | ETH_MACCR_DM;
+                break;
+            default:
+                break;
+            }
+            //enable RX/TX and DMA operations
+            ETH->MACCR |= ETH_MACCR_TE | ETH_MACCR_RE;
+            ETH->DMAOMR |= ETH_DMAOMR_SR | ETH_DMAOMR_ST;
+        }
+        //TODO: else flush and cancel IO on disconnect
+        ipc_post_inline(drv->tcpip, ETH_NOTIFY_LINK_CHANGED, HAL_HANDLE(HAL_ETH, 0), drv->conn, 0);
     }
     timer_start_ms(drv->timer, 1000, 0);
 }
 
-static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE arp)
+void stm32_eth_isr(int vector, void* param)
+{
+    uint32_t sta;
+    ETH_DRV* drv = (ETH_DRV*)param;
+    sta = ETH->DMASR;
+    if (sta & ETH_DMASR_RS)
+    {
+        if (drv->rx_block != INVALID_HANDLE)
+        {
+            firead_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), drv->rx_block, (drv->rx_des.des[0] & ETH_RDES_FL_MASK) >> ETH_RDES_FL_POS);
+            drv->rx_block = INVALID_HANDLE;
+        }
+        ETH->DMASR = ETH_DMASR_RS;
+    }
+    if (sta & ETH_DMASR_TS)
+    {
+        printk("tx packet!!!\n\r");
+        ETH->DMASR = ETH_DMASR_TS;
+    }
+    ETH->DMASR = ETH_DMASR_NIS;
+}
+
+static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE tcpip)
 {
     unsigned int clock;
-    if (drv->active)
-    {
-        error(ERROR_ALREADY_CONFIGURED);
-        return;
-    }
+
+    drv->tcpip = tcpip;
     //enable pins
     ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_MDC, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
     ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_MDIO, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
@@ -143,8 +192,26 @@ static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE arp)
     //enable clocks
     RCC->AHBENR |= RCC_AHBENR_ETHMACEN | RCC_AHBENR_ETHMACTXEN | RCC_AHBENR_ETHMACRXEN;
 
-    drv->active = true;
-    drv->arp = arp;
+    //reset DMA
+    ETH->DMABMR |= ETH_DMABMR_SR;
+    while(ETH->DMABMR & ETH_DMABMR_SR) {}
+
+    //setup DMA
+    drv->rx_des.des[0] = 0;
+    drv->rx_des.des[1] = ETH_RDES_RCH;
+    drv->rx_des.des[3] = (unsigned int)&drv->rx_des;
+    drv->tx_des.des[0] = ETH_TDES_TCH;
+    drv->tx_des.des[3] = (unsigned int)&drv->tx_des;
+    ETH->DMATDLAR = (unsigned int)&drv->tx_des;
+    ETH->DMARDLAR = (unsigned int)&drv->rx_des;
+
+    //disable receiver/transmitter before link established
+    ETH->MACCR = 0x8000;
+    //setup MAC
+    ETH->MACA0HR = drv->mac.u32.hi;
+    ETH->MACA0LR = drv->mac.u32.lo;
+    //apply MAC unicast filter
+    ETH->MACFFR = 0;
 
     //configure clock for SMI
     clock = get_clock(drv, STM32_CLOCK_AHB);
@@ -154,6 +221,13 @@ static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE arp)
         ETH->MACMIIAR = ETH_MACMIIAR_CR_Div26;
     else
         ETH->MACMIIAR = ETH_MACMIIAR_CR_Div42;
+
+    //enable dma interrupts
+    irq_register(ETH_IRQn, stm32_eth_isr, (void*)drv);
+    NVIC_EnableIRQ(ETH_IRQn);
+    NVIC_SetPriority(ETH_IRQn, 13);
+    ETH->DMAIER = ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE;
+
     //turn phy on
     if (!eth_phy_power_on(ETH_PHY_ADDRESS, conn))
     {
@@ -165,35 +239,53 @@ static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE arp)
     stm32_eth_conn_check(drv);
 }
 
-static inline void stm32_eth_set_mac(ETH_DRV* drv, unsigned int param1, unsigned int param2)
+static inline void stm32_eth_read(ETH_DRV* drv, HANDLE block, unsigned int size)
 {
-    if (drv->active)
+    if (!drv->connected)
     {
-        error(ERROR_IN_PROGRESS);
+        fread_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_NOT_ACTIVE);
         return;
     }
-    drv->mac[0] = (param1 >> 24) & 0xff;
-    drv->mac[1] = (param1 >> 16) & 0xff;
-    drv->mac[2] = (param1 >> 8) & 0xff;
-    drv->mac[3] = (param1 >> 0) & 0xff;
-    drv->mac[4] = (param2 >> 8) & 0xff;
-    drv->mac[5] = (param2 >> 0) & 0xff;
+    if (drv->rx_block != INVALID_HANDLE)
+    {
+        fread_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_IN_PROGRESS);
+        return;
+    }
+    drv->rx_des.des[2] = (unsigned int)block_open(block);
+    if (drv->rx_des.des[2] == (unsigned int)NULL)
+    {
+        fread_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, get_last_error());
+        return;
+    }
+    drv->rx_block = block;
+    drv->rx_des.des[1] &= ~ETH_RDES_RBS1_MASK;
+    drv->rx_des.des[1] |= ((size << ETH_RDES_RBS1_POS) & ETH_RDES_RBS1_MASK);
+    //give descriptor to DMA
+    drv->rx_des.des[0] = ETH_RDES_OWN;
+    //enable and poll DMA. Value is doesn't matter
+    ETH->DMARPDR = 0;
+}
+
+static inline void stm32_eth_set_mac(ETH_DRV* drv, unsigned int param1, unsigned int param2)
+{
+    drv->mac.u32.hi = param1;
+    drv->mac.u32.lo = (uint16_t)param2;
 }
 
 static inline void stm32_eth_get_mac(ETH_DRV* drv, IPC* ipc)
 {
-    ipc->param1 = (drv->mac[0] << 24) | (drv->mac[1] << 16) | (drv->mac[2] << 8) | drv->mac[3];
-    ipc->param2 = (drv->mac[4] << 8) | drv->mac[5];
+    ipc->param1 = drv->mac.u32.hi;
+    ipc->param2 = drv->mac.u32.lo;
 }
 
 void stm32_eth_init(ETH_DRV* drv)
 {
-    drv->active = false;
     drv->timer = timer_create(HAL_HANDLE(HAL_ETH, 0));
-    drv->arp = INVALID_HANDLE;
+    drv->tcpip = INVALID_HANDLE;
     drv->conn = ETH_NO_LINK;
-    memset(drv->mac, 0x00, MAC_SIZE);
-    drv->rx_block_count = drv->tx_block_count = 0;
+    drv->connected = false;
+    drv->mac.u32.hi = drv->mac.u32.lo = 0;
+    drv->rx_block = drv->tx_block = INVALID_HANDLE;
 }
 
 bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
@@ -222,7 +314,7 @@ bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
     case IPC_READ:
         if ((int)ipc->param3 < 0)
             break;
-        //TODO:
+        stm32_eth_read(drv, ipc->param2, ipc->param3);
         //generally posted with block, no return IPC
         break;
     case IPC_WRITE:

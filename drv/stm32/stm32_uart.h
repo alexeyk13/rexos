@@ -13,6 +13,7 @@
 
 #include "../../userspace/process.h"
 #include "../../userspace/uart.h"
+#include "../../userspace/sys.h"
 #include "stm32_config.h"
 #include "sys_config.h"
 #if (MONOLITH_UART)

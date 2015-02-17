@@ -35,6 +35,24 @@ typedef enum {
     ETH_HAL_MAX
 }ETH_IPCS;
 
+#pragma pack(push, 1)
+
+typedef union {
+    uint8_t u8[MAC_SIZE];
+    struct {
+        uint32_t hi;
+        uint16_t lo;
+    }u32;
+} MAC;
+
+typedef struct {
+    MAC src;
+    MAC dst;
+    uint16_t len;
+} MAC_FRAME_HEADER;
+
+#pragma pack(pop)
+
 __STATIC_INLINE void eth_set_mac(const uint8_t* mac)
 {
     ack(object_get(SYS_OBJ_ETH), ETH_SET_MAC, (mac[0] << 24) | (mac[1] << 16) | (mac[2] << 8) | mac[3], (mac[4] << 8) | mac[5], 0);
