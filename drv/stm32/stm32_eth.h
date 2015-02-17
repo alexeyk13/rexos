@@ -14,11 +14,15 @@
 #include "../../userspace/process.h"
 #include "../../userspace/eth.h"
 #include <stdint.h>
+#include "sys_config.h"
 
 #pragma pack(push, 1)
 
 typedef struct {
-    uint32_t des[4];
+    uint32_t ctl;
+    uint32_t size;
+    void* buf1;
+    void* buf2_ndes;
 } ETH_DESCRIPTORS;
 
 #pragma pack(pop)
@@ -100,13 +104,20 @@ typedef struct {
 #define ETH_RDES_RCH                    (1 << 14)
 
 typedef struct {
-    //TODO: double rx descriptor
+#if (ETH_DOUBLE_BUFFERING)
+    ETH_DESCRIPTORS tx_des[2], rx_des[2];
+    HANDLE rx_block[2], tx_block[2];
+#else
     ETH_DESCRIPTORS tx_des, rx_des;
+    HANDLE rx_block, tx_block;
+#endif
     ETH_CONN_TYPE conn;
     HANDLE tcpip, timer;
-    HANDLE rx_block, tx_block;
     bool connected;
     MAC mac;
+#if (ETH_DOUBLE_BUFFERING)
+    uint8_t cur_rx, cur_tx;
+#endif
 } ETH_DRV;
 
 extern const REX __STM32_ETH;

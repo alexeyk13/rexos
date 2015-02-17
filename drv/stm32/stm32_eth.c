@@ -6,7 +6,6 @@
 
 #include "stm32_eth.h"
 #include "stm32_config.h"
-#include "sys_config.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/ipc.h"
 #include "../../userspace/irq.h"
@@ -136,16 +135,31 @@ static void stm32_eth_conn_check(ETH_DRV* drv)
 
 void stm32_eth_isr(int vector, void* param)
 {
+    int i;
     uint32_t sta;
     ETH_DRV* drv = (ETH_DRV*)param;
     sta = ETH->DMASR;
     if (sta & ETH_DMASR_RS)
     {
+#if (ETH_DOUBLE_BUFFERING)
+        for (i = 0; i < 2; ++i)
+        {
+            if ((drv->rx_block[drv->cur_rx] != INVALID_HANDLE) && ((drv->rx_des[drv->cur_rx].ctl & ETH_RDES_OWN) == 0))
+            {
+                firead_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), drv->rx_block[drv->cur_rx], (drv->rx_des[drv->cur_rx].ctl & ETH_RDES_FL_MASK) >> ETH_RDES_FL_POS);
+                drv->rx_block[drv->cur_rx] = INVALID_HANDLE;
+                drv->cur_rx = (drv->cur_rx + 1) & 1;
+            }
+            else
+                break;
+        }
+#else
         if (drv->rx_block != INVALID_HANDLE)
         {
-            firead_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), drv->rx_block, (drv->rx_des.des[0] & ETH_RDES_FL_MASK) >> ETH_RDES_FL_POS);
+            firead_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), drv->rx_block, (drv->rx_des.ctl & ETH_RDES_FL_MASK) >> ETH_RDES_FL_POS);
             drv->rx_block = INVALID_HANDLE;
         }
+#endif
         ETH->DMASR = ETH_DMASR_RS;
     }
     if (sta & ETH_DMASR_TS)
@@ -197,11 +211,27 @@ static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE tcpip
     while(ETH->DMABMR & ETH_DMABMR_SR) {}
 
     //setup DMA
-    drv->rx_des.des[0] = 0;
-    drv->rx_des.des[1] = ETH_RDES_RCH;
-    drv->rx_des.des[3] = (unsigned int)&drv->rx_des;
-    drv->tx_des.des[0] = ETH_TDES_TCH;
-    drv->tx_des.des[3] = (unsigned int)&drv->tx_des;
+#if (ETH_DOUBLE_BUFFERING)
+    drv->rx_des[0].ctl = 0;
+    drv->rx_des[0].size = ETH_RDES_RCH;
+    drv->rx_des[0].buf2_ndes = &drv->rx_des[1];
+    drv->rx_des[1].ctl = 0;
+    drv->rx_des[1].size = ETH_RDES_RCH;
+    drv->rx_des[1].buf2_ndes = &drv->rx_des[0];
+
+    drv->tx_des[0].ctl = ETH_TDES_TCH;
+    drv->tx_des[0].buf2_ndes = &drv->tx_des[1];
+    drv->tx_des[1].ctl = ETH_TDES_TCH;
+    drv->tx_des[1].buf2_ndes = &drv->tx_des[0];
+
+    drv->cur_rx = drv->cur_tx = 0;
+#else
+    drv->rx_des.ctl = 0;
+    drv->rx_des.size = ETH_RDES_RCH;
+    drv->rx_des.buf2_ndes = &drv->rx_des;
+    drv->tx_des.ctl = ETH_TDES_TCH;
+    drv->tx_des.buf2_ndes = &drv->tx_des;
+#endif
     ETH->DMATDLAR = (unsigned int)&drv->tx_des;
     ETH->DMARDLAR = (unsigned int)&drv->rx_des;
 
@@ -250,22 +280,50 @@ static inline void stm32_eth_read(ETH_DRV* drv, HANDLE block, unsigned int size)
         fread_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_NOT_ACTIVE);
         return;
     }
+#if (ETH_DOUBLE_BUFFERING)
+    int i = -1;
+    uint8_t cur_rx = drv->cur_rx;
+
+    if (drv->rx_block[cur_rx] == INVALID_HANDLE)
+        i = cur_rx;
+    else if (drv->rx_block[(cur_rx + 1) & 1] == INVALID_HANDLE)
+        i = (cur_rx + 1) & 1;
+    if (i < 0)
+    {
+        fread_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_IN_PROGRESS);
+        return;
+    }
+    drv->rx_des[i].buf1 = block_open(block);
+    if (drv->rx_des[i].buf1 == NULL)
+    {
+        fread_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, get_last_error());
+        return;
+    }
+    drv->rx_des[i].size &= ~ETH_RDES_RBS1_MASK;
+    drv->rx_des[i].size |= ((size << ETH_RDES_RBS1_POS) & ETH_RDES_RBS1_MASK);
+    __disable_irq();
+    drv->rx_block[i] = block;
+    //give descriptor to DMA
+    drv->rx_des[i].ctl = ETH_RDES_OWN;
+    __enable_irq();
+#else
     if (drv->rx_block != INVALID_HANDLE)
     {
         fread_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_IN_PROGRESS);
         return;
     }
-    drv->rx_des.des[2] = (unsigned int)block_open(block);
-    if (drv->rx_des.des[2] == (unsigned int)NULL)
+    drv->rx_des.buf1 = block_open(block);
+    if (drv->rx_des.buf1 == NULL)
     {
         fread_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, get_last_error());
         return;
     }
     drv->rx_block = block;
-    drv->rx_des.des[1] &= ~ETH_RDES_RBS1_MASK;
-    drv->rx_des.des[1] |= ((size << ETH_RDES_RBS1_POS) & ETH_RDES_RBS1_MASK);
+    drv->rx_des.size &= ~ETH_RDES_RBS1_MASK;
+    drv->rx_des.size |= ((size << ETH_RDES_RBS1_POS) & ETH_RDES_RBS1_MASK);
     //give descriptor to DMA
-    drv->rx_des.des[0] = ETH_RDES_OWN;
+    drv->rx_des.ctl = ETH_RDES_OWN;
+#endif
     //enable and poll DMA. Value is doesn't matter
     ETH->DMARPDR = 0;
 }
@@ -289,7 +347,13 @@ void stm32_eth_init(ETH_DRV* drv)
     drv->conn = ETH_NO_LINK;
     drv->connected = false;
     drv->mac.u32.hi = drv->mac.u32.lo = 0;
+#if (ETH_DOUBLE_BUFFERING)
+    drv->rx_block[0] = drv->tx_block[0] = INVALID_HANDLE;
+    drv->rx_block[1] = drv->tx_block[1] = INVALID_HANDLE;
+#else
     drv->rx_block = drv->tx_block = INVALID_HANDLE;
+#endif
+
 }
 
 bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
