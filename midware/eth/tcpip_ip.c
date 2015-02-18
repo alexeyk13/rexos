@@ -75,3 +75,9 @@ bool tcpip_ip_request(TCPIP* tcpip, IPC* ipc)
     }
     return need_post;
 }
+
+void tcpip_ip_rx(TCPIP* tcpip, TCPIP_IO* io)
+{
+    printf("got ip request\n\r");
+    tcpip_release_io(tcpip, io);
+}

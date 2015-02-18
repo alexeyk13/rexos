@@ -23,7 +23,9 @@ const IP* tcpip_ip(TCPIP* tcpip);
 
 //from tcpip
 void tcpip_ip_init(TCPIP* tcpip);
-
 bool tcpip_ip_request(TCPIP* tcpip, IPC* ipc);
+
+//from mac
+void tcpip_ip_rx(TCPIP* tcpip, TCPIP_IO* io);
 
 #endif // TCPIP_IP_H
