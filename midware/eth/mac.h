@@ -36,7 +36,7 @@ typedef struct {
 #define ETHERTYPE_ARP                               0x0806
 #define ETHERTYPE_IPV6                              0x86dd
 
-void mac_init(TCPIP* tcpip);
+void tcpip_mac_init(TCPIP* tcpip);
 
 #if (SYS_INFO) || (TCPIP_DEBUG)
 void print_mac(MAC* mac);
@@ -47,10 +47,11 @@ void mac_info(TCPIP* tcpip);
 #endif
 
 //from tcpip process
-void mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block);
+void tcpip_mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block);
 
 unsigned int mac_prepare_tx(TCPIP* tcpip, uint8_t* raw, const MAC* dst, uint16_t lentype);
 bool mac_compare(MAC* src, MAC* dst);
-MAC* mac_get(TCPIP* tcpip);
+
+const MAC* tcpip_mac(TCPIP* tcpip);
 
 #endif // MAC_H

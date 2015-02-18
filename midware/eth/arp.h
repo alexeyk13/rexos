@@ -43,7 +43,7 @@ void arp_init(TCPIP* tcpip);
 
 void arp_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block);
 
-//called from ip. If NULL returned, ip must queue request for asynchronous answer
+//called from ip level. If NULL returned, sender must queue request for asynchronous answer
 const MAC* arp_resolve(TCPIP* tcpip, const IP* ip);
 
 #endif // ARP_H

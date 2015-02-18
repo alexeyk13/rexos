@@ -13,7 +13,7 @@
 #define MAC_SRC(buf)                                        ((MAC*)((buf) + MAC_SIZE))
 #define MAC_LENTYPE(buf)                                    (((buf)[2 * MAC_SIZE] << 8) | ((buf)[2 * MAC_SIZE + 1]))
 
-void mac_init(TCPIP* tcpip)
+void tcpip_mac_init(TCPIP* tcpip)
 {
     eth_get_mac(&tcpip->mac.mac);
 }
@@ -56,12 +56,12 @@ bool mac_compare(MAC* src, MAC* dst)
     return (src->u32.hi == dst->u32.hi) && (src->u32.lo == dst->u32.lo);
 }
 
-MAC *mac_get(TCPIP* tcpip)
+const MAC *tpcip_mac(TCPIP* tcpip)
 {
     return &tcpip->mac.mac;
 }
 
-void mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block)
+void tcpip_mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block)
 {
     if (size < MAC_HEADER_SIZE)
     {

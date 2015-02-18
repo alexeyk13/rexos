@@ -15,6 +15,8 @@
 #include "sys_config.h"
 #include "mac.h"
 #include "arp.h"
+#include "route.h"
+#include "ip.h"
 
 #define FRAME_MAX_SIZE                          (TCPIP_MTU + MAC_HEADER_SIZE)
 
@@ -123,7 +125,8 @@ static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
 
 static inline void tcpip_rx(TCPIP* tcpip, HANDLE block, int size)
 {
-    tcpip_rx_next_block(tcpip);
+    if (tcpip->connected)
+        tcpip_rx_next_block(tcpip);
     if (size < 0)
     {
         tcpip_release_block(tcpip, block);
@@ -133,13 +136,13 @@ static inline void tcpip_rx(TCPIP* tcpip, HANDLE block, int size)
     if (buf == NULL)
         return;
     //forward to MAC
-    mac_rx(tcpip, buf, size, block);
+    tcpip_mac_rx(tcpip, buf, size, block);
 }
 
 static inline void tcpip_tx_complete(TCPIP* tcpip, HANDLE block)
 {
     tcpip_release_block(tcpip, block);
-    //TODO: send next in queue
+    //TODO: send next in queue (if connected), flush if not
 }
 
 static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
@@ -181,11 +184,12 @@ void tcpip_init(TCPIP* tcpip)
     //1 rx + 1 tx + 1 for processing
     void_array_create(&tcpip->free_blocks, 3);
 #endif
-    mac_init(tcpip);
+    tcpip_mac_init(tcpip);
     arp_init(tcpip);
+    tcpip_ip_init(tcpip);
 }
 
-bool tcpip_request(TCPIP* tcpip, IPC* ipc)
+static inline bool tcpip_request(TCPIP* tcpip, IPC* ipc)
 {
     bool need_post = false;
     switch (ipc->cmd)
@@ -234,15 +238,21 @@ void tcpip_main()
         error(ERROR_OK);
         need_post = false;
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
+        if (ipc.cmd == IPC_PING)
             need_post = true;
-            break;
-        default:
-            need_post = tcpip_request(&tcpip, &ipc);
-            break;
-        }
+        else
+            switch (ipc.cmd < IPC_USER ? HAL_GROUP(ipc.param1) : HAL_IPC_GROUP(ipc.cmd))
+            {
+            case HAL_ETH:
+            case HAL_TCPIP:
+                need_post = tcpip_request(&tcpip, &ipc);
+                break;
+            case HAL_TCPIP_IP:
+                need_post = tcpip_ip_request(&tcpip, &ipc);
+                break;
+            default:
+                break;
+            }
         if (need_post)
             ipc_post_or_error(&ipc);
     }

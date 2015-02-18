@@ -11,6 +11,8 @@
 #include "../../userspace/eth.h"
 #include "mac.h"
 #include "arp.h"
+#include "route.h"
+#include "ip.h"
 
 typedef struct _TCPIP {
     //stack itself - public use
@@ -22,6 +24,7 @@ typedef struct _TCPIP {
     bool active, connected;
     TCPIP_MAC mac;
     TCPIP_ARP arp;
+    TCPIP_IP ip;
 } TCPIP;
 
 #endif // TCPIP_PRIVATE_H

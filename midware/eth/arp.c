@@ -9,6 +9,7 @@
 #include "../../userspace/stdio.h"
 #include "../../userspace/block.h"
 #include "mac.h"
+#include "ip.h"
 
 #define ARP_HEADER_SIZE                             (2 + 2 + 1 + 1 + 2)
 
@@ -25,22 +26,6 @@
 static const MAC __MAC_BROADCAST =                  {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
 static const MAC __MAC_REQUEST =                    {{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
-//TODO: move to ip.h
-#define IP_MAKE(a, b, c, d)                         (((a) << 24) | ((b) << 16) | ((c) << 8) | ((d) << 0))
-#define IP_MAKE_BE(a, b, c, d)                      (((a) << 0) | ((b) << 8) | ((c) << 16) | ((d) << 24))
-
-
-void print_ip(IP* ip)
-{
-    int i;
-    for (i = 0; i < IP_SIZE; ++i)
-    {
-        printf("%d", ip->u8[i]);
-        if (i < IP_SIZE - 1)
-            printf(".");
-    }
-}
-
 void arp_init(TCPIP* tcpip)
 {
     tcpip->arp.stub = 0;
@@ -50,7 +35,7 @@ void arp_test(TCPIP* tcpip)
 {
     printf("ARP test\n\r");
     uint8_t* buf;
-    MAC* own_mac;
+    const MAC* own_mac;
     unsigned int mac_size;
     HANDLE block = tcpip_allocate_block(tcpip);
     uint8_t* raw = block_open(block);
@@ -72,17 +57,16 @@ void arp_test(TCPIP* tcpip)
     buf[6] = (ARP_REQUEST >> 8) & 0xff;
     buf[7] = ARP_REQUEST & 0xff;
     //sha
-    own_mac = mac_get(tcpip);
+    own_mac = tcpip_mac(tcpip);
     ARP_SHA(buf)->u32.hi = own_mac->u32.hi;
     ARP_SHA(buf)->u32.lo = own_mac->u32.lo;
     //spa
-    ARP_SPA(buf)->u32.ip = IP_MAKE_BE(192, 168, 1, 199);
+    ARP_SPA(buf)->u32.ip = IP_MAKE(192, 168, 1, 199);
     //tha
-    own_mac = mac_get(tcpip);
     ARP_THA(buf)->u32.hi = __MAC_REQUEST.u32.hi;
     ARP_THA(buf)->u32.lo = __MAC_REQUEST.u32.lo;
     //tpa
-    ARP_TPA(buf)->u32.ip = IP_MAKE_BE(192, 168, 1, 1);
+    ARP_TPA(buf)->u32.ip = IP_MAKE(192, 168, 1, 1);
 
 
     dump(raw, ARP_HEADER_SIZE + MAC_SIZE * 2 + IP_SIZE * 2 + mac_size);
@@ -119,7 +103,7 @@ void arp_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block)
         if (tcpip->arp.stub == 0)
         {
             tcpip->arp.stub = 1;
-            arp_test(tcpip);
+//            arp_test(tcpip);
         }
 
         break;
