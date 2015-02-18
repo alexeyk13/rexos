@@ -172,6 +172,7 @@ static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
         tcpip_rx_next(tcpip);
 #endif
     }
+    tcpip_arp_link_event(tcpip, tcpip->connected);
 }
 
 #if (SYS_INFO)

@@ -43,7 +43,6 @@ typedef struct {
 } ARP_CACHE_ENTRY;
 
 #define ARP_CACHE_STATIC                0
-#define ARP_CACHE_INCOMPLETE            ((unsigned int)-1)
 
 typedef struct {
     unsigned int stub;
@@ -51,10 +50,12 @@ typedef struct {
 
 //from tcpip
 void tcpip_arp_init(TCPIP* tcpip);
+void tcpip_arp_link_event(TCPIP* tcpip, bool link);
+
 //from mac
 void tcpip_arp_rx(TCPIP* tcpip, TCPIP_IO* io);
 
-//from ip level. If NULL returned, sender must queue request for asynchronous answer
+//from ip. If NULL returned, sender must queue request for asynchronous answer
 const MAC* tcpip_arp_resolve(TCPIP* tcpip, const IP* ip);
 
 #endif // TCPIP_ARP_H

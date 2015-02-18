@@ -40,7 +40,7 @@ typedef struct {
 #if (SYS_INFO) || (TCPIP_DEBUG)
 void print_mac(MAC* mac);
 #endif //(SYS_INFO) || (TCPIP_DEBUG)
-bool mac_compare(MAC* src, MAC* dst);
+bool mac_compare(const MAC* src, const MAC* dst);
 const MAC* tcpip_mac(TCPIP* tcpip);
 
 //from tcpip process

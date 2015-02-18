@@ -24,7 +24,7 @@ extern const REX __TCPIP;
 uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io);
 //release previously allocated block. Block is not actually freed, just put in queue of free blocks
 void tcpip_release_io(TCPIP* tcpip, TCPIP_IO* io);
-//transmit block. If tx operation is in place, block will be putted to tx queue for later processing
+//transmit. If tx operation is in place (2 tx for double buffering), io will be putted in queue for later processing
 void tcpip_tx(TCPIP* tcpip, TCPIP_IO* io);
 
 #endif // TCPIP_H

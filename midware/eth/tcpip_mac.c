@@ -37,7 +37,7 @@ void print_mac(MAC* mac)
 }
 #endif
 
-bool mac_compare(MAC* src, MAC* dst)
+bool mac_compare(const MAC* src, const MAC* dst)
 {
     return (src->u32.hi == dst->u32.hi) && (src->u32.lo == dst->u32.lo);
 }
@@ -127,7 +127,7 @@ void tcpip_mac_rx(TCPIP* tcpip, TCPIP_IO* io)
     switch (lentype)
     {
     case ETHERTYPE_IP:
-///        printf("IP\n\r");
+        printf("IP\n\r");
         tcpip_release_io(tcpip, io);
         break;
     case ETHERTYPE_ARP:
