@@ -9,10 +9,10 @@
 
 #include "../../userspace/array.h"
 #include "../../userspace/eth.h"
-#include "mac.h"
-#include "arp.h"
-#include "route.h"
-#include "ip.h"
+#include "tcpip_mac.h"
+#include "tcpip_arp.h"
+#include "tcpip_route.h"
+#include "tcpip_ip.h"
 
 typedef struct _TCPIP {
     //stack itself - public use

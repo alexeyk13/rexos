@@ -4,12 +4,13 @@
     All rights reserved.
 */
 
-#ifndef ARP_H
-#define ARP_H
+#ifndef TCPIP_ARP_H
+#define TCPIP_ARP_H
 
 #include "tcpip.h"
 #include "../../userspace/eth.h"
 #include "../../userspace/inet.h"
+#include "../../userspace/array.h"
 #include <stdint.h>
 #include "sys_config.h"
 
@@ -36,14 +37,24 @@
 #define RARP_REPLY                      4
 
 typedef struct {
+    IP ip;
+    MAC mac;
+    unsigned int ttl;
+} ARP_CACHE_ENTRY;
+
+#define ARP_CACHE_STATIC                0
+#define ARP_CACHE_INCOMPLETE            ((unsigned int)-1)
+
+typedef struct {
     unsigned int stub;
 } TCPIP_ARP;
-void arp_init(TCPIP* tcpip);
-//TODO: arp_info(TCPIP* tcpip);
 
-void arp_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block);
+//from tcpip
+void tcpip_arp_init(TCPIP* tcpip);
+//from mac
+void tcpip_arp_rx(TCPIP* tcpip, TCPIP_IO* io);
 
-//called from ip level. If NULL returned, sender must queue request for asynchronous answer
-const MAC* arp_resolve(TCPIP* tcpip, const IP* ip);
+//from ip level. If NULL returned, sender must queue request for asynchronous answer
+const MAC* tcpip_arp_resolve(TCPIP* tcpip, const IP* ip);
 
-#endif // ARP_H
+#endif // TCPIP_ARP_H

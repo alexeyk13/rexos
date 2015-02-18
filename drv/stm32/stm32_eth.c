@@ -363,7 +363,7 @@ static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE tcpip
     ETH->MACA0HR = (drv->mac.u8[5] << 8) | (drv->mac.u8[4] << 0) |  (1 << 31);
     ETH->MACA0LR = (drv->mac.u8[3] << 24) | (drv->mac.u8[2] << 16) | (drv->mac.u8[1] << 8) | (drv->mac.u8[0] << 0);
     //apply MAC unicast filter
-#if (MAC_FILTER)
+#if (TCPIP_MAC_FILTER)
     ETH->MACFFR = ETH_MACFFR_RA;
 #else
     ETH->MACFFR = 0;

@@ -4,15 +4,10 @@
     All rights reserved.
 */
 
-#include "ip.h"
+#include "tcpip_ip.h"
 #include "tcpip_private.h"
 #include "sys_config.h"
 #include "../../userspace/stdio.h"
-
-void tcpip_ip_init(TCPIP* tcpip)
-{
-    tcpip->ip.ip.u32.ip = IP_MAKE(0, 0, 0, 0);
-}
 
 #if (SYS_INFO) || (TCPIP_DEBUG)
 void print_ip(IP* ip)
@@ -26,6 +21,16 @@ void print_ip(IP* ip)
     }
 }
 #endif //(SYS_INFO) || (TCPIP_DEBUG)
+
+const IP* tcpip_ip(TCPIP* tcpip)
+{
+    return &tcpip->ip.ip;
+}
+
+void tcpip_ip_init(TCPIP* tcpip)
+{
+    tcpip->ip.ip.u32.ip = IP_MAKE(0, 0, 0, 0);
+}
 
 #if (SYS_INFO)
 static inline void tcpip_ip_info(TCPIP* tcpip)
@@ -69,9 +74,4 @@ bool tcpip_ip_request(TCPIP* tcpip, IPC* ipc)
         break;
     }
     return need_post;
-}
-
-const IP* tcpip_ip(TCPIP* tcpip)
-{
-    return &tcpip->ip.ip;
 }

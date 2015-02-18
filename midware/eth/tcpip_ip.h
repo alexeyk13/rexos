@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef IP_H
-#define IP_H
+#ifndef TCPIP_IP_H
+#define TCPIP_IP_H
 
 #include "tcpip.h"
 #include "../../userspace/inet.h"
@@ -15,14 +15,15 @@ typedef struct {
     IP ip;
 } TCPIP_IP;
 
-void tcpip_ip_init(TCPIP* tcpip);
-
+//tools
 #if (SYS_INFO) || (TCPIP_DEBUG)
 void print_ip(IP* ip);
 #endif //(SYS_INFO) || (TCPIP_DEBUG)
+const IP* tcpip_ip(TCPIP* tcpip);
+
+//from tcpip
+void tcpip_ip_init(TCPIP* tcpip);
 
 bool tcpip_ip_request(TCPIP* tcpip, IPC* ipc);
 
-const IP* tcpip_ip(TCPIP* tcpip);
-
-#endif // IP_H
+#endif // TCPIP_IP_H

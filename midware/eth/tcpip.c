@@ -13,10 +13,10 @@
 #include "../../userspace/file.h"
 #include "../../userspace/block.h"
 #include "sys_config.h"
-#include "mac.h"
-#include "arp.h"
-#include "route.h"
-#include "ip.h"
+#include "tcpip_mac.h"
+#include "tcpip_arp.h"
+#include "tcpip_route.h"
+#include "tcpip_ip.h"
 
 #define FRAME_MAX_SIZE                          (TCPIP_MTU + MAC_HEADER_SIZE)
 
@@ -66,18 +66,20 @@ static void print_conn_status(TCPIP* tcpip, const char* head)
 }
 #endif
 
-HANDLE tcpip_allocate_block(TCPIP* tcpip)
+uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
 {
-    HANDLE res = INVALID_HANDLE;
+    io->block = INVALID_HANDLE;
+    io->buf = NULL;
+    io->size = 0;
     if (void_array_size(tcpip->free_blocks))
     {
-        res = (HANDLE)void_array_data(tcpip->free_blocks)[void_array_size(tcpip->free_blocks) - 1];
+        io->block = (HANDLE)void_array_data(tcpip->free_blocks)[void_array_size(tcpip->free_blocks) - 1];
         void_array_remove(&tcpip->free_blocks, void_array_size(tcpip->free_blocks) - 1, 1);
     }
     else if (tcpip->blocks_allocated < TCPIP_MAX_FRAMES_COUNT)
     {
-        res = block_create(FRAME_MAX_SIZE);
-        if (res != INVALID_HANDLE)
+        io->block = block_create(FRAME_MAX_SIZE);
+        if (io->block != INVALID_HANDLE)
             ++tcpip->blocks_allocated;
 #if (TCPIP_DEBUG_ERRORS)
         else
@@ -88,28 +90,34 @@ HANDLE tcpip_allocate_block(TCPIP* tcpip)
     else
         printf("TCPIP: too many blocks\n\r");
 #endif
-    return res;
+    if (io->block != INVALID_HANDLE)
+        io->buf = block_open(io->block);
+    return io->buf;
 }
 
-void tcpip_release_block(TCPIP* tcpip, HANDLE block)
+static void tcpip_release_block(TCPIP* tcpip, HANDLE block)
 {
     void_array_add(&tcpip->free_blocks, 1);
     void_array_data(tcpip->free_blocks)[void_array_size(tcpip->free_blocks) - 1] = (void*)block;
 }
 
-static void tcpip_rx_next_block(TCPIP* tcpip)
+void tcpip_release_io(TCPIP* tcpip, TCPIP_IO* io)
 {
-    HANDLE block;
-    block = tcpip_allocate_block(tcpip);
-    if (block == INVALID_HANDLE)
-        return;
-    fread_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), block, FRAME_MAX_SIZE);
+    tcpip_release_block(tcpip, io->block);
 }
 
-void tcpip_tx(TCPIP* tcpip, HANDLE block, unsigned int size)
+static void tcpip_rx_next(TCPIP* tcpip)
+{
+    TCPIP_IO io;
+    if (tcpip_allocate_io(tcpip, &io) == NULL)
+        return;
+    fread_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), io.block, FRAME_MAX_SIZE);
+}
+
+void tcpip_tx(TCPIP* tcpip, TCPIP_IO* io)
 {
     //TODO: queue
-    fwrite_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), block, size);
+    fwrite_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), io->block, io->size);
 }
 
 static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
@@ -125,18 +133,21 @@ static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
 
 static inline void tcpip_rx(TCPIP* tcpip, HANDLE block, int size)
 {
+    TCPIP_IO io;
     if (tcpip->connected)
-        tcpip_rx_next_block(tcpip);
+        tcpip_rx_next(tcpip);
     if (size < 0)
     {
         tcpip_release_block(tcpip, block);
         return;
     }
-    uint8_t* buf = block_open(block);
-    if (buf == NULL)
+    io.block = block;
+    io.size = (unsigned int)size;
+    io.buf = block_open(block);
+    if (io.buf == NULL)
         return;
     //forward to MAC
-    tcpip_mac_rx(tcpip, buf, size, block);
+    tcpip_mac_rx(tcpip, &io);
 }
 
 static inline void tcpip_tx_complete(TCPIP* tcpip, HANDLE block)
@@ -156,9 +167,9 @@ static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
 
     if (tcpip->connected)
     {
-        tcpip_rx_next_block(tcpip);
+        tcpip_rx_next(tcpip);
 #if (ETH_DOUBLE_BUFFERING)
-        tcpip_rx_next_block(tcpip);
+        tcpip_rx_next(tcpip);
 #endif
     }
 }
@@ -167,7 +178,6 @@ static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
 static inline void tcpip_info(TCPIP* tcpip)
 {
     print_conn_status(tcpip, "ETH connect status");
-    mac_info(tcpip);
 }
 #endif
 
@@ -185,7 +195,7 @@ void tcpip_init(TCPIP* tcpip)
     void_array_create(&tcpip->free_blocks, 3);
 #endif
     tcpip_mac_init(tcpip);
-    arp_init(tcpip);
+    tcpip_arp_init(tcpip);
     tcpip_ip_init(tcpip);
 }
 
@@ -246,6 +256,9 @@ void tcpip_main()
             case HAL_ETH:
             case HAL_TCPIP:
                 need_post = tcpip_request(&tcpip, &ipc);
+                break;
+            case HAL_TCPIP_MAC:
+                need_post = tcpip_mac_request(&tcpip, &ipc);
                 break;
             case HAL_TCPIP_IP:
                 need_post = tcpip_ip_request(&tcpip, &ipc);

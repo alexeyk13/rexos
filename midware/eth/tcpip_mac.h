@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef MAC_H
-#define MAC_H
+#ifndef TCPIP_MAC_H
+#define TCPIP_MAC_H
 
 #include "tcpip.h"
 #include "../../userspace/eth.h"
@@ -36,22 +36,21 @@ typedef struct {
 #define ETHERTYPE_ARP                               0x0806
 #define ETHERTYPE_IPV6                              0x86dd
 
-void tcpip_mac_init(TCPIP* tcpip);
-
+//tools
 #if (SYS_INFO) || (TCPIP_DEBUG)
 void print_mac(MAC* mac);
 #endif //(SYS_INFO) || (TCPIP_DEBUG)
-
-#if (SYS_INFO)
-void mac_info(TCPIP* tcpip);
-#endif
-
-//from tcpip process
-void tcpip_mac_rx(TCPIP* tcpip, uint8_t* buf, unsigned int size, HANDLE block);
-
-unsigned int mac_prepare_tx(TCPIP* tcpip, uint8_t* raw, const MAC* dst, uint16_t lentype);
 bool mac_compare(MAC* src, MAC* dst);
-
 const MAC* tcpip_mac(TCPIP* tcpip);
 
-#endif // MAC_H
+//from tcpip process
+void tcpip_mac_init(TCPIP* tcpip);
+bool tcpip_mac_request(TCPIP* tcpip, IPC* ipc);
+void tcpip_mac_rx(TCPIP* tcpip, TCPIP_IO* io);
+
+uint8_t* tcpip_mac_allocate_io(TCPIP* tcpip, TCPIP_IO* io);
+void tcpip_mac_tx(TCPIP* tcpip, TCPIP_IO* io, const MAC* dst, uint16_t lentype);
+//TODO: refactor
+unsigned int tcpip_mac_prepare_tx(TCPIP* tcpip, uint8_t* raw, const MAC* dst, uint16_t lentype);
+
+#endif // TCPIP_MAC_H
