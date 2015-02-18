@@ -82,7 +82,6 @@ void eth_phy_write(uint8_t phy_addr, uint8_t reg_addr, uint16_t data)
     while (ETH->MACMIIAR & ETH_MACMIIAR_MB) {}
 }
 
-
 uint16_t eth_phy_read(uint8_t phy_addr, uint8_t reg_addr)
 {
     while (ETH->MACMIIAR & ETH_MACMIIAR_MB) {}
@@ -93,6 +92,52 @@ uint16_t eth_phy_read(uint8_t phy_addr, uint8_t reg_addr)
     return ETH->MACMIIDR & ETH_MACMIIDR_MD;
 }
 
+static void stm32_eth_flush(ETH_DRV* drv)
+{
+    HANDLE block;
+
+    //flush TxFIFO controller
+    ETH->DMAOMR |= ETH_DMAOMR_FTF;
+    while(ETH->DMAOMR & ETH_DMAOMR_FTF) {}
+#if (ETH_DOUBLE_BUFFERING)
+    int i;
+    for (i = 0; i < 2; ++i)
+    {
+        __disable_irq();
+        drv->rx_des[i].ctl = 0;
+        block = drv->rx_block[i];
+        drv->rx_block[i] = INVALID_HANDLE;
+        __enable_irq();
+        if (block != INVALID_HANDLE)
+            fread_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_FILE_IO_CANCELLED);
+
+        __disable_irq();
+        drv->tx_des[i].ctl = 0;
+        block = drv->tx_block[i];
+        drv->tx_block[i] = INVALID_HANDLE;
+        __enable_irq();
+        if (block != INVALID_HANDLE)
+            fwrite_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_FILE_IO_CANCELLED);
+    }
+    drv->cur_rx = (ETH->DMACHRDR == (unsigned int)(&drv->rx_des[0]) ? 0 : 1);
+    drv->cur_tx = (ETH->DMACHTDR == (unsigned int)(&drv->tx_des[0]) ? 0 : 1);
+#else
+    __disable_irq();
+    block = drv->rx_block;
+    drv->rx_block = INVALID_HANDLE;
+    __enable_irq();
+    if (block != INVALID_HANDLE)
+        fread_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_FILE_IO_CANCELLED);
+
+    __disable_irq();
+    block = drv->tx_block;
+    drv->tx_block = INVALID_HANDLE;
+    __enable_irq();
+    if (block != INVALID_HANDLE)
+        fwrite_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), block, ERROR_FILE_IO_CANCELLED);
+#endif
+}
+
 static void stm32_eth_conn_check(ETH_DRV* drv)
 {
     ETH_CONN_TYPE new_conn;
@@ -101,6 +146,7 @@ static void stm32_eth_conn_check(ETH_DRV* drv)
     {
         drv->conn = new_conn;
         drv->connected = ((drv->conn != ETH_NO_LINK) && (drv->conn != ETH_REMOTE_FAULT));
+        ipc_post_inline(drv->tcpip, ETH_NOTIFY_LINK_CHANGED, HAL_HANDLE(HAL_ETH, 0), drv->conn, 0);
         if (drv->connected)
         {
             //set speed and duplex
@@ -127,8 +173,12 @@ static void stm32_eth_conn_check(ETH_DRV* drv)
             ETH->MACCR |= ETH_MACCR_TE | ETH_MACCR_RE;
             ETH->DMAOMR |= ETH_DMAOMR_SR | ETH_DMAOMR_ST;
         }
-        //TODO: else flush and cancel IO on disconnect
-        ipc_post_inline(drv->tcpip, ETH_NOTIFY_LINK_CHANGED, HAL_HANDLE(HAL_ETH, 0), drv->conn, 0);
+        else
+        {
+            stm32_eth_flush(drv);
+            ETH->MACCR &= ~(ETH_MACCR_TE | ETH_MACCR_RE);
+            ETH->DMAOMR &= ~(ETH_DMAOMR_SR | ETH_DMAOMR_ST);
+        }
     }
     timer_start_ms(drv->timer, 1000, 0);
 }
@@ -164,16 +214,88 @@ void stm32_eth_isr(int vector, void* param)
     }
     if (sta & ETH_DMASR_TS)
     {
-        printk("tx packet!!!\n\r");
+#if (ETH_DOUBLE_BUFFERING)
+        for (i = 0; i < 2; ++i)
+        {
+            if ((drv->tx_block[drv->cur_tx] != INVALID_HANDLE) && ((drv->tx_des[drv->cur_tx].ctl & ETH_TDES_OWN) == 0))
+            {
+                fiwrite_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), drv->tx_block[drv->cur_tx], (drv->tx_des[drv->cur_tx].size & ETH_TDES_TBS1_MASK) >> ETH_TDES_TBS1_POS);
+                drv->tx_block[drv->cur_tx] = INVALID_HANDLE;
+                drv->cur_tx = (drv->cur_tx + 1) & 1;
+            }
+            else
+                break;
+        }
+#else
+        if (drv->tx_block != INVALID_HANDLE)
+        {
+            fiwrite_complete(drv->tcpip, HAL_HANDLE(HAL_ETH, 0), drv->tx_block, (drv->tx_des.size & ETH_TDES_TBS1_MASK) >> ETH_TDES_TBS1_POS);
+            drv->tx_block = INVALID_HANDLE;
+        }
+#endif
         ETH->DMASR = ETH_DMASR_TS;
     }
     ETH->DMASR = ETH_DMASR_NIS;
+}
+
+static void stm32_eth_close(ETH_DRV* drv)
+{
+    //disable interrupts
+    NVIC_DisableIRQ(ETH_IRQn);
+    irq_unregister(ETH_IRQn);
+
+    //flush
+    stm32_eth_flush(drv);
+
+    //turn phy off
+    eth_phy_power_off(ETH_PHY_ADDRESS);
+
+    //disable clocks
+    RCC->AHBENR &= ~(RCC_AHBENR_ETHMACEN | RCC_AHBENR_ETHMACTXEN | RCC_AHBENR_ETHMACRXEN);
+
+    //disable pins
+#if (STM32_ETH_REMAP)
+    AFIO->MAPR &= ~AFIO_MAPR_ETH_REMAP;
+#endif
+#if (STM32_ETH_PPS_OUT_ENABLE)
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_PPS_OUT, 0, 0);
+#endif
+
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_MDC, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_MDIO, 0, 0);
+
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_CLK, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_EN, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_D0, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_D1, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_D2, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_D3, 0, 0);
+
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_CLK, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_DV, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_ER, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_D0, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_D1, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_D2, 0, 0);
+    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_D3, 0, 0);
+
+    //destroy timer
+    timer_destroy(drv->timer);
+    drv->timer = INVALID_HANDLE;
+
+    //switch to unconfigured state
+    drv->tcpip = INVALID_HANDLE;
+    drv->connected = false;
+    drv->conn = ETH_NO_LINK;
 }
 
 static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE tcpip)
 {
     unsigned int clock;
 
+    drv->timer = timer_create(HAL_HANDLE(HAL_ETH, 0));
+    if (drv->timer == INVALID_HANDLE)
+        return;
     drv->tcpip = tcpip;
     //enable pins
     ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_MDC, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
@@ -266,7 +388,7 @@ static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE tcpip
     if (!eth_phy_power_on(ETH_PHY_ADDRESS, conn))
     {
         error(ERROR_NOT_FOUND);
-        //TODO: disable internal
+        stm32_eth_close(drv);
         return;
     }
 
@@ -397,7 +519,6 @@ static inline void stm32_eth_get_mac(ETH_DRV* drv, IPC* ipc)
 
 void stm32_eth_init(ETH_DRV* drv)
 {
-    drv->timer = timer_create(HAL_HANDLE(HAL_ETH, 0));
     drv->tcpip = INVALID_HANDLE;
     drv->conn = ETH_NO_LINK;
     drv->connected = false;
@@ -408,8 +529,24 @@ void stm32_eth_init(ETH_DRV* drv)
 #else
     drv->rx_block = drv->tx_block = INVALID_HANDLE;
 #endif
-
 }
+
+#if (SYS_INFO)
+static inline void stm32_eth_info(ETH_DRV* drv)
+{
+    int i;
+    printf("STM32 ETH driver info\n\r");
+    printf("Link status: %s\n\r", drv->connected ? "Active" : "No cable");
+    printf("MAC: ");
+    for (i = 0; i < MAC_SIZE; ++i)
+    {
+        printf("%02X", drv->mac.u8[i]);
+        if (i < MAC_SIZE - 1)
+            printf(":");
+    }
+    printf("\n\r");
+}
+#endif
 
 bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
 {
@@ -418,7 +555,7 @@ bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
     {
 #if (SYS_INFO)
     case IPC_GET_INFO:
-//        stm32_eth_info(drv);
+        stm32_eth_info(drv);
         need_post = true;
         break;
 #endif
@@ -427,11 +564,11 @@ bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case IPC_CLOSE:
-        //TODO:
+        stm32_eth_close(drv);
         need_post = true;
         break;
     case IPC_FLUSH:
-        //TODO:
+        stm32_eth_flush(drv);
         need_post = true;
         break;
     case IPC_READ:
