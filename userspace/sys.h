@@ -48,6 +48,8 @@ typedef enum {
     HAL_USBD,
     HAL_TCPIP,
     HAL_TCPIP_MAC,
+    HAL_TCPIP_ARP,
+    HAL_TCPIP_ROUTE,
     HAL_TCPIP_IP,
     HAL_PINBOARD,
     //application level
