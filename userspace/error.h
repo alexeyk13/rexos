@@ -37,21 +37,22 @@
 #define ERROR_FILE_INVALID_NAME                         -22
 #define ERROR_FILE_PATH_ALREADY_EXISTS                  -23
 #define ERROR_FILE_PATH_IN_USE                          -24
-#define ERROR_FOLDER_NOT_EMPTY                          -25
-#define ERROR_NOT_MOUNTED                               -26
-#define ERROR_ALREADY_MOUNTED                           -27
+#define ERROR_FILE_IO_CANCELLED                         -25
+#define ERROR_FOLDER_NOT_EMPTY                          -26
+#define ERROR_NOT_MOUNTED                               -27
+#define ERROR_ALREADY_MOUNTED                           -28
 
-#define ERROR_OUT_OF_MEMORY                             -28
-#define ERROR_OUT_OF_SYSTEM_MEMORY                      -29
-#define ERROR_OUT_OF_PAGED_MEMORY                       -30
-#define ERROR_POOL_CORRUPTED                            -31
-#define ERROR_POOL_RANGE_CHECK_FAILED                   -32
+#define ERROR_OUT_OF_MEMORY                             -29
+#define ERROR_OUT_OF_SYSTEM_MEMORY                      -30
+#define ERROR_OUT_OF_PAGED_MEMORY                       -31
+#define ERROR_POOL_CORRUPTED                            -32
+#define ERROR_POOL_RANGE_CHECK_FAILED                   -33
 
-#define ERROR_UART_NOISE                                -33
-#define ERROR_UART_FRAME                                -34
-#define ERROR_UART_PARITY                               -35
-#define ERROR_UART_BREAK                                -36
+#define ERROR_UART_NOISE                                -34
+#define ERROR_UART_FRAME                                -35
+#define ERROR_UART_PARITY                               -36
+#define ERROR_UART_BREAK                                -37
 
-#define ERROR_USB_STALL                                 -37
+#define ERROR_USB_STALL                                 -38
 
 #endif // ERROR_H
