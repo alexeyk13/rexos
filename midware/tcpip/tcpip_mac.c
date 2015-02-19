@@ -122,7 +122,6 @@ void tcpip_mac_rx(TCPIP* tcpip, TCPIP_IO* io)
 #endif
     io->buf += MAC_HEADER_SIZE;
     io->size -= MAC_HEADER_SIZE;
-    //TODO: forward to IP
     switch (lentype)
     {
     case ETHERTYPE_IP:
