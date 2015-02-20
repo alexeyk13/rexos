@@ -38,14 +38,6 @@
 #define RARP_REPLY                      4
 
 typedef struct {
-    IP ip;
-    //zero MAC means unresolved yet
-    MAC mac;
-    //time to live. Zero means static ARP
-    unsigned int ttl;
-} ARP_CACHE_ENTRY;
-
-typedef struct {
     ARRAY* cache;
 } TCPIP_ARP;
 

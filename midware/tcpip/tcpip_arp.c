@@ -26,6 +26,13 @@
 #define ARP_CACHE_ITEM(tcpip, i)                    (((ARP_CACHE_ENTRY*)(array_data((tcpip)->arp.cache)))[(i)])
 #define ARP_CACHE_ITEMS_COUNT(tcpip)                (array_size((tcpip)->arp.cache) / sizeof(ARP_CACHE_ENTRY))
 
+typedef struct {
+    IP ip;
+    //zero MAC means unresolved yet
+    MAC mac;
+    //time to live. Zero means static ARP
+    unsigned int ttl;
+} ARP_CACHE_ENTRY;
 
 static const MAC __MAC_BROADCAST =                  {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
 static const MAC __MAC_REQUEST =                    {{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};

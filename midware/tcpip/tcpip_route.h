@@ -17,7 +17,7 @@
 #include "../../userspace/array.h"
 
 typedef struct {
-    ARRAY* tx_array;
+    ARRAY* tx_queue;
 } TCPIP_ROUTE;
 
 //called from tcpip
