@@ -28,7 +28,7 @@ void lib_array_destroy(ARRAY **ar)
     *ar = NULL;
 }
 
-ARRAY* lib_array_add(ARRAY **ar, unsigned int size)
+ARRAY* lib_array_append(ARRAY **ar, unsigned int size)
 {
     if (*ar == NULL)
         return NULL;
@@ -46,6 +46,14 @@ ARRAY* lib_array_add(ARRAY **ar, unsigned int size)
         (*ar)->reserved += size;
         (*ar)->size += size;
     }
+    return (*ar);
+}
+
+ARRAY* lib_array_insert(ARRAY **ar, unsigned int index, unsigned int size)
+{
+    if (lib_array_append(ar, size) == NULL)
+        return NULL;
+    memmove((*ar)->data + index + size, (*ar)->data + index, (*ar)->size - index - size);
     return (*ar);
 }
 
@@ -83,7 +91,8 @@ ARRAY* lib_array_squeeze(ARRAY** ar)
 const LIB_ARRAY __LIB_ARRAY = {
     lib_array_create,
     lib_array_destroy,
-    lib_array_add,
+    lib_array_append,
+    lib_array_insert,
     lib_array_clear,
     lib_array_remove,
     lib_array_squeeze

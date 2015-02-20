@@ -237,7 +237,7 @@ static inline void usbd_class_configured(USBD* usbd)
     for (iface = usb_get_first_interface(cfg), usbd->ifacecnt = 0; iface != NULL; iface = usb_get_next_interface(cfg, iface))
         if (iface->bInterfaceNumber >= usbd->ifacecnt)
             usbd->ifacecnt = iface->bInterfaceNumber + 1;
-    if (array_add(&usbd->ifaces, usbd->ifacecnt * sizeof(USBD_IFACE_ENTRY)) == NULL)
+    if (array_append(&usbd->ifaces, usbd->ifacecnt * sizeof(USBD_IFACE_ENTRY)) == NULL)
     {
 #if (USB_DEBUG_ERRORS)
         printf("USBD fatal: Out of memory\n\r");
@@ -303,7 +303,7 @@ static inline bool usbd_register_configuration(ARRAY** ar, int index, void* ptr)
     }
     else
     {
-        if (void_array_add(ar, index + 1 - void_array_size(*ar)) == NULL)
+        if (void_array_append(ar, index + 1 - void_array_size(*ar)) == NULL)
             return false;
     }
     void_array_data(*ar)[index] = ptr;
@@ -321,7 +321,7 @@ static inline bool usbd_register_string(USBD* usbd, unsigned int index, unsigned
             return false;
         }
     }
-    array_add(&usbd->string_descriptors, sizeof(USBD_STRING));
+    array_append(&usbd->string_descriptors, sizeof(USBD_STRING));
 
     STRING(usbd, STRINGS_COUNT(usbd) - 1).index = index;
     STRING(usbd, STRINGS_COUNT(usbd) - 1).lang = lang;
