@@ -23,17 +23,21 @@
 #define ARP_THA(buf)                                ((MAC*)((buf) + 8 + 6 + 4))
 #define ARP_TPA(buf)                                ((IP*)((buf) + 8 + 6 + 4 + 6))
 
+#define ARP_CACHE_ITEM(tcpip, i)                    (((ARP_CACHE_ENTRY*)(array_data((tcpip)->arp.cache)))[(i)])
+#define ARP_CACHE_ITEMS_COUNT(tcpip)                (array_size((tcpip)->arp.cache) / sizeof(ARP_CACHE_ENTRY))
+
+
 static const MAC __MAC_BROADCAST =                  {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
 static const MAC __MAC_REQUEST =                    {{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
 void tcpip_arp_init(TCPIP* tcpip)
 {
-    tcpip->arp.stub = 0;
+    array_create(&tcpip->arp.cache, sizeof(ARP_CACHE_ENTRY));
 }
 
-static void arp_request(TCPIP* tcpip, IP* ip)
+static void arp_request(TCPIP* tcpip, const IP* ip)
 {
-#if (TCPIP_ARP_DEBUG)
+#if (TCPIP_ARP_DEBUG_FLOW)
     printf("ARP: request to ");
     print_ip(ip);
     printf("\n\r");
@@ -74,7 +78,7 @@ static void arp_request(TCPIP* tcpip, IP* ip)
 
 static inline void arp_reply(TCPIP* tcpip, MAC* mac, IP* ip)
 {
-#if (TCPIP_ARP_DEBUG)
+#if (TCPIP_ARP_DEBUG_FLOW)
     printf("ARP: reply to ");
     print_mac(mac);
     printf("(");
@@ -115,6 +119,116 @@ static inline void arp_reply(TCPIP* tcpip, MAC* mac, IP* ip)
     tcpip_mac_tx(tcpip, &io, mac, ETHERTYPE_ARP);
 }
 
+static int tcpip_arp_index(TCPIP* tcpip, const IP* ip)
+{
+    int i;
+    for (i = 0; i < ARP_CACHE_ITEMS_COUNT(tcpip); ++i)
+    {
+        if (ARP_CACHE_ITEM(tcpip, i).ip.u32.ip == ip->u32.ip)
+            return i;
+    }
+    return -1;
+}
+
+static void tcpip_arp_remove(TCPIP* tcpip, int idx)
+{
+    IP ip;
+    ip.u32.ip = 0;
+    if ((ARP_CACHE_ITEM(tcpip, idx).mac.u32.hi == 0) && (ARP_CACHE_ITEM(tcpip, idx).mac.u32.lo == 0))
+        ip.u32.ip = ARP_CACHE_ITEM(tcpip, idx).ip.u32.ip;
+#if (TCPIP_ARP_DEBUG)
+    else
+    {
+        printf("ARP: route removed ");
+        print_ip(&ARP_CACHE_ITEM(tcpip, idx).ip);
+        printf(" -> ");
+        print_mac(&ARP_CACHE_ITEM(tcpip, idx).mac);
+        printf("\n\r");
+    }
+#endif
+    array_remove(&tcpip->arp.cache, idx * sizeof(ARP_CACHE_ENTRY), sizeof(ARP_CACHE_ENTRY));
+
+    //inform route on incomplete ARP if not resolved
+    if (ip.u32.ip)
+        tcpip_route_arp_not_resolved(tcpip, &ip);
+}
+
+static void tcpip_arp_insert(TCPIP* tcpip, const IP* ip, const MAC* mac, unsigned int timeout)
+{
+    int i, idx;
+    unsigned int ttl;
+    //don't add dups
+    if (tcpip_arp_index(tcpip, ip) >= 0)
+        return;
+    //remove first non-static if no place
+    if (ARP_CACHE_ITEMS_COUNT(tcpip) == TCPIP_ARP_CACHE_SIZE_MAX)
+    {
+        //first is static, can't remove
+        if (ARP_CACHE_ITEM(tcpip, 0).ttl == 0)
+            return;
+        tcpip_arp_remove(tcpip, 0);
+    }
+    idx = ARP_CACHE_ITEMS_COUNT(tcpip);
+    ttl = 0;
+    //add all static routes to the end of cache
+    if (timeout)
+    {
+        ttl = tcpip_seconds(tcpip) + timeout;
+        for (i = 0; i < ARP_CACHE_ITEMS_COUNT(tcpip); ++i)
+            if ((ARP_CACHE_ITEM(tcpip, i).ttl > ttl) || (ARP_CACHE_ITEM(tcpip, i).ttl == 0))
+            {
+                idx = i;
+                break;
+            }
+    }
+    array_insert(&tcpip->arp.cache, idx * sizeof(ARP_CACHE_ENTRY), sizeof(ARP_CACHE_ENTRY));
+    ARP_CACHE_ITEM(tcpip, idx).ip.u32.ip = ip->u32.ip;
+    ARP_CACHE_ITEM(tcpip, idx).mac.u32.hi = mac->u32.hi;
+    ARP_CACHE_ITEM(tcpip, idx).mac.u32.lo = mac->u32.lo;
+    ARP_CACHE_ITEM(tcpip, idx).ttl = ttl;
+#if (TCPIP_ARP_DEBUG)
+    if (mac->u32.hi && mac->u32.lo)
+    {
+        printf("ARP: route added ");
+        print_ip(ip);
+        printf(" -> ");
+        print_mac(mac);
+        printf("\n\r");
+    }
+#endif
+}
+
+static void tcpip_arp_update(TCPIP* tcpip, const IP* ip, const MAC* mac)
+{
+    int idx = tcpip_arp_index(tcpip, ip);
+    if (idx < 0)
+        return;
+    ARP_CACHE_ITEM(tcpip, idx).mac.u32.hi = mac->u32.hi;
+    ARP_CACHE_ITEM(tcpip, idx).mac.u32.lo = mac->u32.lo;
+    ARP_CACHE_ITEM(tcpip, idx).ttl = tcpip_seconds(tcpip) + TCPIP_ARP_CACHE_TIMEOUT;
+#if (TCPIP_ARP_DEBUG)
+    printf("ARP: route resolved ");
+    print_ip(ip);
+    printf(" -> ");
+    print_mac(mac);
+    printf("\n\r");
+#endif
+}
+
+static bool tcpip_arp_lookup(TCPIP* tcpip, const IP* ip, MAC* mac)
+{
+    int idx = tcpip_arp_index(tcpip, ip);
+    if (idx >= 0)
+    {
+        mac->u32.hi = ARP_CACHE_ITEM(tcpip, idx).mac.u32.hi;
+        mac->u32.lo = ARP_CACHE_ITEM(tcpip, idx).mac.u32.lo;
+        return true;
+    }
+    mac->u32.hi = 0;
+    mac->u32.lo = 0;
+    return false;
+}
+
 void tcpip_arp_link_event(TCPIP* tcpip, bool link)
 {
     if (link)
@@ -122,13 +236,65 @@ void tcpip_arp_link_event(TCPIP* tcpip, bool link)
         //just for test
         IP ip;
         ip.u32.ip = IP_MAKE(192, 168, 1, 1);
-        arp_request(tcpip, &ip);
+        MAC mac;
+        tcpip_arp_resolve(tcpip, &ip, &mac);
     }
-    //TODO: else flush ARP cache, except static routes
+    else
+    {
+        //flush ARP cache, except static routes
+        while (ARP_CACHE_ITEMS_COUNT(tcpip) && ARP_CACHE_ITEM(tcpip, 0).ttl)
+            tcpip_arp_remove(tcpip, 0);
+    }
 }
 
+void tcpip_arp_timer(TCPIP* tcpip, unsigned int seconds)
+{
+    while (ARP_CACHE_ITEMS_COUNT(tcpip) && ARP_CACHE_ITEM(tcpip, 0).ttl && (ARP_CACHE_ITEM(tcpip, 0).ttl <= seconds))
+        tcpip_arp_remove(tcpip, 0);
+}
 
-//TODO: arp_info(TCPIP* tcpip);
+#if (SYS_INFO)
+static inline void tcpip_arp_info(TCPIP* tcpip)
+{
+    int i;
+    printf("TCPIP ARP info\n\r");
+    if (ARP_CACHE_ITEMS_COUNT(tcpip))
+    {
+        printf("    IP           MAC            ttl\n\r");
+        printf("---------------------------------------\n\r");
+        for (i = 0; i < ARP_CACHE_ITEMS_COUNT(tcpip); ++i)
+        {
+            print_ip(&ARP_CACHE_ITEM(tcpip, i).ip);
+            printf("  ");
+            print_mac(&ARP_CACHE_ITEM(tcpip, i).mac);
+            if (ARP_CACHE_ITEM(tcpip, i).ttl)
+                printf("  %d\n\r", ARP_CACHE_ITEM(tcpip, i).ttl - tcpip_seconds(tcpip));
+            else
+                printf("  STATIC\n\r");
+        }
+    }
+    else
+        printf("No active routes found");
+}
+#endif
+
+bool tcpip_arp_request(TCPIP* tcpip, IPC* ipc)
+{
+    bool need_post = false;
+    switch (ipc->cmd)
+    {
+#if (SYS_INFO)
+    case IPC_GET_INFO:
+        tcpip_arp_info(tcpip);
+        need_post = true;
+        break;
+#endif
+    default:
+        break;
+    }
+    return need_post;
+}
+
 void tcpip_arp_rx(TCPIP* tcpip, TCPIP_IO* io)
 {
     if (io->size < ARP_HEADER_SIZE)
@@ -145,14 +311,18 @@ void tcpip_arp_rx(TCPIP* tcpip, TCPIP_IO* io)
     {
     case ARP_REQUEST:
         if (ARP_TPA(io->buf)->u32.ip == tcpip_ip(tcpip)->u32.ip)
+        {
             arp_reply(tcpip, ARP_SHA(io->buf), ARP_SPA(io->buf));
+            //insert in cache
+            tcpip_arp_insert(tcpip, ARP_SPA(io->buf), ARP_SHA(io->buf), TCPIP_ARP_CACHE_TIMEOUT);
+        }
         break;
     case ARP_REPLY:
         if (mac_compare(tcpip_mac(tcpip), ARP_THA(io->buf)))
         {
-            //TODO: add record in table
-            //TODO: inform ip layer
-#if (TCPIP_ARP_DEBUG)
+            tcpip_arp_update(tcpip, ARP_SPA(io->buf), ARP_SHA(io->buf));
+            tcpip_route_arp_resolved(tcpip, ARP_SPA(io->buf), ARP_SHA(io->buf));
+#if (TCPIP_ARP_DEBUG_FLOW)
             printf("ARP: reply from ");
             print_ip(ARP_SPA(io->buf));
             printf(" is ");
@@ -165,7 +335,12 @@ void tcpip_arp_rx(TCPIP* tcpip, TCPIP_IO* io)
     tcpip_release_io(tcpip, io);
 }
 
-const MAC* tcpip_arp_resolve(TCPIP* tcpip, const IP* ip)
+bool tcpip_arp_resolve(TCPIP* tcpip, const IP* ip, MAC* mac)
 {
-    return NULL;
+    if (tcpip_arp_lookup(tcpip, ip, mac))
+        return true;
+    //request mac
+    tcpip_arp_insert(tcpip, ip, mac, TCPIP_ARP_CACHE_INCOMPLETE_TIMEOUT);
+    arp_request(tcpip, ip);
+    return false;
 }

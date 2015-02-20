@@ -16,7 +16,8 @@
 
 typedef struct _TCPIP {
     //stack itself - public use
-    HANDLE eth;
+    HANDLE eth, timer;
+    unsigned seconds;
     ETH_CONN_TYPE conn;
     //stack itself - private use
     unsigned int blocks_allocated;
@@ -24,6 +25,7 @@ typedef struct _TCPIP {
     bool active, connected;
     TCPIP_MAC mac;
     TCPIP_ARP arp;
+    TCPIP_ROUTE route;
     TCPIP_IP ip;
 } TCPIP;
 

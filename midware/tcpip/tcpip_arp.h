@@ -11,6 +11,7 @@
 #include "../../userspace/eth.h"
 #include "../../userspace/inet.h"
 #include "../../userspace/array.h"
+#include "../../userspace/ipc.h"
 #include <stdint.h>
 #include "sys_config.h"
 
@@ -38,24 +39,26 @@
 
 typedef struct {
     IP ip;
+    //zero MAC means unresolved yet
     MAC mac;
+    //time to live. Zero means static ARP
     unsigned int ttl;
 } ARP_CACHE_ENTRY;
 
-#define ARP_CACHE_STATIC                0
-
 typedef struct {
-    unsigned int stub;
+    ARRAY* cache;
 } TCPIP_ARP;
 
 //from tcpip
 void tcpip_arp_init(TCPIP* tcpip);
 void tcpip_arp_link_event(TCPIP* tcpip, bool link);
+void tcpip_arp_timer(TCPIP* tcpip, unsigned int seconds);
+bool tcpip_arp_request(TCPIP* tcpip, IPC* ipc);
 
 //from mac
 void tcpip_arp_rx(TCPIP* tcpip, TCPIP_IO* io);
 
-//from ip. If NULL returned, sender must queue request for asynchronous answer
-const MAC* tcpip_arp_resolve(TCPIP* tcpip, const IP* ip);
+//from route. If false returned, sender must queue request for asynchronous answer
+bool tcpip_arp_resolve(TCPIP* tcpip, const IP* ip, MAC* mac);
 
 #endif // TCPIP_ARP_H

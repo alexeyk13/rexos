@@ -7,6 +7,7 @@
 #include "tcpip_ip.h"
 #include "tcpip_private.h"
 #include "../../userspace/stdio.h"
+#include "tcpip_icmp.h"
 
 #define IP_DF                                   (1 << 6)
 #define IP_MF                                   (1 << 5)
@@ -27,7 +28,7 @@
 
 
 #if (SYS_INFO) || (TCPIP_DEBUG)
-void print_ip(IP* ip)
+void print_ip(const IP* ip)
 {
     int i;
     for (i = 0; i < IP_SIZE; ++i)
@@ -113,7 +114,16 @@ static void tcpip_ip_process(TCPIP* tcpip, TCPIP_IO* io, IP* src, uint8_t proto)
     print_ip(src);
     printf(", proto: %d, len: %d\n\r", proto, io->size);
 #endif
-    tcpip_ip_release_io(tcpip, io);
+    switch (proto)
+    {
+#if (TCPIP_ICMP)
+    case PROTO_ICMP:
+        tcpip_icmp_rx(tcpip, io, src);
+        break;
+#endif //TCPIP_ICMP
+    default:
+        tcpip_ip_release_io(tcpip, io);
+    }
 }
 
 #if (TCPIP_IP_CHECKSUM)

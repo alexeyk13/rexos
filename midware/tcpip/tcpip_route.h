@@ -12,8 +12,22 @@
  */
 
 #include "tcpip.h"
+#include "../../userspace/eth.h"
 #include "../../userspace/inet.h"
+#include "../../userspace/array.h"
 
-const IP* tcpip_route_lookup(const IP* target);
+typedef struct {
+    ARRAY* tx_array;
+} TCPIP_ROUTE;
+
+//called from tcpip
+void tcpip_route_init(TCPIP* tcpip);
+
+//called from arp
+void tcpip_route_arp_resolved(TCPIP* tcpip, const IP* ip, const MAC* mac);
+void tcpip_route_arp_not_resolved(TCPIP* tcpip, const IP* ip);
+
+//called from ip
+void tcpip_route_tx(TCPIP* tcpip, TCPIP_IO* io, const IP* target);
 
 #endif // TCPIP_ROUTE_H

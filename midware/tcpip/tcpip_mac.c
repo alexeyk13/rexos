@@ -14,7 +14,7 @@
 #define MAC_LENTYPE(buf)                                    (((buf)[2 * MAC_SIZE] << 8) | ((buf)[2 * MAC_SIZE + 1]))
 
 #if (SYS_INFO) || (TCPIP_DEBUG)
-void print_mac(MAC* mac)
+void print_mac(const MAC* mac)
 {
     int i;
     switch (mac->u8[0] & MAC_CAST_MASK)

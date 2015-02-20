@@ -12,6 +12,7 @@
 #include "../../userspace/stdio.h"
 #include "../../userspace/file.h"
 #include "../../userspace/block.h"
+#include "../../userspace/timer.h"
 #include "sys_config.h"
 #include "tcpip_mac.h"
 #include "tcpip_arp.h"
@@ -86,10 +87,14 @@ uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
             printf("TCPIP: out of memory\n\r");
 #endif
     }
-#if (TCPIP_DEBUG_ERRORS)
     else
+    {
+        //TODO: some blocks can stuck in route tx queue. Get it from there
+        //TODO: some blocks can stuck in tx queue. Free one.
+#if (TCPIP_DEBUG_ERRORS)
         printf("TCPIP: too many blocks\n\r");
 #endif
+    }
     if (io->block != INVALID_HANDLE)
         io->buf = block_open(io->block);
     return io->buf;
@@ -97,7 +102,7 @@ uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
 
 static void tcpip_release_block(TCPIP* tcpip, HANDLE block)
 {
-    void_array_add(&tcpip->free_blocks, 1);
+    void_array_append(&tcpip->free_blocks, 1);
     void_array_data(tcpip->free_blocks)[void_array_size(tcpip->free_blocks) - 1] = (void*)block;
 }
 
@@ -120,6 +125,11 @@ void tcpip_tx(TCPIP* tcpip, TCPIP_IO* io)
     fwrite_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), io->block, io->size);
 }
 
+unsigned int tcpip_seconds(TCPIP* tcpip)
+{
+    return tcpip->seconds;
+}
+
 static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
 {
     if (tcpip->active)
@@ -127,8 +137,13 @@ static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
+    tcpip->timer = timer_create(HAL_HANDLE(HAL_TCPIP, 0));
+    if (tcpip->timer == INVALID_HANDLE)
+        return;
     fopen(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), conn);
     tcpip->active = true;
+    tcpip->seconds = 0;
+    timer_start_ms(tcpip->timer, 1000, 0);
 }
 
 static inline void tcpip_rx(TCPIP* tcpip, HANDLE block, int size)
@@ -185,6 +200,7 @@ static inline void tcpip_info(TCPIP* tcpip)
 void tcpip_init(TCPIP* tcpip)
 {
     tcpip->eth = object_get(SYS_OBJ_ETH);
+    tcpip->timer = INVALID_HANDLE;
     tcpip->conn = ETH_NO_LINK;
     tcpip->connected = tcpip->active = false;
     tcpip->blocks_allocated = 0;
@@ -197,7 +213,17 @@ void tcpip_init(TCPIP* tcpip)
 #endif
     tcpip_mac_init(tcpip);
     tcpip_arp_init(tcpip);
+    tcpip_route_init(tcpip);
     tcpip_ip_init(tcpip);
+}
+
+static inline void tcpip_timer(TCPIP* tcpip)
+{
+    ++tcpip->seconds;
+    //forward to others
+    tcpip_arp_timer(tcpip, tcpip->seconds);
+    //TODO: call arp
+    timer_start_ms(tcpip->timer, 1000, 0);
 }
 
 static inline bool tcpip_request(TCPIP* tcpip, IPC* ipc)
@@ -224,6 +250,9 @@ static inline bool tcpip_request(TCPIP* tcpip, IPC* ipc)
         break;
     case IPC_WRITE:
         tcpip_tx_complete(tcpip, ipc->param2);
+        break;
+    case IPC_TIMEOUT:
+        tcpip_timer(tcpip);
         break;
     case ETH_NOTIFY_LINK_CHANGED:
         tcpip_link_changed(tcpip, ipc->param2);
@@ -260,6 +289,9 @@ void tcpip_main()
                 break;
             case HAL_TCPIP_MAC:
                 need_post = tcpip_mac_request(&tcpip, &ipc);
+                break;
+            case HAL_TCPIP_ARP:
+                need_post = tcpip_arp_request(&tcpip, &ipc);
                 break;
             case HAL_TCPIP_IP:
                 need_post = tcpip_ip_request(&tcpip, &ipc);

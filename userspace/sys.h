@@ -51,6 +51,7 @@ typedef enum {
     HAL_TCPIP_ARP,
     HAL_TCPIP_ROUTE,
     HAL_TCPIP_IP,
+    HAL_TCPIP_ICMP,
     HAL_PINBOARD,
     //application level
     HAL_APP
