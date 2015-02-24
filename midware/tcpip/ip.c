@@ -109,7 +109,7 @@ void ip_release_io(TCPIP* tcpip, TCPIP_IO* io)
 
 static void ip_process(TCPIP* tcpip, TCPIP_IO* io, IP* src, uint8_t proto)
 {
-#if (TCPIP_IP_DEBUG)
+#if (IP_DEBUG_FLOW)
     printf("IP: from ");
     ip_print(src);
     printf(", proto: %d, len: %d\n\r", proto, io->size);
@@ -122,12 +122,17 @@ static void ip_process(TCPIP* tcpip, TCPIP_IO* io, IP* src, uint8_t proto)
         break;
 #endif //TCPIP_ICMP
     default:
+#if (IP_DEBUG)
+        printf("IP: unhandled proto %d from", proto);
+        ip_print(src);
+        printf("\n\r");
+#endif
         ip_release_io(tcpip, io);
     }
 }
 
-#if (TCPIP_IP_CHECKSUM)
-static uint16_t ip_checksum(uint8_t* buf, unsigned int size)
+#if (IP_CHECKSUM)
+uint16_t ip_checksum(uint8_t* buf, unsigned int size)
 {
     unsigned int i;
     uint32_t sum = 0;
@@ -163,7 +168,7 @@ void ip_rx(TCPIP* tcpip, TCPIP_IO* io)
     }
 
     //TODO: packet assembly from fragments
-//#if (TCPIP_IP_FRAGMENTATION)
+//#if (IP_FRAGMENTATION)
 //#else
     //drop all fragmented frames
     //TODO: maybe also ICMP?
@@ -179,7 +184,7 @@ void ip_rx(TCPIP* tcpip, TCPIP_IO* io)
         tcpip_release_io(tcpip, io);
         return;
     }
-#if (TCPIP_IP_CHECKSUM)
+#if (IP_CHECKSUM)
     //drop if checksum is invalid
     if (ip_checksum(io->buf, hdr_size))
     {

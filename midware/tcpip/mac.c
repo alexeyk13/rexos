@@ -86,7 +86,7 @@ void mac_rx(TCPIP* tcpip, TCPIP_IO* io)
         tcpip_release_io(tcpip, io);
         return;
     }
-#if (TCPIP_MAC_FILTER)
+#if (MAC_FILTER)
     switch (MAC_DST(io->buf)->u8[0] & MAC_CAST_MASK)
     {
     case MAC_BROADCAST_ADDRESS:
@@ -110,10 +110,10 @@ void mac_rx(TCPIP* tcpip, TCPIP_IO* io)
         }
         break;
     }
-#endif //TCPIP_MAC_FILTER
+#endif //MAC_FILTER
 
     lentype = MAC_LENTYPE(io->buf);
-#if (TCPIP_MAC_DEBUG)
+#if (MAC_DEBUG)
     printf("MAC RX: ");
     mac_print(MAC_SRC(io->buf));
     printf(" -> ");
@@ -131,7 +131,7 @@ void mac_rx(TCPIP* tcpip, TCPIP_IO* io)
         arp_rx(tcpip, io);
         break;
     default:
-#if (TCPIP_MAC_DEBUG)
+#if (MAC_DEBUG)
         printf("MAC: dropped lentype: %04X\n\r", lentype);
 #endif
         tcpip_release_io(tcpip, io);

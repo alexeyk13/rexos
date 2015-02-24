@@ -210,6 +210,7 @@ typedef struct {
 #if (SYS_INFO) || (TCPIP_DEBUG)
 void ip_print(const IP *ip);
 #endif //(SYS_INFO) || (TCPIP_DEBUG)
+uint16_t ip_checksum(uint8_t* buf, unsigned int size);
 const IP* tcpip_ip(TCPIP* tcpip);
 
 //from tcpip
