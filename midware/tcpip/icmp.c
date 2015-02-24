@@ -13,9 +13,23 @@
 #define ICMP_HEADER_SIZE                4
 #define ICMP_TYPE(buf)                  ((buf)[0])
 
-static inline void icmp_cmd_echo(tcpip, io, src)
+static void icmp_tx(TCPIP* tcpip, TCPIP_IO* io, IP* dst)
 {
+    uint16_t cs = ip_checksum(io->buf, io->size);
+    io->buf[2] = (cs >> 8) & 0xff;
+    io->buf[3] = cs & 0xff;
+    ip_tx(tcpip, io, dst, PROTO_ICMP);
+}
 
+static inline void icmp_cmd_echo(TCPIP* tcpip, TCPIP_IO* io, IP* src)
+{
+#if (ICMP_DEBUG)
+    printf("ICMP: ECHO from ", ICMP_TYPE(io->buf));
+    ip_print(src);
+    printf("\n\r");
+#endif
+    io->buf[0] = ICMP_CMD_ECHO_REPLY;
+    icmp_tx(tcpip, io, src);
 }
 
 void icmp_rx(TCPIP* tcpip, TCPIP_IO* io, IP* src)
