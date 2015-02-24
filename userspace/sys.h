@@ -47,11 +47,11 @@ typedef enum {
     //device stacks
     HAL_USBD,
     HAL_TCPIP,
-    HAL_TCPIP_MAC,
-    HAL_TCPIP_ARP,
-    HAL_TCPIP_ROUTE,
-    HAL_TCPIP_IP,
-    HAL_TCPIP_ICMP,
+    HAL_MAC,
+    HAL_ARP,
+    HAL_ROUTE,
+    HAL_IP,
+    HAL_ICMP,
     HAL_PINBOARD,
     //application level
     HAL_APP

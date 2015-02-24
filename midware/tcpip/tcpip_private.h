@@ -13,6 +13,8 @@
 #include "arp.h"
 #include "route.h"
 #include "ip.h"
+#include "icmp.h"
+#include "sys_config.h"
 
 typedef struct _TCPIP {
     //stack itself - public use
@@ -27,6 +29,9 @@ typedef struct _TCPIP {
     TCPIP_ARP arp;
     TCPIP_ROUTE route;
     TCPIP_IP ip;
+#if (ICMP)
+    TCPIP_ICMP icmp;
+#endif
 } TCPIP;
 
 #endif // TCPIP_PRIVATE_H

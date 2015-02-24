@@ -26,11 +26,17 @@ typedef union {
 #define IP_MAKE(a, b, c, d)                         (((a) << 0) | ((b) << 8) | ((c) << 16) | ((d) << 24))
 
 typedef enum {
-    IP_SET = HAL_IPC(HAL_TCPIP_IP),
+    IP_SET = HAL_IPC(HAL_IP),
     IP_GET,
 
     IP_HAL_MAX
 }IP_IPCS;
+
+typedef enum {
+    ICMP_PING = HAL_IPC(HAL_ICMP),
+
+    ICMP_HAL_MAX
+}ICMP_IPCS;
 
 #pragma pack(pop)
 

@@ -215,6 +215,9 @@ void tcpip_init(TCPIP* tcpip)
     arp_init(tcpip);
     route_init(tcpip);
     ip_init(tcpip);
+#if (ICMP)
+    icmp_init(tcpip);
+#endif
 }
 
 static inline void tcpip_timer(TCPIP* tcpip)
@@ -286,14 +289,17 @@ void tcpip_main()
             case HAL_TCPIP:
                 need_post = tcpip_request(&tcpip, &ipc);
                 break;
-            case HAL_TCPIP_MAC:
+            case HAL_MAC:
                 need_post = mac_request(&tcpip, &ipc);
                 break;
-            case HAL_TCPIP_ARP:
+            case HAL_ARP:
                 need_post = arp_request(&tcpip, &ipc);
                 break;
-            case HAL_TCPIP_IP:
+            case HAL_IP:
                 need_post = ip_request(&tcpip, &ipc);
+                break;
+            case HAL_ICMP:
+                need_post = icmp_request(&tcpip, &ipc);
                 break;
             default:
                 break;
