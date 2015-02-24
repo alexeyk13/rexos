@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef TCPIP_ARP_H
-#define TCPIP_ARP_H
+#ifndef ARP_H
+#define ARP_H
 
 #include "tcpip.h"
 #include "../../userspace/eth.h"
@@ -42,15 +42,15 @@ typedef struct {
 } TCPIP_ARP;
 
 //from tcpip
-void tcpip_arp_init(TCPIP* tcpip);
-void tcpip_arp_link_event(TCPIP* tcpip, bool link);
-void tcpip_arp_timer(TCPIP* tcpip, unsigned int seconds);
-bool tcpip_arp_request(TCPIP* tcpip, IPC* ipc);
+void arp_init(TCPIP* tcpip);
+void arp_link_event(TCPIP* tcpip, bool link);
+void arp_timer(TCPIP* tcpip, unsigned int seconds);
+bool arp_request(TCPIP* tcpip, IPC* ipc);
 
 //from mac
-void tcpip_arp_rx(TCPIP* tcpip, TCPIP_IO* io);
+void arp_rx(TCPIP* tcpip, TCPIP_IO* io);
 
 //from route. If false returned, sender must queue request for asynchronous answer
-bool tcpip_arp_resolve(TCPIP* tcpip, const IP* ip, MAC* mac);
+bool arp_resolve(TCPIP* tcpip, const IP* ip, MAC* mac);
 
 #endif // TCPIP_ARP_H

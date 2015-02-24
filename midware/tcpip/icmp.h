@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef TCPIP_ICMP_H
-#define TCPIP_ICMP_H
+#ifndef ICMP_H
+#define ICMP_H
 
 #include "tcpip.h"
 #include "sys_config.h"
@@ -33,8 +33,8 @@
 
 
 //from ip
-void tcpip_icmp_rx(TCPIP* tcpip, TCPIP_IO* io, IP* src);
+void icmp_rx(TCPIP* tcpip, TCPIP_IO* io, IP* src);
 
-//TODO: tcpip_icmp_request
+//TODO: icmp_request
 
-#endif // TCPIP_ICMP_H
+#endif // ICMP_H

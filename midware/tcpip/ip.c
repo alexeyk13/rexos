@@ -4,10 +4,10 @@
     All rights reserved.
 */
 
-#include "tcpip_ip.h"
+#include "ip.h"
 #include "tcpip_private.h"
 #include "../../userspace/stdio.h"
-#include "tcpip_icmp.h"
+#include "icmp.h"
 
 #define IP_DF                                   (1 << 6)
 #define IP_MF                                   (1 << 5)
@@ -28,7 +28,7 @@
 
 
 #if (SYS_INFO) || (TCPIP_DEBUG)
-void print_ip(const IP* ip)
+void ip_print(const IP* ip)
 {
     int i;
     for (i = 0; i < IP_SIZE; ++i)
@@ -45,49 +45,49 @@ const IP* tcpip_ip(TCPIP* tcpip)
     return &tcpip->ip.ip;
 }
 
-void tcpip_ip_init(TCPIP* tcpip)
+void ip_init(TCPIP* tcpip)
 {
     tcpip->ip.ip.u32.ip = IP_MAKE(0, 0, 0, 0);
     tcpip->ip.id = 0;
 }
 
 #if (SYS_INFO)
-static inline void tcpip_ip_info(TCPIP* tcpip)
+static inline void ip_info(TCPIP* tcpip)
 {
     printf("IP info\n\r");
     printf("IP: ");
-    print_ip(&tcpip->ip.ip);
+    ip_print(&tcpip->ip.ip);
     printf("\n\r");
 }
 #endif
 
-static inline void tcpip_ip_set(TCPIP* tcpip, uint32_t ip)
+static inline void ip_set_request(TCPIP* tcpip, uint32_t ip)
 {
     tcpip->ip.ip.u32.ip = ip;
 }
 
-static inline void tcpip_ip_get(TCPIP* tcpip, HANDLE process)
+static inline void ip_get_request(TCPIP* tcpip, HANDLE process)
 {
     ipc_post_inline(process, IP_GET, 0, tcpip->ip.ip.u32.ip, 0);
 }
 
-bool tcpip_ip_request(TCPIP* tcpip, IPC* ipc)
+bool ip_request(TCPIP* tcpip, IPC* ipc)
 {
     bool need_post = false;
     switch (ipc->cmd)
     {
 #if (SYS_INFO)
     case IPC_GET_INFO:
-        tcpip_ip_info(tcpip);
+        ip_info(tcpip);
         need_post = true;
         break;
 #endif
     case IP_SET:
-        tcpip_ip_set(tcpip, ipc->param1);
+        ip_set_request(tcpip, ipc->param1);
         need_post = true;
         break;
     case IP_GET:
-        tcpip_ip_get(tcpip, ipc->process);
+        ip_get_request(tcpip, ipc->process);
         break;
     default:
         break;
@@ -95,39 +95,39 @@ bool tcpip_ip_request(TCPIP* tcpip, IPC* ipc)
     return need_post;
 }
 
-uint8_t* tcpip_ip_allocate_io(TCPIP* tcpip, TCPIP_IO* io, unsigned int size)
+uint8_t* ip_allocate_io(TCPIP* tcpip, TCPIP_IO* io, unsigned int size)
 {
     //TODO: fragmented frames, right now just forward to tcpip
     return tcpip_allocate_io(tcpip, io);
 }
 
-void tcpip_ip_release_io(TCPIP* tcpip, TCPIP_IO* io)
+void ip_release_io(TCPIP* tcpip, TCPIP_IO* io)
 {
     //TODO: fragmented frames, right now just forward to tcpip
     tcpip_release_io(tcpip, io);
 }
 
-static void tcpip_ip_process(TCPIP* tcpip, TCPIP_IO* io, IP* src, uint8_t proto)
+static void ip_process(TCPIP* tcpip, TCPIP_IO* io, IP* src, uint8_t proto)
 {
 #if (TCPIP_IP_DEBUG)
     printf("IP: from ");
-    print_ip(src);
+    ip_print(src);
     printf(", proto: %d, len: %d\n\r", proto, io->size);
 #endif
     switch (proto)
     {
 #if (TCPIP_ICMP)
     case PROTO_ICMP:
-        tcpip_icmp_rx(tcpip, io, src);
+        icmp_rx(tcpip, io, src);
         break;
 #endif //TCPIP_ICMP
     default:
-        tcpip_ip_release_io(tcpip, io);
+        ip_release_io(tcpip, io);
     }
 }
 
 #if (TCPIP_IP_CHECKSUM)
-static uint16_t tcpip_ip_checksum(uint8_t* buf, unsigned int size)
+static uint16_t ip_checksum(uint8_t* buf, unsigned int size)
 {
     unsigned int i;
     uint32_t sum = 0;
@@ -138,7 +138,7 @@ static uint16_t tcpip_ip_checksum(uint8_t* buf, unsigned int size)
 }
 #endif
 
-void tcpip_ip_rx(TCPIP* tcpip, TCPIP_IO* io)
+void ip_rx(TCPIP* tcpip, TCPIP_IO* io)
 {
     unsigned int len, hdr_size;
     IP src;
@@ -181,7 +181,7 @@ void tcpip_ip_rx(TCPIP* tcpip, TCPIP_IO* io)
     }
 #if (TCPIP_IP_CHECKSUM)
     //drop if checksum is invalid
-    if (tcpip_ip_checksum(io->buf, hdr_size))
+    if (ip_checksum(io->buf, hdr_size))
     {
         tcpip_release_io(tcpip, io);
         return;
@@ -192,5 +192,5 @@ void tcpip_ip_rx(TCPIP* tcpip, TCPIP_IO* io)
     proto = IP_HEADER_PROTOCOL(io->buf);
     io->buf += hdr_size;
     io->size = len - hdr_size;
-    tcpip_ip_process(tcpip, io, &src, proto);
+    ip_process(tcpip, io, &src, proto);
 }

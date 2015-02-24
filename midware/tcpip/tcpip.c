@@ -14,10 +14,10 @@
 #include "../../userspace/block.h"
 #include "../../userspace/timer.h"
 #include "sys_config.h"
-#include "tcpip_mac.h"
-#include "tcpip_arp.h"
-#include "tcpip_route.h"
-#include "tcpip_ip.h"
+#include "mac.h"
+#include "arp.h"
+#include "route.h"
+#include "ip.h"
 
 #define FRAME_MAX_SIZE                          (TCPIP_MTU + MAC_HEADER_SIZE)
 
@@ -162,7 +162,7 @@ static inline void tcpip_rx(TCPIP* tcpip, HANDLE block, int size)
     if (io.buf == NULL)
         return;
     //forward to MAC
-    tcpip_mac_rx(tcpip, &io);
+    mac_rx(tcpip, &io);
 }
 
 static inline void tcpip_tx_complete(TCPIP* tcpip, HANDLE block)
@@ -187,7 +187,7 @@ static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
         tcpip_rx_next(tcpip);
 #endif
     }
-    tcpip_arp_link_event(tcpip, tcpip->connected);
+    arp_link_event(tcpip, tcpip->connected);
 }
 
 #if (SYS_INFO)
@@ -211,17 +211,17 @@ void tcpip_init(TCPIP* tcpip)
     //1 rx + 1 tx + 1 for processing
     array_create(&tcpip->free_blocks, sizeof(void*), 3);
 #endif
-    tcpip_mac_init(tcpip);
-    tcpip_arp_init(tcpip);
-    tcpip_route_init(tcpip);
-    tcpip_ip_init(tcpip);
+    mac_init(tcpip);
+    arp_init(tcpip);
+    route_init(tcpip);
+    ip_init(tcpip);
 }
 
 static inline void tcpip_timer(TCPIP* tcpip)
 {
     ++tcpip->seconds;
     //forward to others
-    tcpip_arp_timer(tcpip, tcpip->seconds);
+    arp_timer(tcpip, tcpip->seconds);
     timer_start_ms(tcpip->timer, 1000, 0);
 }
 
@@ -287,13 +287,13 @@ void tcpip_main()
                 need_post = tcpip_request(&tcpip, &ipc);
                 break;
             case HAL_TCPIP_MAC:
-                need_post = tcpip_mac_request(&tcpip, &ipc);
+                need_post = mac_request(&tcpip, &ipc);
                 break;
             case HAL_TCPIP_ARP:
-                need_post = tcpip_arp_request(&tcpip, &ipc);
+                need_post = arp_request(&tcpip, &ipc);
                 break;
             case HAL_TCPIP_IP:
-                need_post = tcpip_ip_request(&tcpip, &ipc);
+                need_post = ip_request(&tcpip, &ipc);
                 break;
             default:
                 break;

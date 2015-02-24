@@ -4,14 +4,14 @@
     All rights reserved.
 */
 
-#include "tcpip_icmp.h"
+#include "icmp.h"
 #include "tcpip_private.h"
 #include "tcpip_private.h"
 #include "../../userspace/stdio.h"
 
-void tcpip_icmp_rx(TCPIP* tcpip, TCPIP_IO* io, IP* src)
+void icmp_rx(TCPIP* tcpip, TCPIP_IO* io, IP* src)
 {
     printf("ICMP!\n\r");
     dump(io->buf, io->size);
-    tcpip_ip_release_io(tcpip, io);
+    ip_release_io(tcpip, io);
 }

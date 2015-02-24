@@ -4,10 +4,10 @@
     All rights reserved.
 */
 
-#include "tcpip_route.h"
+#include "route.h"
 #include "tcpip_private.h"
-#include "tcpip_arp.h"
-#include "tcpip_mac.h"
+#include "arp.h"
+#include "mac.h"
 
 #define ROUTE_QUEUE_ITEM(tcpip, i)                    ((ROUTE_QUEUE_ENTRY*)array_at((tcpip)->route.tx_queue, i))
 
@@ -16,24 +16,24 @@ typedef struct {
     IP ip;
 } ROUTE_QUEUE_ENTRY;
 
-void tcpip_route_init(TCPIP* tcpip)
+void route_init(TCPIP* tcpip)
 {
     array_create(&tcpip->route.tx_queue, sizeof(ROUTE_QUEUE_ENTRY), 1);
 }
 
-void tcpip_route_arp_resolved(TCPIP* tcpip, const IP* ip, const MAC* mac)
+void arp_resolved(TCPIP* tcpip, const IP* ip, const MAC* mac)
 {
     int i;
     for (i = 0; i < array_size(tcpip->route.tx_queue); ++i)
         if (ROUTE_QUEUE_ITEM(tcpip, i)->ip.u32.ip == ip->u32.ip)
         {
             //forward to MAC
-            tcpip_mac_tx(tcpip, &ROUTE_QUEUE_ITEM(tcpip, i)->io, mac, ETHERTYPE_IP);
+            mac_tx(tcpip, &ROUTE_QUEUE_ITEM(tcpip, i)->io, mac, ETHERTYPE_IP);
             array_remove(&tcpip->route.tx_queue, i);
         }
 }
 
-void tcpip_route_arp_not_resolved(TCPIP* tcpip, const IP* ip)
+void arp_not_resolved(TCPIP* tcpip, const IP* ip)
 {
     int i;
     for (i = 0; i < array_size(tcpip->route.tx_queue); ++i)
@@ -45,13 +45,13 @@ void tcpip_route_arp_not_resolved(TCPIP* tcpip, const IP* ip)
         }
 }
 
-void tcpip_route_tx(TCPIP* tcpip, TCPIP_IO* io, const IP* target)
+void route_tx(TCPIP* tcpip, TCPIP_IO* io, const IP* target)
 {
     ROUTE_QUEUE_ENTRY* item;
     //TODO: forward to gateway
     MAC mac;
-    if (tcpip_arp_resolve(tcpip, target, &mac))
-        tcpip_mac_tx(tcpip, io, &mac, ETHERTYPE_IP);
+    if (arp_resolve(tcpip, target, &mac))
+        mac_tx(tcpip, io, &mac, ETHERTYPE_IP);
     else
     {
         //queue before address is resolved

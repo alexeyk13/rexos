@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef TCPIP_IP_H
-#define TCPIP_IP_H
+#ifndef IP_H
+#define IP_H
 
 #include "tcpip.h"
 #include "../../userspace/inet.h"
@@ -208,20 +208,20 @@ typedef struct {
 
 //tools
 #if (SYS_INFO) || (TCPIP_DEBUG)
-void print_ip(const IP *ip);
+void ip_print(const IP *ip);
 #endif //(SYS_INFO) || (TCPIP_DEBUG)
 const IP* tcpip_ip(TCPIP* tcpip);
 
 //from tcpip
-void tcpip_ip_init(TCPIP* tcpip);
-bool tcpip_ip_request(TCPIP* tcpip, IPC* ipc);
+void ip_init(TCPIP* tcpip);
+bool ip_request(TCPIP* tcpip, IPC* ipc);
 
 //allocate IP io. If more than (MTU - MAC header - IP header) and fragmentation enabled, will be allocated long frame
-uint8_t* tcpip_ip_allocate_io(TCPIP* tcpip, TCPIP_IO* io, unsigned int size);
+uint8_t* ip_allocate_io(TCPIP* tcpip, TCPIP_IO* io, unsigned int size);
 //release previously allocated io. IO is not actually freed, just put in queue of free blocks
-void tcpip_ip_release_io(TCPIP* tcpip, TCPIP_IO* io);
+void ip_release_io(TCPIP* tcpip, TCPIP_IO* io);
 
 //from mac
-void tcpip_ip_rx(TCPIP* tcpip, TCPIP_IO* io);
+void ip_rx(TCPIP* tcpip, TCPIP_IO* io);
 
-#endif // TCPIP_IP_H
+#endif // IP_H
