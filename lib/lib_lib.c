@@ -11,9 +11,7 @@
 #include "lib_stdio.h"
 #include "lib_time.h"
 #include "lib_heap.h"
-#if (KERNEL_LIB_ARRAY)
 #include "lib_array.h"
-#endif //KERNEL_LIB_ARRAY
 #if (KERNEL_LIB_USB)
 #include "lib_usb.h"
 #endif //KERNEL_LIB_USB
@@ -38,11 +36,7 @@ const void *const __LIB[] = {
     (const void *const)&__LIB_TIME,
     //lib_heap.h
     (const void *const )&__LIB_HEAP,
-#if (KERNEL_LIB_ARRAY)
     (const void *const)&__LIB_ARRAY,
-#else
-    (const void *const)NULL,
-#endif //KERNEL_LIB_ARRAY
 #if (KERNEL_LIB_USB)
     (const void *const)&__LIB_USB,
 #else

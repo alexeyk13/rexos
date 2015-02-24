@@ -9,8 +9,7 @@
 #include "tcpip_arp.h"
 #include "tcpip_mac.h"
 
-#define ROUTE_QUEUE_ITEM(tcpip, i)                    (((ROUTE_QUEUE_ENTRY*)(array_data((tcpip)->route.tx_queue)))[(i)])
-#define ROUTE_QUEUE_ITEMS_COUNT(tcpip)                (array_size((tcpip)->route.tx_queue) / sizeof(ROUTE_QUEUE_ENTRY))
+#define ROUTE_QUEUE_ITEM(tcpip, i)                    ((ROUTE_QUEUE_ENTRY*)array_at((tcpip)->route.tx_queue, i))
 
 typedef struct {
     TCPIP_IO io;
@@ -19,30 +18,30 @@ typedef struct {
 
 void tcpip_route_init(TCPIP* tcpip)
 {
-    array_create(&tcpip->route.tx_queue, sizeof(ROUTE_QUEUE_ENTRY));
+    array_create(&tcpip->route.tx_queue, sizeof(ROUTE_QUEUE_ENTRY), 1);
 }
 
 void tcpip_route_arp_resolved(TCPIP* tcpip, const IP* ip, const MAC* mac)
 {
     int i;
-    for (i = 0; i < ROUTE_QUEUE_ITEMS_COUNT(tcpip); ++i)
-        if (ROUTE_QUEUE_ITEM(tcpip, i).ip.u32.ip == ip->u32.ip)
+    for (i = 0; i < array_size(tcpip->route.tx_queue); ++i)
+        if (ROUTE_QUEUE_ITEM(tcpip, i)->ip.u32.ip == ip->u32.ip)
         {
             //forward to MAC
-            tcpip_mac_tx(tcpip, &ROUTE_QUEUE_ITEM(tcpip, i).io, mac, ETHERTYPE_IP);
-            array_remove(&tcpip->route.tx_queue, i, sizeof(ROUTE_QUEUE_ENTRY));
+            tcpip_mac_tx(tcpip, &ROUTE_QUEUE_ITEM(tcpip, i)->io, mac, ETHERTYPE_IP);
+            array_remove(&tcpip->route.tx_queue, i);
         }
 }
 
 void tcpip_route_arp_not_resolved(TCPIP* tcpip, const IP* ip)
 {
     int i;
-    for (i = 0; i < ROUTE_QUEUE_ITEMS_COUNT(tcpip); ++i)
-        if (ROUTE_QUEUE_ITEM(tcpip, i).ip.u32.ip == ip->u32.ip)
+    for (i = 0; i < array_size(tcpip->route.tx_queue); ++i)
+        if (ROUTE_QUEUE_ITEM(tcpip, i)->ip.u32.ip == ip->u32.ip)
         {
             //drop if not resolved
-            tcpip_release_io(tcpip, &ROUTE_QUEUE_ITEM(tcpip, i).io);
-            array_remove(&tcpip->route.tx_queue, i, sizeof(ROUTE_QUEUE_ENTRY));
+            tcpip_release_io(tcpip, &ROUTE_QUEUE_ITEM(tcpip, i)->io);
+            array_remove(&tcpip->route.tx_queue, i);
         }
 }
 
@@ -56,8 +55,8 @@ void tcpip_route_tx(TCPIP* tcpip, TCPIP_IO* io, const IP* target)
     else
     {
         //queue before address is resolved
-        array_append(&tcpip->route.tx_queue, sizeof(ROUTE_QUEUE_ENTRY));
-        item = &ROUTE_QUEUE_ITEM(tcpip, ROUTE_QUEUE_ITEMS_COUNT(tcpip) - 1);
+        array_append(&tcpip->route.tx_queue);
+        item = ROUTE_QUEUE_ITEM(tcpip, array_size(tcpip->route.tx_queue) - 1);
         item->io.block = io->block;
         item->io.buf = io->buf;
         item->io.size = io->size;

@@ -11,6 +11,11 @@
 #include "sys_config.h"
 #include "../../userspace/inet.h"
 
+/*
+        ICMP header format
+
+ */
+
 #define ICMP_CMD_ECHO_REPLY                             0
 #define ICMP_CMD_DESTINATION_UNREACHABLE                3
 #define ICMP_CMD_SOURCE_QUENCH                          4
@@ -22,6 +27,10 @@
 #define ICMP_CMD_TIMESTAMP_REPLY                        14
 #define ICMP_CMD_INFORMATION_REQUEST                    15
 #define ICMP_CMD_INFORMATION_REPLY                      16
+
+
+//TODO: icmp structure, ICMP init
+
 
 //from ip
 void tcpip_icmp_rx(TCPIP* tcpip, TCPIP_IO* io, IP* src);

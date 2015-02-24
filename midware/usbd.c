@@ -75,9 +75,8 @@ typedef struct {
     void* param;
 } USBD_IFACE_ENTRY;
 
-#define IFACE(usbd, iface)                          (((USBD_IFACE_ENTRY*)(array_data((usbd)->ifaces)))[(iface)])
-#define STRING(usbd, i)                             (((USBD_STRING*)(array_data((usbd)->string_descriptors)))[(i)])
-#define STRINGS_COUNT(usbd)                         (array_size((usbd)->string_descriptors) / sizeof(USBD_STRING))
+#define IFACE(usbd, iface)                          ((USBD_IFACE_ENTRY*)array_at((usbd)->ifaces, iface))
+#define STRING(usbd, i)                             ((USBD_STRING*)array_at((usbd)->string_descriptors, i))
 
 #define USBD_INVALID_INTERFACE                      0xff
 
@@ -167,7 +166,7 @@ void usbd_class_reset(USBD* usbd)
     int i;
     usbd_inform(usbd, USBD_ALERT_RESET, true);
     for (i = 0; i < usbd->ifacecnt; ++i)
-        IFACE(usbd, i).usbd_class->usbd_class_reset(usbd, IFACE(usbd, i).param);
+        IFACE(usbd, i)->usbd_class->usbd_class_reset(usbd, IFACE(usbd, i)->param);
     usbd->ifacecnt = 0;
     array_clear(&usbd->ifaces);
 }
@@ -177,14 +176,14 @@ static inline void usbd_class_suspend(USBD* usbd)
     int i;
     usbd_inform(usbd, USBD_ALERT_SUSPEND, true);
     for (i = 0; i < usbd->ifacecnt; ++i)
-        IFACE(usbd, i).usbd_class->usbd_class_suspend(usbd, IFACE(usbd, i).param);
+        IFACE(usbd, i)->usbd_class->usbd_class_suspend(usbd, IFACE(usbd, i)->param);
 }
 
 void usbd_class_resume(USBD* usbd)
 {
     int i;
     for (i = 0; i < usbd->ifacecnt; ++i)
-        IFACE(usbd, i).usbd_class->usbd_class_resume(usbd, IFACE(usbd, i).param);
+        IFACE(usbd, i)->usbd_class->usbd_class_resume(usbd, IFACE(usbd, i)->param);
     usbd_inform(usbd, USBD_ALERT_RESUME, false);
 }
 
@@ -220,9 +219,9 @@ static inline void usbd_class_configured(USBD* usbd)
     USB_INTERFACE_DESCRIPTOR_TYPE* iface;
     //find configuration
     for (i = 0; i < cfg_array->size; ++i)
-        if (((USB_CONFIGURATION_DESCRIPTOR_TYPE*)(void_array_data(cfg_array)[i]))->bConfigurationValue == usbd->configuration)
+        if ((*(USB_CONFIGURATION_DESCRIPTOR_TYPE**)array_at(cfg_array, i))->bConfigurationValue == usbd->configuration)
         {
-            cfg = (USB_CONFIGURATION_DESCRIPTOR_TYPE*)(void_array_data(cfg_array)[i]);
+            cfg = *(USB_CONFIGURATION_DESCRIPTOR_TYPE**)array_at(cfg_array, i);
             break;
         }
     if (cfg == NULL)
@@ -237,7 +236,9 @@ static inline void usbd_class_configured(USBD* usbd)
     for (iface = usb_get_first_interface(cfg), usbd->ifacecnt = 0; iface != NULL; iface = usb_get_next_interface(cfg, iface))
         if (iface->bInterfaceNumber >= usbd->ifacecnt)
             usbd->ifacecnt = iface->bInterfaceNumber + 1;
-    if (array_append(&usbd->ifaces, usbd->ifacecnt * sizeof(USBD_IFACE_ENTRY)) == NULL)
+    for (i = 0; i <= usbd->ifacecnt; ++i)
+        array_append(&usbd->ifaces);
+    if (usbd->ifaces == NULL)
     {
 #if (USB_DEBUG_ERRORS)
         printf("USBD fatal: Out of memory\n\r");
@@ -246,7 +247,7 @@ static inline void usbd_class_configured(USBD* usbd)
         return;
     }
     for (i = 0; i < usbd->ifacecnt; ++i)
-        IFACE(usbd, i).usbd_class = &__USBD_STUB_CLASS;
+        IFACE(usbd, i)->usbd_class = &__USBD_STUB_CLASS;
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
         usbd->ep_iface[i] = USBD_INVALID_INTERFACE;
 
@@ -293,39 +294,35 @@ static inline bool usbd_register_device(USB_DEVICE_DESCRIPTOR_TYPE** descriptor,
 
 static inline bool usbd_register_configuration(ARRAY** ar, int index, void* ptr)
 {
-    if (index < void_array_size(*ar))
+    if (index < array_size(*ar) && *((void**)array_at(*ar, index)) != NULL)
     {
-        if (void_array_data(*ar)[index] != NULL)
-        {
-            error(ERROR_ALREADY_CONFIGURED);
-            return false;
-        }
+        error(ERROR_ALREADY_CONFIGURED);
+        return false;
     }
-    else
-    {
-        if (void_array_append(ar, index + 1 - void_array_size(*ar)) == NULL)
-            return false;
-    }
-    void_array_data(*ar)[index] = ptr;
+    while ((*ar) && array_size(*ar) <= index)
+        array_append(ar);
+    if (*ar == NULL)
+        return false;
+    *((void**)array_at(*ar, index)) = ptr;
     return true;
 }
 
 static inline bool usbd_register_string(USBD* usbd, unsigned int index, unsigned int lang, void* ptr)
 {
     int i;
-    for (i = 0; i < STRINGS_COUNT(usbd); ++i)
+    for (i = 0; i < array_size(usbd->string_descriptors); ++i)
     {
-        if (STRING(usbd, i).index == index && STRING(usbd, i).lang == lang)
+        if (STRING(usbd, i)->index == index && STRING(usbd, i)->lang == lang)
         {
             error(ERROR_ALREADY_CONFIGURED);
             return false;
         }
     }
-    array_append(&usbd->string_descriptors, sizeof(USBD_STRING));
+    array_append(&usbd->string_descriptors);
 
-    STRING(usbd, STRINGS_COUNT(usbd) - 1).index = index;
-    STRING(usbd, STRINGS_COUNT(usbd) - 1).lang = lang;
-    STRING(usbd, STRINGS_COUNT(usbd) - 1).string = ptr;
+    STRING(usbd, array_size(usbd->string_descriptors) - 1)->index = index;
+    STRING(usbd, array_size(usbd->string_descriptors) - 1)->lang = lang;
+    STRING(usbd, array_size(usbd->string_descriptors) - 1)->string = ptr;
     return true;
 }
 
@@ -348,28 +345,28 @@ static inline void usbd_unregister_device(USB_DEVICE_DESCRIPTOR_TYPE** descripto
 
 static inline void usbd_unregister_configuration(ARRAY** ar, int index)
 {
-    if (index >= void_array_size(*ar) || void_array_data(*ar)[index] == NULL)
+    if (index >= array_size(*ar) || *(void**)array_at(*ar, index) == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
     }
     //free non-persistent
-    free_if_own(void_array_data(*ar)[index]);
-    void_array_data(*ar)[index] = NULL;
-    if (void_array_size(*ar) == index + 1)
-        void_array_remove(ar, index, 1);
+    free_if_own(*(void**)array_at(*ar, index));
+    *(void**)array_at(*ar, index) = NULL;
+    if (array_size(*ar) == index + 1)
+        array_remove(ar, index);
 }
 
 static inline void usbd_unregister_string(USBD* usbd, unsigned int index, unsigned int lang)
 {
     int i;
-    for (i = 0; i < STRINGS_COUNT(usbd); ++i)
+    for (i = 0; i < array_size(usbd->string_descriptors); ++i)
     {
-        if (STRING(usbd, i).index == index && STRING(usbd, i).lang == lang)
+        if (STRING(usbd, i)->index == index && STRING(usbd, i)->lang == lang)
         {
             //free non-persistent
-            free_if_own(STRING(usbd, i).string);
-            array_remove(&usbd->string_descriptors, i * sizeof(USBD_STRING), sizeof(USBD_STRING));
+            free_if_own(STRING(usbd, i)->string);
+            array_remove(&usbd->string_descriptors, i);
         }
     }
     error(ERROR_NOT_CONFIGURED);
@@ -544,19 +541,16 @@ int send_descriptor(USBD* usbd, void* descriptor, uint8_t type, int size)
 int send_configuration_descriptor(USBD* usbd, ARRAY** ar, int index, uint8_t type)
 {
     USB_CONFIGURATION_DESCRIPTOR_TYPE* dst;
-    dst = (USB_CONFIGURATION_DESCRIPTOR_TYPE*)(void_array_data(*ar)[index]);
+    dst = *((USB_CONFIGURATION_DESCRIPTOR_TYPE**)array_at(*ar, index));
     return send_descriptor(usbd, dst, type, dst->wTotalLength);
 }
 
-//static inline int send_strings_descriptor(USBD* usbd, int index, int lang_id)
-int send_strings_descriptor(USBD* usbd, int index, int lang_id)
+static inline int send_strings_descriptor(USBD* usbd, int index, int lang_id)
 {
     int i;
-    for (i = 0; i < STRINGS_COUNT(usbd); ++i)
-    {
-        if (STRING(usbd, i).index == index && STRING(usbd, i).lang == lang_id)
-            return send_descriptor(usbd, STRING(usbd, i).string, USB_STRING_DESCRIPTOR_INDEX, STRING(usbd, i).string->bLength);
-    }
+    for (i = 0; i < array_size(usbd->string_descriptors); ++i)
+        if (STRING(usbd, i)->index == index && STRING(usbd, i)->lang == lang_id)
+            return send_descriptor(usbd, STRING(usbd, i)->string, USB_STRING_DESCRIPTOR_INDEX, STRING(usbd, i)->string->bLength);
 #if (USBD_DEBUG_ERRORS)
     printf("USB: STRING descriptor %d, lang_id: %#X not present\n\r", index, lang_id);
 #endif
@@ -828,7 +822,7 @@ static inline int usbd_interface_request(USBD* usbd, int iface)
 {
     int res = -1;
     if (iface < usbd->ifacecnt)
-        res = IFACE(usbd, iface).usbd_class->usbd_class_setup(usbd, IFACE(usbd, iface).param, &usbd->setup, usbd->block);
+        res = IFACE(usbd, iface)->usbd_class->usbd_class_setup(usbd, IFACE(usbd, iface)->param, &usbd->setup, usbd->block);
 #if (USBD_DEBUG_ERRORS)
     else
         printf("USBD: Interface %d is not configured\n\r");
@@ -1079,13 +1073,13 @@ static inline void usbd_init(USBD* usbd)
 #if (USB_2_0)
     usbd->dev_descriptor_hs = NULL;
 #endif //USB_2_0
-    void_array_create(&usbd->conf_descriptors_fs, 1);
+    array_create(&usbd->conf_descriptors_fs, sizeof(void*), 1);
 #if (USB_2_0)
-    void_array_create(&usbd->conf_descriptors_hs, 1);
+    array_create(&usbd->conf_descriptors_hs, sizeof(void*), 1);
 #endif //USB_2_0
-    array_create(&usbd->ifaces, sizeof(USBD_IFACE_ENTRY));
+    array_create(&usbd->ifaces, sizeof(USBD_IFACE_ENTRY), 1);
     //at least 3: manufacturer, product, string 0
-    array_create(&usbd->string_descriptors, 3 * sizeof(USBD_STRING));
+    array_create(&usbd->string_descriptors, sizeof(USBD_STRING), 3);
 
     usbd->ifacecnt = 0;
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
@@ -1199,7 +1193,7 @@ bool usbd_class_interface_request(USBD* usbd, IPC* ipc, unsigned int iface)
         error(ERROR_INVALID_PARAMS);
         return true;
     }
-    return IFACE(usbd, iface).usbd_class->usbd_class_request(usbd, IFACE(usbd, iface).param, ipc);
+    return IFACE(usbd, iface)->usbd_class->usbd_class_request(usbd, IFACE(usbd, iface)->param, ipc);
 }
 
 bool usbd_class_endpoint_request(USBD *usbd, IPC* ipc, unsigned int num)
@@ -1209,7 +1203,7 @@ bool usbd_class_endpoint_request(USBD *usbd, IPC* ipc, unsigned int num)
         error(ERROR_INVALID_PARAMS);
         return true;
     }
-    return IFACE(usbd, usbd->ep_iface[num]).usbd_class->usbd_class_request(usbd, IFACE(usbd, usbd->ep_iface[num]).param, ipc);
+    return IFACE(usbd, usbd->ep_iface[num])->usbd_class->usbd_class_request(usbd, IFACE(usbd, usbd->ep_iface[num])->param, ipc);
 }
 
 void usbd()
@@ -1283,10 +1277,10 @@ bool usbd_register_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* u
 {
     if (iface >= usbd->ifacecnt)
         return false;
-    if (IFACE(usbd, iface).usbd_class != &__USBD_STUB_CLASS)
+    if (IFACE(usbd, iface)->usbd_class != &__USBD_STUB_CLASS)
         return false;
-    IFACE(usbd, iface).usbd_class = usbd_class;
-    IFACE(usbd, iface).param = param;
+    IFACE(usbd, iface)->usbd_class = usbd_class;
+    IFACE(usbd, iface)->param = param;
     return true;
 }
 
@@ -1294,9 +1288,9 @@ bool usbd_unregister_interface(USBD* usbd, unsigned int iface, const USBD_CLASS*
 {
     if (iface >= usbd->ifacecnt)
         return false;
-    if (IFACE(usbd, iface).usbd_class != usbd_class)
+    if (IFACE(usbd, iface)->usbd_class != usbd_class)
         return false;
-    IFACE(usbd, iface).usbd_class = &__USBD_STUB_CLASS;
+    IFACE(usbd, iface)->usbd_class = &__USBD_STUB_CLASS;
     return true;
 }
 
@@ -1304,7 +1298,7 @@ bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int num)
 {
     if (iface >= usbd->ifacecnt || num >= USB_EP_COUNT_MAX)
         return false;
-    if (IFACE(usbd, iface).usbd_class == &__USBD_STUB_CLASS)
+    if (IFACE(usbd, iface)->usbd_class == &__USBD_STUB_CLASS)
         return false;
     if (usbd->ep_iface[num] != USBD_INVALID_INTERFACE)
         return false;
@@ -1316,7 +1310,7 @@ bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int num)
 {
     if (iface >= usbd->ifacecnt || num >= USB_EP_COUNT_MAX)
         return false;
-    if (IFACE(usbd, iface).usbd_class == &__USBD_STUB_CLASS)
+    if (IFACE(usbd, iface)->usbd_class == &__USBD_STUB_CLASS)
         return false;
     if (usbd->ep_iface[num] != iface)
         return false;

@@ -72,10 +72,10 @@ uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
     io->block = INVALID_HANDLE;
     io->buf = NULL;
     io->size = 0;
-    if (void_array_size(tcpip->free_blocks))
+    if (array_size(tcpip->free_blocks))
     {
-        io->block = (HANDLE)void_array_data(tcpip->free_blocks)[void_array_size(tcpip->free_blocks) - 1];
-        void_array_remove(&tcpip->free_blocks, void_array_size(tcpip->free_blocks) - 1, 1);
+        io->block = *(HANDLE*)array_at(tcpip->free_blocks, array_size(tcpip->free_blocks) - 1);
+        array_remove(&tcpip->free_blocks, array_size(tcpip->free_blocks) - 1);
     }
     else if (tcpip->blocks_allocated < TCPIP_MAX_FRAMES_COUNT)
     {
@@ -102,8 +102,8 @@ uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
 
 static void tcpip_release_block(TCPIP* tcpip, HANDLE block)
 {
-    void_array_append(&tcpip->free_blocks, 1);
-    void_array_data(tcpip->free_blocks)[void_array_size(tcpip->free_blocks) - 1] = (void*)block;
+    array_append(&tcpip->free_blocks);
+    *(void**)array_at(tcpip->free_blocks, array_size(tcpip->free_blocks) - 1) = (void*)block;
 }
 
 void tcpip_release_io(TCPIP* tcpip, TCPIP_IO* io)
@@ -206,10 +206,10 @@ void tcpip_init(TCPIP* tcpip)
     tcpip->blocks_allocated = 0;
 #if (ETH_DOUBLE_BUFFERING)
     //2 rx + 2 tx + 1 for processing
-    void_array_create(&tcpip->free_blocks, 5);
+    array_create(&tcpip->free_blocks, sizeof(void*), 5);
 #else
     //1 rx + 1 tx + 1 for processing
-    void_array_create(&tcpip->free_blocks, 3);
+    array_create(&tcpip->free_blocks, sizeof(void*), 3);
 #endif
     tcpip_mac_init(tcpip);
     tcpip_arp_init(tcpip);
@@ -222,7 +222,6 @@ static inline void tcpip_timer(TCPIP* tcpip)
     ++tcpip->seconds;
     //forward to others
     tcpip_arp_timer(tcpip, tcpip->seconds);
-    //TODO: call arp
     timer_start_ms(tcpip->timer, 1000, 0);
 }
 
