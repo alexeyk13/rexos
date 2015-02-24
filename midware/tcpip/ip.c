@@ -8,6 +8,7 @@
 #include "tcpip_private.h"
 #include "../../userspace/stdio.h"
 #include "icmp.h"
+#include <string.h>
 
 #define IP_DF                                   (1 << 6)
 #define IP_MF                                   (1 << 5)
@@ -97,14 +98,51 @@ bool ip_request(TCPIP* tcpip, IPC* ipc)
 
 uint8_t* ip_allocate_io(TCPIP* tcpip, TCPIP_IO* io, unsigned int size)
 {
-    //TODO: fragmented frames, right now just forward to tcpip
-    return tcpip_allocate_io(tcpip, io);
+    //TODO: fragmented frames
+    if (tcpip_allocate_io(tcpip, io) == NULL)
+        return NULL;
+    //reserve space for IP header
+    io->buf += IP_HEADER_SIZE;
+    return io->buf;
 }
 
 void ip_release_io(TCPIP* tcpip, TCPIP_IO* io)
 {
-    //TODO: fragmented frames, right now just forward to tcpip
+    //TODO: fragmented frames
     tcpip_release_io(tcpip, io);
+}
+
+void ip_tx(TCPIP* tcpip, TCPIP_IO* io, const IP* dst, uint8_t proto)
+{
+    //TODO: fragmented frames
+    uint16_t cs;
+    io->buf -= IP_HEADER_SIZE;
+    io->size += IP_HEADER_SIZE;
+
+    memset(io->buf, 0x00, IP_HEADER_SIZE);
+    //VERSION, IHL
+    io->buf[0] = 0x45;
+    //total len
+    io->buf[2] = (io->size >> 8) & 0xff;
+    io->buf[3] = io->size & 0xff;
+    //id
+    io->buf[4] = (tcpip->ip.id >> 8) & 0xff;
+    io->buf[5] = tcpip->ip.id & 0xff;
+    ++tcpip->ip.id;
+    //ttl
+    io->buf[8] = 0xff;
+    //proto
+    io->buf[9] = proto;
+    //src
+    *(uint32_t*)(io->buf + 12) = tcpip_ip(tcpip)->u32.ip;
+    //dst
+    *(uint32_t*)(io->buf + 16) = dst->u32.ip;
+    //update checksum
+    cs = ip_checksum(io->buf, IP_HEADER_SIZE);
+    io->buf[10] = (cs >> 8) & 0xff;
+    io->buf[11] = cs & 0xff;
+
+    route_tx(tcpip, io, dst);
 }
 
 static void ip_process(TCPIP* tcpip, TCPIP_IO* io, IP* src, uint8_t proto)
@@ -116,7 +154,7 @@ static void ip_process(TCPIP* tcpip, TCPIP_IO* io, IP* src, uint8_t proto)
 #endif
     switch (proto)
     {
-#if (TCPIP_ICMP)
+#if (ICMP)
     case PROTO_ICMP:
         icmp_rx(tcpip, io, src);
         break;
@@ -195,7 +233,13 @@ void ip_rx(TCPIP* tcpip, TCPIP_IO* io)
 
     src.u32.ip = (IP_HEADER_SRC_IP(io->buf))->u32.ip;
     proto = IP_HEADER_PROTOCOL(io->buf);
-    io->buf += hdr_size;
-    io->size = len - hdr_size;
+    //process non-standart IP header
+    if (hdr_size != IP_HEADER_SIZE)
+    {
+        memmove(io->buf + IP_HEADER_SIZE, io->buf + hdr_size, len - hdr_size);
+        len = len - hdr_size + IP_HEADER_SIZE;
+    }
+    io->buf += IP_HEADER_SIZE;
+    io->size = len - IP_HEADER_SIZE;
     ip_process(tcpip, io, &src, proto);
 }

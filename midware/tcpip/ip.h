@@ -221,6 +221,7 @@ bool ip_request(TCPIP* tcpip, IPC* ipc);
 uint8_t* ip_allocate_io(TCPIP* tcpip, TCPIP_IO* io, unsigned int size);
 //release previously allocated io. IO is not actually freed, just put in queue of free blocks
 void ip_release_io(TCPIP* tcpip, TCPIP_IO* io);
+void ip_tx(TCPIP* tcpip, TCPIP_IO* io, const IP* dst, uint8_t proto);
 
 //from mac
 void ip_rx(TCPIP* tcpip, TCPIP_IO* io);
