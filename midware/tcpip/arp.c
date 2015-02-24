@@ -145,11 +145,9 @@ static void arp_remove(TCPIP* tcpip, int idx)
 #if (ARP_DEBUG)
     else
     {
-        printf("ARP: route removed ");
+        printf("ARP: route to ");
         ip_print(&ARP_CACHE_ITEM(tcpip, idx)->ip);
-        printf(" -> ");
-        mac_print(&ARP_CACHE_ITEM(tcpip, idx)->mac);
-        printf("\n\r");
+        printf(" removed\n\r");
     }
 #endif
     array_remove(&tcpip->arp.cache, idx);
