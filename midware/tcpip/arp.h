@@ -53,4 +53,7 @@ void arp_rx(TCPIP* tcpip, TCPIP_IO* io);
 //from route. If false returned, sender must queue request for asynchronous answer
 bool arp_resolve(TCPIP* tcpip, const IP* ip, MAC* mac);
 
+//from icmp or application
+void arp_remove_route(TCPIP* tcpip, const IP* ip);
+
 #endif // TCPIP_ARP_H

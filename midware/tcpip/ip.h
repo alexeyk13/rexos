@@ -12,6 +12,8 @@
 #include "../../userspace/ipc.h"
 #include "sys_config.h"
 
+#define IP_HEADER_SIZE                                  20
+
 //Internet Control Message       [RFC792,JBP]
 #define PROTO_ICMP                                      1
 //Internet Group Management     [RFC1112,JBP]

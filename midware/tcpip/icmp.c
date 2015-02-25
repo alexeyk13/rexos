@@ -9,17 +9,17 @@
 #include "tcpip_private.h"
 #include "../../userspace/stdio.h"
 #include <string.h>
+#include "arp.h"
 
-#define ICMP_HEADER_SIZE                                            4
+#define ICMP_HEADER_SIZE                                            8
 #define ICMP_TYPE(buf)                                              ((buf)[0])
+#define ICMP_CODE(buf)                                              ((buf)[1])
 #define ICMP_ID(buf)                                                (((buf)[4] << 8) | ((buf)[5]))
 #define ICMP_SEQ(buf)                                               (((buf)[6] << 8) | ((buf)[7]))
 
 #if (ICMP_ECHO)
 //64 - ip header - mac header - 2 inverted sequence number?!
 #define ICMP_DATA_MAGIC_SIZE                                        22
-#define ICMP_ECHO_HEADER_SIZE                                       8
-
 static const uint8_t __ICMP_DATA_MAGIC[ICMP_DATA_MAGIC_SIZE] =      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22};
 #endif
 
@@ -55,9 +55,9 @@ static inline void icmp_cmd_echo(TCPIP* tcpip, IP_IO* ip_io, IP* src)
 static bool icmp_cmd_echo_request(TCPIP* tcpip)
 {
     IP_IO ip_io;
-    if (ip_allocate_io(tcpip, &ip_io, ICMP_DATA_MAGIC_SIZE + ICMP_ECHO_HEADER_SIZE, PROTO_ICMP) == NULL)
+    if (ip_allocate_io(tcpip, &ip_io, ICMP_DATA_MAGIC_SIZE + ICMP_HEADER_SIZE, PROTO_ICMP) == NULL)
         return false;
-    ip_io.io.size = ICMP_DATA_MAGIC_SIZE + ICMP_ECHO_HEADER_SIZE;
+    ip_io.io.size = ICMP_DATA_MAGIC_SIZE + ICMP_HEADER_SIZE;
     //type
     ip_io.io.buf[0] = ICMP_CMD_ECHO;
     //code
@@ -68,7 +68,7 @@ static bool icmp_cmd_echo_request(TCPIP* tcpip)
     //sequence
     ip_io.io.buf[6] = (tcpip->icmp.seq >> 8) & 0xff;
     ip_io.io.buf[7] = tcpip->icmp.seq & 0xff;
-    memcpy(ip_io.io.buf + ICMP_ECHO_HEADER_SIZE, __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE);
+    memcpy(ip_io.io.buf + ICMP_HEADER_SIZE, __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE);
     tcpip->icmp.ttl = tcpip_seconds(tcpip) + ICMP_ECHO_TIMEOUT;
     icmp_tx(tcpip, &ip_io, &tcpip->icmp.dst);
     return true;
@@ -121,7 +121,7 @@ static inline void icmp_cmd_echo_reply(TCPIP* tcpip, IP_IO* ip_io, IP* src)
         success = false;
     if (tcpip->icmp.id != ICMP_ID(ip_io->io.buf) || tcpip->icmp.seq != ICMP_SEQ(ip_io->io.buf))
         success = false;
-    if (memcmp(ip_io->io.buf + ICMP_ECHO_HEADER_SIZE, __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE))
+    if (memcmp(ip_io->io.buf + ICMP_HEADER_SIZE, __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE))
         success = false;
     if (success)
         ++tcpip->icmp.success_count;
@@ -130,13 +130,41 @@ static inline void icmp_cmd_echo_reply(TCPIP* tcpip, IP_IO* ip_io, IP* src)
 }
 #endif
 
+#if (ICMP_FLOW_CONTROL)
+static inline void icmp_cmd_destination_unreachable(TCPIP* tcpip, IP_IO* ip_io)
+{
+    IP dst;
+    //useless if no original header provided
+    if (ip_io->io.size < ICMP_HEADER_SIZE + IP_HEADER_SIZE)
+    {
+        ip_release_io(tcpip, ip_io);
+        return;
+    }
+    dst.u32.ip = *((uint32_t*)(ip_io->io.buf + ICMP_HEADER_SIZE + 16));
+#if (ICMP_DEBUG)
+    printf("ICMP: DESTINATION UNREACHABLE(%d) ", ICMP_CODE(ip_io->io.buf));
+    ip_print(&dst);
+    printf("\n\r");
+#endif
+    switch (ICMP_CODE(ip_io->io.buf))
+    {
+    case ICMP_NET_UNREACHABLE:
+    case ICMP_HOST_UNREACHABLE:
+    case ICMP_SOURCE_ROUTE_FAILED:
+        arp_remove_route(tcpip, &dst);
+        break;
+    default:
+        break;
+    }
+}
+#endif //ICMP_FLOW_CONTROL
+
 bool icmp_request(TCPIP* tcpip, IPC* ipc)
 {
     bool need_post = false;
     IP ip;
     switch (ipc->cmd)
     {
-//TODO: ICMP_INFO
 #if (ICMP_ECHO)
     case ICMP_PING:
         ip.u32.ip = ipc->param1;
@@ -188,16 +216,11 @@ void icmp_rx(TCPIP* tcpip, IP_IO* ip_io, IP* src)
         icmp_cmd_echo(tcpip, ip_io, src);
         break;
 #endif
-/*
-    case ICMP_CMD_DESTINATION_UNREACHABLE:
-    case ICMP_CMD_SOURCE_QUENCH:
-    case ICMP_CMD_REDIRECT:
-    case ICMP_CMD_TIME_EXCEEDED:
-    case ICMP_CMD_PARAMETER_PROBLEM:
-    case ICMP_CMD_TIMESTAMP:
-    case ICMP_CMD_TIMESTAMP_REPLY:
-    case ICMP_CMD_INFORMATION_REQUEST:
-    case ICMP_CMD_INFORMATION_REPLY:*/
+#if (ICMP_FLOW_CONTROL)
+    case  ICMP_CMD_DESTINATION_UNREACHABLE:
+        icmp_cmd_destination_unreachable(tcpip, ip_io);
+        break;
+#endif //ICMP_FLOW_CONTROL
     default:
 #if (ICMP_DEBUG)
         printf("ICMP: unhandled type %d from ", ICMP_TYPE(ip_io->io.buf));

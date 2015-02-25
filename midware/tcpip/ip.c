@@ -13,8 +13,6 @@
 #define IP_DF                                   (1 << 6)
 #define IP_MF                                   (1 << 5)
 
-#define IP_HEADER_SIZE                          20
-
 #define IP_HEADER_VERSION(buf)                  ((buf)[0] >> 4)
 #define IP_HEADER_IHL(buf)                      ((buf)[0] & 0xf)
 #define IP_HEADER_TOTAL_LENGTH(buf)             (((buf)[2] << 8) | (buf)[3])

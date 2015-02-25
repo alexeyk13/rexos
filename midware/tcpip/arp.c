@@ -221,6 +221,13 @@ static void arp_update(TCPIP* tcpip, const IP* ip, const MAC* mac)
 #endif
 }
 
+void arp_remove_route(TCPIP* tcpip, const IP* ip)
+{
+    int idx = arp_index(tcpip, ip);
+    if (idx >= 0)
+        arp_remove(tcpip, idx);
+}
+
 static bool arp_lookup(TCPIP* tcpip, const IP* ip, MAC* mac)
 {
     int idx = arp_index(tcpip, ip);
