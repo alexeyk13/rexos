@@ -185,11 +185,13 @@ static void arp_insert(TCPIP* tcpip, const IP* ip, const MAC* mac, unsigned int 
                 break;
             }
     }
-    array_insert(&tcpip->arp.cache, idx);
-    ARP_CACHE_ITEM(tcpip, idx)->ip.u32.ip = ip->u32.ip;
-    ARP_CACHE_ITEM(tcpip, idx)->mac.u32.hi = mac->u32.hi;
-    ARP_CACHE_ITEM(tcpip, idx)->mac.u32.lo = mac->u32.lo;
-    ARP_CACHE_ITEM(tcpip, idx)->ttl = ttl;
+    if (array_insert(&tcpip->arp.cache, idx))
+    {
+        ARP_CACHE_ITEM(tcpip, idx)->ip.u32.ip = ip->u32.ip;
+        ARP_CACHE_ITEM(tcpip, idx)->mac.u32.hi = mac->u32.hi;
+        ARP_CACHE_ITEM(tcpip, idx)->mac.u32.lo = mac->u32.lo;
+        ARP_CACHE_ITEM(tcpip, idx)->ttl = ttl;
+    }
 #if (ARP_DEBUG)
     if (mac->u32.hi && mac->u32.lo)
     {
@@ -237,11 +239,13 @@ void arp_link_event(TCPIP* tcpip, bool link)
 {
     if (link)
     {
+        if (tcpip_ip(tcpip)->u32.ip)
+            arp_cmd_request(tcpip, tcpip_ip(tcpip));
         //just for test
-        IP ip;
+/*        IP ip;
         ip.u32.ip = IP_MAKE(192, 168, 1, 1);
         MAC mac;
-        arp_resolve(tcpip, &ip, &mac);
+        arp_resolve(tcpip, &ip, &mac);*/
     }
     else
     {
@@ -322,6 +326,9 @@ void arp_rx(TCPIP* tcpip, TCPIP_IO* io)
             //insert in cache
             arp_insert(tcpip, ARP_SPA(io->buf), ARP_SHA(io->buf), ARP_CACHE_TIMEOUT);
         }
+        //announcment
+        if (ARP_TPA(io->buf)->u32.ip == ARP_SPA(io->buf)->u32.ip && mac_compare(ARP_THA(io->buf), &__MAC_REQUEST))
+            arp_insert(tcpip, ARP_SPA(io->buf), ARP_SHA(io->buf), ARP_CACHE_TIMEOUT);
         break;
     case ARP_REPLY:
         if (mac_compare(tcpip_mac(tcpip), ARP_THA(io->buf)))
