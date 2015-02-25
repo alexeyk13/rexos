@@ -29,7 +29,7 @@ void icmp_init(TCPIP* tcpip)
     tcpip->icmp.seq_count = 0;
 }
 
-static void icmp_tx(TCPIP* tcpip, IP_IO* ip_io, IP* dst)
+static void icmp_tx(TCPIP* tcpip, IP_IO* ip_io, const IP* dst)
 {
     ip_io->io.buf[2] = ip_io->io.buf[3] = 0;
     uint16_t cs = ip_checksum(ip_io->io.buf, ip_io->io.size);
@@ -209,3 +209,53 @@ void icmp_rx(TCPIP* tcpip, IP_IO* ip_io, IP* src)
 
     }
 }
+
+#if (ICMP_FLOW_CONTROL)
+static void icmp_control_prepare(TCPIP* tcpip, uint8_t cmd, uint8_t code, IP_IO* original)
+{
+    //cmd
+    original->io.buf[0] = cmd;
+    //code
+    original->io.buf[1] = code;
+    //generally unused
+    *(uint32_t*)(original->io.buf + 4) = 0;
+    //64 bits + original IP header
+    memmove(original->io.buf + ICMP_HEADER_SIZE, original->io.buf - original->hdr_size, original->hdr_size + 8);
+}
+
+
+void icmp_destination_unreachable(TCPIP* tcpip, uint8_t code, IP_IO* original, const IP *dst)
+{
+#if (ICMP_DEBUG)
+    printf("ICMP: Destination unreachable(%d) to ", code);
+    ip_print(dst);
+    printf("\n\r");
+#endif
+    icmp_control_prepare(tcpip, ICMP_CMD_DESTINATION_UNREACHABLE, code, original);
+    icmp_tx(tcpip, original, dst);
+}
+
+void icmp_time_exceeded(TCPIP* tcpip, uint8_t code, IP_IO* original, const IP* dst)
+{
+#if (ICMP_DEBUG)
+    printf("ICMP: Time exceeded(%d) to ", code);
+    ip_print(dst);
+    printf("\n\r");
+#endif
+    icmp_control_prepare(tcpip, ICMP_CMD_TIME_EXCEEDED, code, original);
+    icmp_tx(tcpip, original, dst);
+}
+
+void icmp_parameter_problem(TCPIP* tcpip, uint8_t offset, IP_IO* original, const IP* dst)
+{
+#if (ICMP_DEBUG)
+    printf("ICMP: Parameter problem(%d) to ", offset);
+    ip_print(dst);
+    printf("\n\r");
+#endif
+    icmp_control_prepare(tcpip, ICMP_CMD_PARAMETER_PROBLEM, 0, original);
+    original->io.buf[4] = offset;
+    icmp_tx(tcpip, original, dst);
+}
+
+#endif //ICMP_FLOW_CONTROL

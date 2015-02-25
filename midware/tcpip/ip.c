@@ -173,7 +173,11 @@ static void ip_process(TCPIP* tcpip, IP_IO* ip_io, IP* src)
         ip_print(src);
         printf("\n\r");
 #endif
+#if (ICMP_FLOW_CONTROL)
+        icmp_destination_unreachable(tcpip, ICMP_PROTOCOL_UNREACHABLE, ip_io, src);
+#else
         ip_release_io(tcpip, ip_io);
+#endif
     }
 }
 
@@ -200,35 +204,6 @@ void ip_rx(TCPIP* tcpip, TCPIP_IO* io)
     }
     ip_io.io.size = IP_HEADER_TOTAL_LENGTH(io->buf);
     ip_io.hdr_size = IP_HEADER_IHL(io->buf) << 2;
-    if ((IP_HEADER_VERSION(io->buf) != 4) || (ip_io.hdr_size < IP_HEADER_SIZE) || (ip_io.io.size < IP_HEADER_SIZE) || (IP_HEADER_TTL(io->buf) == 0))
-    {
-        tcpip_release_io(tcpip, io);
-        return;
-    }
-    //TODO: if len more than MTU, inform host by ICMP and only than drop packet
-    if (ip_io.io.size > io->size)
-    {
-        tcpip_release_io(tcpip, io);
-        return;
-    }
-
-    //TODO: packet assembly from fragments
-//#if (IP_FRAGMENTATION)
-//#else
-    //drop all fragmented frames
-    //TODO: maybe also ICMP?
-    if ((IP_HEADER_FLAGS(io->buf) & IP_MF) || (IP_HEADER_FRAME_OFFSET(io->buf)))
-    {
-        tcpip_release_io(tcpip, io);
-        return;
-    }
-//endif
-    //compare destination address
-    if (tcpip_ip(tcpip)->u32.ip != IP_HEADER_DST_IP(io->buf)->u32.ip)
-    {
-        tcpip_release_io(tcpip, io);
-        return;
-    }
 #if (IP_CHECKSUM)
     //drop if checksum is invalid
     if (ip_checksum(io->buf, ip_io.hdr_size))
@@ -237,11 +212,63 @@ void ip_rx(TCPIP* tcpip, TCPIP_IO* io)
         return;
     }
 #endif
-
     src.u32.ip = (IP_HEADER_SRC_IP(io->buf))->u32.ip;
     ip_io.proto = IP_HEADER_PROTOCOL(io->buf);
     ip_io.io.buf = io->buf + ip_io.hdr_size;
     ip_io.io.size -= ip_io.hdr_size;
     ip_io.io.block = io->block;
+    if ((IP_HEADER_VERSION(io->buf) != 4) || (ip_io.hdr_size < IP_HEADER_SIZE))
+    {
+#if (ICMP_FLOW_CONTROL)
+        icmp_parameter_problem(tcpip, 0, &ip_io, &src);
+#else
+        tcpip_release_io(tcpip, io);
+#endif
+        return;
+    }
+    //unicast-only filter
+    if (tcpip_ip(tcpip)->u32.ip != IP_HEADER_DST_IP(io->buf)->u32.ip)
+    {
+        tcpip_release_io(tcpip, io);
+        return;
+    }
+
+    //len more than MTU, inform host by ICMP and only than drop packet
+    if (ip_io.io.size > io->size)
+    {
+#if (ICMP_FLOW_CONTROL)
+        icmp_parameter_problem(tcpip, 2, &ip_io, &src);
+#else
+        tcpip_release_io(tcpip, io);
+#endif
+        return;
+    }
+    //ttl exceeded
+    if (IP_HEADER_TTL(io->buf) == 0)
+    {
+#if (ICMP_FLOW_CONTROL)
+        icmp_time_exceeded(tcpip, ICMP_TTL_EXCEED_IN_TRANSIT, &ip_io, &src);
+#else
+        tcpip_release_io(tcpip, io);
+#endif
+        return;
+    }
+
+#if (IP_FRAGMENTATION)
+    //TODO: packet assembly from fragments
+#error IP FRAGMENTATION is Not Implemented!
+#else
+    //drop all fragmented frames, inform by ICMP
+    if ((IP_HEADER_FLAGS(io->buf) & IP_MF) || (IP_HEADER_FRAME_OFFSET(io->buf)))
+    {
+#if (ICMP_FLOW_CONTROL)
+        icmp_parameter_problem(tcpip, 6, &ip_io, &src);
+#else
+        tcpip_release_io(tcpip, io);
+#endif
+        return;
+    }
+#endif
+
     ip_process(tcpip, &ip_io, &src);
 }

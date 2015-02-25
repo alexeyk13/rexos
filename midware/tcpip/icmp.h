@@ -35,6 +35,16 @@
 #define ICMP_CMD_INFORMATION_REQUEST                    15
 #define ICMP_CMD_INFORMATION_REPLY                      16
 
+#define ICMP_NET_UNREACHABLE                            0
+#define ICMP_HOST_UNREACHABLE                           1
+#define ICMP_PROTOCOL_UNREACHABLE                       2
+#define ICMP_PORT_UNREACHABLE                           3
+#define ICMP_FRAGMENTATION_NEEDED_AND_DF_SET            4
+#define ICMP_SOURCE_ROUTE_FAILED                        5
+
+#define ICMP_TTL_EXCEED_IN_TRANSIT                      0
+#define ICMP_FRAGMENT_REASSEMBLY_EXCEED                 1
+
 typedef struct {
     uint16_t id;
 #if (ICMP_ECHO)
@@ -54,5 +64,12 @@ void icmp_timer(TCPIP* tcpip, unsigned int seconds);
 
 //from ip
 void icmp_rx(TCPIP* tcpip, IP_IO* ip_io, IP* src);
+
+//tools
+#if (ICMP_FLOW_CONTROL)
+void icmp_destination_unreachable(TCPIP* tcpip, uint8_t code, IP_IO* original, const IP* dst);
+void icmp_time_exceeded(TCPIP* tcpip, uint8_t code, IP_IO* original, const IP* dst);
+void icmp_parameter_problem(TCPIP* tcpip, uint8_t offset, IP_IO* original, const IP* dst);
+#endif //ICMP_FLOW_CONTROL
 
 #endif // ICMP_H

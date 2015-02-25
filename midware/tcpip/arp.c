@@ -239,13 +239,9 @@ void arp_link_event(TCPIP* tcpip, bool link)
 {
     if (link)
     {
+        //announce IP
         if (tcpip_ip(tcpip)->u32.ip)
             arp_cmd_request(tcpip, tcpip_ip(tcpip));
-        //just for test
-/*        IP ip;
-        ip.u32.ip = IP_MAKE(192, 168, 1, 1);
-        MAC mac;
-        arp_resolve(tcpip, &ip, &mac);*/
     }
     else
     {
