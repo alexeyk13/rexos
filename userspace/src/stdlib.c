@@ -4,11 +4,11 @@
     All rights reserved.
 */
 
-#include "rand.h"
-#include "../userspace/timer.h"
-#include "../userspace/process.h"
+#include "../stdlib.h"
+#include "../timer.h"
+#include "../process.h"
 
-unsigned int __srand()
+unsigned int srand()
 {
     unsigned int seed;
     TIME uptime;
@@ -19,10 +19,10 @@ unsigned int __srand()
 
     get_uptime(&uptime);
     seed ^= uptime.usec;
-    return __rand(&seed);
+    return rand(&seed);
 }
 
-unsigned int __rand(unsigned int* seed)
+unsigned int rand(unsigned int* seed)
 {
     TIME uptime;
     get_uptime(&uptime);

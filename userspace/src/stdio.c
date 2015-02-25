@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "stdio.h"
+#include "../stdio.h"
 #include "../process.h"
 
 void printf(const char *const fmt, ...)

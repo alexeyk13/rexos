@@ -20,8 +20,6 @@ typedef struct {
     void (*pool_free)(POOL*, void*);
     bool (*pool_check)(POOL*, void*);
     void (*pool_stat)(POOL*, POOL_STAT*, void*);
-    unsigned int (*srand)();
-    unsigned int (*rand)(unsigned int* seed);
 }LIB_STD;
 
 /** \addtogroup stdlib embedded uStdlib
@@ -90,20 +88,14 @@ __STATIC_INLINE int utoa(char* buf, unsigned long value, int radix, bool upperca
     \brief initialize random seed
     \retval seed
 */
-__STATIC_INLINE unsigned int srand()
-{
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->srand();
-}
+unsigned int srand();
 
 /**
     \brief get next random value
     \param seed: pointer to initialized before seed
     \retval random value
 */
-__STATIC_INLINE unsigned int rand(unsigned int* seed)
-{
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->rand(seed);
-}
+unsigned int rand(unsigned int* seed);
 
 /** \} */ // end of stdlib group
 
