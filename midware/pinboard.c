@@ -41,8 +41,7 @@ const REX __PINBOARD = {
     pinboard
 };
 
-#define KEYS_COUNT(pins)                            (array_size(pins) / sizeof(KEY))
-#define KEY_GET(pins, i)                            (((KEY*)array_data(pins))[i])
+#define KEY_GET(pins, i)                            ((KEY*)array_at((pins), (i)))
 
 static inline void pinboard_event(KEY* key, unsigned int event)
 {
@@ -86,18 +85,18 @@ void poll_key(KEY* key)
 static inline void pinboard_poll(ARRAY** pins)
 {
     int i;
-    for (i = 0; i < KEYS_COUNT(*pins); ++i)
-        poll_key(&KEY_GET(*pins, i));
+    for (i = 0; i < array_size(*pins); ++i)
+        poll_key(KEY_GET(*pins, i));
 }
 
 static inline void pinboard_open(ARRAY** pins, unsigned int pin, unsigned int mode, unsigned int long_ms, HANDLE process)
 {
     int i;
     KEY* key;
-    for (i = 0; i < KEYS_COUNT(*pins); ++i)
-        if (KEY_GET(*pins, i).pin == pin)
+    for (i = 0; i < array_size(*pins); ++i)
+        if (KEY_GET(*pins, i)->pin == pin)
             error(ERROR_ALREADY_CONFIGURED);
-    if (array_add(pins, sizeof(KEY)) == NULL)
+    if (array_append(pins) == NULL)
         return;
     if (mode & PINBOARD_FLAG_PULL)
     {
@@ -108,7 +107,7 @@ static inline void pinboard_open(ARRAY** pins, unsigned int pin, unsigned int mo
     }
     else
         gpio_enable_pin(pin, GPIO_MODE_IN_FLOAT);
-    key = &KEY_GET(*pins, KEYS_COUNT(*pins) - 1);
+    key = KEY_GET(*pins, array_size(*pins) - 1);
     key->pin = pin;
     key->mode = mode;
     key->long_ms = long_ms;
@@ -120,11 +119,11 @@ static inline void pinboard_open(ARRAY** pins, unsigned int pin, unsigned int mo
 static inline void pinboard_close(ARRAY** pins, unsigned int pin, HANDLE process)
 {
     int i;
-    for (i = 0; i < KEYS_COUNT(*pins); ++i)
-        if (KEY_GET(*pins, i).pin == pin)
+    for (i = 0; i < array_size(*pins); ++i)
+        if (KEY_GET(*pins, i)->pin == pin)
         {
-            if (KEY_GET(*pins, i).process == process)
-                array_remove(pins, i * sizeof(KEY), sizeof(KEY));
+            if (KEY_GET(*pins, i)->process == process)
+                array_remove(pins, i);
             else
                 error(ERROR_ACCESS_DENIED);
             return;
@@ -135,16 +134,16 @@ static inline void pinboard_close(ARRAY** pins, unsigned int pin, HANDLE process
 static inline bool pinboard_get_key_state(ARRAY** pins, unsigned int pin)
 {
     int i;
-    for (i = 0; i < KEYS_COUNT(*pins); ++i)
-        if (KEY_GET(*pins, i).pin == pin)
-            return KEY_GET(*pins, i).pressed;
+    for (i = 0; i < array_size(*pins); ++i)
+        if (KEY_GET(*pins, i)->pin == pin)
+            return KEY_GET(*pins, i)->pressed;
     error(ERROR_NOT_CONFIGURED);
     return false;
 }
 
 static inline void pinboard_init(ARRAY** pins)
 {
-    array_create(pins, sizeof(KEY));
+    array_create(pins, sizeof(KEY), 1);
 }
 
 static inline bool pinboard_request(ARRAY** pins, IPC* ipc)
@@ -178,8 +177,8 @@ void sys_info(ARRAY** pins)
     int i;
     printf("Pinboard info\n\r\n\r");
     printf("Active keys: ");
-    for (i = 0; i < KEYS_COUNT(*pins); ++i)
-        printf("%d, %s ", KEY_GET(*pins, i).pin, KEY_GET(*pins, i).pressed ? "pressed" : "released");
+    for (i = 0; i < array_size(*pins); ++i)
+        printf("%d, %s ", KEY_GET(*pins, i)->pin, KEY_GET(*pins, i)->pressed ? "pressed" : "released");
     printf("\n\r");
 }
 #endif
