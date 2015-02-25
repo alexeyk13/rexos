@@ -29,8 +29,7 @@
 #define KERNEL_MES                                  0
 //soft timers if sleep or ipc_read with timeout is not enough
 #define KERNEL_SOFT_TIMERS                          1
-
+//gpio bitbang library. Implementation specific
 #define KERNEL_LIB_GPIO                             1
-#define KERNEL_LIB_GUI                              0
 
 #endif // KERNEL_CONFIG_H
