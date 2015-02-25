@@ -77,5 +77,55 @@
 //------------------------------ PIN board -------------------------------------------
 #define PINBOARD_PROCESS_SIZE                               400
 #define PINBOARD_POLL_TIME_MS                               100
+//--------------------------------- ETH ----------------------------------------------
+#define ETH_PHY_ADDRESS                                     0x1f
+#define ETH_AUTO_NEGOTIATION_TIME                           5000
+
+#define ETH_DOUBLE_BUFFERING                                1
+//------------------------------- TCP/IP ---------------------------------------------
+#define TCPIP_PROCESS_SIZE                                  700
+#define TCPIP_PROCESS_PRIORITY                              150
+#define TCPIP_PROCESS_IPC_COUNT                             5
+
+#define TCPIP_DEBUG                                         1
+#define TCPIP_DEBUG_ERRORS                                  1
+
+#define TCPIP_MTU                                           1500
+#define TCPIP_MAX_FRAMES_COUNT                              20
+
+//----------------------------- TCP/IP MAC --------------------------------------------
+//software MAC filter. Turn on in case of hardware is not supporting
+#define MAC_FILTER                                          1
+#define MAC_DEBUG                                           0
+
+//----------------------------- TCP/IP ARP --------------------------------------------
+#define ARP_DEBUG                                           1
+#define ARP_DEBUG_FLOW                                      0
+
+#define ARP_CACHE_SIZE_MAX                                  10
+//in seconds
+#define ARP_CACHE_INCOMPLETE_TIMEOUT                        5
+#define ARP_CACHE_TIMEOUT                                   600
+
+//----------------------------- TCP/IP IP ---------------------------------------------
+#define IP_DEBUG                                            1
+#define IP_DEBUG_FLOW                                       0
+
+//set, if not supported by hardware
+#define IP_CHECKSUM                                         1
+
+#define IP_FRAGMENTATION                                    1
+#define IP_FRAGMENT_ASSEMBLY_TIMEOUT                        10
+#define IP_MAX_LONG_SIZE                                    5000
+#define IP_MAX_LONG_PACKETS                                 5
+
+//---------------------------- TCP/IP ICMP --------------------------------------------
+#define ICMP                                                1
+//reply on ICMP echo and echo request
+#define ICMP_ECHO                                           1
+#define ICMP_ECHO_REPLY                                     1
+#define ICMP_ECHO_TIMEOUT                                   5
+
+#define ICMP_DEBUG                                          1
 
 #endif // SYS_CONFIG_H

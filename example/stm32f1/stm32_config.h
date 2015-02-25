@@ -87,6 +87,14 @@
 #define HARDWARE_WATCHDOG                       0
 //WDT module enable
 #define STM32_WDT                               0
+//------------------------------- ETH ------------------------------------------------
+#define STM32_ETH_PROCESS_SIZE                  512
+#define STM32_ETH_IPC_COUNT                     5
+
+//enable Pulse per second signal
+#define STM32_ETH_PPS_OUT_ENABLE                0
+//pin remapping for 105/107
+#define STM32_ETH_REMAP                         0
 
 
 #endif // STM32_CONFIG_H

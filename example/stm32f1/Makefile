@@ -32,9 +32,9 @@ CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32F10x
 #not used in kernel
 INCLUDE_FOLDERS             = $(CMSIS_DIR)/Include $(CMSIS_DEVICE_DIR)/Include
 #userspace
-INCLUDE_FOLDERS				+= $(USERSPACE) $(USERSPACE)/core
+INCLUDE_FOLDERS		+= $(USERSPACE) $(USERSPACE)/core $(USERSPACE)/src
 #kernel
-INCLUDE_FOLDERS				+= $(KERNEL) $(KERNEL)/core
+INCLUDE_FOLDERS		+= $(KERNEL) $(KERNEL)/core
 #lib
 INCLUDE_FOLDERS            += $(LIB)
 #sys
@@ -51,13 +51,13 @@ SRC_C                      += kernel.c dbg.c kirq.c kprocess.c ktimer.c kipc.c k
 #kernel MES
 #SRC_C                      += kmutex.c kevent.c ksem.c
 #lib
-SRC_C                      += lib_lib.c lib_time.c lib_stdio.c lib_std.c pool.c printf.c lib_array.c lib_heap.c lib_usb.c stm32_lib_gpio.c
+SRC_C                      += lib_lib.c lib_time.c lib_stdio.c lib_std.c pool.c printf.c lib_array.c lib_heap.c stm32_lib_gpio.c
 #userspace
-SRC_C                      += stdio.c main.c comm.c
+SRC_C                      += stdlib.c stdio.c libusb.c main.c comm.c
 #drv
 SRC_C                      += stm32_power.c stm32_gpio.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_analog.c stm32_usb.c stm32_wdt.c
 #midware
-SRC_C								+= usbd.c cdcd.c
+SRC_C			   += usbdp.c usbd.c cdcd.c
 
 OBJ                         = $(SRC_AS:%.S=%.o) $(SRC_C:%.c=%.o)
 #----------------------------------------------------------
