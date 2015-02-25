@@ -1,7 +1,12 @@
-#include "lib_graphics.h"
-#include "../userspace/heap.h"
-#include "../userspace/error.h"
-#include "../userspace/canvas.h"
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2015, Alexey Kramarenko
+    All rights reserved.
+*/
+
+#include "../graphics.h"
+#include "../heap.h"
+#include "../error.h"
 
 static void graphics_write(uint8_t* pix, unsigned short pix_width, unsigned short bpp, POINT* point, unsigned int data, unsigned int data_width)
 {
@@ -35,7 +40,7 @@ static unsigned int graphics_read(const uint8_t* pix, unsigned short pix_width, 
     return data;
 }
 
-void lib_graphics_put_pixel(CANVAS* canvas, POINT* point, unsigned int color)
+void put_pixel(CANVAS* canvas, POINT* point, unsigned int color)
 {
     if (point->x >= canvas->width || point->y >= canvas->height)
     {
@@ -45,7 +50,7 @@ void lib_graphics_put_pixel(CANVAS* canvas, POINT* point, unsigned int color)
     graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, color, canvas->bits_per_pixel);
 }
 
-unsigned int lib_graphics_get_pixel(CANVAS* canvas, POINT* point)
+unsigned int get_pixel(CANVAS* canvas, POINT* point)
 {
     if (point->x >= canvas->width || point->y >= canvas->height)
     {
@@ -55,7 +60,7 @@ unsigned int lib_graphics_get_pixel(CANVAS* canvas, POINT* point)
     return graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, canvas->bits_per_pixel);
 }
 
-void lib_graphics_clear_rect(CANVAS* canvas, RECT* rect)
+void clear_rect(CANVAS* canvas, RECT* rect)
 {
     POINT point;
     unsigned short width, height, cur_width;
@@ -83,7 +88,7 @@ void lib_graphics_clear_rect(CANVAS* canvas, RECT* rect)
     }
 }
 
-void lib_graphics_write_rect(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode)
+void write_rect(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode)
 {
     POINT point, data_point;
     unsigned short width, height, cur_width;

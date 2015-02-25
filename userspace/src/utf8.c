@@ -1,12 +1,12 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
-#include "lib_utf8.h"
+#include "../utf8.h"
 
-unsigned int lib_utf8_char_len(const char* utf8)
+unsigned int utf8_char_len(const char* utf8)
 {
     unsigned int size;
     uint8_t byte = (uint8_t)utf8[0];
@@ -19,11 +19,11 @@ unsigned int lib_utf8_char_len(const char* utf8)
     return size;
 }
 
-uint32_t lib_utf8_to_utf32(const char *utf8)
+uint32_t utf8_to_utf32(const char *utf8)
 {
     unsigned int i, size;
     uint32_t res;
-    size = lib_utf8_char_len(utf8);
+    size = utf8_char_len(utf8);
     if (size < 2)
         return (uint32_t)utf8[0];
     res = ((uint8_t)utf8[0]) & ((1 << (7 - size)) - 1);
@@ -32,13 +32,13 @@ uint32_t lib_utf8_to_utf32(const char *utf8)
     return res;
 }
 
-unsigned int lib_utf8_len(const char* utf8)
+unsigned int utf8_len(const char* utf8)
 {
     unsigned int cnt = 0;
     unsigned int len = 0;
     while (utf8[len])
     {
-        len += lib_utf8_char_len(utf8 + len);
+        len += utf8_char_len(utf8 + len);
         ++cnt;
     }
     return cnt;

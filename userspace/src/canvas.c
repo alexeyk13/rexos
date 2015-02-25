@@ -1,15 +1,14 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
-#include "lib_canvas.h"
-#include "../userspace/block.h"
-#include "../userspace/canvas.h"
+#include "../canvas.h"
+#include "../block.h"
 #include <string.h>
 
-HANDLE lib_canvas_create(unsigned short width, unsigned short height, unsigned short bits_per_pixel)
+HANDLE canvas_create(unsigned short width, unsigned short height, unsigned short bits_per_pixel)
 {
     CANVAS* canvas = NULL;
     unsigned int data_size = ((width * height * bits_per_pixel + 7) >> 3) + 1;
@@ -26,12 +25,12 @@ HANDLE lib_canvas_create(unsigned short width, unsigned short height, unsigned s
     return block;
 }
 
-CANVAS* lib_canvas_open(HANDLE block)
+CANVAS* canvas_open(HANDLE block)
 {
     return (CANVAS*)block_open(block);
 }
 
-bool lib_canvas_resize(CANVAS* canvas, unsigned short width, unsigned short height, unsigned short bits_per_pixel)
+bool canvas_resize(CANVAS* canvas, unsigned short width, unsigned short height, unsigned short bits_per_pixel)
 {
     unsigned int new_size = ((width * height * bits_per_pixel + 7) >> 3) + 1;
     if (new_size > canvas->size)
@@ -45,12 +44,12 @@ bool lib_canvas_resize(CANVAS* canvas, unsigned short width, unsigned short heig
     return true;
 }
 
-void lib_canvas_clear(CANVAS* canvas)
+void canvas_clear(CANVAS* canvas)
 {
     memset(CANVAS_DATA(canvas), 0, canvas->size);
 }
 
-void lib_canvas_destroy(HANDLE block)
+void canvas_destroy(HANDLE block)
 {
     block_destroy(block);
 }

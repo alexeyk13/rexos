@@ -15,9 +15,6 @@
 #if (KERNEL_LIB_GPIO)
 #include "lib_gpio.h"
 #endif //KERNEL_LIB_GPIO
-#if (KERNEL_LIB_GUI)
-#include "lib_gui.h"
-#endif //KERNEL_LIB_GUI
 
 void lib_stub ()
 {
@@ -35,15 +32,10 @@ const void *const __LIB[] = {
     (const void *const )&__LIB_HEAP,
     (const void *const)&__LIB_ARRAY,
 #if (KERNEL_LIB_GPIO)
-    (const void *const)&__LIB_GPIO,
-#else
-    (const void *const)NULL,
-#endif //KERNEL_LIB_GPIO
-#if (KERNEL_LIB_GUI)
-    (const void *const)&__LIB_GUI
+    (const void *const)&__LIB_GPIO
 #else
     (const void *const)NULL
-#endif //KERNEL_LIB_GUI
+#endif //KERNEL_LIB_GPIO
 };
 
 

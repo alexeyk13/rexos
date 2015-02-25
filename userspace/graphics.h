@@ -1,38 +1,30 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
 #ifndef GRAPHICS_H
 #define GRAPHICS_H
 
-#include "gui.h"
-#include "lib.h"
+#include "canvas.h"
 
-__STATIC_INLINE void put_pixel(CANVAS* canvas, POINT* point, unsigned int color)
-{
-    LIB_CHECK(LIB_ID_GUI);
-    ((const LIB_GUI*)__GLOBAL->lib[LIB_ID_GUI])->lib_graphics_put_pixel(canvas, point, color);
-}
+#define GUI_MODE_OR                         0x0
+#define GUI_MODE_XOR                        0x1
+#define GUI_MODE_AND                        0x2
+#define GUI_MODE_FILL                       0x3
 
-__STATIC_INLINE unsigned int get_pixel(CANVAS* canvas, POINT* point)
-{
-    LIB_CHECK_RET(LIB_ID_GUI);
-    return ((const LIB_GUI*)__GLOBAL->lib[LIB_ID_GUI])->lib_graphics_get_pixel(canvas, point);
-}
+typedef struct {
+    unsigned short x, y;
+} POINT;
 
-__STATIC_INLINE void clear_rect(CANVAS* canvas, RECT* rect)
-{
-    LIB_CHECK(LIB_ID_GUI);
-    ((const LIB_GUI*)__GLOBAL->lib[LIB_ID_GUI])->lib_graphics_clear_rect(canvas, rect);
-}
+typedef struct {
+    unsigned short left, top, width, height;
+} RECT;
 
-
-__STATIC_INLINE void write_rect(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode)
-{
-    LIB_CHECK(LIB_ID_GUI);
-    ((const LIB_GUI*)__GLOBAL->lib[LIB_ID_GUI])->lib_graphics_write_rect(canvas, rect, data_rect, pix, mode);
-}
+void put_pixel(CANVAS* canvas, POINT* point, unsigned int color);
+unsigned int get_pixel(CANVAS* canvas, POINT* point);
+void clear_rect(CANVAS* canvas, RECT* rect);
+void write_rect(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode);
 
 #endif // GRAPHICS_H
