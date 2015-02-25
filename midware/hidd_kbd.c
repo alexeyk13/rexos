@@ -9,6 +9,7 @@
 #include "../userspace/stdlib.h"
 #include "../userspace/file.h"
 #include "sys_config.h"
+#include "usbdp.h"
 
 #include "../userspace/stdio.h"
 #include "../userspace/block.h"
@@ -95,12 +96,12 @@ void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cf
     in_ep = in_ep_size = hid_iface = 0;
 
     //check control/data ep here
-    for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
+    for (iface = usbdp_get_first_interface(cfg); iface != NULL; iface = usbdp_get_next_interface(cfg, iface))
     {
         if (iface->bInterfaceClass == HID_INTERFACE_CLASS && iface->bInterfaceSubClass == HID_SUBCLASS_BOOT_INTERFACE &&
             iface->bInterfaceProtocol == HID_PROTOCOL_KEYBOARD)
         {
-            ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
+            ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usbdp_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
             if (ep != NULL)
             {
                 in_ep = USB_EP_NUM(ep->bEndpointAddress);

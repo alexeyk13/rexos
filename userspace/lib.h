@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -17,7 +17,6 @@ typedef enum {
     LIB_ID_TIME,
     LIB_ID_HEAP,
     LIB_ID_ARRAY,
-    LIB_ID_USB,
     LIB_ID_GPIO,
     LIB_ID_GUI,
     LIB_ID_MAX

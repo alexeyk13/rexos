@@ -14,6 +14,7 @@
 #include <string.h>
 #include "../userspace/array.h"
 #include "../userspace/file.h"
+#include "usbdp.h"
 #if (USBD_CDC_CLASS)
 #include "cdcd.h"
 #endif //USBD_CDC_CLASS
@@ -233,7 +234,7 @@ static inline void usbd_class_configured(USBD* usbd)
         return;
     }
     //find num of interfaces in configuration
-    for (iface = usb_get_first_interface(cfg), usbd->ifacecnt = 0; iface != NULL; iface = usb_get_next_interface(cfg, iface))
+    for (iface = usbdp_get_first_interface(cfg), usbd->ifacecnt = 0; iface != NULL; iface = usbdp_get_next_interface(cfg, iface))
         if (iface->bInterfaceNumber >= usbd->ifacecnt)
             usbd->ifacecnt = iface->bInterfaceNumber + 1;
     for (i = 0; i <= usbd->ifacecnt; ++i)

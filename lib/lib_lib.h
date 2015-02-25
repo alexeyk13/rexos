@@ -7,7 +7,7 @@
 #ifndef LIB_LIB_H
 #define LIB_LIB_H
 
-#include "kernel.h"
+#include "../kernel/kernel.h"
 
 #define LIB_ENTER                                           void* __saved_heap = __GLOBAL->heap;\
                                                             __GLOBAL->heap = __KERNEL; \

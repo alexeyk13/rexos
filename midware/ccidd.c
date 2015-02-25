@@ -7,6 +7,7 @@
 #include "../userspace/block.h"
 #include "../userspace/direct.h"
 #include "../userspace/sys.h"
+#include "usbdp.h"
 #include <string.h>
 #include "sys_config.h"
 
@@ -51,7 +52,7 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
     unsigned int size, status_ep_size;
 
-    for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
+    for (iface = usbdp_get_first_interface(cfg); iface != NULL; iface = usbdp_get_next_interface(cfg, iface))
     {
         if (iface->bInterfaceClass == CCID_INTERFACE_CLASS)
         {
@@ -63,8 +64,8 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
             ccidd->data_ep = 0;
             ccidd->status_ep = 0;
             status_ep_size = 0;
-            for (ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX); ep != NULL;
-                 ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_next_descriptor(cfg, (USB_DESCRIPTOR_TYPE*)ep, USB_ENDPOINT_DESCRIPTOR_INDEX))
+            for (ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usbdp_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX); ep != NULL;
+                 ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usbdp_interface_get_next_descriptor(cfg, (USB_DESCRIPTOR_TYPE*)ep, USB_ENDPOINT_DESCRIPTOR_INDEX))
             {
                 switch (ep->bmAttributes & USB_EP_BM_ATTRIBUTES_TYPE_MASK)
                 {
