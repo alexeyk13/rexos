@@ -294,6 +294,8 @@ bool arp_request(TCPIP* tcpip, IPC* ipc)
         break;
 #endif
     default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
         break;
     }
     return need_post;

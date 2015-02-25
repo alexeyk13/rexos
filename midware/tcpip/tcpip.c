@@ -225,6 +225,7 @@ static inline void tcpip_timer(TCPIP* tcpip)
     ++tcpip->seconds;
     //forward to others
     arp_timer(tcpip, tcpip->seconds);
+    icmp_timer(tcpip, tcpip->seconds);
     timer_start_ms(tcpip->timer, 1000, 0);
 }
 
@@ -260,6 +261,8 @@ static inline bool tcpip_request(TCPIP* tcpip, IPC* ipc)
         tcpip_link_changed(tcpip, ipc->param2);
         break;
     default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
         break;
     }
     return need_post;
@@ -302,6 +305,8 @@ void tcpip_main()
                 need_post = icmp_request(&tcpip, &ipc);
                 break;
             default:
+                error(ERROR_NOT_SUPPORTED);
+                need_post = true;
                 break;
             }
         if (need_post)

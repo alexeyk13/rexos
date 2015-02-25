@@ -50,7 +50,7 @@ typedef struct {
 //from tcpip
 void icmp_init(TCPIP* tcpip);
 bool icmp_request(TCPIP* tcpip, IPC* ipc);
-//TODO: icmp timer
+void icmp_timer(TCPIP* tcpip, unsigned int seconds);
 
 //from ip
 void icmp_rx(TCPIP* tcpip, IP_IO* ip_io, IP* src);

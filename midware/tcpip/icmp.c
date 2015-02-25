@@ -12,6 +12,8 @@
 
 #define ICMP_HEADER_SIZE                                            4
 #define ICMP_TYPE(buf)                                              ((buf)[0])
+#define ICMP_ID(buf)                                                (((buf)[4] << 8) | ((buf)[5]))
+#define ICMP_SEQ(buf)                                               (((buf)[6] << 8) | ((buf)[7]))
 
 #if (ICMP_ECHO)
 //64 - ip header - mac header - 2 inverted sequence number?!
@@ -36,18 +38,20 @@ static void icmp_tx(TCPIP* tcpip, IP_IO* ip_io, IP* dst)
     ip_tx(tcpip, ip_io, dst);
 }
 
-#if (ICMP_ECHO)
+#if (ICMP_ECHO_REPLY)
 static inline void icmp_cmd_echo(TCPIP* tcpip, IP_IO* ip_io, IP* src)
 {
 #if (ICMP_DEBUG)
-    printf("ICMP: ECHO from ", ICMP_TYPE(ip_io->io.buf));
+    printf("ICMP: ECHO from ");
     ip_print(src);
     printf("\n\r");
 #endif
     ip_io->io.buf[0] = ICMP_CMD_ECHO_REPLY;
     icmp_tx(tcpip, ip_io, src);
 }
+#endif
 
+#if (ICMP_ECHO)
 static bool icmp_cmd_echo_request(TCPIP* tcpip)
 {
     IP_IO ip_io;
@@ -64,39 +68,38 @@ static bool icmp_cmd_echo_request(TCPIP* tcpip)
     //sequence
     ip_io.io.buf[6] = (tcpip->icmp.seq >> 8) & 0xff;
     ip_io.io.buf[7] = tcpip->icmp.seq & 0xff;
-    ++tcpip->icmp.seq;
     memcpy(ip_io.io.buf + ICMP_ECHO_HEADER_SIZE, __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE);
     tcpip->icmp.ttl = tcpip_seconds(tcpip) + ICMP_ECHO_TIMEOUT;
     icmp_tx(tcpip, &ip_io, &tcpip->icmp.dst);
     return true;
 }
-#endif
 
 static void icmp_echo_next(TCPIP* tcpip)
 {
-    if (tcpip->icmp.seq <= tcpip->icmp.seq_count)
+    if (tcpip->icmp.seq < tcpip->icmp.seq_count)
     {
+        ++tcpip->icmp.seq;
         if (!icmp_cmd_echo_request(tcpip))
         {
-            ipc_post_inline(tcpip->icmp.process, ICMP_PING, tcpip->icmp.dst.u32.ip, tcpip->icmp.seq_count, tcpip->icmp.success_count);
+            ipc_post_inline(tcpip->icmp.process, ICMP_PING, tcpip->icmp.dst.u32.ip, tcpip->icmp.success_count, ERROR_OUT_OF_MEMORY);
             tcpip->icmp.seq_count = 0;
         }
     }
     else
     {
-        ipc_post_inline(tcpip->icmp.process, ICMP_PING, tcpip->icmp.dst.u32.ip, tcpip->icmp.seq_count, tcpip->icmp.success_count);
+        ipc_post_inline(tcpip->icmp.process, ICMP_PING, tcpip->icmp.dst.u32.ip, tcpip->icmp.success_count, tcpip->icmp.seq_count);
         tcpip->icmp.seq_count = 0;
     }
 }
 
-static inline void icmp_ping(TCPIP* tcpip, const IP* dst, unsigned int count, HANDLE process)
+static inline void icmp_ping_request(TCPIP* tcpip, const IP* dst, unsigned int count, HANDLE process)
 {
     if (tcpip->icmp.seq_count)
     {
-        ipc_post_inline(process, ICMP_PING, dst->u32.ip, count, ERROR_IN_PROGRESS);
+        ipc_post_inline(process, ICMP_PING, dst->u32.ip, 0, ERROR_IN_PROGRESS);
         return;
     }
-    tcpip->icmp.seq = 1;
+    tcpip->icmp.seq = 0;
     tcpip->icmp.seq_count = count;
     tcpip->icmp.success_count = 0;
     ++tcpip->icmp.id;
@@ -104,6 +107,28 @@ static inline void icmp_ping(TCPIP* tcpip, const IP* dst, unsigned int count, HA
     tcpip->icmp.dst.u32.ip = dst->u32.ip;
     icmp_echo_next(tcpip);
 }
+
+static inline void icmp_cmd_echo_reply(TCPIP* tcpip, IP_IO* ip_io, IP* src)
+{
+    bool success = true;
+#if (ICMP_DEBUG)
+    printf("ICMP: ECHO REPLY from ");
+    ip_print(src);
+    printf("\n\r");
+#endif
+    //compare src, sequence, id and data
+    if (tcpip->icmp.dst.u32.ip != src->u32.ip)
+        success = false;
+    if (tcpip->icmp.id != ICMP_ID(ip_io->io.buf) || tcpip->icmp.seq != ICMP_SEQ(ip_io->io.buf))
+        success = false;
+    if (memcmp(ip_io->io.buf + ICMP_ECHO_HEADER_SIZE, __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE))
+        success = false;
+    if (success)
+        ++tcpip->icmp.success_count;
+    ip_release_io(tcpip, ip_io);
+    icmp_echo_next(tcpip);
+}
+#endif
 
 bool icmp_request(TCPIP* tcpip, IPC* ipc)
 {
@@ -115,13 +140,26 @@ bool icmp_request(TCPIP* tcpip, IPC* ipc)
 #if (ICMP_ECHO)
     case ICMP_PING:
         ip.u32.ip = ipc->param1;
-        icmp_ping(tcpip, &ip, ipc->param2, ipc->process);
+        icmp_ping_request(tcpip, &ip, ipc->param2, ipc->process);
         break;
 #endif
     default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
         break;
     }
     return need_post;
+}
+
+void icmp_timer(TCPIP* tcpip, unsigned int seconds)
+{
+#if (ICMP_ECHO)
+    if (tcpip->icmp.seq_count && tcpip->icmp.ttl < seconds)
+    {
+        //ping timeout, send next sequence
+        icmp_echo_next(tcpip);
+    }
+#endif
 }
 
 void icmp_rx(TCPIP* tcpip, IP_IO* ip_io, IP* src)
@@ -141,11 +179,16 @@ void icmp_rx(TCPIP* tcpip, IP_IO* ip_io, IP* src)
     switch (ICMP_TYPE(ip_io->io.buf))
     {
 #if (ICMP_ECHO)
+    case ICMP_CMD_ECHO_REPLY:
+        icmp_cmd_echo_reply(tcpip, ip_io, src);
+        break;
+#endif
+#if (ICMP_ECHO_REPLY)
     case ICMP_CMD_ECHO:
         icmp_cmd_echo(tcpip, ip_io, src);
         break;
 #endif
-/*    case ICMP_CMD_ECHO_REPLY:
+/*
     case ICMP_CMD_DESTINATION_UNREACHABLE:
     case ICMP_CMD_SOURCE_QUENCH:
     case ICMP_CMD_REDIRECT:

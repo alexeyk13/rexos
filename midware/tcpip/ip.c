@@ -91,6 +91,8 @@ bool ip_request(TCPIP* tcpip, IPC* ipc)
         ip_get_request(tcpip, ipc->process);
         break;
     default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
         break;
     }
     return need_post;
@@ -99,7 +101,7 @@ bool ip_request(TCPIP* tcpip, IPC* ipc)
 uint8_t* ip_allocate_io(TCPIP* tcpip, IP_IO* ip_io, unsigned int size, uint8_t proto)
 {
     //TODO: fragmented frames
-    if (tcpip_allocate_io(tcpip, &ip_io->io) == NULL)
+    if (mac_allocate_io(tcpip, &ip_io->io) == NULL)
         return NULL;
     //reserve space for IP header
     ip_io->hdr_size = IP_HEADER_SIZE;

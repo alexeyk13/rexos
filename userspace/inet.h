@@ -50,4 +50,9 @@ __STATIC_INLINE void ip_get(IP* ip)
     ip->u32.ip = get(object_get(SYS_OBJ_TCPIP), IP_GET, 0, 0, 0);
 }
 
+__STATIC_INLINE int icmp_ping(IP* dst, unsigned int count)
+{
+    return get(object_get(SYS_OBJ_TCPIP), ICMP_PING, dst->u32.ip, count, 0);
+}
+
 #endif // INET_H
