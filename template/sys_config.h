@@ -117,7 +117,7 @@
 //set, if not supported by hardware
 #define IP_CHECKSUM                                         1
 
-#define IP_FRAGMENTATION                                    1
+#define IP_FRAGMENTATION                                    0
 #define IP_FRAGMENT_ASSEMBLY_TIMEOUT                        10
 #define IP_MAX_LONG_SIZE                                    5000
 #define IP_MAX_LONG_PACKETS                                 5
@@ -127,9 +127,10 @@
 //reply on ICMP echo and echo request
 #define ICMP_ECHO                                           1
 #define ICMP_ECHO_REPLY                                     1
+#define ICMP_FLOW_CONTROL                                   1
+
 #define ICMP_ECHO_TIMEOUT                                   5
 
 #define ICMP_DEBUG                                          1
-
 
 #endif // SYS_CONFIG_H

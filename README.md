@@ -20,14 +20,17 @@ unavailable, another HPET timer can be used for RTC emulation
 - Embedded dynamic memory manager, for every process
 - Safe and MPU ready. All supervisor-specific calls are wrapped around 
   swi/svc calls for context rising.
-- Embedded libraries:
+- Lib-level libraries:
   * ustdio: printf, sprintf. Around 2k of code.
-  * ustdlib: time, rand.
-  * single-linked list, double linked list, ring buffer, 
+  * ustdlib: malloc, free, realloc, atou, utoa
+  * time routines
   * dynamic arrays
-  * USB routines library
   * GPIO bitbang library
+- User libraries:
+  * USB routines library
   * GUI library: canvas, font, graphics, utf8 decoding
+  * single-linked list, double linked list, ring buffer, 
+  * rand
 - Device stacks:
   * USB device stack with USB composite and vendor requests support
   * USB device CDC ACM class
@@ -57,6 +60,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * I2C: LPC1Uxx
   * analog(ADC, DAC): STM32F1
   * USB: STM32F1_CL, STM32L0, LPC11Uxx
+  * ETH: STM32F1
   * bitbang: STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx
   * МЭЛТ mt12864j LCD display
 
@@ -72,6 +76,14 @@ ARM7 features:
 
 History
 =======
+0.2.5
+- STM32 F1 ehternet driver with double buffering supported
+- TCP/IP scratch: MAC, MAC filtering, ARP resolve/announce, ARP cache, IP, ROUTE, ICMP echo, ICMP ping, ICMP flow control
+- ARRAY refactoring: no more division operations, interface is more simple. Now it's required library.
+- libusb splitted to midware USB descriptor helpers and userspace libusb
+- soft rand routines now userspace lib
+- GUI is now userspace lib
+
 0.2.4
 - LPC 11Uxx EEPROM driver
 - no more splitted calls. Response is same as request
