@@ -9,6 +9,7 @@
 #include "../../userspace/stdio.h"
 #include "icmp.h"
 #include <string.h>
+#include "udp.h"
 
 #define IP_DF                                   (1 << 6)
 #define IP_MF                                   (1 << 5)
@@ -164,8 +165,13 @@ static void ip_process(TCPIP* tcpip, IP_IO* ip_io, IP* src)
     case PROTO_ICMP:
         icmp_rx(tcpip, ip_io, src);
         break;
-#endif //TCPIP_ICMP
+#endif //ICMP
+#if (UDP)
+    case PROTO_UDP:
+        udp_rx(tcpip, ip_io, src);
+        break;
     default:
+#endif //UDP
 #if (IP_DEBUG)
         printf("IP: unhandled proto %d from", ip_io->proto);
         ip_print(src);
