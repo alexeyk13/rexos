@@ -67,33 +67,58 @@ static void print_conn_status(TCPIP* tcpip, const char* head)
 }
 #endif
 
-uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
+static HANDLE tcpip_allocate_io_internal(TCPIP* tcpip)
 {
-    io->block = INVALID_HANDLE;
-    io->buf = NULL;
-    io->size = 0;
+    HANDLE res = INVALID_HANDLE;
     if (array_size(tcpip->free_blocks))
     {
-        io->block = *(HANDLE*)array_at(tcpip->free_blocks, array_size(tcpip->free_blocks) - 1);
+        res = *(HANDLE*)array_at(tcpip->free_blocks, array_size(tcpip->free_blocks) - 1);
         array_remove(&tcpip->free_blocks, array_size(tcpip->free_blocks) - 1);
     }
-    else if (tcpip->blocks_allocated < TCPIP_MAX_FRAMES_COUNT)
+    return res;
+}
+
+uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
+{
+    io->buf = NULL;
+    io->size = 0;
+    io->block = tcpip_allocate_io_internal(tcpip);
+
+    if (io->block == INVALID_HANDLE)
     {
-        io->block = block_create(FRAME_MAX_SIZE);
-        if (io->block != INVALID_HANDLE)
-            ++tcpip->blocks_allocated;
+        if (tcpip->blocks_allocated < TCPIP_MAX_FRAMES_COUNT)
+        {
+            io->block = block_create(FRAME_MAX_SIZE);
+            if (io->block != INVALID_HANDLE)
+                ++tcpip->blocks_allocated;
 #if (TCPIP_DEBUG_ERRORS)
+            else
+                printf("TCPIP: out of memory\n\r");
+#endif
+        }
+        //try to drop first in queue, waiting for resolve
+        else if (route_drop(tcpip))
+        {
+            io->block = tcpip_allocate_io_internal(tcpip);
+#if (TCPIP_DEBUG)
+            printf("TCPIP warning: block dropped from route queue\n\r");
+#endif
+        }
+        else if (array_size(tcpip->tx_queue))
+        {
+            array_remove(&tcpip->tx_queue, 0);
+            --tcpip->tx_count;
+            io->block = tcpip_allocate_io_internal(tcpip);
+#if (TCPIP_DEBUG)
+            printf("TCPIP warning: block dropped from tx queue\n\r");
+#endif
+        }
         else
-            printf("TCPIP: out of memory\n\r");
-#endif
-    }
-    else
-    {
-        //TODO: some blocks can stuck in route tx queue. Get it from there
-        //TODO: some blocks can stuck in tx queue. Free one.
+        {
 #if (TCPIP_DEBUG_ERRORS)
-        printf("TCPIP: too many blocks\n\r");
+            printf("TCPIP: too many blocks\n\r");
 #endif
+        }
     }
     if (io->block != INVALID_HANDLE)
         io->buf = block_open(io->block);
@@ -121,8 +146,22 @@ static void tcpip_rx_next(TCPIP* tcpip)
 
 void tcpip_tx(TCPIP* tcpip, TCPIP_IO* io)
 {
-    //TODO: queue
-    fwrite_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), io->block, io->size);
+    TCPIP_IO* queue_io;
+#if (ETH_DOUBLE_BUFFERING)
+    if (++tcpip->tx_count > 2)
+#else
+    if (++tcpip->tx_count > 1)
+#endif
+    {
+        //add to queue
+        array_append(&tcpip->tx_queue);
+        queue_io = (TCPIP_IO*)array_at(tcpip->tx_queue, array_size(tcpip->tx_queue));
+        queue_io->block = io->block;
+        queue_io->buf = io->buf;
+        queue_io->size = io->size;
+    }
+    else
+        fwrite_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), io->block, io->size);
 }
 
 unsigned int tcpip_seconds(TCPIP* tcpip)
@@ -167,8 +206,19 @@ static inline void tcpip_rx(TCPIP* tcpip, HANDLE block, int size)
 
 static inline void tcpip_tx_complete(TCPIP* tcpip, HANDLE block)
 {
+    TCPIP_IO* queue_io;
     tcpip_release_block(tcpip, block);
-    //TODO: send next in queue (if connected), flush if not
+#if (ETH_DOUBLE_BUFFERING)
+    if (--tcpip->tx_count >= 2)
+#else
+    if (--tcpip->tx_count >= 1)
+#endif
+    {
+        //send next in queue
+        queue_io = (TCPIP_IO*)array_at(tcpip->tx_queue, 0);
+        fwrite_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), queue_io->block, queue_io->size);
+        array_remove(&tcpip->tx_queue, 0);
+    }
 }
 
 static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
@@ -211,6 +261,8 @@ void tcpip_init(TCPIP* tcpip)
     //1 rx + 1 tx + 1 for processing
     array_create(&tcpip->free_blocks, sizeof(void*), 3);
 #endif
+    array_create(&tcpip->tx_queue, sizeof(TCPIP_IO), 1);
+    tcpip->tx_count = 0;
     mac_init(tcpip);
     arp_init(tcpip);
     route_init(tcpip);

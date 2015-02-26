@@ -21,6 +21,17 @@ void route_init(TCPIP* tcpip)
     array_create(&tcpip->route.tx_queue, sizeof(ROUTE_QUEUE_ENTRY), 1);
 }
 
+bool route_drop(TCPIP* tcpip)
+{
+    if (array_size(tcpip->route.tx_queue))
+    {
+        tcpip_release_io(tcpip, &ROUTE_QUEUE_ITEM(tcpip, 0)->io);
+        array_remove(&tcpip->route.tx_queue, 0);
+        return true;
+    }
+    return false;
+}
+
 void arp_resolved(TCPIP* tcpip, const IP* ip, const MAC* mac)
 {
     int i;

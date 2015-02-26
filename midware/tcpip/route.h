@@ -22,6 +22,7 @@ typedef struct {
 
 //called from tcpip
 void route_init(TCPIP* tcpip);
+bool route_drop(TCPIP* tcpip);
 
 //called from arp
 void arp_resolved(TCPIP* tcpip, const IP* ip, const MAC* mac);
