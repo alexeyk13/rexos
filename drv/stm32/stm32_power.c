@@ -197,7 +197,7 @@ int get_core_clock()
         break;
 #if defined(STM32L0)
     case RCC_CFGR_SWS_MSI:
-        return 65536 * (2 << ((RCC->ICSCR >> 13) & 7));
+        return 65536 * (1 << ((RCC->ICSCR >> 13) & 7));
         break;
 #endif
     case RCC_CFGR_SWS_HSE:
@@ -263,13 +263,13 @@ void setup_clock(int param1, int param2, int param3)
 #if defined(STM32L0) && !(LSE_VALUE)
         RCC->CR &= ~(3 << 20);
         RCC->CR |= (30 - __builtin_clz(HSE_VALUE / 1000000)) << 20;
-#endif
+#endif //STM32L0 && !LSE_VALUE
 
 #if (HSE_BYPASS)
         RCC->CR |= RCC_CR_HSEON | RCC_CR_HSEBYP;
 #else
         RCC->CR |= RCC_CR_HSEON;
-#endif
+#endif //HSE_BYPAS
 #if defined(HSE_STARTUP_TIMEOUT)
         int i;
         for (i = 0; i < HSE_STARTUP_TIMEOUT; ++i)
@@ -277,7 +277,7 @@ void setup_clock(int param1, int param2, int param3)
                 break;
 #else
         while ((RCC->CR & RCC_CR_HSERDY) == 0) {}
-#endif
+#endif //HSE_STARTUP_TIMEOUT
     }
 //we need to turn on HSI on STM32L0
 #elif defined(STM32L0)
@@ -531,8 +531,6 @@ void stm32_power_init(CORE* core)
 #elif defined(STM32F2) || defined(STM32F4)
     setup_clock(PLL_M, PLL_N, PLL_P);
 #endif
-
-
 }
 
 bool stm32_power_request(CORE* core, IPC* ipc)
