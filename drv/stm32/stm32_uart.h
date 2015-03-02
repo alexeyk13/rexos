@@ -72,14 +72,12 @@ typedef struct {
 
 #endif
 
-#if (SYS_INFO)
 #if (UART_STDIO)
 //we can't use printf in uart driver, because this can halt driver loop
 void printu(const char *const fmt, ...);
 #else
 #define printu printf
 #endif
-#endif //SYS_INFO
 
 void stm32_uart_init(SHARED_UART_DRV* drv);
 bool stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc);

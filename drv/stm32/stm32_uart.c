@@ -191,7 +191,7 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
     NVIC_EnableIRQ(UART_VECTORS[(UART_PORT)param]);
 }
 
-#if (SYS_INFO) && (UART_STDIO)
+#if (UART_STDIO)
 //we can't use printf in uart driver, because this can halt driver loop
 void printu(const char *const fmt, ...)
 {
@@ -200,7 +200,7 @@ void printu(const char *const fmt, ...)
     format(fmt, va, uart_write_kernel, (void*)UART_STDIO_PORT);
     va_end(va);
 }
-#endif //(SYS_INFO) && (UART_STDIO)
+#endif //UART_STDIO
 
 void stm32_uart_set_baudrate_internal(SHARED_UART_DRV* drv, UART_PORT port, const BAUD* config)
 {

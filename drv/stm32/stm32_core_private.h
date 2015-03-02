@@ -41,7 +41,7 @@ typedef struct _CORE {
 #endif
 }CORE;
 
-#if (SYS_INFO)
+#if (SYS_INFO) || (USB_DEBUG_ERRORS)
 #if (UART_STDIO) && (MONOLITH_UART)
 #define printd          printu
 #else

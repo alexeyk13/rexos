@@ -679,11 +679,11 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         break;
 #if (USB_DEBUG_ERRORS)
     case STM32_USB_ERROR:
-        printf("USB: hardware error\n\r");
+        _printd("USB: hardware error\n\r");
         //posted from isr
         break;
      case STM32_USB_OVERFLOW:
-        printf("USB: packet memory overflow\n\r");
+        _printd("USB: packet memory overflow\n\r");
         //posted from isr
         break;
 #endif
