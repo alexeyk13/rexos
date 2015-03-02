@@ -48,7 +48,7 @@ static inline void pinboard_event(KEY* key, unsigned int event)
     IPC ipc;
     ipc.process = key->process;
     ipc.cmd = event;
-    ipc.param2 = HAL_HANDLE(HAL_PINBOARD, key->pin);
+    ipc.param1 = HAL_HANDLE(HAL_PINBOARD, key->pin);
     ipc_post(&ipc);
 }
 
