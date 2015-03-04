@@ -168,6 +168,7 @@ void stm32_rtc_init()
         leave_configuration();
     }
 
+    RTC->ISR &= ~RTC_ISR_WUTF;
     //setup EXTI for second pulse
     EXTI->IMR |= 1 << RTC_EXTI_LINE;
     EXTI->RTSR |= 1 << RTC_EXTI_LINE;
