@@ -312,7 +312,7 @@ static void mt_clear_rect_cs(unsigned int cs, RECT* rect)
     }
 }
 
-void mt_clear_rect(RECT* rect)
+void mt_clear_rect(const RECT *rect)
 {
     RECT csrect;
     if (rect->left >= MT_SIZE_X || rect->top >= MT_SIZE_Y)
@@ -321,7 +321,7 @@ void mt_clear_rect(RECT* rect)
         return;
     }
     csrect.width = rect->width;
-    if (rect->left + rect->height > MT_SIZE_X)
+    if (rect->left + rect->width > MT_SIZE_X)
         csrect.width = MT_SIZE_X - rect->left;
     csrect.left = rect->left;
     if (rect->left + rect->width > MT_SIZE_X)
@@ -331,8 +331,8 @@ void mt_clear_rect(RECT* rect)
     {
         csrect.top = rect->top;
         csrect.height = rect->height;
-        if (csrect.top + rect->height > MT_SIZE_X)
-            csrect.height = MT_SIZE_X - rect->top;
+        if (csrect.top + csrect.height > MT_SIZE_X)
+            csrect.height = MT_SIZE_X - csrect.top;
         mt_clear_rect_cs(MT_CS1, &csrect);
     }
     //apply for CS2
@@ -341,15 +341,15 @@ void mt_clear_rect(RECT* rect)
         if (rect->top < MT_SIZE_X)
         {
             csrect.top = 0;
-            csrect.height = rect->height - (MT_SIZE_X - rect->top);
+            csrect.height = rect->top + rect->height - MT_SIZE_X;
         }
         else
         {
             csrect.top = rect->top - MT_SIZE_X;
             csrect.height = rect->height;
         }
-        if (csrect.top + rect->height > MT_SIZE_X)
-            csrect.height = MT_SIZE_X - rect->top;
+        if (csrect.top + csrect.height > MT_SIZE_X)
+            csrect.height = MT_SIZE_X - csrect.top;
         mt_clear_rect_cs(MT_CS2, &csrect);
     }
 }
@@ -471,7 +471,7 @@ static void mt_write_rect_cs(unsigned int cs, RECT* rect, const uint8_t* data, u
     }
 }
 
-void mt_write_rect(RECT* rect, const uint8_t* data)
+void mt_write_rect(const RECT* rect, const uint8_t* data)
 {
     RECT csrect;
     //bits per line
