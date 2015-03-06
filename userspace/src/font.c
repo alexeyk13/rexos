@@ -43,7 +43,7 @@ void font_render_glyph(CANVAS* canvas, POINT* point, FACE* face, unsigned short 
     write_rect(canvas, &rect, &data_rect, FACE_DATA(face), GUI_MODE_FILL);
 }
 
-unsigned short font_get_char_width(FONT* font, const char* utf8)
+unsigned short font_get_char_width(const FONT* font, const char* utf8)
 {
     int i;
     FACE* face;
@@ -62,7 +62,7 @@ unsigned short font_get_char_width(FONT* font, const char* utf8)
     return font_get_glyph_width(face, 0);
 }
 
-void font_render_char(CANVAS* canvas, POINT* point, FONT* font, const char* utf8)
+void font_render_char(CANVAS* canvas, POINT* point, const FONT* font, const char* utf8)
 {
     int i;
     FACE* face;
@@ -84,7 +84,7 @@ void font_render_char(CANVAS* canvas, POINT* point, FONT* font, const char* utf8
     font_render_glyph(canvas, point, face, font->height, 0);
 }
 
-unsigned short font_get_text_width(FONT* font, const char* utf8)
+unsigned short font_get_text_width(const FONT* font, const char* utf8)
 {
     unsigned int cur = 0;
     unsigned short len = 0;
@@ -96,7 +96,7 @@ unsigned short font_get_text_width(FONT* font, const char* utf8)
     return len;
 }
 
-void font_render_text(CANVAS* canvas, POINT* point, FONT* font, const char* utf8)
+void font_render_text(CANVAS* canvas, POINT* point, const FONT* font, const char* utf8)
 {
     unsigned int cur = 0;
     POINT cur_point;
@@ -110,7 +110,7 @@ void font_render_text(CANVAS* canvas, POINT* point, FONT* font, const char* utf8
     }
 }
 
-void font_render(CANVAS* canvas, RECT* rect, FONT* font, const char* utf8, unsigned int align)
+void font_render(CANVAS* canvas, RECT* rect, const FONT* font, const char* utf8, unsigned int align)
 {
     unsigned short width, height;
     POINT point;

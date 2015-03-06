@@ -35,10 +35,10 @@ typedef struct {
 
 unsigned short font_get_glyph_width(FACE* face, unsigned short num);
 void font_render_glyph(CANVAS* canvas, POINT* point, FACE* face, unsigned short height, unsigned short num);
-unsigned short font_get_char_width(FONT* font, const char* utf8);
-void font_render_char(CANVAS* canvas, POINT* point, FONT* font, const char* utf8);
-unsigned short font_get_text_width(FONT* font, const char* utf8);
-void font_render_text(CANVAS* canvas, POINT* point, FONT* font, const char* utf8);
-void font_render(CANVAS* canvas, RECT* rect, FONT* font, const char* utf8, unsigned int align);
+unsigned short font_get_char_width(const FONT *font, const char* utf8);
+void font_render_char(CANVAS* canvas, POINT* point, const FONT *font, const char* utf8);
+unsigned short font_get_text_width(const FONT *font, const char* utf8);
+void font_render_text(CANVAS* canvas, POINT* point, const FONT *font, const char* utf8);
+void font_render(CANVAS* canvas, RECT* rect, const FONT *font, const char* utf8, unsigned int align);
 
 #endif // FONT_H
