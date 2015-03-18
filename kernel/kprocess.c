@@ -46,7 +46,7 @@ void kprocess_add_to_active_list(PROCESS* process)
     DLIST_ENUM de;
     PROCESS* cur;
 #if (KERNEL_PROCESS_STAT)
-    ktimer_get_uptime(&process->uptime_start);
+    ktimer_get_uptime_internal(&process->uptime_start);
     dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
 #endif
     //return from core HALT
@@ -98,7 +98,7 @@ void kprocess_remove_from_active_list(PROCESS* process)
 #if (KERNEL_PROCESS_STAT)
     dlist_add_tail((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
     TIME time;
-    ktimer_get_uptime(&time);
+    ktimer_get_uptime_internal(&time);
     time_sub(&(process->uptime_start), &time, &time);
     time_add(&time, &(process->uptime), &(process->uptime));
 #endif
@@ -588,7 +588,7 @@ static inline void kernel_stat()
     }
 
 #if (KERNEL_PROCESS_STAT)
-    ktimer_get_uptime(&uptime);
+    ktimer_get_uptime_internal(&uptime);
     printk("%3d:%02d.%03d", uptime.sec / 60, uptime.sec % 60, uptime.usec / 1000);
 #endif
     printk("\n\r");

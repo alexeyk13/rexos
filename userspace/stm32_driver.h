@@ -141,5 +141,34 @@ extern const GPIO_TypeDef_P GPIO[];
 #define GPIO_PORT(pin)                               (pin / 16)
 #define GPIO_PIN(pin)                                (pin & 15)
 
+//-------------------------------------------------- ADC ----------------------------------------------------------------------
+
+typedef enum {
+    STM32_ADC0,
+    STM32_ADC1,
+    STM32_ADC2,
+    STM32_ADC3,
+    STM32_ADC4,
+    STM32_ADC5,
+    STM32_ADC6,
+    STM32_ADC7,
+    STM32_ADC8,
+    STM32_ADC9,
+    STM32_ADC10,
+    STM32_ADC11,
+    STM32_ADC12,
+    STM32_ADC13,
+    STM32_ADC14,
+    STM32_ADC15,
+    STM32_ADC_TEMP,
+    STM32_ADC_VREF,
+
+    STM32_ADC_DEVICE,
+    STM32_ADC_MAX
+#ifdef STM32L0
+    ,
+    STM32_ADC_VLCD
+#endif //STM32L0
+} STM32_ADC_CHANNEL;
 
 #endif // STM32_DRIVER_H

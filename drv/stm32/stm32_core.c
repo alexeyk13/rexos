@@ -10,18 +10,11 @@
 #include "stm32_gpio.h"
 #include "stm32_power.h"
 #include "../../userspace/object.h"
-#if !(TIMER_SOFT_RTC)
 #include "stm32_rtc.h"
-#endif
-#if (STM32_WDT)
 #include "stm32_wdt.h"
-#endif
-#if (MONOLITH_UART)
 #include "stm32_uart.h"
-#endif
-#if (MONOLITH_ANALOG)
+#include "stm32_adc.h"
 #include "stm32_analog.h"
-#endif
 #if (MONOLITH_USB)
 #ifdef STM32L0
 #include "stm32_usbl.h"
@@ -51,65 +44,23 @@ void stm32_core_loop(CORE* core)
 {
     IPC ipc;
     bool need_post;
-    int group;
     for (;;)
     {
         error(ERROR_OK);
         need_post = false;
-        group = -1;
-        ipc.cmd = 0;
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
 
-        if (ipc.cmd < IPC_USER)
+        switch (ipc.cmd)
         {
-            switch (ipc.cmd)
-            {
-            case IPC_PING:
-                need_post = true;
-                break;
-            case IPC_SET_STDIO:
-                open_stdout();
-                need_post = true;
-                break;
-#if (SYS_INFO)
-            case IPC_GET_INFO:
-                need_post |= stm32_gpio_request(core, &ipc);
-                need_post |= stm32_timer_request(core, &ipc);
-                need_post |= stm32_power_request(core, &ipc);
-#if !(TIMER_SOFT_RTC)
-                need_post |= stm32_rtc_request(&ipc);
-#endif
-#if (MONOLITH_UART)
-                need_post |= stm32_uart_request(core, &ipc);
-#endif
-#if (MONOLITH_ANALOG)
-                need_post |= stm32_analog_request(core, &ipc);
-#endif
-#if (MONOLITH_USB)
-                need_post |= stm32_usb_request(core, &ipc);
-#endif
-                break;
-#endif
-            case IPC_OPEN:
-            case IPC_CLOSE:
-            case IPC_FLUSH:
-            case IPC_READ:
-            case IPC_WRITE:
-            case IPC_GET_TX_STREAM:
-            case IPC_GET_RX_STREAM:
-            case IPC_STREAM_WRITE:
-                group = HAL_GROUP(ipc.param1);
-                break;
-            default:
-                error(ERROR_NOT_SUPPORTED);
-                need_post = true;
-            }
-        }
-        else
-            group = HAL_IPC_GROUP(ipc.cmd);
-        if (group >= 0)
-        {
-            switch (group)
+        case IPC_PING:
+            need_post = true;
+            break;
+        case IPC_SET_STDIO:
+            open_stdout();
+            need_post = true;
+            break;
+        default:
+            switch (ipc.cmd < IPC_USER ? HAL_GROUP(ipc.param1) : HAL_IPC_GROUP(ipc.cmd))
             {
             case HAL_POWER:
                 need_post = stm32_power_request(core, &ipc);
@@ -135,8 +86,12 @@ void stm32_core_loop(CORE* core)
                 need_post = stm32_uart_request(core, &ipc);
                 break;
 #endif //MONOLITH_UART
-#if (MONOLITH_ANALOG)
+#if (STM32_ADC)
             case HAL_ADC:
+                need_post = stm32_adc_request(core, &ipc);
+                break;
+#endif //STM32_ADC
+#if (MONOLITH_ANALOG)
             case HAL_DAC:
                 need_post = stm32_analog_request(core, &ipc);
                 break;
@@ -176,6 +131,9 @@ void stm32_core()
 #endif
 #if (MONOLITH_UART)
     stm32_uart_init(&core);
+#endif
+#if (STM32_ADC)
+    stm32_adc_init(&core);
 #endif
 #if (MONOLITH_ANALOG)
     stm32_analog_init(&core);

@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -22,11 +22,7 @@
 #include "stm32_core_private.h"
 #endif
 
-#define ADC1_CLOCK_MAX                                  14000000
-#define ADC1_TSTAB                                      11
-#define ADC_SQR_LEN(len)                                (((len - 1ul) & 0xful) << 20ul)
-#define ADC2uV(raw)                                     ((raw * ADC_VREF * 100 / 0xfff) * 10ul)
-
+#if (STM32_DAC)
 #define DAC_TWAKEUP                                     10
 #define DAC1_PIN                                        A4
 #define DAC2_PIN                                        A5
@@ -45,7 +41,7 @@ const unsigned int DAC_DMA_VECTORS[2] =                 {58, 59};
 #endif
 
 #endif
-
+#endif //STM32_DAC
 
 #if (MONOLITH_ANALOG)
 
@@ -82,78 +78,7 @@ const REX __STM32_ANALOG = {
 
 #endif
 
-static inline void stm32_adc_open(SHARED_ANALOG_DRV* drv)
-{
-    unsigned int psc;
-    for(psc = 2; psc < 8 && get_clock(drv, STM32_CLOCK_APB2) / psc > ADC1_CLOCK_MAX; psc += 2) {}
-    RCC->CFGR &= ~(3 << 14);
-    RCC->CFGR |= (psc / 2 - 1) << 14;
-    //enable clock
-    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
-
-    //turn ADC1 on
-    ADC1->CR2 |= ADC_CR2_ADON;
-    ADC1->CR2 |= ADC_CR2_TSVREFE;
-    sleep_us(ADC1_TSTAB);
-
-    //start self-calibration
-    ADC1->CR2 |= ADC_CR2_CAL;
-    while(ADC1->CR2 & ADC_CR2_CAL) {}
-}
-
-void stm32_adc_set_sequence_channel(int sq, int chan)
-{
-    if (sq >= 13)
-    {
-        ADC1->SQR1 &= ~(0x1ful << ((sq - 13ul) * 5ul));
-        ADC1->SQR1 |= chan << ((sq - 13ul) * 5ul);
-    }
-    else if (sq >= 7)
-    {
-        ADC1->SQR2 &= ~(0x1ful << ((sq - 7ul) * 5ul));
-        ADC1->SQR2 |= chan << ((sq - 7ul) * 5ul);
-    }
-    else //1..6
-    {
-        ADC1->SQR3 &= ~(0x1ful << ((sq - 1ul) * 5ul));
-        ADC1->SQR3 |= chan << ((sq - 1ul) * 5ul);
-    }
-}
-
-void stm32_adc_set_sample_rate(int chan, int sample_rate)
-{
-    if (chan >= 10)
-    {
-        ADC1->SMPR1 &= ~(0x7ul << ((chan - 10ul) * 3ul));
-        ADC1->SMPR1 |= sample_rate << ((chan - 10ul) * 3ul);
-    }
-    else
-    {
-        ADC1->SMPR2 &= ~(0x7ul << (chan * 3ul));
-        ADC1->SMPR2 |= sample_rate << (chan * 3ul);
-    }
-}
-
-static inline int stm32_adc_get_single_sample(int chan, int sample_rate)
-{
-    stm32_adc_set_sample_rate(chan, sample_rate);
-
-    //sequence len = 1
-    ADC1->SQR1 = ADC_SQR_LEN(1);
-    stm32_adc_set_sequence_channel(1, chan);
-
-    //start conversion cycle
-    ADC1->SR = 0;
-    ADC1->CR2 |= ADC_CR2_ADON;
-    while ((ADC1->SR & ADC_SR_EOC) == 0) {}
-
-    return ADC1->DR;
-}
-
-static inline int stm32_adc_get_temp()
-{
-    return (V25_MV * 1000 - ADC2uV(stm32_adc_get_single_sample(STM32_TEMP_SENSOR, ADC_SMPR_239_5))) * 10 / AVG_SLOPE + 25l * 10l;
-}
+#if (STM32_DAC)
 
 #if (DAC_DMA)
 static inline void stm32_dac_setup_trigger(TIMER_NUM num, int channel)
@@ -365,7 +290,7 @@ void stm32_dac_close_channel(SHARED_ANALOG_DRV* drv, int channel)
     ack_gpio(drv, STM32_GPIO_DISABLE_PIN, DAC_OUT[channel], 0, 0);
 }
 
-void stm32_dac_flush(SHARED_ANALOG_DRV* drv, STM32_DAC num)
+void stm32_dac_flush(SHARED_ANALOG_DRV* drv, STM32_DAC_TYPE num)
 {
     int channel = num == STM32_DAC2 ? 1 : 0;
     DAC_STRUCT* dac = drv->analog.dac[channel];
@@ -382,7 +307,7 @@ void stm32_dac_flush(SHARED_ANALOG_DRV* drv, STM32_DAC num)
         block_send(block, dac->process);
 }
 
-static inline void stm32_dac_open_internal(SHARED_ANALOG_DRV* drv, STM32_DAC dac_num, STM32_DAC_ENABLE* de)
+static inline void stm32_dac_open_internal(SHARED_ANALOG_DRV* drv, STM32_DAC_TYPE dac_num, STM32_DAC_ENABLE* de)
 {
     if (dac_num >= STM32_DAC_MAX)
     {
@@ -431,7 +356,7 @@ static inline void stm32_dac_open_internal(SHARED_ANALOG_DRV* drv, STM32_DAC dac
         switch (dac_num)
         {
         case STM32_DAC1:
-            DAC_DMA_REGS[0]->CPAR = (unsigned int)&(DAC->DHR12R1);
+            DAC_DMA_REGS[0]->CPAR = (unsigned inhttp://www.rbc.ru/t)&(DAC->DHR12R1);
             break;
         case STM32_DAC2:
             DAC_DMA_REGS[1]->CPAR = (unsigned int)&(DAC->DHR12R2);
@@ -452,14 +377,14 @@ static inline void stm32_dac_open_internal(SHARED_ANALOG_DRV* drv, STM32_DAC dac
     sleep_us(DAC_TWAKEUP);
 }
 
-void stm32_dac_open(SHARED_ANALOG_DRV* drv, STM32_DAC dac_num, HANDLE process)
+void stm32_dac_open(SHARED_ANALOG_DRV* drv, STM32_DAC_TYPE dac_num, HANDLE process)
 {
     STM32_DAC_ENABLE de;
     if (direct_read(process, (void*)&de, sizeof(STM32_DAC_ENABLE)))
         stm32_dac_open_internal(drv, dac_num, &de);
 }
 
-void stm32_dac_close(SHARED_ANALOG_DRV* drv, STM32_DAC num)
+void stm32_dac_close(SHARED_ANALOG_DRV* drv, STM32_DAC_TYPE num)
 {
     if (num >= STM32_DAC_MAX)
     {
@@ -500,7 +425,7 @@ void stm32_dac_close(SHARED_ANALOG_DRV* drv, STM32_DAC num)
         RCC->APB1ENR &= ~RCC_APB1ENR_DACEN;
 }
 
-static inline void stm32_dac_write(SHARED_ANALOG_DRV* drv, STM32_DAC num, HANDLE block, unsigned int size, HANDLE process)
+static inline void stm32_dac_write(SHARED_ANALOG_DRV* drv, STM32_DAC_TYPE num, HANDLE block, unsigned int size, HANDLE process)
 {
     if (num >= STM32_DAC_MAX || size == 0)
     {
@@ -569,7 +494,7 @@ static inline void stm32_dac_write(SHARED_ANALOG_DRV* drv, STM32_DAC num, HANDLE
         stm32_dac_trigger_start(dac);
 }
 
-void stm32_dac_set_level(STM32_DAC num, unsigned int value)
+void stm32_dac_set_level(STM32_DAC_TYPE num, unsigned int value)
 {
     switch (num)
     {
@@ -587,16 +512,20 @@ void stm32_dac_set_level(STM32_DAC num, unsigned int value)
     }
 }
 
+#endif //STM32_DAC
+
 #if (SYS_INFO)
 static inline void stm32_analog_info(SHARED_ANALOG_DRV* drv)
 {
     _printd("STM32 analog driver info\n\r\n\r");
+#if (STM32_DAC)
     _printd("active channels: ");
     if (drv->analog.dac[0] != NULL)
         _printd("DAC_1 ");
     if (drv->analog.dac[1] != NULL)
         _printd("DAC_2");
     _printd("\n\r\n\r");
+#endif //STM32_DAC
 }
 #endif //SYS_INFO
 
@@ -611,22 +540,13 @@ bool stm32_analog_request(SHARED_ANALOG_DRV* drv, IPC* ipc)
         need_post = true;
         break;
 #endif
-    case STM32_ADC_SINGLE_CHANNEL:
-        ipc->param2 = stm32_adc_get_single_sample(ipc->param1, ipc->param2);
-        need_post = true;
-        break;
-    case STM32_ADC_TEMP:
-        ipc->param2 = stm32_adc_get_temp();
-        need_post = true;
-        break;
     case IPC_OPEN:
         switch (HAL_GROUP(ipc->param1))
         {
-        case HAL_ADC:
-            stm32_adc_open(drv);
-            break;
+#if (STM32_DAC)
         case HAL_DAC:
             stm32_dac_open(drv, HAL_ITEM(ipc->param1), ipc->process);
+#endif //STM32_DAC
         default:
             error(ERROR_INVALID_PARAMS);
         }
@@ -635,15 +555,18 @@ bool stm32_analog_request(SHARED_ANALOG_DRV* drv, IPC* ipc)
     case IPC_CLOSE:
         switch (HAL_GROUP(ipc->param1))
         {
+#if (STM32_DAC)
         case HAL_DAC:
             stm32_dac_close(drv, HAL_ITEM(ipc->param1));
+#endif //STM32_DAC
         default:
             error(ERROR_INVALID_PARAMS);
         }
         need_post = true;
         break;
+#if (STM32_DAC)
     case STM32_DAC_SET_LEVEL:
-        stm32_dac_set_level((STM32_DAC)HAL_ITEM(ipc->param1), ipc->param2);
+        stm32_dac_set_level((STM32_DAC_TYPE)HAL_ITEM(ipc->param1), ipc->param2);
         need_post = true;
         break;
     case IPC_FLUSH:
@@ -666,6 +589,7 @@ bool stm32_analog_request(SHARED_ANALOG_DRV* drv, IPC* ipc)
         //message from isr, no response
         break;
 #endif
+#endif //STM32_DAC
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;

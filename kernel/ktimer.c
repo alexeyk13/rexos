@@ -59,8 +59,8 @@ void ktimer_get_uptime(TIME* res)
 
 static inline void find_shoot_next()
 {
-    KTIMER* timers_to_shoot = NULL;
-    KTIMER* cur;
+    volatile KTIMER* timers_to_shoot = NULL;
+    volatile KTIMER* cur;
     TIME uptime;
 
     disable_interrupts();

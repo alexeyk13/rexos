@@ -13,6 +13,7 @@
 #if defined(STM32F1)
 #define MAX_APB2                             72000000
 #define MAX_APB1                             36000000
+#define ADC_CLOCK_MAX                        14000000
 #elif defined(STM32F2)
 #define MAX_APB2                             60000000
 #define MAX_APB1                             30000000
@@ -315,7 +316,14 @@ void setup_clock(int param1, int param2, int param3)
     for (; (i <= 16) && (pll_clock / i > MAX_APB1); i *= 2, ++bus) {}
     if (bus)
         RCC->CFGR |= (4 | (bus - 1)) << PPRE1;
-#endif
+#if (STM32_ADC)
+    unsigned int psc;
+    for(psc = 2; psc < 8 && get_clock(drv, STM32_CLOCK_APB2) / psc > ADC_CLOCK_MAX; psc += 2) {}
+    RCC->CFGR &= ~(3 << 14);
+    RCC->CFGR |= (psc / 2 - 1) << 14;
+#endif // STM32_ADC
+#endif // !STM32L0
+
 
     //5. tune flash latency
 #if defined(STM32F1) && !defined(STM32F100)

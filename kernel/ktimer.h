@@ -38,6 +38,7 @@ typedef struct {
 void ktimer_start_internal(KTIMER* timer, TIME* time);
 void ktimer_stop_internal(KTIMER* timer);
 void ktimer_init_internal(KTIMER* timer, void (*callback)(void*), void* param);
+void ktimer_get_uptime_internal(TIME* res);
 
 //called from svc handler
 void ktimer_hpet_timeout();
