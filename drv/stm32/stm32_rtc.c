@@ -9,7 +9,6 @@
 #include "stm32_core_private.h"
 #include "sys_config.h"
 #include "../../userspace/sys.h"
-#include "../../userspace/stdio.h"
 #include "../../userspace/time.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/timer.h"
@@ -220,29 +219,11 @@ void stm32_rtc_set(time_t time)
     leave_configuration();
 }
 
-#if (SYS_INFO)
-void stm32_rtc_info()
-{
-    printd("LSE clock: %d\n\r", LSE_VALUE);
-    struct tm tm;
-    gmtime(stm32_rtc_get(), &tm);
-    printd("Now: %d.%d.%d %d:%d:%d\n\r", tm.tm_mday, tm.tm_mon + 1, tm.tm_year, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    printd("\n\r\n\r");
-}
-#endif
-
-
 bool stm32_rtc_request(IPC* ipc)
 {
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        stm32_rtc_info();
-        need_post = true;
-        break;
-#endif
     case RTC_GET:
         ipc->param2 = (unsigned int)stm32_rtc_get();
         need_post = true;

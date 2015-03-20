@@ -35,7 +35,7 @@ const REX __STM32_UART = {
     "STM32 uart",
     //size
     STM32_UART_STACK_SIZE,
-    //priority - driver priority. Setting priority lower than other drivers can cause IPC overflow on SYS_INFO
+    //priority - driver priority.
     89,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
@@ -615,33 +615,11 @@ static inline void stm32_uart_read(SHARED_UART_DRV* drv, UART_PORT port, char c)
     }
 }
 
-#if (SYS_INFO)
-static inline void stm32_uart_info(SHARED_UART_DRV* drv)
-{
-    int i;
-    printu("STM32 uart driver info\n\r\n\r");
-    printu("uarts count: %d\n\r", UARTS_COUNT);
-
-    for (i = 0; i < UARTS_COUNT; ++i)
-    {
-        if (drv->uart.uarts[i])
-            printu("UART_%d ", i + 1);
-    }
-    printu("\n\r\n\r");
-}
-#endif //SYS_INFO
-
 bool stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        stm32_uart_info(drv);
-        need_post = true;
-        break;
-#endif
     case IPC_OPEN:
         stm32_uart_open(drv, HAL_ITEM(ipc->param1), ipc->process);
         need_post = true;
@@ -711,10 +689,6 @@ static inline void stm32_uart_open_stdio(SHARED_UART_DRV* drv)
 #if (UART_STDIO_RX != PIN_UNUSED)
     object_set(SYS_OBJ_STDIN, drv->uart.uarts[UART_STDIO_PORT]->rx_stream);
 #endif
-#if (SYS_INFO) && !(MONOLITH_UART)
-    //inform early process (core) about stdio.
-    ack(object_get(SYS_OBJ_CORE), IPC_SET_STDIO, 0, 0, 0);
-#endif //SYS_INFO && !MONOLITH_UART
 }
 #endif
 

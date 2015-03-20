@@ -176,11 +176,10 @@ typedef enum {
     STM32_ADC_VREF,
 
     STM32_ADC_DEVICE,
-    STM32_ADC_MAX
 #ifdef STM32L0
-    ,
-    STM32_ADC_VLCD
+    STM32_ADC_VLCD,
 #endif //STM32L0
+    STM32_ADC_MAX
 } STM32_ADC_CHANNEL;
 
 __STATIC_INLINE int stm32_adc_temp(int vref, int res)

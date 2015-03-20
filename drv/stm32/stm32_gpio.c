@@ -8,10 +8,6 @@
 #include "../../userspace/stm32_driver.h"
 #include "stm32_core_private.h"
 #include "sys_config.h"
-#if (SYS_INFO)
-#include "../../userspace/stdlib.h"
-#include "../../userspace/stdio.h"
-#endif
 #include <string.h>
 
 #if defined(STM32F1)
@@ -222,27 +218,6 @@ void stm32_gpio_disable_jtag(GPIO_DRV* gpio)
 #endif
 }
 
-#if (SYS_INFO)
-void stm32_gpio_info(GPIO_DRV* gpio)
-{
-    int i;
-    bool empty = true;
-    printd("Total GPIO count: %d\n\r", GPIO_COUNT);
-    printd("Active GPIO: ");
-    for (i = 0; i < GPIO_COUNT; ++i)
-    {
-        if (!empty && gpio->used_pins[i])
-            printd(", ");
-        if (gpio->used_pins[i])
-        {
-            printd("%c(%d)", 'A' + i, gpio->used_pins[i]);
-            empty = false;
-        }
-    }
-    printd("\n\r");
-}
-#endif
-
 void stm32_gpio_init(CORE* core)
 {
     memset(&core->gpio, 0, sizeof (GPIO_DRV));
@@ -253,12 +228,6 @@ bool stm32_gpio_request(CORE* core, IPC* ipc)
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        stm32_gpio_info(&core->gpio);
-        need_post = true;
-        break;
-#endif
     case STM32_GPIO_DISABLE_PIN:
         stm32_gpio_disable_pin(&core->gpio, (PIN)ipc->param1);
         need_post = true;

@@ -15,9 +15,7 @@
 #include "stm32_power.h"
 #include <string.h>
 #include "../../userspace/stdlib.h"
-#if (SYS_INFO) || (USB_DEBUG_ERRORS)
 #include "../../userspace/stdio.h"
-#endif
 #if (MONOLITH_USB)
 #include "stm32_core_private.h"
 #endif
@@ -35,10 +33,6 @@ typedef enum {
     STM32_USB_ERROR,
     STM32_USB_OVERFLOW
 }STM32_USB_IPCS;
-
-#if (SYS_INFO)
-const char* const EP_TYPES[] =                              {"BULK", "CONTROL", "ISOCHRON", "INTERRUPT"};
-#endif
 
 #if (MONOLITH_USB)
 
@@ -593,36 +587,11 @@ void stm32_usb_init(SHARED_USB_DRV* drv)
     }
 }
 
-#if (SYS_INFO)
-static inline void stm32_usb_info(SHARED_USB_DRV* drv)
-{
-    int i;
-    _printd("STM32 USB(L) driver info\n\r\n\r");
-    _printd("device\n\r");
-    _printd("Speed: FULL SPEED, address: %d\n\r", USB->DADDR & 0x7f);
-    _printd("Active endpoints:\n\r");
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
-    {
-        if (drv->usb.out[i] != NULL)
-            _printd("OUT%d: %s %d bytes\n\r", i, EP_TYPES[((*ep_reg_data(i)) >> 9) & 3], drv->usb.out[i]->mps);
-        if (drv->usb.in[i] != NULL)
-            _printd("IN%d: %s %d bytes\n\r", i, EP_TYPES[((*ep_reg_data(i)) >> 9) & 3], drv->usb.in[i]->mps);
-
-    }
-}
-#endif
-
 bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        stm32_usb_info(drv);
-        need_post = true;
-        break;
-#endif
     case STM32_USB_FIFO_TX:
         stm32_usb_tx(drv, HAL_ITEM(ipc->param1));
         //message from isr, no response

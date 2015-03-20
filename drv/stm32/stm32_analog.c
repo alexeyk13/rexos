@@ -15,9 +15,6 @@
 #include "../../userspace/sys.h"
 #include "../../userspace/file.h"
 #include <string.h>
-#if (SYS_INFO)
-#include "../../userspace/stdio.h"
-#endif
 #if (MONOLITH_ANALOG)
 #include "stm32_core_private.h"
 #endif
@@ -45,7 +42,6 @@ const unsigned int DAC_DMA_VECTORS[2] =                 {58, 59};
 
 #if (MONOLITH_ANALOG)
 
-#define _printd                 printd
 #define get_clock               stm32_power_get_clock_inside
 #define ack_gpio                stm32_gpio_request_inside
 #define ack_power               stm32_power_request_inside
@@ -53,7 +49,6 @@ const unsigned int DAC_DMA_VECTORS[2] =                 {58, 59};
 
 #else
 
-#define _printd                 printf
 #define get_clock               stm32_power_get_clock_outside
 #define ack_gpio                stm32_core_request_outside
 #define ack_power               stm32_core_request_outside
@@ -514,32 +509,11 @@ void stm32_dac_set_level(STM32_DAC_TYPE num, unsigned int value)
 
 #endif //STM32_DAC
 
-#if (SYS_INFO)
-static inline void stm32_analog_info(SHARED_ANALOG_DRV* drv)
-{
-    _printd("STM32 analog driver info\n\r\n\r");
-#if (STM32_DAC)
-    _printd("active channels: ");
-    if (drv->analog.dac[0] != NULL)
-        _printd("DAC_1 ");
-    if (drv->analog.dac[1] != NULL)
-        _printd("DAC_2");
-    _printd("\n\r\n\r");
-#endif //STM32_DAC
-}
-#endif //SYS_INFO
-
 bool stm32_analog_request(SHARED_ANALOG_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        stm32_analog_info(drv);
-        need_post = true;
-        break;
-#endif
     case IPC_OPEN:
         switch (HAL_GROUP(ipc->param1))
         {
@@ -610,9 +584,6 @@ void stm32_analog()
     SHARED_ANALOG_DRV drv;
     bool need_post;
     stm32_analog_init(&drv);
-#if (SYS_INFO)
-    open_stdout();
-#endif
     object_set_self(SYS_OBJ_ANALOG);
     for (;;)
     {

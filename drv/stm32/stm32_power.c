@@ -6,9 +6,6 @@
 
 #include "stm32_power.h"
 #include "stm32_core_private.h"
-#if (SYS_INFO)
-#include "../../userspace/stdio.h"
-#endif
 
 #if defined(STM32F1)
 #define MAX_APB2                             72000000
@@ -408,41 +405,6 @@ unsigned int get_clock(STM32_POWER_CLOCKS type)
     return res;
 }
 
-#if (SYS_INFO)
-void stm32_power_info(CORE* core)
-{
-    printd("Core clock: %d\n\r", get_core_clock());
-    printd("AHB clock: %d\n\r", get_ahb_clock());
-    printd("APB1 clock: %d\n\r", get_apb1_clock());
-    printd("APB2 clock: %d\n\r", get_apb2_clock());
-#if defined(STM32F1)
-    printd("ADC clock: %d\n\r", get_adc_clock());
-#endif
-    printd("Reset reason: ");
-    switch (core->power.reset_reason)
-    {
-    case RESET_REASON_LOW_POWER:
-        printd("low power");
-        break;
-    case RESET_REASON_WATCHDOG:
-        printd("watchdog");
-        break;
-    case RESET_REASON_SOFTWARE:
-        printd("software");
-        break;
-    case RESET_REASON_POWERON:
-        printd("power ON");
-        break;
-    case RESET_REASON_PIN_RST:
-        printd("pin reset");
-        break;
-    default:
-        printd("unknown");
-    }
-    printd("\n\r");
-}
-#endif
-
 #if defined(STM32F1)
 void dma_on(CORE* core, unsigned int index)
 {
@@ -546,12 +508,6 @@ bool stm32_power_request(CORE* core, IPC* ipc)
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        stm32_power_info(core);
-        need_post = true;
-        break;
-#endif
     case STM32_POWER_GET_CLOCK:
         ipc->param2 = get_clock(ipc->param1);
         need_post = true;

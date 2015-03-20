@@ -228,24 +228,11 @@ static int stm32_adc_get(CORE* core, STM32_ADC_CHANNEL channel)
 #endif
 }
 
-#if (SYS_INFO)
-static inline void stm32_adc_info(CORE* core)
-{
-    //TODO:
-}
-#endif //SYS_INFO
-
 bool stm32_adc_request(CORE* core, IPC* ipc)
 {
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        stm32_adc_info(drv);
-        need_post = true;
-        break;
-#endif
     case ADC_GET:
         ipc->param2 = stm32_adc_get(core, HAL_ITEM(ipc->param1));
         need_post = true;

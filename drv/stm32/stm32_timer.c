@@ -12,9 +12,6 @@
 #include "../../userspace/timer.h"
 #include "../../userspace/irq.h"
 #include <string.h>
-#if (SYS_INFO)
-#include "../../userspace/stdio.h"
-#endif
 
 #define APB1                                    (unsigned int*)((unsigned int)RCC_BASE + offsetof(RCC_TypeDef, APB1ENR))
 #define APB2                                    (unsigned int*)((unsigned int)RCC_BASE + offsetof(RCC_TypeDef, APB2ENR))
@@ -435,16 +432,6 @@ void second_pulse_isr(int vector, void* param)
 }
 #endif
 
-#if (SYS_INFO)
-void stm32_timer_info()
-{
-    printd("HPET timer: TIM_%d\n\r", HPET_TIMER + 1);
-#if (TIMER_SOFT_RTC)
-    printd("Second pulse timer: TIM_%d\n\r", SECOND_PULSE_TIMER + 1);
-#endif
-}
-#endif
-
 void stm32_timer_init(CORE *core)
 {
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
@@ -473,12 +460,6 @@ bool stm32_timer_request(CORE* core, IPC* ipc)
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        stm32_timer_info();
-        need_post = true;
-        break;
-#endif
     case STM32_TIMER_ENABLE:
         stm32_timer_enable(core, (TIMER_NUM)ipc->param1, ipc->param2);
         need_post = true;

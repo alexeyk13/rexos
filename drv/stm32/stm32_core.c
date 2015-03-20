@@ -55,10 +55,6 @@ void stm32_core_loop(CORE* core)
         case IPC_PING:
             need_post = true;
             break;
-        case IPC_SET_STDIO:
-            open_stdout();
-            need_post = true;
-            break;
         default:
             switch (ipc.cmd < IPC_USER ? HAL_GROUP(ipc.param1) : HAL_IPC_GROUP(ipc.cmd))
             {

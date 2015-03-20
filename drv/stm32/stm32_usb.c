@@ -18,9 +18,6 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/file.h"
 #include <string.h>
-#if (SYS_INFO)
-#include "../../userspace/stdio.h"
-#endif
 #if (MONOLITH_USB)
 #include "stm32_core_private.h"
 #endif
@@ -31,10 +28,6 @@
 #define USB_TX_EP0_FIFO_SIZE                                64
 
 
-#if (SYS_INFO)
-const char* const EP_TYPES[] =                              {"CONTROL", "ISOCHRON", "BULK", "INTERRUPT"};
-#endif
-
 typedef enum {
     STM32_USB_FIFO_RX = USB_HAL_MAX,
     STM32_USB_FIFO_TX
@@ -42,14 +35,12 @@ typedef enum {
 
 #if (MONOLITH_USB)
 
-#define _printd                 printd
 #define get_clock               stm32_power_get_clock_inside
 #define ack_gpio                stm32_gpio_request_inside
 #define ack_power               stm32_power_request_inside
 
 #else
 
-#define _printd                 printf
 #define get_clock               stm32_power_get_clock_outside
 #define ack_gpio                stm32_core_request_outside
 #define ack_power               stm32_core_request_outside
@@ -548,31 +539,6 @@ static inline void stm32_usb_set_test_mode(SHARED_USB_DRV* drv, USB_TEST_MODES t
     OTG_FS_DEVICE->CTL |= test_mode << OTG_FS_DEVICE_CTL_TCTL_POS;
 }
 
-#if (SYS_INFO)
-static inline void stm32_usb_info(SHARED_USB_DRV* drv)
-{
-    int i;
-    _printd("STM32 USB driver info\n\r\n\r");
-    _printd("State: ");
-    if (OTG_FS_DEVICE->STS & 1)
-    {
-        _printd("suspended\n\r");
-        return;
-    }
-    _printd("device\n\r");
-    _printd("Speed: FULL SPEED, address: %d\n\r", (OTG_FS_DEVICE->CFG & OTG_FS_DEVICE_CFG_DAD) >> OTG_FS_DEVICE_CFG_DAD_POS);
-    _printd("Active endpoints:\n\r");
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
-    {
-        if (drv->usb.out[i] != NULL)
-            _printd("OUT%d: %s %d bytes\n\r", i, EP_TYPES[(OTG_FS_DEVICE->OUTEP[i].CTL & OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP) >> OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP_POS], drv->usb.out[i]->mps);
-        if (drv->usb.in[i] != NULL)
-            _printd("IN%d: %s %d bytes\n\r", i, EP_TYPES[(OTG_FS_DEVICE->INEP[i].CTL & OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP) >> OTG_FS_DEVICE_ENDPOINT_CTL_EPTYP_POS], drv->usb.in[i]->mps);
-
-    }
-}
-#endif
-
 void stm32_usb_init(SHARED_USB_DRV* drv)
 {
     int i;
@@ -589,12 +555,6 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        stm32_usb_info(drv);
-        need_post = true;
-        break;
-#endif
     case STM32_USB_FIFO_RX:
         stm32_usb_rx(drv);
         //message from isr, no response
@@ -672,9 +632,6 @@ void stm32_usb()
     SHARED_USB_DRV drv;
     bool need_post;
     stm32_usb_init(&drv);
-#if (SYS_INFO)
-    open_stdout();
-#endif
     object_set_self(SYS_OBJ_USB);
     for (;;)
     {
