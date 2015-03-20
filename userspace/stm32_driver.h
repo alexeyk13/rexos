@@ -145,7 +145,6 @@ extern const GPIO_TypeDef_P GPIO[];
 
 //-------------------------------------------------- ADC ----------------------------------------------------------------------
 
-
 #define STM32_ADC_SMPR_1_5                           0
 #define STM32_ADC_SMPR_7_5                           1
 #define STM32_ADC_SMPR_13_5                          2
@@ -186,5 +185,28 @@ __STATIC_INLINE int stm32_adc_temp(int vref, int res)
 {
     return (V25_MV * 1000 - ADC2uV(adc_get(STM32_ADC_TEMP), vref, res)) * 10 / AVG_SLOPE + 25l * 10l;
 }
+
+//-------------------------------------------------- DAC ----------------------------------------------------------------------
+
+typedef enum {
+    STM32_DAC_NO_TRIGGER = 0,
+    STM32_DAC_TRIGGER_EXTI_RISING,
+    STM32_DAC_TRIGGER_EXTI_FALLING,
+    STM32_DAC_TRIGGER_EXTI_RISING_FALLING,
+#ifdef STM32F1
+    STM32_DAC_TRIGGER_TIM2,
+    STM32_DAC_TRIGGER_TIM3,
+    STM32_DAC_TRIGGER_TIM4,
+    STM32_DAC_TRIGGER_TIM5,
+    STM32_DAC_TRIGGER_TIM6,
+    STM32_DAC_TRIGGER_TIM7,
+    STM32_DAC_TRIGGER_TIM8
+#endif //STM32F1
+#ifdef STM32L0
+    STM32_DAC_TRIGGER_TIM2,
+    STM32_DAC_TRIGGER_TIM6,
+    STM32_DAC_TRIGGER_TIM21
+#endif //STM32LO
+} STM32_DAC_TRIGGER;
 
 #endif // STM32_DRIVER_H

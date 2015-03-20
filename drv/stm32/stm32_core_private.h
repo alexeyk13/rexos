@@ -13,7 +13,7 @@
 #include "stm32_timer.h"
 #include "stm32_power.h"
 #include "stm32_uart.h"
-#include "stm32_analog.h"
+#include "stm32_dac.h"
 #include "stm32_adc.h"
 #ifdef STM32L0
 #include "stm32_usbl.h"
@@ -30,22 +30,22 @@ typedef struct _CORE {
 #endif
 #if (STM32_ADC)
     ADC_DRV adc;
-#endif
-#if (MONOLITH_ANALOG)
-    ANALOG_DRV analog;
-#endif
+#endif //STM32_ADC
+#if (STM32_DAC)
+    DAC_DRV dac;
+#endif //STM32_DAC
 #if (MONOLITH_USB)
     USB_DRV usb;
 #endif
 }CORE;
 
-#if (SYS_INFO) || (USB_DEBUG_ERRORS)
+#if (USB_DEBUG_ERRORS)
 #if (UART_STDIO) && (MONOLITH_UART)
 #define printd          printu
 #else
 #define printd          printf
 #endif
-#endif //SYS_INFO
+#endif //USB_DEBUG_ERRORS
 
 
 #endif // STM32_CORE_PRIVATE_H

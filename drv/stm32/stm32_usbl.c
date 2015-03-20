@@ -671,7 +671,7 @@ void stm32_usbl()
     SHARED_USB_DRV drv;
     bool need_post;
     stm32_usb_init(&drv);
-#if (SYS_INFO) || (USB_DEBUG_ERRORS)
+#if (USB_DEBUG_ERRORS)
     open_stdout();
 #endif
     object_set_self(SYS_OBJ_USB);

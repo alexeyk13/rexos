@@ -14,7 +14,7 @@
 #include "stm32_wdt.h"
 #include "stm32_uart.h"
 #include "stm32_adc.h"
-#include "stm32_analog.h"
+#include "stm32_dac.h"
 #if (MONOLITH_USB)
 #ifdef STM32L0
 #include "stm32_usbl.h"
@@ -87,11 +87,11 @@ void stm32_core_loop(CORE* core)
                 need_post = stm32_adc_request(core, &ipc);
                 break;
 #endif //STM32_ADC
-#if (MONOLITH_ANALOG)
+#if (STM32_DAC)
             case HAL_DAC:
-                need_post = stm32_analog_request(core, &ipc);
+                need_post = stm32_dac_request(core, &ipc);
                 break;
-#endif //MONOLITH_ANALOG
+#endif //STM32_DAC
 #if (MONOLITH_USB)
             case HAL_USB:
                 need_post = stm32_usb_request(core, &ipc);
@@ -131,8 +131,8 @@ void stm32_core()
 #if (STM32_ADC)
     stm32_adc_init(&core);
 #endif
-#if (MONOLITH_ANALOG)
-    stm32_analog_init(&core);
+#if (STM32_DAC)
+    stm32_dac_init(&core);
 #endif
 #if (MONOLITH_USB)
     stm32_usb_init(&core);
