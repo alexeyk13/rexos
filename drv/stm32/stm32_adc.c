@@ -99,7 +99,64 @@ static inline void stm32_adc_open_channel(CORE* core, STM32_ADC_CHANNEL channel,
 #endif
 }
 
-//TODO: close
+static inline void stm32_adc_close_channel(CORE* core, STM32_ADC_CHANNEL channel)
+{
+    if (channel >= ADC_CHANNELS_COUNT)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    if (core->adc.channels[channel].samplerate == STM32_ADC_CHANNEL_INVALID_SAMPLERATE)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    core->adc.channels[channel].samplerate = STM32_ADC_CHANNEL_INVALID_SAMPLERATE;
+    //disable pin
+    if (channel < STM32_ADC_REGULAR_CHANNELS_COUNT)
+        stm32_gpio_request_inside(core, STM32_GPIO_DISABLE_PIN, ADC_PINS[channel], 0, 0);
+    else
+#ifdef STM32F1
+        if (core->adc.channels[STM32_ADC_TEMP].samplerate == STM32_ADC_CHANNEL_INVALID_SAMPLERATE &&
+            core->adc.channels[STM32_ADC_VREF].samplerate == STM32_ADC_CHANNEL_INVALID_SAMPLERATE )
+            ADC1->CR2 &= ~ADC_CR2_TSVREFE;
+#elif defined STM32L0
+        switch (channel)
+        {
+        case STM32_ADC_TEMP:
+            ADC->CCR &= ~ADC_CCR_TSEN;
+            break;
+        case STM32_ADC_VREF:
+            ADC->CCR &= ~ADC_CCR_VREFEN;
+            break;
+        default:
+            break;
+        }
+#endif
+}
+
+static inline void stm32_adc_close_device(CORE* core)
+{
+    if (!core->adc.active)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    //turn ADC off
+#ifdef STM32F1
+    ADC1->CR2 &= ~ADC_CR2_ADON;
+#elif defined STM32L0
+#if (STM32_ADC_ASYNCRONOUS_CLOCK)
+    RCC->CR &= ~RCC_CR_HSION;
+#endif //STM32_ADC_ASYNCRONOUS_CLOCK
+    //stop
+    ADC1->CR = ADC_CR_ADDIS;
+    while (ADC1->ISR & ADC_CR_ADDIS) {}
+#endif
+    //disable clock
+    RCC->APB2ENR &= ~RCC_APB2ENR_ADC1EN;
+    core->adc.active = false;
+}
 
 #ifdef STM32F1
 static inline void stm32_adc_set_sequence_channel(int sq, int chan)
@@ -171,12 +228,6 @@ static int stm32_adc_get(CORE* core, STM32_ADC_CHANNEL channel)
 #endif
 }
 
-static inline int stm32_adc_get_temp(CORE* core)
-{
-//    return (V25_MV * 1000 - ADC2uV(stm32_adc_get(core, STM32_TEMP_SENSOR))) * 10 / AVG_SLOPE + 25l * 10l;
-    return 0;
-}
-
 #if (SYS_INFO)
 static inline void stm32_adc_info(CORE* core)
 {
@@ -207,8 +258,10 @@ bool stm32_adc_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
     case IPC_CLOSE:
-        //TODO:
-        error(ERROR_INVALID_PARAMS);
+        if (HAL_ITEM(ipc->param1) == STM32_ADC_DEVICE)
+            stm32_adc_close_device(core);
+        else
+            stm32_adc_close_channel(core, HAL_ITEM(ipc->param1));
         need_post = true;
         break;
     default:

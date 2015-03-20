@@ -9,6 +9,8 @@
 
 #include "core/core.h"
 #include "sys.h"
+#include "stm32_config.h"
+#include "adc.h"
 
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 
@@ -180,5 +182,10 @@ typedef enum {
     STM32_ADC_VLCD
 #endif //STM32L0
 } STM32_ADC_CHANNEL;
+
+__STATIC_INLINE int stm32_adc_temp(int vref, int res)
+{
+    return (V25_MV * 1000 - ADC2uV(adc_get(STM32_ADC_TEMP), vref, res)) * 10 / AVG_SLOPE + 25l * 10l;
+}
 
 #endif // STM32_DRIVER_H
