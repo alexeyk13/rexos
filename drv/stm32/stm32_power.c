@@ -315,7 +315,7 @@ void setup_clock(int param1, int param2, int param3)
         RCC->CFGR |= (4 | (bus - 1)) << PPRE1;
 #if (STM32_ADC)
     unsigned int psc;
-    for(psc = 2; psc < 8 && get_clock(drv, STM32_CLOCK_APB2) / psc > ADC_CLOCK_MAX; psc += 2) {}
+    for(psc = 2; psc < 8 && get_apb2_clock() / psc > ADC_CLOCK_MAX; psc += 2) {}
     RCC->CFGR &= ~(3 << 14);
     RCC->CFGR |= (psc / 2 - 1) << 14;
 #endif // STM32_ADC

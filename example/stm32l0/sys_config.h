@@ -26,6 +26,7 @@
 #define SYS_OBJ_USB                                         INVALID_HANDLE
 #define SYS_OBJ_USBD                                        INVALID_HANDLE
 #define SYS_OBJ_STDIN                                       INVALID_HANDLE
+#define SYS_OBJ_ADC                                         INVALID_HANDLE
 //------------------------------ stdio -----------------------------------------------
 #define STDIO_STREAM_SIZE                                   32
 //-------------------------------- USB -----------------------------------------------

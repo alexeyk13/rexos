@@ -60,14 +60,17 @@
 #define HPET_TIMER                               TIM_21
 #define TIMER_SOFT_RTC                           0
 #define SECOND_PULSE_TIMER                       TIM_22
-//----------------------------- ANALOG -----------------------------------------------
+//------------------------------- ADC ------------------------------------------------
+#define STM32_ADC                                0
+//In L0 series - select HSI16 as clock source
+#define STM32_ADC_ASYNCRONOUS_CLOCK              0
 // Avg Slope, refer to datasheet
 #define AVG_SLOPE                                4300
 // temp at 25C in mV, refer to datasheet
 #define V25_MV                                   1400
-// Vref in mV, set to 3300, if used internal
-#define ADC_VREF                                 3300
 
+//------------------------------- DAC ------------------------------------------------
+#define STM32_DAC                                0
 #define DAC_BOFF                                 1
 #define DAC_DMA                                  1
 //will be allocated 2 for double-buffering, decrease for memory saving, increase if you have data underflow.

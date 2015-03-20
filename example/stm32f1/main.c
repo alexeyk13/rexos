@@ -12,6 +12,7 @@
 #include "../../rexos/userspace/gpio.h"
 #include "../../rexos/userspace/rtc.h"
 #include "../../rexos/userspace/wdt.h"
+#include "../../rexos/userspace/adc.h"
 #include "../../rexos/userspace/stm32_driver.h"
 #include "../../rexos/drv/stm32/stm32_uart.h"
 #include "../../rexos/drv/stm32/stm32_analog.h"
@@ -258,15 +259,12 @@ void app()
 
     process_create(&__COMM);
 
-    ack(core, IPC_GET_INFO, 0, 0, 0);
-#if !(MONOLITH_UART)
-    ack(uart, IPC_GET_INFO, 0, 0, 0);
-#endif
-
     dac_on(analog);
     dac_test(analog);
 
-    int temp = get(analog, STM32_ADC_TEMP, 0, 0, 0);
+    fopen(object_get(SYS_OBJ_ADC), HAL_HANDLE(HAL_ADC, STM32_ADC_DEVICE), 0);
+    fopen(object_get(SYS_OBJ_ADC), HAL_HANDLE(HAL_ADC, STM32_ADC_TEMP), STM32_ADC_SMPR_239_5);
+    int temp = stm32_adc_temp(3300, 12);
     printf("Temp: %d.%d\n\r", temp / 10, temp % 10);
 
     for (;;)

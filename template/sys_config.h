@@ -29,6 +29,7 @@
 #define SYS_OBJ_UART                                        SYS_OBJ_CORE
 #define SYS_OBJ_USB                                         SYS_OBJ_CORE
 #define SYS_OBJ_ANALOG                                      SYS_OBJ_CORE
+#define SYS_OBJ_ADC                                         SYS_OBJ_CORE
 //------------------------------ stdio -----------------------------------------------
 #define STDIO_STREAM_SIZE                                   32
 //-------------------------------- USB -----------------------------------------------
