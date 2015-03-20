@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2015, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #include "stm32_wdt.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/wdt.h"

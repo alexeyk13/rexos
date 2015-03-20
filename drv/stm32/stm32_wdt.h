@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2015, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #ifndef STM32_WDT_H
 #define STM32_WDT_H
 
