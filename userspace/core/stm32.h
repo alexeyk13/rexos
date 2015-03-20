@@ -209,6 +209,7 @@
 #define STM32F1
 //it's what defined in STM32F1xxx.h. Real count may be less.
 #define GPIO_COUNT                                              7
+#define ADC_CHANNELS_COUNT                                      18
 
 #if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL)
 #define UARTS_COUNT                                             2
@@ -461,6 +462,7 @@
 #define SRAM_SIZE           0x2000
 #define GPIO_COUNT          3
 #define UARTS_COUNT         2
+#define ADC_CHANNELS_COUNT  19
 
 #if defined(STM32L051xx) || defined(STM32L061xx)
 #define IRQ_VECTORS_COUNT   30

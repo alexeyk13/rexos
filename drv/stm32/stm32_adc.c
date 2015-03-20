@@ -5,34 +5,48 @@
 */
 
 #include "stm32_adc.h"
+#include "stm32_gpio.h"
 #include "stm32_core_private.h"
 #include "sys_config.h"
 
 #if defined (STM32F1)
-#define ADC_TSTAB                                       11
+#define ADC_TSTAB                                                   11
+#define ADC_SQR_LEN(len)                                            (((len - 1ul) & 0xful) << 20ul)
 #elif defined(STM32L0)
-#define ADC_CLOCK_MAX                                   16000000
-#define ADC_TSTAB                                       10
+#define ADC_CLOCK_MAX                                               16000000
+#define ADC_TSTAB                                                   10
 #endif //STM32F1
-#define ADC_SQR_LEN(len)                                (((len - 1ul) & 0xful) << 20ul)
-#define ADC2uV(raw)                                     ((raw * ADC_VREF * 100 / 0xfff) * 10ul)
+
+#define STM32_ADC_CHANNEL_INVALID_SAMPLERATE                        0xff
+#define STM32_ADC_REGULAR_CHANNELS_COUNT                            16
+
+static const PIN ADC_PINS[STM32_ADC_REGULAR_CHANNELS_COUNT] =       {A0, A1, A2, A3, A4, A5, A6, A7, B0, B1, C0, C1, C2, C3, C4, C5};
 
 
-static inline void stm32_adc_open_device()
+static inline void stm32_adc_open_device(CORE* core)
 {
+    if (core->adc.active)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
     //enable clock
     RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
     //turn ADC on
 #ifdef STM32F1
     ADC1->CR2 |= ADC_CR2_ADON;
-#if (STM32_ADC_VREF_CHANNEL) || (STM32_ADC_TEMP_CHANNEL)
-    ADC1->CR2 |= ADC_CR2_TSVREFE;
-#endif //(STM32_ADC_VREF_CHANNEL) || (STM32_ADC_TEMP_CHANNEL)
     sleep_us(ADC_TSTAB);
     //start self-calibration
     ADC1->CR2 |= ADC_CR2_CAL;
     while(ADC1->CR2 & ADC_CR2_CAL) {}
 #elif defined STM32L0
+#if (STM32_ADC_ASYNCRONOUS_CLOCK)
+    RCC->CR |= RCC_CR_HSION;
+    while ((RCC->CR & RCC_CR_HSIRDY) == 0) {}
+#else
+    //PCLK/2
+    ADC1->CFGR2 = 1 << 30;
+#endif //STM32_ADC_ASYNCRONOUS_CLOCK
     //first calibrate, than start
     ADC1->CR = ADC_CR_ADCAL;
     while (ADC1->CR & ADC_CR_ADCAL) {}
@@ -40,6 +54,48 @@ static inline void stm32_adc_open_device()
     //start
     ADC1->CR = ADC_CR_ADEN;
     while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {}
+
+    ADC1->CFGR1 = ADC_CFGR1_AUTOFF | ADC_CFGR1_WAIT;
+#endif
+    core->adc.active = true;
+}
+
+static inline void stm32_adc_open_channel(CORE* core, STM32_ADC_CHANNEL channel, uint8_t rate)
+{
+    if (channel >= ADC_CHANNELS_COUNT)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    if (!core->adc.active)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (core->adc.channels[channel].samplerate != STM32_ADC_CHANNEL_INVALID_SAMPLERATE)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    core->adc.channels[channel].samplerate = rate;
+    //enable pin
+#ifdef STM32F1
+    if (channel < STM32_ADC_REGULAR_CHANNELS_COUNT)
+        stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, ADC_PINS[channel], STM32_GPIO_MODE_INPUT_ANALOG, false);
+    else
+        ADC1->CR2 |= ADC_CR2_TSVREFE;
+#elif defined STM32L0
+    switch (channel)
+    {
+    case STM32_ADC_TEMP:
+        ADC->CCR |= ADC_CCR_TSEN;
+        break;
+    case STM32_ADC_VREF:
+        ADC->CCR |= ADC_CCR_VREFEN;
+        break;
+    default:
+        stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, ADC_PINS[channel], STM32_GPIO_MODE_ANALOG, AF0);
+    }
 #endif
 }
 
@@ -80,14 +136,24 @@ static inline void stm32_adc_set_sample_rate(int chan, int sample_rate)
 }
 #endif //STM32F1
 
-static int stm32_adc_get_single_sample(int chan, int sample_rate)
+static int stm32_adc_get(CORE* core, STM32_ADC_CHANNEL channel)
 {
+    if (channel >= ADC_CHANNELS_COUNT)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return -1;
+    }
+    if (!core->adc.active || core->adc.channels[channel].samplerate == STM32_ADC_CHANNEL_INVALID_SAMPLERATE)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return -1;
+    }
 #ifdef STM32F1
-    stm32_adc_set_sample_rate(chan, sample_rate);
+    stm32_adc_set_sample_rate(channel, core->adc.channels[channel].samplerate);
 
     //sequence len = 1
     ADC1->SQR1 = ADC_SQR_LEN(1);
-    stm32_adc_set_sequence_channel(1, chan);
+    stm32_adc_set_sequence_channel(1, channel);
 
     //start conversion cycle
     ADC1->SR = 0;
@@ -96,14 +162,19 @@ static int stm32_adc_get_single_sample(int chan, int sample_rate)
 
     return ADC1->DR;
 #elif defined STM32L0
-    //TODO:
-    return 999;
+    ADC1->SMPR = core->adc.channels[channel].samplerate;
+    ADC1->CHSELR = 1 << channel;
+    ADC1->CR |= ADC_CR_ADSTART;
+    while ((ADC1->ISR & ADC_ISR_EOC) == 0) {}
+    ADC1->ISR |= ADC_ISR_EOC;
+    return ADC1->DR;
 #endif
 }
 
-static inline int stm32_adc_get_temp()
+static inline int stm32_adc_get_temp(CORE* core)
 {
-    return (V25_MV * 1000 - ADC2uV(stm32_adc_get_single_sample(STM32_TEMP_SENSOR, ADC_SMPR_239_5))) * 10 / AVG_SLOPE + 25l * 10l;
+//    return (V25_MV * 1000 - ADC2uV(stm32_adc_get(core, STM32_TEMP_SENSOR))) * 10 / AVG_SLOPE + 25l * 10l;
+    return 0;
 }
 
 #if (SYS_INFO)
@@ -124,16 +195,15 @@ bool stm32_adc_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
 #endif
-    case STM32_ADC_GET_VALUE:
-        ipc->param2 = stm32_adc_get_single_sample(ipc->param1, ipc->param2);
+    case ADC_GET:
+        ipc->param2 = stm32_adc_get(core, HAL_ITEM(ipc->param1));
         need_post = true;
         break;
-//    case STM32_ADC_TEMP:
-//        ipc->param2 = stm32_adc_get_temp();
-//        need_post = true;
-//        break;
     case IPC_OPEN:
-        stm32_adc_open_device();
+        if (HAL_ITEM(ipc->param1) == STM32_ADC_DEVICE)
+            stm32_adc_open_device(core);
+        else
+            stm32_adc_open_channel(core, HAL_ITEM(ipc->param1), ipc->param2);
         need_post = true;
         break;
     case IPC_CLOSE:
@@ -151,5 +221,8 @@ bool stm32_adc_request(CORE* core, IPC* ipc)
 
 void stm32_adc_init(CORE* core)
 {
-    //TODO:
+    int i;
+    core->adc.active = false;
+    for (i = 0; i < ADC_CHANNELS_COUNT; ++i)
+        core->adc.channels[i].samplerate = STM32_ADC_CHANNEL_INVALID_SAMPLERATE;
 }

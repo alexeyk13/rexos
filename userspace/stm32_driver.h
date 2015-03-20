@@ -143,6 +143,16 @@ extern const GPIO_TypeDef_P GPIO[];
 
 //-------------------------------------------------- ADC ----------------------------------------------------------------------
 
+
+#define STM32_ADC_SMPR_1_5                           0
+#define STM32_ADC_SMPR_7_5                           1
+#define STM32_ADC_SMPR_13_5                          2
+#define STM32_ADC_SMPR_28_5                          3
+#define STM32_ADC_SMPR_41_5                          4
+#define STM32_ADC_SMPR_55_5                          5
+#define STM32_ADC_SMPR_71_5                          6
+#define STM32_ADC_SMPR_239_5                         7
+
 typedef enum {
     STM32_ADC0,
     STM32_ADC1,

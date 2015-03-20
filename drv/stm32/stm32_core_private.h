@@ -12,18 +12,13 @@
 #include "stm32_gpio.h"
 #include "stm32_timer.h"
 #include "stm32_power.h"
-#if (MONOLITH_UART)
 #include "stm32_uart.h"
-#endif
-#if (MONOLITH_ANALOG)
 #include "stm32_analog.h"
-#endif
-#if (MONOLITH_USB)
+#include "stm32_adc.h"
 #ifdef STM32L0
 #include "stm32_usbl.h"
 #else
 #include "stm32_usb.h"
-#endif
 #endif
 
 typedef struct _CORE {
@@ -32,6 +27,9 @@ typedef struct _CORE {
     POWER_DRV power;
 #if (MONOLITH_UART)
     UART_DRV uart;
+#endif
+#if (STM32_ADC)
+    ADC_DRV adc;
 #endif
 #if (MONOLITH_ANALOG)
     ANALOG_DRV analog;
