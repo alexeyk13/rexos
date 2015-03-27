@@ -58,7 +58,8 @@ unavailable, another HPET timer can be used for RTC emulation
   * wdt: STM32F1, STM32F2, STM32F4, STM32L0
   * EEPROM: LPC11Uxx
   * I2C: LPC1Uxx
-  * analog(ADC, DAC): STM32F1
+  * ADC: STM32F1, STM32L0
+  * DAC: STM32F1, STM32L0
   * USB: STM32F1_CL, STM32L0, LPC11Uxx
   * ETH: STM32F1
   * bitbang: STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx
@@ -76,6 +77,15 @@ ARM7 features:
 
 History
 =======
+0.2.6
+- DAC driver HAL abstraction
+- ADC driver HAL abstraction
+- STM32 analog driver splitted into ADC and DAC
+- STM32 L0 ADC and DAC drivers
+- software wave generation module for driver
+- IPC call waits for exact command, sended to process
+- fix unsafe task switching, when process statistics is enabled
+
 0.2.5
 - STM32 F1 ehternet driver with double buffering supported
 - TCP/IP scratch: MAC, MAC filtering, ARP resolve/announce, ARP cache, IP, ROUTE, ICMP echo, ICMP ping, ICMP flow control
