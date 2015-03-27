@@ -8,6 +8,7 @@
 #define STM32_POWER_H
 
 #include "stm32_core.h"
+#include "../../userspace/stm32_driver.h"
 
 #if defined(STM32F10X_CL)
 #define PLL_MUL_6_5                             15
@@ -32,26 +33,10 @@ typedef enum {
     STM32_CLOCK_ADC
 } STM32_POWER_CLOCKS;
 
-typedef enum {
-    DMA_1 = 0,
-    DMA_2
-} STM32_DMA;
-
-typedef enum {
-    RESET_REASON_UNKNOWN    = 0,
-    RESET_REASON_LOW_POWER,
-    RESET_REASON_WATCHDOG,
-    RESET_REASON_SOFTWARE,
-    RESET_REASON_POWERON,
-    RESET_REASON_PIN_RST
-} RESET_REASON;
-
 typedef struct {
     int write_count;
     RESET_REASON reset_reason;
-#if defined(STM32F1)
-    int dma_count[2];
-#endif
+    int dma_count[DMA_COUNT];
 }POWER_DRV;
 
 void stm32_power_init(CORE* core);

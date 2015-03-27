@@ -405,19 +405,17 @@ unsigned int get_clock(STM32_POWER_CLOCKS type)
     return res;
 }
 
-#if defined(STM32F1)
-void dma_on(CORE* core, unsigned int index)
+void dma_on(CORE* core, STM32_DMA dma)
 {
-    if (core->power.dma_count[index]++ == 0)
-        RCC->AHBENR |= 1 << index;
+    if (core->power.dma_count[dma]++ == 0)
+        RCC->AHBENR |= 1 << dma;
 }
 
-void dma_off(CORE* core, unsigned int index)
+void dma_off(CORE* core, STM32_DMA dma)
 {
-    if (--core->power.dma_count[index] == 0)
-        RCC->AHBENR &= ~(1 << index);
+    if (--core->power.dma_count[dma] == 0)
+        RCC->AHBENR &= ~(1 << dma);
 }
-#endif
 
 #if defined(STM32F1)
 void stm32_usb_power_on()
@@ -472,9 +470,11 @@ static inline void decode_reset_reason(CORE* core)
 
 void stm32_power_init(CORE* core)
 {
+    int i;
     core->power.write_count = 0;
+    for (i = 0; i < DMA_COUNT; ++i)
+        core->power.dma_count[i] = 0;
 #if defined(STM32F1)
-    core->power.dma_count[0] = core->power.dma_count[1] = 0;
     decode_reset_reason(core);
 #endif
 
@@ -520,7 +520,6 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         ipc->param2 = get_reset_reason(core);
         need_post = true;
         break;
-#if defined(STM32F1)
     case STM32_POWER_DMA_ON:
         dma_on(core, ipc->param1);
         need_post = true;
@@ -529,7 +528,6 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         dma_off(core, ipc->param1);
         need_post = true;
         break;
-#endif //STM32F1
 #if defined(STM32F1)
     case STM32_POWER_USB_ON:
         stm32_usb_power_on();
