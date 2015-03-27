@@ -22,8 +22,7 @@ typedef enum {
     STM32_TIMER_DISABLE_EXT_CLOCK,
     STM32_TIMER_SETUP_HZ,
     STM32_TIMER_START,
-    STM32_TIMER_STOP,
-    STM32_TIMER_GET_CLOCK,
+    STM32_TIMER_STOP
 } STM32_TIMER_IPCS;
 
 typedef struct {
@@ -75,7 +74,8 @@ typedef enum {
 #define TIMER_FLAG_PULL_MASK                         (3 << 2)
 #define TIMER_FLAG_ONE_PULSE_MODE                    (1 << 4)
 #define TIMER_FLAG_ENABLE_IRQ                        (1 << 5)
-#define TIMER_FLAG_PRIORITY                          16
+#define TIMER_FLAG_ENABLE_DMA                        (1 << 6)
+#define TIMER_FLAG_PRIORITY_POS                      16
 
 typedef TIM_TypeDef*                            TIM_TypeDef_P;
 
