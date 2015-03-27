@@ -1,41 +1,15 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
 #include "mt.h"
-#include "../../userspace/gpio.h"
-#if (SYS_INFO) || (MT_TEST)
-#include "../../userspace/stdio.h"
-#include "../../userspace/timer.h"
-#endif
-#if (MT_DRIVER)
-#include "../../userspace/block.h"
-#include "../../userspace/direct.h"
-#endif
-
+#include "../userspace/gpio.h"
+#include "../userspace/stdio.h"
+#include "../userspace/timer.h"
 
 #define CLKS_TEST_ROUNDS                10000000
-
-#if (MT_DRIVER)
-void mt();
-
-const REX __MT = {
-    //name
-    "MT LCD driver",
-    //size
-    MT_STACK_SIZE,
-    //priority - driver priority
-    90,
-    //flags
-    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
-    //ipc size
-    MT_IPC_COUNT,
-    //function
-    mt
-};
-#endif
 
 #define ADDSET_MASK                     (MT_CS1 | MT_CS2 | MT_RW | MT_A)
 
@@ -551,130 +525,3 @@ void mt_init()
     mt_cls();
 }
 
-#if (MT_DRIVER)
-#if (SYS_INFO)
-static inline void mt_info()
-{
-    TIME uptime;
-    get_uptime(&uptime);
-
-    mt_pixel_test();
-    printf("pixel test time(us): %dus\n\r", time_elapsed_us(&uptime));
-}
-#endif
-
-
-static inline void mt_clear_rect_driver(HANDLE process)
-{
-    MT_REQUEST req;
-    if (direct_read(process, (void*)&req, sizeof(MT_REQUEST)))
-        mt_clear_rect(&req.rect);
-}
-
-static inline void mt_write_rect_driver(HANDLE process)
-{
-    MT_REQUEST req;
-    uint8_t* ptr;
-    if (direct_read(process, (void*)&req, sizeof(MT_REQUEST)))
-    {
-        ptr = block_open(req.block);
-        if (ptr)
-            mt_write_rect(&req.rect, ptr);
-    }
-}
-
-static inline void mt_read_canvas_driver(HANDLE block, unsigned short x, unsigned short y)
-{
-    CANVAS* canvas = (CANVAS*)block_open(block);
-    POINT point;
-    point.x = x;
-    point.y = y;
-    if (canvas == NULL)
-        return;
-    mt_read_canvas(canvas, &point);
-}
-
-static inline void mt_write_canvas_driver(HANDLE block, unsigned short x, unsigned short y)
-{
-    CANVAS* canvas = (CANVAS*)block_open(block);
-    POINT point;
-    point.x = x;
-    point.y = y;
-    if (canvas == NULL)
-        return;
-    mt_write_canvas(canvas, &point);
-}
-
-void mt()
-{
-    mt_init();
-    IPC ipc;
-#if (SYS_INFO) || (MT_TEST)
-    open_stdout();
-#endif
-    for (;;)
-    {
-        error(ERROR_OK);
-        need_post = false;
-        ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
-            need_post = true;
-            break;
-        case IPC_CALL_ERROR:
-            break;
-#if (SYS_INFO)
-        case IPC_GET_INFO:
-            mt_info(drv);
-            need_post = true;
-            break;
-#endif
-        case MT_RESET:
-            mt_reset();
-            need_post = true;
-            break;
-        case MT_SHOW:
-            mt_show(ipc.param1);
-            need_post = true;
-            break;
-        case MT_BACKLIGHT:
-            mt_backlight(ipc.param1);
-            need_post = true;
-            break;
-        case MT_CLS:
-            mt_cls();
-            need_post = true;
-            break;
-        case MT_CLEAR_RECT:
-            mt_clear_rect_driver(ipc.process);
-            need_post = true;
-            break;
-        case MT_WRITE_RECT:
-            mt_write_rect_driver(ipc.process);
-            need_post = true;
-            break;
-        case MT_READ_CANVAS:
-            mt_read_canvas_driver((HANDLE)ipc.param1, ipc.param2, ipc.param3);
-            need_post = true;
-            break;
-        case MT_WRITE_CANVAS:
-            mt_write_canvas_driver((HANDLE)ipc.param1, ipc.param2, ipc.param3);
-            need_post = true;
-            break;
-#if (MT_TEST)
-        case MT_PIXEL_TEST:
-            mt_pixel_test();
-            need_post = true;
-            break;
-#endif
-        default:
-            error(ERROR_NOT_SUPPORTED);
-            need_post = true;
-        }
-        if (need_post)
-            ipc_post_or_error(&ipc);
-    }
-}
-
-#endif

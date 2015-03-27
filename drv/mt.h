@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -21,28 +21,6 @@
 #define MT_MODE_AND                        0x3
 #define MT_MODE_FILL                       0x4
 
-#if (MT_DRIVER)
-typedef enum {
-    MT_RESET = HAL_IPC(HAL_POWER),
-    MT_SHOW,
-    MT_BACKLIGHT
-    MT_CLS,
-    MT_CLEAR_RECT,
-    MT_READ_CANVAS,
-    MT_WRITE_RECT,
-    MT_WRITE_CANVAS,
-    MT_PIXEL_TEST
-} MT_IPCS;
-
-extern const REX __MT;
-
-typedef struct {
-    RECT rect;
-    HANDLE block;
-} MT_REQUEST;
-
-#else
-
 void mt_set_backlight(bool on);
 void mt_show(bool on);
 bool mt_is_on();
@@ -57,7 +35,5 @@ void mt_clear_rect(const RECT* rect);
 void mt_write_rect(const RECT *rect, const uint8_t *data);
 void mt_read_canvas(CANVAS* canvas, POINT* point);
 void mt_write_canvas(CANVAS* canvas, POINT* point);
-
-#endif //MT_DRIVER
 
 #endif // MT_H
