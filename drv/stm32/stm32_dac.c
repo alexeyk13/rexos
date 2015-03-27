@@ -41,6 +41,14 @@ static const unsigned int DAC_DATA_REG[DAC_CHANNELS_COUNT_USER] =           {DAC
 #else
 static const unsigned int DAC_DATA_REG[DAC_CHANNELS_COUNT_USER] =           {DAC_BASE + 0x08, DAC_BASE + 0x14};
 #endif //DAC_DUAL_CHANNEL
+
+//In F1 STM defined bits with differrent names for every DMA channel.
+#define DMA_CCR_MINC                                                        (1 << 7)
+#define DMA_CCR_CIRC                                                        (1 << 5)
+#define DMA_CCR_DIR                                                         (1 << 4)
+#define DMA_CCR_HTIE                                                        (1 << 2)
+#define DMA_CCR_TCIE                                                        (1 << 1)
+#define DMA_CCR_EN                                                          (1 << 0)
 #endif //STM32F1
 
 #ifdef STM32L0
