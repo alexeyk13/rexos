@@ -428,7 +428,7 @@ void stm32_timer_init(CORE *core)
 
 bool stm32_timer_request(CORE* core, IPC* ipc)
 {
-    TIMER_NUM num = (TIMER_NUM)ipc->param1;
+    TIMER_NUM num = (TIMER_NUM)HAL_ITEM(ipc->param1);
     bool need_post = false;
     if (num >= TIMERS_COUNT)
     {
@@ -438,31 +438,31 @@ bool stm32_timer_request(CORE* core, IPC* ipc)
     switch (ipc->cmd)
     {
     case STM32_TIMER_ENABLE:
-        stm32_timer_enable(core, (TIMER_NUM)ipc->param1, ipc->param2);
+        stm32_timer_enable(core, num, ipc->param2);
         need_post = true;
         break;
     case STM32_TIMER_DISABLE:
-        stm32_timer_disable(core, (TIMER_NUM)ipc->param1);
+        stm32_timer_disable(core, num);
         need_post = true;
         break;
     case STM32_TIMER_ENABLE_EXT_CLOCK:
-        stm32_timer_enable_ext_clock(core, (TIMER_NUM)ipc->param1, (PIN)ipc->param2, ipc->param3);
+        stm32_timer_enable_ext_clock(core, num, (PIN)ipc->param2, ipc->param3);
         need_post = true;
         break;
     case STM32_TIMER_DISABLE_EXT_CLOCK:
-        stm32_timer_disable_ext_clock(core, (TIMER_NUM)ipc->param1, (PIN)ipc->param2);
+        stm32_timer_disable_ext_clock(core, num, (PIN)ipc->param2);
         need_post = true;
         break;
     case STM32_TIMER_SETUP_HZ:
-        stm32_timer_setup_hz(core, (TIMER_NUM)ipc->param1, ipc->param2);
+        stm32_timer_setup_hz(core, num, ipc->param2);
         need_post = true;
         break;
     case STM32_TIMER_START:
-        stm32_timer_start((TIMER_NUM)ipc->param1);
+        stm32_timer_start(num);
         need_post = true;
         break;
     case STM32_TIMER_STOP:
-        stm32_timer_stop(ipc->param1);
+        stm32_timer_stop(num);
         need_post = true;
         break;
     default:
