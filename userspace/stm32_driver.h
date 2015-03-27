@@ -12,6 +12,32 @@
 #include "stm32_config.h"
 #include "adc.h"
 
+//-------------------------------------------------- POWER ---------------------------------------------------------------------
+
+typedef enum {
+    DMA_1 = 0,
+    DMA_2
+} STM32_DMA;
+
+typedef enum {
+    DMA_CHANNEL_1 = 0,
+    DMA_CHANNEL_2,
+    DMA_CHANNEL_3,
+    DMA_CHANNEL_4,
+    DMA_CHANNEL_5,
+    DMA_CHANNEL_6,
+    DMA_CHANNEL_7
+} STM32_DMA_CHANNEL;
+
+typedef enum {
+    RESET_REASON_UNKNOWN = 0,
+    RESET_REASON_LOW_POWER,
+    RESET_REASON_WATCHDOG,
+    RESET_REASON_SOFTWARE,
+    RESET_REASON_POWERON,
+    RESET_REASON_PIN_RST
+} RESET_REASON;
+
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 
 typedef enum {
@@ -185,28 +211,5 @@ __STATIC_INLINE int stm32_adc_temp(int vref, int res)
 {
     return (V25_MV * 1000 - ADC2uV(adc_get(STM32_ADC_TEMP), vref, res)) * 10 / AVG_SLOPE + 25l * 10l;
 }
-
-//-------------------------------------------------- DAC ----------------------------------------------------------------------
-
-typedef enum {
-    STM32_DAC_NO_TRIGGER = 0,
-    STM32_DAC_TRIGGER_EXTI_RISING,
-    STM32_DAC_TRIGGER_EXTI_FALLING,
-    STM32_DAC_TRIGGER_EXTI_RISING_FALLING,
-#ifdef STM32F1
-    STM32_DAC_TRIGGER_TIM2,
-    STM32_DAC_TRIGGER_TIM3,
-    STM32_DAC_TRIGGER_TIM4,
-    STM32_DAC_TRIGGER_TIM5,
-    STM32_DAC_TRIGGER_TIM6,
-    STM32_DAC_TRIGGER_TIM7,
-    STM32_DAC_TRIGGER_TIM8
-#endif //STM32F1
-#ifdef STM32L0
-    STM32_DAC_TRIGGER_TIM2,
-    STM32_DAC_TRIGGER_TIM6,
-    STM32_DAC_TRIGGER_TIM21
-#endif //STM32LO
-} STM32_DAC_TRIGGER;
 
 #endif // STM32_DRIVER_H

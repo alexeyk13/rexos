@@ -9,33 +9,37 @@
 
 #include "../../userspace/sys.h"
 #include "../../userspace/stm32_driver.h"
+#include "../../userspace/dac.h"
 #include "stm32_config.h"
 #include "stm32_core.h"
+#include <stdint.h>
 
 #if defined (STM32F1)
 #if (DAC_DUAL_CHANNEL)
 #define DAC_CHANNELS_COUNT_USER                     1
+#define DAC_MANY                                    0
 #else
 #define DAC_CHANNELS_COUNT_USER                     2
+#define DAC_MANY                                    1
 #endif
 #else
 #define DAC_CHANNELS_COUNT_USER                     1
+#define DAC_MANY                                    0
 #endif
 
 typedef enum {
-    STM32_DAC_SET_LEVEL = HAL_IPC(HAL_DAC),
-    STM32_DAC_UNDERFLOW_DEBUG
+    STM32_DAC_UNDERFLOW_DEBUG = DAC_IPC_MAX
 } STM32_DAC_IPCS;
 
 typedef struct {
 #if (DAC_STREAM)
-    STM32_DAC_TRIGGER trigger;
     HANDLE block, process;
     void* ptr;
-    char fifo[DAC_DMA_FIFO_SIZE * 2];
     uint16_t cnt, half;
     uint16_t size;
 #endif
+    void* fifo;
+    DAC_MODE mode;
     bool active;
 } DAC_CHANNEL;
 

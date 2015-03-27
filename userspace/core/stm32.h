@@ -211,6 +211,7 @@
 #define GPIO_COUNT                                              7
 #define ADC_CHANNELS_COUNT                                      18
 #define DAC_CHANNELS_COUNT                                      2
+#define DMA_COUNT                                               2
 
 #if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL)
 #define UARTS_COUNT                                             2
@@ -465,6 +466,8 @@
 #define UARTS_COUNT         2
 #define ADC_CHANNELS_COUNT  19
 #define DAC_CHANNELS_COUNT  1
+#define DMA_COUNT           1
+
 
 #if defined(STM32L051xx) || defined(STM32L061xx)
 #define IRQ_VECTORS_COUNT   30
