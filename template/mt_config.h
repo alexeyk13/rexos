@@ -52,12 +52,4 @@
 
 #define X_MIRROR                        1
 
-//------------------------------ process -------------------------------------------
-//Use as driver or as library. Driver has some switch latency time and require stack memory. However,
-//many processes can use low-level LCD API
-#define MT_DRIVER                       0
-#define MT_STACK_SIZE                   340
-//increase in case when many process use LCD at same time
-#define MT_IPC_COUNT                    5
-
 #endif // MT_CONFIG_H

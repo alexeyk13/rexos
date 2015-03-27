@@ -38,7 +38,7 @@ INCLUDE_FOLDERS		+= $(KERNEL) $(KERNEL)/core
 #lib
 INCLUDE_FOLDERS            += $(LIB)
 #sys
-INCLUDE_FOLDERS            += $(REXOS)/drv/stm32 $(REXOS)/midware
+INCLUDE_FOLDERS            += $(REXOS)/drv $(REXOS)/drv/stm32 $(REXOS)/midware
 
 INCLUDES                    = $(INCLUDE_FOLDERS:%=-I%)
 VPATH                      += $(INCLUDE_FOLDERS)
@@ -55,7 +55,7 @@ SRC_C                      += lib_lib.c lib_time.c lib_stdio.c lib_std.c pool.c 
 #userspace
 SRC_C                      += stdlib.c stdio.c libusb.c main.c comm.c
 #drv
-SRC_C                      += stm32_power.c stm32_gpio.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_adc.c stm32_analog.c stm32_usb.c stm32_wdt.c
+SRC_C                      += stm32_power.c stm32_gpio.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_adc.c stm32_dac.c stm32_usb.c stm32_wdt.c wavegen.c
 #midware
 SRC_C			   += usbdp.c usbd.c cdcd.c
 

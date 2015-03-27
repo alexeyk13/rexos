@@ -86,6 +86,12 @@
 #define ETH_AUTO_NEGOTIATION_TIME                           5000
 
 #define ETH_DOUBLE_BUFFERING                                1
+//--------------------------------- DAC ----------------------------------------------
+#define SAMPLE                                              uint16_t
+//disable for some flash saving
+#define WAVEGEN_SQUARE                                      1
+#define WAVEGEN_TRIANGLE                                    0
+#define WAVEGEN_SINE                                        0
 //------------------------------- TCP/IP ---------------------------------------------
 #define TCPIP_PROCESS_SIZE                                  700
 #define TCPIP_PROCESS_PRIORITY                              150

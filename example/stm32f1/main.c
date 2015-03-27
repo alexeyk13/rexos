@@ -15,7 +15,7 @@
 #include "../../rexos/userspace/adc.h"
 #include "../../rexos/userspace/stm32_driver.h"
 #include "../../rexos/drv/stm32/stm32_uart.h"
-#include "../../rexos/drv/stm32/stm32_analog.h"
+#include "../../rexos/userspace/dac.h"
 #include "../../rexos/userspace/file.h"
 #include "comm.h"
 
@@ -183,41 +183,35 @@ void test_thread3()
 }
 
 
-void dac_on(HANDLE analog)
+void dac_on()
 {
     //TE pin enable power
     gpio_enable_pin(C13, GPIO_MODE_OUT);
     gpio_reset_pin(C13);
 
-    STM32_DAC_ENABLE de;
-    de.value = 1000;
-    de.flags = DAC_FLAGS_TIMER;
-    de.timer = TIM_6;
-    fopen_ex(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), 0, &de, sizeof(STM32_DAC_ENABLE));
+    dac_open(0, DAC_MODE_WAVE, 1000);
 }
 
-void dac_test(HANDLE analog)
+void dac_test()
 {
     HANDLE block = block_create(256);
     int i;
     uint32_t *ptr = block_open(block);
     for (i = 0; i < 256 / 4; ++i)
         ptr[i] = 0xfff * (i & 1);
-    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
-    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
-    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
-    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
-    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
-    fwrite(analog, HAL_HANDLE(HAL_DAC, STM32_DAC1), block, 256);
+    fwrite(object_get(SYS_OBJ_DAC), HAL_HANDLE(HAL_DAC, 0), block, 256);
+    fwrite(object_get(SYS_OBJ_DAC), HAL_HANDLE(HAL_DAC, 0), block, 256);
+    fwrite(object_get(SYS_OBJ_DAC), HAL_HANDLE(HAL_DAC, 0), block, 256);
+    fwrite(object_get(SYS_OBJ_DAC), HAL_HANDLE(HAL_DAC, 0), block, 256);
+    fwrite(object_get(SYS_OBJ_DAC), HAL_HANDLE(HAL_DAC, 0), block, 256);
+    fwrite(object_get(SYS_OBJ_DAC), HAL_HANDLE(HAL_DAC, 0), block, 256);
 }
 
 void app()
 {
-    HANDLE core, analog;
-
-    core = process_create(&__STM32_CORE);
+    process_create(&__STM32_CORE);
 #if !(MONOLITH_UART)
-    HANDLE uart = process_create(&__STM32_UART);
+    process_create(&__STM32_UART);
 #endif
 
     TIME uptime;
@@ -228,14 +222,6 @@ void app()
 
     printf("App started\n\r");
     wdt_kick();
-
-#if (MONOLITH_ANALOG)
-    analog = core;
-#else
-    analog = process_create(&__STM32_ANALOG);
-#endif
-    fopen(analog, HAL_HANDLE(HAL_ADC, 0), 0);
-
 
     //first second signal may go faster
     sleep_ms(1000);
@@ -259,8 +245,8 @@ void app()
 
     process_create(&__COMM);
 
-    dac_on(analog);
-    dac_test(analog);
+    dac_on();
+    dac_test();
 
     fopen(object_get(SYS_OBJ_ADC), HAL_HANDLE(HAL_ADC, STM32_ADC_DEVICE), 0);
     fopen(object_get(SYS_OBJ_ADC), HAL_HANDLE(HAL_ADC, STM32_ADC_TEMP), STM32_ADC_SMPR_239_5);

@@ -64,19 +64,20 @@
 #define V25_MV                                  1400
 
 //------------------------------- DAC ------------------------------------------------
-#define STM32_DAC                               0
-#define DAC_BOFF                                1
-#define DAC_DMA                                 1
-//will be allocated 2 for double-buffering, decrease for memory saving, increase if you have data underflow.
-//Generally you will need fifo enough to hold samples at least for 30-50us, depending on core frequency.
-#define DAC_DMA_FIFO_SIZE                       128
-//Turn on for DAC data underflow debug.
-#define DAC_DEBUG                               0
-//Copy data to internal buffer, using M2M DMA. Ignored if DAC_DMA is not set
-#define DAC_M2M_DMA                             1
+#define STM32_DAC                                1
+#define DAC_BOFF                                 0
 
-//Sizeof ANALOG process stack. Remember, that process itself requires around 512 bytes
-#define STM32_ANALOG_STACK_SIZE                 720
+//DAC streaming support with DMA. Can be disabled for flash saving
+#define DAC_STREAM                               0
+//For F1 only
+#define DAC_DUAL_CHANNEL                         0
+//Decrease for memory saving, increase if you have data underflow.
+//Generally you will need fifo enough to hold samples at least for 30-50us, depending on core frequency.
+//Size in samples
+#define DAC_DMA_FIFO_SIZE                        128
+//Turn on for DAC data underflow debug.
+#define DAC_DEBUG                                0
+
 //------------------------------- USB ------------------------------------------------
 //Maximum packet size for USB.
 //Must be 8 for Low-speed devices

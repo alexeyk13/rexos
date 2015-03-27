@@ -26,8 +26,8 @@
 #define SYS_OBJ_I2C                                         SYS_OBJ_CORE
 #define SYS_OBJ_UART                                        SYS_OBJ_CORE
 #define SYS_OBJ_USB                                         SYS_OBJ_CORE
-#define SYS_OBJ_ANALOG                                      SYS_OBJ_CORE
 #define SYS_OBJ_ADC                                         SYS_OBJ_CORE
+#define SYS_OBJ_DAC                                         SYS_OBJ_CORE
 //------------------------------ stdio -----------------------------------------------
 #define STDIO_STREAM_SIZE                                   32
 //-------------------------------- USB -----------------------------------------------
@@ -83,6 +83,12 @@
 #define ETH_AUTO_NEGOTIATION_TIME                           5000
 
 #define ETH_DOUBLE_BUFFERING                                1
+//--------------------------------- DAC ----------------------------------------------
+#define SAMPLE                                              uint16_t
+//disable for some flash saving
+#define WAVEGEN_SQUARE                                      1
+#define WAVEGEN_TRIANGLE                                    0
+#define WAVEGEN_SINE                                        0
 //------------------------------- TCP/IP ---------------------------------------------
 #define TCPIP_PROCESS_SIZE                                  700
 #define TCPIP_PROCESS_PRIORITY                              150
