@@ -114,10 +114,12 @@ static uint8_t mt_datain(unsigned int cs)
     return mt_read(cs | MT_A);
 }
 
+#if (MT_BACKLIGHT_CONTROL)
 void mt_set_backlight(bool on)
 {
     on ? gpio_set_pin(MT_BACKLIGHT) : gpio_reset_pin(MT_BACKLIGHT);
 }
+#endif //MT_BACKLIGHT_CONTROL
 
 void mt_cls()
 {
@@ -518,8 +520,10 @@ void mt_init()
     gpio_enable_pin(MT_RESET, GPIO_MODE_OUT);
     gpio_enable_pin(MT_STROBE, GPIO_MODE_OUT);
     gpio_reset_pin(MT_STROBE);
+#if (MT_BACKLIGHT_CONTROL)
     //doesn't need to be so fast as others
     gpio_enable_pin(MT_BACKLIGHT, GPIO_MODE_OUT);
+#endif //MT_BACKLIGHT_CONTROL
 
     mt_reset();
     mt_cls();

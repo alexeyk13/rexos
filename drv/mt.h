@@ -21,7 +21,9 @@
 #define MT_MODE_AND                        0x3
 #define MT_MODE_FILL                       0x4
 
+#if (MT_BACKLIGHT_CONTROL)
 void mt_set_backlight(bool on);
+#endif //MT_BACKLIGHT_CONTROL
 void mt_show(bool on);
 bool mt_is_on();
 void mt_cls();
