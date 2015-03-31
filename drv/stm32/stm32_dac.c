@@ -14,6 +14,7 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/file.h"
+#include "../../userspace/htimer.h"
 #include <string.h>
 #include "stm32_core_private.h"
 #include "../wavegen.h"
@@ -96,7 +97,7 @@ void stm32_dac_dma_isr(int vector, void* param)
     if (core->dac.channels[num].cnt <= 0)
     {
         core->dac.channels[num].half = 0;
-        stm32_timer_request_inside(core, STM32_TIMER_STOP, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
+        stm32_timer_request_inside(core, TIMER_STOP, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
 #if (DAC_DEBUG)
         IPC ipc;
         ipc.process = process_iget_current();
@@ -143,11 +144,8 @@ static inline void stm32_dac_open(CORE* core, int num, DAC_MODE mode, unsigned i
         if (core->dac.channels[num].fifo == NULL)
             return;
 
-        stm32_timer_request_inside(core, STM32_TIMER_ENABLE, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), TIMER_FLAG_ENABLE_DMA, 0);
-        if (mode == DAC_MODE_WAVE)
-            stm32_timer_request_inside(core, STM32_TIMER_SETUP_HZ, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), samplerate * DAC_DMA_FIFO_SIZE, 0);
-        else
-            stm32_timer_request_inside(core, STM32_TIMER_SETUP_HZ, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), samplerate, 0);
+        core->dac.channels[num].samplerate = samplerate;
+        stm32_timer_request_inside(core, IPC_OPEN, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), STM32_TIMER_DMA_ENABLE, 0);
         DAC->CR |= DAC_CR_DMAEN1 << (16 * num);
 
         //setup DMA
@@ -205,7 +203,7 @@ static inline void stm32_dac_open(CORE* core, int num, DAC_MODE mode, unsigned i
 static void stm32_dac_flush(CORE* core, int num)
 {
     HANDLE block;
-    stm32_timer_request_inside(core, STM32_TIMER_STOP, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
+    stm32_timer_request_inside(core, TIMER_STOP, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
     __disable_irq();
     block = core->dac.channels[num].block;
     core->dac.channels[num].block = INVALID_HANDLE;
@@ -240,7 +238,7 @@ void stm32_dac_close(CORE* core, int num)
 #endif //DAC_STREAM
         NVIC_DisableIRQ(DAC_DMA_VECTORS[num]);
         stm32_power_request_inside(core, STM32_POWER_DMA_OFF, DAC_DMA, 0, 0);
-        stm32_timer_request_inside(core, STM32_TIMER_STOP, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
+        stm32_timer_request_inside(core, TIMER_STOP, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
     }
 
     //disable channel
@@ -320,7 +318,7 @@ static inline void stm32_dac_write(CORE* core, int num, HANDLE block, unsigned i
     __enable_irq();
 
     if (need_start)
-        stm32_timer_request_inside(core, STM32_TIMER_START, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
+        stm32_timer_request_inside(core, TIMER_START, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), TIMER_VALUE_HZ, core->dac.channels[num].samplerate);
 }
 #endif //DAC_STREAM
 
@@ -351,11 +349,11 @@ void stm32_dac_wave(CORE* core, int num, DAC_WAVE_TYPE wave_type, int amplitude)
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    stm32_timer_request_inside(core, STM32_TIMER_STOP, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
+    stm32_timer_request_inside(core, TIMER_STOP, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
     if (amplitude)
     {
         wave_gen(core->dac.channels[num].fifo, DAC_DMA_FIFO_SIZE, wave_type, amplitude);
-        stm32_timer_request_inside(core, STM32_TIMER_START, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
+        stm32_timer_request_inside(core, TIMER_START, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), TIMER_VALUE_HZ, core->dac.channels[num].samplerate * DAC_DMA_FIFO_SIZE);
     }
 }
 

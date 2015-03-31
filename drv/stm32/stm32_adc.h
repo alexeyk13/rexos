@@ -12,10 +12,6 @@
 #include "../../userspace/stm32_driver.h"
 #include "../../userspace/adc.h"
 
-//remove me
-#define STM32_TEMP_SENSOR							16
-#define STM32_VREF									17
-
 typedef struct {
     uint8_t samplerate;
 } ADC_CHANNEL_DRV;

@@ -38,6 +38,7 @@ typedef struct {
     uint16_t cnt, half;
     uint16_t size;
 #endif
+    unsigned int samplerate;
     void* fifo;
     DAC_MODE mode;
     bool active;

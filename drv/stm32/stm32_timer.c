@@ -17,6 +17,7 @@
 #define APB2                                    (unsigned int*)((unsigned int)RCC_BASE + offsetof(RCC_TypeDef, APB2ENR))
 
 typedef unsigned int*                           uint_p;
+typedef TIM_TypeDef*                            TIM_TypeDef_P;
 
 #if defined (STM32F1)
 #define TIMERS_COUNT                            17
@@ -24,83 +25,6 @@ const TIM_TypeDef_P TIMER_REGS[TIMERS_COUNT] =  {TIM1, TIM2, TIM3, TIM4, TIM5, T
 const int TIMER_VECTORS[TIMERS_COUNT] =         {25,   28,   29,   30,   50,   54,   55,   44,   24,   25,    26,    43,    44,    45,    24,    25,    26};
 const int TIMER_POWER_BIT[TIMERS_COUNT] =       {11,   0,    1,    2,    3,    4,    5,    13,   19,   20,    21,    6,     7,     8,     16,    17,    18};
 const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB2, APB1, APB1, APB1, APB1, APB1, APB1, APB2, APB2, APB2,  APB2,  APB1,  APB1,  APB1,  APB2,  APB2,  APB2};
-const PIN TIMER_EXT_PINS[TIMERS_COUNT][6] =     {
-                                                    //TIM_1
-                                                    {A8, E9, PIN_UNUSED, A9, E11, PIN_UNUSED},
-                                                    //TIM_2
-                                                    {A0, A15, PIN_UNUSED, A1, B3, PIN_UNUSED},
-                                                    //TIM_3
-                                                    {A6, B4, C6, A7, B5, C7},
-                                                    //TIM_4
-                                                    {B6, D12, PIN_UNUSED, B7, D13, PIN_UNUSED},
-                                                    //TIM_5
-                                                    {A0, PIN_UNUSED, PIN_UNUSED, A1, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_6
-                                                    {PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_7
-                                                    {PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_8
-                                                    {C6, PIN_UNUSED, PIN_UNUSED, C7, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_9
-                                                    {A2, E5, PIN_UNUSED, A3, E6, PIN_UNUSED},
-                                                    //TIM_10
-                                                    {B8, F6, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_11
-                                                    {B9, F7, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_12
-#ifdef STM32F10X_LD_VL
-                                                    {C4, B12, PIN_UNUSED, C5, B13, PIN_UNUSED},
-#else
-                                                    {B14, PIN_UNUSED, PIN_UNUSED, B15, PIN_UNUSED, PIN_UNUSED},
-#endif
-                                                    //TIM_13
-                                                    {A6, F8, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_14
-                                                    {A7, F9, PIN_UNUSED, F9, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_15
-                                                    {A2, B14, PIN_UNUSED, A3, B15, PIN_UNUSED},
-                                                    //TIM_16
-                                                    {B8, A6, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_17
-                                                    {B9, A7, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED}
-                                                };
-const uint32_t TIMER_REMAP[TIMERS_COUNT][2] =   {
-                                                    //TIM_1
-                                                    {3 << 6, 0},
-                                                    //TIM_2
-                                                    {3 << 8, 0},
-                                                    //TIM_3
-                                                    {2 << 10, 3 << 10},
-                                                    //TIM_4
-                                                    {1 << 12, 0},
-                                                    //TIM_5
-                                                    {0, 0},
-                                                    //TIM_6
-                                                    {0, 0},
-                                                    //TIM_7
-                                                    {0, 0},
-                                                    //TIM_8
-                                                    {0, 0},
-                                                    //TIM_9
-                                                    {1 << 5, 0},
-                                                    //TIM_10
-                                                    {1 << 6, 0},
-                                                    //TIM_11
-                                                    {1 << 7, 0},
-                                                    //TIM_12
-                                                    {1 << 12, 0},
-                                                    //TIM_13
-                                                    {1 << 8, 0},
-                                                    //TIM_14
-                                                    {1 << 9, 0},
-                                                    //TIM_15
-                                                    {1 << 0, 0},
-                                                    //TIM_16
-                                                    {1 << 1, 0},
-                                                    //TIM_17
-                                                    {1 << 2, 0}
-                                                };
-const uint32_t TIMER_REMAP_MASK[TIMERS_COUNT] = {3 << 6, 3 << 8, 3 << 10, 1 << 12, 0, 0, 0, 0, 1 << 5, 1 << 6, 1 << 7, 1 << 12, 1 << 8, 1 << 9, 1 << 0, 1 << 1, 1 << 2};
 
 #elif defined (STM32F2) || defined (STM32F4)
 #define TIMERS_COUNT                            14
@@ -114,40 +38,32 @@ const TIM_TypeDef_P TIMER_REGS[TIMERS_COUNT] =  {TIM2, TIM6, TIM21, TIM22};
 const int TIMER_VECTORS[TIMERS_COUNT] =         {15,   17,   20,    22};
 const int TIMER_POWER_BIT[TIMERS_COUNT] =       {0,    4,    2,     5};
 const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB1, APB1, APB2,  APB2};
-const PIN TIMER_EXT_PINS[TIMERS_COUNT][6] =     {
-                                                    //TIM_2
-                                                    {A0, A5, A15, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_6
-                                                    {PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_21
-                                                    {A2, B13, PIN_UNUSED, A3, PIN_UNUSED, PIN_UNUSED},
-                                                    //TIM_22
-                                                    {A6, C6, B4, PIN_UNUSED, PIN_UNUSED, PIN_UNUSED}
-                                                };
 #endif
 
-void stm32_timer_enable(CORE *core, TIMER_NUM num, unsigned int flags)
+void stm32_timer_open(CORE *core, TIMER_NUM num, unsigned int flags)
 {
     //power up
     *(TIMER_POWER_PORT[num]) |= 1 << TIMER_POWER_BIT[num];
     TIMER_REGS[num]->CR1 |= TIM_CR1_URS;
     //one-pulse mode
-    if (flags & TIMER_FLAG_ONE_PULSE_MODE)
+    if (flags & TIMER_ONE_PULSE)
         TIMER_REGS[num]->CR1 |= TIM_CR1_OPM;
-    if (flags & TIMER_FLAG_ENABLE_IRQ)
+    if (flags & TIMER_IRQ_ENABLE)
         TIMER_REGS[num]->DIER |= TIM_DIER_UIE;
-    if (flags & TIMER_FLAG_ENABLE_DMA)
+    if (flags & STM32_TIMER_DMA_ENABLE)
         TIMER_REGS[num]->DIER |= TIM_DIER_UDE;
+    if (flags & TIMER_EXT_CLOCK)
+        TIMER_REGS[num]->SMCR |= 1 << 14;
 
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     if (num == TIM_1 || num == TIM_10)
     {
         if (core->timer.shared1++ == 0)
         {
-            if (flags & TIMER_FLAG_ENABLE_IRQ)
+            if (flags & TIMER_IRQ_ENABLE)
             {
                 NVIC_EnableIRQ(TIMER_VECTORS[num]);
-                NVIC_SetPriority(TIMER_VECTORS[num], flags >> TIMER_FLAG_PRIORITY_POS);
+                NVIC_SetPriority(TIMER_VECTORS[num], TIMER_IRQ_PRIORITY_VALUE(flags));
             }
         }
     }
@@ -155,23 +71,23 @@ void stm32_timer_enable(CORE *core, TIMER_NUM num, unsigned int flags)
     {
         if (core->timer.shared8++ == 0)
         {
-            if (flags & TIMER_FLAG_ENABLE_IRQ)
+            if (flags & TIMER_IRQ_ENABLE)
             {
                 NVIC_EnableIRQ(TIMER_VECTORS[num]);
-                NVIC_SetPriority(TIMER_VECTORS[num], flags >> TIMER_FLAG_PRIORITY_POS);
+                NVIC_SetPriority(TIMER_VECTORS[num], TIMER_IRQ_PRIORITY_VALUE(flags));
             }
         }
     }
     else
 #endif
-        if (flags & TIMER_FLAG_ENABLE_IRQ)
+        if (flags & TIMER_IRQ_ENABLE)
         {
             NVIC_EnableIRQ(TIMER_VECTORS[num]);
-            NVIC_SetPriority(TIMER_VECTORS[num], flags >> TIMER_FLAG_PRIORITY_POS);
+            NVIC_SetPriority(TIMER_VECTORS[num], TIMER_IRQ_PRIORITY_VALUE(flags));
         }
 }
 
-void stm32_timer_disable(CORE *core, TIMER_NUM num)
+void stm32_timer_close(CORE *core, TIMER_NUM num)
 {
     //disable timer
     TIMER_REGS[num]->CR1 &= ~TIM_CR1_CEN;
@@ -194,113 +110,6 @@ void stm32_timer_disable(CORE *core, TIMER_NUM num)
 
     //power down
     *(TIMER_POWER_PORT[num]) &= ~(1 << TIMER_POWER_BIT[num]);
-}
-
-void stm32_timer_enable_ext_clock(CORE *core, TIMER_NUM num, PIN pin, unsigned int flags)
-{
-    int i, channel;
-    for (i = 0; i < 6; ++i)
-    {
-        if (TIMER_EXT_PINS[num][i] == pin)
-        {
-#if defined (STM32F1)
-            //map AFIO
-            if (i % 3)
-            {
-                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_AFIO, 0, 0, 0);
-                if (num <= TIM_8)
-                    AFIO->MAPR |= TIMER_REMAP[num][(i % 3) - 1];
-                else
-                    AFIO->MAPR2|= TIMER_REMAP[num][(i % 3) - 1];
-            }
-#endif
-            channel = i / 3;
-            stm32_timer_enable(core, num, flags);
-            //enable pin, decode pullup/down
-            switch (flags & TIMER_FLAG_PULL_MASK)
-            {
-#if defined(STM32F1)
-            case TIMER_FLAG_PULLUP:
-                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT_PULL, false);
-                break;
-            case TIMER_FLAG_PULLDOWN:
-                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT_PULL, true);
-                break;
-            default:
-                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT_FLOAT, false);
-#elif  defined(STM32F2) || defined(STM32F4)
-            case TIMER_FLAG_PULLUP:
-                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_PULLUP, AF0);
-                break;
-            case TIMER_FLAG_PULLDOWN:
-                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_PULLDOWN, AF0);
-                break;
-            default:
-                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_LOW | GPIO_PUPD_NO_PULLUP, AF0);
-#elif  defined(STM32L0)
-            case TIMER_FLAG_PULLUP:
-                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_PULLUP, AF0);
-                break;
-            case TIMER_FLAG_PULLDOWN:
-                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_PULLDOWN, AF0);
-                break;
-            default:
-                stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_VERY_LOW | GPIO_PUPD_NO_PULLUP, AF0);
-#endif
-            }
-            //map to input, no filter
-            TIMER_REGS[num]->CCMR1 = 1 << (8 * (channel));
-            //decode rising/falling
-            TIMER_REGS[num]->CCER &= ~(0xf << (channel * 4));
-            switch (flags & TIMER_FLAG_EDGE_MASK)
-            {
-            case TIMER_FLAG_RISING:
-                // 00
-                break;
-            case TIMER_FLAG_FALLING:
-                // 01
-                TIMER_REGS[num]->CCER |= (1 << 1) << (channel * 4);
-                break;
-            default:
-                // 11
-                TIMER_REGS[num]->CCER |= ((1 << 1) | (1 << 3)) << (channel * 4);
-            }
-            // enable compare
-            TIMER_REGS[num]->CCER |= (1 << 0) << (channel * 4);
-            //connect TI1/2, select ext. clock
-            TIMER_REGS[num]->SMCR = ((5 + channel) << 4) | 7;
-            return;
-        }
-    }
-    error(ERROR_INVALID_PARAMS);
-}
-
-void stm32_timer_disable_ext_clock(CORE *core, TIMER_NUM num, PIN pin)
-{
-    int i;
-    for (i = 0; i < 6; ++i)
-    {
-        if (TIMER_EXT_PINS[num][i] == pin)
-        {
-            //disable timer
-            stm32_timer_disable(core, num);
-            //disable pin
-            stm32_gpio_request_inside(core, STM32_GPIO_DISABLE_PIN, pin, 0, 0);
-#if defined (STM32F1)
-            //unmap AFIO
-            if (i % 3)
-            {
-                if (num <= TIM_8)
-                    AFIO->MAPR &= ~TIMER_REMAP_MASK[num];
-                else
-                    AFIO->MAPR2 &= ~TIMER_REMAP_MASK[num];
-                stm32_gpio_request_inside(core, STM32_GPIO_DISABLE_AFIO, 0, 0, 0);
-            }
-#endif
-            return;
-        }
-    }
-    error(ERROR_INVALID_PARAMS);
 }
 
 static unsigned int stm32_timer_get_clock(CORE* core, TIMER_NUM num)
@@ -332,26 +141,51 @@ static unsigned int stm32_timer_get_clock(CORE* core, TIMER_NUM num)
     return apb;
 }
 
-void stm32_timer_setup_hz(CORE* core, TIMER_NUM num, unsigned int hz)
+static void stm32_timer_setup_clk(TIMER_NUM num, unsigned int clk)
 {
-    unsigned int psc, value, clock;
-    //setup psc
-    clock = stm32_timer_get_clock(core, num);
-    //period in clock units, rounded
-    value = (clock * 10) / hz;
-    if (value % 10 >= 5)
-        value += 10;
-    value /= 10;
-    psc = value / 0xffff;
-    if (value % 0xffff)
-        ++psc;
+    unsigned int psc, cnt;
+    psc = clk / 0x8000;
+    if (!psc)
+        psc = 1;
+    cnt = clk / psc;
+    if (cnt < 2)
+        cnt = 2;
+    if (cnt > 0x10000)
+        cnt = 0x10000;
 
     TIMER_REGS[num]->PSC = psc - 1;
-    TIMER_REGS[num]->ARR = (value / psc) - 1;
+    TIMER_REGS[num]->ARR = cnt - 1;
 }
 
-void stm32_timer_start(TIMER_NUM num)
+static inline void stm32_timer_setup_hz(CORE* core, TIMER_NUM num, unsigned int hz)
 {
+    unsigned int clk;
+    clk = stm32_timer_get_clock(core, num) / hz;
+    stm32_timer_setup_clk(num, clk);
+}
+
+static inline void stm32_timer_setup_us(CORE* core, TIMER_NUM num, unsigned int us)
+{
+    unsigned int clk;
+    clk = stm32_timer_get_clock(core, num) / 1000000 * us;
+    stm32_timer_setup_clk(num, clk);
+}
+
+void stm32_timer_start(CORE* core, TIMER_NUM num, TIMER_VALUE_TYPE value_type, unsigned int value)
+{
+    switch (value_type)
+    {
+    case TIMER_VALUE_HZ:
+        stm32_timer_setup_hz(core, num, value);
+        break;
+    case TIMER_VALUE_US:
+        stm32_timer_setup_us(core, num, value);
+        break;
+    default:
+        stm32_timer_setup_clk(num, value);
+    }
+
+    TIMER_REGS[num]->CNT = 0;
     TIMER_REGS[num]->EGR = TIM_EGR_UG;
     TIMER_REGS[num]->CR1 |= TIM_CR1_CEN;
 }
@@ -361,6 +195,70 @@ void stm32_timer_stop(TIMER_NUM num)
     TIMER_REGS[num]->CR1 &= ~TIM_CR1_CEN;
     TIMER_REGS[num]->SR &= ~TIM_SR_UIF;
 }
+
+#if (TIMER_IO)
+static inline void stm32_timer_setup_channel(int num, int channel, TIMER_CHANNEL_TYPE type, unsigned int value)
+{
+    uint16_t ccmr, ccer;
+    //disable capture/compare
+    TIMER_REGS[num]->CCER &= ~(0xf << (channel * 4));
+    if (channel < TIM_CHANNEL3)
+        TIMER_REGS[num]->CCMR1 &= ~(0xff << (channel * 8));
+    else
+        TIMER_REGS[num]->CCMR2 &= ~(0xff << ((channel - 2) * 8));
+    if (type != TIMER_CHANNEL_GENERAL)
+    {
+        ccmr = 0;
+        ccer = 0;
+        switch (type)
+        {
+        case TIMER_CHANNEL_INPUT_RISING:
+            ccmr = (1 << 0);
+            break;
+        case TIMER_CHANNEL_INPUT_FALLING:
+            ccmr = (1 << 0);
+            ccer = (1 << 1);
+            break;
+        case TIMER_CHANNEL_INPUT_RISING_FALLING:
+            ccmr = (1 << 0);
+            ccer = (1 << 1) | (1 << 3);
+            break;
+        case TIMER_CHANNEL_OUTPUT_PWM_RISE:
+            ccmr = (7 << 4) | (1 << 3);
+            break;
+        case TIMER_CHANNEL_OUTPUT_PWM_FALL:
+            ccmr = (6 << 4) | (1 << 3);
+            break;
+        default:
+            break;
+        }
+
+        switch (channel) {
+        case TIM_CHANNEL1:
+            TIMER_REGS[num]->CCR1 = value;
+            break;
+        case TIM_CHANNEL2:
+            TIMER_REGS[num]->CCR2 = value;
+            break;
+        case TIM_CHANNEL3:
+            TIMER_REGS[num]->CCR3 = value;
+            break;
+        case TIM_CHANNEL4:
+            TIMER_REGS[num]->CCR4 = value;
+            break;
+        default:
+            break;
+        }
+        if (channel < TIM_CHANNEL3)
+            TIMER_REGS[num]->CCMR1 |= ccmr << (channel * 8);
+        else
+            TIMER_REGS[num]->CCMR2 |= ccmr << ((channel - 2) * 8);
+        TIMER_REGS[num]->CCER |= (ccer | (1 << 0)) << (channel * 4);
+        ///!!!
+///        TIMER_REGS[num]->CR1 |= 1 << 7;
+    }
+}
+#endif //TIMER_IO
 
 void hpet_isr(int vector, void* param)
 {
@@ -372,8 +270,9 @@ void hpet_start(unsigned int value, void* param)
 {
     CORE* core = (CORE*)param;
     //find near prescaller
-    unsigned int mul = value / 0xffff;
-    if (value % 0xffff)
+    stm32_timer_start(core, HPET_TIMER, TIMER_VALUE_CLK, value * core->timer.hpet_uspsc);
+/*    unsigned int mul = value / 0x10000;
+    if (value % 0x10000)
         ++mul;
 
     TIMER_REGS[HPET_TIMER]->PSC = core->timer.hpet_uspsc * mul - 1;
@@ -381,7 +280,7 @@ void hpet_start(unsigned int value, void* param)
     TIMER_REGS[HPET_TIMER]->CNT = 0;
 
     TIMER_REGS[HPET_TIMER]->EGR = TIM_EGR_UG;
-    TIMER_REGS[HPET_TIMER]->CR1 |= TIM_CR1_CEN;
+    TIMER_REGS[HPET_TIMER]->CR1 |= TIM_CR1_CEN;*/
 }
 
 void hpet_stop(void* param)
@@ -412,7 +311,7 @@ void stm32_timer_init(CORE *core)
     //setup HPET
     irq_register(TIMER_VECTORS[HPET_TIMER], hpet_isr, (void*)core);
     core->timer.hpet_uspsc = stm32_timer_get_clock(core, HPET_TIMER) / 1000000;
-    stm32_timer_enable(core, HPET_TIMER, TIMER_FLAG_ONE_PULSE_MODE | TIMER_FLAG_ENABLE_IRQ | (13 << TIMER_FLAG_PRIORITY_POS));
+    stm32_timer_open(core, HPET_TIMER, TIMER_ONE_PULSE | TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
     CB_SVC_TIMER cb_svc_timer;
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
@@ -420,9 +319,8 @@ void stm32_timer_init(CORE *core)
     timer_setup(&cb_svc_timer, core);
 #if (TIMER_SOFT_RTC)
     irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)core);
-    stm32_timer_enable(core, SECOND_PULSE_TIMER, TIMER_FLAG_ENABLE_IRQ | (13 << TIMER_FLAG_PRIORITY_POS));
-    stm32_timer_setup_hz(core, SECOND_PULSE_TIMER, 1);
-    stm32_timer_start(SECOND_PULSE_TIMER);
+    stm32_timer_open(core, SECOND_PULSE_TIMER, TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
+    stm32_timer_start(core, SECOND_PULSE_TIMER, TIMER_VALUE_HZ, 1);
 #endif
 }
 
@@ -432,39 +330,33 @@ bool stm32_timer_request(CORE* core, IPC* ipc)
     bool need_post = false;
     if (num >= TIMERS_COUNT)
     {
-        error(ERROR_NOT_SUPPORTED);
+        error(ERROR_INVALID_PARAMS);
         return true;
     }
     switch (ipc->cmd)
     {
-    case STM32_TIMER_ENABLE:
-        stm32_timer_enable(core, num, ipc->param2);
+    case IPC_OPEN:
+        stm32_timer_open(core, num, ipc->param2);
         need_post = true;
         break;
-    case STM32_TIMER_DISABLE:
-        stm32_timer_disable(core, num);
+    case IPC_CLOSE:
+        stm32_timer_close(core, num);
         need_post = true;
         break;
-    case STM32_TIMER_ENABLE_EXT_CLOCK:
-        stm32_timer_enable_ext_clock(core, num, (PIN)ipc->param2, ipc->param3);
+    case TIMER_START:
+        stm32_timer_start(core, num, (TIMER_VALUE_TYPE)ipc->param2, ipc->param3);
         need_post = true;
         break;
-    case STM32_TIMER_DISABLE_EXT_CLOCK:
-        stm32_timer_disable_ext_clock(core, num, (PIN)ipc->param2);
-        need_post = true;
-        break;
-    case STM32_TIMER_SETUP_HZ:
-        stm32_timer_setup_hz(core, num, ipc->param2);
-        need_post = true;
-        break;
-    case STM32_TIMER_START:
-        stm32_timer_start(num);
-        need_post = true;
-        break;
-    case STM32_TIMER_STOP:
+    case TIMER_STOP:
         stm32_timer_stop(num);
         need_post = true;
         break;
+#if (TIMER_IO)
+    case TIMER_SETUP_CHANNEL:
+        stm32_timer_setup_channel(num, TIMER_CHANNEL_VALUE(ipc->param2), TIMER_CHANNEL_TYPE_VALUE(ipc->param2), ipc->param3);
+        need_post = true;
+        break;
+#endif //TIMER_IO
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;
