@@ -169,6 +169,49 @@ extern const GPIO_TypeDef_P GPIO[];
 #define GPIO_PORT(pin)                               (pin / 16)
 #define GPIO_PIN(pin)                                (pin & 15)
 
+//------------------------------------------------- timer ---------------------------------------------------------------------
+
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+typedef enum {
+    TIM_1 = 0,
+    TIM_2,
+    TIM_3,
+    TIM_4,
+    TIM_5,
+    TIM_6,
+    TIM_7,
+    TIM_8,
+    TIM_9,
+    TIM_10,
+    TIM_11,
+    TIM_12,
+    TIM_13,
+    TIM_14,
+    TIM_15,
+    TIM_16,
+    TIM_17,
+    TIM_18,
+    TIM_19,
+    TIM_20
+}TIMER_NUM;
+#elif defined(STM32L0)
+typedef enum {
+    TIM_2 = 0,
+    TIM_6,
+    TIM_21,
+    TIM_22
+}TIMER_NUM;
+#endif
+
+typedef enum {
+    TIM_CHANNEL1 = 0,
+    TIM_CHANNEL2,
+    TIM_CHANNEL3,
+    TIM_CHANNEL4
+} TIMER_CHANNEL;
+
+#define STM32_TIMER_DMA_ENABLE                          (1 << 16)
+
 //-------------------------------------------------- ADC ----------------------------------------------------------------------
 
 #define STM32_ADC_SMPR_1_5                           0
