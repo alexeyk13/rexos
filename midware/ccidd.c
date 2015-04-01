@@ -488,7 +488,7 @@ static void ccidd_tx_complete(USBD* usbd, CCIDD* ccidd)
 #if (USBD_CCID_DEBUG_IO)
     usbd_dump(ccidd->data_buf, ccidd->data_processed, "CCIDD R-APDU");
 #endif
-    fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), ccidd->data_block, ccidd->data_processed);
+    fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), INVALID_HANDLE, ccidd->data_processed);
     ccidd->data_size = ccidd->data_processed = 0;
     ccidd->state = CCIDD_STATE_CARD_POWERED;
     fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
@@ -622,11 +622,7 @@ static inline void ccidd_card_power_off(USBD* usbd, CCIDD* ccidd)
 
 static inline void ccidd_card_hw_error(USBD* usbd, CCIDD* ccidd)
 {
-    if (ccidd->data_block != INVALID_HANDLE)
-    {
-        block_send(ccidd->data_block, usbd_user(usbd));
-        ccidd->data_processed = ccidd->data_size = 0;
-    }
+    ccidd->data_processed = ccidd->data_size = 0;
     switch (ccidd->state)
     {
     //respond with error on user-handled requests
@@ -644,11 +640,7 @@ static inline void ccidd_card_hw_error(USBD* usbd, CCIDD* ccidd)
 
 static inline void ccidd_card_reset(USBD* usbd, CCIDD* ccidd)
 {
-    if (ccidd->data_block)
-    {
-        block_send(ccidd->data_block, usbd_user(usbd));
-        ccidd->data_processed = ccidd->data_size = 0;
-    }
+    ccidd->data_processed = ccidd->data_size = 0;
     switch (ccidd->state)
     {
     //respond with error on user-handled requests

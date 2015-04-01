@@ -184,18 +184,8 @@ USB_SPEED lpc_usb_get_speed(SHARED_USB_DRV* drv)
 
 static inline void lpc_usb_reset(SHARED_USB_DRV* drv)
 {
-    int i;
     //enable device
     LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DEV_EN;
-    //reset all endpoints
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
-    {
-        lpc_usb_ep_reset(drv, i);
-        lpc_usb_ep_reset(drv, i | USB_EP_IN);
-        *USB_EP_LISTSTS(i, 0) = 0;
-        *USB_EP_LISTSTS(i | USB_EP_IN, 0) = 0;
-    }
-
     IPC ipc;
     ipc.process = drv->usb.device;
     ipc.param2 = lpc_usb_get_speed(drv);

@@ -48,7 +48,6 @@ typedef struct _USBD {
     USB_SETUP_STATE setup_state;
     // USBD state machine
     USBD_STATE state;
-    bool suspended, resume_reset;
     bool self_powered, remote_wakeup;
 #if (USB_2_0)
     USB_TEST_MODES test_mode;
@@ -447,47 +446,28 @@ void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned 
 
 static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
 {
-    usbd->suspended = false;
-    if (usbd->resume_reset)
+    if (usbd->state == USBD_STATE_DEFAULT)
     {
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB resume_reset\n\r");
+        printf("USB device reset\n\r");
 #endif
-        usbd->resume_reset = false;
-        return;
-    }
-#if (USBD_DEBUG_REQUESTS)
-    printf("USB device reset\n\r");
-#endif
-    if (usbd->state == USBD_STATE_CONFIGURED)
-    {
-        usbd->state = USBD_STATE_DEFAULT;
-        usbd_class_reset(usbd);
-    }
+        usbd->speed = speed;
+        usbd->ep0_size = usbd->speed == USB_LOW_SPEED ? 8 : 64;
 
-    if (usbd->ep0_size)
-    {
-        fclose(usbd->usb, HAL_HANDLE(HAL_USB, 0));
-        fclose(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
+        unsigned int size = usbd->ep0_size;
+        fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, 0), USB_EP_CONTROL, (void*)size);
+        fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), USB_EP_CONTROL, (void*)size);
     }
-    usbd->speed = speed;
-    usbd->ep0_size = usbd->speed == USB_LOW_SPEED ? 8 : 64;
-
-    unsigned int size = usbd->ep0_size;
-    fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, 0), USB_EP_CONTROL, (void*)size);
-    fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), USB_EP_CONTROL, (void*)size);
 }
 
 static inline void usbd_suspend(USBD* usbd)
 {
-    if (!usbd->suspended)
+    if (usbd->state == USBD_STATE_CONFIGURED)
     {
-        usbd->suspended = true;
 #if (USBD_DEBUG_REQUESTS)
         printf("USB device suspend\n\r");
 #endif
-        if (usbd->state == USBD_STATE_CONFIGURED)
-            usbd_class_suspend(usbd);
+        usbd_class_suspend(usbd);
         if (usbd->ep0_size)
         {
             fflush(usbd->usb, HAL_HANDLE(HAL_USB, 0));
@@ -499,16 +479,12 @@ static inline void usbd_suspend(USBD* usbd)
 
 static inline void usbd_wakeup(USBD* usbd)
 {
-    if (usbd->suspended)
+    if (usbd->state == USBD_STATE_CONFIGURED)
     {
-        usbd->suspended = false;
-        usbd->resume_reset = true;
 #if (USBD_DEBUG_REQUESTS)
         printf("USB device wakeup\n\r");
 #endif
-
-        if (usbd->state == USBD_STATE_CONFIGURED)
-            usbd_class_resume(usbd);
+        usbd_class_resume(usbd);
     }
 }
 
@@ -952,11 +928,6 @@ void usbd_setup_process(USBD* usbd)
 
 static inline void usbd_setup_received(USBD* usbd)
 {
-    //noise on line
-    if (usbd->suspended)
-        return;
-    usbd->resume_reset = false;
-
     //Back2Back setup received
     if (usbd->setup_state != USB_SETUP_STATE_REQUEST)
     {
@@ -1060,8 +1031,6 @@ static inline void usbd_init(USBD* usbd)
     usbd->usb = object_get(SYS_OBJ_USB);
     usbd->setup_state = USB_SETUP_STATE_REQUEST;
     usbd->state = USBD_STATE_DEFAULT;
-    usbd->suspended = false;
-    usbd->resume_reset = false;
     usbd->self_powered = usbd->remote_wakeup = false;
 #if (USB_2_0)
     usbd->test_mode = USB_TEST_MODE_NORMAL;
