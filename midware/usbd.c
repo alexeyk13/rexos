@@ -451,6 +451,12 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
 #if (USBD_DEBUG_REQUESTS)
         printf("USB device reset\n\r");
 #endif
+        if (usbd->ep0_size)
+        {
+            fclose(usbd->usb, HAL_HANDLE(HAL_USB, 0));
+            fclose(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
+        }
+
         usbd->speed = speed;
         usbd->ep0_size = usbd->speed == USB_LOW_SPEED ? 8 : 64;
 
