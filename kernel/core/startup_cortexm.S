@@ -44,8 +44,8 @@
 
   .equ   PEND_SV_SET,           (1 << 28)
   .equ   PEND_SV_CLEAR,         (1 << 27)
-  .equ   SHPR1_VALUE,           ((0x02 << 0) | (0x02 << 8) | (0x02 << 16))
-  .equ   SHPR2_VALUE,           (0xfe << 24)
+  .equ   SHPR1_VALUE,           ((0x00 << 0) | (0x00 << 8) | (0x00 << 16))
+  .equ   SHPR2_VALUE,           (0xff << 24)
   .equ   SHPR3_VALUE,           (0xff << 16)
 
 /* imported global constants and functions */
