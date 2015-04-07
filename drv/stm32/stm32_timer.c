@@ -254,8 +254,6 @@ static inline void stm32_timer_setup_channel(int num, int channel, TIMER_CHANNEL
         else
             TIMER_REGS[num]->CCMR2 |= ccmr << ((channel - 2) * 8);
         TIMER_REGS[num]->CCER |= (ccer | (1 << 0)) << (channel * 4);
-        ///!!!
-///        TIMER_REGS[num]->CR1 |= 1 << 7;
     }
 }
 #endif //TIMER_IO
@@ -271,16 +269,6 @@ void hpet_start(unsigned int value, void* param)
     CORE* core = (CORE*)param;
     //find near prescaller
     stm32_timer_start(core, HPET_TIMER, TIMER_VALUE_CLK, value * core->timer.hpet_uspsc);
-/*    unsigned int mul = value / 0x10000;
-    if (value % 0x10000)
-        ++mul;
-
-    TIMER_REGS[HPET_TIMER]->PSC = core->timer.hpet_uspsc * mul - 1;
-    TIMER_REGS[HPET_TIMER]->ARR = value / mul - 1;
-    TIMER_REGS[HPET_TIMER]->CNT = 0;
-
-    TIMER_REGS[HPET_TIMER]->EGR = TIM_EGR_UG;
-    TIMER_REGS[HPET_TIMER]->CR1 |= TIM_CR1_CEN;*/
 }
 
 void hpet_stop(void* param)
