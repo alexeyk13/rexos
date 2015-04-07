@@ -93,22 +93,27 @@ static void lpc_timer_start_master_clk(CORE* core, TIMER timer, int channel, uns
     __TIMER_REGS[timer]->TCR |= CT_TCR_CEN;
 }
 
-static void lpc_timer_start_master_us(CORE* core, TIMER timer, int channel, unsigned int hz, bool opm)
+static void lpc_timer_start_master_us(CORE* core, TIMER timer, int channel, unsigned int us, bool opm)
 {
-    unsigned int psc, cu;
+    unsigned int psc, cnt, clk;
     unsigned int clock = lpc_power_get_system_clock_inside(core);
     //for 32 bit timers routine is different and much more easy
     if (timer >= TC32B0)
         //psc is always 1us
-        lpc_timer_start_master_clk(core, timer, channel, clock / 1000000, hz, opm);
+        lpc_timer_start_master_clk(core, timer, channel, clock / 1000000, us, opm);
     else
     {
+        clk = clock / 1000000 * us;
         //convert value to clock units
-        cu = clock / 1000000 * hz;
-        psc = cu / 0x10000;
-        if (psc % 0x10000 >= 0x8000)
-            psc++;
-        lpc_timer_start_master_clk(core, timer, channel, psc, cu /psc, opm);
+        psc = clk / 0x8000;
+        if (!psc)
+            psc = 1;
+        cnt = clk / psc;
+        if (cnt < 2)
+            cnt = 2;
+        if (cnt > 0x10000)
+            cnt = 0x10000;
+        lpc_timer_start_master_clk(core, timer, channel, psc, cnt, opm);
     }
 }
 
@@ -214,7 +219,7 @@ void lpc_timer_init(CORE *core)
 
     //setup second tick timer
     irq_register(__TIMER_VECTORS[SECOND_TIMER], lpc_timer_isr, (void*)core);
-    lpc_timer_open(core, SECOND_TIMER, TIMER_FLAG_ENABLE_IRQ | (13 << TIMER_FLAG_PRIORITY_POS));
+    lpc_timer_open(core, SECOND_TIMER, TIMER_FLAG_ENABLE_IRQ | (2 << TIMER_FLAG_PRIORITY_POS));
     lpc_timer_start(core, SECOND_TIMER, (SECOND_CHANNEL << TIMER_MODE_CHANNEL_POS) | TIMER_MODE_TYPE_MASTER_US, S1_US);
 
     CB_SVC_TIMER cb_svc_timer;

@@ -368,7 +368,7 @@ void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     //enable interrupts
     irq_register(USB_IRQn, lpc_usb_on_isr, drv);
     NVIC_EnableIRQ(USB_IRQn);
-    NVIC_SetPriority(USB_IRQn, 13);
+    NVIC_SetPriority(USB_IRQn, 1);
 
     //Unmask common interrupts
     LPC_USB->INTEN = USB_INTSTAT_DEV_INT;

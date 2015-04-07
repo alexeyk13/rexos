@@ -349,7 +349,7 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
     }
     irq_register(__UART_VECTORS[port], lpc_uart_on_isr, (void*)drv);
     NVIC_EnableIRQ(__UART_VECTORS[port]);
-    NVIC_SetPriority(__UART_VECTORS[port], 13);
+    NVIC_SetPriority(__UART_VECTORS[port], 2);
 }
 
 void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, HANDLE process)

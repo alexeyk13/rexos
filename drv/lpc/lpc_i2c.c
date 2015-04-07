@@ -261,7 +261,7 @@ void lpc_i2c_open(SHARED_I2C_DRV *drv, I2C_PORT port, unsigned int mode, unsigne
     //enable interrupt
     irq_register(__I2C_VECTORS[port], lpc_i2c_on_isr, (void*)drv);
     NVIC_EnableIRQ(__I2C_VECTORS[port]);
-    NVIC_SetPriority(__I2C_VECTORS[port], 13);
+    NVIC_SetPriority(__I2C_VECTORS[port], 2);
 }
 
 void lpc_i2c_close(SHARED_I2C_DRV *drv, I2C_PORT port)
