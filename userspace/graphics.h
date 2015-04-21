@@ -24,7 +24,8 @@ typedef struct {
 
 void put_pixel(CANVAS* canvas, POINT* point, unsigned int color);
 unsigned int get_pixel(CANVAS* canvas, POINT* point);
-void clear_rect(CANVAS* canvas, RECT* rect);
-void write_rect(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode);
+void line(CANVAS* canvas, POINT* a, POINT* b, unsigned int color);
+void filled_rect(CANVAS* canvas, RECT* rect, unsigned int color);
+void image(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode);
 
 #endif // GRAPHICS_H

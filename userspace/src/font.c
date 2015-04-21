@@ -40,7 +40,7 @@ void font_render_glyph(CANVAS* canvas, POINT* point, FACE* face, unsigned short 
     data_rect.height = height;
     data_rect.left = FACE_OFFSET(face, num);
     data_rect.width = face->width;
-    write_rect(canvas, &rect, &data_rect, FACE_DATA(face), GUI_MODE_FILL);
+    image(canvas, &rect, &data_rect, FACE_DATA(face), GUI_MODE_FILL);
 }
 
 unsigned short font_get_char_width(const FONT* font, const char* utf8)

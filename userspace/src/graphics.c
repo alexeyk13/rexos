@@ -60,11 +60,73 @@ unsigned int get_pixel(CANVAS* canvas, POINT* point)
     return graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, canvas->bits_per_pixel);
 }
 
-void clear_rect(CANVAS* canvas, RECT* rect)
+static void gswap(short* a, short* b)
+{
+    short tmp;
+    tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+static short gabs(short val)
+{
+    return val > 0 ? val : -val;
+}
+
+void line(CANVAS* canvas, POINT* a, POINT* b, unsigned int color)
+{
+    POINT cur;
+    bool vline;
+    short x0, x1, y0, y1, dx, dy, err, ystep, x, y;
+    x0 = a->x;
+    y0 = a->y;
+    x1 = b->x;
+    y1 = b->y;
+    vline = gabs(y1 - y0) > gabs(x1 - x0);
+    if (vline)
+    {
+        gswap(&x0, &y0);
+        gswap(&x1, &y1);
+    }
+    if (x0 > x1)
+    {
+        gswap(&x0, &x1);
+        gswap(&y0, &y1);
+    }
+    dx = x1 - x0;
+    dy = gabs(y1 - y0);
+    err = dx >> 1;
+    ystep = (y0 < y1) ? 1 : -1;
+    for (x = x0, y = y0; x <= x1; ++x)
+    {
+       if (vline)
+       {
+           cur.x = y;
+           cur.y = x;
+       }
+       else
+       {
+           cur.x = x;
+           cur.y = y;
+       }
+       put_pixel(canvas, &cur, color);
+       err -= dy;
+       if (err < 0)
+       {
+           y += ystep;
+           err += dx;
+       }
+    }
+}
+
+void filled_rect(CANVAS* canvas, RECT* rect, unsigned int color)
 {
     POINT point;
+    unsigned int data, i;
     unsigned short width, height, cur_width;
     unsigned int ppi = (sizeof(int) << 3) / canvas->bits_per_pixel;
+    for (i = 0, data = 0; i < ppi; ++i)
+        data = (data << canvas->bits_per_pixel) | (color & ((1 << canvas->bits_per_pixel) - 1));
     if (rect->left >= canvas->width || rect->top >= canvas->height)
     {
         error(ERROR_OUT_OF_RANGE);
@@ -83,12 +145,12 @@ void clear_rect(CANVAS* canvas, RECT* rect)
             cur_width = ppi;
             if (point.x + cur_width > rect->left + width)
                 cur_width = rect->left + width - point.x;
-            graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, 0x0, cur_width * canvas->bits_per_pixel);
+            graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, data, cur_width * canvas->bits_per_pixel);
         }
     }
 }
 
-void write_rect(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode)
+void image(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode)
 {
     POINT point, data_point;
     unsigned short width, height, cur_width;
