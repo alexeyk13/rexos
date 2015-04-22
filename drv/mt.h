@@ -28,7 +28,8 @@ void mt_show(bool on);
 bool mt_is_on();
 void mt_cls();
 void mt_reset();
-void mt_init();
+void mt_enable();
+void mt_disable();
 #if (MT_TEST)
 void mt_clks_test();
 void mt_pixel_test();

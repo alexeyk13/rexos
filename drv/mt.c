@@ -59,19 +59,27 @@ static void delay_clks(unsigned int clks)
 
 static uint8_t mt_read(unsigned int mask)
 {
+#if (TW)
     delay_clks(TW);
+#endif //TW
 
     gpio_reset_mask(ADDSET_PORT, ADDSET_MASK);
     gpio_set_mask(ADDSET_PORT, mask | MT_RW);
     gpio_set_data_in(DATA_PORT, 8);
 
+#if (TAS)
     delay_clks(TAS);
+#endif //TAS
     gpio_set_pin(MT_STROBE);
 
+#if (TDDR)
     delay_clks(TDDR);
+#endif //TDDR
     uint8_t res = gpio_get_mask(DATA_PORT, DATA_MASK) & 0xff;
 
+#if (PW)
     delay_clks(PW - TDDR);
+#endif //PW
     gpio_reset_pin(MT_STROBE);
     return res;
 }
@@ -83,17 +91,23 @@ static uint8_t mt_status(unsigned int cs)
 
 static void mt_write(unsigned int mask, uint8_t data)
 {
+#if (TW)
     delay_clks(TW);
+#endif //TW
     gpio_reset_mask(ADDSET_PORT, ADDSET_MASK);
     gpio_set_mask(ADDSET_PORT, mask);
     gpio_set_data_out(DATA_PORT, 8);
     gpio_reset_mask(DATA_PORT, DATA_MASK);
     gpio_set_mask(DATA_PORT, data);
 
+#if (TAS)
     delay_clks(TAS);
+#endif //TAS
     gpio_set_pin(MT_STROBE);
 
+#if (PW)
     delay_clks(PW);
+#endif //PW
     gpio_reset_pin(MT_STROBE);
 }
 
@@ -513,7 +527,7 @@ void mt_write_canvas(CANVAS* canvas, POINT* point)
     mt_write_rect(&rect, CANVAS_DATA(canvas));
 }
 
-void mt_init()
+void mt_enable()
 {
     gpio_enable_mask(DATA_PORT, GPIO_MODE_OUT, DATA_MASK);
     gpio_enable_mask(ADDSET_PORT, GPIO_MODE_OUT, ADDSET_MASK);
@@ -521,7 +535,6 @@ void mt_init()
     gpio_enable_pin(MT_STROBE, GPIO_MODE_OUT);
     gpio_reset_pin(MT_STROBE);
 #if (MT_BACKLIGHT_CONTROL)
-    //doesn't need to be so fast as others
     gpio_enable_pin(MT_BACKLIGHT, GPIO_MODE_OUT);
 #endif //MT_BACKLIGHT_CONTROL
 
@@ -529,3 +542,13 @@ void mt_init()
     mt_cls();
 }
 
+void mt_disable()
+{
+    gpio_disable_mask(DATA_PORT, DATA_MASK);
+    gpio_disable_mask(ADDSET_PORT, ADDSET_MASK);
+    gpio_disable_pin(MT_RESET);
+    gpio_disable_pin(MT_STROBE);
+#if (MT_BACKLIGHT_CONTROL)
+    gpio_disable_pin(MT_BACKLIGHT, GPIO_MODE_OUT);
+#endif //MT_BACKLIGHT_CONTROL
+}
