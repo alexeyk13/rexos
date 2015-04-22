@@ -153,6 +153,8 @@ void stm32_gpio_enable_exti(GPIO_DRV* gpio, PIN pin, unsigned int flags)
         EXTI->RTSR |= 1ul << GPIO_PIN(pin);
     if (flags & EXTI_FLAGS_FALLING)
         EXTI->FTSR |= 1ul << GPIO_PIN(pin);
+    EXTI->IMR |= 1ul << GPIO_PIN(pin);
+    EXTI->EMR |= 1ul << GPIO_PIN(pin);
 #endif
 }
 

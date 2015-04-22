@@ -60,7 +60,7 @@ static const STM32_DMA_CHANNEL DAC_DMA_CHANNELS[DAC_CHANNELS_COUNT] =       {DMA
 const unsigned int DAC_DMA_VECTORS[DAC_CHANNELS_COUNT] =                    {10};
 static const PIN DAC_PINS[DAC_CHANNELS_COUNT] =                             {A4};
 static const TIMER_NUM DAC_TRIGGERS[DAC_CHANNELS_COUNT] =                   {TIM_6};
-static volatile const unsigned int DAC_DATA_REG[DAC_CHANNELS_COUNT] =       {DAC_BASE + 0x08};
+static const unsigned int DAC_DATA_REG[DAC_CHANNELS_COUNT] =       {DAC_BASE + 0x08};
 #endif //STM32L0
 
 #define DAC_TWAKEUP                                                         10

@@ -240,10 +240,12 @@ int get_adc_clock()
 }
 #endif
 
+#if (STM32_DECODE_RESET)
 RESET_REASON get_reset_reason(CORE* core)
 {
     return core->power.reset_reason;
 }
+#endif //STM32_DECODE_RESET
 
 void setup_clock(int param1, int param2, int param3)
 {
@@ -452,6 +454,7 @@ void stm32_usb_power_off()
 }
 #endif
 
+#if (STM32_DECODE_RESET)
 static inline void decode_reset_reason(CORE* core)
 {
     core->power.reset_reason = RESET_REASON_UNKNOWN;
@@ -467,6 +470,7 @@ static inline void decode_reset_reason(CORE* core)
         core->power.reset_reason = RESET_REASON_PIN_RST;
     RCC->CSR |= RCC_CSR_RMVF;
 }
+#endif //STM32_DECODE_RESET
 
 void stm32_power_init(CORE* core)
 {
@@ -474,9 +478,11 @@ void stm32_power_init(CORE* core)
     core->power.write_count = 0;
     for (i = 0; i < DMA_COUNT; ++i)
         core->power.dma_count[i] = 0;
+#if (STM32_DECODE_RESET)
 #if defined(STM32F1)
     decode_reset_reason(core);
 #endif
+#endif //STM32_DECODE_RESET
 
     RCC->APB1ENR = 0;
     RCC->APB2ENR = 0;
@@ -496,8 +502,18 @@ void stm32_power_init(CORE* core)
 
 #if defined(STM32F10X_CL)
     setup_clock(PLL_MUL, PLL_DIV, PLL2_MUL | (PLL2_DIV << 16));
-#elif defined(STM32F1) || defined(STM32L0)
+#elif defined(STM32F1)
     setup_clock(PLL_MUL, PLL_DIV, 0);
+#elif defined(STM32L0)
+#if (STM32_LOW_POWER_ON_STARTUP)
+    RCC->ICSCR = ((RCC->ICSCR) & ~(7 << 13)) | (6 << 13);
+    __NOP();
+    __NOP();
+    //switch to 1.2V
+    PWR->CR = ((PWR->CR) & ~(3 << 27)) | (3 << 27);
+#else //STM32_LOW_POWER_ON_STARTUP
+    setup_clock(PLL_MUL, PLL_DIV, 0);
+#endif//STM32_LOW_POWER_ON_STARTUP
 #elif defined(STM32F2) || defined(STM32F4)
     setup_clock(PLL_M, PLL_N, PLL_P);
 #endif
@@ -516,10 +532,12 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         update_clock(ipc->param1, ipc->param2, ipc->param3);
         need_post = true;
         break;
+#if (STM32_DECODE_RESET)
     case STM32_POWER_GET_RESET_REASON:
         ipc->param2 = get_reset_reason(core);
         need_post = true;
         break;
+#endif //STM32_DECODE_RESET
     case STM32_POWER_DMA_ON:
         dma_on(core, ipc->param1);
         need_post = true;

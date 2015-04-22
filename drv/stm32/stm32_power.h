@@ -35,7 +35,9 @@ typedef enum {
 
 typedef struct {
     int write_count;
+#if (STM32_DECODE_RESET)
     RESET_REASON reset_reason;
+#endif //STM32_DECODE_RESET
     int dma_count[DMA_COUNT];
 }POWER_DRV;
 
