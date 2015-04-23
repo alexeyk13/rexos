@@ -17,14 +17,26 @@
 #define MONOLITH_ANALOG                         1
 #define MONOLITH_USB                            1
 //------------------------------ POWER -----------------------------------------------
+//save few bytes here
+#define STM32_DECODE_RESET                      0
+//low power mode by default (only for L0)
+#define STM32_LOW_POWER_ON_STARTUP              1
+//power down support
+#define POWER_DOWN_SUPPORT                      1
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
-#define HSE_VALUE                               24000000
-#define LSE_VALUE                               32768
+#define HSE_VALUE                               8000000
 #define HSE_BYPASS                              0
+//0 meaning HSE
+#define LSE_VALUE                               32768
 
 //STM32F1
-#define PLL_MUL                                 6
-#define PLL_DIV                                 2
+//#define PLL_MUL                                 6
+//#define PLL_DIV                                 2
+//STM32L0
+//#define PLL_MUL                                 12
+//#define PLL_DIV                                 3
+#define PLL_MUL                                 3
+#define PLL_DIV                                 3
 //STM32F10X_CL only
 // use PLL2 as clock source for main PLL. Set to 0 to disable
 #define PLL2_DIV                                0
@@ -38,33 +50,36 @@
 //Use UART as default stdio
 #define UART_STDIO                              1
 //PIN_DEFAULT and PIN_UNUSED can be also set.
-#define UART_STDIO_PORT                         UART_2
-#define UART_STDIO_TX                           D5
-#define UART_STDIO_RX                           D6
+#define UART_STDIO_PORT                         UART_1
+#define UART_STDIO_TX                           A9
+#define UART_STDIO_RX                           PIN_UNUSED
 #define UART_STDIO_BAUD                         115200
 #define UART_STDIO_DATA_BITS                    8
 #define UART_STDIO_PARITY                       'N'
 #define UART_STDIO_STOP_BITS                    1
 
-//size of every uart internal tx buf. Increasing this you will get less irq and ipc calls, but faster processing
-#define UART_TX_BUF_SIZE                        16
-//Sizeof UART process stack. Remember, that process itself requires around 512 bytes
-#define STM32_UART_STACK_SIZE                   440
+//size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
+//remember, that process itself requires around 256 bytes
+#define UART_TX_BUF_SIZE                        16ul
+//Sizeof UART process stack. Remember, that process itself requires around 450 bytes
+#define STM32_UART_STACK_SIZE                   410 + (50 + UART_TX_BUF_SIZE) * 1
 //------------------------------ TIMER -----------------------------------------------
-#define HPET_TIMER                              TIM_7
-#define TIMER_SOFT_RTC                          0
-#define SECOND_PULSE_TIMER                      TIM_3
+#define HPET_TIMER                               TIM_22
+//only required if no STM32_RTC_DRIVER is set
+#define SECOND_PULSE_TIMER                       TIM_2
+//disable to save few bytes
+#define TIMER_IO                                 1
 //------------------------------- ADC ------------------------------------------------
-#define STM32_ADC                               1
+#define STM32_ADC_DRIVER                         1
 //In L0 series - select HSI16 as clock source
-#define STM32_ADC_ASYNCRONOUS_CLOCK             0
+#define STM32_ADC_ASYNCRONOUS_CLOCK              0
 // Avg Slope, refer to datasheet
-#define AVG_SLOPE                               4300
+#define AVG_SLOPE                                4300
 // temp at 25C in mV, refer to datasheet
-#define V25_MV                                  1400
+#define V25_MV                                   1400
 
 //------------------------------- DAC ------------------------------------------------
-#define STM32_DAC                                1
+#define STM32_DAC_DRIVER                         1
 #define DAC_BOFF                                 0
 
 //DAC streaming support with DMA. Can be disabled for flash saving
@@ -83,14 +98,16 @@
 //Must be 8 for Low-speed devices
 //Full speed: 64 if no isochronous transfers, else  1024
 //High speed(STM32F2+): 64 if no high-speed bulk transfers, 512 in other case. 1024 in case of isochronous or high-speed interrupts
-#define STM32_USB_MPS                           64
+#define STM32_USB_MPS                            64
 //Sizeof USB process stack. Remember, that process itself requires around 512 bytes
-#define STM32_USB_STACK_SIZE                    550
+#define STM32_USB_PROCESS_SIZE                   600
 //------------------------------- WDT ------------------------------------------------
 //if set by STM32 Option Bits, WDT is started by hardware on power-up
-#define HARDWARE_WATCHDOG                       0
+#define HARDWARE_WATCHDOG                        0
 //WDT module enable
-#define STM32_WDT                               0
+#define STM32_WDT_DRIVER                         0
+//------------------------------- RTC ------------------------------------------------
+#define STM32_RTC_DRIVER                         1
 //------------------------------- ETH ------------------------------------------------
 #define STM32_ETH_PROCESS_SIZE                  512
 #define STM32_ETH_IPC_COUNT                     5
