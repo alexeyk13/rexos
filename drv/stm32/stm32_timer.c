@@ -282,13 +282,13 @@ unsigned int hpet_elapsed(void* param)
     return (((TIMER_REGS[HPET_TIMER]->PSC) + 1)/ core->timer.hpet_uspsc) * ((TIMER_REGS[HPET_TIMER]->CNT) + 1);
 }
 
-#if (TIMER_SOFT_RTC)
+#if !(STM32_RTC_DRIVER)
 void second_pulse_isr(int vector, void* param)
 {
     TIMER_REGS[SECOND_PULSE_TIMER]->SR &= ~TIM_SR_UIF;
     timer_second_pulse();
 }
-#endif
+#endif //STM32_RTC_DRIVER
 
 void stm32_timer_init(CORE *core)
 {
@@ -305,11 +305,11 @@ void stm32_timer_init(CORE *core)
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
     timer_setup(&cb_svc_timer, core);
-#if (TIMER_SOFT_RTC)
+#if !(STM32_RTC_DRIVER)
     irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)core);
     stm32_timer_open(core, SECOND_PULSE_TIMER, TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
     stm32_timer_start(core, SECOND_PULSE_TIMER, TIMER_VALUE_HZ, 1);
-#endif
+#endif //STM32_RTC_DRIVER
 }
 
 bool stm32_timer_request(CORE* core, IPC* ipc)

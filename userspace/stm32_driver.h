@@ -14,6 +14,30 @@
 
 //-------------------------------------------------- POWER ---------------------------------------------------------------------
 
+#if defined(STM32F10X_CL)
+#define PLL_MUL_6_5                             15
+#define PLL2_MUL_20                             15
+#endif
+
+typedef enum {
+    STM32_POWER_GET_CLOCK = HAL_IPC(HAL_POWER),
+    STM32_POWER_UPDATE_CLOCK,
+    STM32_POWER_GET_RESET_REASON,
+    STM32_POWER_DMA_ON,
+    STM32_POWER_DMA_OFF,
+    STM32_POWER_USB_ON,
+    STM32_POWER_USB_OFF,
+    STM32_POWER_DOWN
+} STM32_POWER_IPCS;
+
+typedef enum {
+    STM32_CLOCK_CORE,
+    STM32_CLOCK_AHB,
+    STM32_CLOCK_APB1,
+    STM32_CLOCK_APB2,
+    STM32_CLOCK_ADC
+} STM32_POWER_CLOCKS;
+
 typedef enum {
     DMA_1 = 0,
     DMA_2

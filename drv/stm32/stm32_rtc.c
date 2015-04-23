@@ -6,7 +6,6 @@
 
 #include "stm32_rtc.h"
 #include "../../userspace/rtc.h"
-#include "stm32_config.h"
 #include "stm32_core_private.h"
 #include "sys_config.h"
 #include "../../userspace/sys.h"
@@ -71,7 +70,7 @@ static inline void backup_off()
 #endif
 }
 
-static inline void enter_configuration()
+static void enter_configuration()
 {
 #if defined(STM32F1)
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
@@ -82,7 +81,7 @@ static inline void enter_configuration()
 #endif
 }
 
-static inline void leave_configuration()
+static void leave_configuration()
 {
 #if defined(STM32F1)
     RTC->CRL &= ~RTC_CRL_CNF;
@@ -162,11 +161,14 @@ void stm32_rtc_init()
         //setup second tick
         RTC->CR &= ~RTC_CR_WUTE;
         while ((RTC->ISR & RTC_ISR_WUTWF) == 0) {}
-        RTC->CR |= 4 | RTC_CR_WUTIE;
+        RTC->CR |= 4;
         RTC->WUTR = 0;
-        RTC->CR |= RTC_CR_WUTE;
         leave_configuration();
     }
+    else
+        enter_configuration();
+    RTC->CR |= RTC_CR_WUTE | RTC_CR_WUTIE;
+    leave_configuration();
 
     RTC->ISR &= ~RTC_ISR_WUTF;
     //setup EXTI for second pulse
@@ -240,3 +242,17 @@ bool stm32_rtc_request(IPC* ipc)
     }
     return need_post;
 }
+
+#if (POWER_DOWN_SUPPORT)
+void stm32_rtc_disable()
+{
+#if defined(STM32F1)
+    while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
+    RTC->CRH = 0;
+#else //STM32F1
+    enter_configuration();
+    RTC->CR &= ~(RTC_CR_WUTE | RTC_CR_WUTIE | RTC_CR_TSE | RTC_CR_TSIE | RTC_CR_ALRAE | RTC_CR_ALRAIE | RTC_CR_ALRBE | RTC_CR_ALRBIE);
+    leave_configuration();
+#endif
+}
+#endif //POWER_DOWN_SUPPORT

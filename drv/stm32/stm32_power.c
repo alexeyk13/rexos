@@ -6,6 +6,7 @@
 
 #include "stm32_power.h"
 #include "stm32_core_private.h"
+#include "stm32_rtc.h"
 
 #if defined(STM32F1)
 #define MAX_APB2                             72000000
@@ -315,12 +316,12 @@ void setup_clock(int param1, int param2, int param3)
     for (; (i <= 16) && (pll_clock / i > MAX_APB1); i *= 2, ++bus) {}
     if (bus)
         RCC->CFGR |= (4 | (bus - 1)) << PPRE1;
-#if (STM32_ADC)
+#if (STM32_ADC_DRIVER)
     unsigned int psc;
     for(psc = 2; psc < 8 && get_apb2_clock() / psc > ADC_CLOCK_MAX; psc += 2) {}
     RCC->CFGR &= ~(3 << 14);
     RCC->CFGR |= (psc / 2 - 1) << 14;
-#endif // STM32_ADC
+#endif // STM32_ADC_DRIVER
 #endif // !STM32L0
 
 
@@ -472,9 +473,36 @@ static inline void decode_reset_reason(CORE* core)
 }
 #endif //STM32_DECODE_RESET
 
+#if (POWER_DOWN_SUPPORT)
+static inline void stm32_power_down()
+{
+    __disable_irq();
+#if (STM32_RTC_DRIVER)
+    //disable RTC wakeup
+    stm32_rtc_disable();
+#endif //STM32_RTC_DRIVER
+
+    //sleep deep
+    SCB->SCR |= (1 << 2);
+    PWR->CR |= PWR_CR_PDDS;
+    PWR->CR |= PWR_CR_CWUF;
+    __WFI();
+}
+#endif //POWER_DOWN_SUPPORT
+
 void stm32_power_init(CORE* core)
 {
     int i;
+#if (POWER_DOWN_SUPPORT)
+    //clear power down flags
+    PWR->CR |= PWR_CR_CSBF | PWR_CR_CWUF;
+#if defined (STM32L0)
+    PWR->CSR &= ~(PWR_CSR_EWUP2 | PWR_CSR_EWUP2);
+#else
+    PWR->CSR &= ~PWR_CSR_EWUP;
+#endif
+#endif //POWER_DOWN_SUPPORT
+
     core->power.write_count = 0;
     for (i = 0; i < DMA_COUNT; ++i)
         core->power.dma_count[i] = 0;
@@ -556,6 +584,12 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
 #endif //STM32F1
+#if (POWER_DOWN_SUPPORT)
+    case STM32_POWER_DOWN:
+        //no return
+        stm32_power_down();
+        break;
+#endif //POWER_DOWN_SUPPORT
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;

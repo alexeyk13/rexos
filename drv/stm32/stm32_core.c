@@ -67,31 +67,31 @@ void stm32_core_loop(CORE* core)
             case HAL_TIMER:
                 need_post = stm32_timer_request(core, &ipc);
                 break;
-#if !(TIMER_SOFT_RTC)
+#if (STM32_RTC_DRIVER)
             case HAL_RTC:
                 need_post = stm32_rtc_request(&ipc);
                 break;
-#endif // !TIMER_SOFT_RTC
-#if (STM32_WDT)
+#endif // STM32_RTC_DRIVER
+#if (STM32_WDT_DRIVER)
             case HAL_WDT:
                 need_post = stm32_wdt_request(&ipc);
                 break;
-#endif //STM32_WDT
+#endif //STM32_WDT_DRIVER
 #if (MONOLITH_UART)
             case HAL_UART:
                 need_post = stm32_uart_request(core, &ipc);
                 break;
 #endif //MONOLITH_UART
-#if (STM32_ADC)
+#if (STM32_ADC_DRIVER)
             case HAL_ADC:
                 need_post = stm32_adc_request(core, &ipc);
                 break;
-#endif //STM32_ADC
-#if (STM32_DAC)
+#endif //STM32_ADC_DRIVER
+#if (STM32_DAC_DRIVER)
             case HAL_DAC:
                 need_post = stm32_dac_request(core, &ipc);
                 break;
-#endif //STM32_DAC
+#endif //STM32_DAC_DRIVER
 #if (MONOLITH_USB)
             case HAL_USB:
                 need_post = stm32_usb_request(core, &ipc);
@@ -113,27 +113,27 @@ void stm32_core()
     CORE core;
     object_set_self(SYS_OBJ_CORE);
 
-#if (STM32_WDT)
+#if (STM32_WDT_DRIVER)
     stm32_wdt_pre_init();
-#endif
+#endif //STM32_WDT_DRIVER
     stm32_power_init(&core);
     stm32_timer_init(&core);
     stm32_gpio_init(&core);
-#if !(TIMER_SOFT_RTC)
+#if (STM32_RTC_DRIVER)
     stm32_rtc_init();
-#endif //!TIMER_SOFT_RTC
-#if (STM32_WDT)
+#endif //STM32_RTC_DRIVER
+#if (STM32_WDT_DRIVER)
     stm32_wdt_init();
-#endif
+#endif //STM32_WDT_DRIVER
 #if (MONOLITH_UART)
     stm32_uart_init(&core);
 #endif
-#if (STM32_ADC)
+#if (STM32_ADC_DRIVER)
     stm32_adc_init(&core);
-#endif
-#if (STM32_DAC)
+#endif //STM32_ADC_DRIVER
+#if (STM32_DAC_DRIVER)
     stm32_dac_init(&core);
-#endif
+#endif //STM32_DAC_DRIVER
 #if (MONOLITH_USB)
     stm32_usb_init(&core);
 #endif
