@@ -7,11 +7,14 @@
 #include "stm32_power.h"
 #include "stm32_core_private.h"
 #include "stm32_rtc.h"
+#include "stm32_timer.h"
+#include "stm32_config.h"
+#include "sys_config.h"
 
 #if defined(STM32F1)
 #define MAX_APB2                             72000000
 #define MAX_APB1                             36000000
-#define ADC_CLOCK_MAX                        14000000
+#define MAX_ADC                              14000000
 #elif defined(STM32F2)
 #define MAX_APB2                             60000000
 #define MAX_APB1                             30000000
@@ -31,11 +34,15 @@
 #endif
 
 #if defined(STM32F1) || defined(STM32L0)
-#define PPRE1                                8
-#define PPRE2                                11
+#define PPRE1_POS                            8
+#define PPRE2_POS                            11
+#define PLLSRC_BIT                           (1 << 16)
+#define PLLSRC_REG                           RCC->CFGR
 #elif defined(STM32F2) || defined(STM32F4)
-#define PPRE1                                10
-#define PPRE2                                13
+#define PPRE1_POS                            10
+#define PPRE2_POS                            13
+#define PLLSRC_BIT                           (1 << 22)
+#define PLLSRC_REG                           RCC->PLLCFGR
 #endif
 
 #ifndef RCC_CSR_WDGRSTF
@@ -47,48 +54,39 @@
 #endif
 
 #if defined(STM32F100)
-static inline void setup_pll(int mul, int div)
+static inline void setup_pll()
 {
-    RCC->CFGR &= ~((0xf << 18) | (1 << 16));
+    RCC->CFGR &= ~(0xf << 18);
     RCC->CFGR2 &= ~0xf;
-    RCC->CFGR2 |= (div - 1) << 0;
-    RCC->CFGR |= ((mul - 2) << 18);
-#if (HSE_VALUE)
-    if (RCC->CR & RCC_CR_HSEON)
-        RCC->CFGR |= (1 << 16);
-#endif
+    RCC->CFGR2 |= (PLL_DIV - 1) << 0;
+    RCC->CFGR |= ((PLL_MUL - 2) << 18);
 }
 
 static inline int get_pll_clock()
 {
     int pllsrc = HSI_VALUE / 2;
 #if (HSE_VALUE)
-    if (RCC->CFGR & (1 << 16))
+    if (PLLSRC_REG & PLLSRC_BIT)
         pllsrc = HSE_VALUE / ((RCC->CFGR2 & 0xf) + 1);
 #endif
     return pllsrc * (((RCC->CFGR >> 18) & 0xf) + 2);
 }
 
 #elif defined(STM32F10X_CL)
-static inline void setup_pll(int mul, int div, int pll2_mul, int pll2_div)
+static inline void setup_pll()
 {
     RCC->CR &= ~RCC_CR_PLL2ON;
-    RCC->CFGR &= ~((0xf << 18) | (1 << 16));
-    RCC->CFGR2 &= ~(0xf | (1 << 16));
-    if (pll2_mul && pll2_div)
-    {
-        RCC->CFGR2 |= ((pll2_div - 1) << 4) | ((pll2_mul - 2) << 8);
-        //turn PLL2 ON
-        RCC->CR |= RCC_CR_PLL2ON;
-        while (!(RCC->CR & RCC_CR_PLL2RDY)) {}
-        RCC->CFGR2 |= (1 << 16);
-    }
-    RCC->CFGR2 |= (div - 1) << 0;
-    RCC->CFGR |= ((mul - 2) << 18);
-#if (HSE_VALUE)
-    if (RCC->CR & RCC_CR_HSEON)
-        RCC->CFGR |= (1 << 16);
-#endif
+    RCC->CFGR &= ~(0xf << 18);
+    RCC->CFGR2 &= ~(0xf | PLLSRC_BIT);
+#if (PLL2_DIV) && (PLL2_MUL)
+    RCC->CFGR2 |= ((PLL2_DIV - 1) << 4) | ((PLL2_MUL - 2) << 8);
+    //turn PLL2 ON
+    RCC->CR |= RCC_CR_PLL2ON;
+    while (!(RCC->CR & RCC_CR_PLL2RDY)) {}
+    RCC->CFGR2 |= PLLSRC_BIT;
+#endif //PLL2_DIV && PLL2_MUL
+    RCC->CFGR2 |= (PLL_DIV - 1) << 0;
+    RCC->CFGR |= (PLL_MUL - 2) << 18;
 }
 
 static inline int get_pll_clock()
@@ -98,9 +96,9 @@ static inline int get_pll_clock()
 #if (HSE_VALUE)
     int preddivsrc = HSE_VALUE;
     int pllmul2;
-    if (RCC->CFGR & (1 << 16))
+    if (PLLSRC_REG & PLLSRC_BIT)
     {
-        if (RCC->CFGR2 & (1 << 16))
+        if (RCC->CFGR2 & PLLSRC_BIT)
         {
             pllmul2 = ((RCC->CFGR2 >> 8) & 0xf) + 2;
             if (pllmul2 == PLL2_MUL_20)
@@ -118,38 +116,32 @@ static inline int get_pll_clock()
 }
 
 #elif defined (STM32F1)
-static inline void setup_pll(int mul, int div)
+static inline void setup_pll()
 {
-    RCC->CFGR &= ~((0xf << 18) | (1 << 16) | (1 << 17));
-    RCC->CFGR |= ((mul - 2) << 18);
-#if (HSE_VALUE)
-    if (RCC->CR & RCC_CR_HSEON)
-        RCC->CFGR |= (1 << 16) | ((div - 1)  << 17);
-#endif
+    RCC->CFGR &= ~((0xf << 18) | (1 << 17));
+    RCC->CFGR |= ((PLL_MUL - 2) << 18);
+    RCC->CFGR |= ((PLL_DIV - 1) << 17);
 }
 
 static inline int get_pll_clock()
 {
     int pllsrc = HSI_VALUE / 2;
 #if (HSE_VALUE)
-    if (RCC->CFGR & (1 << 16))
+    if (PLLSRC_REG & PLLSRC_BIT)
         pllsrc = HSE_VALUE / (((RCC->CFGR >> 17) & 0x1) + 1);
 #endif
     return pllsrc * (((RCC->CFGR >> 18) & 0xf) + 2);
 }
 
 #elif defined(STM32L0)
-static inline void setup_pll(int mul, int div)
+static inline void setup_pll()
 {
-    unsigned int pow;
+    unsigned int pow, mul;
+    mul = PLL_MUL;
     for (pow = 0; mul > 4; mul /= 2, pow++) {}
-    RCC->CFGR &= ~((0xf << 18) | (3 << 22) | (1 << 16));
+    RCC->CFGR &= ~((0xf << 18) | (3 << 22));
     RCC->CFGR |= (((pow << 1) | (mul - 3)) << 18);
-#if (HSE_VALUE)
-    RCC->CFGR |= (((div - 1) << 22) | ((pow << 1) | (mul - 3)) << 18) | (1 << 16);
-#else
-    RCC->CFGR |= (((div - 1) << 22) | ((pow << 1) | (mul - 3)) << 18);
-#endif
+    RCC->CFGR |= (((PLL_DIV - 1) << 22) | ((pow << 1) | (mul - 3)) << 18);
 }
 
 static inline int get_pll_clock()
@@ -159,28 +151,24 @@ static inline int get_pll_clock()
     unsigned int div = ((RCC->CFGR >> 22) & 3) + 1;
 
 #if (HSE_VALUE)
-    if (RCC->CFGR & (1 << 16))
+    if (PLLSRC_REG & PLLSRC_BIT)
         pllsrc = HSE_VALUE;
 #endif
     return pllsrc * mul / div;
 }
 
 #elif defined (STM32F2) || defined (STM32F4)
-static inline void setup_pll(int m, int n, int p)
+static inline void setup_pll()
 {
-    RCC->PLLCFGR &= ~((0x3f << 0) | (0x1ff << 6) | (3 << 16) | (1 << 22));
-    RCC->PLLCFGR = (m << 0) | (n << 6) | (((p >> 1) -1) << 16);
-#if (HSE_VALUE)
-    if (RCC->CR & RCC_CR_HSEON)
-        RCC->PLLCFGR = (1 << 22);
-#endif
+    RCC->PLLCFGR &= ~((0x3f << 0) | (0x1ff << 6) | (3 << 16));
+    RCC->PLLCFGR = (PLL_M << 0) | (PLL_N << 6) | (((PLL_P >> 1) -1) << 16);
 }
 
 static inline int get_pll_clock()
 {
     int pllsrc = HSI_VALUE;
 #if (HSE_VALUE)
-    if (RCC->CFGR & (1 << 22))
+    if (PLLSRC_REG & PLLSRC_BIT)
         pllsrc = HSE_VALUE;
 #endif
     return pllsrc / (RCC->PLLCFGR & 0x3f) * ((RCC->PLLCFGR  >> 6) & 0x1ff) / ((((RCC->PLLCFGR  >> 16) & 0x3) + 1) << 1);
@@ -221,16 +209,16 @@ int get_ahb_clock()
 int get_apb2_clock()
 {
     int div = 1;
-    if (RCC->CFGR & (1 << (PPRE2 + 2)))
-        div = 1 << (((RCC->CFGR >> PPRE2) & 3) + 1);
+    if (RCC->CFGR & (1 << (PPRE2_POS + 2)))
+        div = 1 << (((RCC->CFGR >> PPRE2_POS) & 3) + 1);
     return get_ahb_clock() /div;
 }
 
 int get_apb1_clock()
 {
     int div = 1;
-    if (RCC->CFGR & (1 << (PPRE1 + 2)))
-        div = 1 << (((RCC->CFGR >> PPRE1) & 3) + 1);
+    if (RCC->CFGR & (1 << (PPRE1_POS + 2)))
+        div = 1 << (((RCC->CFGR >> PPRE1_POS) & 3) + 1);
     return get_ahb_clock() / div;
 }
 
@@ -248,17 +236,21 @@ RESET_REASON get_reset_reason(CORE* core)
 }
 #endif //STM32_DECODE_RESET
 
-void setup_clock(int param1, int param2, int param3)
+static inline void power_dma_on(CORE* core, STM32_DMA dma)
 {
-    unsigned int pll_clock;
-    //1. switch to internal RC(HSI/MSI) (if not already)
-    if (RCC->CFGR & (3 << 2))
-    {
-        RCC->CFGR &= ~3;
-        while (RCC->CFGR & (3 << 2)) {}
-    }
-    //2. try to turn HSE on (if not already, and if HSE_VALUE is set)
+    if (core->power.dma_count[dma]++ == 0)
+        RCC->AHBENR |= 1 << dma;
+}
+
+static inline void power_dma_off(CORE* core, STM32_DMA dma)
+{
+    if (--core->power.dma_count[dma] == 0)
+        RCC->AHBENR &= ~(1 << dma);
+}
+
 #if (HSE_VALUE)
+static void stm32_power_hse_on()
+{
     if ((RCC->CR & RCC_CR_HSEON) == 0)
     {
 #if defined(STM32L0) && !(LSE_VALUE)
@@ -280,66 +272,47 @@ void setup_clock(int param1, int param2, int param3)
         while ((RCC->CR & RCC_CR_HSERDY) == 0) {}
 #endif //HSE_STARTUP_TIMEOUT
     }
-//we need to turn on HSI on STM32L0
-#elif defined(STM32L0)
-    if ((RCC->CR & RCC_CR_HSION) == 0)
-    {
-        RCC->CR |= RCC_CR_HSION;
-        while ((RCC->CR & RCC_CR_HSIRDY) == 0) {}
-    }
+}
+
+static void stm32_power_hse_off()
+{
+    RCC->CR &= ~RCC_CR_HSEON;
+}
 #endif //HSE_VALUE
-    //3. setup pll
+
+static void stm32_power_pll_on(STM32_CLOCK_SOURCE_TYPE src)
+{
     RCC->CR &= ~RCC_CR_PLLON;
-#if defined(STM32F10X_CL)
-    setup_pll(param1, param2, param3 & 0xffff, (param3 >> 16));
-#elif defined(STM32F1) || defined(STM32L0)
-    setup_pll(param1, param2);
-#elif defined(STM32F2) || defined(STM32F4)
-    setup_pll(param1, param2, param3);
+    setup_pll();
+#if (HSE_VALUE)
+    if (src == STM32_CLOCK_SOURCE_HSE)
+        PLLSRC_REG |= PLLSRC_BIT;
+    else
 #endif
+        PLLSRC_REG &= ~PLLSRC_BIT;
     //turn PLL on
     RCC->CR |= RCC_CR_PLLON;
     while (!(RCC->CR & RCC_CR_PLLRDY)) {}
-    pll_clock = get_pll_clock();
-
-    //4. setup bases
-    RCC->CFGR &= ~((0xf << 4) | (0x7 << PPRE1) | (0x7 << PPRE2));
-    //AHB. Can operates at maximum clock
-    //on STM32L0 APB1/APB2 can operates at maximum speed, save few flash bytes here
-#ifndef STM32L0
-    unsigned int i, bus;
-    //APB2.
-    for (i = 1, bus = 0; (i <= 16) && (pll_clock / i > MAX_APB2); i *= 2, ++bus) {}
-    if (bus)
-        RCC->CFGR |= (4 | (bus - 1)) << PPRE2;
-    //APB1.
-    for (; (i <= 16) && (pll_clock / i > MAX_APB1); i *= 2, ++bus) {}
-    if (bus)
-        RCC->CFGR |= (4 | (bus - 1)) << PPRE1;
-#if (STM32_ADC_DRIVER)
-    unsigned int psc;
-    for(psc = 2; psc < 8 && get_apb2_clock() / psc > ADC_CLOCK_MAX; psc += 2) {}
-    RCC->CFGR &= ~(3 << 14);
-    RCC->CFGR |= (psc / 2 - 1) << 14;
-#endif // STM32_ADC_DRIVER
-#endif // !STM32L0
-
-
-    //5. tune flash latency
-#if defined(STM32F1) && !defined(STM32F100)
-    FLASH->ACR = FLASH_ACR_PRFTBE | (pll_clock / 24000000);
-#elif defined(STM32F2) || defined(STM32F4)
-    FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_ICEN | FLASH_ACR_DCEN | (pll_clock / 30000000);
-#elif defined(STM32L0)
-    FLASH->ACR = FLASH_ACR_PRE_READ | (pll_clock / 16000001);
-#endif
-    //6. switch to PLL
-    RCC->CFGR |= RCC_CFGR_SW_PLL;
-    while ((RCC->CFGR & (3 << 2)) != RCC_CFGR_SWS_PLL) {}
 }
 
-void update_clock(int param1, int param2, int param3)
+static void stm32_power_pll_off()
 {
+    RCC->CR &= ~RCC_CR_PLLON;
+}
+
+static unsigned int stm32_power_get_bus_prescaller(unsigned int clock, unsigned int max)
+{
+    int i;
+    for (i = 0; i <= 4; ++i)
+        if ((clock >> i) <= max)
+            break;
+    return i;
+}
+
+static void stm32_power_set_core_clock(CORE* core, STM32_CLOCK_SOURCE_TYPE src)
+{
+    unsigned int sw, core_clock;
+    //turn off all peripheral clocking
     unsigned int apb1 = RCC->APB1ENR;
     RCC->APB1ENR = 0;
     unsigned int apb2 = RCC->APB2ENR;
@@ -355,20 +328,80 @@ void update_clock(int param1, int param2, int param3)
     unsigned int ahb3 = RCC->AHB3ENR;
     RCC->AHB3ENR = 0;
 #endif
+    __NOP();
+    __NOP();
 
-    RCC->CFGR = 0;
-#if defined(STM32F10X_CL) || defined(STM32F100)
-    RCC->CFGR2 = 0;
+    //set APB1/APB2 prescallers to minimum
+    //disable flash caching, lowest access speed
+    RCC->CFGR |= (7 << PPRE1_POS) | (7 << PPRE2_POS);
+#if defined(STM32F1)
+    RCC->CFGR |= (3 << 14);
+    FLASH->ACR &= ~FLASH_ACR_PRFTBE;
+    FLASH->ACR |= (7 << 0);
+#elif defined(STM32L0)
+    FLASH->ACR &= ~FLASH_ACR_PRE_READ;
+    FLASH->ACR |= (1 << 0);
+#elif defined (STM32F2) || defined(STM32F4)
+    FLASH->ACR &= ~(FLASH_ACR_PRFTEN | FLASH_ACR_ICEN | FLASH_ACR_DCEN);
+    FLASH->ACR |= (7 << 0);
 #endif
+    __DSB();
+    __DMB();
+    __NOP();
+    __NOP();
 
-#if defined(STM32F10X_CL)
-    setup_clock(PLL_MUL, PLL_DIV, PLL2_MUL | (PLL2_DIV << 16));
-#elif defined(STM32F1) || defined(STM32L0)
-    setup_clock(PLL_MUL, PLL_DIV, 0);
+    //switch to source
+    switch (src)
+    {
+#if (HSE_VALUE)
+    case STM32_CLOCK_SOURCE_HSE:
+        sw = RCC_CFGR_SW_HSE;
+        break;
+#endif
+#if defined (STM32L0)
+    case STM32_CLOCK_SOURCE_MSI:
+        sw = RCC_CFGR_SW_MSI;
+        break;
+#endif
+    case STM32_CLOCK_SOURCE_PLL:
+        sw = RCC_CFGR_SW_PLL;
+        break;
+    default:
+        sw = RCC_CFGR_SW_HSI;
+    }
+    RCC->CFGR = (RCC->CFGR & ~(3 << 0)) | sw;
+    while (((RCC->CFGR >> 2) & 3) != sw) {}
+    __NOP();
+    __NOP();
+    core_clock = get_core_clock();
+
+    //setup bases
+    //AHB. Can operates at maximum clock
+    //APB2
+    RCC->CFGR = (RCC->CFGR & ~(7 << PPRE2_POS)) | ((stm32_power_get_bus_prescaller(core_clock, MAX_APB2) + 3) << PPRE2_POS);
+    //APB1
+    RCC->CFGR = (RCC->CFGR & ~(7 << PPRE1_POS)) | ((stm32_power_get_bus_prescaller(core_clock, MAX_APB1) + 3) << PPRE1_POS);
+
+#if defined(STM32F1)
+#if (STM32_ADC_DRIVER)
+    //APB2 can operates at maximum in F1
+    unsigned int adc_psc = (((core_clock / MAX_ADC) + 1) & ~1) >> 1;
+    if (adc_psc)
+        --adc_psc;
+    RCC->CFGR = (RCC->CFGR & ~(3 << 14)) | (adc_psc << 14);
+#endif // STM32_ADC_DRIVER
+#endif //STM32F1
+
+    //tune flash latency
+#if defined(STM32F1) && !defined(STM32F100)
+    FLASH->ACR = FLASH_ACR_PRFTBE | ((core_clock - 1) / 24000000);
 #elif defined(STM32F2) || defined(STM32F4)
-    setup_clock(PLL_M, PLL_N, PLL_P);
+    FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_ICEN | FLASH_ACR_DCEN | ((core_clock - 1) / 30000000);
+#elif defined(STM32L0)
+    FLASH->ACR = FLASH_ACR_PRE_READ | ((core_clock - 1) / 16000000);
 #endif
 
+    //restore buses
 #if defined(STM32F1) || defined(STM32L0)
     RCC->AHBENR = ahb;
 #elif defined (STM32F2) || defined(STM32F4)
@@ -408,52 +441,155 @@ unsigned int get_clock(STM32_POWER_CLOCKS type)
     return res;
 }
 
-void dma_on(CORE* core, STM32_DMA dma)
+#if defined (STM32L0)
+static void stm32_power_set_vrange(int vrange)
 {
-    if (core->power.dma_count[dma]++ == 0)
-        RCC->AHBENR |= 1 << dma;
+    PWR->CR = ((PWR->CR) & ~(3 << 27)) | ((vrange & 3) << 27);
+    __NOP();
+    __NOP();
 }
 
-void dma_off(CORE* core, STM32_DMA dma)
+static inline void stm32_power_hsi_on()
 {
-    if (--core->power.dma_count[dma] == 0)
-        RCC->AHBENR &= ~(1 << dma);
+    RCC->CR |= RCC_CR_HSION;
+    while ((RCC->CR & RCC_CR_HSIRDY) == 0) {}
 }
 
-#if defined(STM32F1)
-void stm32_usb_power_on()
+static inline void stm32_power_hsi_off()
 {
-    int core;
-    core = get_core_clock();
-    if (core == 72000000)
-        RCC->CFGR &= ~(1 << 22);
-    else if (core == 48000000)
-        RCC->CFGR |= 1 << 22;
-    else
+    RCC->CR &= ~RCC_CR_HSION;
+}
+
+static void stm32_power_msi_set_range(unsigned int range)
+{
+    RCC->ICSCR = ((RCC->ICSCR) & ~(7 << 13)) | ((range & 7) << 13);
+    __NOP();
+    __NOP();
+}
+#endif //STM32L0
+
+static void stm32_power_enable_pll(CORE* core)
+{
+#if defined (STM32L0)
+    //switch to 1.8V
+    stm32_power_set_vrange(1);
+#endif //STM32L0
+#if (HSE_VALUE)
+    stm32_power_hse_on();
+    stm32_power_pll_on(STM32_CLOCK_SOURCE_HSE);
+#else
+#if defined(STM32L0)
+    stm32_power_hsi_on();
+#endif //STM32L0
+    stm32_power_pll_on(STM32_CLOCK_SOURCE_HSI);
+#endif //HSE_VALUE
+}
+
+#if (POWER_MANAGEMENT_SUPPORT)
+static void stm32_power_update_core_clock(CORE* core, STM32_CLOCK_SOURCE_TYPE cst)
+{
+    IPC ipc;
+    ipc.cmd = IPC_PM_EVENT;
+    __disable_irq();
+    stm32_power_set_core_clock(core, cst);
+    stm32_timer_request(core, &ipc);
+    //TODO: update dac
+    __enable_irq();
+}
+
+static void stm32_power_hi(CORE* core)
+{
+    stm32_power_enable_pll(core);
+    stm32_power_update_core_clock(core, STM32_CLOCK_SOURCE_PLL);
+}
+
+static inline void stm32_power_lo(CORE* core)
+{
+#if defined (STM32L0)
+    stm32_power_update_core_clock(core, STM32_CLOCK_SOURCE_MSI);
+#else
+    stm32_power_update_core_clock(core, STM32_CLOCK_SOURCE_HSI);
+#endif
+
+    stm32_power_pll_off();
+#if (HSE_VALUE)
+    stm32_power_hse_off();
+#else
+#if defined(STM32L0)
+    stm32_power_hsi_off();
+#endif //STM32L0
+#endif //HSE_VALUE
+
+#if defined (STM32L0)
+    stm32_power_set_vrange(3);
+#endif //STM32L0
+}
+
+static inline void stm32_power_down()
+{
+    __disable_irq();
+#if (STM32_RTC_DRIVER)
+    //disable RTC wakeup
+    stm32_rtc_disable();
+#endif //STM32_RTC_DRIVER
+
+    //sleep deep
+    SCB->SCR |= (1 << 2);
+    PWR->CR |= PWR_CR_PDDS;
+    PWR->CR |= PWR_CR_CWUF;
+    __WFI();
+}
+
+static inline void stm32_power_set_mode(CORE* core, STM32_POWER_MODE mode)
+{
+    switch (mode)
     {
+    case STM32_POWER_MODE_HIGH:
+        stm32_power_hi(core);
+        break;
+    case STM32_POWER_MODE_LOW:
+        stm32_power_lo(core);
+        break;
+    case STM32_POWER_MODE_STANDY:
+        stm32_power_down();
+        break;
+    default:
         error(ERROR_NOT_SUPPORTED);
-        return;
     }
-#if defined(STM32F10X_CL)
-    //enable clock
-    RCC->AHBENR |= RCC_AHBENR_OTGFSEN;
-    //F100, F101, F103
-#elif defined(STM32F1)
-    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
-#endif
 }
 
-void stm32_usb_power_off()
+#endif //POWER_MANAGEMENT_SUPPORT
+
+static inline void set_clock_source(CORE* core, STM32_CLOCK_SOURCE_TYPE cst, unsigned int value, bool on)
 {
-#if defined(STM32F10X_CL)
-    //disable clock
-    RCC->AHBENR &= ~RCC_AHBENR_OTGFSEN;
-    //F100, F101, F103
-#elif defined(STM32F1)
-    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
-#endif
+    switch (cst)
+    {
+    case STM32_CLOCK_SOURCE_DMA:
+        on ? power_dma_on(core, value) : power_dma_off(core, value);
+        break;
+#if (POWER_MANAGEMENT_SUPPORT)
+    case STM32_CLOCK_SOURCE_CORE:
+        stm32_power_update_core_clock(core, value);
+        break;
+#endif //POWER_MANAGEMENT_SUPPORT
+#if (HSE_VALUE)
+    case STM32_CLOCK_SOURCE_HSE:
+        on ? stm32_power_hse_on() : stm32_power_hse_off();
+        break;
+#endif //HSE_VALUE
+#if defined (STM32L0)
+    case STM32_CLOCK_SOURCE_MSI:
+        stm32_power_msi_set_range(value);
+        break;
+#endif //STM32L0
+    case STM32_CLOCK_SOURCE_PLL:
+        on ? stm32_power_pll_on(value) : stm32_power_pll_off();
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        break;
+    }
 }
-#endif
 
 #if (STM32_DECODE_RESET)
 static inline void decode_reset_reason(CORE* core)
@@ -473,35 +609,18 @@ static inline void decode_reset_reason(CORE* core)
 }
 #endif //STM32_DECODE_RESET
 
-#if (POWER_DOWN_SUPPORT)
-static inline void stm32_power_down()
-{
-    __disable_irq();
-#if (STM32_RTC_DRIVER)
-    //disable RTC wakeup
-    stm32_rtc_disable();
-#endif //STM32_RTC_DRIVER
-
-    //sleep deep
-    SCB->SCR |= (1 << 2);
-    PWR->CR |= PWR_CR_PDDS;
-    PWR->CR |= PWR_CR_CWUF;
-    __WFI();
-}
-#endif //POWER_DOWN_SUPPORT
-
 void stm32_power_init(CORE* core)
 {
     int i;
-#if (POWER_DOWN_SUPPORT)
+#if (POWER_MANAGEMENT_SUPPORT)
     //clear power down flags
     PWR->CR |= PWR_CR_CSBF | PWR_CR_CWUF;
 #if defined (STM32L0)
     PWR->CSR &= ~(PWR_CSR_EWUP2 | PWR_CSR_EWUP2);
 #else
     PWR->CSR &= ~PWR_CSR_EWUP;
-#endif
-#endif //POWER_DOWN_SUPPORT
+#endif //STM32L0
+#endif //POWER_MANAGEMENT_SUPPORT
 
     core->power.write_count = 0;
     for (i = 0; i < DMA_COUNT; ++i)
@@ -528,22 +647,14 @@ void stm32_power_init(CORE* core)
     RCC->CFGR2 = 0;
 #endif
 
-#if defined(STM32F10X_CL)
-    setup_clock(PLL_MUL, PLL_DIV, PLL2_MUL | (PLL2_DIV << 16));
-#elif defined(STM32F1)
-    setup_clock(PLL_MUL, PLL_DIV, 0);
-#elif defined(STM32L0)
-#if (STM32_LOW_POWER_ON_STARTUP)
-    RCC->ICSCR = ((RCC->ICSCR) & ~(7 << 13)) | (6 << 13);
-    __NOP();
-    __NOP();
-    //switch to 1.2V
-    PWR->CR = ((PWR->CR) & ~(3 << 27)) | (3 << 27);
-#else //STM32_LOW_POWER_ON_STARTUP
-    setup_clock(PLL_MUL, PLL_DIV, 0);
-#endif//STM32_LOW_POWER_ON_STARTUP
-#elif defined(STM32F2) || defined(STM32F4)
-    setup_clock(PLL_M, PLL_N, PLL_P);
+#if (POWER_MANAGEMENT_SUPPORT) && (LOW_POWER_ON_STARTUP)
+#if defined (STM32L0)
+    stm32_power_msi_set_range(MSI_RANGE);
+    stm32_power_set_vrange(3);
+#endif //STM32L0
+#else
+    stm32_power_enable_pll(core);
+    stm32_power_set_core_clock(core, STM32_CLOCK_SOURCE_PLL);
 #endif
 }
 
@@ -556,8 +667,8 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         ipc->param2 = get_clock(ipc->param1);
         need_post = true;
         break;
-    case STM32_POWER_UPDATE_CLOCK:
-        update_clock(ipc->param1, ipc->param2, ipc->param3);
+    case STM32_POWER_SET_CLOCK_SOURCE:
+        set_clock_source(core, (STM32_CLOCK_SOURCE_TYPE)ipc->param1, ipc->param2, ipc->param3);
         need_post = true;
         break;
 #if (STM32_DECODE_RESET)
@@ -566,30 +677,13 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
 #endif //STM32_DECODE_RESET
-    case STM32_POWER_DMA_ON:
-        dma_on(core, ipc->param1);
-        need_post = true;
-        break;
-    case STM32_POWER_DMA_OFF:
-        dma_off(core, ipc->param1);
-        need_post = true;
-        break;
-#if defined(STM32F1)
-    case STM32_POWER_USB_ON:
-        stm32_usb_power_on();
-        need_post = true;
-        break;
-    case STM32_POWER_USB_OFF:
-        stm32_usb_power_off(core);
-        need_post = true;
-        break;
-#endif //STM32F1
-#if (POWER_DOWN_SUPPORT)
-    case STM32_POWER_DOWN:
+#if (POWER_MANAGEMENT_SUPPORT)
+    case STM32_POWER_SET_MODE:
         //no return
-        stm32_power_down();
+        stm32_power_set_mode(core, ipc->param1);
+        need_post = true;
         break;
-#endif //POWER_DOWN_SUPPORT
+#endif //POWER_MANAGEMENT_SUPPORT
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;

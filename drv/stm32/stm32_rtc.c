@@ -5,6 +5,7 @@
 */
 
 #include "stm32_rtc.h"
+#include "stm32_config.h"
 #include "../../userspace/rtc.h"
 #include "stm32_core_private.h"
 #include "sys_config.h"
@@ -243,7 +244,6 @@ bool stm32_rtc_request(IPC* ipc)
     return need_post;
 }
 
-#if (POWER_DOWN_SUPPORT)
 void stm32_rtc_disable()
 {
 #if defined(STM32F1)
@@ -255,4 +255,3 @@ void stm32_rtc_disable()
     leave_configuration();
 #endif
 }
-#endif //POWER_DOWN_SUPPORT

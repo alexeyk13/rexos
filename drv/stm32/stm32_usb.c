@@ -286,7 +286,25 @@ void stm32_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     ack_gpio(drv, STM32_GPIO_ENABLE_PIN, A10, STM32_GPIO_MODE_INPUT_PULL, true);
 
     //enable clock, setup prescaller
-    ack_power(drv, STM32_POWER_USB_ON, 0, 0, 0);
+    switch (get_clock(drv, STM32_CLOCK_CORE))
+    {
+    case 72000000:
+        RCC->CFGR &= ~(1 << 22);
+        break;
+    case 48000000:
+        RCC->CFGR |= 1 << 22;
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        return;
+    }
+#if defined(STM32F10X_CL)
+    //enable clock
+    RCC->AHBENR |= RCC_AHBENR_OTGFSEN;
+    //F100, F101, F103
+#elif defined(STM32F1)
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+#endif
 
     OTG_FS_GENERAL->CCFG = OTG_FS_GENERAL_CCFG_PWRDWN;
 
@@ -451,7 +469,13 @@ static inline void stm32_usb_close_device(SHARED_USB_DRV* drv)
     drv->usb.device = INVALID_HANDLE;
 
     //power down
-    ack_power(drv, STM32_POWER_USB_OFF, 0, 0, 0);
+#if defined(STM32F10X_CL)
+    //disable clock
+    RCC->AHBENR &= ~RCC_AHBENR_OTGFSEN;
+    //F100, F101, F103
+#elif defined(STM32F1)
+    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
+#endif
 
     //disable pins
     ack_gpio(drv, STM32_GPIO_DISABLE_PIN, A9, 0, 0);

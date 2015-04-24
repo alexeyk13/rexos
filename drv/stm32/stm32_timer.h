@@ -12,6 +12,7 @@
   */
 
 #include "stm32_core.h"
+#include "sys_config.h"
 #include "../../userspace/gpio.h"
 #include "../../userspace/htimer.h"
 

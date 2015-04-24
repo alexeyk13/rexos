@@ -20,14 +20,32 @@
 #endif
 
 typedef enum {
+    STM32_CLOCK_SOURCE_DMA = 0,
+    STM32_CLOCK_SOURCE_CORE,
+    //only if HSE value is set
+    STM32_CLOCK_SOURCE_HSE,
+    STM32_CLOCK_SOURCE_HSI,
+    STM32_CLOCK_SOURCE_MSI,
+    STM32_CLOCK_SOURCE_PLL,
+    //only F2/F4. RFU.
+    STM32_CLOCK_SOURCE_PLL2
+} STM32_CLOCK_SOURCE_TYPE;
+
+typedef enum {
+    STM32_POWER_MODE_HIGH,
+    STM32_POWER_MODE_LOW,
+    STM32_POWER_MODE_ULTRA_LOW,
+    STM32_POWER_MODE_STOP,
+    STM32_POWER_MODE_STANDY
+} STM32_POWER_MODE;
+
+typedef enum {
     STM32_POWER_GET_CLOCK = HAL_IPC(HAL_POWER),
-    STM32_POWER_UPDATE_CLOCK,
+    STM32_POWER_SET_CLOCK_SOURCE,
+    //if enabled
     STM32_POWER_GET_RESET_REASON,
-    STM32_POWER_DMA_ON,
-    STM32_POWER_DMA_OFF,
-    STM32_POWER_USB_ON,
-    STM32_POWER_USB_OFF,
-    STM32_POWER_DOWN
+    //if LPM support is enabled, STM32L0 only
+    STM32_POWER_SET_MODE
 } STM32_POWER_IPCS;
 
 typedef enum {
@@ -235,6 +253,20 @@ typedef enum {
 } TIMER_CHANNEL;
 
 #define STM32_TIMER_DMA_ENABLE                          (1 << 16)
+
+//------------------------------------------------- UART ----------------------------------------------------------------------
+
+typedef enum {
+    UART_1 = 0,
+    UART_2,
+    UART_3,
+    UART_4,
+    UART_5,
+    UART_6,
+    UART_7,
+    UART_8,
+    UART_MAX
+}UART_PORT;
 
 //-------------------------------------------------- ADC ----------------------------------------------------------------------
 

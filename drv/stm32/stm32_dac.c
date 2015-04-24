@@ -149,7 +149,7 @@ static inline void stm32_dac_open(CORE* core, int num, DAC_MODE mode, unsigned i
         DAC->CR |= DAC_CR_DMAEN1 << (16 * num);
 
         //setup DMA
-        stm32_power_request_inside(core, STM32_POWER_DMA_ON, DAC_DMA, 0, 0);
+        stm32_power_request_inside(core, STM32_POWER_SET_CLOCK_SOURCE, STM32_CLOCK_SOURCE_DMA, DAC_DMA, true);
         DAC_DMA_GLOBAL_REGS->IFCR |= 0xf << (DAC_DMA_CHANNELS[num] << 2);
 
         //dst
@@ -237,7 +237,7 @@ void stm32_dac_close(CORE* core, int num)
         }
 #endif //DAC_STREAM
         NVIC_DisableIRQ(DAC_DMA_VECTORS[num]);
-        stm32_power_request_inside(core, STM32_POWER_DMA_OFF, DAC_DMA, 0, 0);
+        stm32_power_request_inside(core, STM32_POWER_SET_CLOCK_SOURCE, STM32_CLOCK_SOURCE_DMA, DAC_DMA, false);
         stm32_timer_request_inside(core, TIMER_STOP, HAL_HANDLE(HAL_TIMER, DAC_TRIGGERS[num]), 0, 0);
     }
 

@@ -36,14 +36,12 @@ typedef enum {
 
 #if (MONOLITH_USB)
 
-#define _printd                 printd
 #define get_clock               stm32_power_get_clock_inside
 #define ack_gpio                stm32_gpio_request_inside
 #define ack_power               stm32_power_request_inside
 
 #else
 
-#define _printd                 printf
 #define get_clock               stm32_power_get_clock_outside
 #define ack_gpio                stm32_core_request_outside
 #define ack_power               stm32_core_request_outside
@@ -334,6 +332,7 @@ void stm32_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
 {
     int i;
     drv->usb.device = device;
+
     //enable DM/DP
     ack_gpio(drv, STM32_GPIO_ENABLE_PIN, USB_DM, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
     ack_gpio(drv, STM32_GPIO_ENABLE_PIN, USB_DP, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
@@ -648,11 +647,11 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         break;
 #if (USB_DEBUG_ERRORS)
     case STM32_USB_ERROR:
-        _printd("USB: hardware error\n\r");
+        printd("USB: hardware error\n\r");
         //posted from isr
         break;
      case STM32_USB_OVERFLOW:
-        _printd("USB: packet memory overflow\n\r");
+        printd("USB: packet memory overflow\n\r");
         //posted from isr
         break;
 #endif
@@ -671,9 +670,6 @@ void stm32_usbl()
     SHARED_USB_DRV drv;
     bool need_post;
     stm32_usb_init(&drv);
-#if (USB_DEBUG_ERRORS)
-    open_stdout();
-#endif
     object_set_self(SYS_OBJ_USB);
     for (;;)
     {

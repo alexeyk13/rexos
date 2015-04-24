@@ -290,6 +290,17 @@ void second_pulse_isr(int vector, void* param)
 }
 #endif //STM32_RTC_DRIVER
 
+#if (POWER_MANAGEMENT_SUPPORT)
+void stm32_timer_pm_event(CORE* core)
+{
+    core->timer.hpet_uspsc = stm32_timer_get_clock(core, HPET_TIMER) / 1000000;
+#if !(STM32_RTC_DRIVER)
+    stm32_timer_stop(core, SECOND_PULSE_TIMER);
+    stm32_timer_start(core, SECOND_PULSE_TIMER, TIMER_VALUE_HZ, 1);
+#endif //STM32_RTC_DRIVER
+}
+#endif //POWER_MANAGEMENT_SUPPORT
+
 void stm32_timer_init(CORE *core)
 {
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
@@ -345,6 +356,11 @@ bool stm32_timer_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
 #endif //TIMER_IO
+#if (POWER_MANAGEMENT_SUPPORT)
+    case IPC_PM_EVENT:
+        stm32_timer_pm_event(core);
+        break;
+#endif //POWER_MANAGEMENT_SUPPORT
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;

@@ -80,10 +80,6 @@ typedef struct {
 
 #define USBD_INVALID_INTERFACE                      0xff
 
-#if (SYS_INFO)
-const char* const USBD_TEXT_STATES[] =              {"Default", "Addressed", "Configured"};
-#endif
-
 void usbd_stub_class_state_change(USBD* usbd, void* param);
 int usbd_stub_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block);
 bool usbd_stub_class_request(USBD* usbd, void* param, IPC* ipc);
@@ -1012,23 +1008,12 @@ void usbd_write_complete(USBD* usbd)
         break;
     default:
 #if (USBD_DEBUG_ERRORS)
-        printf("USBD invalid state on write: %s\n\r", usbd->setup_state);
+        printf("USBD invalid state on write: %d\n\r", usbd->setup_state);
 #endif
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
         break;
     }
 }
-
-#if (SYS_INFO)
-static inline void usbd_info(USBD* usbd)
-{
-    printf("USB device info\n\r\n\r");
-    printf("State: %s\n\r", USBD_TEXT_STATES[usbd->state]);
-    if (usbd->state != USBD_STATE_CONFIGURED)
-        return;
-    printf("Configuration: %d\n\r", usbd->configuration);
-}
-#endif
 
 static inline void usbd_init(USBD* usbd)
 {
@@ -1204,12 +1189,6 @@ void usbd()
         case IPC_PING:
             need_post = true;
             break;
-#if (SYS_INFO)
-        case IPC_GET_INFO:
-            usbd_info(&usbd);
-            need_post = true;
-            break;
-#endif
         case IPC_READ:
         case IPC_WRITE:
         case IPC_FLUSH:

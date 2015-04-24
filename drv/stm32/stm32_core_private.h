@@ -39,10 +39,4 @@ typedef struct _CORE {
 #endif
 }CORE;
 
-#if (UART_STDIO) && (MONOLITH_UART)
-#define printd          printu
-#else
-#define printd          printf
-#endif
-
 #endif // STM32_CORE_PRIVATE_H
