@@ -14,9 +14,7 @@
 #include "sys_config.h"
 
 typedef enum {
-    IPC_SET_STDIO = IPC_SYSTEM + 1,                             //!< Will be called for objects, created before global stdout STREAM is set
-    IPC_GET_INFO,
-    IPC_READ,
+    IPC_READ = IPC_SYSTEM,
     IPC_WRITE,
     IPC_CANCEL_IO,
     IPC_FLUSH,
@@ -24,8 +22,8 @@ typedef enum {
     IPC_OPEN,
     IPC_CLOSE,
     IPC_GET_RX_STREAM,
-    IPC_GET_TX_STREAM
-
+    IPC_GET_TX_STREAM,
+    IPC_PM_EVENT
 }SYS_IPCS;
 
 typedef enum {

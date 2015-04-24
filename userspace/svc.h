@@ -77,8 +77,8 @@ typedef enum {
     SVC_OBJECT_SET,
     SVC_OBJECT_GET,
 
-    SVC_SETUP_SYSTEM,
     SVC_SETUP_DBG,
+    SVC_PRINTD,
     SVC_TEST,
 
 #if (KERNEL_MES)
@@ -150,18 +150,6 @@ extern void svc_call(unsigned int num, unsigned int param1, unsigned int param2,
 /** \addtogroup sys sys
     \{
  */
-
-/**
-    \brief setup system process handle.
-    \details Using system process handle you can communicate with system directly (in userspace).
-     Implementation of protocol is system-based. All created processes will have __HEAP->system param setted up.
-     For security reasons can be called only once after startup.
-    \retval none
-*/
-__STATIC_INLINE void setup_system()
-{
-    svc_call(SVC_SETUP_SYSTEM, 0, 0, 0);
-}
 
 /**
     \brief setup kernel stdout for debug reasons

@@ -52,6 +52,31 @@ void printf(const char *const fmt, ...);
     \param ...: list of arguments
     \retval none
 */
+
+/**
+    \brief format string, using \ref SVC_PRINTD as handler
+    \param fmt: format (see global description)
+    \param ...: list of arguments
+    \retval none
+*/
+void printd(const char *const fmt, ...);
+
+/**
+    \brief format string, using \ref SVC_PRINTD as handler. ISR version
+    \param fmt: format (see global description)
+    \param ...: list of arguments
+    \retval none
+*/
+void iprintd(const char *const fmt, ...);
+
+/**
+    \brief format string to \b str
+    \param str: resulting string
+    \param fmt: format (see global description)
+    \param ...: list of arguments
+    \retval none
+*/
+
 void sprintf(char* str, const char *const fmt, ...);
 
 /**
