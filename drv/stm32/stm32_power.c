@@ -488,12 +488,9 @@ static void stm32_power_enable_pll(CORE* core)
 #if (POWER_MANAGEMENT_SUPPORT)
 static void stm32_power_update_core_clock(CORE* core, STM32_CLOCK_SOURCE_TYPE cst)
 {
-    IPC ipc;
-    ipc.cmd = IPC_PM_EVENT;
     __disable_irq();
     stm32_power_set_core_clock(core, cst);
-    stm32_timer_request(core, &ipc);
-    //TODO: update dac
+    stm32_timer_pm_event(core);
     __enable_irq();
 }
 

@@ -22,8 +22,7 @@ typedef enum {
     IPC_OPEN,
     IPC_CLOSE,
     IPC_GET_RX_STREAM,
-    IPC_GET_TX_STREAM,
-    IPC_PM_EVENT
+    IPC_GET_TX_STREAM
 }SYS_IPCS;
 
 typedef enum {

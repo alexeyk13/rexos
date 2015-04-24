@@ -5,6 +5,7 @@
 */
 
 #include "stm32_timer.h"
+#include "sys_config.h"
 #include "../../userspace/stm32_driver.h"
 #include "stm32_power.h"
 #include "stm32_core_private.h"
@@ -356,11 +357,6 @@ bool stm32_timer_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
 #endif //TIMER_IO
-#if (POWER_MANAGEMENT_SUPPORT)
-    case IPC_PM_EVENT:
-        stm32_timer_pm_event(core);
-        break;
-#endif //POWER_MANAGEMENT_SUPPORT
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;

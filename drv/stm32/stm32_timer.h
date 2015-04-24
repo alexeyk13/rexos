@@ -12,7 +12,6 @@
   */
 
 #include "stm32_core.h"
-#include "sys_config.h"
 #include "../../userspace/gpio.h"
 #include "../../userspace/htimer.h"
 
@@ -26,6 +25,10 @@ typedef struct {
 
 void stm32_timer_init(CORE* core);
 bool stm32_timer_request(CORE* core, IPC* ipc);
+
+#if (POWER_MANAGEMENT_SUPPORT)
+void stm32_timer_pm_event(CORE* core);
+#endif //POWER_MANAGEMENT_SUPPORT
 
 __STATIC_INLINE unsigned int stm32_timer_request_inside(CORE* core, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
 {
