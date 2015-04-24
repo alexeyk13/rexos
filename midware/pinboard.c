@@ -11,9 +11,6 @@
 #include "../userspace/sys.h"
 #include "../userspace/gpio.h"
 #include "sys_config.h"
-#if (SYS_INFO)
-#include "../../userspace/stdio.h"
-#endif //SYS_INFO
 
 typedef struct {
     HANDLE process;
@@ -171,18 +168,6 @@ static inline bool pinboard_request(ARRAY** pins, IPC* ipc)
     return need_post;
 }
 
-#if (SYS_INFO)
-void sys_info(ARRAY** pins)
-{
-    int i;
-    printf("Pinboard info\n\r\n\r");
-    printf("Active keys: ");
-    for (i = 0; i < array_size(*pins); ++i)
-        printf("%d, %s ", KEY_GET(*pins, i)->pin, KEY_GET(*pins, i)->pressed ? "pressed" : "released");
-    printf("\n\r");
-}
-#endif
-
 void pinboard()
 {
     ARRAY* pins;
@@ -190,9 +175,6 @@ void pinboard()
     pinboard_init(&pins);
 
     object_set_self(SYS_OBJ_PINBOARD);
-#if (SYS_INFO)
-    open_stdout();
-#endif
     bool need_post;
     for (;;)
     {

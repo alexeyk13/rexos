@@ -215,7 +215,7 @@ static inline void usb_enumdne(SHARED_USB_DRV* drv)
 
     IPC ipc;
     ipc.process = drv->usb.device;
-    ipc.param1 = stm32_usb_get_speed(drv);
+    ipc.param2 = stm32_usb_get_speed(drv);
     ipc.cmd = USB_RESET;
     ipc_ipost(&ipc);
 }

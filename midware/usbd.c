@@ -257,7 +257,7 @@ static inline void usbd_class_configured(USBD* usbd)
 static inline void usbd_open(USBD* usbd)
 {
     usbd->block = block_create(USBD_BLOCK_SIZE);
-    if ((usbd->block = block_create(USBD_BLOCK_SIZE)) == INVALID_HANDLE)
+    if (usbd->block == INVALID_HANDLE)
         return;
     fopen(usbd->usb, HAL_HANDLE(HAL_USB, USB_HANDLE_DEVICE), 0);
 }
@@ -442,11 +442,13 @@ void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned 
 
 static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
 {
-    if (usbd->state == USBD_STATE_DEFAULT)
+    //don't reset on configured state to be functional in virtualbox environment
+    if (usbd->state != USBD_STATE_CONFIGURED)
     {
 #if (USBD_DEBUG_REQUESTS)
         printf("USB device reset\n\r");
 #endif
+        usbd->state = USBD_STATE_DEFAULT;
         if (usbd->ep0_size)
         {
             fclose(usbd->usb, HAL_HANDLE(HAL_USB, 0));
@@ -460,6 +462,7 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
         fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, 0), USB_EP_CONTROL, (void*)size);
         fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), USB_EP_CONTROL, (void*)size);
     }
+    usbd->setup_state = USB_SETUP_STATE_REQUEST;
 }
 
 static inline void usbd_suspend(USBD* usbd)
@@ -1173,7 +1176,7 @@ void usbd()
     IPC ipc;
     bool need_post;
 
-#if (SYS_INFO) || (USBD_DEBUG)
+#if (USBD_DEBUG)
     open_stdout();
 #endif
     object_set_self(SYS_OBJ_USBD);
