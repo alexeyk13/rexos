@@ -15,6 +15,9 @@
     \{
  */
 
+#define FILE_MODE_READ                                  (1 << 0)
+#define FILE_MODE_WRITE                                 (1 << 1)
+#define FILE_MODE_READ_WRITE                            (FILE_MODE_READ | FILE_MODE_WRITE)
 
 /**
     \brief open file
