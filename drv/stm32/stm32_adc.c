@@ -88,10 +88,14 @@ static inline void stm32_adc_open_channel(CORE* core, STM32_ADC_CHANNEL channel,
     switch (channel)
     {
     case STM32_ADC_TEMP:
+        ADC->CCR |= ADC_CCR_VLCDEN;
         ADC->CCR |= ADC_CCR_TSEN;
         break;
     case STM32_ADC_VREF:
         ADC->CCR |= ADC_CCR_VREFEN;
+        break;
+    case STM32_ADC_VLCD:
+        ADC->CCR |= ADC_CCR_VLCDEN;
         break;
     default:
         stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, ADC_PINS[channel], STM32_GPIO_MODE_ANALOG, AF0);
@@ -128,6 +132,9 @@ static inline void stm32_adc_close_channel(CORE* core, STM32_ADC_CHANNEL channel
             break;
         case STM32_ADC_VREF:
             ADC->CCR &= ~ADC_CCR_VREFEN;
+            break;
+        case STM32_ADC_VLCD:
+            ADC->CCR &= ~ADC_CCR_VLCDEN;
             break;
         default:
             break;
