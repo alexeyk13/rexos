@@ -77,6 +77,14 @@ ARM7 features:
 
 History
 =======
+0.2.7
+- Run time power management support with HAL interface
+- hardware timer (htimer) HAL interface
+- UART HAL interface
+- STM32 HAL drivers: UART, power, timer
+- STM32 L0 low power support
+- USB device virtualbox workaround
+
 0.2.6
 - DAC driver HAL abstraction
 - ADC driver HAL abstraction
