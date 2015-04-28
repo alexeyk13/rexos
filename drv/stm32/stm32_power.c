@@ -539,17 +539,17 @@ static inline void stm32_power_down()
     __WFI();
 }
 
-static inline void stm32_power_set_mode(CORE* core, STM32_POWER_MODE mode)
+static inline void stm32_power_set_mode(CORE* core, POWER_MODE mode)
 {
     switch (mode)
     {
-    case STM32_POWER_MODE_HIGH:
+    case POWER_MODE_HIGH:
         stm32_power_hi(core);
         break;
-    case STM32_POWER_MODE_LOW:
+    case POWER_MODE_LOW:
         stm32_power_lo(core);
         break;
-    case STM32_POWER_MODE_STANDY:
+    case POWER_MODE_STANDY:
         stm32_power_down();
         break;
     default:
@@ -677,7 +677,7 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         break;
 #endif //STM32_DECODE_RESET
 #if (POWER_MANAGEMENT_SUPPORT)
-    case STM32_POWER_SET_MODE:
+    case POWER_SET_MODE:
         //no return
         stm32_power_set_mode(core, ipc->param1);
         need_post = true;

@@ -11,6 +11,7 @@
 #include "sys.h"
 #include "stm32_config.h"
 #include "adc.h"
+#include "power.h"
 
 //-------------------------------------------------- POWER ---------------------------------------------------------------------
 
@@ -32,20 +33,10 @@ typedef enum {
 } STM32_CLOCK_SOURCE_TYPE;
 
 typedef enum {
-    STM32_POWER_MODE_HIGH,
-    STM32_POWER_MODE_LOW,
-    STM32_POWER_MODE_ULTRA_LOW,
-    STM32_POWER_MODE_STOP,
-    STM32_POWER_MODE_STANDY
-} STM32_POWER_MODE;
-
-typedef enum {
-    STM32_POWER_GET_CLOCK = HAL_IPC(HAL_POWER),
+    STM32_POWER_GET_CLOCK = POWER_MAX,
     STM32_POWER_SET_CLOCK_SOURCE,
     //if enabled
     STM32_POWER_GET_RESET_REASON,
-    //if LPM support is enabled, STM32L0 only
-    STM32_POWER_SET_MODE
 } STM32_POWER_IPCS;
 
 typedef enum {
