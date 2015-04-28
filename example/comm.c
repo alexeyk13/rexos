@@ -19,7 +19,7 @@
 
 static inline void comm_usb_start(APP* app)
 {
-/*    HANDLE usbd, tx_stream;
+    HANDLE usbd, tx_stream;
     usbd = object_get(SYS_OBJ_USBD);
     tx_stream = get(usbd, IPC_GET_TX_STREAM, HAL_USBD_INTERFACE(0, 0), 0, 0);
     app->comm.rx_stream = get(usbd, IPC_GET_RX_STREAM, HAL_USBD_INTERFACE(0, 0), 0, 0);
@@ -29,15 +29,8 @@ static inline void comm_usb_start(APP* app)
     app->comm.active = true;
 
     stream_listen(app->comm.rx_stream, NULL);
-*/
+
     printf("USB start\n\r");
-    sleep_ms(1000);
-    fclose(object_get(SYS_OBJ_USBD), HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE));
-    sleep_ms(1000);
-
-    printf("USB test start\n\r");
-    fopen(object_get(SYS_OBJ_USBD), HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), 0);
-
 }
 
 static void comm_usb_stop(APP* app)

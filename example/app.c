@@ -93,8 +93,8 @@ static inline void app_init(APP* app)
 
 static inline void app_timeout(APP* app)
 {
-//    printf("app timer timeout test\n\r");
-//    timer_start_ms(app->timer, 1000, 0);
+    printf("app timer timeout test\n\r");
+    timer_start_ms(app->timer, 1000, 0);
 }
 
 void app()
