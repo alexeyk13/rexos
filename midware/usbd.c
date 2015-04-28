@@ -160,7 +160,6 @@ void usbd_inform(USBD* usbd, unsigned int alert, bool need_wait)
 void usbd_class_reset(USBD* usbd)
 {
     int i;
-    usbd_inform(usbd, USBD_ALERT_RESET, true);
     for (i = 0; i < usbd->ifacecnt; ++i)
         IFACE(usbd, i)->usbd_class->usbd_class_reset(usbd, IFACE(usbd, i)->param);
     usbd->ifacecnt = 0;
@@ -188,6 +187,7 @@ void usbd_fatal(USBD* usbd)
     if (usbd->state == USBD_STATE_CONFIGURED)
     {
         usbd->state = USBD_STATE_DEFAULT;
+        usbd_inform(usbd, USBD_ALERT_RESET, true);
         usbd_class_reset(usbd);
     }
     ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, 0), 0, 0);
@@ -273,6 +273,7 @@ static inline void usbd_close(USBD* usbd)
         usbd->ep0_size = 0;
     }
 
+    fclose(usbd->usb, HAL_HANDLE(HAL_USB, USB_HANDLE_DEVICE));
     block_destroy(usbd->block);
     usbd->block = INVALID_HANDLE;
 }
@@ -708,6 +709,7 @@ static inline int usbd_set_configuration(USBD* usbd)
         usbd->configuration = 0;
 
         usbd->state = USBD_STATE_ADDRESSED;
+        usbd_inform(usbd, USBD_ALERT_RESET, true);
         usbd_class_reset(usbd);
     }
     //USB 2.0 specification is required to set USB state addressed if it was already configured
