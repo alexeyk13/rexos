@@ -318,7 +318,6 @@ void stm32_usb_on_isr(int vector, void* param)
 #endif
 }
 
-
 void stm32_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
 {
     int i;

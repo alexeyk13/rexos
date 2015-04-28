@@ -175,6 +175,13 @@ static inline int get_pll_clock()
 }
 #endif
 
+#if defined(STM32L0)
+static int get_msi_clock()
+{
+    return 65536 * (1 << ((RCC->ICSCR >> 13) & 7));
+}
+#endif
+
 int get_core_clock()
 {
     switch (RCC->CFGR & (3 << 2))
@@ -184,7 +191,7 @@ int get_core_clock()
         break;
 #if defined(STM32L0)
     case RCC_CFGR_SWS_MSI:
-        return 65536 * (1 << ((RCC->ICSCR >> 13) & 7));
+        return get_msi_clock();
         break;
 #endif
     case RCC_CFGR_SWS_HSE:
@@ -306,7 +313,7 @@ static unsigned int stm32_power_get_bus_prescaller(unsigned int clock, unsigned 
     for (i = 0; i <= 4; ++i)
         if ((clock >> i) <= max)
             break;
-    return i;
+    return i ? i + 3 : 0;
 }
 
 static void stm32_power_set_core_clock(CORE* core, STM32_CLOCK_SOURCE_TYPE src)
@@ -331,56 +338,41 @@ static void stm32_power_set_core_clock(CORE* core, STM32_CLOCK_SOURCE_TYPE src)
     __NOP();
     __NOP();
 
-    //set APB1/APB2 prescallers to minimum
-    //disable flash caching, lowest access speed
-    RCC->CFGR |= (7 << PPRE1_POS) | (7 << PPRE2_POS);
-#if defined(STM32F1)
-    RCC->CFGR |= (3 << 14);
-    FLASH->ACR &= ~FLASH_ACR_PRFTBE;
-    FLASH->ACR |= (7 << 0);
-#elif defined(STM32L0)
-    FLASH->ACR &= ~FLASH_ACR_PRE_READ;
-    FLASH->ACR |= (1 << 0);
-#elif defined (STM32F2) || defined(STM32F4)
-    FLASH->ACR &= ~(FLASH_ACR_PRFTEN | FLASH_ACR_ICEN | FLASH_ACR_DCEN);
-    FLASH->ACR |= (7 << 0);
-#endif
-    __DSB();
-    __DMB();
+    //switch to internal source first. Which is slowest and always available
+    RCC->CFGR &= ~(3 << 0);
+    while ((RCC->CFGR >> 2) & 3) {}
     __NOP();
     __NOP();
 
-    //switch to source
     switch (src)
     {
 #if (HSE_VALUE)
     case STM32_CLOCK_SOURCE_HSE:
         sw = RCC_CFGR_SW_HSE;
+        core_clock = HSE_VALUE;
         break;
 #endif
 #if defined (STM32L0)
     case STM32_CLOCK_SOURCE_MSI:
         sw = RCC_CFGR_SW_MSI;
+        core_clock = get_msi_clock();
         break;
 #endif
     case STM32_CLOCK_SOURCE_PLL:
         sw = RCC_CFGR_SW_PLL;
+        core_clock = get_pll_clock();
         break;
     default:
         sw = RCC_CFGR_SW_HSI;
+        core_clock = HSI_VALUE;
     }
-    RCC->CFGR = (RCC->CFGR & ~(3 << 0)) | sw;
-    while (((RCC->CFGR >> 2) & 3) != sw) {}
-    __NOP();
-    __NOP();
-    core_clock = get_core_clock();
 
     //setup bases
     //AHB. Can operates at maximum clock
     //APB2
-    RCC->CFGR = (RCC->CFGR & ~(7 << PPRE2_POS)) | ((stm32_power_get_bus_prescaller(core_clock, MAX_APB2) + 3) << PPRE2_POS);
+    RCC->CFGR = (RCC->CFGR & ~(7 << PPRE2_POS)) | (stm32_power_get_bus_prescaller(core_clock, MAX_APB2) << PPRE2_POS);
     //APB1
-    RCC->CFGR = (RCC->CFGR & ~(7 << PPRE1_POS)) | ((stm32_power_get_bus_prescaller(core_clock, MAX_APB1) + 3) << PPRE1_POS);
+    RCC->CFGR = (RCC->CFGR & ~(7 << PPRE1_POS)) | (stm32_power_get_bus_prescaller(core_clock, MAX_APB1) << PPRE1_POS);
 
 #if defined(STM32F1)
 #if (STM32_ADC_DRIVER)
@@ -400,6 +392,16 @@ static void stm32_power_set_core_clock(CORE* core, STM32_CLOCK_SOURCE_TYPE src)
 #elif defined(STM32L0)
     FLASH->ACR = FLASH_ACR_PRE_READ | ((core_clock - 1) / 16000000);
 #endif
+    __DSB();
+    __DMB();
+    __NOP();
+    __NOP();
+
+    //switch to source
+    RCC->CFGR |= sw;
+    while (((RCC->CFGR >> 2) & 3) != sw) {}
+    __NOP();
+    __NOP();
 
     //restore buses
 #if defined(STM32F1) || defined(STM32L0)

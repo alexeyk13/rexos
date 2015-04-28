@@ -296,7 +296,7 @@ void stm32_timer_pm_event(CORE* core)
 {
     core->timer.hpet_uspsc = stm32_timer_get_clock(core, HPET_TIMER) / 1000000;
 #if !(STM32_RTC_DRIVER)
-    stm32_timer_stop(core, SECOND_PULSE_TIMER);
+    stm32_timer_stop(SECOND_PULSE_TIMER);
     stm32_timer_start(core, SECOND_PULSE_TIMER, TIMER_VALUE_HZ, 1);
 #endif //STM32_RTC_DRIVER
 }
