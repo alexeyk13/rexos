@@ -256,14 +256,34 @@ static inline void usbd_class_configured(USBD* usbd)
 
 static inline void usbd_open(USBD* usbd)
 {
+    if (usbd->block != INVALID_HANDLE)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
     usbd->block = block_create(USBD_BLOCK_SIZE);
     if (usbd->block == INVALID_HANDLE)
         return;
+    usbd->setup_state = USB_SETUP_STATE_REQUEST;
+    usbd->state = USBD_STATE_DEFAULT;
+    usbd->self_powered = usbd->remote_wakeup = false;
+#if (USB_2_0)
+    usbd->test_mode = USB_TEST_MODE_NORMAL;
+#endif //USB_2_0
+
+    usbd->speed = USB_LOW_SPEED;
+    usbd->ep0_size = 0;
+    usbd->configuration = 0;
     fopen(usbd->usb, HAL_HANDLE(HAL_USB, USB_HANDLE_DEVICE), 0);
 }
 
 static inline void usbd_close(USBD* usbd)
 {
+    if (usbd->block == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
     if (usbd->state == USBD_STATE_CONFIGURED)
         usbd_class_reset(usbd);
     if (usbd->ep0_size)
@@ -1025,17 +1045,8 @@ static inline void usbd_init(USBD* usbd)
     int i;
     usbd->user = INVALID_HANDLE;
     usbd->usb = object_get(SYS_OBJ_USB);
-    usbd->setup_state = USB_SETUP_STATE_REQUEST;
-    usbd->state = USBD_STATE_DEFAULT;
-    usbd->self_powered = usbd->remote_wakeup = false;
-#if (USB_2_0)
-    usbd->test_mode = USB_TEST_MODE_NORMAL;
-#endif //USB_2_0
-
-    usbd->speed = USB_LOW_SPEED;
-    usbd->ep0_size = 0;
-    usbd->configuration = 0;
     usbd->dev_descriptor_fs = NULL;
+    usbd->block = INVALID_HANDLE;
 #if (USB_2_0)
     usbd->dev_descriptor_hs = NULL;
 #endif //USB_2_0
