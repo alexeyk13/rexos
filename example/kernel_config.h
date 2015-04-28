@@ -5,26 +5,26 @@
 //enable kernel info. Disabling this you can save some flash size, but kernel will be much less verbose, especially on critical errors. Generally doesn't affect on perfomance
 #define KERNEL_INFO                                 1
 //marks objects with magic in headers. Decrease perfomance on few tacts, but very useful for debug if you don't have MPU enabled
-#define KERNEL_MARKS                                1
-//check range of dynamic objects in pools
-#define KERNEL_RANGE_CHECKING                       1
+#define KERNEL_MARKS                                0
+//check range of dynamic objects in pools0
+#define KERNEL_RANGE_CHECKING                       0
 //check kernel handles. Require few tacts, but making kernel calls much safer
 #define KERNEL_HANDLE_CHECKING                      1
 //check user adresses. Require few tacts, but making kernel calls much safer
-#define KERNEL_ADDRESS_CHECKING                     1
+#define KERNEL_ADDRESS_CHECKING                     0
 //some kernel statistics (stack, mem, etc). Decrease perfomance in any object creation.
 #define KERNEL_PROFILING                            1
 //Kernel assertions, halt on fatal error, disable power save mode
 //Don't forget to turn off in production.
-#define KERNEL_DEVELOPER_MODE                       1
+#define KERNEL_DEVELOPER_MODE                       0
 //enable this only if you have problems with system timer. May decrease perfomance
 #define KERNEL_TIMER_DEBUG                          0
 //Enabling this you will get stats on each thread uptime, but decreasing context switching up to 2 times
 #define KERNEL_PROCESS_STAT                         1
 //Enable this only if you have problems with IPC oferflow.
-#define KERNEL_IPC_DEBUG                            0
+#define KERNEL_IPC_DEBUG                            1
 //maximum number of global handles. Must be at least 1
-#define KERNEL_OBJECTS_COUNT                        4
+#define KERNEL_OBJECTS_COUNT                        5
 //mutex, event, semaphore are now deprecated. Use stream, direct, block instead
 #define KERNEL_MES                                  0
 //soft timers if sleep or ipc_read with timeout is not enough

@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -50,8 +50,8 @@ const CONFIGURATION __CONFIGURATION_DESCRIPTOR = {
         2,                                                                  /*bNumInterfaces*/
         1,                                                                  /*bConfigurationValue*/
         4,                                                                  /*iConfiguration*/
-        0xA0,                                                               /*bmAttributes*/
-        50                                                                  /*bMaxPower*/
+        0x80,                                                               /*bmAttributes*/
+        250                                                                 /*bMaxPower*/
     },
     //comm INTERFACE descriptor
     {

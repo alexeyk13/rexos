@@ -1,3 +1,4 @@
 asm_defines.h
 build
 output
+*.pro.*
