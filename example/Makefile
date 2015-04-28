@@ -55,7 +55,7 @@ SRC_C                      += lib_lib.c lib_time.c pool.c printf.c lib_array.c l
 #userspace
 SRC_C                      += stdio.c stdlib.c app.c comm.c
 #drv
-SRC_C                      += stm32_gpio.c stm32_power.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_usbl.c
+SRC_C                      += stm32_gpio.c stm32_power.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_usbl.c stm32_adc.c
 #midware
 SRC_C                      += usbd.c usbdp.c cdcd.c
 

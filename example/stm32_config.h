@@ -58,7 +58,7 @@
 //disable to save few bytes
 #define TIMER_IO                                1
 //------------------------------- ADC ------------------------------------------------
-#define STM32_ADC_DRIVER                        0
+#define STM32_ADC_DRIVER                        1
 //In L0 series - select HSI16 as clock source
 #define STM32_ADC_ASYNCRONOUS_CLOCK             0
 // Avg Slope, refer to datasheet

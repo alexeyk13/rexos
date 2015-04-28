@@ -21,8 +21,8 @@
 
 #define SYS_OBJ_UART                                        SYS_OBJ_CORE
 #define SYS_OBJ_USB                                         SYS_OBJ_CORE
+#define SYS_OBJ_ADC                                         SYS_OBJ_CORE
 #define SYS_OBJ_I2C                                         INVALID_HANDLE
-#define SYS_OBJ_ADC                                         INVALID_HANDLE
 #define SYS_OBJ_DAC                                         INVALID_HANDLE
 #define SYS_OBJ_STDIN                                       INVALID_HANDLE
 #define SYS_OBJ_PINBOARD                                    INVALID_HANDLE

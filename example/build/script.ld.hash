@@ -1,0 +1,35 @@
+# 1 "..//kernel/arm.ld.S"
+# 1 "<built-in>"
+# 1 "<command-line>"
+# 1 "..//kernel/arm.ld.S"
+# 12 "..//kernel/arm.ld.S"
+# 1 "..//kernel/../userspace/core/core.h" 1
+# 14 "..//kernel/../userspace/core/core.h"
+# 1 "..//kernel/../userspace/core/stm32.h" 1
+# 15 "..//kernel/../userspace/core/core.h" 2
+# 1 "..//kernel/../userspace/core/lpc.h" 1
+# 16 "..//kernel/../userspace/core/core.h" 2
+# 13 "..//kernel/arm.ld.S" 2
+
+MEMORY
+{
+ FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 0x10000000
+ RAM (rw) : ORIGIN = 0x20000000, LENGTH = 0x10000000
+}
+
+SECTIONS
+{
+ .text :
+ {
+  KEEP(*(.reset));
+  *(.text .text.* .gnu.linkonce.t.*)
+  *(.glue_7t) *(.glue_7)
+  *(.rodata .rodata.* .gnu.linkonce.r.*)
+  . = ALIGN(4);
+  _etext = .;
+  PROVIDE(__ETEXT = .);
+ } > FLASH
+
+ _end = . ;
+ PROVIDE(__END = .);
+}

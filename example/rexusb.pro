@@ -87,7 +87,11 @@ HEADERS += ../userspace/core/stm32.h \
     ../midware/ccidd.h \
     ../midware/hidd_kbd.h \
     ../midware/pinboard.h \
-    ../midware/usbdp.h
+    ../midware/usbdp.h \
+    ../drv/stm32/stm32_adc.h \
+    ../drv/stm32/stm32_dac.h \
+    ../drv/stm32/stm32_eth.h \
+    ../drv/stm32/stm32_usb.h
 SOURCES += \
 	 ../kernel/core/kcortexm.c \
 	 ../kernel/asm_defines.c \
@@ -145,7 +149,10 @@ SOURCES += \
     ../midware/ccidd.c \
     ../midware/hidd_kbd.c \
     ../midware/pinboard.c \
-    ../midware/usbdp.c
+    ../midware/usbdp.c \
+    ../drv/stm32/stm32_adc.c \
+    ../drv/stm32/stm32_dac.c \
+    ../drv/stm32/stm32_eth.c
 OTHER_FILES += Makefile \
 	 ../kernel/core/startup_cortexm.S \
 	 ../kernel/arm.ld.S \

@@ -6,7 +6,8 @@
 
 #include "../userspace/sys.h"
 #include "../userspace/gpio.h"
-#include "../drv/stm32/stm32_power.h"
+#include "../drv/stm32/stm32_core.h"
+#include "../userspace/stm32_driver.h"
 #include "../userspace/stdio.h"
 #include "../userspace/stdlib.h"
 #include "../userspace/ipc.h"
@@ -18,6 +19,7 @@
 #include "app_private.h"
 #include "comm.h"
 #include "config.h"
+#include "../userspace/adc.h"
 
 
 void app();
@@ -94,6 +96,7 @@ static inline void app_init(APP* app)
 static inline void app_timeout(APP* app)
 {
     printf("app timer timeout test\n\r");
+    printf("vlcd: %d\n\r", adc_get(STM32_ADC_VREF));
     timer_start_ms(app->timer, 1000, 0);
 }
 
@@ -105,6 +108,12 @@ void app()
 
     app_init(&app);
     comm_init(&app);
+
+
+    fopen(object_get(SYS_OBJ_ADC), HAL_HANDLE(HAL_ADC, STM32_ADC_DEVICE), 0);
+    fopen(object_get(SYS_OBJ_ADC), HAL_HANDLE(HAL_ADC, STM32_ADC_VREF), STM32_ADC_SMPR_55_5);
+    adc_get(STM32_ADC_VREF);
+
 
     for (;;)
     {
