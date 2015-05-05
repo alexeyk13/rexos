@@ -507,7 +507,7 @@ void mt_write_rect(const RECT* rect, const uint8_t* data)
     }
 }
 
-void mt_read_canvas(CANVAS* canvas, POINT* point)
+void mt_read_canvas(CANVAS* canvas, const POINT* point)
 {
     RECT rect;
     rect.left = point->x;
@@ -517,7 +517,7 @@ void mt_read_canvas(CANVAS* canvas, POINT* point)
     mt_read_rect(&rect, CANVAS_DATA(canvas));
 }
 
-void mt_write_canvas(CANVAS* canvas, POINT* point)
+void mt_write_canvas(CANVAS* canvas, const POINT* point)
 {
     RECT rect;
     rect.left = point->x;

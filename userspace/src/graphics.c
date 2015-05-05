@@ -8,7 +8,7 @@
 #include "../heap.h"
 #include "../error.h"
 
-static void graphics_write(uint8_t* pix, unsigned short pix_width, unsigned short bpp, POINT* point, unsigned int data, unsigned int data_width)
+static void graphics_write(uint8_t* pix, unsigned short pix_width, unsigned short bpp, const POINT* point, unsigned int data, unsigned int data_width)
 {
     unsigned short byte_pos, bit_pos, width_left, cur_width;
     unsigned int data_pos = (pix_width * point->y + point->x) * bpp;
@@ -23,7 +23,7 @@ static void graphics_write(uint8_t* pix, unsigned short pix_width, unsigned shor
     }
 }
 
-static unsigned int graphics_read(const uint8_t* pix, unsigned short pix_width, unsigned short bpp, POINT* point, unsigned int data_width)
+static unsigned int graphics_read(const uint8_t* pix, unsigned short pix_width, unsigned short bpp, const POINT* point, unsigned int data_width)
 {
     unsigned short byte_pos, bit_pos, width_left, cur_width;
     unsigned int data = 0;
@@ -40,7 +40,26 @@ static unsigned int graphics_read(const uint8_t* pix, unsigned short pix_width, 
     return data;
 }
 
-void put_pixel(CANVAS* canvas, POINT* point, unsigned int color)
+static void graphics_canvas_write(CANVAS* canvas, unsigned int mode, POINT* point, unsigned int data, unsigned int data_width)
+{
+    switch (mode)
+    {
+    case GUI_MODE_OR:
+        data |= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, data_width);
+        break;
+    case GUI_MODE_XOR:
+        data ^= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, data_width);
+        break;
+    case GUI_MODE_AND:
+        data &= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, data_width);
+        break;
+    default:
+        break;
+    }
+    graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, data, data_width);
+}
+
+void put_pixel(CANVAS* canvas, const POINT *point, unsigned int color)
 {
     if (point->x >= canvas->width || point->y >= canvas->height)
     {
@@ -50,7 +69,7 @@ void put_pixel(CANVAS* canvas, POINT* point, unsigned int color)
     graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, color, canvas->bits_per_pixel);
 }
 
-unsigned int get_pixel(CANVAS* canvas, POINT* point)
+unsigned int get_pixel(CANVAS* canvas, const POINT* point)
 {
     if (point->x >= canvas->width || point->y >= canvas->height)
     {
@@ -73,7 +92,7 @@ static short gabs(short val)
     return val > 0 ? val : -val;
 }
 
-void line(CANVAS* canvas, POINT* a, POINT* b, unsigned int color)
+void line(CANVAS* canvas, const POINT *a, const POINT *b, unsigned int color)
 {
     POINT cur;
     bool vline;
@@ -119,7 +138,7 @@ void line(CANVAS* canvas, POINT* a, POINT* b, unsigned int color)
     }
 }
 
-void filled_rect(CANVAS* canvas, RECT* rect, unsigned int color)
+void filled_rect(CANVAS* canvas, const RECT* rect, unsigned int color, unsigned int mode)
 {
     POINT point;
     unsigned int data, i;
@@ -145,12 +164,12 @@ void filled_rect(CANVAS* canvas, RECT* rect, unsigned int color)
             cur_width = ppi;
             if (point.x + cur_width > rect->left + width)
                 cur_width = rect->left + width - point.x;
-            graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, data, cur_width * canvas->bits_per_pixel);
+            graphics_canvas_write(canvas, mode, &point, data, cur_width * canvas->bits_per_pixel);
         }
     }
 }
 
-void image(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode)
+void image(CANVAS* canvas, const RECT *rect, const RECT *data_rect, const uint8_t* pix, unsigned int mode)
 {
     POINT point, data_point;
     unsigned short width, height, cur_width;
@@ -181,21 +200,7 @@ void image(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsi
             data_point.x = point.x - rect->left + data_rect->left;
             data_point.y = point.y - rect->top + data_rect->top;
             data = graphics_read(pix, data_rect->width, canvas->bits_per_pixel, &data_point, cur_width * canvas->bits_per_pixel);
-            switch (mode)
-            {
-            case GUI_MODE_OR:
-                data |= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, cur_width * canvas->bits_per_pixel);
-                break;
-            case GUI_MODE_XOR:
-                data ^= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, cur_width * canvas->bits_per_pixel);
-                break;
-            case GUI_MODE_AND:
-                data &= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, cur_width * canvas->bits_per_pixel);
-                break;
-            default:
-                break;
-            }
-            graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, &point, data, cur_width * canvas->bits_per_pixel);
+            graphics_canvas_write(canvas, mode, &point, data, cur_width * canvas->bits_per_pixel);
         }
     }
 }

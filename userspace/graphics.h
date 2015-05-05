@@ -22,10 +22,10 @@ typedef struct {
     unsigned short left, top, width, height;
 } RECT;
 
-void put_pixel(CANVAS* canvas, POINT* point, unsigned int color);
-unsigned int get_pixel(CANVAS* canvas, POINT* point);
-void line(CANVAS* canvas, POINT* a, POINT* b, unsigned int color);
-void filled_rect(CANVAS* canvas, RECT* rect, unsigned int color);
-void image(CANVAS* canvas, RECT* rect, RECT* data_rect, const uint8_t* pix, unsigned int mode);
+void put_pixel(CANVAS* canvas, const POINT* point, unsigned int color);
+unsigned int get_pixel(CANVAS* canvas, const POINT* point);
+void line(CANVAS* canvas, const POINT* a, const POINT* b, unsigned int color);
+void filled_rect(CANVAS* canvas, const RECT *rect, unsigned int color, unsigned int mode);
+void image(CANVAS* canvas, const RECT* rect, const RECT* data_rect, const uint8_t* pix, unsigned int mode);
 
 #endif // GRAPHICS_H

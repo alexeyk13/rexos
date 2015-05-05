@@ -36,7 +36,7 @@ void mt_pixel_test();
 #endif
 void mt_clear_rect(const RECT* rect);
 void mt_write_rect(const RECT *rect, const uint8_t *data);
-void mt_read_canvas(CANVAS* canvas, POINT* point);
-void mt_write_canvas(CANVAS* canvas, POINT* point);
+void mt_read_canvas(CANVAS* canvas, const POINT* point);
+void mt_write_canvas(CANVAS* canvas, const POINT *point);
 
 #endif // MT_H

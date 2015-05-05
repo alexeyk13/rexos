@@ -34,11 +34,11 @@ typedef struct {
 } FONT;
 
 unsigned short font_get_glyph_width(FACE* face, unsigned short num);
-void font_render_glyph(CANVAS* canvas, POINT* point, FACE* face, unsigned short height, unsigned short num);
+void font_render_glyph(CANVAS* canvas, const POINT* point, FACE* face, unsigned short height, unsigned short num);
 unsigned short font_get_char_width(const FONT *font, const char* utf8);
-void font_render_char(CANVAS* canvas, POINT* point, const FONT *font, const char* utf8);
+void font_render_char(CANVAS* canvas, const POINT* point, const FONT *font, const char* utf8);
 unsigned short font_get_text_width(const FONT *font, const char* utf8);
-void font_render_text(CANVAS* canvas, POINT* point, const FONT *font, const char* utf8);
-void font_render(CANVAS* canvas, RECT* rect, const FONT *font, const char* utf8, unsigned int align);
+void font_render_text(CANVAS* canvas, const POINT *point, const FONT *font, const char* utf8);
+void font_render(CANVAS* canvas, const RECT* rect, const FONT *font, const char* utf8, unsigned int align);
 
 #endif // FONT_H
