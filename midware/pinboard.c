@@ -72,7 +72,7 @@ void poll_key(KEY* key)
                 pinboard_event(key, PINBOARD_KEY_PRESS);
         }
     }
-    else if (pressed && !key->long_press && key->long_ms && time_elapsed_ms(&key->press_time) >= key->long_ms)
+    else if (pressed && !key->long_press && (key->mode & PINBOARD_FLAG_LONG_PRESS_EVENT) && time_elapsed_ms(&key->press_time) >= key->long_ms)
     {
         pinboard_event(key, PINBOARD_KEY_LONG_PRESS);
         key->long_press = true;
