@@ -15,6 +15,7 @@
 #include "stm32_uart.h"
 #include "stm32_adc.h"
 #include "stm32_dac.h"
+#include "stm32_eep.h"
 #if (MONOLITH_USB)
 #ifdef STM32L0
 #include "stm32_usbl.h"
@@ -92,6 +93,11 @@ void stm32_core_loop(CORE* core)
                 need_post = stm32_dac_request(core, &ipc);
                 break;
 #endif //STM32_DAC_DRIVER
+#if (STM32_EEP_DRIVER)
+            case HAL_EEPROM:
+                need_post = stm32_eep_request(core, &ipc);
+                break;
+#endif //STM32_EEP_DRIVER
 #if (MONOLITH_USB)
             case HAL_USB:
                 need_post = stm32_usb_request(core, &ipc);
@@ -134,6 +140,9 @@ void stm32_core()
 #if (STM32_DAC_DRIVER)
     stm32_dac_init(&core);
 #endif //STM32_DAC_DRIVER
+#if (STM32_EEP_DRIVER)
+    stm32_eep_init(&core);
+#endif //STM32_EEP_DRIVER
 #if (MONOLITH_USB)
     stm32_usb_init(&core);
 #endif
