@@ -55,4 +55,7 @@
 
 #define ERROR_USB_STALL                                 -38
 
+#define ERROR_INVALID_ALIGN                             -39
+#define ERROR_HARDWARE                                  -40
+
 #endif // ERROR_H
