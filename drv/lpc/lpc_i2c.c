@@ -214,11 +214,6 @@ void lpc_i2c_on_isr(int vector, void* param)
 
 void lpc_i2c_open(SHARED_I2C_DRV *drv, I2C_PORT port, unsigned int mode, unsigned int sla)
 {
-    if (port >= I2C_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
     if (drv->i2c.i2cs[port])
     {
         error(ERROR_ALREADY_CONFIGURED);
@@ -263,11 +258,6 @@ void lpc_i2c_open(SHARED_I2C_DRV *drv, I2C_PORT port, unsigned int mode, unsigne
 
 void lpc_i2c_close(SHARED_I2C_DRV *drv, I2C_PORT port)
 {
-    if (port >= I2C_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
     if (drv->i2c.i2cs[port] == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
@@ -288,7 +278,7 @@ void lpc_i2c_close(SHARED_I2C_DRV *drv, I2C_PORT port)
 
 static inline void lpc_i2c_read(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block, unsigned int size, HANDLE process)
 {
-    if (port >= I2C_COUNT || (size && block == INVALID_HANDLE))
+    if (size && block == INVALID_HANDLE)
     {
         fread_complete(process, HAL_HANDLE(HAL_I2C, port), block, ERROR_INVALID_PARAMS);
         return;
@@ -334,7 +324,7 @@ static inline void lpc_i2c_read(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block
 
 static inline void lpc_i2c_write(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block, unsigned int size, HANDLE process)
 {
-    if (port >= I2C_COUNT || (size && block == INVALID_HANDLE))
+    if (size && block == INVALID_HANDLE)
     {
         fwrite_complete(process, HAL_HANDLE(HAL_I2C, port), block, ERROR_INVALID_PARAMS);
         return;
@@ -379,16 +369,6 @@ static inline void lpc_i2c_write(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE bloc
 
 static inline void lpc_i2c_seek(SHARED_I2C_DRV* drv, I2C_PORT port, unsigned int pos)
 {
-    if (port >= I2C_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
-    if (drv->i2c.i2cs[port] == NULL)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
     drv->i2c.i2cs[port]->addr = pos;
 }
 
@@ -425,36 +405,42 @@ void lpc_i2c_init(SHARED_I2C_DRV* drv)
 
 bool lpc_i2c_request(SHARED_I2C_DRV* drv, IPC* ipc)
 {
+    I2C_PORT port = HAL_ITEM(ipc->param1);
+    if (port >= I2C_COUNT)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return true;
+    }
     bool need_post = false;
     switch (ipc->cmd)
     {
     case IPC_OPEN:
-        lpc_i2c_open(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3);
+        lpc_i2c_open(drv, port, ipc->param2, ipc->param3);
         need_post = true;
         break;
     case IPC_CLOSE:
-        lpc_i2c_close(drv, HAL_ITEM(ipc->param1));
+        lpc_i2c_close(drv, port);
         need_post = true;
         break;
     case IPC_WRITE:
         if (ipc->param3 < 0)
             break;
-        lpc_i2c_write(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
+        lpc_i2c_write(drv, port, ipc->param2, ipc->param3, ipc->process);
         //async message, no write
         break;
     case IPC_READ:
         if (ipc->param3 < 0)
             break;
-        lpc_i2c_read(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
+        lpc_i2c_read(drv, port, ipc->param2, ipc->param3, ipc->process);
         //async message, no write
         break;
     case IPC_SEEK:
-        lpc_i2c_seek(drv, HAL_ITEM(ipc->param1), ipc->param2);
+        lpc_i2c_seek(drv, port, ipc->param2);
         need_post = true;
         break;
 #if (LPC_I2C_TIMEOUT_MS)
     case IPC_TIMEOUT:
-        lpc_i2c_timeout(drv, HAL_ITEM(ipc->param1));
+        lpc_i2c_timeout(drv, port);
         break;
 #endif
     default:
