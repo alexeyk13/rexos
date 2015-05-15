@@ -146,14 +146,6 @@ void lpc_gpio_enable_pin(PIN pin, unsigned int mode, unsigned int af)
         func = GPIO_FUNC(__GPIO_UART, pin);
         break;
 #endif
-#if (GPIO_I2C)
-    case AF_I2C:
-        func = PIN_MODE_I2C_SCL | GPIO_I2C_MODE_STANDART;
-        break;
-    case AF_FAST_I2C:
-        func = PIN_MODE_I2C_SCL | GPIO_I2C_MODE_FAST;
-        break;
-#endif
 #if (GPIO_TIMER)
     case AF_TIMER:
         func = GPIO_FUNC(__GPIO_TIMER, pin);

@@ -54,9 +54,9 @@ const REX __LPC_I2C = {
 #define RX_LEN_SIZE(drv, port)                      (((drv)->i2c.i2cs[(port)]->mode & I2C_LEN_SIZE_MASK) >> I2C_LEN_SIZE_POS)
 #define RX_LEN_SET_BYTE(drv, port, byte)            ((drv)->i2c.i2cs[(port)]->rx_len = (((drv)->i2c.i2cs[(port)]->rx_len) << 8) | ((byte) & 0xff))
 
-static const PIN __I2C_SCL[] =                      {PIO0_4};
-static const PIN __I2C_SDA[] =                      {PIO0_5};
-static const uint8_t __I2C_VECTORS[] =              {15};
+#define I2C_SCL_PIN                                 PIO0_4
+#define I2C_SDA_PIN                                 PIO0_5
+#define I2C_VECTOR                                  15
 
 #define I2C_CLEAR (I2C_CONCLR_AAC | I2C_CONCLR_SIC | I2C_CONCLR_STOC | I2C_CONCLR_STAC)
 
@@ -245,8 +245,8 @@ void lpc_i2c_open(SHARED_I2C_DRV *drv, I2C_PORT port, unsigned int mode, unsigne
     drv->i2c.i2cs[port]->io = I2C_IO_IDLE;
     drv->i2c.i2cs[port]->addr = 0;
     //setup pins
-    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, __I2C_SCL[port], 0, mode & I2C_FAST_SPEED ? AF_FAST_I2C : AF_I2C);
-    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, __I2C_SDA[port], 0, mode & I2C_FAST_SPEED ? AF_FAST_I2C : AF_I2C);
+    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, I2C_SCL_PIN, PIN_MODE_I2C_SCL | (mode & I2C_FAST_SPEED ? GPIO_I2C_MODE_FAST : GPIO_I2C_MODE_STANDART), 0);
+    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, I2C_SDA_PIN, PIN_MODE_I2C_SDA | (mode & I2C_FAST_SPEED ? GPIO_I2C_MODE_FAST : GPIO_I2C_MODE_STANDART), 0);
     //power up
     LPC_SYSCON->SYSAHBCLKCTRL |= 1 << SYSCON_SYSAHBCLKCTRL_I2C0_POS;
     //remove reset state
@@ -256,9 +256,9 @@ void lpc_i2c_open(SHARED_I2C_DRV *drv, I2C_PORT port, unsigned int mode, unsigne
     //reset state machine
     LPC_I2C->CONCLR = I2C_CLEAR;
     //enable interrupt
-    irq_register(__I2C_VECTORS[port], lpc_i2c_on_isr, (void*)drv);
-    NVIC_EnableIRQ(__I2C_VECTORS[port]);
-    NVIC_SetPriority(__I2C_VECTORS[port], 2);
+    irq_register(I2C_VECTOR, lpc_i2c_on_isr, (void*)drv);
+    NVIC_EnableIRQ(I2C_VECTOR);
+    NVIC_SetPriority(I2C_VECTOR, 2);
 }
 
 void lpc_i2c_close(SHARED_I2C_DRV *drv, I2C_PORT port)
@@ -274,16 +274,16 @@ void lpc_i2c_close(SHARED_I2C_DRV *drv, I2C_PORT port)
         return;
     }
     //disable interrupt
-    NVIC_DisableIRQ(__I2C_VECTORS[port]);
-    irq_unregister(__I2C_VECTORS[port]);
+    NVIC_DisableIRQ(I2C_VECTOR);
+    irq_unregister(I2C_VECTOR);
 
     //set reset state
     LPC_SYSCON->PRESETCTRL &= ~(1 << SYSCON_PRESETCTRL_I2C0_RST_N_POS);
     //power down
     LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << SYSCON_SYSAHBCLKCTRL_I2C0_POS);
     //disable pins
-    ack_gpio(drv, LPC_GPIO_DISABLE_PIN, __I2C_SCL[port], 0, 0);
-    ack_gpio(drv, LPC_GPIO_DISABLE_PIN, __I2C_SDA[port], 0, 0);
+    ack_gpio(drv, LPC_GPIO_DISABLE_PIN, I2C_SCL_PIN, 0, 0);
+    ack_gpio(drv, LPC_GPIO_DISABLE_PIN, I2C_SDA_PIN, 0, 0);
 }
 
 static inline void lpc_i2c_read(SHARED_I2C_DRV* drv, I2C_PORT port, HANDLE block, unsigned int size, HANDLE process)
