@@ -133,12 +133,6 @@ typedef enum {
     UART_MAX
 }UART_PORT;
 
-typedef struct {
-    uint8_t tx, rx;
-    uint16_t stream_size;
-    BAUD baud;
-} UART_ENABLE;
-
 //-------------------------------------------------- I2C ---------------------------------------------------------------------
 
 typedef enum {

@@ -13,15 +13,8 @@
 #include "../../userspace/direct.h"
 #include "../../userspace/stdlib.h"
 
-typedef enum {
-    IPC_UART_ISR_TX = IPC_UART_MAX,
-    IPC_UART_ISR_RX
-} LPC_UART_IPCS;
-
-
 #if (MONOLITH_UART)
 #include "lpc_core_private.h"
-
 
 #define get_system_clock        lpc_power_get_system_clock_inside
 #define ack_gpio                lpc_gpio_request_inside
@@ -37,7 +30,7 @@ const REX __LPC_UART = {
     //name
     "LPC uart",
     //size
-    LPC_UART_STACK_SIZE,
+    LPC_UART_PROCESS_SIZE,
     //priority - driver priority.
     89,
     //flags
@@ -49,6 +42,11 @@ const REX __LPC_UART = {
 };
 
 #endif
+
+typedef enum {
+    IPC_UART_ISR_TX = IPC_UART_MAX,
+    IPC_UART_ISR_RX
+} LPC_UART_IPCS;
 
 #ifdef LPC11U6x
 static const uint8_t __UART_RESET_PINS[] =          {SYSCON_PRESETCTRL_USART1_RST_N_POS, SYSCON_PRESETCTRL_USART2_RST_N_POS, SYSCON_PRESETCTRL_USART3_RST_N_POS,
@@ -227,7 +225,7 @@ static inline void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, I
     }
 }
 
-void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* ue)
+void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
 {
     if (drv->uart.uarts[port] != NULL)
     {
@@ -247,9 +245,9 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
     drv->uart.uarts[port]->rx_handle = INVALID_HANDLE;
     drv->uart.uarts[port]->tx_total = 0;
     drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
-    if (ue->tx != PIN_UNUSED)
+    if (mode & FILE_MODE_WRITE)
     {
-        drv->uart.uarts[port]->tx_stream = stream_create(ue->stream_size);
+        drv->uart.uarts[port]->tx_stream = stream_create(UART_STREAM_SIZE);
         if (drv->uart.uarts[port]->tx_stream == INVALID_HANDLE)
         {
             free(drv->uart.uarts[port]);
@@ -266,9 +264,9 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
         }
         stream_listen(drv->uart.uarts[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
     }
-    if (ue->rx != PIN_UNUSED)
+    if (mode & FILE_MODE_READ)
     {
-        drv->uart.uarts[port]->rx_stream = stream_create(ue->stream_size);
+        drv->uart.uarts[port]->rx_stream = stream_create(UART_STREAM_SIZE);
         if (drv->uart.uarts[port]->rx_stream == INVALID_HANDLE)
         {
             stream_close(drv->uart.uarts[port]->tx_handle);
@@ -297,7 +295,7 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
     if (port > UART_0)
     {
         LPC_SYSCON->PRESETCTRL |= 1 << __UART_RESET_PINS[port - 1];
-        if (ue->rx != PIN_UNUSED)
+        if (mode & FILE_MODE_READ)
             __USART_REGS[port]->INTENCSET = USART4_INTENSET_RXRDYEN | USART4_INTENSET_OVERRUNEN | USART4_INTENSET_FRAMERREN
                                           | USART4_INTENSET_PARITTERREN | USART4_INTENSET_RXNOISEEN | USART4_INTENSET_DELTARXBRKEN;
     }
@@ -328,13 +326,6 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
     irq_register(__UART_VECTORS[port], lpc_uart_on_isr, (void*)drv);
     NVIC_EnableIRQ(__UART_VECTORS[port]);
     NVIC_SetPriority(__UART_VECTORS[port], 2);
-}
-
-void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, HANDLE process)
-{
-    UART_ENABLE ue;
-    if (direct_read(process, (void*)&ue, sizeof(UART_ENABLE)))
-        lpc_uart_open_internal(drv, port, &ue);
 }
 
 static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
@@ -528,17 +519,6 @@ static inline void lpc_uart_setup_printk(SHARED_UART_DRV* drv, UART_PORT port)
     setup_dbg(uart_write_kernel, (void*)port);
 }
 
-#if (UART_STDIO)
-static inline void lpc_uart_open_stdio(SHARED_UART_DRV* drv)
-{
-    UART_ENABLE ue;
-    ue.tx = UART_STDIO_TX;
-    ue.rx = UART_STDIO_RX;
-    ue.stream_size = 32;
-    lpc_uart_open_internal(drv, UART_STDIO_PORT, &ue);
-}
-#endif
-
 void lpc_uart_init(SHARED_UART_DRV* drv)
 {
     int i;
@@ -551,9 +531,6 @@ void lpc_uart_init(SHARED_UART_DRV* drv)
 #endif
     for (i = 0; i < UARTS_COUNT; ++i)
         drv->uart.uarts[i] = NULL;
-#if (UART_STDIO)
-    lpc_uart_open_stdio(drv);
-#endif //UART_STDIO
 }
 
 bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
@@ -568,7 +545,7 @@ bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
     switch (ipc->cmd)
     {
     case IPC_OPEN:
-        lpc_uart_open(drv, port, ipc->process);
+        lpc_uart_open(drv, port, ipc->param2);
         need_post = true;
         break;
     case IPC_CLOSE:
