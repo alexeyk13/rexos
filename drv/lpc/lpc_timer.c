@@ -148,8 +148,6 @@ void lpc_timer_start(CORE* core, TIMER timer, unsigned int mode, unsigned int va
         __TIMER_REGS[timer]->MCR |= 1 << (channel * 3);
         break;
     case TIMER_MODE_TYPE_PWM:
-        //enable pin
-        lpc_gpio_request_inside(core, LPC_GPIO_ENABLE_PIN, mode & TIMER_MODE_PIN_MASK, GPIO_MODE_NOPULL | LPC_GPIO_MODE_OUT, AF_TIMER);
         //enable PWM on channel
         __TIMER_REGS[timer]->PWMC |= 1 << channel;
         //follow down
@@ -179,9 +177,6 @@ void lpc_timer_stop(CORE* core, TIMER timer, unsigned int mode)
     }
     //clear pending match interrupt
     __TIMER_REGS[timer]->IR = 1 << channel;
-    //disable pin if set
-    if ((mode & TIMER_MODE_TYPE_MASK) == TIMER_MODE_TYPE_PWM)
-        lpc_gpio_request_inside(core, LPC_GPIO_DISABLE_PIN, mode & TIMER_MODE_PIN_MASK, 0, 0);
 }
 
 void hpet_start(unsigned int value, void* param)
