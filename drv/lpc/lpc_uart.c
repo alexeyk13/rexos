@@ -17,12 +17,10 @@
 #include "lpc_core_private.h"
 
 #define get_system_clock        lpc_power_get_system_clock_inside
-#define ack_gpio                lpc_gpio_request_inside
 
 #else
 
 #define get_system_clock        lpc_power_get_system_clock_outside
-#define ack_gpio                lpc_core_request_outside
 
 void lpc_uart();
 

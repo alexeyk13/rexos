@@ -35,55 +35,6 @@ static const uint8_t __GPIO_DEFAULT[PIN_DEFAULT / 2] =
                                         GF(PIN_MODE_PIO1_24, PIN_MODE_PIO1_25), GF(PIN_MODE_PIO1_26, PIN_MODE_PIO1_27),
                                         GF(PIN_MODE_PIO1_28, PIN_MODE_PIO1_29), GF(PIN_MODE_INVALID, PIN_MODE_PIO1_31),
                                        };
-#if (GPIO_UART)
-static const uint8_t __GPIO_UART[PIN_DEFAULT / 2] =
-                                       {
-                                        //PIO0_0
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
-                                        //PIO0_4
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_CTS),
-                                        //PIO0_8
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
-                                        //PIO0_12
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
-                                        //PIO0_16
-#if (GPIO_PIO0_17_SCLK)
-                                        GF(PIN_MODE_INVALID, PIN_MODE_SCLK),    GF(PIN_MODE_RXD,     PIN_MODE_TXD),
-#else
-                                        GF(PIN_MODE_INVALID, RTS),              GF(PIN_MODE_RXD,     PIN_MODE_TXD),
-#endif
-                                        //PIO0_20
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
-                                        //PIO0_24
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
-                                        //PIO0_28
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
-                                        //PIO1_0
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
-                                        //PIO1_4
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
-                                        //PIO1_8
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
-                                        //PIO1_12
-#if (GPIO_PIO1_13_TXD) && (GPIO_PIO1_14_RXD)
-                                        GF(PIN_MODE_INVALID, PIN_MODE_TXD_1),   GF(PIN_MODE_RXD_1,   PIN_MODE_DCD),
-#elif (GPIO_PIO1_13_TXD)
-                                        GF(PIN_MODE_INVALID, PIN_MODE_TXD_1),   GF(PIN_MODE_DSR,     PIN_MODE_DCD),
-#elif (GPIO_PIO1_14_RXD)
-                                        GF(PIN_MODE_INVALID, PIN_MODE_DTR),     GF(PIN_MODE_RXD_1,   PIN_MODE_DCD),
-#else
-                                        GF(PIN_MODE_INVALID, PIN_MODE_DTR),     GF(PIN_MODE_DSR,     PIN_MODE_DCD),
-#endif
-                                        //PIO1_16
-                                        GF(PIN_MODE_RI,      PIN_MODE_RXD_2),   GF(PIN_MODE_TXD_2,   PIN_MODE_DTR_1),
-                                        //PIO1_20
-                                        GF(PIN_MODE_DSR_1,   PIN_MODE_DCD_1),   GF(PIN_MODE_RI_1,    PIN_MODE_INVALID),
-                                        //PIO1_24
-                                        GF(PIN_MODE_INVALID, PIN_MODE_INVALID), GF(PIN_MODE_RXD_3,   PIN_MODE_TXD_3),
-                                        //PIO1_28
-                                        GF(PIN_MODE_SCLK_1,  PIN_MODE_INVALID), GF(PIN_MODE_INVALID, PIN_MODE_INVALID),
-                                       };
-#endif
 #if (GPIO_TIMER)
 static const uint8_t __GPIO_TIMER[PIN_DEFAULT / 2] =
                                        {
@@ -141,11 +92,6 @@ void lpc_gpio_enable_pin(PIN pin, unsigned int mode, unsigned int af)
         func = GPIO_FUNC(__GPIO_DEFAULT, pin);
 #endif
         break;
-#if (GPIO_UART)
-    case AF_UART:
-        func = GPIO_FUNC(__GPIO_UART, pin);
-        break;
-#endif
 #if (GPIO_TIMER)
     case AF_TIMER:
         func = GPIO_FUNC(__GPIO_TIMER, pin);
