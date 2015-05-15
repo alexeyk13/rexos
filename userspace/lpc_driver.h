@@ -125,16 +125,6 @@ typedef struct {
 //------------------------------------------------- UART ---------------------------------------------------------------------
 
 typedef enum {
-    IPC_UART_SET_BAUDRATE = HAL_IPC(HAL_UART),
-    IPC_UART_GET_BAUDRATE,
-    IPC_UART_GET_LAST_ERROR,
-    IPC_UART_CLEAR_ERROR,
-    //used internally
-    IPC_UART_ISR_TX,
-    IPC_UART_ISR_RX
-} LPC_UART_IPCS;
-
-typedef enum {
     UART_0 = 0,
     UART_1,
     UART_2,

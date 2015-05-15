@@ -35,13 +35,5 @@ typedef struct _CORE {
 #endif
 }CORE;
 
-#if (SYS_INFO)
-#if (UART_STDIO) && (MONOLITH_UART)
-#define printd          printu
-#else
-#define printd          printf
-#endif
-#endif //SYS_INFO
-
 
 #endif // LPC_CORE_PRIVATE_H

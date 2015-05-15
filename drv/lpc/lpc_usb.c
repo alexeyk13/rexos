@@ -15,9 +15,7 @@
 #include "lpc_power.h"
 #include <string.h>
 #include "../../userspace/stdlib.h"
-#if (SYS_INFO) || (USB_DEBUG_ERRORS)
 #include "../../userspace/stdio.h"
-#endif
 #if (MONOLITH_USB)
 #include "lpc_core_private.h"
 #endif
@@ -554,36 +552,11 @@ void lpc_usb_init(SHARED_USB_DRV* drv)
     }
 }
 
-#if (SYS_INFO)
-static inline void lpc_usb_info(SHARED_USB_DRV* drv)
-{
-    int i;
-    _printd("LPC USB driver info\n\r\n\r");
-    _printd("device\n\r");
-    _printd("Speed: FULL SPEED, address: %d\n\r", LPC_USB->DEVCMDSTAT & USB_DEVCMDSTAT_DEV_ADDR_MASK);
-    _printd("Active endpoints:\n\r");
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
-    {
-        if (drv->usb.out[i] != NULL)
-            _printd("OUT%d: %d bytes\n\r", i, drv->usb.out[i]->mps);
-        if (drv->usb.in[i] != NULL)
-            _printd("IN%d: %d bytes\n\r", i, drv->usb.in[i]->mps);
-
-    }
-}
-#endif
-
 bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        lpc_usb_info(drv);
-        need_post = true;
-        break;
-#endif
     case USB_GET_SPEED:
         ipc->param2 = lpc_usb_get_speed(drv);
         need_post = true;
@@ -636,7 +609,7 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         break;
 #if (USB_DEBUG_ERRORS)
     case LPC_USB_ERROR:
-        printf("USB driver error: %#x\n\r", ipc->param2);
+        printd("USB driver error: %#x\n\r", ipc->param2);
         //posted from isr
         break;
 #endif
@@ -654,9 +627,6 @@ void lpc_usb()
     bool need_post;
     object_set_self(SYS_OBJ_USB);
     lpc_usb_init(&drv);
-#if (SYS_INFO) || (USB_DEBUG_ERRORS)
-    open_stdout();
-#endif
     for (;;)
     {
         error(ERROR_OK);

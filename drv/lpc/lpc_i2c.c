@@ -13,9 +13,6 @@
 #include "../../userspace/block.h"
 #include "../../userspace/file.h"
 #include "../../userspace/timer.h"
-#if (SYS_INFO)
-#include "../../userspace/stdio.h"
-#endif
 
 #if (MONOLITH_I2C)
 #include "lpc_core_private.h"
@@ -36,7 +33,7 @@ const REX __LPC_I2C = {
     "LPC I2C",
     //size
     LPC_I2C_PROCESS_SIZE,
-    //priority - driver priority. Setting priority lower than other drivers can cause IPC overflow on SYS_INFO
+    //priority - driver priority.
     90,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
@@ -426,32 +423,11 @@ void lpc_i2c_init(SHARED_I2C_DRV* drv)
         drv->i2c.i2cs[i] = NULL;
 }
 
-#if (SYS_INFO)
-void lpc_i2c_info(SHARED_I2C_DRV* drv)
-{
-    int i;
-    for (i = 0; i < I2C_COUNT; ++i)
-    {
-        if (drv->i2c.i2cs[i])
-        {
-            printd("State: %d\n\r", drv->i2c.i2cs[i]->io)
-        }
-    }
-}
-
-#endif
-
 bool lpc_i2c_request(SHARED_I2C_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        lpc_i2c_info(drv);
-        need_post = true;
-        break;
-#endif
     case IPC_OPEN:
         lpc_i2c_open(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3);
         need_post = true;

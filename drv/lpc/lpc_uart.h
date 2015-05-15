@@ -16,7 +16,6 @@
 #endif
 
 typedef struct {
-    uint8_t tx_pin, rx_pin;
     uint16_t error;
     HANDLE tx_stream, tx_handle;
     uint16_t tx_total, tx_chunk_pos, tx_chunk_size;
@@ -48,14 +47,5 @@ bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc);
 #else
 extern const REX __LPC_UART;
 #endif
-
-#if (SYS_INFO)
-#if (UART_STDIO)
-//we can't use printf in uart driver, because this can halt driver loop
-void printu(const char *const fmt, ...);
-#else
-#define printu printf
-#endif
-#endif //SYS_INFO
 
 #endif // LPC_UART_H

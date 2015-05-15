@@ -12,9 +12,12 @@
 #include "../../userspace/stream.h"
 #include "../../userspace/direct.h"
 #include "../../userspace/stdlib.h"
-#if (SYS_INFO)
-#include "../../userspace/stdio.h"
-#endif
+
+typedef enum {
+    IPC_UART_ISR_TX = IPC_UART_MAX,
+    IPC_UART_ISR_RX
+} LPC_UART_IPCS;
+
 
 #if (MONOLITH_UART)
 #include "lpc_core_private.h"
@@ -35,7 +38,7 @@ const REX __LPC_UART = {
     "LPC uart",
     //size
     LPC_UART_STACK_SIZE,
-    //priority - driver priority. Setting priority lower than other drivers can cause IPC overflow on SYS_INFO
+    //priority - driver priority.
     89,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
@@ -179,24 +182,21 @@ void lpc_uart4_on_isr(int vector, void* param)
 }
 #endif
 
-void lpc_uart_set_baudrate_internal(SHARED_UART_DRV* drv, UART_PORT port, const BAUD* config)
+static inline void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, IPC* ipc)
 {
-    if (port >= UARTS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
+    BAUD baudrate;
     if (drv->uart.uarts[port] == NULL)
     {
         error(ERROR_NOT_ACTIVE);
         return;
     }
-    unsigned int divider = get_system_clock(drv) / 16 / config->baud;
+    uart_decode_baudrate(ipc, &baudrate);
+    unsigned int divider = get_system_clock(drv) / 16 / baudrate.baud;
 #ifdef LPC11U6x
     if (port > UART_0)
     {
-        __USART_REGS[port - 1]->CFG = ((config->data_bits - 7) << USART4_CFG_DATALEN_POS) | ((config->stop_bits - 1) << USART4_CFG_STOPLEN_POS);
-        switch (config->parity)
+        __USART_REGS[port - 1]->CFG = ((baudrate.data_bits - 7) << USART4_CFG_DATALEN_POS) | ((baudrate.stop_bits - 1) << USART4_CFG_STOPLEN_POS);
+        switch (baudrate.parity)
         {
         case 'O':
             __USART_REGS[port - 1]->CFG |= USART4_CFG_PARITYSEL_ODD;
@@ -211,8 +211,8 @@ void lpc_uart_set_baudrate_internal(SHARED_UART_DRV* drv, UART_PORT port, const 
     else
 #endif
     {
-        LPC_USART->LCR = ((config->data_bits - 5) << USART_LCR_WLS_POS) | ((config->stop_bits - 1) << USART_LCR_SBS_POS) | USART_LCR_DLAB;
-        switch (config->parity)
+        LPC_USART->LCR = ((baudrate.data_bits - 5) << USART_LCR_WLS_POS) | ((baudrate.stop_bits - 1) << USART_LCR_SBS_POS) | USART_LCR_DLAB;
+        switch (baudrate.parity)
         {
         case 'O':
             LPC_USART->LCR |= USART_LCR_PE | USART_LCR_PS_ODD;
@@ -227,20 +227,8 @@ void lpc_uart_set_baudrate_internal(SHARED_UART_DRV* drv, UART_PORT port, const 
     }
 }
 
-void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, HANDLE process)
-{
-    BAUD baud;
-    if (direct_read(process, (void*)&baud, sizeof(BAUD)))
-        lpc_uart_set_baudrate_internal(drv, port, &baud);
-}
-
 void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* ue)
 {
-    if (port >= UARTS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
     if (drv->uart.uarts[port] != NULL)
     {
         error(ERROR_ALREADY_CONFIGURED);
@@ -252,8 +240,6 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
         error(ERROR_OUT_OF_MEMORY);
         return;
     }
-    drv->uart.uarts[port]->tx_pin = ue->tx;
-    drv->uart.uarts[port]->rx_pin = ue->rx;
     drv->uart.uarts[port]->error = ERROR_OK;
     drv->uart.uarts[port]->tx_stream = INVALID_HANDLE;
     drv->uart.uarts[port]->tx_handle = INVALID_HANDLE;
@@ -261,7 +247,7 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
     drv->uart.uarts[port]->rx_handle = INVALID_HANDLE;
     drv->uart.uarts[port]->tx_total = 0;
     drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
-    if (drv->uart.uarts[port]->tx_pin != PIN_UNUSED)
+    if (ue->tx != PIN_UNUSED)
     {
         drv->uart.uarts[port]->tx_stream = stream_create(ue->stream_size);
         if (drv->uart.uarts[port]->tx_stream == INVALID_HANDLE)
@@ -280,7 +266,7 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
         }
         stream_listen(drv->uart.uarts[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
     }
-    if (drv->uart.uarts[port]->rx_pin != PIN_UNUSED)
+    if (ue->rx != PIN_UNUSED)
     {
         drv->uart.uarts[port]->rx_stream = stream_create(ue->stream_size);
         if (drv->uart.uarts[port]->rx_stream == INVALID_HANDLE)
@@ -304,12 +290,6 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
         drv->uart.uarts[port]->rx_free = stream_get_free(drv->uart.uarts[port]->rx_stream);
     }
 
-    //setup pins
-    if (drv->uart.uarts[port]->tx_pin != PIN_UNUSED)
-        ack_gpio(drv, LPC_GPIO_ENABLE_PIN, drv->uart.uarts[port]->tx_pin, GPIO_MODE_OUT, AF_UART);
-
-    if (drv->uart.uarts[port]->rx_pin != PIN_UNUSED)
-        ack_gpio(drv, LPC_GPIO_ENABLE_PIN, drv->uart.uarts[port]->rx_pin, GPIO_MODE_NOPULL, AF_UART);
     //power up
     LPC_SYSCON->SYSAHBCLKCTRL |= 1 << __UART_POWER_PINS[port];
     //remove reset state. Only for LPC11U6x
@@ -317,7 +297,7 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
     if (port > UART_0)
     {
         LPC_SYSCON->PRESETCTRL |= 1 << __UART_RESET_PINS[port - 1];
-        if (drv->uart.uarts[port]->rx_pin != PIN_UNUSED)
+        if (ue->rx != PIN_UNUSED)
             __USART_REGS[port]->INTENCSET = USART4_INTENSET_RXRDYEN | USART4_INTENSET_OVERRUNEN | USART4_INTENSET_FRAMERREN
                                           | USART4_INTENSET_PARITTERREN | USART4_INTENSET_RXNOISEEN | USART4_INTENSET_DELTARXBRKEN;
     }
@@ -327,8 +307,6 @@ void lpc_uart_open_internal(SHARED_UART_DRV *drv, UART_PORT port, UART_ENABLE* u
          //enable FIFO
          LPC_USART->FCR |= USART_FCR_FIFOEN | USART_FCR_TXFIFORES | USART_FCR_RXFIFORES;
     }
-
-    lpc_uart_set_baudrate_internal(drv, port, &ue->baud);
 
     //enable interrupts
 #ifdef LPC11U6x
@@ -361,11 +339,6 @@ void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, HANDLE process)
 
 static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
 {
-    if (port >= UARTS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
     if (drv->uart.uarts[port] == NULL)
     {
         error(ERROR_NOT_ACTIVE);
@@ -403,24 +376,12 @@ static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
     }
     LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << __UART_POWER_PINS[port]);
 
-    //disable pins
-    if (drv->uart.uarts[port]->tx_pin != PIN_UNUSED)
-        ack_gpio(drv, LPC_GPIO_DISABLE_PIN, drv->uart.uarts[port]->tx_pin, 0, 0);
-
-    if (drv->uart.uarts[port]->rx_pin != PIN_UNUSED)
-        ack_gpio(drv, LPC_GPIO_DISABLE_PIN, drv->uart.uarts[port]->rx_pin, 0, 0);
-
     free(drv->uart.uarts[port]);
     drv->uart.uarts[port] = NULL;
 }
 
 static inline void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
 {
-    if (port >= UARTS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
     if (drv->uart.uarts[port] == NULL)
     {
         error(ERROR_NOT_ACTIVE);
@@ -437,7 +398,7 @@ static inline void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
         LPC_USART->IER &= ~USART_IER_THRINTEN;
         LPC_USART->FCR |= USART_FCR_TXFIFORES | USART_FCR_RXFIFORES;
     }
-    if (drv->uart.uarts[port]->tx_pin != PIN_UNUSED)
+    if (drv->uart.uarts[port]->tx_stream != INVALID_HANDLE)
     {
         stream_flush(drv->uart.uarts[port]->tx_stream);
         stream_listen(drv->uart.uarts[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
@@ -446,18 +407,13 @@ static inline void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
         drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
         __enable_irq();
     }
-    if (drv->uart.uarts[port]->rx_pin != PIN_UNUSED)
+    if (drv->uart.uarts[port]->rx_stream != INVALID_HANDLE)
         stream_flush(drv->uart.uarts[port]->rx_stream);
     drv->uart.uarts[port]->error = ERROR_OK;
 }
 
 static inline HANDLE lpc_uart_get_tx_stream(SHARED_UART_DRV* drv, UART_PORT port)
 {
-    if (port >= UARTS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return INVALID_HANDLE;
-    }
     if (drv->uart.uarts[port] == NULL)
     {
         error(ERROR_NOT_ACTIVE);
@@ -468,19 +424,9 @@ static inline HANDLE lpc_uart_get_tx_stream(SHARED_UART_DRV* drv, UART_PORT port
 
 static inline HANDLE lpc_uart_get_rx_stream(SHARED_UART_DRV* drv, UART_PORT port)
 {
-    if (port >= UARTS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return INVALID_HANDLE;
-    }
     if (drv->uart.uarts[port] == NULL)
     {
         error(ERROR_NOT_ACTIVE);
-        return INVALID_HANDLE;
-    }
-    if (drv->uart.uarts[port]->rx_pin == PIN_UNUSED)
-    {
-        error(ERROR_NOT_CONFIGURED);
         return INVALID_HANDLE;
     }
     return drv->uart.uarts[port]->rx_stream;
@@ -488,11 +434,6 @@ static inline HANDLE lpc_uart_get_rx_stream(SHARED_UART_DRV* drv, UART_PORT port
 
 static inline uint16_t lpc_uart_get_last_error(SHARED_UART_DRV* drv, UART_PORT port)
 {
-    if (port >= UARTS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return ERROR_OK;
-    }
     if (drv->uart.uarts[port] == NULL)
     {
         error(ERROR_NOT_ACTIVE);
@@ -503,11 +444,6 @@ static inline uint16_t lpc_uart_get_last_error(SHARED_UART_DRV* drv, UART_PORT p
 
 static inline void lpc_uart_clear_error(SHARED_UART_DRV* drv, UART_PORT port)
 {
-    if (port >= UARTS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
     if (drv->uart.uarts[port] == NULL)
     {
         error(ERROR_NOT_ACTIVE);
@@ -586,45 +522,20 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
     NVIC_EnableIRQ(__UART_VECTORS[port]);
 }
 
-#if (UART_STDIO)
-#if (SYS_INFO)
-//we can't use printf in uart driver, because this can halt driver loop
-void printu(const char *const fmt, ...)
+static inline void lpc_uart_setup_printk(SHARED_UART_DRV* drv, UART_PORT port)
 {
-    va_list va;
-    va_start(va, fmt);
-    format(fmt, va, uart_write_kernel, (void*)UART_STDIO_PORT);
-    va_end(va);
+    //setup kernel printk dbg
+    setup_dbg(uart_write_kernel, (void*)port);
 }
-#endif //(SYS_INFO)
 
+#if (UART_STDIO)
 static inline void lpc_uart_open_stdio(SHARED_UART_DRV* drv)
 {
     UART_ENABLE ue;
     ue.tx = UART_STDIO_TX;
     ue.rx = UART_STDIO_RX;
-    ue.baud.data_bits = UART_STDIO_DATA_BITS;
-    ue.baud.parity = UART_STDIO_PARITY;
-    ue.baud.stop_bits = UART_STDIO_STOP_BITS;
-    ue.baud.baud = UART_STDIO_BAUD;
-    ue.stream_size = STDIO_STREAM_SIZE;
+    ue.stream_size = 32;
     lpc_uart_open_internal(drv, UART_STDIO_PORT, &ue);
-
-    //setup kernel printk dbg
-    setup_dbg(uart_write_kernel, (void*)UART_STDIO_PORT);
-    //setup system stdio
-    object_set(SYS_OBJ_STDOUT, drv->uart.uarts[UART_STDIO_PORT]->tx_stream);
-#if (UART_STDIO_RX != PIN_UNUSED)
-    object_set(SYS_OBJ_STDIN, drv->uart.uarts[UART_STDIO_PORT]->rx_stream);
-#endif
-#if (MONOLITH_UART)
-#if (SYS_INFO) || ((MONOLITH_USB) && (USB_DEBUG_ERRORS))
-    open_stdout();
-#endif
-#else
-    //inform early process (core) about stdio.
-    ack(object_get(SYS_OBJ_CORE), IPC_SET_STDIO, 0, 0, 0);
-#endif //MONOLITH_UART
 }
 #endif
 
@@ -645,72 +556,60 @@ void lpc_uart_init(SHARED_UART_DRV* drv)
 #endif //UART_STDIO
 }
 
-#if (SYS_INFO)
-static inline void lpc_uart_info(SHARED_UART_DRV* drv)
-{
-    int i;
-    printu("LPC uart driver info\n\r\n\r");
-    printu("uarts count: %d\n\r", UARTS_COUNT);
-
-    for (i = 0; i < UARTS_COUNT; ++i)
-    {
-        if (drv->uart.uarts[i])
-            printu("UART_%d ", i);
-    }
-    printu("\n\r\n\r");
-}
-#endif //SYS_INFO
-
 bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
 {
+    UART_PORT port = HAL_ITEM(ipc->param1);
+    if (port >= UARTS_COUNT)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return true;
+    }
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        lpc_uart_info(drv);
-        need_post = true;
-        break;
-#endif
     case IPC_OPEN:
-        lpc_uart_open(drv, HAL_ITEM(ipc->param1), ipc->process);
+        lpc_uart_open(drv, port, ipc->process);
         need_post = true;
         break;
     case IPC_CLOSE:
-        lpc_uart_close(drv, HAL_ITEM(ipc->param1));
+        lpc_uart_close(drv, port);
         need_post = true;
         break;
     case IPC_UART_SET_BAUDRATE:
-        lpc_uart_set_baudrate(drv, HAL_ITEM(ipc->param1), ipc->process);
+        lpc_uart_set_baudrate(drv, port, ipc);
         need_post = true;
         break;
     case IPC_FLUSH:
-        lpc_uart_flush(drv, HAL_ITEM(ipc->param1));
+        lpc_uart_flush(drv, port);
         need_post = true;
         break;
     case IPC_GET_TX_STREAM:
-        ipc->param2 = lpc_uart_get_tx_stream(drv, HAL_ITEM(ipc->param1));
+        ipc->param2 = lpc_uart_get_tx_stream(drv, port);
         need_post = true;
         break;
     case IPC_GET_RX_STREAM:
-        ipc->param2 = lpc_uart_get_rx_stream(drv, HAL_ITEM(ipc->param1));
+        ipc->param2 = lpc_uart_get_rx_stream(drv, port);
         need_post = true;
         break;
     case IPC_UART_GET_LAST_ERROR:
-        ipc->param2 = lpc_uart_get_last_error(drv, HAL_ITEM(ipc->param1));
+        ipc->param2 = lpc_uart_get_last_error(drv, port);
         need_post = true;
         break;
     case IPC_UART_CLEAR_ERROR:
-        lpc_uart_clear_error(drv, HAL_ITEM(ipc->param1));
+        lpc_uart_clear_error(drv, port);
+        need_post = true;
+        break;
+    case IPC_UART_SETUP_PRINTK:
+        lpc_uart_setup_printk(drv, port);
         need_post = true;
         break;
     case IPC_STREAM_WRITE:
     case IPC_UART_ISR_TX:
-        lpc_uart_write(drv, HAL_ITEM(ipc->param1), ipc->param3);
+        lpc_uart_write(drv, port, ipc->param3);
         //message from kernel (or ISR), no response
         break;
     case IPC_UART_ISR_RX:
-        lpc_uart_read(drv, HAL_ITEM(ipc->param1), ipc->param3);
+        lpc_uart_read(drv, port, ipc->param3);
         //message from ISR, no response
         break;
     default:
@@ -735,10 +634,6 @@ void lpc_uart()
         switch (ipc.cmd)
         {
         case IPC_PING:
-            need_post = true;
-            break;
-        case IPC_SET_STDIO:
-            open_stdout();
             need_post = true;
             break;
         default:

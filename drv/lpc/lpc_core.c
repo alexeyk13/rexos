@@ -53,28 +53,6 @@ void lpc_core_loop(CORE* core)
             case IPC_PING:
                 need_post = true;
                 break;
-#if !(MONOLITH_UART)
-            case IPC_SET_STDIO:
-                open_stdout();
-                need_post = true;
-                break;
-#endif //!(MONOLITH_UART)
-#if (SYS_INFO)
-            case IPC_GET_INFO:
-                need_post |= lpc_gpio_request(&ipc);
-                need_post |= lpc_timer_request(core, &ipc);
-                need_post |= lpc_power_request(core, &ipc);
-#if (MONOLITH_UART)
-                need_post |= lpc_uart_request(core, &ipc);
-#endif
-#if (MONOLITH_I2C)
-                need_post |= lpc_i2c_request(core, &ipc);
-#endif
-#if (MONOLITH_USB)
-                need_post |= lpc_usb_request(core, &ipc);
-#endif
-                break;
-#endif
             case IPC_OPEN:
             case IPC_CLOSE:
             case IPC_FLUSH:

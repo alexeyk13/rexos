@@ -6,9 +6,6 @@
 
 #include "lpc_power.h"
 #include "lpc_core_private.h"
-#if (SYS_INFO)
-#include "../../../userspace/stdio.h"
-#endif
 
 #define IRC_VALUE                               12000000
 #define PLL_LOCK_TIMEOUT                        10000
@@ -175,35 +172,6 @@ static inline void lpc_power_usb_off()
 #endif
 }
 
-#if (SYS_INFO)
-void lpc_power_info(CORE* core)
-{
-    printd("System clock: %d\n\r", lpc_get_system_clock());
-    printd("Reset reason: ");
-    switch (core->power.reset_reason)
-    {
-    case RESET_REASON_BROWNOUT:
-        printd("brown out");
-        break;
-    case RESET_REASON_WATCHDOG:
-        printd("watchdog");
-        break;
-    case RESET_REASON_SOFTWARE:
-        printd("software");
-        break;
-    case RESET_REASON_POWERON:
-        printd("power ON");
-        break;
-    case RESET_REASON_EXTERNAL:
-        printd("external reset");
-        break;
-    default:
-        printd("unknown");
-    }
-    printd("\n\r");
-}
-#endif
-
 void lpc_power_init(CORE *core)
 {
     lpc_decode_reset_reason(core);
@@ -215,12 +183,6 @@ bool lpc_power_request(CORE* core, IPC* ipc)
     bool need_post = false;
     switch (ipc->cmd)
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        lpc_power_info(core);
-        need_post = true;
-        break;
-#endif
     case LPC_POWER_GET_SYSTEM_CLOCK:
         ipc->param2 = lpc_get_system_clock();
         need_post = true;
