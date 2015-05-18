@@ -39,15 +39,10 @@ void lpc_timer_isr(int vector, void* param)
 
 void lpc_timer_open(CORE* core, TIMER timer, unsigned int flags)
 {
-    if (timer >= TIMER_MAX)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
     //enable clock
     LPC_SYSCON->SYSAHBCLKCTRL |= 1 << __TIMER_POWER_PINS[timer];
 
-    if (flags & TIMER_FLAG_ENABLE_IRQ)
+    if (flags & TIMER_IRQ_ENABLE)
     {
         //clear pending interrupts
         NVIC_ClearPendingIRQ(__TIMER_VECTORS[timer]);
@@ -57,17 +52,12 @@ void lpc_timer_open(CORE* core, TIMER timer, unsigned int flags)
             __TIMER_REGS[timer]->IR = CT_IR_MR0INT | CT_IR_MR1INT | CT_IR_MR2INT | CT_IR_MR3INT | CT_IR_CR0INT | CT0_IR_CR1INT;
         //enable interrupts
         NVIC_EnableIRQ(__TIMER_VECTORS[timer]);
-        NVIC_SetPriority(__TIMER_VECTORS[timer], (flags & TIMER_FLAG_PRIORITY_MASK) >> TIMER_FLAG_PRIORITY_POS);
+        NVIC_SetPriority(__TIMER_VECTORS[timer], TIMER_IRQ_PRIORITY_VALUE(flags));
     }
 }
 
 void lpc_timer_close(CORE* core, TIMER timer)
 {
-    if (timer >= TIMER_MAX)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
     //disable interrupts
     NVIC_DisableIRQ(__TIMER_VECTORS[timer]);
     //disable clock
@@ -118,11 +108,6 @@ void lpc_timer_start(CORE* core, TIMER timer, unsigned int mode, unsigned int va
 {
     unsigned int match;
     bool opm;
-    if (timer >= TIMER_MAX)
-    {
-        error(ERROR_NOT_SUPPORTED);
-        return;
-    }
     int channel = (mode & TIMER_MODE_CHANNEL_MASK) >> TIMER_MODE_CHANNEL_POS;
     opm = mode & TIMER_MODE_ONE_PULSE;
 
@@ -160,11 +145,6 @@ void lpc_timer_start(CORE* core, TIMER timer, unsigned int mode, unsigned int va
 
 void lpc_timer_stop(CORE* core, TIMER timer, unsigned int mode)
 {
-    if (timer >= TIMER_MAX)
-    {
-        error(ERROR_NOT_SUPPORTED);
-        return;
-    }
     int channel = (mode & TIMER_MODE_CHANNEL_MASK) >> TIMER_MODE_CHANNEL_POS;
 
     //disable match interrupt
@@ -211,7 +191,7 @@ void lpc_timer_init(CORE *core)
 
     //setup second tick timer
     irq_register(__TIMER_VECTORS[SECOND_TIMER], lpc_timer_isr, (void*)core);
-    lpc_timer_open(core, SECOND_TIMER, TIMER_FLAG_ENABLE_IRQ | (2 << TIMER_FLAG_PRIORITY_POS));
+    lpc_timer_open(core, SECOND_TIMER, TIMER_IRQ_ENABLE | (2 << TIMER_IRQ_PRIORITY_POS));
     lpc_timer_start(core, SECOND_TIMER, (SECOND_CHANNEL << TIMER_MODE_CHANNEL_POS) | TIMER_MODE_TYPE_MASTER_US, S1_US);
 
     CB_SVC_TIMER cb_svc_timer;
@@ -224,22 +204,28 @@ void lpc_timer_init(CORE *core)
 bool lpc_timer_request(CORE* core, IPC* ipc)
 {
     bool need_post = false;
+    TIMER timer = (TIMER)HAL_ITEM(ipc->param1);
+    if (timer >= TIMER_MAX)
+    {
+        error(ERROR_NOT_SUPPORTED);
+        return true;
+    }
     switch (ipc->cmd)
     {
     case IPC_OPEN:
-        lpc_timer_open(core, (TIMER)HAL_ITEM(ipc->param1), ipc->param2);
+        lpc_timer_open(core, timer, ipc->param2);
         need_post = true;
         break;
     case IPC_CLOSE:
-        lpc_timer_close(core, (TIMER)HAL_ITEM(ipc->param1));
+        lpc_timer_close(core, timer);
         need_post = true;
         break;
     case LPC_TIMER_START:
-        lpc_timer_start(core, (TIMER)HAL_ITEM(ipc->param1), ipc->param2, ipc->param3);
+        lpc_timer_start(core, timer, ipc->param2, ipc->param3);
         need_post = true;
         break;
     case LPC_TIMER_STOP:
-        lpc_timer_stop(core, (TIMER)HAL_ITEM(ipc->param1), ipc->param2);
+        lpc_timer_stop(core, timer, ipc->param2);
         need_post = true;
         break;
     }

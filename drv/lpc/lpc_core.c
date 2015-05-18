@@ -22,7 +22,7 @@ const REX __LPC_CORE = {
     //name
     "LPC core driver",
     //size
-    LPC_CORE_STACK_SIZE,
+    LPC_CORE_PROCESS_SIZE,
     //priority - driver priority
     90,
     //flags

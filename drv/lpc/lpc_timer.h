@@ -9,6 +9,7 @@
 
 #include "lpc_core.h"
 #include "../../userspace/lpc_driver.h"
+#include "../../userspace/htimer.h"
 
 typedef struct {
     unsigned int hpet_start;
