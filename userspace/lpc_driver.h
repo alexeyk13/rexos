@@ -47,11 +47,6 @@ typedef enum {
     TIMER_MAX
 } TIMER;
 
-typedef enum {
-    LPC_TIMER_START = HAL_IPC(HAL_TIMER),
-    LPC_TIMER_STOP
-} LPC_TIMER_IPCS;
-
 #define TIMER_CHANNEL0                               0
 #define TIMER_CHANNEL1                               1
 #define TIMER_CHANNEL2                               2
@@ -65,22 +60,6 @@ typedef enum {
 #define TIMER_MODE_CHANNEL1                          (TIMER_CHANNEL1 << TIMER_CHANNEL_POS)
 #define TIMER_MODE_CHANNEL2                          (TIMER_CHANNEL2 << TIMER_CHANNEL_POS)
 #define TIMER_MODE_CHANNEL3                          (TIMER_CHANNEL3 << TIMER_CHANNEL_POS)
-
-//stop counter after one pulse. Only for channel 0
-#define TIMER_MODE_ONE_PULSE                         (1  << 20)
-
-#define TIMER_MODE_TYPE_MASK                         (7 << 21)
-#define TIMER_MODE_TYPE_SLAVE                        (0  << 21)
-//value in us units
-#define TIMER_MODE_TYPE_MASTER_US                    (1  << 21)
-//value in hz units
-#define TIMER_MODE_TYPE_MASTER_HZ                    (2  << 21)
-//time in raw clk units
-#define TIMER_MODE_TYPE_MASTER_CLK                   (3  << 21)
-#define TIMER_MODE_TYPE_PWM                          (4  << 21)
-#define TIMER_MODE_TYPE_PWM_UPDATE                   (5  << 21)
-
-#define TIMER_MODE_PIN_MASK                          (0xff)
 
 //------------------------------------------------ Power ---------------------------------------------------------------------
 typedef enum {

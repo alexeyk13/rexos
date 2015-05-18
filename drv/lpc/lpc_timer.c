@@ -39,6 +39,8 @@ void lpc_timer_isr(int vector, void* param)
 
 void lpc_timer_open(CORE* core, TIMER timer, unsigned int flags)
 {
+    core->timer.main_channel[timer] = (flags & TIMER_MODE_CHANNEL_MASK) >> TIMER_MODE_CHANNEL_POS;
+
     //enable clock
     LPC_SYSCON->SYSAHBCLKCTRL |= 1 << __TIMER_POWER_PINS[timer];
 
@@ -54,10 +56,16 @@ void lpc_timer_open(CORE* core, TIMER timer, unsigned int flags)
         NVIC_EnableIRQ(__TIMER_VECTORS[timer]);
         NVIC_SetPriority(__TIMER_VECTORS[timer], TIMER_IRQ_PRIORITY_VALUE(flags));
     }
+
+    if (flags & TIMER_ONE_PULSE)
+        __TIMER_REGS[timer]->MCR |= (CT_MCR_MR0I | CT_MCR_MR0S) << (core->timer.main_channel[timer] * 3);
+    else
+        __TIMER_REGS[timer]->MCR |= (CT_MCR_MR0I | CT_MCR_MR0R) << (core->timer.main_channel[timer] * 3);
 }
 
 void lpc_timer_close(CORE* core, TIMER timer)
 {
+    core->timer.main_channel[timer] = TIMER_CHANNEL_INVALID;
     //disable interrupts
     NVIC_DisableIRQ(__TIMER_VECTORS[timer]);
     //disable clock
@@ -65,29 +73,23 @@ void lpc_timer_close(CORE* core, TIMER timer)
 }
 
 
-static void lpc_timer_start_master_clk(CORE* core, TIMER timer, int channel, unsigned int psc, unsigned int mr, bool opm)
+static void lpc_timer_start_master_clk(CORE* core, TIMER timer, unsigned int psc, unsigned int mr)
 {
-    core->timer.main_channel[timer] = channel;
     __TIMER_REGS[timer]->TC = __TIMER_REGS[timer]->PC = 0;
     __TIMER_REGS[timer]->PR = psc - 1;
-    __TIMER_REGS[timer]->MR[channel] = mr - 1;
-    //enable interrupt on match channel
-    if (opm)
-        __TIMER_REGS[timer]->MCR |= (CT_MCR_MR0I | CT_MCR_MR0S) << (channel * 3);
-    else
-        __TIMER_REGS[timer]->MCR |= (CT_MCR_MR0I | CT_MCR_MR0R) << (channel * 3);
+    __TIMER_REGS[timer]->MR[core->timer.main_channel[timer]] = mr - 1;
     //start counter
     __TIMER_REGS[timer]->TCR |= CT_TCR_CEN;
 }
 
-static void lpc_timer_start_master_us(CORE* core, TIMER timer, int channel, unsigned int us, bool opm)
+static void lpc_timer_start_master_us(CORE* core, TIMER timer, unsigned int us)
 {
     unsigned int psc, cnt, clk;
     unsigned int clock = lpc_power_get_system_clock_inside(core);
     //for 32 bit timers routine is different and much more easy
     if (timer >= TC32B0)
         //psc is always 1us
-        lpc_timer_start_master_clk(core, timer, channel, clock / 1000000, us, opm);
+        lpc_timer_start_master_clk(core, timer, clock / 1000000, us);
     else
     {
         clk = clock / 1000000 * us;
@@ -100,30 +102,34 @@ static void lpc_timer_start_master_us(CORE* core, TIMER timer, int channel, unsi
             cnt = 2;
         if (cnt > 0x10000)
             cnt = 0x10000;
-        lpc_timer_start_master_clk(core, timer, channel, psc, cnt, opm);
+        lpc_timer_start_master_clk(core, timer, psc, cnt);
     }
 }
 
-void lpc_timer_start(CORE* core, TIMER timer, unsigned int mode, unsigned int value)
+void lpc_timer_start(CORE* core, TIMER timer, TIMER_VALUE_TYPE value_type, unsigned int value)
+{
+    switch (value_type)
+    {
+    case TIMER_VALUE_HZ:
+        lpc_timer_start_master_us(core, timer, 1000000 / value);
+        break;
+    case TIMER_VALUE_US:
+        lpc_timer_start_master_us(core, timer, value);
+        break;
+    case TIMER_VALUE_CLK:
+        lpc_timer_start_master_clk(core, timer, 1, value);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+    }
+}
+
+static inline void lpc_timer_setup_channel(CORE* core, TIMER timer, int channel, TIMER_CHANNEL_TYPE type, unsigned int value)
 {
     unsigned int match;
-    bool opm;
-    int channel = (mode & TIMER_MODE_CHANNEL_MASK) >> TIMER_MODE_CHANNEL_POS;
-    opm = mode & TIMER_MODE_ONE_PULSE;
-
-    switch (mode & TIMER_MODE_TYPE_MASK)
+    switch (type)
     {
-    case TIMER_MODE_TYPE_MASTER_HZ:
-        lpc_timer_start_master_us(core, timer, channel, 1000000 / value, opm);
-        break;
-    case TIMER_MODE_TYPE_MASTER_US:
-        lpc_timer_start_master_us(core, timer, channel, value, opm);
-        break;
-    case TIMER_MODE_TYPE_MASTER_CLK:
-        lpc_timer_start_master_clk(core, timer, channel, 1, value, opm);
-        break;
-    case TIMER_MODE_TYPE_SLAVE:
-        //value must be less, than main channel count
+    case TIMER_CHANNEL_GENERAL:
         match = __TIMER_REGS[timer]->TC + (value > __TIMER_REGS[timer]->MR[core->timer.main_channel[timer]] ?
                                                                 __TIMER_REGS[timer]->MR[core->timer.main_channel[timer]] : value);
         if (match > __TIMER_REGS[timer]->MR[core->timer.main_channel[timer]])
@@ -132,31 +138,30 @@ void lpc_timer_start(CORE* core, TIMER timer, unsigned int mode, unsigned int va
         //enable interrupt on match channel
         __TIMER_REGS[timer]->MCR |= 1 << (channel * 3);
         break;
-    case TIMER_MODE_TYPE_PWM:
+    case TIMER_CHANNEL_DISABLE:
+        __TIMER_REGS[timer]->MCR &= ~(7 << (channel * 3));
+        //clear pending match interrupt
+        __TIMER_REGS[timer]->IR = 1 << channel;
+        break;
+    case TIMER_CHANNEL_OUTPUT_PWM_FALL:
         //enable PWM on channel
         __TIMER_REGS[timer]->PWMC |= 1 << channel;
-        //follow down
-    case TIMER_MODE_TYPE_PWM_UPDATE:
         //update value
         __TIMER_REGS[timer]->MR[channel] = value;
         break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
     }
 }
 
-void lpc_timer_stop(CORE* core, TIMER timer, unsigned int mode)
+void lpc_timer_stop(CORE* core, TIMER timer)
 {
-    int channel = (mode & TIMER_MODE_CHANNEL_MASK) >> TIMER_MODE_CHANNEL_POS;
+    __TIMER_REGS[timer]->TCR &= ~CT_TCR_CEN;
 
     //disable match interrupt
-    __TIMER_REGS[timer]->MCR &= ~(7 << (channel * 3));
-    //disable timer on main channel disable
-    if (channel == core->timer.main_channel[timer])
-    {
-        __TIMER_REGS[timer]->TCR &= ~CT_TCR_CEN;
-        core->timer.main_channel[timer] = TIMER_CHANNEL_INVALID;
-    }
+    __TIMER_REGS[timer]->MCR &= ~0xfff;
     //clear pending match interrupt
-    __TIMER_REGS[timer]->IR = 1 << channel;
+    __TIMER_REGS[timer]->IR = 0xf;
 }
 
 void hpet_start(unsigned int value, void* param)
@@ -165,13 +170,13 @@ void hpet_start(unsigned int value, void* param)
     core->timer.hpet_start = __TIMER_REGS[SECOND_TIMER]->TC;
     //don't need to start in free-run mode, second pulse will go faster anyway
     if (value < S1_US)
-       lpc_timer_start(core, SECOND_TIMER, (HPET_CHANNEL << TIMER_MODE_CHANNEL_POS) | TIMER_MODE_TYPE_SLAVE, SECOND_TIMER >= TC32B0 ? value : value / TC16PC);
+       lpc_timer_setup_channel(core, SECOND_TIMER, HPET_CHANNEL, TIMER_CHANNEL_GENERAL, SECOND_TIMER >= TC32B0 ? value : value / TC16PC);
 }
 
 void hpet_stop(void* param)
 {
     CORE* core = (CORE*)param;
-    lpc_timer_stop(core, SECOND_TIMER, (HPET_CHANNEL << TIMER_MODE_CHANNEL_POS));
+    lpc_timer_setup_channel(core, SECOND_TIMER, HPET_CHANNEL, TIMER_CHANNEL_DISABLE, 0);
 }
 
 unsigned int hpet_elapsed(void* param)
@@ -191,8 +196,8 @@ void lpc_timer_init(CORE *core)
 
     //setup second tick timer
     irq_register(__TIMER_VECTORS[SECOND_TIMER], lpc_timer_isr, (void*)core);
-    lpc_timer_open(core, SECOND_TIMER, TIMER_IRQ_ENABLE | (2 << TIMER_IRQ_PRIORITY_POS));
-    lpc_timer_start(core, SECOND_TIMER, (SECOND_CHANNEL << TIMER_MODE_CHANNEL_POS) | TIMER_MODE_TYPE_MASTER_US, S1_US);
+    lpc_timer_open(core, SECOND_TIMER, TIMER_IRQ_ENABLE | (SECOND_CHANNEL << TIMER_MODE_CHANNEL_POS) | (2 << TIMER_IRQ_PRIORITY_POS));
+    lpc_timer_start(core, SECOND_TIMER, TIMER_VALUE_US, S1_US);
 
     CB_SVC_TIMER cb_svc_timer;
     cb_svc_timer.start = hpet_start;
@@ -203,7 +208,6 @@ void lpc_timer_init(CORE *core)
 
 bool lpc_timer_request(CORE* core, IPC* ipc)
 {
-    bool need_post = false;
     TIMER timer = (TIMER)HAL_ITEM(ipc->param1);
     if (timer >= TIMER_MAX)
     {
@@ -214,20 +218,21 @@ bool lpc_timer_request(CORE* core, IPC* ipc)
     {
     case IPC_OPEN:
         lpc_timer_open(core, timer, ipc->param2);
-        need_post = true;
         break;
     case IPC_CLOSE:
         lpc_timer_close(core, timer);
-        need_post = true;
         break;
-    case LPC_TIMER_START:
+    case TIMER_START:
         lpc_timer_start(core, timer, ipc->param2, ipc->param3);
-        need_post = true;
         break;
-    case LPC_TIMER_STOP:
-        lpc_timer_stop(core, timer, ipc->param2);
-        need_post = true;
+    case TIMER_STOP:
+        lpc_timer_stop(core, timer);
         break;
+    case TIMER_SETUP_CHANNEL:
+        lpc_timer_setup_channel(core, timer, TIMER_CHANNEL_VALUE(ipc->param2), TIMER_CHANNEL_TYPE_VALUE(ipc->param2), ipc->param3);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
     }
-    return need_post;
+    return true;
 }
