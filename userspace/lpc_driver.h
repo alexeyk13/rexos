@@ -33,22 +33,9 @@ typedef enum {
 #define LPC_GPIO_MODE_MASK                      0x7ff
 #define LPC_GPIO_MODE_OUT                       (1 << 11)
 
-//Ignore AF, value is set in mode
-#define AF_IGNORE                               0
-//PIN as GPIO
-#define AF_DEFAULT                              1
-//PIN as UART IO pins. UART module must be enabled
-#define AF_UART                                 2
-//PIN as I2C IO pins. I2C module must be enabled
-#define AF_I2C                                  3
-//PIN as FAST I2C IO pins. I2C module must be enabled
-#define AF_FAST_I2C                             4
-//PIN as timer input/output
-#define AF_TIMER                                5
-
-#define GPIO_PORT(pin)                  ((pin) >> 5)
-#define GPIO_PIN(pin)                   ((pin) & 0x1f)
-#define GPIO_MAKE_PIN(port, pin)        (((port) << 5)  + (pin))
+#define GPIO_PORT(pin)                          ((pin) >> 5)
+#define GPIO_PIN(pin)                           ((pin) & 0x1f)
+#define GPIO_MAKE_PIN(port, pin)                (((port) << 5)  + (pin))
 
 //------------------------------------------------ Timer ---------------------------------------------------------------------
 
@@ -70,11 +57,6 @@ typedef enum {
 #define TIMER_CHANNEL2                               2
 #define TIMER_CHANNEL3                               3
 #define TIMER_CHANNEL_INVALID                        0xff
-
-
-#define TIMER_FLAG_ENABLE_IRQ                        (1 << 0)
-#define TIMER_FLAG_PRIORITY_POS                      16
-#define TIMER_FLAG_PRIORITY_MASK                     (0xff << 16)
 
 #define TIMER_MODE_CHANNEL_POS                       16
 #define TIMER_MODE_CHANNEL_MASK                      (3 << TIMER_MODE_CHANNEL_POS)

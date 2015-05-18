@@ -333,9 +333,9 @@ void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     int i;
     drv->usb.device = device;
 
-    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, VBUS, PIN_MODE_VBUS, AF_IGNORE);
+    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, VBUS, PIN_MODE_VBUS, 0);
 #if (USB_SOFT_CONNECT)
-    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, SCONNECT, PIN_MODE_USB_CONNECT, AF_IGNORE);
+    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, SCONNECT, PIN_MODE_USB_CONNECT, 0);
 #endif
 
     //enable clock, power up
