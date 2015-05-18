@@ -56,7 +56,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * core (GPIO, UART, TIMER, POWER): STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx
   * rtc: STM32F1, STM32F2, STM32F4, STM32L0
   * wdt: STM32F1, STM32F2, STM32F4, STM32L0
-  * EEPROM: LPC11Uxx
+  * EEPROM: LPC11Uxx, STM32L0
   * I2C: LPC1Uxx
   * ADC: STM32F1, STM32L0
   * DAC: STM32F1, STM32L0
@@ -77,6 +77,10 @@ ARM7 features:
 
 History
 =======
+0.2.8
+- LPC UART, timer HAL interface
+- STM32 L0 EEPROM driver
+
 0.2.7
 - Run time power management support with HAL interface
 - hardware timer (htimer) HAL interface

@@ -9,7 +9,7 @@
 
 //------------------------------------- CORE ----------------------------------------------
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
-#define LPC_CORE_STACK_SIZE                 800
+#define LPC_CORE_PROCESS_SIZE               780
 #define LPC_DRIVERS_IPC_COUNT               10
 
 //UART driver is monolith. Enable for size, disable for perfomance
@@ -42,33 +42,13 @@
 #define LPC_EEPROM_BUF_SIZE                 20
 //-------------------------------------- GPIO ---------------------------------------------
 #define GPIO_HYSTERESIS                     1
-//GPIO pin constants for specific module. If not used can save 32 bytes per block
-#define GPIO_UART                           1
-#define GPIO_I2C                            1
-#define GPIO_TIMER                          1
-//SCLK/RTS for PIO0_17
-#define GPIO_PIO0_17_SCLK                   1
-//TXD/DTR for PIO1_13
-#define GPIO_PIO1_13_TXD                    1
-//RXD/DSR for PIO1_14
-#define GPIO_PIO1_14_RXD                    1
 
 //-------------------------------------- UART ---------------------------------------------
-//Use UART as default stdio
-#define UART_STDIO                          1
-//PIN_UNUSED can be also set.
-#define UART_STDIO_PORT                     UART_0
-#define UART_STDIO_TX                       PIO0_19
-#define UART_STDIO_RX                       PIN_UNUSED
-#define UART_STDIO_BAUD                     115200
-#define UART_STDIO_DATA_BITS                8
-#define UART_STDIO_PARITY                   'N'
-#define UART_STDIO_STOP_BITS                1
+#define UART_STREAM_SIZE                    32
 
-#define LPC_UART_STACK_SIZE                 512
+#define LPC_UART_PROCESS_SIZE               512
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
 #define UART_TX_BUF_SIZE                    16
-
 //-------------------------------------- USB ----------------------------------------------
 //Maximum packet size for USB.
 //Full speed: 64 if no isochronous transfers, else max 1024
