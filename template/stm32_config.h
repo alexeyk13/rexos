@@ -42,13 +42,15 @@
 #define PLL_M                                   0
 #define PLL_N                                   0
 #define PLL_P                                   0
+
+#define STANDBY_WKUP                            STANDBY_WKUP_PIN2
+
 //------------------------------ UART ------------------------------------------------
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
 //remember, that process itself requires around 256 bytes
 #define UART_TX_BUF_SIZE                        16
 //generally UART is used as stdout/stdio, so fine-tuning is required only on hi load
-//!!!
-#define UART_STREAM_SIZE                        320
+#define UART_STREAM_SIZE                        32
 //Sizeof UART process. Remember, that process itself requires around 450 bytes. Only for stand-alone UART driver
 #define STM32_UART_PROCESS_SIZE                 410 + (50 + UART_TX_BUF_SIZE) * 1
 //------------------------------ TIMER -----------------------------------------------
@@ -56,7 +58,7 @@
 //only required if no STM32_RTC_DRIVER is set
 #define SECOND_PULSE_TIMER                      TIM_2
 //disable to save few bytes
-#define TIMER_IO                                1
+#define TIMER_IO                                0
 //------------------------------- ADC ------------------------------------------------
 #define STM32_ADC_DRIVER                        1
 //In L0 series - select HSI16 as clock source
@@ -96,6 +98,10 @@
 #define STM32_WDT_DRIVER                        0
 //------------------------------- RTC ------------------------------------------------
 #define STM32_RTC_DRIVER                        1
+//------------------------------- EEP ------------------------------------------------
+#define STM32_EEP_DRIVER                        1
+//increase for perfomance, decrease for memory saving. Must be 4 bytes aligned
+#define STM32_EEPROM_BUF_SIZE                   20
 //------------------------------- ETH ------------------------------------------------
 #define STM32_ETH_PROCESS_SIZE                  512
 #define STM32_ETH_IPC_COUNT                     5

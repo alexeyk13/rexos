@@ -20,6 +20,9 @@
 #define PLL2_MUL_20                             15
 #endif
 
+#define STANDBY_WKUP_PIN1                       (1 << 8)
+#define STANDBY_WKUP_PIN2                       (1 << 9)
+
 typedef enum {
     STM32_CLOCK_SOURCE_DMA = 0,
     STM32_CLOCK_SOURCE_CORE,

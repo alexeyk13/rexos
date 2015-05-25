@@ -43,6 +43,8 @@
 #define PLL_M                                   0
 #define PLL_N                                   0
 #define PLL_P                                   0
+
+#define STANDBY_WKUP                            0
 //------------------------------ UART ------------------------------------------------
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
 //remember, that process itself requires around 256 bytes

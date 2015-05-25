@@ -534,6 +534,9 @@ static inline void stm32_power_down()
 
     //sleep deep
     SCB->SCR |= (1 << 2);
+#if (STANDBY_WKUP)
+    PWR->CSR |= STANDBY_WKUP;
+#endif //STANDBY_WKUP
     PWR->CR |= PWR_CR_PDDS;
     PWR->CR |= PWR_CR_CWUF;
     __WFI();
