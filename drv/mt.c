@@ -162,9 +162,21 @@ void mt_reset()
 void mt_show(bool on)
 {
     if (on)
+    {
+        mt_reset();
+        mt_cls();
         mt_cmd(MT_CS1 | MT_CS2, MT_CMD_DISPLAY_ON);
+    }
     else
+    {
         mt_cmd(MT_CS1 | MT_CS2, MT_CMD_DISPLAY_OFF);
+        //sending off is not enough, due to bug, display is still sucking energy from data pins
+        gpio_set_data_out(DATA_PORT, 8);
+        gpio_reset_mask(DATA_PORT, DATA_MASK);
+        gpio_reset_mask(ADDSET_PORT, ADDSET_MASK);
+        gpio_reset_pin(MT_RESET);
+        gpio_reset_pin(MT_STROBE);
+    }
 }
 
 bool mt_is_on()
@@ -537,9 +549,6 @@ void mt_enable()
 #if (MT_BACKLIGHT_CONTROL)
     gpio_enable_pin(MT_BACKLIGHT, GPIO_MODE_OUT);
 #endif //MT_BACKLIGHT_CONTROL
-
-    mt_reset();
-    mt_cls();
 }
 
 void mt_disable()
