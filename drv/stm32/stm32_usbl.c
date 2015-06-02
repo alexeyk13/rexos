@@ -189,6 +189,7 @@ static inline void stm32_usb_reset(SHARED_USB_DRV* drv)
 
     IPC ipc;
     ipc.process = drv->usb.device;
+    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
     ipc.param2 = stm32_usb_get_speed(drv);
     ipc.cmd = USB_RESET;
     ipc_ipost(&ipc);
@@ -199,6 +200,7 @@ static inline void stm32_usb_suspend(SHARED_USB_DRV* drv)
     IPC ipc;
     USB->CNTR &= ~USB_CNTR_SUSPM;
     ipc.process = drv->usb.device;
+    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
     ipc.cmd = USB_SUSPEND;
     ipc_ipost(&ipc);
 }
@@ -208,6 +210,7 @@ static inline void stm32_usb_wakeup(SHARED_USB_DRV* drv)
     IPC ipc;
     USB->CNTR |= USB_CNTR_SUSPM;
     ipc.process = drv->usb.device;
+    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
     ipc.cmd = USB_WAKEUP;
     ipc_ipost(&ipc);
 }
@@ -224,8 +227,9 @@ static inline void stm32_usb_ctr(SHARED_USB_DRV* drv)
     {
         ipc.cmd = USB_SETUP;
         ipc.process = drv->usb.device;
-        memcpy16(&ipc.param1, (void*)(USB_BUFFER_DESCRIPTORS[0].ADDR_RX + USB_PMAADDR), 4);
-        memcpy16(&ipc.param2, (void*)(USB_BUFFER_DESCRIPTORS[0].ADDR_RX + USB_PMAADDR + 4), 4);
+	ipc.param1 = HAL_HANDLE(HAL_USB, 0);
+        memcpy16(&ipc.param2, (void*)(USB_BUFFER_DESCRIPTORS[0].ADDR_RX + USB_PMAADDR), 4);
+        memcpy16(&ipc.param3, (void*)(USB_BUFFER_DESCRIPTORS[0].ADDR_RX + USB_PMAADDR + 4), 4);
         ipc_ipost(&ipc);
         *ep_reg_data(num) = (*ep_reg_data(num)) & USB_EPREG_MASK & ~USB_EP_CTR_RX;
     }
@@ -304,6 +308,7 @@ void stm32_usb_on_isr(int vector, void* param)
     if (sta & USB_ISTR_ERR)
     {
         ipc.process = process_iget_current();
+	ipc.param1 = HAL_HANDLE(HAL_USB, 0);
         ipc.cmd = STM32_USB_ERROR;
         ipc_ipost(&ipc);
         USB->ISTR &= ~USB_ISTR_ERR;
@@ -311,6 +316,7 @@ void stm32_usb_on_isr(int vector, void* param)
     if (sta & USB_ISTR_PMAOVR)
     {
         ipc.process = process_iget_current();
+	ipc.param1 = HAL_HANDLE(HAL_USB, 0);
         ipc.cmd = STM32_USB_OVERFLOW;
         ipc_ipost(&ipc);
         USB->ISTR &= ~USB_ISTR_PMAOVR;
@@ -604,7 +610,7 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case USB_SET_ADDRESS:
-        stm32_usb_set_address(drv, ipc->param1);
+        stm32_usb_set_address(drv, ipc->param2);
         need_post = true;
         break;
     case IPC_FLUSH:

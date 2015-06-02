@@ -186,6 +186,7 @@ static inline void lpc_usb_reset(SHARED_USB_DRV* drv)
     LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DEV_EN;
     IPC ipc;
     ipc.process = drv->usb.device;
+    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
     ipc.param2 = lpc_usb_get_speed(drv);
     ipc.cmd = USB_RESET;
     ipc_ipost(&ipc);
@@ -196,6 +197,7 @@ static inline void lpc_usb_suspend(SHARED_USB_DRV* drv)
 {
     IPC ipc;
     ipc.process = drv->usb.device;
+    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
     ipc.cmd = USB_SUSPEND;
     ipc_ipost(&ipc);
 }
@@ -204,6 +206,7 @@ static inline void lpc_usb_wakeup(SHARED_USB_DRV* drv)
 {
     IPC ipc;
     ipc.process = drv->usb.device;
+    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
     ipc.cmd = USB_WAKEUP;
     ipc_ipost(&ipc);
 }
@@ -214,8 +217,9 @@ static inline void lpc_usb_setup(SHARED_USB_DRV* drv)
     IPC ipc;
     ipc.cmd = USB_SETUP;
     ipc.process = drv->usb.device;
-    ipc.param1 = *((uint32_t*)(USB_SETUP_BUF_BASE));
-    ipc.param2 = *((uint32_t*)(USB_SETUP_BUF_BASE + 4));
+    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
+    ipc.param2 = *((uint32_t*)(USB_SETUP_BUF_BASE));
+    ipc.param3 = *((uint32_t*)(USB_SETUP_BUF_BASE + 4));
     ipc_ipost(&ipc);
 }
 
@@ -273,6 +277,7 @@ void lpc_usb_on_isr(int vector, void* param)
         break;
     default:
         ipc.process = process_iget_current();
+        ipc.param1 = HAL_HANDLE(HAL_USB, 0);
         ipc.param2 = (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK) >> USB_INFO_ERR_CODE_POS;
         ipc.cmd = LPC_USB_ERROR;
         ipc_ipost(&ipc);
@@ -576,7 +581,7 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case USB_SET_ADDRESS:
-        lpc_usb_set_address(drv, ipc->param1);
+        lpc_usb_set_address(drv, ipc->param2);
         need_post = true;
         break;
     case IPC_FLUSH:

@@ -203,11 +203,11 @@ typedef enum {
     USBD_UNREGISTER_DESCRIPTOR,                                  /* unregister USB device descriptor*/
     USBD_REGISTER_HANDLER,                                       /* register USB device state handler for USBD_ALERTS */
     USBD_UNREGISTER_HANDLER,                                     /* unregister USB device state handler */
-    USBD_INTERFACE_REQUEST,                                      /* request from application to USB device interface */
     USBD_VENDOR_REQUEST,                                         /* IPC callback requset from usb device to vendor handler. */
     USBD_GET_STATE,                                              /* return current USB device state in terms of USBD_ALERTS */
 
-    USBD_MAX
+    USBD_MAX,
+    USBD_INTERFACE_REQUEST                                       /* request from application to USB device interface */
 }USBD_IPCS;
 
 typedef enum {

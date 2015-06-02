@@ -374,7 +374,7 @@ static inline void usbd_unregister_configuration(ARRAY** ar, int index)
         array_remove(ar, index);
 }
 
-static inline void usbd_unregister_string(USBD* usbd, unsigned int index, unsigned int lang)
+static inline void usbd_unregister_string(USBD* usbd, unsigned short index, unsigned short lang)
 {
     int i;
     for (i = 0; i < array_size(usbd->string_descriptors); ++i)
@@ -434,7 +434,7 @@ void usbd_register_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned in
         free(ptr);
 }
 
-void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned int index, unsigned int lang)
+static inline void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned short index, unsigned short lang)
 {
     switch (type)
     {
@@ -594,7 +594,7 @@ static inline int usbd_device_set_feature(USBD* usbd)
         printf("USB: device set feature TEST_MODE\n\r");
 #endif
         usbd->test_mode = usbd->setup.wIndex >> 16;
-        ack(usbd->usb, USB_SET_TEST_MODE, usbd->test_mode, 0, 0);
+        ack(usbd->usb, USB_SET_TEST_MODE, HAL_HANDLE(HAL_USB, 0), usbd->test_mode, 0);
         res = 0;
         break;
 #endif //USB_2_0
@@ -627,7 +627,7 @@ static inline int usbd_set_address(USBD* usbd)
 #if (USBD_DEBUG_REQUESTS)
     printf("USB set ADDRESS %#X\n\r", usbd->setup.wValue);
 #endif
-    ack(usbd->usb, USB_SET_ADDRESS, usbd->setup.wValue, 0, 0);
+    ack(usbd->usb, USB_SET_ADDRESS, HAL_HANDLE(HAL_USB, 0), usbd->setup.wValue, 0);
     switch (usbd->state)
     {
     case USBD_STATE_DEFAULT:
@@ -1100,11 +1100,11 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
     switch (ipc->cmd)
     {
     case USBD_REGISTER_DESCRIPTOR:
-        usbd_register_descriptor(usbd, ipc->param1, ipc->param2, ipc->process);
+        usbd_register_descriptor(usbd, ipc->param2, ipc->param3, ipc->process);
         need_post = true;
         break;
     case USBD_UNREGISTER_DESCRIPTOR:
-        usbd_unregister_descriptor(usbd, ipc->param1, ipc->param2, ipc->param3);
+        usbd_unregister_descriptor(usbd, ipc->param2, ipc->param2 >> 16, ipc->param3 & 0xffff);
         need_post = true;
         break;
     case USBD_REGISTER_HANDLER:
@@ -1132,8 +1132,8 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
         //called from ISR, no response
         break;
     case USB_SETUP:
-        ((uint32_t*)(&usbd->setup))[0] = ipc->param1;
-        ((uint32_t*)(&usbd->setup))[1] = ipc->param2;
+        ((uint32_t*)(&usbd->setup))[0] = ipc->param2;
+        ((uint32_t*)(&usbd->setup))[1] = ipc->param3;
         usbd_setup_received(usbd);
         break;
 #if (USBD_VSR)
@@ -1205,16 +1205,7 @@ void usbd()
         case IPC_PING:
             need_post = true;
             break;
-        case IPC_READ:
-        case IPC_WRITE:
-        case IPC_FLUSH:
-        case IPC_SEEK:
-        case IPC_OPEN:
-        case IPC_CLOSE:
-        case IPC_GET_RX_STREAM:
-        case IPC_GET_TX_STREAM:
-        case IPC_STREAM_WRITE:
-        case USBD_INTERFACE_REQUEST:
+        default:
             switch (HAL_GROUP(ipc.param1))
             {
             case HAL_USBD:
@@ -1234,10 +1225,6 @@ void usbd()
                 need_post = true;
                 break;
             }
-            break;
-        default:
-            need_post = usbd_device_request(&usbd, &ipc);
-            break;
         }
         if (need_post)
             ipc_post_or_error(&ipc);

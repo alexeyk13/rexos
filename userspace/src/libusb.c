@@ -35,7 +35,7 @@ bool libusb_register_descriptor(USBD_DESCRIPTOR_TYPE type, unsigned int index, u
         memcpy(buf + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED, d, size);
 
     direct_enable_read(usbd, buf, size);
-    ack(usbd, USBD_REGISTER_DESCRIPTOR, type, size, 0);
+    ack(usbd, USBD_REGISTER_DESCRIPTOR, HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), type, size);
     free(buf);
     return get_last_error() == ERROR_OK;
 }
@@ -68,7 +68,7 @@ bool libusb_register_ascii_string(unsigned int index, unsigned int lang, const c
         descr->data[i * 2 + 1] = 0x00;
     }
     direct_enable_read(usbd, buf, len * 2 + 2 + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED);
-    ack(usbd, USBD_REGISTER_DESCRIPTOR, USB_DESCRIPTOR_STRING, len * 2 + 2 + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED, 0);
+    ack(usbd, USBD_REGISTER_DESCRIPTOR, HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), USB_DESCRIPTOR_STRING, len * 2 + 2 + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED);
     free(buf);
     return get_last_error() == ERROR_OK;
 }

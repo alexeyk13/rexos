@@ -127,6 +127,7 @@ static inline void usb_suspend(SHARED_USB_DRV* drv)
     IPC ipc;
     OTG_FS_GENERAL->INTMSK &= ~OTG_FS_GENERAL_INTMSK_USBSUSPM;
     ipc.process = drv->usb.device;
+    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
     ipc.cmd = USB_SUSPEND;
     ipc_ipost(&ipc);
 }
@@ -136,6 +137,7 @@ static inline void usb_wakeup(SHARED_USB_DRV* drv)
     IPC ipc;
     OTG_FS_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_USBSUSPM;
     ipc.process = drv->usb.device;
+    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
     ipc.cmd = USB_WAKEUP;
     ipc_ipost(&ipc);
 }
@@ -168,8 +170,9 @@ static inline void stm32_usb_rx(SHARED_USB_DRV* drv)
         //ignore all data on setup packet
         ipc.process = drv->usb.device;
         ipc.cmd = USB_SETUP;
-        ipc.param1 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[0];
-        ipc.param2 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[1];
+	ipc.param1 = HAL_HANDLE(HAL_USB, 0);
+        ipc.param2 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[0];
+        ipc.param3 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[1];
         ipc_post(&ipc);
     }
     else if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_OUT_RX)
@@ -215,6 +218,7 @@ static inline void usb_enumdne(SHARED_USB_DRV* drv)
 
     IPC ipc;
     ipc.process = drv->usb.device;
+    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
     ipc.param2 = stm32_usb_get_speed(drv);
     ipc.cmd = USB_RESET;
     ipc_ipost(&ipc);
@@ -606,7 +610,7 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case USB_SET_ADDRESS:
-        stm32_usb_set_address(ipc->param1);
+        stm32_usb_set_address(ipc->param2);
         need_post = true;
         break;
     case IPC_FLUSH:
@@ -638,7 +642,7 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         //generally posted with block, no return IPC
         break;
     case USB_SET_TEST_MODE:
-        stm32_usb_set_test_mode(drv, ipc->param1);
+        stm32_usb_set_test_mode(drv, ipc->param2);
         need_post = true;
         break;
     default:
