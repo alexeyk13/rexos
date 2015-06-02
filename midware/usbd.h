@@ -29,7 +29,7 @@ bool usbd_unregister_interface(USBD* usbd, unsigned int iface, const USBD_CLASS*
 bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int num);
 bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int num);
 //post IPC to user, if configured
-void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int cmd, unsigned int param);
+void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned int cmd, unsigned int param2, unsigned int param3);
 HANDLE usbd_user(USBD* usbd);
 HANDLE usbd_usb(USBD* usbd);
 #if (USBD_DEBUG)

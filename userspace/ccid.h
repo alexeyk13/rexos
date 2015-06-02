@@ -8,6 +8,7 @@
 #define CCID_H
 
 #include <stdint.h>
+#include "usb.h"
 
 #pragma pack(push, 1)
 
@@ -188,7 +189,7 @@ typedef struct {
 
 typedef enum {
     //requests from application
-    USB_CCID_CARD_INSERT = 0,
+    USB_CCID_CARD_INSERT = USBD_MAX,
     USB_CCID_CARD_REMOVE,
     USB_CCID_CARD_POWER_ON,
     USB_CCID_CARD_POWER_OFF,

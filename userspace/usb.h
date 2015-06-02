@@ -206,8 +206,7 @@ typedef enum {
     USBD_VENDOR_REQUEST,                                         /* IPC callback requset from usb device to vendor handler. */
     USBD_GET_STATE,                                              /* return current USB device state in terms of USBD_ALERTS */
 
-    USBD_MAX,
-    USBD_INTERFACE_REQUEST                                       /* request from application to USB device interface */
+    USBD_MAX
 }USBD_IPCS;
 
 typedef enum {
@@ -257,7 +256,7 @@ typedef struct {
 
 //--------------------------------------------------- CDC class ---------------------------------------------------------------
 typedef enum {
-    USB_CDC_SEND_BREAK = 0,
+    USB_CDC_SEND_BREAK = USBD_MAX,
     USB_CDC_MAX
 } USB_CDC_REQUESTS;
 

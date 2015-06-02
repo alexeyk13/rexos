@@ -283,7 +283,7 @@ static inline void ccidd_icc_power_on(USBD* usbd, CCIDD* ccidd)
     else
     {
         ccidd->state = CCIDD_STATE_CARD_POWERING_ON;
-        usbd_post_user(usbd, ccidd->iface, USB_CCID_HOST_POWER_ON, ccidd->msg->bSlot);
+        usbd_post_user(usbd, ccidd->iface, ccidd->msg->bSlot, USB_CCID_HOST_POWER_ON, 0, 0);
     }
 }
 
@@ -297,7 +297,7 @@ static inline void ccidd_icc_power_off(USBD* usbd, CCIDD* ccidd)
     else
     {
         ccidd->state = CCIDD_STATE_CARD_POWERING_OFF;
-        usbd_post_user(usbd, ccidd->iface, USB_CCID_HOST_POWER_OFF, ccidd->msg->bSlot);
+        usbd_post_user(usbd, ccidd->iface, ccidd->msg->bSlot, USB_CCID_HOST_POWER_OFF, 0, 0);
     }
 }
 
@@ -409,7 +409,7 @@ static inline void ccidd_set_params(USBD* usbd, CCIDD* ccidd)
 {
     ccidd->protocol = ccidd->msg->msg_specific[2];
     memcpy(ccidd->params, (uint8_t*)ccidd->msg + sizeof(CCID_MESSAGE), ccidd->msg->dwLength);
-    usbd_post_user(usbd, ccidd->iface, USB_CCID_HOST_SET_PARAMS, ccidd->protocol);
+    usbd_post_user(usbd, ccidd->iface, 0, USB_CCID_HOST_SET_PARAMS, ccidd->protocol, 0);
     ccidd->state = CCIDD_STATE_PARAMS_REQUEST;
 #if (USBD_CCID_DEBUG_REQUESTS)
     printf("CCIDD: set params - T%d\n\r", ccidd->protocol);
@@ -418,7 +418,7 @@ static inline void ccidd_set_params(USBD* usbd, CCIDD* ccidd)
 
 static inline void ccidd_reset_params(USBD* usbd, CCIDD* ccidd)
 {
-    usbd_post_user(usbd, ccidd->iface, USB_CCID_HOST_RESET_PARAMS, 0);
+    usbd_post_user(usbd, ccidd->iface, 0, USB_CCID_HOST_RESET_PARAMS, 0, 0);
     ccidd->state = CCIDD_STATE_PARAMS_REQUEST;
 #if (USBD_CCID_DEBUG_REQUESTS)
     printf("CCIDD: reset params\n\r");
@@ -432,7 +432,7 @@ static inline void ccidd_abort(USBD* usbd, CCIDD* ccidd)
 #endif //USBD_CCID_DEBUG_REQUESTS
     if (ccidd->state == CCIDD_STATE_ABORTING)
     {
-        usbd_post_user(usbd, ccidd->iface, USB_CCID_HOST_ABORT, ccidd->msg->bSlot);
+        usbd_post_user(usbd, ccidd->iface, ccidd->msg->bSlot, USB_CCID_HOST_ABORT, 0, 0);
         ccidd->state = CCIDD_STATE_CARD_POWERED;
         ccidd_slot_status(usbd, ccidd);
     }
@@ -710,35 +710,29 @@ bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
     bool need_post = false;
     switch (ipc->cmd)
     {
-    case USBD_INTERFACE_REQUEST:
-        switch (ipc->param2)
-        {
-        case USB_CCID_CARD_INSERT:
-            ccidd_card_insert(usbd, ccidd);
-            break;
-        case USB_CCID_CARD_REMOVE:
-            ccidd_card_remove(usbd, ccidd);
-            break;
-        case USB_CCID_CARD_POWER_ON:
-            ccidd_card_power_on(usbd, ccidd, ipc->process, ipc->param3);
-            break;
-        case USB_CCID_CARD_POWER_OFF:
-            ccidd_card_power_off(usbd, ccidd);
-            break;
-        case USB_CCID_CARD_HW_ERROR:
-            ccidd_card_hw_error(usbd, ccidd);
-            break;
-        case USB_CCID_CARD_RESET:
-            ccidd_card_reset(usbd, ccidd);
-            break;
-        case USB_CCID_CARD_SET_PARAMS:
-            ccidd_card_set_params(usbd, ccidd, ipc->process, ipc->param3);
-            break;
-        case USB_CCID_CARD_GET_PARAMS:
-            ipc->param3 = ccidd_card_get_params(usbd, ccidd, ipc->process);
-            break;
-        }
-        need_post = true;
+    case USB_CCID_CARD_INSERT:
+        ccidd_card_insert(usbd, ccidd);
+        break;
+    case USB_CCID_CARD_REMOVE:
+        ccidd_card_remove(usbd, ccidd);
+        break;
+    case USB_CCID_CARD_POWER_ON:
+        ccidd_card_power_on(usbd, ccidd, ipc->process, ipc->param2);
+        break;
+    case USB_CCID_CARD_POWER_OFF:
+        ccidd_card_power_off(usbd, ccidd);
+        break;
+    case USB_CCID_CARD_HW_ERROR:
+        ccidd_card_hw_error(usbd, ccidd);
+        break;
+    case USB_CCID_CARD_RESET:
+        ccidd_card_reset(usbd, ccidd);
+        break;
+    case USB_CCID_CARD_SET_PARAMS:
+        ccidd_card_set_params(usbd, ccidd, ipc->process, ipc->param2);
+        break;
+    case USB_CCID_CARD_GET_PARAMS:
+        ipc->param3 = ccidd_card_get_params(usbd, ccidd, ipc->process);
         break;
     case IPC_READ:
         if (ipc->param3 < 0)

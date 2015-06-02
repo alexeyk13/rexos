@@ -1276,16 +1276,16 @@ bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int num)
     return true;
 }
 
-void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int cmd, unsigned int param)
+void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned int cmd, unsigned int param2, unsigned int param3)
 {
     if (usbd->user == INVALID_HANDLE)
         return;
     IPC ipc;
-    ipc.cmd = USBD_INTERFACE_REQUEST;
+    ipc.cmd = cmd;
     ipc.process = usbd->user;
-    ipc.param1 = HAL_USBD_INTERFACE(iface, 0);
-    ipc.param2 = cmd;
-    ipc.param3 = param;
+    ipc.param1 = HAL_USBD_INTERFACE(iface, num);
+    ipc.param2 = param2;
+    ipc.param3 = param3;
     ipc_post(&ipc);
 }
 

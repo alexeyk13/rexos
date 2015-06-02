@@ -447,13 +447,10 @@ bool cdcd_class_request(USBD* usbd, void* param, IPC* ipc)
         ipc->param2 = cdcd->rx_stream;
         need_post = true;
         break;
-    case USBD_INTERFACE_REQUEST:
-        if (ipc->param2 == USB_CDC_SEND_BREAK)
-        {
-            cdcd_notify_serial_state(usbd, cdcd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_BREAK);
-            need_post = true;
-            break;
-        }
+    case USB_CDC_SEND_BREAK:
+        cdcd_notify_serial_state(usbd, cdcd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_BREAK);
+        need_post = true;
+        break;
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;
