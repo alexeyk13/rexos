@@ -61,7 +61,7 @@ void stm32_wdt_kick()
 bool stm32_wdt_request(IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case WDT_KICK:
         stm32_wdt_kick();

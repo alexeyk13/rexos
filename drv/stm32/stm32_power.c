@@ -663,7 +663,7 @@ void stm32_power_init(CORE* core)
 bool stm32_power_request(CORE* core, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case STM32_POWER_GET_CLOCK:
         ipc->param2 = get_clock(ipc->param1);

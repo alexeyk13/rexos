@@ -326,14 +326,14 @@ void stm32_timer_init(CORE *core)
 
 bool stm32_timer_request(CORE* core, IPC* ipc)
 {
-    TIMER_NUM num = (TIMER_NUM)HAL_ITEM(ipc->param1);
+    TIMER_NUM num = (TIMER_NUM)ipc->param1;
     bool need_post = false;
     if (num >= TIMERS_COUNT)
     {
         error(ERROR_INVALID_PARAMS);
         return true;
     }
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         stm32_timer_open(core, num, ipc->param2);

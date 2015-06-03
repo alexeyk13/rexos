@@ -44,11 +44,11 @@ static inline void stm32_eep_read(CORE* core, unsigned int size, HANDLE process)
         memcpy(buf, (void*)(core->eep.addr + processed), chunk_size);
         if (!direct_write(process, buf, chunk_size))
         {
-            fread_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, get_last_error());
+            fread_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, get_last_error());
             return;
         }
     }
-    fread_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, processed);
+    fread_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, processed);
 }
 
 static inline void stm32_eep_write(CORE* core, unsigned int size, HANDLE process)
@@ -69,7 +69,7 @@ static inline void stm32_eep_write(CORE* core, unsigned int size, HANDLE process
             chunk_size = STM32_EEPROM_BUF_SIZE;
         if (!direct_read(process, buf, chunk_size))
         {
-            fwrite_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, get_last_error());
+            fwrite_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, get_last_error());
             return;
         }
 
@@ -81,17 +81,17 @@ static inline void stm32_eep_write(CORE* core, unsigned int size, HANDLE process
         if (FLASH->SR & (FLASH_SR_FWWERR | FLASH_SR_NOTZEROERR | FLASH_SR_SIZERR | FLASH_SR_PGAERR))
         {
             FLASH->SR |= FLASH_SR_FWWERR | FLASH_SR_NOTZEROERR | FLASH_SR_SIZERR | FLASH_SR_PGAERR;
-            fwrite_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, ERROR_HARDWARE);
+            fwrite_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, ERROR_HARDWARE);
             return;
         }
     }
-    fwrite_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, processed);
+    fwrite_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, processed);
 }
 
 bool stm32_eep_request(CORE* core, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_SEEK:
         stm32_eep_seek(core, ipc->param2);

@@ -228,7 +228,7 @@ void stm32_gpio_init(CORE* core)
 bool stm32_gpio_request(CORE* core, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case STM32_GPIO_DISABLE_PIN:
         stm32_gpio_disable_pin(&core->gpio, (PIN)ipc->param1);

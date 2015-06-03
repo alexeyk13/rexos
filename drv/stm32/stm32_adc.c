@@ -81,7 +81,7 @@ static inline void stm32_adc_open_channel(CORE* core, STM32_ADC_CHANNEL channel,
     //enable pin
 #ifdef STM32F1
     if (channel < STM32_ADC_REGULAR_CHANNELS_COUNT)
-        stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, ADC_PINS[channel], STM32_GPIO_MODE_INPUT_ANALOG, false);
+        stm32_gpio_request_inside(core, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), ADC_PINS[channel], STM32_GPIO_MODE_INPUT_ANALOG, false);
     else
         ADC1->CR2 |= ADC_CR2_TSVREFE;
 #elif defined STM32L0
@@ -98,7 +98,7 @@ static inline void stm32_adc_open_channel(CORE* core, STM32_ADC_CHANNEL channel,
         ADC->CCR |= ADC_CCR_VLCDEN;
         break;
     default:
-        stm32_gpio_request_inside(core, STM32_GPIO_ENABLE_PIN, ADC_PINS[channel], STM32_GPIO_MODE_ANALOG, AF0);
+        stm32_gpio_request_inside(core, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), ADC_PINS[channel], STM32_GPIO_MODE_ANALOG, AF0);
     }
 #endif
 }
@@ -118,7 +118,7 @@ static inline void stm32_adc_close_channel(CORE* core, STM32_ADC_CHANNEL channel
     core->adc.channels[channel].samplerate = STM32_ADC_CHANNEL_INVALID_SAMPLERATE;
     //disable pin
     if (channel < STM32_ADC_REGULAR_CHANNELS_COUNT)
-        stm32_gpio_request_inside(core, STM32_GPIO_DISABLE_PIN, ADC_PINS[channel], 0, 0);
+        stm32_gpio_request_inside(core, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), ADC_PINS[channel], 0, 0);
     else
 #ifdef STM32F1
         if (core->adc.channels[STM32_ADC_TEMP].samplerate == STM32_ADC_CHANNEL_INVALID_SAMPLERATE &&
@@ -238,24 +238,24 @@ static int stm32_adc_get(CORE* core, STM32_ADC_CHANNEL channel)
 bool stm32_adc_request(CORE* core, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case ADC_GET:
-        ipc->param2 = stm32_adc_get(core, HAL_ITEM(ipc->param1));
+        ipc->param2 = stm32_adc_get(core, ipc->param1);
         need_post = true;
         break;
     case IPC_OPEN:
-        if (HAL_ITEM(ipc->param1) == STM32_ADC_DEVICE)
+        if (ipc->param1 == STM32_ADC_DEVICE)
             stm32_adc_open_device(core);
         else
-            stm32_adc_open_channel(core, HAL_ITEM(ipc->param1), ipc->param2);
+            stm32_adc_open_channel(core, ipc->param1, ipc->param2);
         need_post = true;
         break;
     case IPC_CLOSE:
-        if (HAL_ITEM(ipc->param1) == STM32_ADC_DEVICE)
+        if (ipc->param1 == STM32_ADC_DEVICE)
             stm32_adc_close_device(core);
         else
-            stm32_adc_close_channel(core, HAL_ITEM(ipc->param1));
+            stm32_adc_close_channel(core, ipc->param1);
         need_post = true;
         break;
     default:

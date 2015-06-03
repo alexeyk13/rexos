@@ -50,14 +50,10 @@ void stm32_core_loop(CORE* core)
         error(ERROR_OK);
         need_post = false;
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
-
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
+        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             need_post = true;
-            break;
-        default:
-            switch (ipc.cmd < IPC_USER ? HAL_GROUP(ipc.param1) : HAL_IPC_GROUP(ipc.cmd))
+        else
+            switch (HAL_GROUP(ipc.cmd))
             {
             case HAL_POWER:
                 need_post = stm32_power_request(core, &ipc);
@@ -108,7 +104,6 @@ void stm32_core_loop(CORE* core)
                 need_post = true;
                 break;
             }
-        }
         if (need_post)
             ipc_post_or_error(&ipc);
     }

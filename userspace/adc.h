@@ -8,6 +8,7 @@
 #define ADC_H
 
 #include "sys.h"
+#include "ipc.h"
 #include "cc_macro.h"
 #include "sys_config.h"
 
@@ -15,13 +16,13 @@
 #define ADC2mV(raw, vref, res)                                                 ((raw) * (vref) / (1 << (res)))
 
 typedef enum {
-    ADC_GET = HAL_IPC(HAL_ADC),
+    ADC_GET = IPC_USER,
     ADC_IPC_MAX
 } ADC_IPCS;
 
 __STATIC_INLINE int adc_get(int channel)
 {
-    return get(object_get(SYS_OBJ_ADC), ADC_GET, HAL_HANDLE(HAL_ADC, channel), 0, 0);
+    return get(object_get(SYS_OBJ_ADC), HAL_CMD(HAL_ADC, ADC_GET), channel, 0, 0);
 }
 
 #endif // ADC_H

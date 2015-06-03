@@ -77,7 +77,7 @@ typedef enum {
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 
 typedef enum {
-    STM32_GPIO_ENABLE_PIN = HAL_IPC(HAL_GPIO),
+    STM32_GPIO_ENABLE_PIN = IPC_USER,
     STM32_GPIO_DISABLE_PIN,
     STM32_GPIO_ENABLE_EXTI,
     STM32_GPIO_DISABLE_EXTI,

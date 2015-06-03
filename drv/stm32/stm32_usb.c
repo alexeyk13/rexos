@@ -666,15 +666,10 @@ void stm32_usb()
         error(ERROR_OK);
         need_post = false;
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
+        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             need_post = true;
-            break;
-        default:
+        else
             need_post = stm32_usb_request(&drv, &ipc);
-            break;
-        }
         if (need_post)
             ipc_post(&ipc);
     }

@@ -226,7 +226,7 @@ void stm32_rtc_set(time_t time)
 bool stm32_rtc_request(IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case RTC_GET:
         ipc->param2 = (unsigned int)stm32_rtc_get();
@@ -237,7 +237,7 @@ bool stm32_rtc_request(IPC* ipc)
         need_post = true;
         break;
     default:
-        ipc_set_error(ipc, ERROR_NOT_SUPPORTED);
+        error(ERROR_NOT_SUPPORTED);
         need_post = true;
         break;
     }

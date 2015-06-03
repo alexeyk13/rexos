@@ -1125,9 +1125,11 @@ static inline bool usbd_device_request(USBD* usbd, IPC* ipc)
         ipc->param2 = usbd->state;
         need_post = true;
         break;
+#if (USBD_VSR)
     case USBD_VENDOR_REQUEST:
         usbd_vendor_response(usbd, ipc->param1);
         break;
+#endif //USBD_VSR
     case IPC_OPEN:
         usbd_open(usbd);
         need_post = true;

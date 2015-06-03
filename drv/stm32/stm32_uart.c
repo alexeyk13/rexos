@@ -115,8 +115,8 @@ void stm32_uart_on_isr(int vector, void* param)
         {
             drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
             ipc.process = process_iget_current();
-            ipc.cmd = IPC_UART_ISR_TX;
-            ipc.param1 = HAL_HANDLE(HAL_UART, port);
+            ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
+            ipc.param1 = port;
             ipc.param3 = 0;
             ipc_ipost(&ipc);
             UART_REGS[port]->CR1 &= ~USART_CR1_TXEIE;
@@ -157,8 +157,8 @@ void stm32_uart_on_isr(int vector, void* param)
         ipc.param3 = UART_REGS[port]->DR;
 #endif
         ipc.process = process_iget_current();
-        ipc.cmd = IPC_UART_ISR_RX;
-        ipc.param1 = HAL_HANDLE(HAL_UART, port);
+        ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_RX);
+        ipc.param1 = port;
         ipc_ipost(&ipc);
     }
 }
@@ -275,7 +275,7 @@ void stm32_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
             drv->uart.uarts[port] = NULL;
             return;
         }
-        stream_listen(drv->uart.uarts[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
+        stream_listen(drv->uart.uarts[port]->tx_stream, port, HAL_UART);
     }
     if (mode & FILE_MODE_READ)
     {
@@ -365,7 +365,7 @@ static inline void stm32_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
     if (drv->uart.uarts[port]->tx_stream != INVALID_HANDLE)
     {
         stream_flush(drv->uart.uarts[port]->tx_stream);
-        stream_listen(drv->uart.uarts[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
+        stream_listen(drv->uart.uarts[port]->tx_stream, port, HAL_UART);
         drv->uart.uarts[port]->tx_total = 0;
         __disable_irq();
         drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
@@ -443,7 +443,7 @@ void stm32_uart_write(SHARED_UART_DRV* drv, UART_PORT port, unsigned int total)
         }
     }
     else
-        stream_listen(drv->uart.uarts[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
+        stream_listen(drv->uart.uarts[port]->tx_stream, port, HAL_UART);
 
 }
 
@@ -462,14 +462,14 @@ static inline void stm32_uart_read(SHARED_UART_DRV* drv, UART_PORT port, char c)
 
 bool stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
 {
-    UART_PORT port = (UART_PORT)HAL_ITEM(ipc->param1);
+    UART_PORT port = (UART_PORT)ipc->param1;
     if (port >= UARTS_COUNT)
     {
         error(ERROR_INVALID_PARAMS);
         return true;
     }
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         stm32_uart_open(drv, port, ipc->param2);
@@ -544,14 +544,10 @@ void stm32_uart()
         error(ERROR_OK);
         need_post = false;
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
+        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             need_post = true;
-            break;
-        default:
+        else
             need_post = stm32_uart_request(&drv, &ipc);
-        }
         if (need_post)
             ipc_post_or_error(&ipc);
     }
