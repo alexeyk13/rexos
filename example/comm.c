@@ -21,14 +21,14 @@ static inline void comm_usb_start(APP* app)
 {
     HANDLE usbd, tx_stream;
     usbd = object_get(SYS_OBJ_USBD);
-    tx_stream = get(usbd, IPC_GET_TX_STREAM, HAL_USBD_INTERFACE(0, 0), 0, 0);
-    app->comm.rx_stream = get(usbd, IPC_GET_RX_STREAM, HAL_USBD_INTERFACE(0, 0), 0, 0);
+    tx_stream = get(usbd, HAL_CMD(HAL_USBD_IFACE, IPC_GET_TX_STREAM), USBD_IFACE(0, 0), 0, 0);
+    app->comm.rx_stream = get(usbd, HAL_CMD(HAL_USBD_IFACE, IPC_GET_RX_STREAM), USBD_IFACE(0, 0), 0, 0);
 
     app->comm.tx = stream_open(tx_stream);
     app->comm.rx = stream_open(app->comm.rx_stream);
     app->comm.active = true;
 
-    stream_listen(app->comm.rx_stream, NULL);
+    stream_listen(app->comm.rx_stream, 0, HAL_APP);
 
     printf("USB start\n\r");
 }
@@ -82,7 +82,7 @@ void comm_usbd_stream_rx(APP* app, unsigned int size)
             printf("\\x%u", (uint8_t)c);
     }
     printf("\n\r");
-    stream_listen(app->comm.rx_stream, NULL);
+    stream_listen(app->comm.rx_stream, 0, HAL_APP);
 }
 
 void comm_init(APP *app)
@@ -95,7 +95,7 @@ void comm_init(APP *app)
 
     //setup usbd
     usbd = process_create(&__USBD);
-    ack(usbd, USBD_REGISTER_HANDLER, 0, 0, 0);
+    ack(usbd, HAL_CMD(HAL_USBD, USBD_REGISTER_HANDLER), 0, 0, 0);
 
     libusb_register_descriptor(USB_DESCRIPTOR_DEVICE_FS, 0, 0, &__DEVICE_DESCRIPTOR, sizeof(__DEVICE_DESCRIPTOR), USBD_FLAG_PERSISTENT_DESCRIPTOR);
     libusb_register_descriptor(USB_DESCRIPTOR_CONFIGURATION_FS, 0, 0, &__CONFIGURATION_DESCRIPTOR, sizeof(__CONFIGURATION_DESCRIPTOR), USBD_FLAG_PERSISTENT_DESCRIPTOR);
@@ -105,7 +105,7 @@ void comm_init(APP *app)
     libusb_register_descriptor(USB_DESCRIPTOR_STRING, 3, 0x0409, &__STRING_SERIAL, __STRING_SERIAL[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
     libusb_register_descriptor(USB_DESCRIPTOR_STRING, 4, 0x0409, &__STRING_DEFAULT, __STRING_DEFAULT[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
 
-    fopen(object_get(SYS_OBJ_USBD), HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), 0);
+    fopen(object_get(SYS_OBJ_USBD), HAL_USBD, 0, 0);
 
     printf("Comm init\n\r");
 }

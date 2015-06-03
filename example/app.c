@@ -57,15 +57,15 @@ static inline void stat()
     diff = time_elapsed_us(&uptime);
     printf("average switch time: %d.%dus\n\r", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
-    printf("core clock: %d\n\r", get(object_get(SYS_OBJ_CORE), STM32_POWER_GET_CLOCK, STM32_CLOCK_CORE, 0, 0));
+    printf("core clock: %d\n\r", get(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_POWER, STM32_POWER_GET_CLOCK), STM32_CLOCK_CORE, 0, 0));
     process_info();
 }
 
 static inline void app_setup_dbg()
 {
     BAUD baudrate;
-    ack(object_get(SYS_OBJ_CORE), STM32_GPIO_ENABLE_PIN, DBG_CONSOLE_TX_PIN, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, DBG_CONSOLE_TX_PIN_AF);
-    fopen(object_get(SYS_OBJ_UART), HAL_HANDLE(HAL_UART, DBG_CONSOLE), FILE_MODE_WRITE);
+    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), DBG_CONSOLE_TX_PIN, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, DBG_CONSOLE_TX_PIN_AF);
+    fopen(object_get(SYS_OBJ_UART), HAL_UART, DBG_CONSOLE, FILE_MODE_WRITE);
     baudrate.baud = DBG_CONSOLE_BAUD;
     baudrate.data_bits = 8;
     baudrate.parity = 'N';
@@ -86,7 +86,7 @@ static inline void app_init(APP* app)
 
     app_setup_dbg();
 
-    app->timer = timer_create(HAL_HANDLE(HAL_APP, 0));
+    app->timer = timer_create(0, HAL_APP);
     timer_start_ms(app->timer, 1000, 0);
 
     stat();
@@ -110,8 +110,8 @@ void app()
     comm_init(&app);
 
 
-    fopen(object_get(SYS_OBJ_ADC), HAL_HANDLE(HAL_ADC, STM32_ADC_DEVICE), 0);
-    fopen(object_get(SYS_OBJ_ADC), HAL_HANDLE(HAL_ADC, STM32_ADC_VREF), STM32_ADC_SMPR_55_5);
+    fopen(object_get(SYS_OBJ_ADC), HAL_ADC, STM32_ADC_DEVICE, 0);
+    fopen(object_get(SYS_OBJ_ADC), HAL_ADC, STM32_ADC_VREF, STM32_ADC_SMPR_55_5);
     adc_get(STM32_ADC_VREF);
 
 
@@ -120,28 +120,28 @@ void app()
         error(ERROR_OK);
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
         need_post = false;
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
+        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             need_post = true;
-            break;
-        case USBD_ALERT:
-            need_post = comm_usbd_alert(&app, ipc.param1);
-            break;
-        case IPC_STREAM_WRITE:
-            comm_usbd_stream_rx(&app, ipc.param3);
-            break;
-        case IPC_TIMEOUT:
-            app_timeout(&app);
-            break;
-        default:
-            printf("Unhandled cmd: %#X\n\r", ipc.cmd);
-            printf("sender: %#X\n\r", ipc.process);
-            printf("p1: %#X\n\r", ipc.param1);
-            error(ERROR_NOT_SUPPORTED);
-            need_post = true;
-            break;
-        }
+        else
+            switch (HAL_ITEM(ipc.cmd))
+            {
+            case USBD_ALERT:
+                need_post = comm_usbd_alert(&app, ipc.param1);
+                break;
+            case IPC_STREAM_WRITE:
+                comm_usbd_stream_rx(&app, ipc.param3);
+                break;
+            case IPC_TIMEOUT:
+                app_timeout(&app);
+                break;
+            default:
+                printf("Unhandled cmd: %#X\n\r", ipc.cmd);
+                printf("sender: %#X\n\r", ipc.process);
+                printf("p1: %#X\n\r", ipc.param1);
+                error(ERROR_NOT_SUPPORTED);
+                need_post = true;
+                break;
+            }
         if (need_post)
             ipc_post_or_error(&ipc);
     }
