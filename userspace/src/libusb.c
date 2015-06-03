@@ -8,6 +8,7 @@
 #include "../process.h"
 #include "../direct.h"
 #include "../sys.h"
+#include "../ipc.h"
 #include "../stdlib.h"
 #include <string.h>
 
@@ -35,7 +36,7 @@ bool libusb_register_descriptor(USBD_DESCRIPTOR_TYPE type, unsigned int index, u
         memcpy(buf + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED, d, size);
 
     direct_enable_read(usbd, buf, size);
-    ack(usbd, USBD_REGISTER_DESCRIPTOR, HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), type, size);
+    ack(usbd, HAL_CMD(HAL_USBD, USBD_REGISTER_DESCRIPTOR), type, size, 0);
     free(buf);
     return get_last_error() == ERROR_OK;
 }
@@ -68,7 +69,7 @@ bool libusb_register_ascii_string(unsigned int index, unsigned int lang, const c
         descr->data[i * 2 + 1] = 0x00;
     }
     direct_enable_read(usbd, buf, len * 2 + 2 + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED);
-    ack(usbd, USBD_REGISTER_DESCRIPTOR, HAL_HANDLE(HAL_USBD, USBD_HANDLE_DEVICE), USB_DESCRIPTOR_STRING, len * 2 + 2 + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED);
+    ack(usbd, HAL_CMD(HAL_USBD, USBD_REGISTER_DESCRIPTOR), USB_DESCRIPTOR_STRING, len * 2 + 2 + USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED, 0);
     free(buf);
     return get_last_error() == ERROR_OK;
 }

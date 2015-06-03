@@ -22,15 +22,16 @@
 /**
     \brief open file
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param mode: file mode
     \retval handle on success, INVALID_HANDLE on error
 */
 
-__STATIC_INLINE HANDLE fopen(HANDLE process, HANDLE file, unsigned int mode)
+__STATIC_INLINE HANDLE fopen(HANDLE process, HAL hal, HANDLE file, unsigned int mode)
 {
     IPC ipc;
-    ipc.cmd = IPC_OPEN;
+    ipc.cmd = HAL_CMD(hal, IPC_OPEN);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = mode;
@@ -42,16 +43,17 @@ __STATIC_INLINE HANDLE fopen(HANDLE process, HANDLE file, unsigned int mode)
 /**
     \brief open file with custom param
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param mode: file mode
     \param param: custom extra param
     \retval handle on success, INVALID_HANDLE on error
 */
 
-__STATIC_INLINE HANDLE fopen_p(HANDLE process, HANDLE file, unsigned int mode, void* param)
+__STATIC_INLINE HANDLE fopen_p(HANDLE process, HAL hal, HANDLE file, unsigned int mode, void* param)
 {
     IPC ipc;
-    ipc.cmd = IPC_OPEN;
+    ipc.cmd = HAL_CMD(hal, IPC_OPEN);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = mode;
@@ -64,6 +66,7 @@ __STATIC_INLINE HANDLE fopen_p(HANDLE process, HANDLE file, unsigned int mode, v
 /**
     \brief open file with custom initialization data
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param mode: file mode
     \param addr: address of direct read
@@ -71,11 +74,11 @@ __STATIC_INLINE HANDLE fopen_p(HANDLE process, HANDLE file, unsigned int mode, v
     \retval handle on success, INVALID_HANDLE on error
 */
 
-__STATIC_INLINE HANDLE fopen_ex(HANDLE process, HANDLE file, unsigned int mode, void* ptr, unsigned int size)
+__STATIC_INLINE HANDLE fopen_ex(HANDLE process, HAL hal, HANDLE file, unsigned int mode, void* ptr, unsigned int size)
 {
     IPC ipc;
     direct_enable_read(process, ptr, size);
-    ipc.cmd = IPC_OPEN;
+    ipc.cmd = HAL_CMD(hal, IPC_OPEN);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = mode;
@@ -88,14 +91,15 @@ __STATIC_INLINE HANDLE fopen_ex(HANDLE process, HANDLE file, unsigned int mode, 
 /**
     \brief close file
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \retval true on success
 */
 
-__STATIC_INLINE bool fclose(HANDLE process, HANDLE file)
+__STATIC_INLINE bool fclose(HANDLE process, HAL hal, HANDLE file)
 {
     IPC ipc;
-    ipc.cmd = IPC_CLOSE;
+    ipc.cmd = HAL_CMD(hal, IPC_CLOSE);
     ipc.process = process;
     ipc.param1 = file;
     return call(&ipc);
@@ -104,16 +108,17 @@ __STATIC_INLINE bool fclose(HANDLE process, HANDLE file)
 /**
     \brief read from file (async)
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param block: file block
     \param size: size of transfer
     \retval none. Check corresponding IPC.
 */
 
-__STATIC_INLINE void fread_async(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE void fread_async(HANDLE process, HAL hal, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = IPC_READ;
+    ipc.cmd = HAL_CMD(hal, IPC_READ);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = block;
@@ -129,16 +134,17 @@ __STATIC_INLINE void fread_async(HANDLE process, HANDLE file, HANDLE block, unsi
 /**
     \brief read from file (async), isr version
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param block: file block
     \param size: size of transfer
     \retval none. Check corresponding IPC.
 */
 
-__STATIC_INLINE void firead_async(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE void firead_async(HANDLE process, HAL hal, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = IPC_READ;
+    ipc.cmd = HAL_CMD(hal, IPC_READ);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = block;
@@ -154,16 +160,17 @@ __STATIC_INLINE void firead_async(HANDLE process, HANDLE file, HANDLE block, uns
 /**
     \brief read from file
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param block: file block
     \param size: size of transfer
     \retval size of bytes readed
 */
 
-__STATIC_INLINE int fread(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE int fread(HANDLE process, HAL hal, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = IPC_READ;
+    ipc.cmd = HAL_CMD(hal, IPC_READ);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = block;
@@ -179,16 +186,17 @@ __STATIC_INLINE int fread(HANDLE process, HANDLE file, HANDLE block, unsigned in
 /**
     \brief read direct from file (async)
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param addr: pointer to data
     \param size: size of transfer
     \retval none. Check corresponding IPC.
 */
 
-__STATIC_INLINE void fdread_async(HANDLE process, HANDLE file, void* addr, unsigned int size)
+__STATIC_INLINE void fdread_async(HANDLE process, HAL hal, HANDLE file, void* addr, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = IPC_READ;
+    ipc.cmd = HAL_CMD(hal, IPC_READ);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = INVALID_HANDLE;
@@ -200,16 +208,17 @@ __STATIC_INLINE void fdread_async(HANDLE process, HANDLE file, void* addr, unsig
 /**
     \brief read from file
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param addr: pointer to data
     \param size: size of transfer
     \retval size of bytes readed
 */
 
-__STATIC_INLINE int fdread(HANDLE process, HANDLE file, void* addr, unsigned int size)
+__STATIC_INLINE int fdread(HANDLE process, HAL hal, HANDLE file, void* addr, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = IPC_READ;
+    ipc.cmd = HAL_CMD(hal, IPC_READ);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = INVALID_HANDLE;
@@ -223,16 +232,17 @@ __STATIC_INLINE int fdread(HANDLE process, HANDLE file, void* addr, unsigned int
 /**
     \brief write to file (async)
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param block: file block
     \param size: size of transfer
     \retval none. Check corresponding IPC.
 */
 
-__STATIC_INLINE void fwrite_async(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE void fwrite_async(HANDLE process, HAL hal, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = IPC_WRITE;
+    ipc.cmd = HAL_CMD(hal, IPC_WRITE);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = block;
@@ -248,16 +258,17 @@ __STATIC_INLINE void fwrite_async(HANDLE process, HANDLE file, HANDLE block, uns
 /**
     \brief write to file (async), isr version
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param block: file block
     \param size: size of transfer
     \retval none. Check corresponding IPC.
 */
 
-__STATIC_INLINE void fiwrite_async(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE void fiwrite_async(HANDLE process, HAL hal, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = IPC_WRITE;
+    ipc.cmd = HAL_CMD(hal, IPC_WRITE);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = block;
@@ -274,16 +285,17 @@ __STATIC_INLINE void fiwrite_async(HANDLE process, HANDLE file, HANDLE block, un
 /**
     \brief write to file
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param block: file block
     \param size: size of transfer
     \retval size of bytes written
 */
 
-__STATIC_INLINE int fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned int size)
+__STATIC_INLINE int fwrite(HANDLE process, HAL hal, HANDLE file, HANDLE block, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = IPC_WRITE;
+    ipc.cmd = HAL_CMD(hal, IPC_WRITE);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = block;
@@ -298,16 +310,17 @@ __STATIC_INLINE int fwrite(HANDLE process, HANDLE file, HANDLE block, unsigned i
 /**
     \brief write direct to file (async)
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param addr: pointer to data
     \param size: size of transfer
     \retval none. Check corresponding IPC.
 */
 
-__STATIC_INLINE void fdwrite_async(HANDLE process, HANDLE file, void* addr, unsigned int size)
+__STATIC_INLINE void fdwrite_async(HANDLE process, HAL hal, HANDLE file, void* addr, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = IPC_WRITE;
+    ipc.cmd = HAL_CMD(hal, IPC_WRITE);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = INVALID_HANDLE;
@@ -319,16 +332,17 @@ __STATIC_INLINE void fdwrite_async(HANDLE process, HANDLE file, void* addr, unsi
 /**
     \brief write to file
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param addr: pointer to data
     \param size: size of transfer
     \retval size of bytes readed
 */
 
-__STATIC_INLINE int fdwrite(HANDLE process, HANDLE file, void* addr, unsigned int size)
+__STATIC_INLINE int fdwrite(HANDLE process, HAL hal, HANDLE file, void* addr, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = IPC_WRITE;
+    ipc.cmd = HAL_CMD(hal, IPC_WRITE);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = INVALID_HANDLE;
@@ -342,14 +356,15 @@ __STATIC_INLINE int fdwrite(HANDLE process, HANDLE file, void* addr, unsigned in
 /**
     \brief flush file
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \retval true on success
 */
 
-__STATIC_INLINE bool fflush(HANDLE process, HANDLE file)
+__STATIC_INLINE bool fflush(HANDLE process, HAL hal, HANDLE file)
 {
     IPC ipc;
-    ipc.cmd = IPC_FLUSH;
+    ipc.cmd = HAL_CMD(hal, IPC_FLUSH);
     ipc.process = process;
     ipc.param1 = file;
     return call(&ipc);
@@ -358,15 +373,16 @@ __STATIC_INLINE bool fflush(HANDLE process, HANDLE file)
 /**
     \brief seek file
     \param process: process handle
+    \param hal: hal type
     \param file: file handle
     \param pos to seek: file handle
     \retval true on success
 */
 
-__STATIC_INLINE bool fseek(HANDLE process, HANDLE file, unsigned int pos)
+__STATIC_INLINE bool fseek(HANDLE process, HAL hal, HANDLE file, unsigned int pos)
 {
     IPC ipc;
-    ipc.cmd = IPC_SEEK;
+    ipc.cmd = HAL_CMD(hal, IPC_SEEK);
     ipc.process = process;
     ipc.param1 = file;
     ipc.param2 = pos;
@@ -376,14 +392,15 @@ __STATIC_INLINE bool fseek(HANDLE process, HANDLE file, unsigned int pos)
 /**
     \brief cancel IO
     \param process: host process
+    \param hal: hal type
     \param file: file handle
     \retval none
 */
 
-__STATIC_INLINE void fcancel_io(HANDLE process, HANDLE file)
+__STATIC_INLINE void fcancel_io(HANDLE process, HAL hal, HANDLE file)
 {
     IPC ipc;
-    ipc.cmd = IPC_CANCEL_IO;
+    ipc.cmd = HAL_CMD(hal, IPC_CANCEL_IO);
     ipc.process = process;
     ipc.param1 = file;
     ipc_post(&ipc);
@@ -392,14 +409,15 @@ __STATIC_INLINE void fcancel_io(HANDLE process, HANDLE file)
 /**
     \brief cancel direct IO, isr version
     \param process: host process
+    \param hal: hal type
     \param file: file handle
     \retval none
 */
 
-__STATIC_INLINE void ficancel_io(HANDLE process, HANDLE file)
+__STATIC_INLINE void ficancel_io(HANDLE process, HAL hal, HANDLE file)
 {
     IPC ipc;
-    ipc.cmd = IPC_CANCEL_IO;
+    ipc.cmd = HAL_CMD(hal, IPC_CANCEL_IO);
     ipc.process = process;
     ipc.param1 = file;
     ipc_ipost(&ipc);

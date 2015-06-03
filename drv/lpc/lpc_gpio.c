@@ -45,7 +45,7 @@ void lpc_gpio_init()
 bool lpc_gpio_request(IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case LPC_GPIO_ENABLE_PIN:
         lpc_gpio_enable_pin((PIN)ipc->param1, ipc->param2);

@@ -7,12 +7,12 @@
 #ifndef LPC_DRIVER_H
 #define LPC_DRIVER_H
 
-#include "sys.h"
+#include "ipc.h"
 #include "uart.h"
 
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 typedef enum {
-    LPC_GPIO_ENABLE_PIN = HAL_IPC(HAL_GPIO),
+    LPC_GPIO_ENABLE_PIN = IPC_USER,
     LPC_GPIO_DISABLE_PIN,
 } LPC_GPIO_IPCS;
 
@@ -63,7 +63,7 @@ typedef enum {
 
 //------------------------------------------------ Power ---------------------------------------------------------------------
 typedef enum {
-    LPC_POWER_GET_SYSTEM_CLOCK = HAL_IPC(HAL_POWER),
+    LPC_POWER_GET_SYSTEM_CLOCK = IPC_USER,
     LPC_POWER_UPDATE_CLOCK,
     LPC_POWER_GET_RESET_REASON,
     LPC_POWER_USB_ON,
@@ -78,10 +78,6 @@ typedef enum {
     RESET_REASON_SOFTWARE,
     RESET_REASON_UNKNOWN
 } RESET_REASON;
-
-typedef struct {
-    RESET_REASON reset_reason;
-}POWER_DRV;
 
 //------------------------------------------------- UART ---------------------------------------------------------------------
 

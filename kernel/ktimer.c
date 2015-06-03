@@ -185,15 +185,15 @@ void ktimer_timeout(void* param)
     SOFT_TIMER* timer = (SOFT_TIMER*)param;
     IPC ipc;
     ipc.process = timer->owner;
-    ipc.cmd = IPC_TIMEOUT;
-    ipc.param1 = timer->handle;
+    ipc.cmd = HAL_CMD(timer->hal, IPC_TIMEOUT);
+    ipc.param1 = timer->param;
     ipc.param2 = (unsigned int)timer;
     kipc_post_process(&ipc, KERNEL_HANDLE);
     if (timer->mode & TIMER_MODE_PERIODIC)
         ktimer_start_internal(&timer->timer, &timer->time);
 }
 
-void ktimer_create(SOFT_TIMER** timer, HANDLE handle)
+void ktimer_create(SOFT_TIMER** timer, unsigned int param, HAL hal)
 {
     PROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, timer, sizeof(void*));
@@ -205,7 +205,8 @@ void ktimer_create(SOFT_TIMER** timer, HANDLE handle)
     }
     DO_MAGIC((*timer), MAGIC_TIMER);
     (*timer)->owner = (HANDLE)process;
-    (*timer)->handle = handle;
+    (*timer)->param = param;
+    (*timer)->hal = hal;
     ktimer_init_internal(&(*timer)->timer, ktimer_timeout, (*timer));
 }
 

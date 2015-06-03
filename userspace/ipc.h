@@ -9,15 +9,61 @@
 
 #include "types.h"
 #include "heap.h"
+#include "svc.h"
+#include "error.h"
+#include "time.h"
 
 typedef enum {
     IPC_PING = 0x0,
     IPC_STREAM_WRITE,                                   //!< Sent by kernel when stream write is complete. Param1: handle, Param2: size, Param3: application specific
     IPC_TIMEOUT,                                        //!< Sent by kernel when soft timer is timed out. Param1: handle
-
-    IPC_SYSTEM = 0x1000,
-    IPC_USER = 0x10000
+    IPC_READ,
+    IPC_WRITE,
+    IPC_CANCEL_IO,
+    IPC_FLUSH,
+    IPC_SEEK,
+    IPC_OPEN,
+    IPC_CLOSE,
+    IPC_GET_RX_STREAM,
+    IPC_GET_TX_STREAM,
+    IPC_USER = 0x100
 } IPCS;
+
+typedef enum {
+    //reserved for kernel/system
+    HAL_SYSTEM = 0,
+    //real hardware
+    HAL_GPIO,
+    HAL_POWER,
+    HAL_TIMER,
+    HAL_RTC,
+    HAL_WDT,
+    HAL_UART,
+    HAL_USB,
+    HAL_ADC,
+    HAL_DAC,
+    HAL_I2C,
+    HAL_LCD,
+    HAL_ETH,
+    HAL_FLASH,
+    HAL_EEPROM,
+    //device stacks
+    HAL_USBD,
+    HAL_USBD_IFACE,
+    HAL_TCPIP,
+    HAL_MAC,
+    HAL_ARP,
+    HAL_ROUTE,
+    HAL_IP,
+    HAL_ICMP,
+    HAL_PINBOARD,
+    //application level
+    HAL_APP
+} HAL;
+
+#define HAL_CMD(group, item)                                ((group) << 16 | (item))
+#define HAL_ITEM(cmd)                                       ((cmd) & 0xffff)
+#define HAL_GROUP(cmd)                                      ((cmd) >> 16)
 
 typedef struct {
     HANDLE process;
@@ -32,10 +78,6 @@ typedef struct {
 
     \{
  */
-
-#include "svc.h"
-#include "error.h"
-#include "time.h"
 
 /**
     \brief post IPC
@@ -65,17 +107,6 @@ __STATIC_INLINE void ipc_post_inline(HANDLE process, unsigned int cmd, unsigned 
     ipc.param2 = param2;
     ipc.param3 = param3;
     svc_call(SVC_IPC_POST, (unsigned int)&ipc, 0, 0);
-}
-
-/**
-    \brief set error for IPC
-    \param ipc: IPC variable
-    \param code: error code
-    \retval none
-*/
-__STATIC_INLINE void ipc_set_error(IPC* ipc, int code)
-{
-    ipc->param3 = code;
 }
 
 /**

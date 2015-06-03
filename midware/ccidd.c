@@ -122,17 +122,17 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 #endif //USBD_CCID_DEBUG_REQUESTS
 
             size = ccidd->data_ep_size;
-            fopen_p(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->data_ep), USB_EP_BULK, (void*)size);
-            fopen_p(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), USB_EP_BULK, (void*)size);
+            fopen_p(usbd_usb(usbd), HAL_USB, USB_EP_IN | ccidd->data_ep, USB_EP_BULK, (void*)size);
+            fopen_p(usbd_usb(usbd), HAL_USB, ccidd->data_ep, USB_EP_BULK, (void*)size);
             usbd_register_interface(usbd, ccidd->iface, &__CCIDD_CLASS, ccidd);
             usbd_register_endpoint(usbd, ccidd->iface, ccidd->data_ep);
 
             if (ccidd->status_ep)
             {
-                fopen_p(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->status_ep), USB_EP_INTERRUPT, (void*)status_ep_size);
+                fopen_p(usbd_usb(usbd), HAL_USB, USB_EP_IN | ccidd->status_ep, USB_EP_INTERRUPT, (void*)status_ep_size);
                 usbd_register_endpoint(usbd, ccidd->iface, ccidd->status_ep);
             }
-            fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
+            fread_async(usbd_usb(usbd), HAL_USB, ccidd->data_ep, ccidd->usb_data_block, ccidd->data_ep_size);
         }
     }
 }
@@ -141,12 +141,12 @@ void ccidd_class_reset(USBD* usbd, void* param)
 {
     CCIDD* ccidd = (CCIDD*)param;
 
-    fclose(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->data_ep));
-    fclose(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep));
+    fclose(usbd_usb(usbd), HAL_USB, USB_EP_IN | ccidd->data_ep);
+    fclose(usbd_usb(usbd), HAL_USB, ccidd->data_ep);
     usbd_unregister_endpoint(usbd, ccidd->iface, ccidd->data_ep);
     if (ccidd->status_ep)
     {
-        fclose(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->status_ep));
+        fclose(usbd_usb(usbd), HAL_USB, USB_EP_IN | ccidd->status_ep);
         usbd_unregister_endpoint(usbd, ccidd->iface, ccidd->status_ep);
     }
 
@@ -166,7 +166,7 @@ static void ccidd_notify_state_change(USBD* usbd, CCIDD* ccidd)
         //card present
         if (ccidd->state != CCIDD_STATE_NO_CARD)
             buf[1] |= 1 << 0;
-        fwrite_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->status_ep), ccidd->usb_status_block, 2);
+        fwrite_async(usbd_usb(usbd), HAL_USB, USB_EP_IN | ccidd->status_ep, ccidd->usb_status_block, 2);
         ccidd->status_busy = true;
     }
 }
@@ -174,10 +174,10 @@ static void ccidd_notify_state_change(USBD* usbd, CCIDD* ccidd)
 void ccidd_class_suspend(USBD* usbd, void* param)
 {
     CCIDD* ccidd = (CCIDD*)param;
-    fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->data_ep));
-    fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep));
+    fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | ccidd->data_ep);
+    fflush(usbd_usb(usbd), HAL_USB, ccidd->data_ep);
     if (ccidd->status_ep)
-        fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->status_ep));
+        fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | ccidd->status_ep);
     ccidd->data_size = ccidd->data_processed = 0;
     ccidd->suspended = true;
 }
@@ -187,7 +187,7 @@ void ccidd_class_resume(USBD* usbd, void* param)
     CCIDD* ccidd = (CCIDD*)param;
     ccidd->suspended = false;
     ccidd->data_buf = block_open(ccidd->data_block);
-    fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
+    fread_async(usbd_usb(usbd), HAL_USB, ccidd->data_ep, ccidd->usb_data_block, ccidd->data_ep_size);
     ccidd_notify_state_change(usbd, ccidd);
 }
 
@@ -239,7 +239,7 @@ static void ccidd_tx(USBD* usbd, CCIDD* ccidd, unsigned int err, unsigned int si
     }
     //bError
     ccidd->msg->msg_specific[1] = err & 0xff;
-    fwrite_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->data_ep), ccidd->usb_data_block, size + sizeof(CCID_MESSAGE));
+    fwrite_async(usbd_usb(usbd), HAL_USB, USB_EP_IN | ccidd->data_ep, ccidd->usb_data_block, size + sizeof(CCID_MESSAGE));
 }
 
 static void ccidd_data_block(USBD* usbd, CCIDD* ccidd, uint8_t* buf, unsigned int size, unsigned int err)
@@ -326,12 +326,12 @@ static void ccidd_rx(USBD* usbd, CCIDD* ccidd, uint8_t* buf, int size)
 #if (USBD_CCID_DEBUG_IO)
             usbd_dump(ccidd->data_buf, ccidd->data_processed, "CCIDD C-APDU");
 #endif
-            fread_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), ccidd->data_block, ccidd->data_processed);
+            fread_complete(usbd_user(usbd), HAL_USBD_IFACE, USBD_IFACE(ccidd->iface, 0), ccidd->data_block, ccidd->data_processed);
             ccidd->data_processed = 0;
         }
     }
     else
-        fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
+        fread_async(usbd_usb(usbd), HAL_USB, ccidd->data_ep, ccidd->usb_data_block, ccidd->data_ep_size);
 }
 
 static inline void ccidd_xfer_block(USBD* usbd, CCIDD* ccidd)
@@ -488,10 +488,10 @@ static void ccidd_tx_complete(USBD* usbd, CCIDD* ccidd)
 #if (USBD_CCID_DEBUG_IO)
     usbd_dump(ccidd->data_buf, ccidd->data_processed, "CCIDD R-APDU");
 #endif
-    fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), INVALID_HANDLE, ccidd->data_processed);
+    fwrite_complete(usbd_user(usbd), HAL_USBD_IFACE, USBD_IFACE(ccidd->iface, 0), INVALID_HANDLE, ccidd->data_processed);
     ccidd->data_size = ccidd->data_processed = 0;
     ccidd->state = CCIDD_STATE_CARD_POWERED;
-    fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
+    fread_async(usbd_usb(usbd), HAL_USB, ccidd->data_ep, ccidd->usb_data_block, ccidd->data_ep_size);
 }
 
 static inline void ccidd_message_tx(USBD* usbd, CCIDD* ccidd)
@@ -507,7 +507,7 @@ static inline void ccidd_message_tx(USBD* usbd, CCIDD* ccidd)
                 ccidd_tx_complete(usbd, ccidd);
             else
             {
-                fwrite_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->data_ep), INVALID_HANDLE, 0);
+                fwrite_async(usbd_usb(usbd), HAL_USB, USB_EP_IN | ccidd->data_ep, INVALID_HANDLE, 0);
                 ccidd->state = CCIDD_STATE_TX_ZLP;
             }
         }
@@ -520,14 +520,14 @@ static inline void ccidd_message_tx(USBD* usbd, CCIDD* ccidd)
                 chunk_size = ccidd->data_ep_size;
             memcpy(buf, ccidd->data_buf + ccidd->data_processed, chunk_size);
             ccidd->data_processed += chunk_size;
-            fwrite_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | ccidd->data_ep), ccidd->usb_data_block, chunk_size);
+            fwrite_async(usbd_usb(usbd), HAL_USB, USB_EP_IN | ccidd->data_ep, ccidd->usb_data_block, chunk_size);
         }
         break;
     case CCIDD_STATE_TX_ZLP:
         ccidd_tx_complete(usbd, ccidd);
         break;
     default:
-        fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, ccidd->data_ep), ccidd->usb_data_block, ccidd->data_ep_size);
+        fread_async(usbd_usb(usbd), HAL_USB, ccidd->data_ep, ccidd->usb_data_block, ccidd->data_ep_size);
         break;
     }
 }
@@ -674,13 +674,13 @@ static inline void ccidd_write(USBD* usbd, CCIDD* ccidd, HANDLE block, int size)
     int chunk_size;
     if (ccidd->state != CCIDD_STATE_SC_REQUEST)
     {
-        fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), INVALID_HANDLE, ERROR_INVALID_STATE);
+        fwrite_complete(usbd_user(usbd), HAL_USBD_IFACE, USBD_IFACE(ccidd->iface, 0), INVALID_HANDLE, ERROR_INVALID_STATE);
         return;
     }
     ccidd->data_buf = block_open(block);
     if (ccidd->data_buf == NULL)
     {
-        fwrite_complete(usbd_user(usbd), HAL_USBD_INTERFACE(ccidd->iface, 0), INVALID_HANDLE, get_last_error());
+        fwrite_complete(usbd_user(usbd), HAL_USBD_IFACE, USBD_IFACE(ccidd->iface, 0), INVALID_HANDLE, get_last_error());
         ccidd_data_block_error(usbd, ccidd, CCID_SLOT_ERROR_HW_ERROR);
         return;
     }
@@ -704,73 +704,72 @@ static inline void ccidd_write(USBD* usbd, CCIDD* ccidd, HANDLE block, int size)
     ccidd->state = CCIDD_STATE_TX;
 }
 
+static inline bool ccidd_driver_event(USBD* usbd, CCIDD* ccidd, IPC* ipc)
+{
+    bool need_post = false;
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    case IPC_READ:
+        //only data EP we are waiting for
+        if (ccidd->state == CCIDD_STATE_RX)
+            ccidd_rx(usbd, ccidd, (uint8_t*)block_open(ccidd->usb_data_block), ipc->param3);
+        else
+            ccidd_message_rx(usbd, ccidd);
+        break;
+    case IPC_WRITE:
+        if (USB_EP_NUM(HAL_ITEM(ipc->param1)) == ccidd->data_ep)
+            ccidd_message_tx(usbd, ccidd);
+        //status notify complete
+        else
+            ccidd->status_busy = false;
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
+    }
+    return need_post;
+}
+
 bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     CCIDD* ccidd = (CCIDD*)param;
     bool need_post = false;
-    switch (ipc->cmd)
-    {
-    case USB_CCID_CARD_INSERT:
-        ccidd_card_insert(usbd, ccidd);
-        break;
-    case USB_CCID_CARD_REMOVE:
-        ccidd_card_remove(usbd, ccidd);
-        break;
-    case USB_CCID_CARD_POWER_ON:
-        ccidd_card_power_on(usbd, ccidd, ipc->process, ipc->param2);
-        break;
-    case USB_CCID_CARD_POWER_OFF:
-        ccidd_card_power_off(usbd, ccidd);
-        break;
-    case USB_CCID_CARD_HW_ERROR:
-        ccidd_card_hw_error(usbd, ccidd);
-        break;
-    case USB_CCID_CARD_RESET:
-        ccidd_card_reset(usbd, ccidd);
-        break;
-    case USB_CCID_CARD_SET_PARAMS:
-        ccidd_card_set_params(usbd, ccidd, ipc->process, ipc->param2);
-        break;
-    case USB_CCID_CARD_GET_PARAMS:
-        ipc->param3 = ccidd_card_get_params(usbd, ccidd, ipc->process);
-        break;
-    case IPC_READ:
-        if (ipc->param3 < 0)
-            break;
-        //only data EP we are waiting for
-        if (HAL_GROUP(ipc->param1) == HAL_USB && USB_EP_NUM(HAL_ITEM(ipc->param1)) == ccidd->data_ep)
+    if (HAL_GROUP(ipc->cmd) == HAL_USB)
+        need_post = ccidd_driver_event(usbd, ccidd, ipc);
+    else
+        switch (HAL_ITEM(ipc->cmd))
         {
-            if (ccidd->state == CCIDD_STATE_RX)
-                ccidd_rx(usbd, ccidd, (uint8_t*)block_open(ccidd->usb_data_block), ipc->param3);
-            else
-                ccidd_message_rx(usbd, ccidd);
-        }
-        break;
-    case IPC_WRITE:
-        if (ipc->param3 < 0)
+        case USB_CCID_CARD_INSERT:
+            ccidd_card_insert(usbd, ccidd);
             break;
-        switch (HAL_GROUP(ipc->param1))
-        {
-        case HAL_USB:
-            if (USB_EP_NUM(HAL_ITEM(ipc->param1)) == ccidd->data_ep)
-                ccidd_message_tx(usbd, ccidd);
-            //status notify complete
-            else
-                ccidd->status_busy = false;
+        case USB_CCID_CARD_REMOVE:
+            ccidd_card_remove(usbd, ccidd);
             break;
-        case HAL_USBD:
+        case USB_CCID_CARD_POWER_ON:
+            ccidd_card_power_on(usbd, ccidd, ipc->process, ipc->param2);
+            break;
+        case USB_CCID_CARD_POWER_OFF:
+            ccidd_card_power_off(usbd, ccidd);
+            break;
+        case USB_CCID_CARD_HW_ERROR:
+            ccidd_card_hw_error(usbd, ccidd);
+            break;
+        case USB_CCID_CARD_RESET:
+            ccidd_card_reset(usbd, ccidd);
+            break;
+        case USB_CCID_CARD_SET_PARAMS:
+            ccidd_card_set_params(usbd, ccidd, ipc->process, ipc->param2);
+            break;
+        case USB_CCID_CARD_GET_PARAMS:
+            ipc->param3 = ccidd_card_get_params(usbd, ccidd, ipc->process);
+            break;
+        case IPC_WRITE:
             ccidd_write(usbd, ccidd, ipc->param2, (int)ipc->param3);
             break;
         default:
-            break;
+            error(ERROR_NOT_SUPPORTED);
+            need_post = true;
         }
-        break;
-    default:
-#if (USBD_CCID_DEBUG_REQUESTS)
-        printf("CCIDD class request: %#X\n\r", ipc->cmd);
-#endif //USBD_CCID_DEBUG_REQUESTS
-        break;
-    }
     return need_post;
 }
 

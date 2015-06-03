@@ -11,6 +11,7 @@
 #include "sys.h"
 #include "cc_macro.h"
 #include "file.h"
+#include "ipc.h"
 #include "sys_config.h"
 
 typedef struct {
@@ -25,7 +26,7 @@ typedef struct {
 }BAUD;
 
 typedef enum {
-    IPC_UART_SET_BAUDRATE = HAL_IPC(HAL_UART),
+    IPC_UART_SET_BAUDRATE = IPC_USER,
     IPC_UART_GET_BAUDRATE,
     IPC_UART_GET_LAST_ERROR,
     IPC_UART_CLEAR_ERROR,
@@ -50,25 +51,25 @@ __STATIC_INLINE void uart_decode_baudrate(IPC* ipc, BAUD* baudrate)
 
 __STATIC_INLINE void uart_setup_printk(int num)
 {
-    ack(object_get(SYS_OBJ_UART), IPC_UART_SETUP_PRINTK, HAL_HANDLE(HAL_UART, num), 0, 0);
+    ack(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_UART_SETUP_PRINTK), num, 0, 0);
 }
 
 __STATIC_INLINE void uart_setup_stdout(int num)
 {
-    object_set(SYS_OBJ_STDOUT, get(object_get(SYS_OBJ_UART), IPC_GET_TX_STREAM, HAL_HANDLE(HAL_UART, num), 0, 0));
+    object_set(SYS_OBJ_STDOUT, get(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_GET_TX_STREAM), num, 0, 0));
 }
 
 __STATIC_INLINE void uart_setup_stdin(int num)
 {
-    object_set(SYS_OBJ_STDIN, get(object_get(SYS_OBJ_UART), IPC_GET_RX_STREAM, HAL_HANDLE(HAL_UART, num), 0, 0));
+    object_set(SYS_OBJ_STDIN, get(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_GET_RX_STREAM), num, 0, 0));
 }
 
 __STATIC_INLINE void uart_set_baudrate(int num, BAUD* baudrate)
 {
     IPC ipc;
     uart_encode_baudrate(baudrate, &ipc);
-    ipc.cmd = IPC_UART_SET_BAUDRATE;
-    ipc.param1 = HAL_HANDLE(HAL_UART, num);
+    ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_SET_BAUDRATE);
+    ipc.param1 = num;
     ipc.process = object_get(SYS_OBJ_UART);
     call(&ipc);
 }

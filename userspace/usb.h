@@ -8,6 +8,7 @@
 #define USB_H
 
 #include "sys.h"
+#include "ipc.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include "lib.h"
@@ -15,7 +16,7 @@
 //--------------------------------------------------- USB general --------------------------------------------------------------
 
 typedef enum {
-    USB_SET_ADDRESS = HAL_IPC(HAL_USB),
+    USB_SET_ADDRESS = IPC_USER,
     USB_GET_SPEED,
     USB_EP_SET_STALL,
     USB_EP_CLEAR_STALL,
@@ -198,7 +199,7 @@ typedef struct {
 //--------------------------------------------------- USB device ---------------------------------------------------------------
 
 typedef enum {
-    USBD_ALERT = HAL_IPC(HAL_USBD),
+    USBD_ALERT = IPC_USER,
     USBD_REGISTER_DESCRIPTOR,                                    /* register USB device descriptor of type USBD_DESCRIPTOR_TYPE */
     USBD_UNREGISTER_DESCRIPTOR,                                  /* unregister USB device descriptor*/
     USBD_REGISTER_HANDLER,                                       /* register USB device state handler for USBD_ALERTS */
@@ -247,12 +248,9 @@ typedef struct {
 
 #define USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED    ((sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT) + 3) & ~3)
 
-#define USBD_HANDLE_DEVICE                               0x0
-#define USBD_HANDLE_INTERFACE                            0x100
-
-#define HAL_USBD_INTERFACE(num, user)                    HAL_HANDLE(HAL_USBD, ((num) << 8) + ((user) & 0xff) + USBD_HANDLE_INTERFACE)
-#define HAL_USBD_INTERFACE_NUM(hal)                      ((HAL_ITEM(hal) - USBD_HANDLE_INTERFACE) >> 8)
-#define HAL_USBD_INTERFACE_USER(hal)                     ((HAL_ITEM(hal) & 0xff)
+#define USBD_IFACE(iface_num, item)                     (((iface_num) << 16) | (item & 0xffff))
+#define USBD_IFACE_NUM(iface)                           ((iface) >> 16)
+#define USBD_IFACE_ITEM(iface)                          ((iface) & 0xffff)
 
 //--------------------------------------------------- CDC class ---------------------------------------------------------------
 typedef enum {

@@ -9,11 +9,12 @@
 
 #include "sys.h"
 #include "file.h"
+#include "ipc.h"
 #include "cc_macro.h"
 #include "sys_config.h"
 
 typedef enum {
-    TIMER_START = HAL_IPC(HAL_TIMER),
+    TIMER_START = IPC_USER,
     TIMER_STOP,
     TIMER_SETUP_CHANNEL
 } TIMER_IPCS;
@@ -60,27 +61,27 @@ typedef enum {
 
 __STATIC_INLINE int htimer_open(int num, unsigned int flags)
 {
-    return fopen(object_get(SYS_OBJ_CORE), HAL_HANDLE(HAL_TIMER, num), flags);
+    return fopen(object_get(SYS_OBJ_CORE), HAL_TIMER, num, flags);
 }
 
 __STATIC_INLINE int htimer_close(int num)
 {
-    return fclose(object_get(SYS_OBJ_CORE), HAL_HANDLE(HAL_TIMER, num));
+    return fclose(object_get(SYS_OBJ_CORE), HAL_TIMER, num);
 }
 
 __STATIC_INLINE void htimer_start(int num, TIMER_VALUE_TYPE value_type, unsigned int value)
 {
-    ack(object_get(SYS_OBJ_CORE), TIMER_START, HAL_HANDLE(HAL_TIMER, num), value_type, value);
+    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_TIMER, TIMER_START), num, value_type, value);
 }
 
 __STATIC_INLINE void htimer_stop(int num)
 {
-    ack(object_get(SYS_OBJ_CORE), TIMER_STOP, HAL_HANDLE(HAL_TIMER, num), 0, 0);
+    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_TIMER, TIMER_STOP), num, 0, 0);
 }
 
 __STATIC_INLINE void htimer_setup_channel(int num, int channel, TIMER_CHANNEL_TYPE type, unsigned int value)
 {
-    ack(object_get(SYS_OBJ_CORE), TIMER_SETUP_CHANNEL, HAL_HANDLE(HAL_TIMER, num), (channel << TIMER_CHANNEL_POS) | (type << TIMER_CHANNEL_TYPE_POS), value);
+    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_TIMER, TIMER_SETUP_CHANNEL), num, (channel << TIMER_CHANNEL_POS) | (type << TIMER_CHANNEL_TYPE_POS), value);
 }
 
 #endif // HTIMER_H

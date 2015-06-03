@@ -24,7 +24,7 @@ typedef struct _CORE {
 #if (MONOLITH_UART)
     UART_DRV uart;
 #endif
-#if (MONOLITH_I2C)
+#if (LPC_I2C_DRIVER)
     I2C_DRV i2c;
 #endif
 #if (MONOLITH_USB)

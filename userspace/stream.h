@@ -8,8 +8,10 @@
 #define STREAM_H
 
 #include "types.h"
+#include "heap.h"
 #include "svc.h"
 #include "error.h"
+#include "ipc.h"
 
 
 /** \addtogroup stream stream
@@ -79,12 +81,13 @@ __STATIC_INLINE unsigned int stream_get_free(HANDLE stream)
 /**
     \brief start listen to STREAM successfull writes. Caller must be one, who created stream
     \param stream: created STREAM object
+    \param hal: HAL group for parsing
     \retval true on ok
 */
-__STATIC_INLINE bool stream_listen(HANDLE stream, void* param)
+__STATIC_INLINE bool stream_listen(HANDLE stream, unsigned int param, HAL hal)
 {
     error(ERROR_OK);
-    svc_call(SVC_STREAM_LISTEN, (unsigned int)stream, (unsigned int)param, 0);
+    svc_call(SVC_STREAM_LISTEN, (unsigned int)stream, param, (unsigned int)hal);
     return get_last_error() == ERROR_OK;
 }
 

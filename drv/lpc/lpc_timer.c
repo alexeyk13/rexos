@@ -208,13 +208,13 @@ void lpc_timer_init(CORE *core)
 
 bool lpc_timer_request(CORE* core, IPC* ipc)
 {
-    TIMER timer = (TIMER)HAL_ITEM(ipc->param1);
+    TIMER timer = (TIMER)ipc->param1;
     if (timer >= TIMER_MAX)
     {
         error(ERROR_NOT_SUPPORTED);
         return true;
     }
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         lpc_timer_open(core, timer, ipc->param2);

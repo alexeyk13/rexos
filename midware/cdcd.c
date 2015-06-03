@@ -152,7 +152,7 @@ void cdcd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     cdcd->tx_idle = true;
     size = cdcd->data_ep_size;
     fopen_p(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->data_ep), USB_EP_BULK, (void*)size);
-    stream_listen(cdcd->tx_stream, (void*)(HAL_HANDLE(HAL_USBD, HAL_USBD_INTERFACE(cdcd->data_iface, 0))));
+    stream_listen(cdcd->tx_stream, USBD_IFACE(cdcd->data_iface, 0), HAL_USBD_IFACE);
 #endif
 
 #if (USBD_CDC_RX_STREAM_SIZE)
@@ -248,7 +248,7 @@ void cdcd_class_resume(USBD* usbd, void* param)
     CDCD* cdcd = (CDCD*)param;
     cdcd->suspended = false;
 #if (USBD_CDC_RX_STREAM_SIZE)
-    stream_listen(cdcd->tx_stream, (void*)(HAL_HANDLE(HAL_USBD, HAL_USBD_INTERFACE(cdcd->data_iface, 0))));
+    stream_listen(cdcd->tx_stream, USBD_IFACE(cdcd->data_iface, 0), HAL_USBD_IFACE);
 #endif
 }
 
@@ -307,10 +307,10 @@ void cdcd_write(USBD* usbd, CDCD* cdcd)
         }
         //just in case of driver failure
         else
-            stream_listen(cdcd->tx_stream, (void*)(HAL_HANDLE(HAL_USBD, HAL_USBD_INTERFACE(cdcd->data_iface, 0))));
+            stream_listen(cdcd->tx_stream, USBD_IFACE(cdcd->data_iface, 0), HAL_USBD_IFACE);
     }
     else
-        stream_listen(cdcd->tx_stream, (void*)(HAL_HANDLE(HAL_USBD, HAL_USBD_INTERFACE(cdcd->data_iface, 0))));
+        stream_listen(cdcd->tx_stream, USBD_IFACE(cdcd->data_iface, 0), HAL_USBD_IFACE);
 }
 
 static inline int set_line_coding(CDCD* cdcd, HANDLE block)

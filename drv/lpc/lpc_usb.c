@@ -41,13 +41,11 @@ typedef enum {
 
 #if (MONOLITH_USB)
 
-#define _printd                 printd
 #define ack_gpio                lpc_gpio_request_inside
 #define ack_power               lpc_power_request_inside
 
 #else
 
-#define _printd                 printf
 #define ack_gpio                lpc_core_request_outside
 #define ack_power               lpc_core_request_outside
 
@@ -186,9 +184,9 @@ static inline void lpc_usb_reset(SHARED_USB_DRV* drv)
     LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DEV_EN;
     IPC ipc;
     ipc.process = drv->usb.device;
-    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
+    ipc.cmd = HAL_CMD(HAL_USB, USB_RESET);
+    ipc.param1 = USB_HANDLE_DEVICE;
     ipc.param2 = lpc_usb_get_speed(drv);
-    ipc.cmd = USB_RESET;
     ipc_ipost(&ipc);
 
 }
@@ -197,8 +195,8 @@ static inline void lpc_usb_suspend(SHARED_USB_DRV* drv)
 {
     IPC ipc;
     ipc.process = drv->usb.device;
-    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
-    ipc.cmd = USB_SUSPEND;
+    ipc.cmd = HAL_CMD(HAL_USB, USB_SUSPEND);
+    ipc.param1 = USB_HANDLE_DEVICE;
     ipc_ipost(&ipc);
 }
 
@@ -206,8 +204,8 @@ static inline void lpc_usb_wakeup(SHARED_USB_DRV* drv)
 {
     IPC ipc;
     ipc.process = drv->usb.device;
-    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
-    ipc.cmd = USB_WAKEUP;
+    ipc.cmd = HAL_CMD(HAL_USB, USB_WAKEUP);
+    ipc.param1 = USB_HANDLE_DEVICE;
     ipc_ipost(&ipc);
 }
 
@@ -215,9 +213,9 @@ static inline void lpc_usb_wakeup(SHARED_USB_DRV* drv)
 static inline void lpc_usb_setup(SHARED_USB_DRV* drv)
 {
     IPC ipc;
-    ipc.cmd = USB_SETUP;
     ipc.process = drv->usb.device;
-    ipc.param1 = HAL_HANDLE(HAL_USB, 0);
+    ipc.cmd = HAL_CMD(HAL_USB, USB_SETUP);
+    ipc.param1 = USB_HANDLE_DEVICE;
     ipc.param2 = *((uint32_t*)(USB_SETUP_BUF_BASE));
     ipc.param3 = *((uint32_t*)(USB_SETUP_BUF_BASE + 4));
     ipc_ipost(&ipc);
@@ -234,7 +232,7 @@ static inline void lpc_usb_out(SHARED_USB_DRV* drv, int num)
     if (ep->processed >= ep->size || cnt < ep->mps)
     {
         ep->io_active = false;
-        firead_complete(drv->usb.device, HAL_HANDLE(HAL_USB, num), ep->block, ep->processed);
+        firead_complete(drv->usb.device, HAL_USB, num, ep->block, ep->processed);
         ep->block = INVALID_HANDLE;
     }
     else
@@ -254,7 +252,7 @@ static inline void lpc_usb_in(SHARED_USB_DRV* drv, int num)
     if (ep->processed >= ep->size)
     {
         ep->io_active = false;
-        fiwrite_complete(drv->usb.device, HAL_HANDLE(HAL_USB, num), ep->block, ep->processed);
+        fiwrite_complete(drv->usb.device, HAL_USB, num, ep->block, ep->processed);
         ep->block = INVALID_HANDLE;
     }
     else
@@ -277,9 +275,9 @@ void lpc_usb_on_isr(int vector, void* param)
         break;
     default:
         ipc.process = process_iget_current();
-        ipc.param1 = HAL_HANDLE(HAL_USB, 0);
+        ipc.cmd = HAL_CMD(HAL_USB, LPC_USB_ERROR);
+        ipc.param1 = USB_HANDLE_DEVICE;
         ipc.param2 = (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK) >> USB_INFO_ERR_CODE_POS;
-        ipc.cmd = LPC_USB_ERROR;
         ipc_ipost(&ipc);
         LPC_USB->INFO &= ~USB_INFO_ERR_CODE_MASK;
     }
@@ -332,19 +330,18 @@ void lpc_usb_on_isr(int vector, void* param)
     }
 }
 
-
 void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
 {
     int i;
     drv->usb.device = device;
 
-    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, VBUS, PIN_MODE_VBUS, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), VBUS, PIN_MODE_VBUS, 0);
 #if (USB_SOFT_CONNECT)
-    ack_gpio(drv, LPC_GPIO_ENABLE_PIN, SCONNECT, PIN_MODE_USB_CONNECT, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), SCONNECT, PIN_MODE_USB_CONNECT, 0);
 #endif
 
     //enable clock, power up
-    ack_power(drv, LPC_POWER_USB_ON, 0, 0, 0);
+    ack_power(drv, HAL_CMD(HAL_POWER, LPC_POWER_USB_ON), 0, 0, 0);
 
     //clear any spurious pending interrupts
     LPC_USB->DEVCMDSTAT = USB_DEVCMDSTAT_DCON_C | USB_DEVCMDSTAT_DSUS_C | USB_DEVCMDSTAT_DRES_C | USB_DEVCMDSTAT_SETUP;
@@ -457,12 +454,12 @@ static inline void lpc_usb_close_device(SHARED_USB_DRV* drv)
     LPC_USB->DEVCMDSTAT &= ~USB_DEVCMDSTAT_DEV_EN;
 
     //power down
-    ack_power(drv, LPC_POWER_USB_OFF, 0, 0, 0);
+    ack_power(drv, HAL_CMD(HAL_POWER, LPC_POWER_USB_OFF), 0, 0, 0);
 
     //disable pins
-    ack_gpio(drv, LPC_GPIO_DISABLE_PIN, VBUS, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, LPC_GPIO_DISABLE_PIN), VBUS, 0, 0);
 #if (USB_SOFT_CONNECT)
-    ack_gpio(drv, LPC_GPIO_DISABLE_PIN, SCONNECT, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, LPC_GPIO_DISABLE_PIN), SCONNECT, 0, 0);
 #endif
 }
 
@@ -479,18 +476,18 @@ static inline void lpc_usb_read(SHARED_USB_DRV* drv, unsigned int num, HANDLE bl
 {
     if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
     {
-        fread_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_INVALID_PARAMS);
+        fread_complete(process, HAL_USB, num, block, ERROR_INVALID_PARAMS);
         return;
     }
     EP* ep = drv->usb.out[USB_EP_NUM(num)];
     if (ep == NULL)
     {
-        fread_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_NOT_CONFIGURED);
+        fread_complete(process, HAL_USB, num, block, ERROR_NOT_CONFIGURED);
         return;
     }
     if (ep->io_active)
     {
-        fread_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_IN_PROGRESS);
+        fread_complete(process, HAL_USB, num, block, ERROR_IN_PROGRESS);
         return;
     }
     //no blocks for ZLP
@@ -500,7 +497,7 @@ static inline void lpc_usb_read(SHARED_USB_DRV* drv, unsigned int num, HANDLE bl
         ep->block = block;
         if ((ep->ptr = block_open(ep->block)) == NULL)
         {
-            fread_complete(process, HAL_HANDLE(HAL_USB, num), block, get_last_error());
+            fread_complete(process, HAL_USB, num, block, get_last_error());
             return;
         }
     }
@@ -514,18 +511,18 @@ static inline void lpc_usb_write(SHARED_USB_DRV* drv, unsigned int num, HANDLE b
 {
     if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
     {
-        fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_INVALID_PARAMS);
+        fwrite_complete(process, HAL_USB, num, block, ERROR_INVALID_PARAMS);
         return;
     }
     EP* ep = drv->usb.in[USB_EP_NUM(num)];
     if (ep == NULL)
     {
-        fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_NOT_CONFIGURED);
+        fwrite_complete(process, HAL_USB, num, block, ERROR_NOT_CONFIGURED);
         return;
     }
     if (ep->io_active)
     {
-        fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, ERROR_IN_PROGRESS);
+        fwrite_complete(process, HAL_USB, num, block, ERROR_IN_PROGRESS);
         return;
     }
     ep->size = size;
@@ -535,7 +532,7 @@ static inline void lpc_usb_write(SHARED_USB_DRV* drv, unsigned int num, HANDLE b
         ep->block = block;
         if ((ep->ptr = block_open(ep->block)) == NULL)
         {
-            fwrite_complete(process, HAL_HANDLE(HAL_USB, num), block, get_last_error());
+            fwrite_complete(process, HAL_USB, num, block, get_last_error());
             return;
         }
     }
@@ -560,24 +557,24 @@ void lpc_usb_init(SHARED_USB_DRV* drv)
 bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case USB_GET_SPEED:
         ipc->param2 = lpc_usb_get_speed(drv);
         need_post = true;
         break;
     case IPC_OPEN:
-        if (HAL_ITEM(ipc->param1) == USB_HANDLE_DEVICE)
+        if (ipc->param1 == USB_HANDLE_DEVICE)
             lpc_usb_open_device(drv, ipc->process);
         else
-            lpc_usb_open_ep(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3);
+            lpc_usb_open_ep(drv, ipc->param1, ipc->param2, ipc->param3);
         need_post = true;
         break;
     case IPC_CLOSE:
-        if (HAL_ITEM(ipc->param1) == USB_HANDLE_DEVICE)
+        if (ipc->param1 == USB_HANDLE_DEVICE)
             lpc_usb_close_device(drv);
         else
-            lpc_usb_close_ep(drv, HAL_ITEM(ipc->param1));
+            lpc_usb_close_ep(drv, ipc->param1);
         need_post = true;
         break;
     case USB_SET_ADDRESS:
@@ -585,31 +582,27 @@ bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case IPC_FLUSH:
-        lpc_usb_ep_flush(drv, HAL_ITEM(ipc->param1));
+        lpc_usb_ep_flush(drv, ipc->param1);
         need_post = true;
         break;
     case USB_EP_SET_STALL:
-        lpc_usb_ep_set_stall(drv, HAL_ITEM(ipc->param1));
+        lpc_usb_ep_set_stall(drv, ipc->param1);
         need_post = true;
         break;
     case USB_EP_CLEAR_STALL:
-        lpc_usb_ep_clear_stall(drv, HAL_ITEM(ipc->param1));
+        lpc_usb_ep_clear_stall(drv, ipc->param1);
         need_post = true;
         break;
     case USB_EP_IS_STALL:
-        ipc->param2 = lpc_usb_ep_is_stall(HAL_ITEM(ipc->param1));
+        ipc->param2 = lpc_usb_ep_is_stall(ipc->param1);
         need_post = true;
         break;
     case IPC_READ:
-        if (ipc->param3 < 0 || HAL_GROUP(ipc->param1) != HAL_USB)
-            break;
-        lpc_usb_read(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
+        lpc_usb_read(drv, ipc->param1, ipc->param2, ipc->param3, ipc->process);
         //generally posted with block, no return IPC
         break;
     case IPC_WRITE:
-        if (ipc->param3 < 0 || HAL_GROUP(ipc->param1) != HAL_USB)
-            break;
-        lpc_usb_write(drv, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
+        lpc_usb_write(drv, ipc->param1, ipc->param2, ipc->param3, ipc->process);
         //generally posted with block, no return IPC
         break;
 #if (USB_DEBUG_ERRORS)
@@ -637,17 +630,12 @@ void lpc_usb()
         error(ERROR_OK);
         need_post = false;
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
+        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             need_post = true;
-            break;
-        default:
+        else
             need_post = lpc_usb_request(&drv, &ipc);
-            break;
-        }
         if (need_post)
-            ipc_post(&ipc);
+            ipc_post_or_error(&ipc);
     }
 }
 #endif

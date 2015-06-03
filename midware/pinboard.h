@@ -9,9 +9,10 @@
 
 #include "../userspace/process.h"
 #include "../userspace/sys.h"
+#include "../userspace/ipc.h"
 
 typedef enum {
-    PINBOARD_KEY_DOWN = HAL_IPC(HAL_PINBOARD),
+    PINBOARD_KEY_DOWN = IPC_USER,
     PINBOARD_KEY_UP,
     PINBOARD_KEY_PRESS,
     PINBOARD_KEY_LONG_PRESS,

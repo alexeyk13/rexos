@@ -104,7 +104,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         break;
 #if (KERNEL_SOFT_TIMERS)
     case SVC_TIMER_CREATE:
-        ktimer_create((SOFT_TIMER**)param1, (HANDLE)param2);
+        ktimer_create((SOFT_TIMER**)param1, param2, (HAL)param3);
         break;
     case SVC_TIMER_START:
         ktimer_start((SOFT_TIMER*)param1, (TIME*)param2, param3);
@@ -143,7 +143,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kstream_get_free((STREAM*)param1, (unsigned int*)param2);
         break;
     case SVC_STREAM_LISTEN:
-        kstream_listen((STREAM*)param1, (void*)param2);
+        kstream_listen((STREAM*)param1, param2, (HAL)param3);
         break;
     case SVC_STREAM_STOP_LISTEN:
         kstream_stop_listen((STREAM*)param1);

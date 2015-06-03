@@ -7,59 +7,10 @@
 #ifndef SYS_H
 #define SYS_H
 
-#include "ipc.h"
 #include "stream.h"
 #include "object.h"
 #include "types.h"
 #include "sys_config.h"
-
-typedef enum {
-    IPC_READ = IPC_SYSTEM,
-    IPC_WRITE,
-    IPC_CANCEL_IO,
-    IPC_FLUSH,
-    IPC_SEEK,
-    IPC_OPEN,
-    IPC_CLOSE,
-    IPC_GET_RX_STREAM,
-    IPC_GET_TX_STREAM
-}SYS_IPCS;
-
-typedef enum {
-    //real hardware
-    HAL_GPIO = 0,
-    HAL_POWER,
-    HAL_TIMER,
-    HAL_RTC,
-    HAL_WDT,
-    HAL_UART,
-    HAL_USB,
-    HAL_ADC,
-    HAL_DAC,
-    HAL_I2C,
-    HAL_LCD,
-    HAL_ETH,
-    HAL_FLASH,
-    HAL_EEPROM,
-    //device stacks
-    HAL_USBD,
-    HAL_TCPIP,
-    HAL_MAC,
-    HAL_ARP,
-    HAL_ROUTE,
-    HAL_IP,
-    HAL_ICMP,
-    HAL_PINBOARD,
-    //application level
-    HAL_APP
-} HAL;
-
-#define HAL_HANDLE(group, item)                             ((group) << 16 | (item))
-#define HAL_ITEM(handle)                                    ((handle) & 0xffff)
-#define HAL_GROUP(handle)                                   ((handle) >> 16)
-
-#define HAL_IPC(hal)                                        (IPC_USER + ((hal) << 16))
-#define HAL_IPC_GROUP(ipc)                                  (((ipc) - IPC_USER) >> 16)
 
 /** \addtogroup sys sys
     \{

@@ -181,7 +181,7 @@ void lpc_power_init(CORE *core)
 bool lpc_power_request(CORE* core, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case LPC_POWER_GET_SYSTEM_CLOCK:
         ipc->param2 = lpc_get_system_clock();

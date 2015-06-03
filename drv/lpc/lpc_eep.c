@@ -39,16 +39,16 @@ static inline void lpc_eep_read(CORE* core, unsigned int size, HANDLE process)
         iap(req, resp);
         if (resp[0] != 0)
         {
-            fread_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, ERROR_INVALID_PARAMS);
+            fread_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, ERROR_INVALID_PARAMS);
             return;
         }
         if (!direct_write(process, buf, chunk_size))
         {
-            fread_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, get_last_error());
+            fread_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, get_last_error());
             return;
         }
     }
-    fread_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, processed);
+    fread_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, processed);
 }
 
 static inline void lpc_eep_write(CORE* core, unsigned int size, HANDLE process)
@@ -64,7 +64,7 @@ static inline void lpc_eep_write(CORE* core, unsigned int size, HANDLE process)
             chunk_size = LPC_EEPROM_BUF_SIZE;
         if (!direct_read(process, buf, chunk_size))
         {
-            fwrite_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, get_last_error());
+            fwrite_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, get_last_error());
             return;
         }
         req[0] = IAP_CMD_WRITE_EEPROM;
@@ -75,17 +75,17 @@ static inline void lpc_eep_write(CORE* core, unsigned int size, HANDLE process)
         iap(req, resp);
         if (resp[0] != 0)
         {
-            fwrite_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, ERROR_INVALID_PARAMS);
+            fwrite_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, ERROR_INVALID_PARAMS);
             return;
         }
     }
-    fwrite_complete(process, HAL_HANDLE(HAL_EEPROM, 0), INVALID_HANDLE, processed);
+    fwrite_complete(process, HAL_EEPROM, 0, INVALID_HANDLE, processed);
 }
 
 bool lpc_eep_request(CORE* core, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_SEEK:
         core->eep.addr = ipc->param2;

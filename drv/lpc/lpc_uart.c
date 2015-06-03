@@ -86,8 +86,8 @@ void lpc_uart_on_isr(int vector, void* param)
         //receive data
         ipc.param3 = LPC_USART->RBR;
         ipc.process = process_iget_current();
-        ipc.cmd = IPC_UART_ISR_RX;
-        ipc.param1 = HAL_HANDLE(HAL_UART, UART_0);
+        ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_RX);
+        ipc.param1 = UART_0;
         ipc_ipost(&ipc);
         break;
     case USART_IIR_INTID_THRE:
@@ -101,8 +101,8 @@ void lpc_uart_on_isr(int vector, void* param)
             {
                 drv->uart.uarts[UART_0]->tx_chunk_pos = drv->uart.uarts[UART_0]->tx_chunk_size = 0;
                 ipc.process = process_iget_current();
-                ipc.cmd = IPC_UART_ISR_TX;
-                ipc.param1 = HAL_HANDLE(HAL_UART, UART_0);
+                ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
+                ipc.param1 = UART_0;
                 ipc.param3 = 0;
                 ipc_ipost(&ipc);
                 LPC_USART->IER &= ~USART_IER_THRINTEN;
@@ -153,8 +153,8 @@ void lpc_uart4_on_isr(int vector, void* param)
         {
             ipc.param3 = __USART_REGS[port]->RXDAT;
             ipc.process = process_iget_current();
-            ipc.cmd = IPC_UART_ISR_RX;
-            ipc.param1 = HAL_HANDLE(HAL_UART, UART_0);
+            ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_RX);
+            ipc.param1 = UART_0;
             ipc_ipost(&ipc);
         }
         //tx
@@ -167,8 +167,8 @@ void lpc_uart4_on_isr(int vector, void* param)
             {
                 drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
                 ipc.process = process_iget_current();
-                ipc.cmd = IPC_UART_ISR_TX;
-                ipc.param1 = HAL_HANDLE(HAL_UART, UART_0);
+                ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
+                ipc.param1 = UART_0;
                 ipc.param3 = 0;
                 ipc_ipost(&ipc);
                 LPC_USART->IER &= ~USART_IER_THRINTEN;
@@ -260,7 +260,7 @@ void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
             drv->uart.uarts[port] = NULL;
             return;
         }
-        stream_listen(drv->uart.uarts[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
+        stream_listen(drv->uart.uarts[port]->tx_stream, port, HAL_UART);
     }
     if (mode & FILE_MODE_READ)
     {
@@ -390,7 +390,7 @@ static inline void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
     if (drv->uart.uarts[port]->tx_stream != INVALID_HANDLE)
     {
         stream_flush(drv->uart.uarts[port]->tx_stream);
-        stream_listen(drv->uart.uarts[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
+        stream_listen(drv->uart.uarts[port]->tx_stream, port, HAL_UART);
         drv->uart.uarts[port]->tx_total = 0;
         __disable_irq();
         drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
@@ -471,7 +471,7 @@ static inline void lpc_uart_write(SHARED_UART_DRV* drv, UART_PORT port, unsigned
         }
     }
     else
-        stream_listen(drv->uart.uarts[port]->tx_stream, (void*)HAL_HANDLE(HAL_UART, port));
+        stream_listen(drv->uart.uarts[port]->tx_stream, port, HAL_UART);
 
 }
 
@@ -533,14 +533,14 @@ void lpc_uart_init(SHARED_UART_DRV* drv)
 
 bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
 {
-    UART_PORT port = HAL_ITEM(ipc->param1);
+    UART_PORT port = ipc->param1;
     if (port >= UARTS_COUNT)
     {
         error(ERROR_INVALID_PARAMS);
         return true;
     }
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         lpc_uart_open(drv, port, ipc->param2);
@@ -588,6 +588,8 @@ bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
         //message from ISR, no response
         break;
     default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
         break;
     }
     return need_post;
@@ -606,14 +608,10 @@ void lpc_uart()
         error(ERROR_OK);
         need_post = false;
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
+        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             need_post = true;
-            break;
-        default:
+        else
             need_post = lpc_uart_request(&drv, &ipc);
-        }
         if (need_post)
             ipc_post_or_error(&ipc);
     }

@@ -40,12 +40,12 @@ const REX __PINBOARD = {
 
 #define KEY_GET(pins, i)                            ((KEY*)array_at((pins), (i)))
 
-static inline void pinboard_event(KEY* key, unsigned int event)
+static void pinboard_event(KEY* key, unsigned int cmd)
 {
     IPC ipc;
     ipc.process = key->process;
-    ipc.cmd = event;
-    ipc.param1 = HAL_HANDLE(HAL_PINBOARD, key->pin);
+    ipc.cmd = cmd;
+    ipc.param1 = key->pin;
     ipc_post(&ipc);
 }
 
@@ -60,21 +60,21 @@ void poll_key(KEY* key)
         if (pressed)
         {
             if (key->mode & PINBOARD_FLAG_DOWN_EVENT)
-                pinboard_event(key, PINBOARD_KEY_DOWN);
+                pinboard_event(key, HAL_CMD(HAL_PINBOARD, PINBOARD_KEY_DOWN));
             get_uptime(&key->press_time);
             key->long_press = false;
         }
         else
         {
             if (key->mode & PINBOARD_FLAG_UP_EVENT)
-                pinboard_event(key, PINBOARD_KEY_UP);
+                pinboard_event(key, HAL_CMD(HAL_PINBOARD, PINBOARD_KEY_UP));
             if (!key->long_press && (key->mode & PINBOARD_FLAG_PRESS_EVENT))
-                pinboard_event(key, PINBOARD_KEY_PRESS);
+                pinboard_event(key, HAL_CMD(HAL_PINBOARD, PINBOARD_KEY_PRESS));
         }
     }
     else if (pressed && !key->long_press && (key->mode & PINBOARD_FLAG_LONG_PRESS_EVENT) && time_elapsed_ms(&key->press_time) >= key->long_ms)
     {
-        pinboard_event(key, PINBOARD_KEY_LONG_PRESS);
+        pinboard_event(key, HAL_CMD(HAL_PINBOARD, PINBOARD_KEY_LONG_PRESS));
         key->long_press = true;
     }
 }
@@ -146,18 +146,18 @@ static inline void pinboard_init(ARRAY** pins)
 static inline bool pinboard_request(ARRAY** pins, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        pinboard_open(pins, HAL_ITEM(ipc->param1), ipc->param2, ipc->param3, ipc->process);
+        pinboard_open(pins, ipc->param1, ipc->param2, ipc->param3, ipc->process);
         need_post = true;
         break;
     case IPC_CLOSE:
-        pinboard_close(pins, HAL_ITEM(ipc->param1), ipc->process);
+        pinboard_close(pins, ipc->param1, ipc->process);
         need_post = true;
         break;
     case PINBOARD_GET_KEY_STATE:
-        ipc->param2 = pinboard_get_key_state(pins, HAL_ITEM(ipc->param1));
+        ipc->param2 = pinboard_get_key_state(pins, ipc->param1);
         need_post = true;
         break;
     default:
@@ -182,15 +182,18 @@ void pinboard()
         need_post = false;
         if (ipc_read_ms(&ipc, PINBOARD_POLL_TIME_MS, ANY_HANDLE))
         {
-            switch (ipc.cmd)
-            {
-            case IPC_PING:
+            if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
                 need_post = true;
-                break;
-            default:
-                need_post = pinboard_request(&pins, &ipc);
-                break;
-            }
+            else
+                switch (HAL_GROUP(ipc.cmd))
+                {
+                case HAL_PINBOARD:
+                    need_post = pinboard_request(&pins, &ipc);
+                    break;
+                default:
+                    error(ERROR_NOT_SUPPORTED);
+                    need_post = true;
+                }
             if (need_post)
                 ipc_post_or_error(&ipc);
         }

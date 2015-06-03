@@ -9,6 +9,7 @@
 
 #include "../userspace/rb.h"
 #include "../userspace/dlist.h"
+#include "../userspace/ipc.h"
 #include "kprocess.h"
 #include "dbg.h"
 
@@ -27,7 +28,8 @@ typedef struct {
     struct _STREAM_HANDLE* read_waiters;
     //item
     HANDLE listener;
-    void* listener_param;
+    unsigned int listener_param;
+    HAL listener_hal;
 }STREAM;
 
 typedef struct _STREAM_HANDLE{
@@ -49,7 +51,7 @@ void kstream_open(STREAM* stream, STREAM_HANDLE** handle);
 void kstream_close(STREAM_HANDLE* handle);
 void kstream_get_size(STREAM* stream, unsigned int* size);
 void kstream_get_free(STREAM* stream, unsigned int *size);
-void kstream_listen(STREAM* stream, void *param);
+void kstream_listen(STREAM* stream, unsigned int param, HAL hal);
 void kstream_stop_listen(STREAM* stream);
 void kstream_write(STREAM_HANDLE* handle, char* buf, unsigned int size);
 void kstream_read(STREAM_HANDLE* handle, char* buf, unsigned int size);

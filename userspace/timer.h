@@ -12,6 +12,7 @@
 #include "cc_macro.h"
 #include "svc.h"
 #include "heap.h"
+#include "ipc.h"
 
 /** \addtogroup timer timer
     interface to system timer
@@ -75,13 +76,14 @@ __STATIC_INLINE void timer_hpet_timeout()
 
 /**
     \brief create soft timer. Make sure, enalbed in kernel
-    \param app_handle application provided handle
+    \param param: application provided param
+    \param hal: HAL group
     \retval HANDLE of timer, or invalid handle
 */
-__STATIC_INLINE HANDLE timer_create(HANDLE app_handle)
+__STATIC_INLINE HANDLE timer_create(unsigned int param, HAL hal)
 {
     HANDLE handle;
-    svc_call(SVC_TIMER_CREATE, (unsigned int)&handle, app_handle, 0);
+    svc_call(SVC_TIMER_CREATE, (unsigned int)&handle, param, (unsigned int)hal);
     return handle;
 }
 

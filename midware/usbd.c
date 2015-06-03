@@ -21,6 +21,9 @@
 #if (USBD_HID_KBD_CLASS)
 #include "hidd_kbd.h"
 #endif //USBD_HID_KBD_CLASS
+#if (USBD_MSC_CLASS)
+#include "mscd.h"
+#endif //USBD_MSC_CLASS
 #if (USBD_CCID_CLASS)
 #include "ccidd.h"
 #endif //USBD_CCID_CLASS
@@ -100,6 +103,9 @@ static const USBD_CLASS* __USBD_CLASSES[] =         {
 #if (USBD_HID_KBD_CLASS)
                                                         &__HIDD_KBD_CLASS,
 #endif //USBD_HID_KBD_CLASS
+#if (USBD_MSC_CLASS)
+                                                        &__MSCD_CLASS,
+#endif //USBD_MSC_CLASS
 #if (USBD_CCID_CLASS)
                                                         &__CCIDD_CLASS,
 #endif //USBD_CCID_CLASS
@@ -151,9 +157,9 @@ void usbd_inform(USBD* usbd, unsigned int alert, bool need_wait)
     if (usbd->user != INVALID_HANDLE)
     {
         if (need_wait)
-            ack(usbd->user, USBD_ALERT, alert, 0, 0);
+            ack(usbd->user, HAL_CMD(HAL_USBD, USBD_ALERT), alert, 0, 0);
         else
-            ipc_post_inline(usbd->user, USBD_ALERT, alert, 0, 0);
+            ipc_post_inline(usbd->user, HAL_CMD(HAL_USBD, USBD_ALERT), alert, 0, 0);
     }
 }
 
@@ -190,8 +196,8 @@ void usbd_fatal(USBD* usbd)
         usbd_inform(usbd, USBD_ALERT_RESET, true);
         usbd_class_reset(usbd);
     }
-    ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, 0), 0, 0);
-    ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), 0, 0);
+    ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_SET_STALL), 0, 0, 0);
+    ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_SET_STALL), USB_EP_IN | 0, 0, 0);
 }
 
 void usbd_fatal_stub(USBD* usbd)
@@ -274,7 +280,7 @@ static inline void usbd_open(USBD* usbd)
     usbd->speed = USB_LOW_SPEED;
     usbd->ep0_size = 0;
     usbd->configuration = 0;
-    fopen(usbd->usb, HAL_HANDLE(HAL_USB, USB_HANDLE_DEVICE), 0);
+    fopen(usbd->usb, HAL_USB, USB_HANDLE_DEVICE, 0);
 }
 
 static inline void usbd_close(USBD* usbd)
@@ -288,12 +294,12 @@ static inline void usbd_close(USBD* usbd)
         usbd_class_reset(usbd);
     if (usbd->ep0_size)
     {
-        fclose(usbd->usb, HAL_HANDLE(HAL_USB, 0));
-        fclose(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
+        fclose(usbd->usb, HAL_USB, 0);
+        fclose(usbd->usb, HAL_USB, USB_EP_IN | 0);
         usbd->ep0_size = 0;
     }
 
-    fclose(usbd->usb, HAL_HANDLE(HAL_USB, USB_HANDLE_DEVICE));
+    fclose(usbd->usb, HAL_USB, USB_HANDLE_DEVICE);
     block_destroy(usbd->block);
     usbd->block = INVALID_HANDLE;
 }
@@ -374,7 +380,7 @@ static inline void usbd_unregister_configuration(ARRAY** ar, int index)
         array_remove(ar, index);
 }
 
-static inline void usbd_unregister_string(USBD* usbd, unsigned short index, unsigned short lang)
+static inline void usbd_unregister_string(USBD* usbd, unsigned int index, unsigned int lang)
 {
     int i;
     for (i = 0; i < array_size(usbd->string_descriptors); ++i)
@@ -434,7 +440,7 @@ void usbd_register_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned in
         free(ptr);
 }
 
-static inline void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned short index, unsigned short lang)
+static inline void usbd_unregister_descriptor(USBD* usbd, USBD_DESCRIPTOR_TYPE type, unsigned int index, unsigned int lang)
 {
     switch (type)
     {
@@ -472,16 +478,16 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
         usbd->state = USBD_STATE_DEFAULT;
         if (usbd->ep0_size)
         {
-            fclose(usbd->usb, HAL_HANDLE(HAL_USB, 0));
-            fclose(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
+            fclose(usbd->usb, HAL_USB, 0);
+            fclose(usbd->usb, HAL_USB, USB_EP_IN | 0);
         }
 
         usbd->speed = speed;
         usbd->ep0_size = usbd->speed == USB_LOW_SPEED ? 8 : 64;
 
         unsigned int size = usbd->ep0_size;
-        fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, 0), USB_EP_CONTROL, (void*)size);
-        fopen_p(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), USB_EP_CONTROL, (void*)size);
+        fopen_p(usbd->usb, HAL_USB, 0, USB_EP_CONTROL, (void*)size);
+        fopen_p(usbd->usb, HAL_USB, USB_EP_IN | 0, USB_EP_CONTROL, (void*)size);
     }
     usbd->setup_state = USB_SETUP_STATE_REQUEST;
 }
@@ -496,8 +502,8 @@ static inline void usbd_suspend(USBD* usbd)
         usbd_class_suspend(usbd);
         if (usbd->ep0_size)
         {
-            fflush(usbd->usb, HAL_HANDLE(HAL_USB, 0));
-            fflush(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
+            fflush(usbd->usb, HAL_USB, 0);
+            fflush(usbd->usb, HAL_USB, USB_EP_IN | 0);
         }
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
     }
@@ -594,7 +600,7 @@ static inline int usbd_device_set_feature(USBD* usbd)
         printf("USB: device set feature TEST_MODE\n\r");
 #endif
         usbd->test_mode = usbd->setup.wIndex >> 16;
-        ack(usbd->usb, USB_SET_TEST_MODE, HAL_HANDLE(HAL_USB, 0), usbd->test_mode, 0);
+        ack(usbd->usb, HAL_CMD(HAL_USB, USB_SET_TEST_MODE), USB_HANDLE_DEVICE, usbd->test_mode, 0);
         res = 0;
         break;
 #endif //USB_2_0
@@ -627,7 +633,7 @@ static inline int usbd_set_address(USBD* usbd)
 #if (USBD_DEBUG_REQUESTS)
     printf("USB set ADDRESS %#X\n\r", usbd->setup.wValue);
 #endif
-    ack(usbd->usb, USB_SET_ADDRESS, HAL_HANDLE(HAL_USB, 0), usbd->setup.wValue, 0);
+    ack(usbd->usb, HAL_CMD(HAL_USB, USB_SET_ADDRESS), USB_HANDLE_DEVICE, usbd->setup.wValue, 0);
     switch (usbd->state)
     {
     case USBD_STATE_DEFAULT:
@@ -781,7 +787,7 @@ static inline int usbd_endpoint_get_status(USBD* usbd)
     printf("USB: get endpoint status\n\r");
 #endif
     uint16_t status = 0;
-    if (get(usbd->usb, USB_EP_IS_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex & 0xffff), 0, 0))
+    if (get(usbd->usb, HAL_CMD(HAL_USB, USB_EP_IS_STALL), usbd->setup.wIndex, 0, 0))
         status |= 1 << 0;
     return safecpy_write(usbd, &status, sizeof(uint16_t));
 }
@@ -795,7 +801,7 @@ static inline int usbd_endpoint_set_feature(USBD* usbd)
     switch (usbd->setup.wValue)
     {
     case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex & 0xffff), 0, 0);
+        ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_SET_STALL), usbd->setup.wIndex, 0, 0);
         res = 0;
         break;
     default:
@@ -813,7 +819,7 @@ static inline int usbd_endpoint_clear_feature(USBD* usbd)
     switch (usbd->setup.wValue)
     {
     case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, USB_EP_CLEAR_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex & 0xffff), 0, 0);
+        ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_CLEAR_STALL), usbd->setup.wIndex, 0, 0);
         res = 0;
         break;
     default:
@@ -863,7 +869,7 @@ static void usbd_setup_response(USBD* usbd, int res)
         {
             //data already received, sending status
             usbd->setup_state = USB_SETUP_STATE_STATUS_IN;
-            fwrite_async(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), INVALID_HANDLE, 0);
+            fwrite_async(usbd->usb, HAL_USB, USB_EP_IN | 0, INVALID_HANDLE, 0);
         }
         else
         {
@@ -873,32 +879,32 @@ static void usbd_setup_response(USBD* usbd, int res)
                 if (res)
                 {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN_ZLP;
-                    fwrite_async(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), usbd->block, res);
+                    fwrite_async(usbd->usb, HAL_USB, USB_EP_IN | 0, usbd->block, res);
                 }
                 //if no data at all, but request success, we will send ZLP right now
                 else
                 {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-                    fwrite_async(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), INVALID_HANDLE, 0);
+                    fwrite_async(usbd->usb, HAL_USB, USB_EP_IN | 0, INVALID_HANDLE, 0);
                 }
             }
             else if (res)
             {
                 usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-                fwrite_async(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), usbd->block, res);
+                fwrite_async(usbd->usb, HAL_USB, USB_EP_IN | 0, usbd->block, res);
             }
             //data stage is optional
             else
             {
                 usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
-                fread_async(usbd->usb, HAL_HANDLE(HAL_USB, 0), INVALID_HANDLE, 0);
+                fread_async(usbd->usb, HAL_USB, 0, INVALID_HANDLE, 0);
             }
         }
     }
     else
     {
         if ((usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT) == BM_REQUEST_RECIPIENT_ENDPOINT)
-            ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex), 0, 0);
+            ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_SET_STALL), usbd->setup.wIndex, 0, 0);
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
 #if (USBD_DEBUG_ERRORS)
         printf("Unhandled ");
@@ -938,7 +944,7 @@ void usbd_setup_process(USBD* usbd)
         {
             usbd->setup_state = USB_SETUP_STATE_VENDOR_REQUEST;
             block_send(usbd->block, usbd->user);
-            ipc_post_inline(usbd->user, USBD_VENDOR_REQUEST, ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
+            ipc_post_inline(usbd->user, HAL_CMD(HAL_USBD, USBD_VENDOR_REQUEST), ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
             return;
         }
 #endif
@@ -967,11 +973,11 @@ static inline void usbd_setup_received(USBD* usbd)
         case USB_SETUP_STATE_DATA_IN:
         case USB_SETUP_STATE_DATA_IN_ZLP:
         case USB_SETUP_STATE_STATUS_IN:
-            fflush(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0));
+            fflush(usbd->usb, HAL_USB, USB_EP_IN | 0);
             break;
         case USB_SETUP_STATE_DATA_OUT:
         case USB_SETUP_STATE_STATUS_OUT:
-            fflush(usbd->usb, HAL_HANDLE(HAL_USB, 0));
+            fflush(usbd->usb, HAL_USB, 0);
             break;
         default:
             break;
@@ -986,7 +992,7 @@ static inline void usbd_setup_received(USBD* usbd)
         if (usbd->setup.wLength)
         {
             usbd->setup_state = USB_SETUP_STATE_DATA_OUT;
-            fread_async(usbd->usb, HAL_HANDLE(HAL_USB, 0), usbd->block, usbd->setup.wLength);
+            fread_async(usbd->usb, HAL_USB, 0, usbd->block, usbd->setup.wLength);
         }
         //data stage is optional
         else
@@ -1022,11 +1028,11 @@ void usbd_write_complete(USBD* usbd)
     case USB_SETUP_STATE_DATA_IN_ZLP:
         //TX ZLP and switch to normal state
         usbd->setup_state = USB_SETUP_STATE_DATA_IN;
-        fwrite_async(usbd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), INVALID_HANDLE, 0);
+        fwrite_async(usbd->usb, HAL_USB, USB_EP_IN | 0, INVALID_HANDLE, 0);
         break;
     case USB_SETUP_STATE_DATA_IN:
         usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
-        fread_async(usbd->usb, HAL_HANDLE(HAL_USB, 0), INVALID_HANDLE, 0);
+        fread_async(usbd->usb, HAL_USB, 0, INVALID_HANDLE, 0);
         break;
     case USB_SETUP_STATE_STATUS_IN:
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
@@ -1094,17 +1100,17 @@ static inline void usbd_vendor_response(USBD* usbd, int res)
 }
 #endif //USBD_VSR
 
-bool usbd_device_request(USBD* usbd, IPC* ipc)
+static inline bool usbd_device_request(USBD* usbd, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case USBD_REGISTER_DESCRIPTOR:
-        usbd_register_descriptor(usbd, ipc->param2, ipc->param3, ipc->process);
+        usbd_register_descriptor(usbd, ipc->param1, ipc->param2, ipc->process);
         need_post = true;
         break;
     case USBD_UNREGISTER_DESCRIPTOR:
-        usbd_unregister_descriptor(usbd, ipc->param2, ipc->param2 >> 16, ipc->param3 & 0xffff);
+        usbd_unregister_descriptor(usbd, ipc->param1, ipc->param2, ipc->param3);
         need_post = true;
         break;
     case USBD_REGISTER_HANDLER:
@@ -1119,6 +1125,30 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
         ipc->param2 = usbd->state;
         need_post = true;
         break;
+    case USBD_VENDOR_REQUEST:
+        usbd_vendor_response(usbd, ipc->param1);
+        break;
+    case IPC_OPEN:
+        usbd_open(usbd);
+        need_post = true;
+        break;
+    case IPC_CLOSE:
+        usbd_close(usbd);
+        need_post = true;
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
+        break;
+    }
+    return need_post;
+}
+
+static inline bool usbd_driver_event(USBD* usbd, IPC* ipc)
+{
+    bool need_post = false;
+    switch (HAL_ITEM(ipc->cmd))
+    {
     case USB_RESET:
         usbd_reset(usbd, ipc->param2);
         //called from ISR, no response
@@ -1135,19 +1165,6 @@ bool usbd_device_request(USBD* usbd, IPC* ipc)
         ((uint32_t*)(&usbd->setup))[0] = ipc->param2;
         ((uint32_t*)(&usbd->setup))[1] = ipc->param3;
         usbd_setup_received(usbd);
-        break;
-#if (USBD_VSR)
-    case USBD_VENDOR_REQUEST:
-        usbd_vendor_response(usbd, ipc->param2);
-        break;
-#endif //USBD_VSR
-    case IPC_OPEN:
-        usbd_open(usbd);
-        need_post = true;
-        break;
-    case IPC_CLOSE:
-        usbd_close(usbd);
-        need_post = true;
         break;
     case IPC_READ:
         usbd_read_complete(usbd);
@@ -1200,32 +1217,28 @@ void usbd()
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
         error(ERROR_OK);
         need_post = false;
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
+        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             need_post = true;
-            break;
-        default:
-            switch (HAL_GROUP(ipc.param1))
+        else
+            switch (HAL_GROUP(ipc.cmd))
             {
-            case HAL_USBD:
-                if (HAL_ITEM(ipc.param1) == USBD_HANDLE_DEVICE)
-                    need_post = usbd_device_request(&usbd, &ipc);
-                else
-                    need_post = usbd_class_interface_request(&usbd, &ipc, HAL_USBD_INTERFACE_NUM(ipc.param1));
-                break;
             case HAL_USB:
-                if (USB_EP_NUM(HAL_ITEM(ipc.param1)))
-                    usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(HAL_ITEM(ipc.param1)));
+                if (USB_EP_NUM(ipc.param1) == 0 || ipc.param1 == USB_HANDLE_DEVICE)
+                    usbd_driver_event(&usbd, &ipc);
+                //decode endpoint interface
                 else
-                    need_post = usbd_device_request(&usbd, &ipc);
+                    usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(ipc.param1));
+                 break;
+            case HAL_USBD:
+                need_post = usbd_device_request(&usbd, &ipc);
+                break;
+            case HAL_USBD_IFACE:
+                need_post = usbd_class_interface_request(&usbd, &ipc, USBD_IFACE_NUM(ipc.param1));
                 break;
             default:
                 error(ERROR_NOT_SUPPORTED);
                 need_post = true;
-                break;
             }
-        }
         if (need_post)
             ipc_post_or_error(&ipc);
     }
@@ -1281,9 +1294,9 @@ void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned i
     if (usbd->user == INVALID_HANDLE)
         return;
     IPC ipc;
-    ipc.cmd = cmd;
+    ipc.cmd = HAL_CMD(HAL_USBD_IFACE, cmd);
     ipc.process = usbd->user;
-    ipc.param1 = HAL_USBD_INTERFACE(iface, num);
+    ipc.param1 = USBD_IFACE(iface, num);
     ipc.param2 = param2;
     ipc.param3 = param3;
     ipc_post(&ipc);
