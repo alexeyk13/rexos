@@ -78,12 +78,12 @@ static void hidd_kbd_send_report(HIDD_KBD* hidd)
     if (hidd->boot_protocol)
     {
         memcpy(report + 2, &hidd->kbd.keys, 6);
-        fwrite_async(hidd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | hidd->in_ep), hidd->block, 8);
+        fwrite_async(hidd->usb, HAL_USB, USB_EP_IN | hidd->in_ep, hidd->block, 8);
     }
     else
     {
         memcpy(report + 2, &hidd->kbd.leds, sizeof(BOOT_KEYBOARD) - 2);
-        fwrite_async(hidd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | hidd->in_ep), hidd->block, sizeof(BOOT_KEYBOARD));
+        fwrite_async(hidd->usb, HAL_USB, USB_EP_IN | hidd->in_ep, hidd->block, sizeof(BOOT_KEYBOARD));
     }
 }
 
@@ -140,7 +140,7 @@ void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cf
 #endif //USBD_HID_DEBUG_REQUESTS
 
     size = in_ep_size;
-    fopen_p(hidd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | hidd->in_ep), USB_EP_INTERRUPT, (void*)size);
+    fopen_p(hidd->usb, HAL_USB, USB_EP_IN | hidd->in_ep, USB_EP_INTERRUPT, (void*)size);
     usbd_register_interface(usbd, hidd->iface, &__HIDD_KBD_CLASS, hidd);
     usbd_register_endpoint(usbd, hidd->iface, hidd->in_ep);
 
@@ -150,7 +150,7 @@ void hidd_kbd_class_reset(USBD* usbd, void* param)
 {
     HIDD_KBD* hidd = (HIDD_KBD*)param;
 
-    fclose(hidd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | hidd->in_ep));
+    fclose(hidd->usb, HAL_USB, USB_EP_IN | hidd->in_ep);
     usbd_unregister_endpoint(usbd, hidd->iface, hidd->in_ep);
     usbd_unregister_interface(usbd, hidd->iface, &__HIDD_KBD_CLASS);
 
@@ -160,7 +160,7 @@ void hidd_kbd_class_reset(USBD* usbd, void* param)
 void hidd_kbd_class_suspend(USBD* usbd, void* param)
 {
     HIDD_KBD* hidd = (HIDD_KBD*)param;
-    fflush(hidd->usb, HAL_HANDLE(HAL_USB, USB_EP_IN | hidd->in_ep));
+    fflush(hidd->usb, HAL_USB, USB_EP_IN | hidd->in_ep);
     hidd->state = USB_HID_KBD_IDLE;
     hidd->suspended = true;
 }
@@ -397,29 +397,47 @@ static inline void hidd_kbd_get_leds_state(HIDD_KBD* hidd, IPC* ipc)
     ipc->param2 = hidd->kbd.leds;
 }
 
-bool hidd_kbd_class_request(USBD* usbd, void* param, IPC* ipc)
+static inline bool hidd_kbd_driver_event(USBD* usbd, HIDD_KBD* hidd, IPC* ipc)
 {
-    HIDD_KBD* hidd = (HIDD_KBD*)param;
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_WRITE:
         hidd_kbd_write_complete(usbd, hidd);
         break;
-    case USB_HID_KBD_MODIFIER_CHANGE:
-        hidd_kbd_modifier_change(usbd, hidd, ipc->param2);
-        break;
-    case USB_HID_KBD_KEY_PRESS:
-        hidd_kbd_key_press(usbd, hidd, ipc->param2);
-        break;
-    case USB_HID_KBD_KEY_RELEASE:
-        hidd_kbd_key_release(usbd, hidd, ipc->param2);
-        break;
-    case USB_HID_KBD_GET_LEDS_STATE:
-        hidd_kbd_get_leds_state(hidd, ipc);
+    default:
+        error(ERROR_NOT_SUPPORTED);
         need_post = true;
-        break;
     }
+    return need_post;
+}
+
+bool hidd_kbd_class_request(USBD* usbd, void* param, IPC* ipc)
+{
+    HIDD_KBD* hidd = (HIDD_KBD*)param;
+    bool need_post = false;
+    if (HAL_GROUP(ipc->cmd) == HAL_USB)
+        need_post = hidd_kbd_driver_event(usbd, hidd, ipc);
+    else
+        switch (HAL_ITEM(ipc->cmd))
+        {
+        case USB_HID_KBD_MODIFIER_CHANGE:
+            hidd_kbd_modifier_change(usbd, hidd, ipc->param2);
+            break;
+        case USB_HID_KBD_KEY_PRESS:
+            hidd_kbd_key_press(usbd, hidd, ipc->param2);
+            break;
+        case USB_HID_KBD_KEY_RELEASE:
+            hidd_kbd_key_release(usbd, hidd, ipc->param2);
+            break;
+        case USB_HID_KBD_GET_LEDS_STATE:
+            hidd_kbd_get_leds_state(hidd, ipc);
+            need_post = true;
+            break;
+        default:
+            error(ERROR_NOT_SUPPORTED);
+            need_post = true;
+        }
     return need_post;
 }
 

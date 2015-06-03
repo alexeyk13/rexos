@@ -46,7 +46,7 @@ static inline void* cdcd_notify_open(USBD* usbd, CDCD* cdcd)
     //host is not issued IN for interrupt yet, flush last
     if (res == NULL)
     {
-        fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->control_ep));
+        fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->control_ep);
         res = block_open(cdcd->notify);
     }
     return res;
@@ -65,7 +65,7 @@ void cdcd_notify_serial_state(USBD* usbd, CDCD* cdcd, unsigned int state)
         setup->wLength = 2;
         uint16_t* serial_state = (uint16_t*)(notify + sizeof(SETUP));
         *serial_state = state;
-        fwrite_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->control_ep), cdcd->notify, sizeof(SETUP) + 2);
+        fwrite_async(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->control_ep, cdcd->notify, sizeof(SETUP) + 2);
     }
 }
 
@@ -151,7 +151,7 @@ void cdcd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     cdcd->tx_size = 0;
     cdcd->tx_idle = true;
     size = cdcd->data_ep_size;
-    fopen_p(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->data_ep), USB_EP_BULK, (void*)size);
+    fopen_p(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep, USB_EP_BULK, (void*)size);
     stream_listen(cdcd->tx_stream, USBD_IFACE(cdcd->data_iface, 0), HAL_USBD_IFACE);
 #endif
 
@@ -166,8 +166,8 @@ void cdcd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     }
     cdcd->rx_free = 0;
     size = cdcd->data_ep_size;
-    fopen_p(usbd_usb(usbd), HAL_HANDLE(HAL_USB, cdcd->data_ep), USB_EP_BULK, (void*)size);
-    fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, cdcd->data_ep), cdcd->rx, 1);
+    fopen_p(usbd_usb(usbd), HAL_USB, cdcd->data_ep, USB_EP_BULK, (void*)size);
+    fread_async(usbd_usb(usbd), HAL_USB, cdcd->data_ep, cdcd->rx, 1);
 #endif
 
     if (control_ep)
@@ -179,7 +179,7 @@ void cdcd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
             return;
         }
         size = cdcd->control_ep_size;
-        fopen_p(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->control_ep), USB_EP_INTERRUPT, (void*)size);
+        fopen_p(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->control_ep, USB_EP_INTERRUPT, (void*)size);
         cdcd_notify_serial_state(usbd, cdcd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
         usbd_register_interface(usbd, cdcd->control_iface, &__CDCD_CLASS, cdcd);
         usbd_register_endpoint(usbd, cdcd->control_iface, cdcd->control_ep);
@@ -201,21 +201,21 @@ void cdcd_class_reset(USBD* usbd, void* param)
 #if (USBD_CDC_TX_STREAM_SIZE)
     stream_stop_listen(cdcd->tx_stream);
     stream_flush(cdcd->tx_stream);
-    fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->data_ep));
-    fclose(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->data_ep));
+    fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep);
+    fclose(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep);
 #endif
 #if (USBD_CDC_RX_STREAM_SIZE)
     stream_flush(cdcd->rx_stream);
-    fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, cdcd->data_ep));
-    fclose(usbd_usb(usbd), HAL_HANDLE(HAL_USB, cdcd->data_ep));
+    fflush(usbd_usb(usbd), HAL_USB, cdcd->data_ep);
+    fclose(usbd_usb(usbd), HAL_USB, cdcd->data_ep);
 #endif
 
     usbd_unregister_endpoint(usbd, cdcd->data_iface, cdcd->data_ep);
     usbd_unregister_interface(usbd, cdcd->data_iface, &__CDCD_CLASS);
     if (cdcd->control_ep)
     {
-        fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->control_ep));
-        fclose(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->control_ep));
+        fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->control_ep);
+        fclose(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->control_ep);
         usbd_unregister_endpoint(usbd, cdcd->control_iface, cdcd->control_ep);
         usbd_unregister_interface(usbd, cdcd->control_iface, &__CDCD_CLASS);
     }
@@ -228,18 +228,18 @@ void cdcd_class_suspend(USBD* usbd, void* param)
 #if (USBD_CDC_TX_STREAM_SIZE)
     stream_stop_listen(cdcd->tx_stream);
     stream_flush(cdcd->tx_stream);
-    fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->data_ep));
+    fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep);
     cdcd->tx_idle = true;
     cdcd->tx_size = 0;
 #endif
 #if (USBD_CDC_RX_STREAM_SIZE)
     stream_flush(cdcd->rx_stream);
-    fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, cdcd->data_ep));
+    fflush(usbd_usb(usbd), HAL_USB, cdcd->data_ep);
     cdcd->rx_free = 0;
 #endif
 
     if (cdcd->control_ep)
-        fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->data_ep));
+        fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep);
     cdcd->suspended = true;
 }
 
@@ -277,7 +277,7 @@ static inline void cdcd_read_complete(USBD* usbd, CDCD* cdcd, unsigned int size)
 #endif //USBD_CDC_DEBUG_IO
     if (ptr && to_read && stream_write(cdcd->rx_stream_handle, ptr, to_read))
         cdcd->rx_free -= to_read;
-    fread_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, cdcd->data_ep), cdcd->rx, 1);
+    fread_async(usbd_usb(usbd), HAL_USB, cdcd->data_ep, cdcd->rx, 1);
 
     if (to_read < size)
         cdcd_notify_serial_state(usbd, cdcd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_OVERRUN);
@@ -303,7 +303,7 @@ void cdcd_write(USBD* usbd, CDCD* cdcd)
         if (ptr && stream_read(cdcd->tx_stream_handle, ptr, to_write))
         {
             cdcd->tx_idle = false;
-            fwrite_async(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->data_ep), cdcd->tx, to_write);
+            fwrite_async(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep, cdcd->tx, to_write);
         }
         //just in case of driver failure
         else
@@ -391,7 +391,7 @@ static inline int set_control_line_state(USBD* usbd, CDCD* cdcd, SETUP* setup)
     //flush if not
     else if (!cdcd->tx_idle)
     {
-        fflush(usbd_usb(usbd), HAL_HANDLE(HAL_USB, USB_EP_IN | cdcd->data_ep));
+        fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep);
         cdcd->tx_idle = true;
     }
     return 0;
@@ -416,46 +416,58 @@ int cdcd_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
     return res;
 }
 
-
-
-bool cdcd_class_request(USBD* usbd, void* param, IPC* ipc)
+static inline bool cdcd_driver_event(USBD* usbd, CDCD* cdcd, IPC* ipc)
 {
-    CDCD* cdcd = (CDCD*)param;
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
         cdcd_read_complete(usbd, cdcd, ipc->param3);
         break;
     case IPC_WRITE:
         //ignore notify complete
-        if (ipc->param1 == HAL_HANDLE(HAL_USB, (cdcd->data_ep | USB_EP_IN)))
+        if (ipc->param1 == (cdcd->data_ep | USB_EP_IN))
         {
             cdcd->tx_idle = true;
             cdcd_write(usbd, cdcd);
         }
         break;
-    case IPC_STREAM_WRITE:
-        cdcd->tx_size = ipc->param3;
-        cdcd_write(usbd, cdcd);
-        break;
-    case IPC_GET_TX_STREAM:
-        ipc->param2 = cdcd->tx_stream;
-        need_post = true;
-        break;
-    case IPC_GET_RX_STREAM:
-        ipc->param2 = cdcd->rx_stream;
-        need_post = true;
-        break;
-    case USB_CDC_SEND_BREAK:
-        cdcd_notify_serial_state(usbd, cdcd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_BREAK);
-        need_post = true;
-        break;
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;
-        break;
     }
+    return need_post;
+}
+
+bool cdcd_class_request(USBD* usbd, void* param, IPC* ipc)
+{
+    CDCD* cdcd = (CDCD*)param;
+    bool need_post = false;
+    if (HAL_GROUP(ipc->cmd) == HAL_USB)
+        need_post = cdcd_driver_event(usbd, cdcd, ipc);
+    else
+        switch (HAL_ITEM(ipc->cmd))
+        {
+        case IPC_STREAM_WRITE:
+            cdcd->tx_size = ipc->param3;
+            cdcd_write(usbd, cdcd);
+            break;
+        case IPC_GET_TX_STREAM:
+            ipc->param2 = cdcd->tx_stream;
+            need_post = true;
+            break;
+        case IPC_GET_RX_STREAM:
+            ipc->param2 = cdcd->rx_stream;
+            need_post = true;
+            break;
+        case USB_CDC_SEND_BREAK:
+            cdcd_notify_serial_state(usbd, cdcd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_BREAK);
+            need_post = true;
+            break;
+        default:
+            error(ERROR_NOT_SUPPORTED);
+            need_post = true;
+        }
     return need_post;
 }
 
