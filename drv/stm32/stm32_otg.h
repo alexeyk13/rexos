@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef STM32_USBL_H
-#define STM32_USBL_H
+#ifndef STM32_OTG_H
+#define STM32_OTG_H
 
 #include "../../userspace/process.h"
 #include "../../userspace/ipc.h"
@@ -27,7 +27,6 @@ typedef struct {
   HANDLE device;
   EP* out[USB_EP_COUNT_MAX];
   EP* in[USB_EP_COUNT_MAX];
-  uint8_t addr;
 } USB_DRV;
 
 #if (MONOLITH_USB)
@@ -45,7 +44,7 @@ void stm32_usb_init(SHARED_USB_DRV* drv);
 bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc);
 
 #if !(MONOLITH_USB)
-extern const REX __STM32_USBL;
+extern const REX __STM32_OTG;
 #endif
 
-#endif // STM32_USBL_H
+#endif // STM32_OTG_H

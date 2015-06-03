@@ -17,9 +17,9 @@
 #include "stm32_adc.h"
 #include "stm32_eep.h"
 #ifdef STM32L0
-#include "stm32_usbl.h"
-#else
 #include "stm32_usb.h"
+#else
+#include "stm32_otg.h"
 #endif
 
 typedef struct _CORE {

@@ -18,9 +18,9 @@
 #include "stm32_eep.h"
 #if (MONOLITH_USB)
 #ifdef STM32L0
-#include "stm32_usbl.h"
-#else
 #include "stm32_usb.h"
+#else
+#include "stm32_otg.h"
 #endif
 #endif
 

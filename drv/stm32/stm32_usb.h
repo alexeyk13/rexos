@@ -27,6 +27,7 @@ typedef struct {
   HANDLE device;
   EP* out[USB_EP_COUNT_MAX];
   EP* in[USB_EP_COUNT_MAX];
+  uint8_t addr;
 } USB_DRV;
 
 #if (MONOLITH_USB)
@@ -47,4 +48,4 @@ bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc);
 extern const REX __STM32_USB;
 #endif
 
-#endif // STM32_OTG_H
+#endif // STM32_USB_H
