@@ -14,8 +14,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Very thin kernel. 
 - Independent library level, accessible both from kernel and userspace
 - Independent system and drivers in userspace
-- Exokernel syncronization: ipc, stream, direct IO, block
-- Standart microkernel syncronization: mutexes, events, semaphores. Nested mutex priority inheritance.
+- Syncronization: ipc, stream, direct IO, block
 - Soft timers
 - Embedded dynamic memory manager, for every process
 - Safe and MPU ready. All supervisor-specific calls are wrapped around 
@@ -77,6 +76,11 @@ ARM7 features:
 
 History
 =======
+0.2.9
+- HAL is now part of cmd in IPC
+- new HAL item: USBD_IFACE. USBD class interface updated
+- removed obsolete mutex, event, semaphore from project code
+
 0.2.8
 - LPC UART, timer HAL interface
 - STM32 L0 EEPROM driver
