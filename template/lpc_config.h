@@ -14,7 +14,6 @@
 
 //UART driver is monolith. Enable for size, disable for perfomance
 #define MONOLITH_UART                       1
-#define MONOLITH_I2C                        1
 #define MONOLITH_USB                        1
 //------------------------------------- power ---------------------------------------------
 #define HSE_VALUE                           12000000
@@ -60,6 +59,7 @@
 //Control pullap of DP line through SCONNECT pin
 #define USB_SOFT_CONNECT                    1
 //-------------------------------------- I2C ----------------------------------------------
+#define LPC_I2C_DRIVER                      1
 #define LPC_I2C_PROCESS_SIZE                480
 
 //in some application slave devices may hang bus for infinite time.

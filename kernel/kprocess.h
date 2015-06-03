@@ -24,10 +24,6 @@ typedef struct _PROCESS {
     unsigned base_priority;                                            //base priority
     KTIMER timer;                                                      //timer for process sleep and sync objects timeouts
     void* sync_object;                                                 //sync object we are waiting for
-#if (KERNEL_MES)
-    unsigned current_priority;                                         //priority, adjusted by mutex
-    DLIST* owned_mutexes;                                              //owned mutexes list for nested mutex priority inheritance
-#endif //KERNEL_MES
 #if (KERNEL_PROCESS_STAT)
     TIME uptime;
     TIME uptime_start;

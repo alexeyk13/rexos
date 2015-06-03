@@ -14,11 +14,6 @@
 #include "kdirect.h"
 #include "kblock.h"
 #include "kobject.h"
-#if (KERNEL_MES)
-#include "kmutex.h"
-#include "kevent.h"
-#include "ksem.h"
-#endif //KERNEL_MES
 
 #include "../userspace/error.h"
 #include "../lib/lib_lib.h"
@@ -219,56 +214,6 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         //do nothing
         break;
 #endif //KERNEL_PROFILING
-#if (KERNEL_MES)
-    //mutex related
-    case SVC_MUTEX_CREATE:
-        kmutex_create((MUTEX**)param1);
-        break;
-    case SVC_MUTEX_LOCK:
-        kmutex_lock((MUTEX*)param1, (TIME*)param2);
-        break;
-    case SVC_MUTEX_UNLOCK:
-        kmutex_unlock((MUTEX*)param1);
-        break;
-    case SVC_MUTEX_DESTROY:
-        kmutex_destroy((MUTEX*)param1);
-        break;
-    //event related
-    case SVC_EVENT_CREATE:
-        kevent_create((EVENT**)param1);
-        break;
-    case SVC_EVENT_PULSE:
-        kevent_pulse((EVENT*)param1);
-        break;
-    case SVC_EVENT_SET:
-        kevent_set((EVENT*)param1);
-        break;
-    case SVC_EVENT_IS_SET:
-        kevent_is_set((EVENT*)param1, (bool*)param2);
-        break;
-    case SVC_EVENT_CLEAR:
-        kevent_clear((EVENT*)param1);
-        break;
-    case SVC_EVENT_WAIT:
-        kevent_wait((EVENT*)param1, (TIME*)param2);
-        break;
-    case SVC_EVENT_DESTROY:
-        kevent_destroy((EVENT*)param1);
-        break;
-    //semaphore related
-    case SVC_SEM_CREATE:
-        ksem_create((SEM**)param1);
-        break;
-    case SVC_SEM_SIGNAL:
-        ksem_signal((SEM*)param1);
-        break;
-    case SVC_SEM_WAIT:
-        ksem_wait((SEM*)param1, (TIME*)param2);
-        break;
-    case SVC_SEM_DESTROY:
-        ksem_destroy((SEM*)param1);
-        break;
-#endif //KERNEL_MES
     default:
         kprocess_error_current(ERROR_INVALID_SVC);
     }

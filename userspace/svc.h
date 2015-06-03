@@ -79,28 +79,7 @@ typedef enum {
 
     SVC_SETUP_DBG,
     SVC_PRINTD,
-    SVC_TEST,
-
-#if (KERNEL_MES)
-    SVC_MUTEX_CREATE,
-    SVC_MUTEX_LOCK,
-    SVC_MUTEX_UNLOCK,
-    SVC_MUTEX_DESTROY,
-
-    SVC_EVENT_CREATE,
-    SVC_EVENT_PULSE,
-    SVC_EVENT_SET,
-    SVC_EVENT_IS_SET,
-    SVC_EVENT_CLEAR,
-    SVC_EVENT_WAIT,
-    SVC_EVENT_DESTROY,
-
-    SVC_SEM_CREATE,
-    SVC_SEM_WAIT,
-    SVC_SEM_SIGNAL,
-    SVC_SEM_DESTROY
-#endif //KERNEL_MES
-
+    SVC_TEST
 }SVC;
 
 // will be aligned to pass MPU requirements

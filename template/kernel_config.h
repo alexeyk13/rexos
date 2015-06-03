@@ -25,8 +25,6 @@
 #define KERNEL_IPC_DEBUG                            1
 //maximum number of global handles. Must be at least 1
 #define KERNEL_OBJECTS_COUNT                        6
-//mutex, event, semaphore are now deprecated. Use stream, direct, block instead
-#define KERNEL_MES                                  0
 //soft timers if sleep or ipc_read with timeout is not enough
 #define KERNEL_SOFT_TIMERS                          1
 //gpio bitbang library. Implementation specific
