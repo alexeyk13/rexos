@@ -79,6 +79,8 @@ typedef enum {
     RESET_REASON_UNKNOWN
 } RESET_REASON;
 
+#define PLL_LOCK_TIMEOUT                            10000
+
 //------------------------------------------------- UART ---------------------------------------------------------------------
 
 typedef enum {

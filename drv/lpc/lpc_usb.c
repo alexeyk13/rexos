@@ -341,7 +341,33 @@ void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
 #endif
 
     //enable clock, power up
-    ack_power(drv, HAL_CMD(HAL_POWER, LPC_POWER_USB_ON), 0, 0, 0);
+    //power on. USBPLL must be turned on even in case of SYS PLL used. Why?
+    LPC_SYSCON->PDRUNCFG &= ~(SYSCON_PDRUNCFG_USBPLL_PD | SYSCON_PDRUNCFG_USBPAD_PD);
+#if (USB_DEDICATED_PLL)
+
+    int i;
+    //enable and lock PLL
+    LPC_SYSCON->USBPLLCTRL = ((USBPLL_M - 1) << SYSCON_USBPLLCTRL_MSEL_POS) | ((32 - __builtin_clz(USBPLL_P)) << SYSCON_USBPLLCTRL_PSEL_POS);
+    LPC_SYSCON->USBPLLCLKSEL = SYSCON_USBPLLCLKSEL_SYSOSC;
+
+    LPC_SYSCON->USBPLLCLKUEN = 0;
+    LPC_SYSCON->USBPLLCLKUEN = SYSCON_SYSPLLCLKUEN_ENA;
+    //wait for PLL lock
+    for (i = 0; i < PLL_LOCK_TIMEOUT; ++i)
+    {
+        if (LPC_SYSCON->USBPLLSTAT & SYSCON_USBPLLSTAT_LOCK)
+            break;
+    }
+
+    LPC_SYSCON->USBCLKSEL = SYSCON_USBCLKSEL_PLL;
+#else
+    LPC_SYSCON->USBCLKSEL = SYSCON_USBCLKSEL_MAIN;
+#endif
+    //switch to clock source
+    LPC_SYSCON->USBCLKUEN = 0;
+    LPC_SYSCON->USBCLKUEN = SYSCON_USBCLKUEN_ENA;
+    //turn clock on
+    LPC_SYSCON->SYSAHBCLKCTRL |= (1 << SYSCON_SYSAHBCLKCTRL_USB_POS) | (1 << SYSCON_SYSAHBCLKCTRL_USBRAM_POS);
 
     //clear any spurious pending interrupts
     LPC_USB->DEVCMDSTAT = USB_DEVCMDSTAT_DCON_C | USB_DEVCMDSTAT_DSUS_C | USB_DEVCMDSTAT_DRES_C | USB_DEVCMDSTAT_SETUP;
@@ -454,7 +480,13 @@ static inline void lpc_usb_close_device(SHARED_USB_DRV* drv)
     LPC_USB->DEVCMDSTAT &= ~USB_DEVCMDSTAT_DEV_EN;
 
     //power down
-    ack_power(drv, HAL_CMD(HAL_POWER, LPC_POWER_USB_OFF), 0, 0, 0);
+    //turn clock off
+    LPC_SYSCON->SYSAHBCLKCTRL &= ~((1 << SYSCON_SYSAHBCLKCTRL_USB_POS) | (1 << SYSCON_SYSAHBCLKCTRL_USBRAM_POS));
+    //power down
+    LPC_SYSCON->PDRUNCFG |= SYSCON_PDRUNCFG_USBPAD_PD;
+#if (USB_DEDICATED_PLL)
+    LPC_SYSCON->PDRUNCFG |= SYSCON_PDRUNCFG_USBPLL_PD;
+#endif
 
     //disable pins
     ack_gpio(drv, HAL_CMD(HAL_GPIO, LPC_GPIO_DISABLE_PIN), VBUS, 0, 0);
