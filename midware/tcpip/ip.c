@@ -27,7 +27,7 @@
 #define IP_HEADER_DST_IP(buf)                   ((IP*)((buf) + 16))
 
 
-#if (SYS_INFO) || (TCPIP_DEBUG)
+#if (TCPIP_DEBUG)
 void ip_print(const IP* ip)
 {
     int i;
@@ -38,7 +38,7 @@ void ip_print(const IP* ip)
             printf(".");
     }
 }
-#endif //(SYS_INFO) || (TCPIP_DEBUG)
+#endif // (TCPIP_DEBUG)
 
 const IP* tcpip_ip(TCPIP* tcpip)
 {
@@ -51,16 +51,6 @@ void ip_init(TCPIP* tcpip)
     tcpip->ip.id = 0;
 }
 
-#if (SYS_INFO)
-static inline void ip_info(TCPIP* tcpip)
-{
-    printf("IP info\n\r");
-    printf("IP: ");
-    ip_print(&tcpip->ip.ip);
-    printf("\n\r");
-}
-#endif
-
 static inline void ip_set_request(TCPIP* tcpip, uint32_t ip)
 {
     tcpip->ip.ip.u32.ip = ip;
@@ -68,20 +58,14 @@ static inline void ip_set_request(TCPIP* tcpip, uint32_t ip)
 
 static inline void ip_get_request(TCPIP* tcpip, HANDLE process)
 {
-    ipc_post_inline(process, IP_GET, 0, tcpip->ip.ip.u32.ip, 0);
+    ipc_post_inline(process, HAL_CMD(HAL_IP, IP_GET), 0, tcpip->ip.ip.u32.ip, 0);
 }
 
 bool ip_request(TCPIP* tcpip, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        ip_info(tcpip);
-        need_post = true;
-        break;
-#endif
     case IP_SET:
         ip_set_request(tcpip, ipc->param1);
         need_post = true;

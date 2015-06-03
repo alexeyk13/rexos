@@ -264,42 +264,11 @@ void arp_timer(TCPIP* tcpip, unsigned int seconds)
         arp_remove(tcpip, 0);
 }
 
-#if (SYS_INFO)
-static inline void arp_info(TCPIP* tcpip)
-{
-    int i;
-    printf("TCPIP ARP info\n\r");
-    if (array_size(tcpip->arp.cache))
-    {
-        printf("    IP           MAC            ttl\n\r");
-        printf("---------------------------------------\n\r");
-        for (i = 0; i < array_size(tcpip->arp.cache); ++i)
-        {
-            ip_print(&ARP_CACHE_ITEM(tcpip, i)->ip);
-            printf("  ");
-            mac_print(&ARP_CACHE_ITEM(tcpip, i)->mac);
-            if (ARP_CACHE_ITEM(tcpip, i)->ttl)
-                printf("  %d\n\r", ARP_CACHE_ITEM(tcpip, i)->ttl - tcpip_seconds(tcpip));
-            else
-                printf("  STATIC\n\r");
-        }
-    }
-    else
-        printf("No active routes found\n\r");
-}
-#endif
-
 bool arp_request(TCPIP* tcpip, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        arp_info(tcpip);
-        need_post = true;
-        break;
-#endif
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;

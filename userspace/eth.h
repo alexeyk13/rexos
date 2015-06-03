@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include "sys.h"
+#include "ipc.h"
 #include "object.h"
 #include "sys_config.h"
 #include "cc_macro.h"
@@ -28,7 +29,7 @@ typedef enum {
 #define MAC_SIZE                                    6
 
 typedef enum {
-    ETH_SET_MAC = HAL_IPC(HAL_ETH),
+    ETH_SET_MAC = IPC_USER,
     ETH_GET_MAC,
     ETH_NOTIFY_LINK_CHANGED,
 
@@ -49,14 +50,14 @@ typedef union {
 
 __STATIC_INLINE void eth_set_mac(const MAC* mac)
 {
-    ack(object_get(SYS_OBJ_ETH), ETH_SET_MAC, mac->u32.hi, mac->u32.lo, 0);
+    ack(object_get(SYS_OBJ_ETH), HAL_CMD(HAL_ETH, ETH_SET_MAC), mac->u32.hi, mac->u32.lo, 0);
 }
 
 __STATIC_INLINE void eth_get_mac(MAC* mac)
 {
     IPC ipc;
     ipc.process = object_get(SYS_OBJ_ETH);
-    ipc.cmd = ETH_GET_MAC;
+    ipc.cmd = HAL_CMD(HAL_ETH, ETH_GET_MAC);
     ipc_call_ms(&ipc, 0);
     mac->u32.hi = ipc.param1;
     mac->u32.lo = ipc.param2;

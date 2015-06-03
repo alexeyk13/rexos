@@ -13,7 +13,7 @@
 #define MAC_SRC(buf)                                        ((MAC*)((buf) + MAC_SIZE))
 #define MAC_LENTYPE(buf)                                    (((buf)[2 * MAC_SIZE] << 8) | ((buf)[2 * MAC_SIZE + 1]))
 
-#if (SYS_INFO) || (TCPIP_DEBUG)
+#if (TCPIP_DEBUG)
 void mac_print(const MAC* mac)
 {
     int i;
@@ -52,26 +52,11 @@ const MAC* tcpip_mac(TCPIP* tcpip)
     return &tcpip->mac.mac;
 }
 
-#if (SYS_INFO)
-void mac_info(TCPIP* tcpip)
-{
-    printf("MAC: ");
-    mac_print(&tcpip->mac.mac);
-    printf("\n\r");
-}
-#endif
-
 bool mac_request(TCPIP* tcpip, IPC* ipc)
 {
     bool need_post;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        mac_info(tcpip);
-        need_post = true;
-        break;
-#endif
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;

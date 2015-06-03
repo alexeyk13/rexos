@@ -38,7 +38,7 @@ const REX __TCPIP = {
     tcpip_main
 };
 
-#if (SYS_INFO) || (TCPIP_DEBUG)
+#if (TCPIP_DEBUG)
 static void print_conn_status(TCPIP* tcpip, const char* head)
 {
     printf("%s: ", head);
@@ -141,7 +141,7 @@ static void tcpip_rx_next(TCPIP* tcpip)
     TCPIP_IO io;
     if (tcpip_allocate_io(tcpip, &io) == NULL)
         return;
-    fread_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), io.block, FRAME_MAX_SIZE);
+    fread_async(tcpip->eth, HAL_ETH, 0, io.block, FRAME_MAX_SIZE);
 }
 
 void tcpip_tx(TCPIP* tcpip, TCPIP_IO* io)
@@ -161,7 +161,7 @@ void tcpip_tx(TCPIP* tcpip, TCPIP_IO* io)
         queue_io->size = io->size;
     }
     else
-        fwrite_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), io->block, io->size);
+        fwrite_async(tcpip->eth, HAL_ETH, 0, io->block, io->size);
 }
 
 unsigned int tcpip_seconds(TCPIP* tcpip)
@@ -176,10 +176,10 @@ static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
-    tcpip->timer = timer_create(HAL_HANDLE(HAL_TCPIP, 0));
+    tcpip->timer = timer_create(0, HAL_TCPIP);
     if (tcpip->timer == INVALID_HANDLE)
         return;
-    fopen(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), conn);
+    fopen(tcpip->eth, HAL_ETH, 0, conn);
     tcpip->active = true;
     tcpip->seconds = 0;
     timer_start_ms(tcpip->timer, 1000, 0);
@@ -216,7 +216,7 @@ static inline void tcpip_tx_complete(TCPIP* tcpip, HANDLE block)
     {
         //send next in queue
         queue_io = (TCPIP_IO*)array_at(tcpip->tx_queue, 0);
-        fwrite_async(tcpip->eth, HAL_HANDLE(HAL_ETH, 0), queue_io->block, queue_io->size);
+        fwrite_async(tcpip->eth, HAL_ETH, 0, queue_io->block, queue_io->size);
         array_remove(&tcpip->tx_queue, 0);
     }
 }
@@ -239,13 +239,6 @@ static inline void tcpip_link_changed(TCPIP* tcpip, ETH_CONN_TYPE conn)
     }
     arp_link_event(tcpip, tcpip->connected);
 }
-
-#if (SYS_INFO)
-static inline void tcpip_info(TCPIP* tcpip)
-{
-    print_conn_status(tcpip, "ETH connect status");
-}
-#endif
 
 void tcpip_init(TCPIP* tcpip)
 {
@@ -284,14 +277,8 @@ static inline void tcpip_timer(TCPIP* tcpip)
 static inline bool tcpip_request(TCPIP* tcpip, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        tcpip_info(tcpip);
-        need_post = true;
-        break;
-#endif
     case IPC_OPEN:
         tcpip_open(tcpip, ipc->param2);
         need_post = true;
@@ -326,7 +313,7 @@ void tcpip_main()
     TCPIP tcpip;
     bool need_post;
     tcpip_init(&tcpip);
-#if (SYS_INFO) || (TCPIP_DEBUG)
+#if (TCPIP_DEBUG)
     open_stdout();
 #endif
     object_set_self(SYS_OBJ_TCPIP);
@@ -335,10 +322,10 @@ void tcpip_main()
         error(ERROR_OK);
         need_post = false;
         ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        if (ipc.cmd == IPC_PING)
+        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             need_post = true;
         else
-            switch (ipc.cmd < IPC_USER ? HAL_GROUP(ipc.param1) : HAL_IPC_GROUP(ipc.cmd))
+            switch (HAL_GROUP(ipc.cmd))
             {
             case HAL_ETH:
             case HAL_TCPIP:

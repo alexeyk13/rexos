@@ -81,13 +81,13 @@ static void icmp_echo_next(TCPIP* tcpip)
         ++tcpip->icmp.seq;
         if (!icmp_cmd_echo_request(tcpip))
         {
-            ipc_post_inline(tcpip->icmp.process, ICMP_PING, tcpip->icmp.dst.u32.ip, tcpip->icmp.success_count, ERROR_OUT_OF_MEMORY);
+            ipc_post_inline(tcpip->icmp.process, HAL_CMD(HAL_ICMP, ICMP_PING), tcpip->icmp.dst.u32.ip, tcpip->icmp.success_count, ERROR_OUT_OF_MEMORY);
             tcpip->icmp.seq_count = 0;
         }
     }
     else
     {
-        ipc_post_inline(tcpip->icmp.process, ICMP_PING, tcpip->icmp.dst.u32.ip, tcpip->icmp.success_count, tcpip->icmp.seq_count);
+        ipc_post_inline(tcpip->icmp.process, HAL_CMD(HAL_ICMP, ICMP_PING), tcpip->icmp.dst.u32.ip, tcpip->icmp.success_count, tcpip->icmp.seq_count);
         tcpip->icmp.seq_count = 0;
     }
 }
@@ -96,7 +96,7 @@ static inline void icmp_ping_request(TCPIP* tcpip, const IP* dst, unsigned int c
 {
     if (tcpip->icmp.seq_count)
     {
-        ipc_post_inline(process, ICMP_PING, dst->u32.ip, 0, ERROR_IN_PROGRESS);
+        ipc_post_inline(process, HAL_CMD(HAL_ICMP, ICMP_PING), dst->u32.ip, 0, ERROR_IN_PROGRESS);
         return;
     }
     tcpip->icmp.seq = 0;
@@ -163,7 +163,7 @@ bool icmp_request(TCPIP* tcpip, IPC* ipc)
 {
     bool need_post = false;
     IP ip;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
 #if (ICMP_ECHO)
     case ICMP_PING:
