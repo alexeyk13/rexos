@@ -1,4 +1,4 @@
 asm_defines.h
-build
-output
 *.pro.*
+/example/build
+/example/output
