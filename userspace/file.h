@@ -64,31 +64,6 @@ __STATIC_INLINE HANDLE fopen_p(HANDLE process, HAL hal, HANDLE file, unsigned in
 }
 
 /**
-    \brief open file with custom initialization data
-    \param process: process handle
-    \param hal: hal type
-    \param file: file handle
-    \param mode: file mode
-    \param addr: address of direct read
-    \param size: size of direct read
-    \retval handle on success, INVALID_HANDLE on error
-*/
-
-__STATIC_INLINE HANDLE fopen_ex(HANDLE process, HAL hal, HANDLE file, unsigned int mode, void* ptr, unsigned int size)
-{
-    IPC ipc;
-    direct_enable_read(process, ptr, size);
-    ipc.cmd = HAL_CMD(hal, IPC_OPEN);
-    ipc.process = process;
-    ipc.param1 = file;
-    ipc.param2 = mode;
-    ipc.param3 = size;
-    if (call(&ipc))
-        return ipc.param1;
-    return INVALID_HANDLE;
-}
-
-/**
     \brief close file
     \param process: process handle
     \param hal: hal type
