@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -10,6 +10,8 @@
 #include "../userspace/ipc.h"
 #include "../userspace/rb.h"
 #include "../userspace/time.h"
+
+typedef struct _PROCESS PROCESS;
 
 typedef struct {
     RB rb;
@@ -22,6 +24,7 @@ typedef struct {
 //called from kernel directly
 void kipc_init(HANDLE handle, int size);
 void kipc_post_process(IPC* ipc, HANDLE sender);
+void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_process, unsigned int cmd);
 
 //called from svc
 void kipc_post(IPC* ipc);

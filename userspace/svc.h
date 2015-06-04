@@ -74,6 +74,11 @@ typedef enum {
     SVC_BLOCK_RETURN,
     SVC_BLOCK_DESTROY,
 
+    SVC_IO_CREATE,
+    SVC_IO_SEND,
+    SVC_IO_CALL,
+    SVC_IO_DESTROY,
+
     SVC_OBJECT_SET,
     SVC_OBJECT_GET,
 

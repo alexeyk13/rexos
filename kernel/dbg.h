@@ -25,6 +25,7 @@
 #define MAGIC_STREAM                                   0xf4eb741c
 #define MAGIC_STREAM_HANDLE                            0x250b73c2
 #define MAGIC_BLOCK                                    0x890f6c75
+#define MAGIC_KIO                                      0x890f6c75
 
 #define MAGIC_UNINITIALIZED                            0xcdcdcdcd
 #define MAGIC_UNINITIALIZED_BYTE                       0xcd

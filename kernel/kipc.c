@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -30,12 +30,11 @@ static inline int kipc_index(PROCESS* process, HANDLE wait_process, unsigned int
     return -1;
 }
 
-void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_process, unsigned int cmd)
+void kipc_read_process(PROCESS *process, IPC* ipc, TIME* time, HANDLE wait_process, unsigned int cmd)
 {
     int i;
     IPC tmp;
     CHECK_ADDRESS(process, time, sizeof(TIME));
-    CHECK_ADDRESS(process, ipc, sizeof(IPC));
 #if (KERNEL_IPC_DEBUG)
     if (wait_process == (HANDLE)process)
         printk("Warning: calling wait IPC with receiver same as caller can cause deadlock! process: %s\n\r", kprocess_name(process));
@@ -69,9 +68,8 @@ void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_proce
     }
 }
 
-void kipc_post_process(IPC* ipc, unsigned int sender)
+void kipc_post_process(IPC* ipc, HANDLE sender)
 {
-    CHECK_ADDRESS(sender, ipc, sizeof(IPC));
     PROCESS* receiver = (PROCESS*)ipc->process;
     bool wake = false;
     IPC* cur = NULL;
@@ -135,12 +133,14 @@ void kipc_init(HANDLE handle, int size)
 void kipc_post(IPC* ipc)
 {
     PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, ipc, sizeof(IPC));
     kipc_post_process(ipc, (HANDLE)process);
 }
 
 void kipc_read(IPC* ipc, TIME* time, HANDLE wait_process)
 {
     PROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, ipc, sizeof(IPC));
     kipc_read_process(process, ipc, time, wait_process, ANY_CMD);
 }
 
