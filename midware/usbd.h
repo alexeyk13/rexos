@@ -9,6 +9,7 @@
 
 #include "../userspace/process.h"
 #include "../userspace/usb.h"
+#include "../userspace/io.h"
 #include "sys_config.h"
 
 typedef struct _USBD USBD;
@@ -18,7 +19,7 @@ typedef struct {
     void (*usbd_class_reset)(USBD*, void*);
     void (*usbd_class_suspend)(USBD*, void*);
     void (*usbd_class_resume)(USBD*, void*);
-    int (*usbd_class_setup)(USBD*, void*, SETUP*, HANDLE);
+    int (*usbd_class_setup)(USBD*, void*, SETUP*, IO*);
     bool (*usbd_class_request)(USBD*, void*, IPC*);
 } USBD_CLASS;
 
@@ -28,10 +29,16 @@ bool usbd_register_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* u
 bool usbd_unregister_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* usbd_class);
 bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int num);
 bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int num);
-//post IPC to user, if configured
-void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned int cmd, unsigned int param2, unsigned int param3);
+
 HANDLE usbd_user(USBD* usbd);
 HANDLE usbd_usb(USBD* usbd);
+//post IPC to user, if configured
+void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned int cmd, unsigned int param2, unsigned int param3);
+void usbd_usb_ep_open(USBD* usbd, unsigned int num, USB_EP_TYPE type, unsigned int size);
+void usbd_usb_ep_close(USBD* usbd, unsigned int num);
+void usbd_usb_ep_flush(USBD* usbd, unsigned int num);
+void usbd_usb_ep_write(USBD* usbd, unsigned int ep_num, IO* io);
+void usbd_usb_ep_read(USBD* usbd, unsigned int ep_num, IO* io, unsigned int size);
 #if (USBD_DEBUG)
 void usbd_dump(const uint8_t* buf, unsigned int size, const char* header);
 #endif

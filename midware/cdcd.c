@@ -9,7 +9,7 @@
 #include "../userspace/sys.h"
 #include "../userspace/file.h"
 #include "../userspace/stdio.h"
-#include "../userspace/block.h"
+#include "../userspace/io.h"
 #include "../userspace/direct.h"
 #include "../userspace/uart.h"
 #include "../userspace/stdlib.h"
@@ -31,53 +31,45 @@ const char* const ON_OFF[] =                                                    
 
 
 typedef struct {
-    HANDLE rx, tx, notify, rx_stream, tx_stream;
+    IO* rx;
+    IO* tx;
+    IO* notify;
+    HANDLE rx_stream, tx_stream;
     HANDLE tx_stream_handle, rx_stream_handle;
     uint8_t data_ep, control_ep;
     uint16_t data_ep_size, control_ep_size, rx_free, tx_size;
     uint8_t DTR, RTS, tx_idle, control_iface, data_iface;
     uint8_t suspended;
+    bool notify_ready;
     BAUD baud;
 } CDCD;
 
-static inline void* cdcd_notify_open(USBD* usbd, CDCD* cdcd)
-{
-    void* res = block_open(cdcd->notify);
-    //host is not issued IN for interrupt yet, flush last
-    if (res == NULL)
-    {
-        fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->control_ep);
-        res = block_open(cdcd->notify);
-    }
-    return res;
-}
-
 void cdcd_notify_serial_state(USBD* usbd, CDCD* cdcd, unsigned int state)
 {
-    char* notify = cdcd_notify_open(usbd, cdcd);
-    if (notify)
-    {
-        SETUP* setup = (SETUP*)notify;
-        setup->bmRequestType = BM_REQUEST_DIRECTION_DEVICE_TO_HOST | BM_REQUEST_TYPE_CLASS | BM_REQUEST_RECIPIENT_INTERFACE;
-        setup->bRequest = CDC_SERIAL_STATE;
-        setup->wValue = 0;
-        setup->wIndex = 1;
-        setup->wLength = 2;
-        uint16_t* serial_state = (uint16_t*)(notify + sizeof(SETUP));
-        *serial_state = state;
-        fwrite_async(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->control_ep, cdcd->notify, sizeof(SETUP) + 2);
-    }
+    if (!cdcd->notify_ready)
+        usbd_usb_ep_flush(usbd, USB_EP_IN | cdcd->control_ep);
+
+    SETUP* setup = IO_DATA(cdcd->notify);
+    setup->bmRequestType = BM_REQUEST_DIRECTION_DEVICE_TO_HOST | BM_REQUEST_TYPE_CLASS | BM_REQUEST_RECIPIENT_INTERFACE;
+    setup->bRequest = CDC_SERIAL_STATE;
+    setup->wValue = 0;
+    setup->wIndex = 1;
+    setup->wLength = 2;
+    uint16_t* serial_state = (uint16_t*)(IO_DATA(cdcd->notify) + sizeof(SETUP));
+    *serial_state = state;
+    cdcd->notify->data_size = sizeof(SETUP) + 2;
+    usbd_usb_ep_write(usbd, cdcd->control_ep, cdcd->notify);
 }
 
 void cdcd_destroy(CDCD* cdcd)
 {
-    block_destroy(cdcd->notify);
+    io_destroy(cdcd->notify);
 
-    block_destroy(cdcd->rx);
+    io_destroy(cdcd->rx);
     stream_close(cdcd->rx_stream_handle);
     stream_destroy(cdcd->rx_stream);
 
-    block_destroy(cdcd->tx);
+    io_destroy(cdcd->tx);
     stream_close(cdcd->tx_stream_handle);
     stream_destroy(cdcd->tx_stream);
 
@@ -90,7 +82,6 @@ void cdcd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     USB_INTERFACE_DESCRIPTOR_TYPE* iface;
     USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
     uint8_t data_ep, control_ep, data_ep_size, control_ep_size, control_iface, data_iface;
-    unsigned int size;
     data_ep = control_ep = data_ep_size = control_ep_size = data_iface = control_iface = 0;
 
     //check control/data ep here
@@ -130,8 +121,10 @@ void cdcd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     cdcd->data_iface = data_iface;
     cdcd->data_ep = data_ep;
     cdcd->data_ep_size = data_ep_size;
-    cdcd->tx = cdcd->rx = cdcd->notify = cdcd->tx_stream = cdcd->rx_stream = cdcd->tx_stream_handle = cdcd->rx_stream_handle = INVALID_HANDLE;
+    cdcd->tx = cdcd->rx = cdcd->notify = NULL;
+    cdcd->tx_stream = cdcd->rx_stream = cdcd->tx_stream_handle = cdcd->rx_stream_handle = INVALID_HANDLE;
     cdcd->suspended = false;
+    cdcd->notify_ready = true;
 
 #if (USBD_CDC_DEBUG_REQUESTS)
     printf("Found USB CDCD ACM class, EP%d, size: %d, iface: %d\n\r", cdcd->data_ep, cdcd->data_ep_size, cdcd->data_iface);
@@ -140,46 +133,43 @@ void cdcd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 #endif //USBD_CDC_DEBUG_REQUESTS
 
 #if (USBD_CDC_TX_STREAM_SIZE)
-    cdcd->tx = block_create(cdcd->data_ep_size);
+    cdcd->tx = io_create(cdcd->data_ep_size);
     cdcd->tx_stream = stream_create(USBD_CDC_RX_STREAM_SIZE);
     cdcd->tx_stream_handle = stream_open(cdcd->tx_stream);
-    if (cdcd->tx == INVALID_HANDLE || cdcd->tx_stream_handle == INVALID_HANDLE)
+    if (cdcd->tx == NULL || cdcd->tx_stream_handle == INVALID_HANDLE)
     {
         cdcd_destroy(cdcd);
         return;
     }
     cdcd->tx_size = 0;
     cdcd->tx_idle = true;
-    size = cdcd->data_ep_size;
-    fopen_p(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep, USB_EP_BULK, (void*)size);
+    usbd_usb_ep_open(usbd, USB_EP_IN | cdcd->data_ep, USB_EP_BULK, cdcd->data_ep_size);
     stream_listen(cdcd->tx_stream, USBD_IFACE(cdcd->data_iface, 0), HAL_USBD_IFACE);
 #endif
 
 #if (USBD_CDC_RX_STREAM_SIZE)
-    cdcd->rx = block_create(cdcd->data_ep_size);
+    cdcd->rx = io_create(cdcd->data_ep_size);
     cdcd->rx_stream = stream_create(USBD_CDC_RX_STREAM_SIZE);
     cdcd->rx_stream_handle = stream_open(cdcd->rx_stream);
-    if (cdcd->rx == INVALID_HANDLE || cdcd->rx_stream_handle == INVALID_HANDLE)
+    if (cdcd->rx == NULL || cdcd->rx_stream_handle == INVALID_HANDLE)
     {
         cdcd_destroy(cdcd);
         return;
     }
     cdcd->rx_free = 0;
-    size = cdcd->data_ep_size;
-    fopen_p(usbd_usb(usbd), HAL_USB, cdcd->data_ep, USB_EP_BULK, (void*)size);
-    fread_async(usbd_usb(usbd), HAL_USB, cdcd->data_ep, cdcd->rx, 1);
+    usbd_usb_ep_open(usbd, cdcd->data_ep, USB_EP_BULK, cdcd->data_ep_size);
+    usbd_usb_ep_read(usbd, cdcd->data_ep, cdcd->rx, cdcd->data_ep_size);
 #endif
 
     if (control_ep)
     {
-        cdcd->notify = block_create(cdcd->control_ep_size);
-        if (cdcd->notify == INVALID_HANDLE)
+        cdcd->notify = io_create(cdcd->control_ep_size);
+        if (cdcd->notify == NULL)
         {
             cdcd_destroy(cdcd);
             return;
         }
-        size = cdcd->control_ep_size;
-        fopen_p(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->control_ep, USB_EP_INTERRUPT, (void*)size);
+        usbd_usb_ep_open(usbd, USB_EP_IN | cdcd->control_ep, USB_EP_INTERRUPT, cdcd->control_ep_size);
         cdcd_notify_serial_state(usbd, cdcd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
         usbd_register_interface(usbd, cdcd->control_iface, &__CDCD_CLASS, cdcd);
         usbd_register_endpoint(usbd, cdcd->control_iface, cdcd->control_ep);
@@ -201,21 +191,18 @@ void cdcd_class_reset(USBD* usbd, void* param)
 #if (USBD_CDC_TX_STREAM_SIZE)
     stream_stop_listen(cdcd->tx_stream);
     stream_flush(cdcd->tx_stream);
-    fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep);
-    fclose(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep);
+    usbd_usb_ep_close(usbd, USB_EP_IN | cdcd->data_ep);
 #endif
 #if (USBD_CDC_RX_STREAM_SIZE)
     stream_flush(cdcd->rx_stream);
-    fflush(usbd_usb(usbd), HAL_USB, cdcd->data_ep);
-    fclose(usbd_usb(usbd), HAL_USB, cdcd->data_ep);
+    usbd_usb_ep_close(usbd, cdcd->data_ep);
 #endif
 
     usbd_unregister_endpoint(usbd, cdcd->data_iface, cdcd->data_ep);
     usbd_unregister_interface(usbd, cdcd->data_iface, &__CDCD_CLASS);
     if (cdcd->control_ep)
     {
-        fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->control_ep);
-        fclose(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->control_ep);
+        usbd_usb_ep_close(usbd, USB_EP_IN | cdcd->control_ep);
         usbd_unregister_endpoint(usbd, cdcd->control_iface, cdcd->control_ep);
         usbd_unregister_interface(usbd, cdcd->control_iface, &__CDCD_CLASS);
     }
@@ -228,18 +215,18 @@ void cdcd_class_suspend(USBD* usbd, void* param)
 #if (USBD_CDC_TX_STREAM_SIZE)
     stream_stop_listen(cdcd->tx_stream);
     stream_flush(cdcd->tx_stream);
-    fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep);
+    usbd_usb_ep_flush(usbd, USB_EP_IN | cdcd->data_ep);
     cdcd->tx_idle = true;
     cdcd->tx_size = 0;
 #endif
 #if (USBD_CDC_RX_STREAM_SIZE)
     stream_flush(cdcd->rx_stream);
-    fflush(usbd_usb(usbd), HAL_USB, cdcd->data_ep);
+    usbd_usb_ep_flush(usbd, cdcd->data_ep);
     cdcd->rx_free = 0;
 #endif
 
     if (cdcd->control_ep)
-        fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep);
+        usbd_usb_ep_flush(usbd, USB_EP_IN | cdcd->control_ep);
     cdcd->suspended = true;
 }
 
@@ -249,38 +236,36 @@ void cdcd_class_resume(USBD* usbd, void* param)
     cdcd->suspended = false;
 #if (USBD_CDC_RX_STREAM_SIZE)
     stream_listen(cdcd->tx_stream, USBD_IFACE(cdcd->data_iface, 0), HAL_USBD_IFACE);
+    usbd_usb_ep_read(usbd, cdcd->data_ep, cdcd->rx, cdcd->data_ep_size);
 #endif
 }
 
-static inline void cdcd_read_complete(USBD* usbd, CDCD* cdcd, unsigned int size)
+static inline void cdcd_read_complete(USBD* usbd, CDCD* cdcd)
 {
     if (cdcd->suspended)
         return;
 
     unsigned int to_read;
-    void* ptr;
-    if (cdcd->rx_free < size)
+    if (cdcd->rx_free < cdcd->rx->data_size)
         cdcd->rx_free = stream_get_free(cdcd->rx_stream);
-    to_read = size;
+    to_read = cdcd->rx->data_size;
     if (to_read > cdcd->rx_free)
         to_read = cdcd->rx_free;
-    ptr = block_open(cdcd->rx);
+    if (to_read < cdcd->rx->data_size)
+        cdcd_notify_serial_state(usbd, cdcd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_OVERRUN);
 #if (USBD_CDC_DEBUG_IO)
     int i;
     printf("CDCD rx: ");
-    for (i = 0; i < size; ++i)
-        if (((uint8_t*)ptr)[i] >= ' ' && ((uint8_t*)ptr)[i] <= '~')
-            printf("%c", ((char*)ptr)[i]);
+    for (i = 0; i < cdcd->rx->data_size; ++i)
+        if (((uint8_t*)IO_DATA(cdcd->rx))[i] >= ' ' && ((uint8_t*)IO_DATA(cdcd->rx))[i] <= '~')
+            printf("%c", ((char*)IO_DATA(cdcd->rx))[i]);
         else
-            printf("\\x%d", ((uint8_t*)ptr)[i]);
+            printf("\\x%d", ((uint8_t*)IO_DATA(cdcd->rx))[i]);
     printf("\n\r");
 #endif //USBD_CDC_DEBUG_IO
-    if (ptr && to_read && stream_write(cdcd->rx_stream_handle, ptr, to_read))
+    if (to_read && stream_write(cdcd->rx_stream_handle, IO_DATA(cdcd->rx), to_read))
         cdcd->rx_free -= to_read;
-    fread_async(usbd_usb(usbd), HAL_USB, cdcd->data_ep, cdcd->rx, 1);
-
-    if (to_read < size)
-        cdcd_notify_serial_state(usbd, cdcd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_OVERRUN);
+    usbd_usb_ep_read(usbd, cdcd->data_ep, cdcd->rx, cdcd->data_ep_size);
 }
 
 void cdcd_write(USBD* usbd, CDCD* cdcd)
@@ -289,7 +274,6 @@ void cdcd_write(USBD* usbd, CDCD* cdcd)
         return;
 
     unsigned int to_write;
-    void* ptr;
     if (cdcd->tx_size == 0)
         cdcd->tx_size = stream_get_size(cdcd->tx_stream);
 
@@ -299,11 +283,11 @@ void cdcd_write(USBD* usbd, CDCD* cdcd)
     if (to_write)
     {
         cdcd->tx_size -= to_write;
-        ptr = block_open(cdcd->tx);
-        if (ptr && stream_read(cdcd->tx_stream_handle, ptr, to_write))
+        if (stream_read(cdcd->tx_stream_handle, IO_DATA(cdcd->tx), to_write))
         {
             cdcd->tx_idle = false;
-            fwrite_async(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep, cdcd->tx, to_write);
+            cdcd->tx->data_size = to_write;
+            usbd_usb_ep_write(usbd, cdcd->data_ep, cdcd->tx);
         }
         //just in case of driver failure
         else
@@ -313,11 +297,9 @@ void cdcd_write(USBD* usbd, CDCD* cdcd)
         stream_listen(cdcd->tx_stream, USBD_IFACE(cdcd->data_iface, 0), HAL_USBD_IFACE);
 }
 
-static inline int set_line_coding(CDCD* cdcd, HANDLE block)
+static inline int set_line_coding(CDCD* cdcd, IO* io)
 {
-    LINE_CODING_STRUCT* lc = block_open(block);
-    if (lc == NULL)
-        return -1;
+    LINE_CODING_STRUCT* lc = IO_DATA(io);
     cdcd->baud.baud = lc->dwDTERate;
     if (lc->bCharFormat >= LC_BAUD_STOP_BITS_SIZE)
         return -1;
@@ -333,11 +315,9 @@ static inline int set_line_coding(CDCD* cdcd, HANDLE block)
     return 0;
 }
 
-static inline int get_line_coding(CDCD* cdcd, HANDLE block)
+static inline int get_line_coding(CDCD* cdcd, IO* io)
 {
-    LINE_CODING_STRUCT* lc = block_open(block);
-    if (lc == NULL)
-        return -1;
+    LINE_CODING_STRUCT* lc = IO_DATA(io);
     lc->dwDTERate = cdcd->baud.baud;
     switch (cdcd->baud.stop_bits)
     {
@@ -374,6 +354,7 @@ static inline int get_line_coding(CDCD* cdcd, HANDLE block)
 #if (USBD_CDC_DEBUG_REQUESTS)
     printf("CDCD get line coding: %d %d%c%d\n\r", cdcd->baud.baud, cdcd->baud.data_bits, cdcd->baud.parity, cdcd->baud.stop_bits);
 #endif
+    io->data_size = sizeof(LINE_CODING_STRUCT);
     return sizeof(LINE_CODING_STRUCT);
 }
 
@@ -391,23 +372,23 @@ static inline int set_control_line_state(USBD* usbd, CDCD* cdcd, SETUP* setup)
     //flush if not
     else if (!cdcd->tx_idle)
     {
-        fflush(usbd_usb(usbd), HAL_USB, USB_EP_IN | cdcd->data_ep);
+        usbd_usb_ep_flush(usbd, USB_EP_IN | cdcd->data_ep);
         cdcd->tx_idle = true;
     }
     return 0;
 }
 
-int cdcd_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
+int cdcd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
 {
     CDCD* cdc = (CDCD*)param;
     int res = -1;
     switch (setup->bRequest)
     {
     case SET_LINE_CODING:
-        res = set_line_coding(cdc, block);
+        res = set_line_coding(cdc, io);
         break;
     case GET_LINE_CODING:
-        res = get_line_coding(cdc, block);
+        res = get_line_coding(cdc, io);
         break;
     case SET_CONTROL_LINE_STATE:
         res = set_control_line_state(usbd, cdc, setup);
@@ -422,15 +403,16 @@ static inline bool cdcd_driver_event(USBD* usbd, CDCD* cdcd, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
-        cdcd_read_complete(usbd, cdcd, ipc->param3);
+        cdcd_read_complete(usbd, cdcd);
         break;
     case IPC_WRITE:
-        //ignore notify complete
         if (ipc->param1 == (cdcd->data_ep | USB_EP_IN))
         {
             cdcd->tx_idle = true;
             cdcd_write(usbd, cdcd);
         }
+        else
+            cdcd->notify_ready = true;
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
