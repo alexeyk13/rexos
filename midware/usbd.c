@@ -414,7 +414,7 @@ static inline void usbd_close(USBD* usbd)
     usbd->io = NULL;
 }
 
-static inline int usbd_register_descriptor(USBD* usbd, IO* io)
+static inline int usbd_request_register_descriptor(USBD* usbd, IO* io)
 {
     int idx;
     USBD_DESCRIPTOR_REGISTER_STRUCT* udrs = io_stack(io);
@@ -1034,7 +1034,7 @@ static inline bool usbd_device_request(USBD* usbd, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case USBD_REGISTER_DESCRIPTOR:
-        ipc->param3 = usbd_register_descriptor(usbd, (IO*)ipc->param2);
+        ipc->param3 = usbd_request_register_descriptor(usbd, (IO*)ipc->param2);
         io_send(ipc);
         break;
     case USBD_UNREGISTER_DESCRIPTOR:

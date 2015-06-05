@@ -4,17 +4,22 @@
     All rights reserved.
 */
 
-#include "libusb.h"
-#include "process.h"
-#include "sys.h"
-#include "ipc.h"
+#include "usb.h"
 #include "io.h"
-#include "stdlib.h"
+#include "error.h"
+#include "object.h"
 #include <string.h>
 
-bool libusb_register_descriptor(unsigned int index, unsigned int lang, const void* d, unsigned int data_size)
+bool usbd_register_descriptor(const void* d, unsigned int index, unsigned int lang)
 {
-    IO* io = io_create(data_size + sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT));
+    unsigned int size;
+    const USB_DESCRIPTOR_TYPE* descriptor = (USB_DESCRIPTOR_TYPE*)d;
+    if (descriptor->bDescriptorType == USB_CONFIGURATION_DESCRIPTOR_INDEX || descriptor->bDescriptorType == USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX)
+        size = ((const USB_CONFIGURATION_DESCRIPTOR_TYPE*)d)->wTotalLength;
+    else
+        size = descriptor->bLength;
+
+    IO* io = io_create(size + sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT));
     if (io == NULL)
         return false;
     io_push(io, sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT));
@@ -23,13 +28,13 @@ bool libusb_register_descriptor(unsigned int index, unsigned int lang, const voi
     udrs->index = index;
     udrs->lang = lang;
 
-    io_data_write(io, d, data_size);
+    io_data_write(io, d, size);
     io_call(object_get(SYS_OBJ_USBD), HAL_CMD(HAL_USBD, USBD_REGISTER_DESCRIPTOR), 0, io, io->data_size);
     io_destroy(io);
     return get_last_error() == ERROR_OK;
 }
 
-bool libusb_register_ascii_string(unsigned int index, unsigned int lang, const char* str)
+bool usbd_register_ascii_string(unsigned int index, unsigned int lang, const char* str)
 {
     unsigned int i, len;
     len = strlen(str);
@@ -56,3 +61,4 @@ bool libusb_register_ascii_string(unsigned int index, unsigned int lang, const c
     io_destroy(io);
     return get_last_error() == ERROR_OK;
 }
+

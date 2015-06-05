@@ -13,6 +13,7 @@
 #include "../userspace/direct.h"
 #include "../userspace/uart.h"
 #include "../userspace/stdlib.h"
+#include "../userspace/cdc.h"
 #include "usbdp.h"
 #include "sys_config.h"
 
