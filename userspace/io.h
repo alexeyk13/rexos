@@ -58,16 +58,24 @@ void* io_data(IO* io);
 void* io_stack(IO* io);
 
 /**
+    \brief push IO stack
+    \param io: IO pointer
+    \param size: data size
+    \retval none
+*/
+void io_push(IO* io, unsigned int size);
+
+/**
     \brief push data to IO stack
     \param io: IO pointer
     \param data: data to push
     \param size: data size
     \retval none
 */
-void io_push(IO* io, void* data, unsigned int size);
+void io_push_data(IO* io, void* data, unsigned int size);
 
 /**
-    \brief pop data from IO stack
+    \brief pop IO stack
     \param io: IO pointer
     \param size: data size
     \retval none
@@ -88,7 +96,7 @@ unsigned int io_get_free(IO* io);
     \param size: data size
     \retval data actually written
 */
-unsigned int io_data_write(IO* io, void* data, unsigned int size);
+unsigned int io_data_write(IO* io, const void *data, unsigned int size);
 
 
 

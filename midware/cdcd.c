@@ -49,13 +49,13 @@ void cdcd_notify_serial_state(USBD* usbd, CDCD* cdcd, unsigned int state)
     if (!cdcd->notify_ready)
         usbd_usb_ep_flush(usbd, USB_EP_IN | cdcd->control_ep);
 
-    SETUP* setup = IO_DATA(cdcd->notify);
+    SETUP* setup = io_data(cdcd->notify);
     setup->bmRequestType = BM_REQUEST_DIRECTION_DEVICE_TO_HOST | BM_REQUEST_TYPE_CLASS | BM_REQUEST_RECIPIENT_INTERFACE;
     setup->bRequest = CDC_SERIAL_STATE;
     setup->wValue = 0;
     setup->wIndex = 1;
     setup->wLength = 2;
-    uint16_t* serial_state = (uint16_t*)(IO_DATA(cdcd->notify) + sizeof(SETUP));
+    uint16_t* serial_state = (uint16_t*)(io_data(cdcd->notify) + sizeof(SETUP));
     *serial_state = state;
     cdcd->notify->data_size = sizeof(SETUP) + 2;
     usbd_usb_ep_write(usbd, cdcd->control_ep, cdcd->notify);
@@ -257,13 +257,13 @@ static inline void cdcd_read_complete(USBD* usbd, CDCD* cdcd)
     int i;
     printf("CDCD rx: ");
     for (i = 0; i < cdcd->rx->data_size; ++i)
-        if (((uint8_t*)IO_DATA(cdcd->rx))[i] >= ' ' && ((uint8_t*)IO_DATA(cdcd->rx))[i] <= '~')
-            printf("%c", ((char*)IO_DATA(cdcd->rx))[i]);
+        if (((uint8_t*)io_data(cdcd->rx))[i] >= ' ' && ((uint8_t*)io_data(cdcd->rx))[i] <= '~')
+            printf("%c", ((char*)io_data(cdcd->rx))[i]);
         else
-            printf("\\x%d", ((uint8_t*)IO_DATA(cdcd->rx))[i]);
+            printf("\\x%d", ((uint8_t*)io_data(cdcd->rx))[i]);
     printf("\n\r");
 #endif //USBD_CDC_DEBUG_IO
-    if (to_read && stream_write(cdcd->rx_stream_handle, IO_DATA(cdcd->rx), to_read))
+    if (to_read && stream_write(cdcd->rx_stream_handle, io_data(cdcd->rx), to_read))
         cdcd->rx_free -= to_read;
     usbd_usb_ep_read(usbd, cdcd->data_ep, cdcd->rx, cdcd->data_ep_size);
 }
@@ -283,7 +283,7 @@ void cdcd_write(USBD* usbd, CDCD* cdcd)
     if (to_write)
     {
         cdcd->tx_size -= to_write;
-        if (stream_read(cdcd->tx_stream_handle, IO_DATA(cdcd->tx), to_write))
+        if (stream_read(cdcd->tx_stream_handle, io_data(cdcd->tx), to_write))
         {
             cdcd->tx_idle = false;
             cdcd->tx->data_size = to_write;
@@ -299,7 +299,7 @@ void cdcd_write(USBD* usbd, CDCD* cdcd)
 
 static inline int set_line_coding(CDCD* cdcd, IO* io)
 {
-    LINE_CODING_STRUCT* lc = IO_DATA(io);
+    LINE_CODING_STRUCT* lc = io_data(io);
     cdcd->baud.baud = lc->dwDTERate;
     if (lc->bCharFormat >= LC_BAUD_STOP_BITS_SIZE)
         return -1;
@@ -317,7 +317,7 @@ static inline int set_line_coding(CDCD* cdcd, IO* io)
 
 static inline int get_line_coding(CDCD* cdcd, IO* io)
 {
-    LINE_CODING_STRUCT* lc = IO_DATA(io);
+    LINE_CODING_STRUCT* lc = io_data(io);
     lc->dwDTERate = cdcd->baud.baud;
     switch (cdcd->baud.stop_bits)
     {

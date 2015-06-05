@@ -4,9 +4,9 @@
     All rights reserved.
 */
 
-#include "../stdlib.h"
-#include "../timer.h"
-#include "../process.h"
+#include "stdlib.h"
+#include "timer.h"
+#include "process.h"
 
 unsigned int srand()
 {

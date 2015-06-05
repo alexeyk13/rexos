@@ -135,17 +135,17 @@ SOURCES += \
 	 ../drv/stm32/stm32_wdt.c \
 	../lib/stm32_lib_gpio.c \
    app.c \
-	../userspace/src/stdio.c \
-	../userspace/src/stdlib.c \
+	../userspace/stdio.c \
+	../userspace/stdlib.c \
 	../lib/lib_heap.c \
 	../lib/lib_std.c \
 	../lib/lib_stdio.c \
 	../lib/lpc_lib_gpio.c \
-    ../userspace/src/canvas.c \
-    ../userspace/src/font.c \
-    ../userspace/src/graphics.c \
-    ../userspace/src/libusb.c \
-    ../userspace/src/utf8.c \
+    ../userspace/canvas.c \
+    ../userspace/font.c \
+    ../userspace/graphics.c \
+    ../userspace/libusb.c \
+    ../userspace/utf8.c \
     ../midware/ccidd.c \
     ../midware/hidd_kbd.c \
     ../midware/pinboard.c \

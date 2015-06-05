@@ -19,7 +19,7 @@ typedef struct {
     bool active;
 }COMM;
 
-bool comm_usbd_alert(APP* app, USBD_ALERTS alert);
+void comm_usbd_alert(APP* app, USBD_ALERTS alert);
 void comm_usbd_stream_rx(APP* app, unsigned int size);
 
 void comm_init(APP* app);

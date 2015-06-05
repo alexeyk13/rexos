@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "../utf8.h"
+#include "utf8.h"
 
 unsigned int utf8_char_len(const char* utf8)
 {

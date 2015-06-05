@@ -46,9 +46,8 @@ static void comm_usb_stop(APP* app)
     }
 }
 
-bool comm_usbd_alert(APP* app, USBD_ALERTS alert)
+void comm_usbd_alert(APP* app, USBD_ALERTS alert)
 {
-    bool need_post = false;
     switch (alert)
     {
     case USBD_ALERT_CONFIGURED:
@@ -58,12 +57,10 @@ bool comm_usbd_alert(APP* app, USBD_ALERTS alert)
     case USBD_ALERT_RESET:
     case USBD_ALERT_SUSPEND:
         comm_usb_stop(app);
-        need_post = true;
         break;
     default:
         break;
     }
-    return need_post;
 }
 
 void comm_usbd_stream_rx(APP* app, unsigned int size)
@@ -97,13 +94,13 @@ void comm_init(APP *app)
     usbd = process_create(&__USBD);
     ack(usbd, HAL_CMD(HAL_USBD, USBD_REGISTER_HANDLER), 0, 0, 0);
 
-    libusb_register_descriptor(USB_DESCRIPTOR_DEVICE_FS, 0, 0, &__DEVICE_DESCRIPTOR, sizeof(__DEVICE_DESCRIPTOR), USBD_FLAG_PERSISTENT_DESCRIPTOR);
-    libusb_register_descriptor(USB_DESCRIPTOR_CONFIGURATION_FS, 0, 0, &__CONFIGURATION_DESCRIPTOR, sizeof(__CONFIGURATION_DESCRIPTOR), USBD_FLAG_PERSISTENT_DESCRIPTOR);
-    libusb_register_descriptor(USB_DESCRIPTOR_STRING, 0, 0, &__STRING_WLANGS, __STRING_WLANGS[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
-    libusb_register_descriptor(USB_DESCRIPTOR_STRING, 1, 0x0409, &__STRING_MANUFACTURER, __STRING_MANUFACTURER[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
-    libusb_register_descriptor(USB_DESCRIPTOR_STRING, 2, 0x0409, &__STRING_PRODUCT, __STRING_PRODUCT[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
-    libusb_register_descriptor(USB_DESCRIPTOR_STRING, 3, 0x0409, &__STRING_SERIAL, __STRING_SERIAL[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
-    libusb_register_descriptor(USB_DESCRIPTOR_STRING, 4, 0x0409, &__STRING_DEFAULT, __STRING_DEFAULT[0], USBD_FLAG_PERSISTENT_DESCRIPTOR);
+    libusb_register_descriptor(0, 0, &__DEVICE_DESCRIPTOR, sizeof(__DEVICE_DESCRIPTOR));
+    libusb_register_descriptor(0, 0, &__CONFIGURATION_DESCRIPTOR, sizeof(__CONFIGURATION_DESCRIPTOR));
+    libusb_register_descriptor(0, 0, &__STRING_WLANGS, __STRING_WLANGS[0]);
+    libusb_register_descriptor(1, 0x0409, &__STRING_MANUFACTURER, __STRING_MANUFACTURER[0]);
+    libusb_register_descriptor(2, 0x0409, &__STRING_PRODUCT, __STRING_PRODUCT[0]);
+    libusb_register_descriptor(3, 0x0409, &__STRING_SERIAL, __STRING_SERIAL[0]);
+    libusb_register_descriptor(4, 0x0409, &__STRING_DEFAULT, __STRING_DEFAULT[0]);
 
     fopen(object_get(SYS_OBJ_USBD), HAL_USBD, 0, 0);
 

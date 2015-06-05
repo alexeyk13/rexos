@@ -19,7 +19,12 @@ void* io_stack(IO* io)
     return (void*)((unsigned int)io + io->size - io->stack_size);
 }
 
-void io_push(IO* io, void* data, unsigned int size)
+void io_push(IO* io, unsigned int size)
+{
+    io->stack_size += size;
+}
+
+void io_push_data(IO* io, void* data, unsigned int size)
 {
     io->stack_size += size;
     memcpy(io_stack(io), data, size);
@@ -35,7 +40,7 @@ unsigned int io_get_free(IO* io)
     return io->size - io->data_offset - io->data_size - io->stack_size;
 }
 
-unsigned int io_data_write(IO* io, void* data, unsigned int size)
+unsigned int io_data_write(IO* io, const void* data, unsigned int size)
 {
     if (io_get_free(io) < size)
         size = io_get_free(io);

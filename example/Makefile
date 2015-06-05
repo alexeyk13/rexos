@@ -38,7 +38,7 @@ INCLUDE_FOLDERS            += $(KERNEL) $(KERNEL)/core
 #lib
 INCLUDE_FOLDERS            += $(LIB)
 #userspace
-INCLUDE_FOLDERS            += $(USERSPACE) $(USERSPACE)/core $(USERSPACE)/src
+INCLUDE_FOLDERS            += $(USERSPACE) $(USERSPACE)/core
 #sys
 INCLUDE_FOLDERS            += $(REXOS)/drv/stm32 $(REXOS)/midware
 
@@ -53,7 +53,7 @@ SRC_C                      += kernel.c dbg.c kirq.c kprocess.c ktimer.c kipc.c k
 #lib
 SRC_C                      += lib_lib.c lib_time.c pool.c printf.c lib_array.c lib_std.c lib_stdio.c lib_heap.c stm32_lib_gpio.c libusb.c
 #userspace
-SRC_C                      += stdio.c stdlib.c app.c comm.c
+SRC_C                      += io.c stdio.c stdlib.c app.c comm.c
 #drv
 SRC_C                      += stm32_gpio.c stm32_power.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_usbl.c stm32_adc.c
 #midware

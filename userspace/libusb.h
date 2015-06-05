@@ -9,7 +9,7 @@
 
 #include "usb.h"
 
-bool libusb_register_descriptor(USBD_DESCRIPTOR_TYPE type, unsigned int index, unsigned int lang, const void *descriptor, unsigned int data_size, unsigned int flags);
+bool libusb_register_descriptor(unsigned int index, unsigned int lang, const void *descriptor, unsigned int data_size);
 bool libusb_register_ascii_string(unsigned int index, unsigned int lang, const char* str);
 
 #endif // LIBUSB_H

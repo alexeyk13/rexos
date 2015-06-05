@@ -4,11 +4,11 @@
     All rights reserved.
 */
 
-#include "../font.h"
-#include "../utf8.h"
-#include "../error.h"
-#include "../heap.h"
-#include "../font.h"
+#include "font.h"
+#include "utf8.h"
+#include "error.h"
+#include "heap.h"
+#include "font.h"
 
 #define FACE_OFFSET(face, num)              (*((uint16_t*)((unsigned int)(face) + sizeof(FACE) + ((num) << 1))))
 #define FACE_DATA(face)                     ((uint8_t*)((unsigned int)(face) + sizeof(FACE) + (((face)->count  + 1) << 1)))

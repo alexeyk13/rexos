@@ -126,7 +126,7 @@ void app()
             switch (HAL_ITEM(ipc.cmd))
             {
             case USBD_ALERT:
-                need_post = comm_usbd_alert(&app, ipc.param1);
+                comm_usbd_alert(&app, ipc.param1);
                 break;
             case IPC_STREAM_WRITE:
                 comm_usbd_stream_rx(&app, ipc.param3);
