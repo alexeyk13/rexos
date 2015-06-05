@@ -37,7 +37,7 @@
 #define ERROR_FILE_INVALID_NAME                         -22
 #define ERROR_FILE_PATH_ALREADY_EXISTS                  -23
 #define ERROR_IO_BUFFER_TOO_SMALL                       -24
-#define ERROR_FILE_IO_CANCELLED                         -25
+#define ERROR_IO_CANCELLED                              -25
 #define ERROR_FOLDER_NOT_EMPTY                          -26
 #define ERROR_NOT_MOUNTED                               -27
 #define ERROR_ALREADY_MOUNTED                           -28
