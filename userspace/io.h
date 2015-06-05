@@ -89,6 +89,84 @@ __STATIC_INLINE void io_send(IPC* ipc)
 }
 
 /**
+    \brief send IO write request to another process
+    \param cmd: command to send
+    \param process: receiver process
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \retval none.
+*/
+__STATIC_INLINE void io_write(unsigned int cmd, HANDLE process, unsigned int handle, IO* io)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.process = process;
+    ipc.param1 = handle;
+    ipc.param2 = (unsigned int)io;
+    ipc.param3 = io->data_size;
+    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
+}
+
+/**
+    \brief send IO read request to another process
+    \param cmd: command to send
+    \param process: receiver process
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \param size: IO data size
+    \retval none.
+*/
+__STATIC_INLINE void io_read(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, unsigned int size)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.process = process;
+    ipc.param1 = handle;
+    ipc.param2 = (unsigned int)io;
+    ipc.param3 = size;
+    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
+}
+
+/**
+    \brief send IO complete to another process
+    \param cmd: command to send
+    \param process: receiver process
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \retval none.
+*/
+__STATIC_INLINE void io_complete(unsigned int cmd, HANDLE process, unsigned int handle, IO* io)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.process = process;
+    ipc.param1 = handle;
+    ipc.param2 = (unsigned int)io;
+    ipc.param3 = io->data_size;
+    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
+}
+
+/**
+    \brief send IO complete to another process with error code
+    \param cmd: command to send
+    \param process: receiver process
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \param error: error code to set
+    \retval none.
+*/
+__STATIC_INLINE void io_complete_error(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, int error)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.process = process;
+    ipc.param1 = handle;
+    ipc.param2 = (unsigned int)io;
+    ipc.param3 = error;
+    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
+}
+
+/**
     \brief send IO to another process with error set
     \param ipc: IPC with IO as param
     \param error: error code
@@ -108,6 +186,45 @@ __STATIC_INLINE void io_send_error(IPC* ipc, unsigned int error)
 __STATIC_INLINE void iio_send(IPC* ipc)
 {
     __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
+}
+
+/**
+    \brief send IO complete to another process. isr version
+    \param cmd: command to send
+    \param process: receiver process
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \retval none.
+*/
+__STATIC_INLINE void iio_complete(unsigned int cmd, HANDLE process, unsigned int handle, IO* io)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.process = process;
+    ipc.param1 = handle;
+    ipc.param2 = (unsigned int)io;
+    ipc.param3 = io->data_size;
+    __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
+}
+
+/**
+    \brief send IO complete to another process with error code. isr version
+    \param cmd: command to send
+    \param process: receiver process
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \param error: error code to set
+    \retval none.
+*/
+__STATIC_INLINE void iio_complete_error(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, int error)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.process = process;
+    ipc.param1 = handle;
+    ipc.param2 = (unsigned int)io;
+    ipc.param3 = error;
+    __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
 }
 
 /**
