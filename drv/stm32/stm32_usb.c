@@ -110,7 +110,7 @@ static void stm32_usb_tx(SHARED_USB_DRV* drv, unsigned int ep_num)
     if (size > ep->mps)
         size = ep->mps;
     USB_BUFFER_DESCRIPTORS[ep_num].COUNT_TX = size;
-    memcpy16((void*)(USB_BUFFER_DESCRIPTORS[ep_num].ADDR_TX + USB_PMAADDR), IO_DATA(ep->io) + ep->size, size);
+    memcpy16((void*)(USB_BUFFER_DESCRIPTORS[ep_num].ADDR_TX + USB_PMAADDR), io_data(ep->io) + ep->size, size);
     ep->size += size;
 }
 
@@ -233,7 +233,7 @@ static inline void stm32_usb_rx_isr(SHARED_USB_DRV* drv, unsigned int ep_num)
 {
     EP* ep = drv->usb.out[ep_num];
     uint16_t size = USB_BUFFER_DESCRIPTORS[ep_num].COUNT_RX & 0x3ff;
-    memcpy16(IO_DATA(ep->io) + ep->io->data_size, (void*)(USB_BUFFER_DESCRIPTORS[ep_num].ADDR_RX + USB_PMAADDR), size);
+    memcpy16(io_data(ep->io) + ep->io->data_size, (void*)(USB_BUFFER_DESCRIPTORS[ep_num].ADDR_RX + USB_PMAADDR), size);
     *ep_reg_data(ep_num) = (*ep_reg_data(ep_num)) & USB_EPREG_MASK & ~USB_EP_CTR_RX;
     ep->io->data_size += size;
 

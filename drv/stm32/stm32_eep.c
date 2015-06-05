@@ -28,20 +28,12 @@ static inline void stm32_eep_seek(CORE* core, unsigned int addr)
 
 static inline void stm32_eep_read(CORE* core, IPC* ipc)
 {
-    IO* io = (IO*)ipc->param2;
-    io->data_size = 0;
     if (core->eep.addr + ipc->param3 > EEP_BASE + EEP_SIZE)
     {
         io_send_error(ipc, ERROR_OUT_OF_RANGE);
         return;
     }
-    if (IO_FREE(io) < ipc->param3)
-    {
-        io_send_error(ipc, ERROR_IO_BUFFER_TOO_SMALL);
-        return;
-    }
-    memcpy(IO_DATA(io), (void*)core->eep.addr, ipc->param3);
-    io->data_size = ipc->param3;
+    io_data_write((IO*)ipc->param2, (void*)core->eep.addr, ipc->param3);
     io_send(ipc);
 }
 
@@ -60,7 +52,7 @@ static inline void stm32_eep_write(CORE* core, IPC* ipc)
     {
         while (FLASH->SR & FLASH_SR_BSY) {}
 
-        *(uint32_t*)(core->eep.addr + i) = *((uint32_t*)(IO_DATA(io) + i));
+        *(uint32_t*)(core->eep.addr + i) = *((uint32_t*)(io_data(io) + i));
 
         if (FLASH->SR & (FLASH_SR_FWWERR | FLASH_SR_NOTZEROERR | FLASH_SR_SIZERR | FLASH_SR_PGAERR))
         {

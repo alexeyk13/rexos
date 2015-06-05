@@ -243,7 +243,6 @@ typedef enum {
 typedef struct {
     uint8_t flags;
     uint16_t lang, index;
-    //data or pointer is following
 } USBD_DESCRIPTOR_REGISTER_STRUCT;
 
 #define USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED    ((sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT) + 3) & ~3)

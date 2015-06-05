@@ -8,9 +8,6 @@
 #define IO_H
 
 #include "types.h"
-#include "cc_macro.h"
-#include "svc.h"
-#include "error.h"
 #include "ipc.h"
 
 #pragma pack(push, 1)
@@ -40,13 +37,6 @@ typedef struct {
 
 #pragma pack(pop)
 
-#define IO_DATA(io)                                     ((void*)(((unsigned int)(io)) + (io)->data_offset))
-#define IO_STACK(io)                                    ((void*)(((unsigned int)(io)) + (io)->size - (io)->stack_size))
-#define IO_PUSH(io, size)                               ((io)->stack_size += (size))
-#define IO_POP(io, size)                                ((io)->stack_size -= (size))
-#define IO_FREE(io)                                     ((io)->size - (io)->data_offset - (io)->data_size - (io)->stack_size)
-
-
 /** \addtogroup io io
     interprocess IO
 
@@ -54,39 +44,74 @@ typedef struct {
  */
 
 /**
+    \brief get pointer to IO data
+    \param io: IO pointer
+    \retval data pointer
+*/
+void* io_data(IO* io);
+
+/**
+    \brief get pointer to IO stack
+    \param io: IO pointer
+    \retval stack pointer
+*/
+void* io_stack(IO* io);
+
+/**
+    \brief push data to IO stack
+    \param io: IO pointer
+    \param data: data to push
+    \param size: data size
+    \retval none
+*/
+void io_push(IO* io, void* data, unsigned int size);
+
+/**
+    \brief pop data from IO stack
+    \param io: IO pointer
+    \param size: data size
+    \retval none
+*/
+void io_pop(IO* io, unsigned int size);
+
+/**
+    \brief get IO free space
+    \param io: IO pointer
+    \retval free space
+*/
+unsigned int io_get_free(IO* io);
+
+/**
+    \brief safe write data to IO
+    \param io: IO pointer
+    \param data: data pointer
+    \param size: data size
+    \retval data actually written
+*/
+unsigned int io_data_write(IO* io, void* data, unsigned int size);
+
+
+
+/**
     \brief reset IO to default values
     \param io: IO pointer
     \retval none
 */
-__STATIC_INLINE void io_reset(IO* io)
-{
-    io->data_size = io->stack_size = 0;
-    io->data_offset = sizeof(IO);
-}
+void io_reset(IO* io);
 
 /**
     \brief creates IO
     \param size: size of io without header
     \retval IO pointer on success.
 */
-__STATIC_INLINE IO* io_create(unsigned int size)
-{
-    IO* io;
-    svc_call(SVC_IO_CREATE, (unsigned int)&io, size, 0);
-    if (io)
-        io_reset(io);
-    return io;
-}
+IO* io_create(unsigned int size);
 
 /**
     \brief send IO to another process
     \param ipc: IPC with IO as param
     \retval none.
 */
-__STATIC_INLINE void io_send(IPC* ipc)
-{
-    svc_call(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
-}
+void io_send(IPC* ipc);
 
 /**
     \brief send IO write request to another process
@@ -96,16 +121,7 @@ __STATIC_INLINE void io_send(IPC* ipc)
     \param io: pointer to IO structure
     \retval none.
 */
-__STATIC_INLINE void io_write(unsigned int cmd, HANDLE process, unsigned int handle, IO* io)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = io->data_size;
-    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
+void io_write(unsigned int cmd, HANDLE process, unsigned int handle, IO* io);
 
 /**
     \brief send IO read request to another process
@@ -116,16 +132,7 @@ __STATIC_INLINE void io_write(unsigned int cmd, HANDLE process, unsigned int han
     \param size: IO data size
     \retval none.
 */
-__STATIC_INLINE void io_read(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, unsigned int size)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = size;
-    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
+void io_read(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, unsigned int size);
 
 /**
     \brief send IO complete to another process
@@ -135,16 +142,7 @@ __STATIC_INLINE void io_read(unsigned int cmd, HANDLE process, unsigned int hand
     \param io: pointer to IO structure
     \retval none.
 */
-__STATIC_INLINE void io_complete(unsigned int cmd, HANDLE process, unsigned int handle, IO* io)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = io->data_size;
-    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
+void io_complete(unsigned int cmd, HANDLE process, unsigned int handle, IO* io);
 
 /**
     \brief send IO complete to another process with error code
@@ -155,16 +153,7 @@ __STATIC_INLINE void io_complete(unsigned int cmd, HANDLE process, unsigned int 
     \param error: error code to set
     \retval none.
 */
-__STATIC_INLINE void io_complete_error(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, int error)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = error;
-    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
+void io_complete_error(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, int error);
 
 /**
     \brief send IO to another process with error set
@@ -172,21 +161,14 @@ __STATIC_INLINE void io_complete_error(unsigned int cmd, HANDLE process, unsigne
     \param error: error code
     \retval none.
 */
-__STATIC_INLINE void io_send_error(IPC* ipc, unsigned int error)
-{
-    ipc->param3 = error;
-    svc_call(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
-}
+void io_send_error(IPC* ipc, unsigned int error);
 
 /**
     \brief send IO to another process. isr version
     \param ipc: IPC with IO as param
     \retval none.
 */
-__STATIC_INLINE void iio_send(IPC* ipc)
-{
-    __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
-}
+void iio_send(IPC* ipc);
 
 /**
     \brief send IO complete to another process. isr version
@@ -196,16 +178,7 @@ __STATIC_INLINE void iio_send(IPC* ipc)
     \param io: pointer to IO structure
     \retval none.
 */
-__STATIC_INLINE void iio_complete(unsigned int cmd, HANDLE process, unsigned int handle, IO* io)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = io->data_size;
-    __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
+void iio_complete(unsigned int cmd, HANDLE process, unsigned int handle, IO* io);
 
 /**
     \brief send IO complete to another process with error code. isr version
@@ -216,28 +189,14 @@ __STATIC_INLINE void iio_complete(unsigned int cmd, HANDLE process, unsigned int
     \param error: error code to set
     \retval none.
 */
-__STATIC_INLINE void iio_complete_error(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, int error)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = error;
-    __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
+void iio_complete_error(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, int error);
 
 /**
     \brief send IO to another process. Wait for response.
     \param ipc: IPC with IO as param
     \retval none.
 */
-__STATIC_INLINE void io_call_ipc(IPC* ipc)
-{
-    TIME time;
-    time.sec = time.usec = 0;
-    svc_call(SVC_IO_CALL, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, (unsigned int)&time);
-}
+void io_call_ipc(IPC* ipc);
 
 /**
     \brief send IO to another process. Wait for response.
@@ -247,29 +206,14 @@ __STATIC_INLINE void io_call_ipc(IPC* ipc)
     \param size: size of transfer
     \retval none.
 */
-__STATIC_INLINE int io_call(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int size)
-{
-    IPC ipc;
-    TIME time;
-    ipc.process = process;
-    ipc.cmd = cmd;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = (unsigned int)size;
-    time.sec = time.usec = 0;
-    svc_call(SVC_IO_CALL, (unsigned int)(io->kio), (unsigned int)&ipc, (unsigned int)&time);
-    return ipc.param3;
-}
+int io_call(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int size);
 
 /**
     \brief destroy IO
     \param io: io to destroy
     \retval IO pointer on success.
 */
-__STATIC_INLINE void io_destroy(IO* io)
-{
-    svc_call(SVC_IO_DESTROY, (unsigned int)(io->kio), 0, 0);
-}
+void io_destroy(IO* io);
 
 /** \} */ // end of io group
 
