@@ -9,6 +9,7 @@
 
 #include "../../userspace/process.h"
 #include "../../userspace/ipc.h"
+#include "../../userspace/io.h"
 #include "stm32_config.h"
 #include "sys_config.h"
 #if (MONOLITH_USB)
@@ -16,9 +17,8 @@
 #endif
 
 typedef struct {
-    HANDLE block;
-    void* ptr;
-    unsigned int size, processed;
+    IO* io;
+    unsigned int size;
     uint16_t mps;
     uint8_t io_active;
 } EP;
