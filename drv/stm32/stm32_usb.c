@@ -9,7 +9,6 @@
 #include "../../userspace/usb.h"
 #include "../../userspace/direct.h"
 #include "../../userspace/irq.h"
-#include "../../userspace/block.h"
 #include "../../userspace/file.h"
 #include "../../userspace/stm32_driver.h"
 #include "stm32_power.h"
