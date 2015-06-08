@@ -156,24 +156,34 @@ void iio_complete_error(unsigned int cmd, HANDLE process, unsigned int handle, I
     __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
 }
 
-void io_call_ipc(IPC* ipc)
+void io_call(IPC* ipc)
 {
     TIME time;
     time.sec = time.usec = 0;
     svc_call(SVC_IO_CALL, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, (unsigned int)&time);
 }
 
-int io_call(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int size)
+int io_write_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 {
     IPC ipc;
-    TIME time;
-    ipc.process = process;
     ipc.cmd = cmd;
+    ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
-    ipc.param3 = (unsigned int)size;
-    time.sec = time.usec = 0;
-    svc_call(SVC_IO_CALL, (unsigned int)(io->kio), (unsigned int)&ipc, (unsigned int)&time);
+    ipc.param3 = io->data_size;
+    svc_call(SVC_IO_CALL, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
+    return ipc.param3;
+}
+
+int io_read_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsigned int size)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.process = process;
+    ipc.param1 = handle;
+    ipc.param2 = (unsigned int)io;
+    ipc.param3 = size;
+    svc_call(SVC_IO_CALL, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
     return ipc.param3;
 }
 

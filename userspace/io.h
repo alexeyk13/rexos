@@ -213,17 +213,28 @@ void iio_complete_error(unsigned int cmd, HANDLE process, unsigned int handle, I
     \param ipc: IPC with IO as param
     \retval none.
 */
-void io_call_ipc(IPC* ipc);
+void io_call(IPC* ipc);
 
 /**
-    \brief send IO to another process. Wait for response.
-    \param process: target process
-    \param cmd: cmd to call
+    \brief send IO write request to another process. Wait for response
+    \param process: receiver process
+    \param cmd: command to send
     \param handle: user handle
-    \param size: size of transfer
-    \retval none.
+    \param io: pointer to IO structure
+    \retval write result.
 */
-int io_call(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int size);
+int io_write_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io);
+
+/**
+    \brief send IO read request to another process. Wait for response
+    \param process: receiver process
+    \param cmd: command to send
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \param size: IO data size
+    \retval read result.
+*/
+int io_read_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsigned int size);
 
 /**
     \brief destroy IO
