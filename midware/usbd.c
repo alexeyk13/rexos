@@ -357,7 +357,6 @@ static inline void usbd_class_configured(USBD* usbd)
         process_exit();
         return;
     }
-    printd("ifacecnt: %d\n\r", usbd->ifacecnt);
     for (i = 0; i < usbd->ifacecnt; ++i)
         IFACE(usbd, i)->usbd_class = &__USBD_STUB_CLASS;
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
