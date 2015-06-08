@@ -42,10 +42,20 @@ unsigned int io_get_free(IO* io)
 
 unsigned int io_data_write(IO* io, const void* data, unsigned int size)
 {
+    io->data_size = 0;
     if (io_get_free(io) < size)
         size = io_get_free(io);
     memcpy(io_data(io), data, size);
     io->data_size = size;
+    return size;
+}
+
+unsigned int io_data_append(IO* io, const void* data, unsigned int size)
+{
+    if (io_get_free(io) < size)
+        size = io_get_free(io);
+    memcpy(io_data(io) + io->data_size, data, size);
+    io->data_size += size;
     return size;
 }
 
@@ -69,7 +79,7 @@ void io_send(IPC* ipc)
     svc_call(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
 }
 
-void io_write(unsigned int cmd, HANDLE process, unsigned int handle, IO* io)
+void io_write(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 {
     IPC ipc;
     ipc.cmd = cmd;
@@ -80,7 +90,7 @@ void io_write(unsigned int cmd, HANDLE process, unsigned int handle, IO* io)
     svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
 }
 
-void io_read(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, unsigned int size)
+void io_read(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsigned int size)
 {
     IPC ipc;
     ipc.cmd = cmd;

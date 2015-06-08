@@ -242,6 +242,7 @@ typedef struct {
 #define USBD_IFACE_ITEM(iface)                          ((iface) & 0xffff)
 
 bool usbd_register_descriptor(const void* d, unsigned int index, unsigned int lang);
+bool usbd_register_const_descriptor(const void* d, unsigned int index, unsigned int lang);
 bool usbd_register_ascii_string(unsigned int index, unsigned int lang, const char* str);
 
 #endif // USB_H

@@ -37,7 +37,7 @@ typedef enum {
 
 typedef struct {
     uint16_t index, lang;
-    USB_DESCRIPTOR_TYPE* d;
+    USB_DESCRIPTOR_TYPE** d;
 } USBD_DESCRIPTOR;
 
 typedef enum {
@@ -207,12 +207,12 @@ void usbd_usb_ep_flush(USBD* usbd, unsigned int num)
 
 void usbd_usb_ep_write(USBD* usbd, unsigned int ep_num, IO* io)
 {
-    io_write(HAL_CMD(HAL_USB, IPC_WRITE), usbd->usb, USB_EP_IN | ep_num, io);
+    io_write(usbd->usb, HAL_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | ep_num, io);
 }
 
 void usbd_usb_ep_read(USBD* usbd, unsigned int ep_num, IO* io, unsigned int size)
 {
-    io_read(HAL_CMD(HAL_USB, IPC_READ), usbd->usb, ep_num, io, size);
+    io_read(usbd->usb, HAL_CMD(HAL_USB, IPC_READ), ep_num, io, size);
 }
 
 static int usbd_get_descriptor_index(USBD* usbd, unsigned int type, unsigned int index, unsigned int lang)
@@ -221,7 +221,7 @@ static int usbd_get_descriptor_index(USBD* usbd, unsigned int type, unsigned int
     for (i = 0; i < array_size(usbd->descriptors); ++i)
     {
         if (DESCRIPTOR(usbd, i)->index == index && DESCRIPTOR(usbd, i)->lang == lang &&
-            DESCRIPTOR(usbd, i)->d->bDescriptorType == type)
+            (*(DESCRIPTOR(usbd, i)->d))->bDescriptorType == type)
             return i;
     }
     return -1;
@@ -232,7 +232,7 @@ static USB_DESCRIPTOR_TYPE* usbd_descriptor(USBD* usbd, unsigned int type, unsig
     int idx = usbd_get_descriptor_index(usbd, type, index, lang);
     if (idx < 0)
         return NULL;
-    return DESCRIPTOR(usbd, idx)->d;
+    return *(DESCRIPTOR(usbd, idx)->d);
 }
 
 void usbd_stub_class_state_change(USBD* usbd, void* param)
@@ -423,10 +423,12 @@ static inline int usbd_request_register_descriptor(USBD* usbd, IO* io)
     if (usbd_get_descriptor_index(usbd, ((USB_DESCRIPTOR_TYPE*)io_data(io))->bDescriptorType, udrs->index, udrs->lang) >= 0)
         return ERROR_ALREADY_CONFIGURED;
 
-    USB_DESCRIPTOR_TYPE* d = malloc(io->data_size);
+    void* d = malloc(io->data_size);
     if (d == NULL)
         return get_last_error();
     memcpy(d, io_data(io), io->data_size);
+    if (*((void**)d) == NULL)
+        *((void**)d) = d + sizeof(void*);
     array_append(&usbd->descriptors);
     idx = array_size(usbd->descriptors) - 1;
 
