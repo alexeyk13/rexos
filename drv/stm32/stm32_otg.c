@@ -12,8 +12,6 @@
 #include "../../userspace/usb.h"
 #include "../../userspace/error.h"
 #include "../../userspace/irq.h"
-#include "../../userspace/block.h"
-#include "../../userspace/direct.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"
 #include <string.h>
@@ -74,49 +72,38 @@ static inline EP* ep_data(SHARED_USB_DRV* drv, int num)
 
 bool stm32_otg_ep_flush(SHARED_USB_DRV* drv, int num)
 {
-    if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return false;
-    }
     EP* ep = ep_data(drv, num);
     if (ep == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
         return false;
     }
-    if (ep->block != INVALID_HANDLE)
+    if (ep->io != NULL)
     {
+        io_complete_error(HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), drv->usb.device, num, ep->io, ERROR_IO_CANCELLED);
+        ep->io = NULL;
         ep_reg_data(num)->CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_SNAK;
-        block_send(ep->block, drv->usb.device);
-        ep->block = INVALID_HANDLE;
     }
     ep->io_active = false;
     return true;
 }
 
-void stm32_otg_ep_set_stall(SHARED_USB_DRV* drv, int num)
+static inline void stm32_otg_ep_set_stall(SHARED_USB_DRV* drv, int num)
 {
     if (!stm32_otg_ep_flush(drv, num))
         return;
     ep_reg_data(num)->CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_STALL;
 }
 
-void stm32_otg_ep_clear_stall(SHARED_USB_DRV* drv, int num)
+static inline void stm32_otg_ep_clear_stall(SHARED_USB_DRV* drv, int num)
 {
     if (!stm32_otg_ep_flush(drv, num))
         return;
     ep_reg_data(num)->CTL &= ~OTG_FS_DEVICE_ENDPOINT_CTL_STALL;
 }
 
-
-bool stm32_otg_ep_is_stall(int num)
+static inline bool stm32_otg_ep_is_stall(int num)
 {
-    if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return false;
-    }
     return ep_reg_data(num)->CTL & OTG_FS_DEVICE_ENDPOINT_CTL_STALL ? true : false;
 }
 
@@ -140,18 +127,18 @@ static inline void usb_wakeup(SHARED_USB_DRV* drv)
     ipc_ipost(&ipc);
 }
 
-static inline void stm32_otg_rx_prepare(SHARED_USB_DRV* drv, int num)
+static void stm32_otg_rx_prepare(SHARED_USB_DRV* drv, unsigned int ep_num)
 {
-    EP* ep = drv->usb.out[USB_EP_NUM(num)];
-    int size = ep->size - ep->processed;
+    EP* ep = drv->usb.out[ep_num];
+    int size = ep->size - ep->io->data_size;
     if (size > ep->mps)
         size = ep->mps;
-    if (USB_EP_NUM(num))
-        OTG_FS_DEVICE->OUTEP[USB_EP_NUM(num)].TSIZ = (1 << OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_POS) | (size << OTG_FS_DEVICE_ENDPOINT_TSIZ_XFRSIZ_POS);
+    if (ep_num)
+        OTG_FS_DEVICE->OUTEP[ep_num].TSIZ = (1 << OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_POS) | (size << OTG_FS_DEVICE_ENDPOINT_TSIZ_XFRSIZ_POS);
     else //EP0
         OTG_FS_DEVICE->OUTEP[0].TSIZ = (1 << OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_POS) | (size << OTG_FS_DEVICE_ENDPOINT_TSIZ_XFRSIZ_POS) |
                                        (3 << OTG_FS_DEVICE_ENDPOINT_TSIZ_STUPCNT_OUT0_POS);
-    OTG_FS_DEVICE->OUTEP[USB_EP_NUM(num)].CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_EPENA | OTG_FS_DEVICE_ENDPOINT_CTL_CNAK;
+    OTG_FS_DEVICE->OUTEP[ep_num].CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_EPENA | OTG_FS_DEVICE_ENDPOINT_CTL_CNAK;
 }
 
 static inline void stm32_otg_rx(SHARED_USB_DRV* drv)
@@ -160,8 +147,8 @@ static inline void stm32_otg_rx(SHARED_USB_DRV* drv)
     unsigned int sta = OTG_FS_GENERAL->RXSTSP;
     unsigned int pktsts = sta & OTG_FS_GENERAL_RXSTSR_PKTSTS;
     int bcnt = (sta & OTG_FS_GENERAL_RXSTSR_BCNT) >> OTG_FS_GENERAL_RXSTSR_BCNT_POS;
-    unsigned int num = (sta & OTG_FS_GENERAL_RXSTSR_EPNUM) >> OTG_FS_GENERAL_RXSTSR_EPNUM_POS;
-    EP* ep = drv->usb.out[num];
+    unsigned int ep_num = (sta & OTG_FS_GENERAL_RXSTSR_EPNUM) >> OTG_FS_GENERAL_RXSTSR_EPNUM_POS;
+    EP* ep = drv->usb.out[ep_num];
 
     if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_RX)
     {
@@ -169,23 +156,23 @@ static inline void stm32_otg_rx(SHARED_USB_DRV* drv)
         ipc.process = drv->usb.device;
         ipc.cmd = HAL_CMD(HAL_USB, USB_SETUP);
         ipc.param1 = 0;
-        ipc.param2 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[0];
-        ipc.param3 = ((uint32_t*)(OTG_FS_FIFO_BASE + num * 0x1000))[1];
+        ipc.param2 = ((uint32_t*)(OTG_FS_FIFO_BASE + ep_num * 0x1000))[0];
+        ipc.param3 = ((uint32_t*)(OTG_FS_FIFO_BASE + ep_num * 0x1000))[1];
         ipc_post(&ipc);
     }
     else if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_OUT_RX)
     {
-        memcpy(ep->ptr + ep->processed, (void*)(OTG_FS_FIFO_BASE + num * 0x1000), ALIGN(bcnt));
-        ep->processed += bcnt;
+        memcpy(io_data(ep->io) + ep->io->data_size, (void*)(OTG_FS_FIFO_BASE + ep_num * 0x1000), ALIGN(bcnt));
+        ep->io->data_size += bcnt;
 
-        if (ep->processed >= ep->size)
+        if (ep->io->data_size >= ep->size)
         {
+            iio_complete(HAL_CMD(HAL_USB, IPC_READ), drv->usb.device, ep_num, ep->io);
             ep->io_active = false;
-            firead_complete(drv->usb.device, HAL_USB, num, ep->block, ep->processed);
-            ep->block = INVALID_HANDLE;
+            ep->io = NULL;
         }
         else
-            stm32_otg_rx_prepare(drv, num);
+            stm32_otg_rx_prepare(drv, ep_num);
     }
     OTG_FS_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_RXFLVLM;
 }
@@ -194,14 +181,14 @@ static inline void stm32_otg_tx(SHARED_USB_DRV* drv, int num)
 {
     EP* ep = drv->usb.in[USB_EP_NUM(num)];
 
-    int size = ep->size - ep->processed;
+    int size = ep->io->data_size - ep->size;
     if (size > ep->mps)
         size = ep->mps;
     OTG_FS_DEVICE->INEP[USB_EP_NUM(num)].TSIZ = (1 << OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_POS) | (size << OTG_FS_DEVICE_ENDPOINT_TSIZ_XFRSIZ_POS);
     OTG_FS_DEVICE->INEP[USB_EP_NUM(num)].CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_EPENA | OTG_FS_DEVICE_ENDPOINT_CTL_CNAK;
 
-    memcpy((void*)(OTG_FS_FIFO_BASE + USB_EP_NUM(num) * 0x1000), ep->ptr +  ep->processed, ALIGN(size));
-    ep->processed += size;
+    memcpy((void*)(OTG_FS_FIFO_BASE + USB_EP_NUM(num) * 0x1000), io_data(ep->io) +  ep->size, ALIGN(size));
+    ep->size += size;
 }
 
 USB_SPEED stm32_otg_get_speed(SHARED_USB_DRV* drv)
@@ -236,6 +223,7 @@ void usb_on_isr(int vector, void* param)
         OTG_FS_GENERAL->INTMSK &= ~OTG_FS_GENERAL_INTMSK_RXFLVLM;
         ipc.process = process_iget_current();
         ipc.cmd = HAL_CMD(HAL_USB, STM32_USB_FIFO_RX);
+        ipc.param1 = USB_HANDLE_DEVICE;
         ipc_ipost(&ipc);
         return;
     }
@@ -243,11 +231,11 @@ void usb_on_isr(int vector, void* param)
         if (drv->usb.in[i] != NULL && drv->usb.in[i]->io_active && (OTG_FS_DEVICE->INEP[i].INT & OTG_FS_DEVICE_ENDPOINT_INT_XFRC))
         {
             OTG_FS_DEVICE->INEP[i].INT = OTG_FS_DEVICE_ENDPOINT_INT_XFRC;
-            if (drv->usb.in[i]->processed >= drv->usb.in[i]->size)
+            if (drv->usb.in[i]->size >= drv->usb.in[i]->io->data_size)
             {
                 drv->usb.in[i]->io_active = false;
-                fiwrite_complete(drv->usb.device, HAL_USB, USB_EP_IN | i, drv->usb.in[i]->block, drv->usb.in[i]->processed);
-                drv->usb.in[i]->block = INVALID_HANDLE;
+                iio_complete(HAL_CMD(HAL_USB, IPC_WRITE), drv->usb.device, USB_EP_IN | i, drv->usb.in[i]->io);
+                drv->usb.in[i]->io = NULL;
             }
             else
             {
@@ -355,11 +343,6 @@ void stm32_otg_open_device(SHARED_USB_DRV* drv, HANDLE device)
 
 static inline void stm32_otg_open_ep(SHARED_USB_DRV* drv, int num, USB_EP_TYPE type, unsigned int size)
 {
-    if (USB_EP_NUM(num) >=  USB_EP_COUNT_MAX)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
     if (ep_data(drv, num) != NULL)
     {
         error(ERROR_ALREADY_CONFIGURED);
@@ -369,7 +352,7 @@ static inline void stm32_otg_open_ep(SHARED_USB_DRV* drv, int num, USB_EP_TYPE t
     if (ep == NULL)
         return;
     num & USB_EP_IN ? (drv->usb.in[USB_EP_NUM(num)] = ep) : (drv->usb.out[USB_EP_NUM(num)] = ep);
-    ep->block = INVALID_HANDLE;
+    ep->io = NULL;
     ep->mps = 0;
     ep->io_active = false;
 
@@ -490,80 +473,55 @@ static inline void stm32_otg_set_address(int addr)
     OTG_FS_DEVICE->CFG |= addr << OTG_FS_DEVICE_CFG_DAD_POS;
 }
 
-static inline void stm32_otg_read(SHARED_USB_DRV* drv, unsigned int num, HANDLE block, unsigned int size, HANDLE process)
+static bool stm32_usb_io_prepare(SHARED_USB_DRV* drv, IPC* ipc)
 {
-    if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
-    {
-        fread_complete(process, HAL_USB, num, block, ERROR_INVALID_PARAMS);
-        return;
-    }
-    EP* ep = drv->usb.out[USB_EP_NUM(num)];
+    EP* ep = ep_data(drv, ipc->param1);
     if (ep == NULL)
     {
-        fread_complete(process, HAL_USB, num, block, ERROR_NOT_CONFIGURED);
-        return;
+        io_send_error(ipc, ERROR_NOT_CONFIGURED);
+        return false;
     }
     if (ep->io_active)
     {
-        fread_complete(process, HAL_USB, num, block, ERROR_IN_PROGRESS);
-        return;
+        io_send_error(ipc, ERROR_IN_PROGRESS);
+        return false;
     }
-    //no blocks for ZLP
-    if (size)
-    {
-        if ((ep->ptr = block_open(block)) == NULL)
-        {
-            fread_complete(process, HAL_USB, num, block, get_last_error());
-            return;
-        }
-    }
-    ep->size = size;
-    ep->block = block;
-    ep->processed = 0;
-    ep->io_active = true;
-    stm32_otg_rx_prepare(drv, num);
+    ep->io = (IO*)ipc->param2;
+    return true;
 }
 
-static inline void stm32_otg_write(SHARED_USB_DRV* drv, unsigned int num, HANDLE block, unsigned int size, HANDLE process)
+static inline void stm32_otg_read(SHARED_USB_DRV* drv, IPC* ipc)
 {
-    if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
+    unsigned int ep_num = USB_EP_NUM(ipc->param1);
+    EP* ep = drv->usb.out[ep_num];
+    if (stm32_usb_io_prepare(drv, ipc))
     {
-        fwrite_complete(process, HAL_USB, num, block, ERROR_INVALID_PARAMS);
-        return;
+        ep->io->data_size = 0;
+        ep->size = ipc->param3;
+        ep->io_active = true;
+        stm32_otg_rx_prepare(drv, ep_num);
     }
-    EP* ep = drv->usb.in[USB_EP_NUM(num)];
-    if (ep == NULL)
-    {
-        fwrite_complete(process, HAL_USB, num, block, ERROR_NOT_CONFIGURED);
-        return;
-    }
-    if (ep->io_active)
-    {
-        fwrite_complete(process, HAL_USB, num, block, ERROR_IN_PROGRESS);
-        return;
-    }
-    ep->size = size;
-    //no blocks for ZLP
-    if (ep->size)
-    {
-        if ((ep->ptr = block_open(block)) == NULL)
-        {
-            fwrite_complete(process, HAL_USB, num, block, get_last_error());
-            return;
-        }
-    }
-    ep->block = block;
-    ep->processed = 0;
-    ep->io_active = true;
-
-    stm32_otg_tx(drv, num);
 }
 
+static inline void stm32_otg_write(SHARED_USB_DRV* drv, IPC* ipc)
+{
+    unsigned int ep_num = USB_EP_NUM(ipc->param1);
+    EP* ep = drv->usb.in[ep_num];
+    if (stm32_usb_io_prepare(drv, ipc))
+    {
+        ep->size = 0;
+        ep->io_active = true;
+        stm32_otg_tx(drv, USB_EP_IN | ep_num);
+    }
+}
+
+#if (USB_TEST_MODE)
 static inline void stm32_otg_set_test_mode(SHARED_USB_DRV* drv, USB_TEST_MODES test_mode)
 {
     OTG_FS_DEVICE->CTL &= ~OTG_FS_DEVICE_CTL_TCTL;
     OTG_FS_DEVICE->CTL |= test_mode << OTG_FS_DEVICE_CTL_TCTL_POS;
 }
+#endif //USB_TEST_MODE
 
 void stm32_otg_init(SHARED_USB_DRV* drv)
 {
@@ -576,74 +534,114 @@ void stm32_otg_init(SHARED_USB_DRV* drv)
     }
 }
 
-bool stm32_otg_request(SHARED_USB_DRV* drv, IPC* ipc)
+static inline bool stm32_otg_device_request(SHARED_USB_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
-    case STM32_USB_FIFO_RX:
-        stm32_otg_rx(drv);
-        //message from isr, no response
-        break;
-    case STM32_USB_FIFO_TX:
-        stm32_otg_tx(drv, ipc->param1);
-        //message from isr, no response
-        break;
     case USB_GET_SPEED:
         ipc->param2 = stm32_otg_get_speed(drv);
         need_post = true;
         break;
     case IPC_OPEN:
-        if (ipc->param1 == USB_HANDLE_DEVICE)
-            stm32_otg_open_device(drv, ipc->process);
-        else
-            stm32_otg_open_ep(drv, ipc->param1, ipc->param2, ipc->param3);
+        stm32_otg_open_device(drv, ipc->process);
         need_post = true;
         break;
     case IPC_CLOSE:
-        if (ipc->param1 == USB_HANDLE_DEVICE)
-            stm32_otg_close_device(drv);
-        else
-            stm32_otg_close_ep(drv, ipc->param1);
+        stm32_otg_close_device(drv);
         need_post = true;
         break;
     case USB_SET_ADDRESS:
         stm32_otg_set_address(ipc->param2);
         need_post = true;
         break;
-    case IPC_FLUSH:
-        stm32_otg_ep_flush(drv, ipc->param1);
-        need_post = true;
+    case STM32_USB_FIFO_RX:
+        stm32_otg_rx(drv);
+        //message from isr, no response
         break;
-    case USB_EP_SET_STALL:
-        stm32_otg_ep_set_stall(drv, ipc->param1);
-        need_post = true;
-        break;
-    case USB_EP_CLEAR_STALL:
-        stm32_otg_ep_clear_stall(drv, ipc->param1);
-        need_post = true;
-        break;
-    case USB_EP_IS_STALL:
-        ipc->param2 = stm32_otg_ep_is_stall(ipc->param1);
-        need_post = true;
-        break;
-    case IPC_READ:
-        stm32_otg_read(drv, ipc->param1, ipc->param2, ipc->param3, ipc->process);
-        //generally posted with block, no return IPC
-        break;
-    case IPC_WRITE:
-        stm32_otg_write(drv, ipc->param1, ipc->param2, ipc->param3, ipc->process);
-        //generally posted with block, no return IPC
-        break;
+#if (USB_TEST_MODE)
     case USB_SET_TEST_MODE:
         stm32_otg_set_test_mode(drv, ipc->param2);
         need_post = true;
         break;
+#endif //USB_TEST_MODE
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;
         break;
     }
+    return need_post;
+}
+
+
+bool stm32_otg_ep_request(SHARED_USB_DRV* drv, IPC* ipc)
+{
+    bool need_post = false;
+    if (USB_EP_NUM(ipc->param1) >= USB_EP_COUNT_MAX)
+    {
+        switch (HAL_ITEM(ipc->cmd))
+        {
+        case IPC_READ:
+        case IPC_WRITE:
+            io_send_error(ipc, ERROR_INVALID_PARAMS);
+            break;
+        default:
+            error(ERROR_INVALID_PARAMS);
+            need_post = true;
+        }
+    }
+    else
+        switch (HAL_ITEM(ipc->cmd))
+        {
+        case IPC_OPEN:
+            stm32_otg_open_ep(drv, ipc->param1, ipc->param2, ipc->param3);
+            need_post = true;
+            break;
+        case IPC_CLOSE:
+            stm32_otg_close_ep(drv, ipc->param1);
+            need_post = true;
+            break;
+        case IPC_FLUSH:
+            stm32_otg_ep_flush(drv, ipc->param1);
+            need_post = true;
+            break;
+        case USB_EP_SET_STALL:
+            stm32_otg_ep_set_stall(drv, ipc->param1);
+            need_post = true;
+            break;
+        case USB_EP_CLEAR_STALL:
+            stm32_otg_ep_clear_stall(drv, ipc->param1);
+            need_post = true;
+            break;
+        case USB_EP_IS_STALL:
+            ipc->param2 = stm32_otg_ep_is_stall(ipc->param1);
+            need_post = true;
+            break;
+        case IPC_READ:
+            stm32_otg_read(drv, ipc);
+            break;
+        case IPC_WRITE:
+            stm32_otg_write(drv, ipc);
+            break;
+        case STM32_USB_FIFO_TX:
+            stm32_otg_tx(drv, ipc->param1);
+            //message from isr, no response
+            break;
+        default:
+            error(ERROR_NOT_SUPPORTED);
+            need_post = true;
+            break;
+        }
+    return need_post;
+}
+
+bool stm32_otg_request(SHARED_USB_DRV* drv, IPC* ipc)
+{
+    bool need_post = false;
+    if (ipc->param1 == USB_HANDLE_DEVICE)
+        need_post = stm32_otg_device_request(drv, ipc);
+    else
+        need_post = stm32_otg_ep_request(drv, ipc);
     return need_post;
 }
 
@@ -657,13 +655,8 @@ void stm32_otg()
     object_set_self(SYS_OBJ_USB);
     for (;;)
     {
-        error(ERROR_OK);
-        need_post = false;
-        ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
-            need_post = true;
-        else
-            need_post = stm32_otg_request(&drv, &ipc);
+        ipc_read(&ipc);
+        need_post = stm32_otg_request(&drv, &ipc);
         if (need_post)
             ipc_post(&ipc);
     }
