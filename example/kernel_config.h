@@ -25,8 +25,8 @@
 #define KERNEL_IPC_DEBUG                            1
 //maximum number of global handles. Must be at least 1
 #define KERNEL_OBJECTS_COUNT                        5
-//soft timers if sleep or ipc_read with timeout is not enough
-#define KERNEL_SOFT_TIMERS                          1
+//block, direct are now deprecated
+#define KERNEL_BD                                   0
 //gpio bitbang library. Implementation specific
 #define KERNEL_LIB_GPIO                             1
 

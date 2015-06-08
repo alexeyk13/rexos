@@ -12,7 +12,9 @@
 #include "kernel_config.h"
 #include "dbg.h"
 #include "kipc.h"
+#if (KERNEL_BD)
 #include "kblock.h"
+#endif //KERNEL_BD
 
 typedef struct _PROCESS {
     DLIST list;                                                        //list of processes - active, frozen, or owned by sync object
@@ -28,7 +30,9 @@ typedef struct _PROCESS {
     TIME uptime;
     TIME uptime_start;
 #endif //KERNEL_PROCESS_STAT
+#if (KERNEL_BD)
     BLOCK* blocks;
+#endif //KERNEL_BD
     KIPC kipc;
     //IPC is following
 }PROCESS;
@@ -50,6 +54,8 @@ void kprocess_get_current_svc(PROCESS** var);
 void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
 void kprocess_wakeup(PROCESS* process);
 void kprocess_set_current_priority(PROCESS* process, unsigned int priority);
+
+#if (KERNEL_BD)
 __STATIC_INLINE void kprocess_block_open(PROCESS* process, BLOCK* block)
 {
     dlist_add_tail((DLIST**)&process->blocks, (DLIST*)block);
@@ -59,6 +65,7 @@ __STATIC_INLINE void kprocess_block_close(PROCESS* process, BLOCK* block)
 {
     dlist_remove((DLIST**)&process->blocks, (DLIST*)block);
 }
+#endif //KERNEL_BD
 
 void kprocess_destroy_current();
 

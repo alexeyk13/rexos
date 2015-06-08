@@ -9,7 +9,7 @@
 
 //------------------------------ CORE ------------------------------------------------
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
-#define STM32_CORE_STACK_SIZE                   1024
+#define STM32_CORE_PROCESS_SIZE                 1024
 
 #define STM32_DRIVERS_IPC_COUNT                 5
 //UART driver is monolith. Enable for size, disable for perfomance

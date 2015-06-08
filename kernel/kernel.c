@@ -11,8 +11,10 @@
 #include "kipc.h"
 #include "kstream.h"
 #include "kprocess.h"
+#if (KERNEL_BD)
 #include "kdirect.h"
 #include "kblock.h"
+#endif //KERNEL_BD
 #include "kio.h"
 #include "kobject.h"
 
@@ -154,6 +156,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_STREAM_DESTROY:
         kstream_destroy((STREAM*)param1);
         break;
+#if (KERNEL_BD)
     //direct io
     case SVC_DIRECT_READ:
         kdirect_read((PROCESS*)param1, (void*)param2, param3);
@@ -186,6 +189,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_BLOCK_DESTROY:
         kblock_destroy((BLOCK*)param1);
         break;
+#endif //KERNEL_BD
     case SVC_IO_CREATE:
         kio_create((IO**)param1, (unsigned int)param2);
         break;

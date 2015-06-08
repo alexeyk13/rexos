@@ -30,7 +30,7 @@ const REX __STM32_CORE = {
     //name
     "STM32 core driver",
     //size
-    STM32_CORE_STACK_SIZE,
+    STM32_CORE_PROCESS_SIZE,
     //priority - driver priority
     90,
     //flags

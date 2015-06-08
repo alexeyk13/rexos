@@ -9,7 +9,9 @@
 #include "string.h"
 #include "kstream.h"
 #include "kernel.h"
+#if (KERNEL_BD)
 #include "kdirect.h"
+#endif //KERNEL_BD
 #include "../userspace/error.h"
 #include "../lib/pool.h"
 #include "../userspace/ipc.h"
@@ -165,9 +167,11 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->sp = (void*)((unsigned int)(*process)->heap + rex->size);
             ktimer_init_internal(&(*process)->timer, kprocess_timeout, (*process));
             (*process)->size = rex->size;
-            dlist_clear((DLIST**)&((*process)->blocks));
             kipc_init((HANDLE)*process, rex->ipc_size);
+#if (KERNEL_BD)
+            dlist_clear((DLIST**)&((*process)->blocks));
             kdirect_init(*process);
+#endif //KERNEL_BD
             (*process)->heap->stdout = (*process)->heap->stdin = INVALID_HANDLE;
 
             (*process)->heap->flags = rex->flags >> REX_HEAP_FLAGS_OFFSET;
@@ -377,14 +381,16 @@ PROCESS* kprocess_get_current()
 
 bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size)
 {
-    DLIST_ENUM de;
-    BLOCK* cur;
     //don't check on IRQ or kernel post
     if ((HANDLE)process == KERNEL_HANDLE || __KERNEL->context >= 0)
         return true;
     //check HEAP
     if ((unsigned int)addr >= (unsigned int)process->heap && (unsigned int)addr + size < (unsigned int)process->heap + process->size)
         return true;
+
+#if (KERNEL_BD)
+    DLIST_ENUM de;
+    BLOCK* cur;
     //check open blocks
     dlist_enum_start((DLIST**)&process->blocks, &de);
     while (dlist_enum(&de, (DLIST**)&cur))
@@ -392,13 +398,12 @@ bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size)
         if ((unsigned int)addr >= (unsigned int)cur->data && (unsigned int)addr + size < (unsigned int)cur->data + cur->size)
             return true;
     }
+#endif //KERNEL_BD
     return false;
 }
 
 bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size)
 {
-    DLIST_ENUM de;
-    BLOCK* cur;
     //don't check on IRQ or kernel post
     if ((HANDLE)process == KERNEL_HANDLE || __KERNEL->context >= 0)
         return true;
@@ -408,6 +413,9 @@ bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size
     //check FLASH
     if ((unsigned int)addr >= FLASH_BASE && (unsigned int)addr + size < FLASH_BASE + FLASH_SIZE)
         return true;
+#if (KERNEL_BD)
+    DLIST_ENUM de;
+    BLOCK* cur;
     //check open blocks
     dlist_enum_start((DLIST**)&process->blocks, &de);
     while (dlist_enum(&de, (DLIST**)&cur))
@@ -415,6 +423,7 @@ bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size
         if ((unsigned int)addr >= (unsigned int)cur->data && (unsigned int)addr + size < (unsigned int)cur->data + cur->size)
             return true;
     }
+#endif //KERNEL_BD
     return false;
 }
 
