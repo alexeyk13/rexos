@@ -33,9 +33,9 @@ typedef enum {
     DAC_WAVE_SQUARE
 } DAC_WAVE_TYPE;
 
-__STATIC_INLINE HANDLE dac_open(int channel, DAC_MODE mode, unsigned int samplerate)
+__STATIC_INLINE bool dac_open(int channel, DAC_MODE mode, unsigned int samplerate)
 {
-    return fopen_p(object_get(SYS_OBJ_DAC), HAL_DAC, channel, mode, (void*)samplerate);
+    return ack(object_get(SYS_OBJ_DAC), HAL_CMD(HAL_DAC, IPC_OPEN), channel, mode, samplerate);
 }
 
 __STATIC_INLINE void dac_set(int channel, SAMPLE value)

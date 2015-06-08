@@ -47,63 +47,59 @@ void stm32_core_loop(CORE* core)
     bool need_post;
     for (;;)
     {
-        error(ERROR_OK);
+        ipc_read(&ipc);
         need_post = false;
-        ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
-            need_post = true;
-        else
-            switch (HAL_GROUP(ipc.cmd))
-            {
-            case HAL_POWER:
-                need_post = stm32_power_request(core, &ipc);
-                break;
-            case HAL_GPIO:
-                need_post = stm32_gpio_request(core, &ipc);
-                break;
-            case HAL_TIMER:
-                need_post = stm32_timer_request(core, &ipc);
-                break;
+        switch (HAL_GROUP(ipc.cmd))
+        {
+        case HAL_POWER:
+            need_post = stm32_power_request(core, &ipc);
+            break;
+        case HAL_GPIO:
+            need_post = stm32_gpio_request(core, &ipc);
+            break;
+        case HAL_TIMER:
+            need_post = stm32_timer_request(core, &ipc);
+            break;
 #if (STM32_RTC_DRIVER)
-            case HAL_RTC:
-                need_post = stm32_rtc_request(&ipc);
-                break;
+        case HAL_RTC:
+            need_post = stm32_rtc_request(&ipc);
+            break;
 #endif // STM32_RTC_DRIVER
 #if (STM32_WDT_DRIVER)
-            case HAL_WDT:
-                need_post = stm32_wdt_request(&ipc);
-                break;
+        case HAL_WDT:
+            need_post = stm32_wdt_request(&ipc);
+            break;
 #endif //STM32_WDT_DRIVER
 #if (MONOLITH_UART)
-            case HAL_UART:
-                need_post = stm32_uart_request(core, &ipc);
-                break;
+        case HAL_UART:
+            need_post = stm32_uart_request(core, &ipc);
+            break;
 #endif //MONOLITH_UART
 #if (STM32_ADC_DRIVER)
-            case HAL_ADC:
-                need_post = stm32_adc_request(core, &ipc);
-                break;
+        case HAL_ADC:
+            need_post = stm32_adc_request(core, &ipc);
+            break;
 #endif //STM32_ADC_DRIVER
 #if (STM32_DAC_DRIVER)
-            case HAL_DAC:
-                need_post = stm32_dac_request(core, &ipc);
-                break;
+        case HAL_DAC:
+            need_post = stm32_dac_request(core, &ipc);
+            break;
 #endif //STM32_DAC_DRIVER
 #if (STM32_EEP_DRIVER)
-            case HAL_EEPROM:
-                need_post = stm32_eep_request(core, &ipc);
-                break;
+        case HAL_EEPROM:
+            need_post = stm32_eep_request(core, &ipc);
+            break;
 #endif //STM32_EEP_DRIVER
 #if (MONOLITH_USB)
-            case HAL_USB:
-                need_post = stm32_usb_request(core, &ipc);
-                break;
+        case HAL_USB:
+            need_post = stm32_usb_request(core, &ipc);
+            break;
 #endif //MONOLITH_USB
-            default:
-                error(ERROR_NOT_SUPPORTED);
-                need_post = true;
-                break;
-            }
+        default:
+            error(ERROR_NOT_SUPPORTED);
+            need_post = true;
+            break;
+        }
         if (need_post)
             ipc_post_or_error(&ipc);
     }

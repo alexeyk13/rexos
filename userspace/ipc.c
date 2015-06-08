@@ -36,17 +36,25 @@ void ipc_ipost(IPC* ipc)
     __GLOBAL->svc_irq(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
 }
 
-bool ipc_read(IPC* ipc, TIME* timeout, HANDLE wait_process)
+void ipc_read(IPC* ipc)
 {
-    svc_call(SVC_IPC_READ, (unsigned int)ipc, (unsigned int)timeout, wait_process);
-    return get_last_error() == ERROR_OK;
+    for (;;)
+    {
+        error(ERROR_OK);
+        ipc_read_ms(ipc, 0, ANY_HANDLE);
+        if (ipc->cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
+            ipc_post_or_error(ipc);
+        else
+            break;
+    }
 }
 
 bool ipc_read_ms(IPC* ipc, unsigned int ms, HANDLE wait_process)
 {
     TIME timeout;
     ms_to_time(ms, &timeout);
-    return ipc_read(ipc, &timeout, wait_process);
+    svc_call(SVC_IPC_READ, (unsigned int)ipc, (unsigned int)&timeout, wait_process);
+    return get_last_error() == ERROR_OK;
 }
 
 void ipc_call(IPC* ipc, TIME* timeout)

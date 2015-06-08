@@ -671,15 +671,10 @@ void stm32_usb()
     object_set_self(SYS_OBJ_USB);
     for (;;)
     {
-        error(ERROR_OK);
-        need_post = false;
-        ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
-            need_post = true;
-        else
-            need_post = stm32_usb_request(&drv, &ipc);
+        ipc_read(&ipc);
+        need_post = stm32_usb_request(&drv, &ipc);
         if (need_post)
-            ipc_post(&ipc);
+            ipc_post_or_error(&ipc);
     }
 }
 #endif

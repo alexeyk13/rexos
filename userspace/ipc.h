@@ -110,13 +110,11 @@ void ipc_post_or_error(IPC* ipc);
 void ipc_ipost(IPC* ipc);
 
 /**
-    \brief read IPC
+    \brief read IPC. Ping is processed internally
     \param ipc: ipc
-    \param time: timeout
-    \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
-    \retval true on success, false on timeout
+    \retval none
 */
-bool ipc_read(IPC* ipc, TIME* timeout, HANDLE wait_process);
+void ipc_read(IPC* ipc);
 
 /**
     \brief read IPC in ms units

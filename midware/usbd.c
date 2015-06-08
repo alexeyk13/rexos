@@ -8,7 +8,6 @@
 #include "../userspace/sys.h"
 #include "../userspace/usb.h"
 #include "../userspace/stdio.h"
-#include "../userspace/direct.h"
 #include "../userspace/stdlib.h"
 #include <string.h>
 #include "../userspace/array.h"
@@ -1143,35 +1142,31 @@ void usbd()
     usbd_init(&usbd);
     for (;;)
     {
-        ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        error(ERROR_OK);
+        ipc_read(&ipc);
         need_post = false;
-        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
-            need_post = true;
-        else
-            switch (HAL_GROUP(ipc.cmd))
-            {
-            case HAL_USB:
-                //ignore flush/cancel events
-                if (((ipc.cmd == HAL_CMD(HAL_USB, IPC_READ)) || (ipc.cmd == HAL_CMD(HAL_USB, IPC_WRITE))) && ((int)ipc.param3 < 0))
-                    break;
+        switch (HAL_GROUP(ipc.cmd))
+        {
+        case HAL_USB:
+            //ignore flush/cancel events
+            if (((ipc.cmd == HAL_CMD(HAL_USB, IPC_READ)) || (ipc.cmd == HAL_CMD(HAL_USB, IPC_WRITE))) && ((int)ipc.param3 < 0))
+                break;
 
-                if (USB_EP_NUM(ipc.param1) == 0 || ipc.param1 == USB_HANDLE_DEVICE)
-                    usbd_driver_event(&usbd, &ipc);
-                //decode endpoint interface
-                else
-                    usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(ipc.param1));
-                break;
-            case HAL_USBD:
-                need_post = usbd_device_request(&usbd, &ipc);
-                break;
-            case HAL_USBD_IFACE:
-                need_post = usbd_class_interface_request(&usbd, &ipc, USBD_IFACE_NUM(ipc.param1));
-                break;
-            default:
-                error(ERROR_NOT_SUPPORTED);
-                need_post = true;
-            }
+            if (USB_EP_NUM(ipc.param1) == 0 || ipc.param1 == USB_HANDLE_DEVICE)
+                usbd_driver_event(&usbd, &ipc);
+            //decode endpoint interface
+            else
+                usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(ipc.param1));
+            break;
+        case HAL_USBD:
+            need_post = usbd_device_request(&usbd, &ipc);
+            break;
+        case HAL_USBD_IFACE:
+            need_post = usbd_class_interface_request(&usbd, &ipc, USBD_IFACE_NUM(ipc.param1));
+            break;
+        default:
+            error(ERROR_NOT_SUPPORTED);
+            need_post = true;
+        }
         if (need_post)
             ipc_post_or_error(&ipc);
     }

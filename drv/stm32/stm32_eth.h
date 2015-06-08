@@ -13,6 +13,7 @@
 
 #include "../../userspace/process.h"
 #include "../../userspace/eth.h"
+#include "../../userspace/io.h"
 #include <stdint.h>
 #include "sys_config.h"
 
@@ -105,11 +106,13 @@ typedef struct {
 
 typedef struct {
 #if (ETH_DOUBLE_BUFFERING)
+    IO* tx[2];
+    IO* rx[2];
     ETH_DESCRIPTORS tx_des[2], rx_des[2];
-    HANDLE rx_block[2], tx_block[2];
 #else
     ETH_DESCRIPTORS tx_des, rx_des;
-    HANDLE rx_block, tx_block;
+    IO* tx;
+    IO* rx;
 #endif
     ETH_CONN_TYPE conn;
     HANDLE tcpip, timer;

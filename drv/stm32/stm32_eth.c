@@ -145,7 +145,7 @@ static void stm32_eth_conn_check(ETH_DRV* drv)
     {
         drv->conn = new_conn;
         drv->connected = ((drv->conn != ETH_NO_LINK) && (drv->conn != ETH_REMOTE_FAULT));
-        ipc_post_inline(drv->tcpip, ETH_NOTIFY_LINK_CHANGED, HAL_HANDLE(HAL_ETH, 0), drv->conn, 0);
+        ipc_post_inline(drv->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), 0, drv->conn, 0);
         if (drv->connected)
         {
             //set speed and duplex
@@ -257,26 +257,26 @@ static void stm32_eth_close(ETH_DRV* drv)
     AFIO->MAPR &= ~AFIO_MAPR_ETH_REMAP;
 #endif
 #if (STM32_ETH_PPS_OUT_ENABLE)
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_PPS_OUT, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_PPS_OUT, 0, 0);
 #endif
 
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_MDC, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_MDIO, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_MDC, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_MDIO, 0, 0);
 
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_CLK, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_EN, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_D0, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_D1, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_D2, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_TX_D3, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_CLK, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_EN, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_D0, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_D1, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_D2, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_D3, 0, 0);
 
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_CLK, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_DV, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_ER, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_D0, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_D1, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_D2, 0, 0);
-    ack_gpio(drv, STM32_GPIO_DISABLE_PIN, STM32_ETH_RX_D3, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_CLK, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_DV, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_ER, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_D0, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_D1, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_D2, 0, 0);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_D3, 0, 0);
 
     //destroy timer
     timer_destroy(drv->timer);
@@ -292,37 +292,37 @@ static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE tcpip
 {
     unsigned int clock;
 
-    drv->timer = timer_create(HAL_HANDLE(HAL_ETH, 0));
+    drv->timer = timer_create(0, HAL_ETH);
     if (drv->timer == INVALID_HANDLE)
         return;
     drv->tcpip = tcpip;
     //enable pins
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_MDC, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_MDIO, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_MDC, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_MDIO, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
 
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_TX_CLK, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_TX_EN, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_TX_D0, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_TX_D1, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_TX_D2, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_TX_D3, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_CLK, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_EN, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_D0, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_D1, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_D2, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_D3, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
 
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_RX_CLK, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_RX_DV, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_RX_ER, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_RX_D0, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_RX_D1, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_RX_D2, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_RX_D3, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_CLK, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_DV, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_ER, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_D0, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_D1, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_D2, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_D3, STM32_GPIO_MODE_INPUT_FLOAT, false);
 
 #if (STM32_ETH_REMAP)
     AFIO->MAPR |= AFIO_MAPR_ETH_REMAP;
 #endif
 #if (STM32_ETH_PPS_OUT_ENABLE)
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_PPS_OUT, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_PPS_OUT, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
 #endif
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_COL, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_gpio(drv, STM32_GPIO_ENABLE_PIN, STM32_ETH_CRS_WKUP, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_COL, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), STM32_ETH_CRS_WKUP, STM32_GPIO_MODE_INPUT_FLOAT, false);
 
     //enable clocks
     RCC->AHBENR |= RCC_AHBENR_ETHMACEN | RCC_AHBENR_ETHMACTXEN | RCC_AHBENR_ETHMACRXEN;
@@ -530,34 +530,11 @@ void stm32_eth_init(ETH_DRV* drv)
 #endif
 }
 
-#if (SYS_INFO)
-static inline void stm32_eth_info(ETH_DRV* drv)
-{
-    int i;
-    printf("STM32 ETH driver info\n\r");
-    printf("Link status: %s\n\r", drv->connected ? "Active" : "No cable");
-    printf("MAC: ");
-    for (i = 0; i < MAC_SIZE; ++i)
-    {
-        printf("%02X", drv->mac.u8[i]);
-        if (i < MAC_SIZE - 1)
-            printf(":");
-    }
-    printf("\n\r");
-}
-#endif
-
 bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
-    switch (ipc->cmd)
+    switch (HAL_ITEM(ipc->cmd))
     {
-#if (SYS_INFO)
-    case IPC_GET_INFO:
-        stm32_eth_info(drv);
-        need_post = true;
-        break;
-#endif
     case IPC_OPEN:
         stm32_eth_open(drv, ipc->param2, ipc->process);
         need_post = true;
@@ -605,25 +582,11 @@ void stm32_eth()
     ETH_DRV drv;
     bool need_post;
     stm32_eth_init(&drv);
-#if (SYS_INFO)
-    open_stdout();
-#endif
     object_set_self(SYS_OBJ_ETH);
     for (;;)
     {
-        error(ERROR_OK);
-
-        need_post = false;
-        ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        switch (ipc.cmd)
-        {
-        case IPC_PING:
-            need_post = true;
-            break;
-        default:
-            need_post = stm32_eth_request(&drv, &ipc);
-            break;
-        }
+        ipc_read(&ipc);
+        need_post = stm32_eth_request(&drv, &ipc);
         if (need_post)
             ipc_post_or_error(&ipc);
     }
