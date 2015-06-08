@@ -11,7 +11,6 @@
 #include "../userspace/stdlib.h"
 #include <string.h>
 #include "../userspace/array.h"
-#include "usbdp.h"
 #if (USBD_CDC_CLASS)
 #include "cdcd.h"
 #endif //USBD_CDC_CLASS
@@ -265,7 +264,7 @@ static void usbd_inform(USBD* usbd, unsigned int alert)
         ipc_post_inline(usbd->user, HAL_CMD(HAL_USBD, USBD_ALERT), alert, 0, 0);
 }
 
-void usbd_class_reset(USBD* usbd)
+static void usbd_class_reset(USBD* usbd)
 {
     int i;
     for (i = 0; i < usbd->ifacecnt; ++i)
@@ -282,7 +281,7 @@ static inline void usbd_class_suspend(USBD* usbd)
         IFACE(usbd, i)->usbd_class->usbd_class_suspend(usbd, IFACE(usbd, i)->param);
 }
 
-void usbd_class_resume(USBD* usbd)
+static inline void usbd_class_resume(USBD* usbd)
 {
     int i;
     for (i = 0; i < usbd->ifacecnt; ++i)
@@ -437,7 +436,7 @@ static inline int usbd_request_register_descriptor(USBD* usbd, IO* io)
     return idx;
 }
 
-static inline void usbd_unregister_descriptor(USBD* usbd, int idx)
+static inline void usbd_request_unregister_descriptor(USBD* usbd, int idx)
 {
     free(DESCRIPTOR(usbd, idx)->d);
     array_remove(&usbd->descriptors, idx);
@@ -868,7 +867,31 @@ static void usbd_setup_response(USBD* usbd, int res)
     }
 }
 
-void usbd_setup_process(USBD* usbd)
+#if (USBD_VSR)
+static inline bool usbd_vendor_request(USBD* usbd)
+{
+    IPC ipc;
+    if (usbd->user == INVALID_HANDLE)
+        return false;
+    IO* io = io_create(usbd->setup.wLength + sizeof(SETUP));
+    if (io == NULL)
+        return false;
+
+    usbd->setup_state = USB_SETUP_STATE_VENDOR_REQUEST;
+    io_push_data(io, &usbd->setup, sizeof(SETUP));
+    if ((usbd->setup.bmRequestType & BM_REQUEST_DIRECTION) == BM_REQUEST_DIRECTION_HOST_TO_DEVICE)
+        io_data_write(io, io_data(usbd->io), usbd->io->data_size);
+
+    ipc.cmd = HAL_CMD(HAL_USBD, USBD_VENDOR_REQUEST);
+    ipc.process = usbd->user;
+    ipc.param2 = (unsigned int)io;
+    ipc.param3 = usbd->setup.wLength;
+    io_send(&ipc);
+    return true;
+}
+#endif //USBD_VSR
+
+static void usbd_setup_process(USBD* usbd)
 {
     int res = -1;
     switch (usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT)
@@ -877,13 +900,10 @@ void usbd_setup_process(USBD* usbd)
         if ((usbd->setup.bmRequestType & BM_REQUEST_TYPE) == BM_REQUEST_TYPE_STANDART)
             res = usbd_standart_device_request(usbd);
 #if (USBD_VSR)
-        //TODO: !!!!
-        else if (usbd->user != INVALID_HANDLE)
+        else
         {
-            usbd->setup_state = USB_SETUP_STATE_VENDOR_REQUEST;
-            block_send(usbd->block, usbd->user);
-            ipc_post_inline(usbd->user, HAL_CMD(HAL_USBD, USBD_VENDOR_REQUEST), ((uint32_t*)(&usbd->setup))[0], ((uint32_t*)(&usbd->setup))[1], usbd->block);
-            return;
+            if (usbd_vendor_request(usbd))
+                return;
         }
 #endif
         break;
@@ -940,7 +960,7 @@ static inline void usbd_setup_received(USBD* usbd)
         usbd_setup_process(usbd);
 }
 
-void usbd_read_complete(USBD* usbd)
+static inline void usbd_read_complete(USBD* usbd)
 {
     switch (usbd->setup_state)
     {
@@ -959,7 +979,7 @@ void usbd_read_complete(USBD* usbd)
     }
 }
 
-void usbd_write_complete(USBD* usbd)
+static inline void usbd_write_complete(USBD* usbd)
 {
     switch (usbd->setup_state)
     {
@@ -1017,17 +1037,16 @@ static inline void usbd_unregister_user(USBD* usbd, HANDLE process)
 }
 
 #if (USBD_VSR)
-static inline void usbd_vendor_response(USBD* usbd, int res)
+static inline void usbd_vendor_response(USBD* usbd, IO* io, int res)
 {
     if (usbd->setup_state == USB_SETUP_STATE_VENDOR_REQUEST)
     {
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
+        if ((usbd->setup.bmRequestType & BM_REQUEST_DIRECTION) == BM_REQUEST_DIRECTION_DEVICE_TO_HOST)
+            io_data_write(usbd->io, io_data(io), res);
         usbd_setup_response(usbd, res);
     }
-#if (USBD_DEBUG_ERRORS)
-    else
-        printf("USBD: Unexpected vendor response\n\r");
-#endif
+    io_destroy(io);
 }
 #endif //USBD_VSR
 
@@ -1041,7 +1060,7 @@ static inline bool usbd_device_request(USBD* usbd, IPC* ipc)
         io_send(ipc);
         break;
     case USBD_UNREGISTER_DESCRIPTOR:
-        usbd_unregister_descriptor(usbd, ipc->param1);
+        usbd_request_unregister_descriptor(usbd, ipc->param1);
         need_post = true;
         break;
     case USBD_REGISTER_HANDLER:
@@ -1058,7 +1077,7 @@ static inline bool usbd_device_request(USBD* usbd, IPC* ipc)
         break;
 #if (USBD_VSR)
     case USBD_VENDOR_REQUEST:
-        usbd_vendor_response(usbd, ipc->param1);
+        usbd_vendor_response(usbd, (IO*)ipc->param2, (int)ipc->param3);
         break;
 #endif //USBD_VSR
     case IPC_OPEN:
@@ -1113,7 +1132,7 @@ static inline bool usbd_driver_event(USBD* usbd, IPC* ipc)
     return need_post;
 }
 
-bool usbd_class_interface_request(USBD* usbd, IPC* ipc, unsigned int iface)
+static inline bool usbd_class_interface_request(USBD* usbd, IPC* ipc, unsigned int iface)
 {
     if (iface >= usbd->ifacecnt)
     {
@@ -1123,7 +1142,7 @@ bool usbd_class_interface_request(USBD* usbd, IPC* ipc, unsigned int iface)
     return IFACE(usbd, iface)->usbd_class->usbd_class_request(usbd, IFACE(usbd, iface)->param, ipc);
 }
 
-bool usbd_class_endpoint_request(USBD *usbd, IPC* ipc, unsigned int num)
+static inline bool usbd_class_endpoint_request(USBD *usbd, IPC* ipc, unsigned int num)
 {
     if (num >= USB_EP_COUNT_MAX || usbd->ep_iface[num] >= usbd->ifacecnt)
     {
