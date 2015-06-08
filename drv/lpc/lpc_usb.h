@@ -9,17 +9,16 @@
 
 #include "../../userspace/process.h"
 #include "../../userspace/ipc.h"
+#include "../../userspace/io.h"
 #include "lpc_config.h"
-#include "sys_config.h"
 #if (MONOLITH_USB)
 #include "lpc_core.h"
 #endif
 
 typedef struct {
-    HANDLE block;
-    void* ptr;
+    IO* io;
     void* fifo;
-    unsigned int size, processed;
+    unsigned int size;
     uint16_t mps;
     uint8_t io_active;
 } EP;

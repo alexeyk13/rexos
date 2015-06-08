@@ -39,48 +39,44 @@ void lpc_core_loop(CORE* core)
     bool need_post;
     for (;;)
     {
-        error(ERROR_OK);
+        ipc_read(&ipc);
         need_post = false;
-        ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
-            need_post = true;
-        else
-            switch (HAL_GROUP(ipc.cmd))
-            {
-            case HAL_POWER:
-                need_post = lpc_power_request(core, &ipc);
-                break;
-            case HAL_GPIO:
-                need_post = lpc_gpio_request(&ipc);
-                break;
-            case HAL_TIMER:
-                need_post = lpc_timer_request(core, &ipc);
-                break;
+        switch (HAL_GROUP(ipc.cmd))
+        {
+        case HAL_POWER:
+            need_post = lpc_power_request(core, &ipc);
+            break;
+        case HAL_GPIO:
+            need_post = lpc_gpio_request(&ipc);
+            break;
+        case HAL_TIMER:
+            need_post = lpc_timer_request(core, &ipc);
+            break;
 #if (MONOLITH_UART)
-            case HAL_UART:
-                need_post = lpc_uart_request(core, &ipc);
-                break;
+        case HAL_UART:
+            need_post = lpc_uart_request(core, &ipc);
+            break;
 #endif //MONOLITH_UART
 #if (LPC_I2C_DRIVER)
-            case HAL_I2C:
-                need_post = lpc_i2c_request(core, &ipc);
-                break;
+        case HAL_I2C:
+            need_post = lpc_i2c_request(core, &ipc);
+            break;
 #endif //LPC_I2C_DRIVER
 #if (MONOLITH_USB)
-            case HAL_USB:
-                need_post = lpc_usb_request(core, &ipc);
-                break;
+        case HAL_USB:
+            need_post = lpc_usb_request(core, &ipc);
+            break;
 #endif //MONOLITH_USB
 #if (LPC_EEPROM_DRIVER)
-            case HAL_EEPROM:
-                need_post = lpc_eep_request(core, &ipc);
-                break;
+        case HAL_EEPROM:
+            need_post = lpc_eep_request(core, &ipc);
+            break;
 #endif //LPC_EEPROM_DRIVER
-            default:
-                error(ERROR_NOT_SUPPORTED);
-                need_post = true;
-                break;
-            }
+        default:
+            error(ERROR_NOT_SUPPORTED);
+            need_post = true;
+            break;
+        }
         if (need_post)
             ipc_post_or_error(&ipc);
     }
