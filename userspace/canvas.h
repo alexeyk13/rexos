@@ -7,21 +7,21 @@
 #ifndef CANVAS_H
 #define CANVAS_H
 
-#include "sys.h"
+#include "io.h"
 #include <stdint.h>
 
 typedef struct {
     unsigned int size;
+    void* data;
     unsigned short width, height;
     unsigned short bits_per_pixel;
 } CANVAS;
 
-#define CANVAS_DATA(canvas)                         ((uint8_t*)((unsigned int)(canvas) + sizeof(CANVAS)))
-
-HANDLE canvas_create(unsigned short width, unsigned short height, unsigned short bits_per_pixel);
-CANVAS* canvas_open(HANDLE block);
+CANVAS* canvas_create(unsigned short width, unsigned short height, unsigned short bits_per_pixel);
+IO* canvas_create_io(unsigned short width, unsigned short height, unsigned short bits_per_pixel);
 bool canvas_resize(CANVAS* canvas, unsigned short width, unsigned short height, unsigned short bits_per_pixel);
 void canvas_clear(CANVAS* canvas);
-void canvas_destroy(HANDLE block);
+void canvas_destroy(CANVAS* canvas);
+void canvas_destroy_io(IO* io);
 
 #endif // CANVAS_H

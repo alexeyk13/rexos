@@ -4,9 +4,9 @@
     All rights reserved.
 */
 
-#include "../graphics.h"
-#include "../heap.h"
-#include "../error.h"
+#include "graphics.h"
+#include "heap.h"
+#include "error.h"
 
 static void graphics_write(uint8_t* pix, unsigned short pix_width, unsigned short bpp, const POINT* point, unsigned int data, unsigned int data_width)
 {
@@ -45,18 +45,18 @@ static void graphics_canvas_write(CANVAS* canvas, unsigned int mode, POINT* poin
     switch (mode)
     {
     case GUI_MODE_OR:
-        data |= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, data_width);
+        data |= graphics_read(canvas->data, canvas->width, canvas->bits_per_pixel, point, data_width);
         break;
     case GUI_MODE_XOR:
-        data ^= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, data_width);
+        data ^= graphics_read(canvas->data, canvas->width, canvas->bits_per_pixel, point, data_width);
         break;
     case GUI_MODE_AND:
-        data &= graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, data_width);
+        data &= graphics_read(canvas->data, canvas->width, canvas->bits_per_pixel, point, data_width);
         break;
     default:
         break;
     }
-    graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, data, data_width);
+    graphics_write(canvas->data, canvas->width, canvas->bits_per_pixel, point, data, data_width);
 }
 
 void put_pixel(CANVAS* canvas, const POINT *point, unsigned int color)
@@ -66,7 +66,7 @@ void put_pixel(CANVAS* canvas, const POINT *point, unsigned int color)
         error(ERROR_OUT_OF_RANGE);
         return;
     }
-    graphics_write(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, color, canvas->bits_per_pixel);
+    graphics_write(canvas->data, canvas->width, canvas->bits_per_pixel, point, color, canvas->bits_per_pixel);
 }
 
 unsigned int get_pixel(CANVAS* canvas, const POINT* point)
@@ -76,7 +76,7 @@ unsigned int get_pixel(CANVAS* canvas, const POINT* point)
         error(ERROR_OUT_OF_RANGE);
         return 0;
     }
-    return graphics_read(CANVAS_DATA(canvas), canvas->width, canvas->bits_per_pixel, point, canvas->bits_per_pixel);
+    return graphics_read(canvas->data, canvas->width, canvas->bits_per_pixel, point, canvas->bits_per_pixel);
 }
 
 static void gswap(short* a, short* b)
