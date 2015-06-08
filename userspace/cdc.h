@@ -261,6 +261,4 @@ typedef struct {
 #define CDC_SERIAL_STATE_PARITY_ERROR                                                   (1 << 5)
 #define CDC_SERIAL_STATE_OVERRUN                                                        (1 << 6)
 
-#pragma pack(pop)
-
 #endif // CDC_H

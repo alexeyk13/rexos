@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -13,7 +13,7 @@ unsigned int srand()
     unsigned int seed;
     TIME uptime;
     seed = 0x30d02149;
-	int i;
+    int i;
     for (i = 0; i < 0x80; ++i)
         seed ^=  *((unsigned int *)(__HEAP + i));
 

@@ -236,6 +236,8 @@ typedef struct {
     uint16_t lang, index;
 } USBD_DESCRIPTOR_REGISTER_STRUCT;
 
+#pragma pack(pop)
+
 #define USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED    ((sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT) + 3) & ~3)
 
 #define USBD_IFACE(iface_num, item)                     (((iface_num) << 16) | (item & 0xffff))

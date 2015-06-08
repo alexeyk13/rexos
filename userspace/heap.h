@@ -10,6 +10,7 @@
 #include "types.h"
 #include "lib.h"
 #include "svc.h"
+#include "cc_macro.h"
 
 typedef enum {
     HEAP_STRUCT_NAME,
