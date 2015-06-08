@@ -61,7 +61,7 @@ static bool usbd_register_descriptor_internal(IO* io, unsigned int index, unsign
     udrs->index = index;
     udrs->lang = lang;
 
-    io_write(object_get(SYS_OBJ_USBD), HAL_CMD(HAL_USBD, USBD_REGISTER_DESCRIPTOR), 0, io);
+    io_write_sync(object_get(SYS_OBJ_USBD), HAL_CMD(HAL_USBD, USBD_REGISTER_DESCRIPTOR), 0, io);
     io_destroy(io);
     return get_last_error() == ERROR_OK;
 }
@@ -106,7 +106,7 @@ bool usbd_register_ascii_string(unsigned int index, unsigned int lang, const cha
     *((void**)io_data(io)) = NULL;
     io->data_size = sizeof(void*);
 
-    USB_DESCRIPTOR_TYPE* descr = io_data(io);
+    USB_DESCRIPTOR_TYPE* descr = (io_data(io) + io->data_size);
     descr->bDescriptorType = USB_STRING_DESCRIPTOR_INDEX;
     descr->bLength = len * 2 + 2;
 
