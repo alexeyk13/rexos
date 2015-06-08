@@ -10,7 +10,6 @@
 #include "../../userspace/ipc.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/sys.h"
-#include "../../userspace/direct.h"
 #include "../../userspace/timer.h"
 #include "../../userspace/stm32_driver.h"
 #include "../../userspace/file.h"

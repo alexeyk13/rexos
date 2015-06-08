@@ -7,7 +7,6 @@
 #include "stm32_dac.h"
 #include "stm32_power.h"
 #include "stm32_timer.h"
-#include "../../userspace/direct.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"

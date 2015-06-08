@@ -7,7 +7,6 @@
 #include "stm32_usb.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/usb.h"
-#include "../../userspace/direct.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/file.h"
 #include "../../userspace/stm32_driver.h"
