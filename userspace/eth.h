@@ -58,7 +58,7 @@ __STATIC_INLINE void eth_get_mac(MAC* mac)
     IPC ipc;
     ipc.process = object_get(SYS_OBJ_ETH);
     ipc.cmd = HAL_CMD(HAL_ETH, ETH_GET_MAC);
-    ipc_call_ms(&ipc, 0);
+    call(&ipc);
     mac->u32.hi = ipc.param1;
     mac->u32.lo = ipc.param2;
 }
