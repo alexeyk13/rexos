@@ -8,9 +8,6 @@
 #define IPC_H
 
 #include "types.h"
-#include "heap.h"
-#include "svc.h"
-#include "error.h"
 #include "time.h"
 
 typedef enum {
@@ -84,10 +81,7 @@ typedef struct {
     \param ipc: IPC structure
     \retval none
 */
-__STATIC_INLINE void ipc_post(IPC* ipc)
-{
-    svc_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
-}
+void ipc_post(IPC* ipc);
 
 /**
     \brief post IPC, inline version
@@ -98,27 +92,14 @@ __STATIC_INLINE void ipc_post(IPC* ipc)
     \param param3: cmd-specific param3
     \retval none
 */
-__STATIC_INLINE void ipc_post_inline(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
-{
-    IPC ipc;
-    ipc.process = process;
-    ipc.cmd = cmd;
-    ipc.param1 = param1;
-    ipc.param2 = param2;
-    ipc.param3 = param3;
-    svc_call(SVC_IPC_POST, (unsigned int)&ipc, 0, 0);
-}
+void ipc_post_inline(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
     \brief post IPC or error if any
     \param ipc: IPC structure
     \retval none
 */
-__STATIC_INLINE void ipc_post_or_error(IPC* ipc)
-{
-    ipc->param3 = get_last_error();
-    svc_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
-}
+void ipc_post_or_error(IPC* ipc);
 
 /**
     \brief post IPC
@@ -126,10 +107,7 @@ __STATIC_INLINE void ipc_post_or_error(IPC* ipc)
     \param ipc: IPC structure
     \retval none
 */
-__STATIC_INLINE void ipc_ipost(IPC* ipc)
-{
-    __GLOBAL->svc_irq(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
-}
+void ipc_ipost(IPC* ipc);
 
 /**
     \brief read IPC
@@ -138,11 +116,7 @@ __STATIC_INLINE void ipc_ipost(IPC* ipc)
     \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
     \retval true on success, false on timeout
 */
-__STATIC_INLINE bool ipc_read(IPC* ipc, TIME* timeout, HANDLE wait_process)
-{
-    svc_call(SVC_IPC_READ, (unsigned int)ipc, (unsigned int)timeout, wait_process);
-    return get_last_error() == ERROR_OK;
-}
+bool ipc_read(IPC* ipc, TIME* timeout, HANDLE wait_process);
 
 /**
     \brief read IPC in ms units
@@ -151,26 +125,7 @@ __STATIC_INLINE bool ipc_read(IPC* ipc, TIME* timeout, HANDLE wait_process)
     \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
     \retval true on success, false on timeout
 */
-__STATIC_INLINE bool ipc_read_ms(IPC* ipc, unsigned int ms, HANDLE wait_process)
-{
-    TIME timeout;
-    ms_to_time(ms, &timeout);
-    return ipc_read(ipc, &timeout, wait_process);
-}
-
-/**
-    \brief read IPC in us units
-    \param ipc: ipc
-    \param us: timeout in us
-    \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
-    \retval true on success, false on timeout
-*/
-__STATIC_INLINE bool ipc_read_us(IPC* ipc, unsigned int us, HANDLE wait_process)
-{
-    TIME timeout;
-    us_to_time(us, &timeout);
-    return ipc_read(ipc, &timeout, wait_process);
-}
+bool ipc_read_ms(IPC* ipc, unsigned int ms, HANDLE wait_process);
 
 /**
     \brief post IPC, wait for IPC, peek IPC
@@ -178,51 +133,9 @@ __STATIC_INLINE bool ipc_read_us(IPC* ipc, unsigned int us, HANDLE wait_process)
     \param timeout: pointer to TIME structure
     \retval none
 */
-__STATIC_INLINE void ipc_call(IPC* ipc, TIME* timeout)
-{
-    svc_call(SVC_IPC_CALL, (unsigned int)ipc, (unsigned int)timeout, 0);
-}
+void ipc_call(IPC* ipc, TIME* timeout);
 
-/**
-    \brief post IPC, wait for IPC, peek IPC in ms units
-    \param ipc: IPC structure to send and receive
-    \param ms: timeout in ms
-    \retval none
-*/
-__STATIC_INLINE void ipc_call_ms(IPC* ipc, unsigned int ms)
-{
-    TIME timeout;
-    ms_to_time(ms, &timeout);
-    ipc_call(ipc, &timeout);
-}
-
-/**
-    \brief post IPC, wait for IPC, peek IPC in us units
-    \param ipc: IPC structure to send and receive
-    \param us: timeout in us
-    \retval none
-*/
-__STATIC_INLINE void ipc_call_us(IPC* ipc, unsigned int us)
-{
-    TIME timeout;
-    us_to_time(us, &timeout);
-    ipc_call(ipc, &timeout);
-}
-
-/**
-    \brief call to process.
-    \param ipc: \ref ipc to post/read.
-    \retval true on success
-*/
-
-__STATIC_INLINE bool call(IPC* ipc)
-{
-    ipc_call_ms(ipc, 0);
-    if (ipc->param3 >= 0)
-        return true;
-    error(ipc->param3);
-    return false;
-}
+bool call(IPC* ipc);
 
 /**
     \brief call to process with no return value
@@ -234,16 +147,7 @@ __STATIC_INLINE bool call(IPC* ipc)
     \retval true on success
 */
 
-__STATIC_INLINE bool ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = param1;
-    ipc.param2 = param2;
-    ipc.param3 = param3;
-    return call(&ipc);
-}
+bool ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
     \brief get value from process
@@ -255,18 +159,7 @@ __STATIC_INLINE bool ack(HANDLE process, unsigned int cmd, unsigned int param1, 
     \retval param1
 */
 
-__STATIC_INLINE unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = param1;
-    ipc.param2 = param2;
-    ipc.param3 = param3;
-    if (call(&ipc))
-        return ipc.param2;
-    return INVALID_HANDLE;
-}
+unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /** \} */ // end of sem group
 
