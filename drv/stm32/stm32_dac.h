@@ -10,6 +10,7 @@
 #include "../../userspace/sys.h"
 #include "../../userspace/stm32_driver.h"
 #include "../../userspace/dac.h"
+#include "../../userspace/io.h"
 #include "stm32_config.h"
 #include "stm32_core.h"
 #include <stdint.h>
@@ -33,8 +34,9 @@ typedef enum {
 
 typedef struct {
 #if (DAC_STREAM)
-    HANDLE block, process;
+    IO* io;
     void* ptr;
+    HANDLE process;
     uint16_t cnt, half;
     uint16_t size;
 #endif

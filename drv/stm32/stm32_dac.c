@@ -8,7 +8,6 @@
 #include "stm32_power.h"
 #include "stm32_timer.h"
 #include "../../userspace/direct.h"
-#include "../../userspace/block.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"
@@ -80,7 +79,7 @@ void stm32_dac_dma_isr(int vector, void* param)
     core->dac.channels[num].half = !core->dac.channels[num].half;
     --core->dac.channels[num].cnt;
 
-    if (core->dac.channels[num].block != INVALID_HANDLE)
+    if (core->dac.channels[num].io != NULL)
     {
         if (core->dac.channels[num].cnt >= 2)
         {
@@ -89,8 +88,8 @@ void stm32_dac_dma_isr(int vector, void* param)
         }
         else
         {
-            fiwrite_complete(core->dac.channels[num].process, HAL_DAC, num, core->dac.channels[num].block, core->dac.channels[num].size);
-            core->dac.channels[num].block = INVALID_HANDLE;
+            iio_complete(HAL_CMD(HAL_DAC, IPC_WRITE), core->dac.channels[num].process, num, core->dac.channels[num].io);
+            core->dac.channels[num].io = NULL;
         }
     }
     if (core->dac.channels[num].cnt <= 0)
@@ -177,7 +176,7 @@ static inline void stm32_dac_open(CORE* core, int num, DAC_MODE mode, unsigned i
             irq_register(DAC_DMA_VECTORS[num], stm32_dac_dma_isr, core);
             NVIC_EnableIRQ(DAC_DMA_VECTORS[num]);
             NVIC_SetPriority(DAC_DMA_VECTORS[num], 10);
-            core->dac.channels[num].block = INVALID_HANDLE;
+            core->dac.channels[num].io = NULL;
             core->dac.channels[num].cnt = 0;
             core->dac.channels[num].half = 0;
         }
@@ -201,15 +200,14 @@ static inline void stm32_dac_open(CORE* core, int num, DAC_MODE mode, unsigned i
 #if (DAC_STREAM)
 static void stm32_dac_flush(CORE* core, int num)
 {
-    HANDLE block;
+    IO* io;
     stm32_timer_request_inside(core, HAL_CMD(HAL_TIMER, TIMER_STOP), DAC_TRIGGERS[num], 0, 0);
     __disable_irq();
-    block = core->dac.channels[num].block;
-    core->dac.channels[num].block = INVALID_HANDLE;
-    core->dac.channels[num].block = 0;
+    io = core->dac.channels[num].io;
+    core->dac.channels[num].io = NULL;
     __enable_irq();
-    if (block != INVALID_HANDLE)
-        fwrite_complete(core->dac.channels[num].process, HAL_DAC, num, block, ERROR_FILE_IO_CANCELLED);
+    if (io != NULL)
+        io_complete_error(HAL_CMD(HAL_DAC, IPC_WRITE), core->dac.channels[num].process, num, io, ERROR_IO_CANCELLED);
 }
 #endif //DAC_STREAM
 
@@ -263,32 +261,29 @@ void stm32_dac_close(CORE* core, int num)
 }
 
 #if (DAC_STREAM)
-static inline void stm32_dac_write(CORE* core, int num, HANDLE block, unsigned int size, HANDLE process)
+static inline void stm32_dac_write(CORE* core, IPC*ipc)
 {
+    unsigned int num = ipc->param1;
+    bool need_start = true;
     if (num >= DAC_CHANNELS_COUNT_USER)
     {
-        fwrite_complete(process, HAL_DAC, num, block, ERROR_INVALID_PARAMS);
+        io_send_error(ipc, ERROR_INVALID_PARAMS);
         return;
     }
     if (!core->dac.channels[num].active)
     {
-        fwrite_complete(process, HAL_DAC, num, block, ERROR_NOT_CONFIGURED);
+        io_send_error(ipc, ERROR_NOT_CONFIGURED);
         return;
     }
-    bool need_start = true;
     if (core->dac.channels[num].cnt > 2)
     {
-        fwrite_complete(process, HAL_DAC, num, block, ERROR_IN_PROGRESS);
+        io_send_error(ipc, ERROR_IN_PROGRESS);
         return;
     }
-    if ((core->dac.channels[num].ptr = block_open(block)) == NULL)
-    {
-        fwrite_complete(process, HAL_DAC, num, block, get_last_error());
-        return;
-    }
-    core->dac.channels[num].block = block;
-    core->dac.channels[num].process = process;
-    core->dac.channels[num].size = size;
+    core->dac.channels[num].io = (IO*)ipc->param2;
+    core->dac.channels[num].process = ipc->process;
+    core->dac.channels[num].size = ipc->param3;
+    core->dac.channels[num].ptr = io_data(core->dac.channels[num].io);
 
     unsigned int cnt = core->dac.channels[num].size / HALF_FIFO_BYTES;
     //unaligned data will be ignored
@@ -308,7 +303,7 @@ static inline void stm32_dac_write(CORE* core, int num, HANDLE block, unsigned i
     if (!cnt_left)
     {
         //ready for next
-        fwrite_complete(process, HAL_DAC, num, block, size);
+        io_send(ipc);
     }
 
     __disable_irq();
@@ -383,8 +378,8 @@ bool stm32_dac_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
     case IPC_WRITE:
-        stm32_dac_write(core, ipc->param1, ipc->param2, ipc->param3, ipc->process);
-        //generally posted with block, no return IPC
+        stm32_dac_write(core, ipc);
+        //posted with io, no return IPC
         break;
 #if (DAC_DEBUG)
     case STM32_DAC_UNDERFLOW_DEBUG:
