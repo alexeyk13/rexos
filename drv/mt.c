@@ -526,7 +526,7 @@ void mt_read_canvas(CANVAS* canvas, const POINT* point)
     rect.top = point->y;
     rect.width = canvas->width;
     rect.height = canvas->height;
-    mt_read_rect(&rect, CANVAS_DATA(canvas));
+    mt_read_rect(&rect, canvas->data);
 }
 
 void mt_write_canvas(CANVAS* canvas, const POINT* point)
@@ -536,7 +536,7 @@ void mt_write_canvas(CANVAS* canvas, const POINT* point)
     rect.top = point->y;
     rect.width = canvas->width;
     rect.height = canvas->height;
-    mt_write_rect(&rect, CANVAS_DATA(canvas));
+    mt_write_rect(&rect, canvas->data);
 }
 
 void mt_enable()
