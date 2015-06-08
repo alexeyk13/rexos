@@ -19,11 +19,6 @@
 #if (MONOLITH_UART)
 #include "stm32_core_private.h"
 
-typedef enum {
-    IPC_UART_ISR_TX = IPC_UART_MAX,
-    IPC_UART_ISR_RX
-} STM32_UART_IPCS;
-
 #define get_clock               stm32_power_get_clock_inside
 #define ack_gpio                stm32_gpio_request_inside
 
@@ -38,7 +33,7 @@ const REX __STM32_UART = {
     //name
     "STM32 uart",
     //size
-    STM32_UART_STACK_SIZE,
+    STM32_UART_PROCESS_SIZE,
     //priority - driver priority.
     89,
     //flags
@@ -49,6 +44,11 @@ const REX __STM32_UART = {
     stm32_uart
 };
 #endif
+
+typedef enum {
+    IPC_UART_ISR_TX = IPC_UART_MAX,
+    IPC_UART_ISR_RX
+} STM32_UART_IPCS;
 
 typedef USART_TypeDef* USART_TypeDef_P;
 
