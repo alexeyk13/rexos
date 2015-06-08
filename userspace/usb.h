@@ -198,6 +198,11 @@ typedef struct {
     uint16_t data[126];
 } USB_STRING_DESCRIPTOR_TYPE, *P_USB_STRING_DESCRIPTOR_TYPE, **PP_USB_STRING_DESCRIPTOR_TYPE, ***PPP_USB_STRING_DESCRIPTOR_TYPE;
 
+USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_first_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg);
+USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_next_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start);
+USB_DESCRIPTOR_TYPE* usb_interface_get_first_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start, unsigned int type);
+USB_DESCRIPTOR_TYPE* usb_interface_get_next_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_DESCRIPTOR_TYPE* start, unsigned int type);
+
 //--------------------------------------------------- USB device ---------------------------------------------------------------
 
 typedef enum {
@@ -220,12 +225,6 @@ typedef enum {
 } USBD_ALERTS;
 
 typedef enum {
-    USBD_STATE_DEFAULT = 0,
-    USBD_STATE_ADDRESSED,
-    USBD_STATE_CONFIGURED
-} USBD_STATE;
-
-typedef enum {
     USBD_FEATURE_ENDPOINT_HALT = 0,
     USBD_FEATURE_DEVICE_REMOTE_WAKEUP,
     USBD_FEATURE_TEST_MODE,
@@ -237,8 +236,6 @@ typedef struct {
 } USBD_DESCRIPTOR_REGISTER_STRUCT;
 
 #pragma pack(pop)
-
-#define USBD_DESCRIPTOR_REGISTER_STRUCT_SIZE_ALIGNED    ((sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT) + 3) & ~3)
 
 #define USBD_IFACE(iface_num, item)                     (((iface_num) << 16) | (item & 0xffff))
 #define USBD_IFACE_NUM(iface)                           ((iface) >> 16)

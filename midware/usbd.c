@@ -41,6 +41,12 @@ typedef struct {
     USB_DESCRIPTOR_TYPE* d;
 } USBD_DESCRIPTOR;
 
+typedef enum {
+    USBD_STATE_DEFAULT = 0,
+    USBD_STATE_ADDRESSED,
+    USBD_STATE_CONFIGURED
+} USBD_STATE;
+
 typedef struct _USBD {
     HANDLE usb, user;
     IO* io;
@@ -342,7 +348,7 @@ static inline void usbd_class_configured(USBD* usbd)
         return;
     }
     //find num of interfaces in configuration
-    for (iface = usbdp_get_first_interface(cfg), usbd->ifacecnt = 0; iface != NULL; iface = usbdp_get_next_interface(cfg, iface))
+    for (iface = usb_get_first_interface(cfg), usbd->ifacecnt = 0; iface != NULL; iface = usb_get_next_interface(cfg, iface))
         if (iface->bInterfaceNumber >= usbd->ifacecnt)
             usbd->ifacecnt = iface->bInterfaceNumber + 1;
     for (i = 0; i <= usbd->ifacecnt; ++i)

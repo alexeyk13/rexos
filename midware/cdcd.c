@@ -13,7 +13,7 @@
 #include "../userspace/uart.h"
 #include "../userspace/stdlib.h"
 #include "../userspace/cdc.h"
-#include "usbdp.h"
+#include "../userspace/usb.h"
 #include "sys_config.h"
 
 #define CDC_BLOCK_SIZE                                                          64
@@ -85,9 +85,9 @@ void cdcd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     data_ep = control_ep = data_ep_size = control_ep_size = data_iface = control_iface = 0;
 
     //check control/data ep here
-    for (iface = usbdp_get_first_interface(cfg); iface != NULL; iface = usbdp_get_next_interface(cfg, iface))
+    for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
     {
-        ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usbdp_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
+        ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
         if (ep != NULL)
         {
             switch (iface->bInterfaceClass)
