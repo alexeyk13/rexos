@@ -11,7 +11,6 @@
 #include "../userspace/stdlib.h"
 #include <string.h>
 #include "../userspace/array.h"
-#include "../userspace/file.h"
 #include "usbdp.h"
 #if (USBD_CDC_CLASS)
 #include "cdcd.h"

@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include "sys.h"
 #include "cc_macro.h"
-#include "file.h"
 #include "ipc.h"
 #include "sys_config.h"
 

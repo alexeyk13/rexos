@@ -11,7 +11,6 @@
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/sys.h"
-#include "../../userspace/file.h"
 #include "../../userspace/htimer.h"
 #include <string.h>
 #include "stm32_core_private.h"

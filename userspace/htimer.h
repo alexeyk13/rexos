@@ -8,7 +8,6 @@
 #define HTIMER_H
 
 #include "sys.h"
-#include "file.h"
 #include "ipc.h"
 #include "cc_macro.h"
 #include "sys_config.h"

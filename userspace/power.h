@@ -9,7 +9,6 @@
 
 #include "sys.h"
 #include "ipc.h"
-#include "file.h"
 #include "cc_macro.h"
 #include "sys_config.h"
 

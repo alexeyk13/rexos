@@ -11,7 +11,6 @@
 #include "ipc.h"
 #include "cc_macro.h"
 #include "sys_config.h"
-#include "file.h"
 
 typedef enum {
     DAC_SET = IPC_USER,

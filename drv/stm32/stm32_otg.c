@@ -16,7 +16,6 @@
 #include "../../userspace/direct.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"
-#include "../../userspace/file.h"
 #include <string.h>
 #if (MONOLITH_USB)
 #include "stm32_core_private.h"

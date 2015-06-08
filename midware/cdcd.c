@@ -7,7 +7,6 @@
 #include "cdcd.h"
 #include "usbd.h"
 #include "../userspace/sys.h"
-#include "../userspace/file.h"
 #include "../userspace/stdio.h"
 #include "../userspace/io.h"
 #include "../userspace/direct.h"

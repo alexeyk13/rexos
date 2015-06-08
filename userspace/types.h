@@ -21,6 +21,10 @@
 #define WORD_SIZE							sizeof(unsigned int)
 #define WORD_SIZE_BITS                      (WORD_SIZE * 8)
 
+#define FILE_MODE_READ                      (1 << 0)
+#define FILE_MODE_WRITE                     (1 << 1)
+#define FILE_MODE_READ_WRITE                (FILE_MODE_READ | FILE_MODE_WRITE)
+
 /** \addtogroup lib_time time
     time routines
     \{
