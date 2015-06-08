@@ -1177,11 +1177,11 @@ void usbd()
             if (((ipc.cmd == HAL_CMD(HAL_USB, IPC_READ)) || (ipc.cmd == HAL_CMD(HAL_USB, IPC_WRITE))) && ((int)ipc.param3 < 0))
                 break;
 
-            if (USB_EP_NUM(ipc.param1) == 0 || ipc.param1 == USB_HANDLE_DEVICE)
-                usbd_driver_event(&usbd, &ipc);
+            if ((USB_EP_NUM(ipc.param1) == 0) || (ipc.param1 == USB_HANDLE_DEVICE))
+                need_post = usbd_driver_event(&usbd, &ipc);
             //decode endpoint interface
             else
-                usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(ipc.param1));
+                need_post = usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(ipc.param1));
             break;
         case HAL_USBD:
             need_post = usbd_device_request(&usbd, &ipc);
