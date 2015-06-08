@@ -10,10 +10,8 @@
 #include "kernel.h"
 #include <string.h>
 #include "../userspace/error.h"
-#if (KERNEL_SOFT_TIMERS)
 #include "kmalloc.h"
 #include "kipc.h"
-#endif //KERNEL_SOFT_TIMERS
 
 #define FREE_RUN                                        2000000
 
@@ -179,7 +177,6 @@ void ktimer_init_internal(KTIMER* timer, void (*callback)(void*), void* param)
     timer->active = false;
 }
 
-#if (KERNEL_SOFT_TIMERS)
 void ktimer_timeout(void* param)
 {
     SOFT_TIMER* timer = (SOFT_TIMER*)param;
@@ -254,7 +251,6 @@ void ktimer_stop(SOFT_TIMER* timer)
     ktimer_stop_internal(&timer->timer);
     enable_interrupts();
 }
-#endif //KERNEL_SOFT_TIMERS
 
 void ktimer_init()
 {

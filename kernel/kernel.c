@@ -98,7 +98,6 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_TIMER_SETUP:
         ktimer_setup((CB_SVC_TIMER*)param1, (void*)param2);
         break;
-#if (KERNEL_SOFT_TIMERS)
     case SVC_TIMER_CREATE:
         ktimer_create((SOFT_TIMER**)param1, param2, (HAL)param3);
         break;
@@ -111,7 +110,6 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_TIMER_DESTROY:
         ktimer_destroy((SOFT_TIMER*)param1);
         break;
-#endif //KERNEL_SOFT_TIMERS
     //ipc related
     case SVC_IPC_POST:
         kipc_post((IPC*)param1);
