@@ -5,7 +5,6 @@
 */
 
 #include "canvas.h"
-#include "block.h"
 #include <string.h>
 #include "stdlib.h"
 
