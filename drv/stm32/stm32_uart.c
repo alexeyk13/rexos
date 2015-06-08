@@ -12,7 +12,6 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/stream.h"
-#include "../../userspace/direct.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/object.h"
 #include <string.h>
