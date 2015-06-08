@@ -12,7 +12,7 @@
 #include <string.h>
 
 //push data to stream internally after read
-void kstream_push(STREAM* stream)
+static void kstream_push(STREAM* stream)
 {
     STREAM_HANDLE* handle;
     int written = 0;
@@ -33,7 +33,7 @@ void kstream_push(STREAM* stream)
     }
 }
 
-unsigned int kstream_get_size_internal(STREAM* stream)
+static unsigned int kstream_get_size_internal(STREAM* stream)
 {
     DLIST_ENUM de;
     STREAM_HANDLE* cur;
@@ -211,14 +211,18 @@ void kstream_stop_listen(STREAM* stream)
 void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
 {
     IPC ipc;
-    CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
-    ASSERT(handle->mode == STREAM_MODE_IDLE);
-    TIME time;
-    int written = 0;
-    STREAM_HANDLE* reader;
-    CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
+    register STREAM_HANDLE* reader;
     PROCESS* process = kprocess_get_current();
+    int written = 0;
+    CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
+    CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     CHECK_ADDRESS_READ(process, buf, size);
+    ASSERT(handle->mode == STREAM_MODE_IDLE);
+    if ((HANDLE)handle->stream == INVALID_HANDLE)
+    {
+        kprocess_error(process, ERROR_SYNC_OBJECT_DESTROYED);
+        return;
+    }
     handle->size = size;
     //write directly to output
     while (handle->size && (reader = handle->stream->read_waiters) != NULL)
@@ -256,8 +260,7 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
         handle->buf = buf;
         handle->mode = STREAM_MODE_WRITE;
         dlist_add_tail((DLIST**)&handle->stream->write_waiters, (DLIST*)handle);
-        time.sec = time.usec = 0;
-        kprocess_sleep(process, &time, PROCESS_SYNC_STREAM, handle);
+        kprocess_sleep(process, NULL, PROCESS_SYNC_STREAM, handle);
     }
     //inform listener
     if ((handle->stream->listener != INVALID_HANDLE) && size)
@@ -274,13 +277,17 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
 
 void kstream_read(STREAM_HANDLE* handle, char* buf, unsigned int size)
 {
-    CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
-    ASSERT(handle->mode == STREAM_MODE_IDLE);
     register STREAM_HANDLE* writer;
-    TIME time;
-    CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     PROCESS* process = kprocess_get_current();
+    CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
+    CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     CHECK_ADDRESS(process, buf, size);
+    ASSERT(handle->mode == STREAM_MODE_IDLE);
+    if ((HANDLE)handle->stream == INVALID_HANDLE)
+    {
+        kprocess_error(process, ERROR_SYNC_OBJECT_DESTROYED);
+        return;
+    }
     handle->size = size;
     //read from stream
     for(; handle->size && !rb_is_empty(&handle->stream->rb); --handle->size)
@@ -315,8 +322,7 @@ void kstream_read(STREAM_HANDLE* handle, char* buf, unsigned int size)
         handle->buf = buf;
         handle->mode = STREAM_MODE_READ;
         dlist_add_tail((DLIST**)&handle->stream->read_waiters, (DLIST*)handle);
-        time.sec = time.usec = 0;
-        kprocess_sleep(process, &time, PROCESS_SYNC_STREAM, handle);
+        kprocess_sleep(process, NULL, PROCESS_SYNC_STREAM, handle);
     }
     else
         kstream_push(handle->stream);
@@ -339,32 +345,29 @@ void kstream_flush(STREAM* stream)
     }
 }
 
+static void kstream_destroy_handle(STREAM* stream, DLIST** head)
+{
+    STREAM_HANDLE* handle;
+    while (stream->write_waiters)
+    {
+        handle = (STREAM_HANDLE*)(*head);
+        CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
+        handle->stream = (STREAM*)INVALID_HANDLE;
+        dlist_remove_head(head);
+        kprocess_wakeup(handle->process);
+        kprocess_error(handle->process, ERROR_SYNC_OBJECT_DESTROYED);
+    }
+}
+
 void kstream_destroy(STREAM* stream)
 {
     if ((HANDLE)stream == INVALID_HANDLE)
         return;
-    STREAM_HANDLE* handle;
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
     CLEAR_MAGIC(stream);
-    while (stream->write_waiters)
-    {
-        handle = stream->write_waiters;
-        CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
-        dlist_remove_head((DLIST**)&stream->write_waiters);
-        kprocess_wakeup(handle->process);
-        kprocess_error(handle->process, ERROR_SYNC_OBJECT_DESTROYED);
-        kfree(handle);
-    }
-    while (stream->read_waiters)
-    {
-        handle = stream->read_waiters;
-        CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
-        dlist_remove_head((DLIST**)&stream->read_waiters);
-        kprocess_wakeup(handle->process);
-        kprocess_error(handle->process, ERROR_SYNC_OBJECT_DESTROYED);
-        kfree(handle);
-    }
+    kstream_destroy_handle(stream, (DLIST**)&stream->write_waiters);
+    kstream_destroy_handle(stream, (DLIST**)&stream->read_waiters);
     kfree(stream->data);
     kfree(stream);
 }

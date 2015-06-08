@@ -336,7 +336,7 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
 
     enable_interrupts();
     //create timer if not infinite
-    if (time->sec || time->usec)
+    if (time && (time->sec || time->usec))
         ktimer_start_internal(&process->timer, time);
 }
 
