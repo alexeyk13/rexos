@@ -11,7 +11,6 @@
 #include "lib_stdio.h"
 #include "lib_time.h"
 #include "lib_heap.h"
-#include "lib_array.h"
 #if (KERNEL_LIB_GPIO)
 #include "lib_gpio.h"
 #endif //KERNEL_LIB_GPIO
@@ -30,7 +29,6 @@ const void *const __LIB[] = {
     (const void *const)&__LIB_TIME,
     //lib_heap.h
     (const void *const )&__LIB_HEAP,
-    (const void *const)&__LIB_ARRAY,
 #if (KERNEL_LIB_GPIO)
     (const void *const)&__LIB_GPIO
 #else

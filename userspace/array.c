@@ -1,17 +1,18 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
-#include "lib_array.h"
+#include "array.h"
 #include "stdlib.h"
-#include "../userspace/error.h"
+#include "heap.h"
+#include "svc.h"
 #include <string.h>
 
 #define ARRAY_DATA(ar)                      (((void*)(ar)) + sizeof(ARRAY))
 
-ARRAY* lib_array_create(ARRAY** ar, unsigned int data_size, unsigned int reserved)
+ARRAY* array_create(ARRAY** ar, unsigned int data_size, unsigned int reserved)
 {
     *ar = malloc(sizeof(ARRAY) + data_size * reserved);
     if (*ar)
@@ -23,13 +24,13 @@ ARRAY* lib_array_create(ARRAY** ar, unsigned int data_size, unsigned int reserve
     return (*ar);
 }
 
-void lib_array_destroy(ARRAY **ar)
+void array_destroy(ARRAY **ar)
 {
     free(*ar);
     *ar = NULL;
 }
 
-void* lib_array_at(ARRAY* ar, unsigned int index)
+void* array_at(ARRAY* ar, unsigned int index)
 {
     if (ar == NULL)
         return NULL;
@@ -41,14 +42,14 @@ void* lib_array_at(ARRAY* ar, unsigned int index)
     return ARRAY_DATA(ar) + index * ar->data_size;
 }
 
-unsigned int lib_array_size(ARRAY* ar)
+unsigned int array_size(ARRAY* ar)
 {
     if (ar == NULL)
         return 0;
     return ar->size;
 }
 
-ARRAY* lib_array_append(ARRAY **ar)
+ARRAY* array_append(ARRAY **ar)
 {
     if (*ar == NULL)
         return NULL;
@@ -64,9 +65,9 @@ ARRAY* lib_array_append(ARRAY **ar)
     return (*ar);
 }
 
-ARRAY* lib_array_insert(ARRAY **ar, unsigned int index)
+ARRAY* array_insert(ARRAY **ar, unsigned int index)
 {
-    if (lib_array_append(ar) == NULL)
+    if (array_append(ar) == NULL)
         return NULL;
     if (index >= (*ar)->size)
     {
@@ -77,7 +78,7 @@ ARRAY* lib_array_insert(ARRAY **ar, unsigned int index)
     return (*ar);
 }
 
-ARRAY* lib_array_clear(ARRAY **ar)
+ARRAY* array_clear(ARRAY **ar)
 {
     if (*ar == NULL)
         return NULL;
@@ -85,7 +86,7 @@ ARRAY* lib_array_clear(ARRAY **ar)
     return (*ar);
 }
 
-ARRAY* lib_array_remove(ARRAY** ar, unsigned int index)
+ARRAY* array_remove(ARRAY** ar, unsigned int index)
 {
     if (*ar == NULL)
         return NULL;
@@ -99,7 +100,7 @@ ARRAY* lib_array_remove(ARRAY** ar, unsigned int index)
     return (*ar);
 }
 
-ARRAY* lib_array_squeeze(ARRAY** ar)
+ARRAY* array_squeeze(ARRAY** ar)
 {
     if (*ar == NULL)
         return NULL;
@@ -107,15 +108,3 @@ ARRAY* lib_array_squeeze(ARRAY** ar)
     (*ar)->reserved = (*ar)->size;
     return (*ar);
 }
-
-const LIB_ARRAY __LIB_ARRAY = {
-    lib_array_create,
-    lib_array_destroy,
-    lib_array_at,
-    lib_array_size,
-    lib_array_append,
-    lib_array_insert,
-    lib_array_clear,
-    lib_array_remove,
-    lib_array_squeeze
-};
