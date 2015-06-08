@@ -8,6 +8,7 @@
 #define USB_DESC_H
 
 #include "../../rexos/userspace/usb.h"
+#include "../../rexos/userspace/cdc.h"
 
 #pragma pack(push, 1)
 
