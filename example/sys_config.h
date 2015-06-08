@@ -27,6 +27,7 @@
 #define SYS_OBJ_STDIN                                       INVALID_HANDLE
 #define SYS_OBJ_PINBOARD                                    INVALID_HANDLE
 #define SYS_OBJ_APP                                         INVALID_HANDLE
+#define SYS_OBJ_ETH                                         INVALID_HANDLE
 //------------------------------ POWER -----------------------------------------------
 //depends on hardware implementation
 #define POWER_MANAGEMENT_SUPPORT                            1
@@ -35,8 +36,7 @@
 #define USB_EP_COUNT_MAX                                    4
 //low-level USB debug. Turn on only in case of IO problems
 #define USB_DEBUG_ERRORS                                    1
-//support for high speed, qualifier, other speed, test, etc
-#define USB_2_0                                             0
+#define USB_TEST_MODE_SUPPORT                               0
 
 //----------------------------- USB device--------------------------------------------
 //all other device-related debug depends on this
