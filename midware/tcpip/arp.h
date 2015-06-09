@@ -48,7 +48,7 @@ void arp_timer(TCPIP* tcpip, unsigned int seconds);
 bool arp_request(TCPIP* tcpip, IPC* ipc);
 
 //from mac
-void arp_rx(TCPIP* tcpip, TCPIP_IO* io);
+void arp_rx(TCPIP* tcpip, IO* io);
 
 //from route. If false returned, sender must queue request for asynchronous answer
 bool arp_resolve(TCPIP* tcpip, const IP* ip, MAC* mac);

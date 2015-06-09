@@ -209,10 +209,9 @@ typedef struct {
 } TCPIP_IP;
 
 typedef struct {
-    TCPIP_IO io;
     uint16_t hdr_size;
-    uint8_t proto;
-} IP_IO;
+    uint16_t proto;
+} IP_STACK;
 
 //tools
 #if (SYS_INFO) || (TCPIP_DEBUG)
@@ -226,12 +225,12 @@ void ip_init(TCPIP* tcpip);
 bool ip_request(TCPIP* tcpip, IPC* ipc);
 
 //allocate IP io. If more than (MTU - MAC header - IP header) and fragmentation enabled, will be allocated long frame
-uint8_t* ip_allocate_io(TCPIP* tcpip, IP_IO *ip_io, unsigned int size, uint8_t proto);
+IO* ip_allocate_io(TCPIP* tcpip, unsigned int size, uint8_t proto);
 //release previously allocated io. IO is not actually freed, just put in queue of free blocks
-void ip_release_io(TCPIP* tcpip, IP_IO* ip_io);
-void ip_tx(TCPIP* tcpip, IP_IO *ip_io, const IP* dst);
+void ip_release_io(TCPIP* tcpip, IO* io);
+void ip_tx(TCPIP* tcpip, IO* io, const IP* dst);
 
 //from mac
-void ip_rx(TCPIP* tcpip, TCPIP_IO* io);
+void ip_rx(TCPIP* tcpip, IO* io);
 
 #endif // IP_H

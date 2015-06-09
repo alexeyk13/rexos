@@ -10,10 +10,11 @@
 #include "tcpip.h"
 #include "ip.h"
 #include "../../userspace/inet.h"
+#include "../../userspace/io.h"
 
 //TODO: udp_init
 
-void udp_rx(TCPIP* tcpip, IP_IO* ip_io, IP* src);
+void udp_rx(TCPIP* tcpip, IO* ip, IP* src);
 
 
 #endif // UDP_H

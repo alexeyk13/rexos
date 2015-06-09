@@ -8,10 +8,10 @@
 #include "tcpip_private.h"
 #include "../../userspace/stdio.h"
 
-void udp_rx(TCPIP* tcpip, IP_IO* ip_io, IP* src)
+void udp_rx(TCPIP* tcpip, IO* io, IP* src)
 {
     printf("UDP!\n\r");
-    dump(ip_io->io.buf, ip_io->io.size);
-    ip_release_io(tcpip, ip_io);
+    dump(io_data(io), io->data_size);
+    ip_release_io(tcpip, io);
 }
 

@@ -65,20 +65,20 @@ bool mac_request(TCPIP* tcpip, IPC* ipc)
     return need_post;
 }
 
-void mac_rx(TCPIP* tcpip, TCPIP_IO* io)
+void mac_rx(TCPIP* tcpip, IO* io)
 {
     uint16_t lentype;
-    if (io->size < MAC_HEADER_SIZE)
+    if (io->data_size < MAC_HEADER_SIZE)
     {
         tcpip_release_io(tcpip, io);
         return;
     }
 #if (MAC_FILTER)
-    switch (MAC_DST(io->buf)->u8[0] & MAC_CAST_MASK)
+    switch (MAC_DST(io_data(io))->u8[0] & MAC_CAST_MASK)
     {
     case MAC_BROADCAST_ADDRESS:
         //enable broadcast only for ARP
-        if (MAC_LENTYPE(io->buf) != ETHERTYPE_ARP)
+        if (MAC_LENTYPE((uint8_t*)io_data(io)) != ETHERTYPE_ARP)
         {
             tcpip_release_io(tcpip, io);
             return;
@@ -90,7 +90,7 @@ void mac_rx(TCPIP* tcpip, TCPIP_IO* io)
         return;
     default:
         //enable unicast only on address compare
-        if (!mac_compare(&tcpip->mac.mac, MAC_DST(io->buf)))
+        if (!mac_compare(&tcpip->mac.mac, MAC_DST(io_data(io))))
         {
             tcpip_release_io(tcpip, io);
             return;
@@ -99,16 +99,16 @@ void mac_rx(TCPIP* tcpip, TCPIP_IO* io)
     }
 #endif //MAC_FILTER
 
-    lentype = MAC_LENTYPE(io->buf);
+    lentype = MAC_LENTYPE((uint8_t*)io_data(io));
 #if (MAC_DEBUG)
     printf("MAC RX: ");
-    mac_print(MAC_SRC(io->buf));
+    mac_print(MAC_SRC(io_data(io)));
     printf(" -> ");
-    mac_print(MAC_DST(io->buf));
-    printf(", len/type: %04X, size: %d\n\r", lentype, io->size - MAC_HEADER_SIZE);
+    mac_print(MAC_DST(io_data(io)));
+    printf(", len/type: %04X, size: %d\n\r", lentype, io->data_size - MAC_HEADER_SIZE);
 #endif
-    io->buf += MAC_HEADER_SIZE;
-    io->size -= MAC_HEADER_SIZE;
+    io->data_offset += MAC_HEADER_SIZE;
+    io->data_size -= MAC_HEADER_SIZE;
     switch (lentype)
     {
     case ETHERTYPE_IP:
@@ -126,25 +126,27 @@ void mac_rx(TCPIP* tcpip, TCPIP_IO* io)
     }
 }
 
-uint8_t* mac_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
+IO* mac_allocate_io(TCPIP* tcpip)
 {
-    if (tcpip_allocate_io(tcpip, io) == NULL)
+    IO* io = tcpip_allocate_io(tcpip);
+    if (io == NULL)
         return NULL;
-    io->buf += MAC_HEADER_SIZE;
-    return io->buf;
+    io->data_offset += MAC_HEADER_SIZE;
+    return io;
 }
 
-void mac_tx(TCPIP* tcpip, TCPIP_IO* io, const MAC* dst, uint16_t lentype)
+void mac_tx(TCPIP* tcpip, IO* io, const MAC* dst, uint16_t lentype)
 {
-    io->buf -= MAC_HEADER_SIZE;
-    MAC_DST(io->buf)->u32.hi = dst->u32.hi;
-    MAC_DST(io->buf)->u32.lo = dst->u32.lo;
-    MAC_SRC(io->buf)->u32.hi = tcpip->mac.mac.u32.hi;
-    MAC_SRC(io->buf)->u32.lo = tcpip->mac.mac.u32.lo;
+    io->data_offset -= MAC_HEADER_SIZE;
+    io->data_size += MAC_HEADER_SIZE;
 
-    io->buf[2 * MAC_SIZE] = (lentype >> 8) & 0xff;
-    io->buf[2 * MAC_SIZE +  1] = lentype & 0xff;
+    MAC_DST(io_data(io))->u32.hi = dst->u32.hi;
+    MAC_DST(io_data(io))->u32.lo = dst->u32.lo;
+    MAC_SRC(io_data(io))->u32.hi = tcpip->mac.mac.u32.hi;
+    MAC_SRC(io_data(io))->u32.lo = tcpip->mac.mac.u32.lo;
 
-    io->size += MAC_HEADER_SIZE;
+    ((uint8_t*)io_data(io))[2 * MAC_SIZE] = (lentype >> 8) & 0xff;
+    ((uint8_t*)io_data(io))[2 * MAC_SIZE +  1] = lentype & 0xff;
+
     tcpip_tx(tcpip, io);
 }

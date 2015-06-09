@@ -46,9 +46,9 @@ const MAC* tcpip_mac(TCPIP* tcpip);
 //from tcpip process
 void mac_init(TCPIP* tcpip);
 bool mac_request(TCPIP* tcpip, IPC* ipc);
-void mac_rx(TCPIP* tcpip, TCPIP_IO* io);
+void mac_rx(TCPIP* tcpip, IO* io);
 
-uint8_t* mac_allocate_io(TCPIP* tcpip, TCPIP_IO* io);
-void mac_tx(TCPIP* tcpip, TCPIP_IO* io, const MAC* dst, uint16_t lentype);
+IO* mac_allocate_io(TCPIP* tcpip);
+void mac_tx(TCPIP* tcpip, IO* io, const MAC* dst, uint16_t lentype);
 
 #endif // MAC_H

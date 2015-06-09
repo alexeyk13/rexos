@@ -81,90 +81,102 @@ bool ip_request(TCPIP* tcpip, IPC* ipc)
     return need_post;
 }
 
-uint8_t* ip_allocate_io(TCPIP* tcpip, IP_IO* ip_io, unsigned int size, uint8_t proto)
+IO *ip_allocate_io(TCPIP* tcpip, unsigned int size, uint8_t proto)
 {
+    IP_STACK* ip_stack;
+    IO* io = mac_allocate_io(tcpip);
     //TODO: fragmented frames
-    if (mac_allocate_io(tcpip, &ip_io->io) == NULL)
+    if (io == NULL)
         return NULL;
+
+    io_push(io, sizeof(IP_STACK));
+    ip_stack = io_stack(io);
+
     //reserve space for IP header
-    ip_io->hdr_size = IP_HEADER_SIZE;
-    ip_io->io.buf += IP_HEADER_SIZE;
-    ip_io->proto = proto;
-    return ip_io->io.buf;
+    io->data_offset += IP_HEADER_SIZE;
+    ip_stack->proto = proto;
+    ip_stack->hdr_size = IP_HEADER_SIZE;
+    return io;
 }
 
-void ip_release_io(TCPIP* tcpip, IP_IO *ip_io)
+void ip_release_io(TCPIP* tcpip, IO* io)
 {
     //TODO: fragmented frames
-    tcpip_release_io(tcpip, &ip_io->io);
+    tcpip_release_io(tcpip, io);
 }
 
-void ip_tx(TCPIP* tcpip, IP_IO* ip_io, const IP* dst)
+void ip_tx(TCPIP* tcpip, IO* io, const IP* dst)
 {
+    IP_STACK* ip_stack;
+    ip_stack = io_stack(io);
     //TODO: fragmented frames
     uint16_t cs;
-    ip_io->io.buf -= ip_io->hdr_size;
-    ip_io->io.size += ip_io->hdr_size;
+    unsigned int size = io->data_size;
+    io->data_offset -= ip_stack->hdr_size;
+    io->data_size += ip_stack->hdr_size;
 
     //VERSION, IHL
-    ip_io->io.buf[0] = 0x45;
+    ((uint8_t*)io_data(io))[0] = 0x45;
     //DSCP, ECN
-    ip_io->io.buf[1] = 0;
+    ((uint8_t*)io_data(io))[1] = 0;
     //total len
-    ip_io->io.buf[2] = (ip_io->io.size >> 8) & 0xff;
-    ip_io->io.buf[3] = ip_io->io.size & 0xff;
+    ((uint8_t*)io_data(io))[2] = (size >> 8) & 0xff;
+    ((uint8_t*)io_data(io))[3] = size & 0xff;
     //id
-    ip_io->io.buf[4] = (tcpip->ip.id >> 8) & 0xff;
-    ip_io->io.buf[5] = tcpip->ip.id & 0xff;
+    ((uint8_t*)io_data(io))[4] = (tcpip->ip.id >> 8) & 0xff;
+    ((uint8_t*)io_data(io))[5] = tcpip->ip.id & 0xff;
     ++tcpip->ip.id;
     //flags, offset
-    ip_io->io.buf[6] = ip_io->io.buf[7] = 0;
+    ((uint8_t*)io_data(io))[6] = ((uint8_t*)io_data(io))[7] = 0;
     //ttl
-    ip_io->io.buf[8] = 0xff;
+    ((uint8_t*)io_data(io))[8] = 0xff;
     //proto
-    ip_io->io.buf[9] = ip_io->proto;
+    ((uint8_t*)io_data(io))[9] = ip_stack->proto;
     //src
-    *(uint32_t*)(ip_io->io.buf + 12) = tcpip_ip(tcpip)->u32.ip;
+    *(uint32_t*)(((uint8_t*)io_data(io)) + 12) = tcpip_ip(tcpip)->u32.ip;
     //dst
-    *(uint32_t*)(ip_io->io.buf + 16) = dst->u32.ip;
+    *(uint32_t*)(((uint8_t*)io_data(io)) + 16) = dst->u32.ip;
     //update checksum
-    ip_io->io.buf[10] = ip_io->io.buf[11] = 0;
-    cs = ip_checksum(ip_io->io.buf, ip_io->hdr_size);
-    ip_io->io.buf[10] = (cs >> 8) & 0xff;
-    ip_io->io.buf[11] = cs & 0xff;
+    ((uint8_t*)io_data(io))[10] = ((uint8_t*)io_data(io))[11] = 0;
+    cs = ip_checksum(((uint8_t*)io_data(io)), ip_stack->hdr_size);
+    ((uint8_t*)io_data(io))[10] = (cs >> 8) & 0xff;
+    ((uint8_t*)io_data(io))[11] = cs & 0xff;
 
-    route_tx(tcpip, &(ip_io->io), dst);
+    io_pop(io, sizeof(IP_STACK));
+    route_tx(tcpip, io, dst);
 }
 
-static void ip_process(TCPIP* tcpip, IP_IO* ip_io, IP* src)
+static void ip_process(TCPIP* tcpip, IO* io, IP* src)
 {
+    IP_STACK* ip_stack;
+    ip_stack = io_stack(io);
 #if (IP_DEBUG_FLOW)
     printf("IP: from ");
     ip_print(src);
-    printf(", proto: %d, len: %d\n\r", ip_io->proto, ip_io->io.size);
+    printf(", proto: %d, len: %d\n\r", ip_stack->proto, io->data_size);
 #endif
-    switch (ip_io->proto)
+    switch (ip_stack->proto)
     {
 #if (ICMP)
     case PROTO_ICMP:
-        icmp_rx(tcpip, ip_io, src);
+        icmp_rx(tcpip, io, src);
         break;
 #endif //ICMP
 #if (UDP)
     case PROTO_UDP:
-        udp_rx(tcpip, ip_io, src);
+        udp_rx(tcpip, io, src);
         break;
     default:
 #endif //UDP
 #if (IP_DEBUG)
-        printf("IP: unhandled proto %d from", ip_io->proto);
+        printf("IP: unhandled proto %d from", ip_stack->proto);
         ip_print(src);
         printf("\n\r");
 #endif
 #if (ICMP_FLOW_CONTROL)
-        icmp_destination_unreachable(tcpip, ICMP_PROTOCOL_UNREACHABLE, ip_io, src);
+        icmp_destination_unreachable(tcpip, ICMP_PROTOCOL_UNREACHABLE, io, src);
 #else
-        ip_release_io(tcpip, ip_io);
+        ip_release_io(tcpip, io);
 #endif
     }
 }
@@ -181,61 +193,66 @@ uint16_t ip_checksum(uint8_t* buf, unsigned int size)
 }
 #endif
 
-void ip_rx(TCPIP* tcpip, TCPIP_IO* io)
+void ip_rx(TCPIP* tcpip, IO* io)
 {
-    IP_IO ip_io;
     IP src;
-    if (io->size < IP_HEADER_SIZE)
+    IP_STACK* ip_stack;
+    uint8_t* ip_header = io_data(io);
+    if (io->data_size < IP_HEADER_SIZE)
     {
         tcpip_release_io(tcpip, io);
         return;
     }
-    ip_io.io.size = IP_HEADER_TOTAL_LENGTH(io->buf);
-    ip_io.hdr_size = IP_HEADER_IHL(io->buf) << 2;
+    io_push(io, sizeof(IP_STACK));
+    ip_stack = io_stack(io);
+
+    ip_stack->hdr_size = IP_HEADER_IHL(ip_header) << 2;
 #if (IP_CHECKSUM)
     //drop if checksum is invalid
-    if (ip_checksum(io->buf, ip_io.hdr_size))
+    if (ip_checksum(ip_header, ip_stack->hdr_size))
     {
         tcpip_release_io(tcpip, io);
         return;
     }
 #endif
-    src.u32.ip = (IP_HEADER_SRC_IP(io->buf))->u32.ip;
-    ip_io.proto = IP_HEADER_PROTOCOL(io->buf);
-    ip_io.io.buf = io->buf + ip_io.hdr_size;
-    ip_io.io.size -= ip_io.hdr_size;
-    ip_io.io.block = io->block;
-    if ((IP_HEADER_VERSION(io->buf) != 4) || (ip_io.hdr_size < IP_HEADER_SIZE))
+    src.u32.ip = IP_HEADER_SRC_IP(ip_header)->u32.ip;
+    ip_stack->proto = IP_HEADER_PROTOCOL(ip_header);
+
+    //len more than MTU, inform host by ICMP and only than drop packet
+    if (IP_HEADER_TOTAL_LENGTH(ip_header) > io->data_size)
     {
 #if (ICMP_FLOW_CONTROL)
-        icmp_parameter_problem(tcpip, 0, &ip_io, &src);
+        icmp_parameter_problem(tcpip, 2, io, &src);
+#else
+        tcpip_release_io(tcpip, io);
+#endif
+        return;
+    }
+
+    io->data_size = IP_HEADER_TOTAL_LENGTH(ip_header);
+    io->data_offset += ip_stack->hdr_size;
+    io->data_size -= ip_stack->hdr_size;
+    if ((IP_HEADER_VERSION(ip_header) != 4) || (ip_stack->hdr_size < IP_HEADER_SIZE))
+    {
+#if (ICMP_FLOW_CONTROL)
+        icmp_parameter_problem(tcpip, 0, io, &src);
 #else
         tcpip_release_io(tcpip, io);
 #endif
         return;
     }
     //unicast-only filter
-    if (tcpip_ip(tcpip)->u32.ip != IP_HEADER_DST_IP(io->buf)->u32.ip)
+    if (tcpip_ip(tcpip)->u32.ip != IP_HEADER_DST_IP(ip_header)->u32.ip)
     {
         tcpip_release_io(tcpip, io);
         return;
     }
 
-    //len more than MTU, inform host by ICMP and only than drop packet
-    if (ip_io.io.size > io->size)
-    {
-#if (ICMP_FLOW_CONTROL)
-        icmp_parameter_problem(tcpip, 2, &ip_io, &src);
-#else
-        tcpip_release_io(tcpip, io);
-#endif
-        return;
-    }
     //ttl exceeded
-    if (IP_HEADER_TTL(io->buf) == 0)
+    if (IP_HEADER_TTL(ip_header) == 0)
     {
 #if (ICMP_FLOW_CONTROL)
-        icmp_time_exceeded(tcpip, ICMP_TTL_EXCEED_IN_TRANSIT, &ip_io, &src);
+        icmp_time_exceeded(tcpip, ICMP_TTL_EXCEED_IN_TRANSIT, io, &src);
 #else
         tcpip_release_io(tcpip, io);
 #endif
@@ -247,10 +264,10 @@ void ip_rx(TCPIP* tcpip, TCPIP_IO* io)
 #error IP FRAGMENTATION is Not Implemented!
 #else
     //drop all fragmented frames, inform by ICMP
-    if ((IP_HEADER_FLAGS(io->buf) & IP_MF) || (IP_HEADER_FRAME_OFFSET(io->buf)))
+    if ((IP_HEADER_FLAGS(ip_header) & IP_MF) || (IP_HEADER_FRAME_OFFSET(ip_header)))
     {
 #if (ICMP_FLOW_CONTROL)
-        icmp_parameter_problem(tcpip, 6, &ip_io, &src);
+        icmp_parameter_problem(tcpip, 6, io, &src);
 #else
         tcpip_release_io(tcpip, io);
 #endif
@@ -258,5 +275,5 @@ void ip_rx(TCPIP* tcpip, TCPIP_IO* io)
     }
 #endif
 
-    ip_process(tcpip, &ip_io, &src);
+    ip_process(tcpip, io, &src);
 }

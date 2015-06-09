@@ -29,6 +29,6 @@ void arp_resolved(TCPIP* tcpip, const IP* ip, const MAC* mac);
 void arp_not_resolved(TCPIP* tcpip, const IP* ip);
 
 //called from ip
-void route_tx(TCPIP* tcpip, TCPIP_IO* io, const IP* target);
+void route_tx(TCPIP* tcpip, IO* io, const IP* target);
 
 #endif // ROUTE_H

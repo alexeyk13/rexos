@@ -12,7 +12,7 @@
 #define ROUTE_QUEUE_ITEM(tcpip, i)                    ((ROUTE_QUEUE_ENTRY*)array_at((tcpip)->route.tx_queue, i))
 
 typedef struct {
-    TCPIP_IO io;
+    IO* io;
     IP ip;
 } ROUTE_QUEUE_ENTRY;
 
@@ -25,7 +25,7 @@ bool route_drop(TCPIP* tcpip)
 {
     if (array_size(tcpip->route.tx_queue))
     {
-        tcpip_release_io(tcpip, &ROUTE_QUEUE_ITEM(tcpip, 0)->io);
+        tcpip_release_io(tcpip, ROUTE_QUEUE_ITEM(tcpip, 0)->io);
         array_remove(&tcpip->route.tx_queue, 0);
         return true;
     }
@@ -39,7 +39,7 @@ void arp_resolved(TCPIP* tcpip, const IP* ip, const MAC* mac)
         if (ROUTE_QUEUE_ITEM(tcpip, i)->ip.u32.ip == ip->u32.ip)
         {
             //forward to MAC
-            mac_tx(tcpip, &ROUTE_QUEUE_ITEM(tcpip, i)->io, mac, ETHERTYPE_IP);
+            mac_tx(tcpip, ROUTE_QUEUE_ITEM(tcpip, i)->io, mac, ETHERTYPE_IP);
             array_remove(&tcpip->route.tx_queue, i);
         }
 }
@@ -51,12 +51,12 @@ void arp_not_resolved(TCPIP* tcpip, const IP* ip)
         if (ROUTE_QUEUE_ITEM(tcpip, i)->ip.u32.ip == ip->u32.ip)
         {
             //drop if not resolved
-            tcpip_release_io(tcpip, &ROUTE_QUEUE_ITEM(tcpip, i)->io);
+            tcpip_release_io(tcpip, ROUTE_QUEUE_ITEM(tcpip, i)->io);
             array_remove(&tcpip->route.tx_queue, i);
         }
 }
 
-void route_tx(TCPIP* tcpip, TCPIP_IO* io, const IP* target)
+void route_tx(TCPIP* tcpip, IO* io, const IP* target)
 {
     ROUTE_QUEUE_ENTRY* item;
     //TODO: forward to gateway
@@ -68,9 +68,7 @@ void route_tx(TCPIP* tcpip, TCPIP_IO* io, const IP* target)
         //queue before address is resolved
         array_append(&tcpip->route.tx_queue);
         item = ROUTE_QUEUE_ITEM(tcpip, array_size(tcpip->route.tx_queue) - 1);
-        item->io.block = io->block;
-        item->io.buf = io->buf;
-        item->io.size = io->size;
+        item->io = io;
         item->ip.u32.ip = target->u32.ip;
     }
 }

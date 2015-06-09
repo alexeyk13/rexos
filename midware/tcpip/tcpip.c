@@ -7,11 +7,8 @@
 #include "tcpip.h"
 #include "tcpip_private.h"
 #include "../../userspace/ipc.h"
-#include "../../userspace/sys.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdio.h"
-#include "../../userspace/file.h"
-#include "../../userspace/block.h"
 #include "../../userspace/timer.h"
 #include "sys_config.h"
 #include "mac.h"
@@ -67,30 +64,27 @@ static void print_conn_status(TCPIP* tcpip, const char* head)
 }
 #endif
 
-static HANDLE tcpip_allocate_io_internal(TCPIP* tcpip)
+static IO* tcpip_allocate_io_internal(TCPIP* tcpip)
 {
-    HANDLE res = INVALID_HANDLE;
-    if (array_size(tcpip->free_blocks))
+    IO* io = NULL;
+    if (array_size(tcpip->free_io))
     {
-        res = *(HANDLE*)array_at(tcpip->free_blocks, array_size(tcpip->free_blocks) - 1);
-        array_remove(&tcpip->free_blocks, array_size(tcpip->free_blocks) - 1);
+        io = *((IO**)array_at(tcpip->free_io, array_size(tcpip->free_io) - 1));
+        array_remove(&tcpip->free_io, array_size(tcpip->free_io) - 1);
     }
-    return res;
+    return io;
 }
 
-uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
+IO* tcpip_allocate_io(TCPIP* tcpip)
 {
-    io->buf = NULL;
-    io->size = 0;
-    io->block = tcpip_allocate_io_internal(tcpip);
-
-    if (io->block == INVALID_HANDLE)
+    IO* io = tcpip_allocate_io_internal(tcpip);
+    if (io == NULL)
     {
-        if (tcpip->blocks_allocated < TCPIP_MAX_FRAMES_COUNT)
+        if (tcpip->io_allocated < TCPIP_MAX_FRAMES_COUNT)
         {
-            io->block = block_create(FRAME_MAX_SIZE);
-            if (io->block != INVALID_HANDLE)
-                ++tcpip->blocks_allocated;
+            io = io_create(FRAME_MAX_SIZE);
+            if (io != NULL)
+                ++tcpip->io_allocated;
 #if (TCPIP_DEBUG_ERRORS)
             else
                 printf("TCPIP: out of memory\n\r");
@@ -99,7 +93,7 @@ uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
         //try to drop first in queue, waiting for resolve
         else if (route_drop(tcpip))
         {
-            io->block = tcpip_allocate_io_internal(tcpip);
+            io = tcpip_allocate_io_internal(tcpip);
 #if (TCPIP_DEBUG)
             printf("TCPIP warning: block dropped from route queue\n\r");
 #endif
@@ -108,7 +102,7 @@ uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
         {
             array_remove(&tcpip->tx_queue, 0);
             --tcpip->tx_count;
-            io->block = tcpip_allocate_io_internal(tcpip);
+            io = tcpip_allocate_io_internal(tcpip);
 #if (TCPIP_DEBUG)
             printf("TCPIP warning: block dropped from tx queue\n\r");
 #endif
@@ -120,33 +114,26 @@ uint8_t* tcpip_allocate_io(TCPIP* tcpip, TCPIP_IO* io)
 #endif
         }
     }
-    if (io->block != INVALID_HANDLE)
-        io->buf = block_open(io->block);
-    return io->buf;
+    return io;
 }
 
-static void tcpip_release_block(TCPIP* tcpip, HANDLE block)
+void tcpip_release_io(TCPIP* tcpip, IO* io)
 {
-    array_append(&tcpip->free_blocks);
-    *(void**)array_at(tcpip->free_blocks, array_size(tcpip->free_blocks) - 1) = (void*)block;
-}
-
-void tcpip_release_io(TCPIP* tcpip, TCPIP_IO* io)
-{
-    tcpip_release_block(tcpip, io->block);
+    io_reset(io);
+    array_append(&tcpip->free_io);
+    *((IO**)array_at(tcpip->free_io, array_size(tcpip->free_io) - 1)) = io;
 }
 
 static void tcpip_rx_next(TCPIP* tcpip)
 {
-    TCPIP_IO io;
-    if (tcpip_allocate_io(tcpip, &io) == NULL)
+    IO* io = tcpip_allocate_io(tcpip);
+    if (io == NULL)
         return;
-    fread_async(tcpip->eth, HAL_ETH, 0, io.block, FRAME_MAX_SIZE);
+    io_read(tcpip->eth, HAL_CMD(HAL_ETH, IPC_READ), 0, io, FRAME_MAX_SIZE);
 }
 
-void tcpip_tx(TCPIP* tcpip, TCPIP_IO* io)
+void tcpip_tx(TCPIP* tcpip, IO *io)
 {
-    TCPIP_IO* queue_io;
 #if (ETH_DOUBLE_BUFFERING)
     if (++tcpip->tx_count > 2)
 #else
@@ -155,13 +142,10 @@ void tcpip_tx(TCPIP* tcpip, TCPIP_IO* io)
     {
         //add to queue
         array_append(&tcpip->tx_queue);
-        queue_io = (TCPIP_IO*)array_at(tcpip->tx_queue, array_size(tcpip->tx_queue));
-        queue_io->block = io->block;
-        queue_io->buf = io->buf;
-        queue_io->size = io->size;
+        *((IO**)array_at(tcpip->tx_queue, array_size(tcpip->tx_queue) - 1)) = io;
     }
     else
-        fwrite_async(tcpip->eth, HAL_ETH, 0, io->block, io->size);
+        io_write(tcpip->eth, HAL_CMD(HAL_ETH, IPC_WRITE), 0, io);
 }
 
 unsigned int tcpip_seconds(TCPIP* tcpip)
@@ -179,35 +163,29 @@ static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
     tcpip->timer = timer_create(0, HAL_TCPIP);
     if (tcpip->timer == INVALID_HANDLE)
         return;
-    fopen(tcpip->eth, HAL_ETH, 0, conn);
+    ack(tcpip->eth, HAL_CMD(HAL_ETH, IPC_OPEN), 0, conn, 0);
     tcpip->active = true;
     tcpip->seconds = 0;
     timer_start_ms(tcpip->timer, 1000, 0);
 }
 
-static inline void tcpip_rx(TCPIP* tcpip, HANDLE block, int size)
+static inline void tcpip_eth_rx(TCPIP* tcpip, IO* io, int param3)
 {
-    TCPIP_IO io;
     if (tcpip->connected)
         tcpip_rx_next(tcpip);
-    if (size < 0)
+    if (param3 < 0)
     {
-        tcpip_release_block(tcpip, block);
+        tcpip_release_io(tcpip, io);
         return;
     }
-    io.block = block;
-    io.size = (unsigned int)size;
-    io.buf = block_open(block);
-    if (io.buf == NULL)
-        return;
     //forward to MAC
-    mac_rx(tcpip, &io);
+    mac_rx(tcpip, io);
 }
 
-static inline void tcpip_tx_complete(TCPIP* tcpip, HANDLE block)
+static inline void tcpip_eth_tx_complete(TCPIP* tcpip, IO* io, int param3)
 {
-    TCPIP_IO* queue_io;
-    tcpip_release_block(tcpip, block);
+    IO* queue_io;
+    tcpip_release_io(tcpip, io);
 #if (ETH_DOUBLE_BUFFERING)
     if (--tcpip->tx_count >= 2)
 #else
@@ -215,9 +193,9 @@ static inline void tcpip_tx_complete(TCPIP* tcpip, HANDLE block)
 #endif
     {
         //send next in queue
-        queue_io = (TCPIP_IO*)array_at(tcpip->tx_queue, 0);
-        fwrite_async(tcpip->eth, HAL_ETH, 0, queue_io->block, queue_io->size);
+        queue_io = *((IO**)array_at(tcpip->tx_queue, 0));
         array_remove(&tcpip->tx_queue, 0);
+        io_write(tcpip->eth, HAL_CMD(HAL_ETH, IPC_WRITE), 0, queue_io);
     }
 }
 
@@ -246,15 +224,15 @@ void tcpip_init(TCPIP* tcpip)
     tcpip->timer = INVALID_HANDLE;
     tcpip->conn = ETH_NO_LINK;
     tcpip->connected = tcpip->active = false;
-    tcpip->blocks_allocated = 0;
+    tcpip->io_allocated = 0;
 #if (ETH_DOUBLE_BUFFERING)
     //2 rx + 2 tx + 1 for processing
-    array_create(&tcpip->free_blocks, sizeof(void*), 5);
+    array_create(&tcpip->free_io, sizeof(IO*), 5);
 #else
     //1 rx + 1 tx + 1 for processing
-    array_create(&tcpip->free_blocks, sizeof(void*), 3);
+    array_create(&tcpip->free_io, sizeof(IO*), 3);
 #endif
-    array_create(&tcpip->tx_queue, sizeof(TCPIP_IO), 1);
+    array_create(&tcpip->tx_queue, sizeof(IO*), 1);
     tcpip->tx_count = 0;
     mac_init(tcpip);
     arp_init(tcpip);
@@ -287,14 +265,27 @@ static inline bool tcpip_request(TCPIP* tcpip, IPC* ipc)
         //TODO:
         need_post = true;
         break;
-    case IPC_READ:
-        tcpip_rx(tcpip, ipc->param2, (int)ipc->param3);
-        break;
-    case IPC_WRITE:
-        tcpip_tx_complete(tcpip, ipc->param2);
-        break;
     case IPC_TIMEOUT:
         tcpip_timer(tcpip);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
+        break;
+    }
+    return need_post;
+}
+
+static inline bool tcpip_driver_event(TCPIP* tcpip, IPC* ipc)
+{
+    bool need_post = false;
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    case IPC_READ:
+        tcpip_eth_rx(tcpip, (IO*)ipc->param2, (int)ipc->param3);
+        break;
+    case IPC_WRITE:
+        tcpip_eth_tx_complete(tcpip, (IO*)ipc->param2, (int)ipc->param3);
         break;
     case ETH_NOTIFY_LINK_CHANGED:
         tcpip_link_changed(tcpip, ipc->param2);
@@ -319,35 +310,33 @@ void tcpip_main()
     object_set_self(SYS_OBJ_TCPIP);
     for (;;)
     {
-        error(ERROR_OK);
+        ipc_read(&ipc);
         need_post = false;
-        ipc_read_ms(&ipc, 0, ANY_HANDLE);
-        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
+        switch (HAL_GROUP(ipc.cmd))
+        {
+        case HAL_ETH:
+            need_post = tcpip_driver_event(&tcpip, &ipc);
+            break;
+        case HAL_TCPIP:
+            need_post = tcpip_request(&tcpip, &ipc);
+            break;
+        case HAL_MAC:
+            need_post = mac_request(&tcpip, &ipc);
+            break;
+        case HAL_ARP:
+            need_post = arp_request(&tcpip, &ipc);
+            break;
+        case HAL_IP:
+            need_post = ip_request(&tcpip, &ipc);
+            break;
+        case HAL_ICMP:
+            need_post = icmp_request(&tcpip, &ipc);
+            break;
+        default:
+            error(ERROR_NOT_SUPPORTED);
             need_post = true;
-        else
-            switch (HAL_GROUP(ipc.cmd))
-            {
-            case HAL_ETH:
-            case HAL_TCPIP:
-                need_post = tcpip_request(&tcpip, &ipc);
-                break;
-            case HAL_MAC:
-                need_post = mac_request(&tcpip, &ipc);
-                break;
-            case HAL_ARP:
-                need_post = arp_request(&tcpip, &ipc);
-                break;
-            case HAL_IP:
-                need_post = ip_request(&tcpip, &ipc);
-                break;
-            case HAL_ICMP:
-                need_post = icmp_request(&tcpip, &ipc);
-                break;
-            default:
-                error(ERROR_NOT_SUPPORTED);
-                need_post = true;
-                break;
-            }
+            break;
+        }
         if (need_post)
             ipc_post_or_error(&ipc);
     }

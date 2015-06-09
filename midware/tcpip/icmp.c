@@ -29,48 +29,48 @@ void icmp_init(TCPIP* tcpip)
     tcpip->icmp.seq_count = 0;
 }
 
-static void icmp_tx(TCPIP* tcpip, IP_IO* ip_io, const IP* dst)
+static void icmp_tx(TCPIP* tcpip, IO* io, const IP* dst)
 {
-    ip_io->io.buf[2] = ip_io->io.buf[3] = 0;
-    uint16_t cs = ip_checksum(ip_io->io.buf, ip_io->io.size);
-    ip_io->io.buf[2] = (cs >> 8) & 0xff;
-    ip_io->io.buf[3] = cs & 0xff;
-    ip_tx(tcpip, ip_io, dst);
+    ((uint8_t*)io_data(io))[2] = ((uint8_t*)io_data(io))[3] = 0;
+    uint16_t cs = ip_checksum(((uint8_t*)io_data(io)), io->data_size);
+    ((uint8_t*)io_data(io))[2] = (cs >> 8) & 0xff;
+    ((uint8_t*)io_data(io))[3] = cs & 0xff;
+    ip_tx(tcpip, io, dst);
 }
 
 #if (ICMP_ECHO_REPLY)
-static inline void icmp_cmd_echo(TCPIP* tcpip, IP_IO* ip_io, IP* src)
+static inline void icmp_cmd_echo(TCPIP* tcpip, IO* io, IP* src)
 {
 #if (ICMP_DEBUG)
     printf("ICMP: ECHO from ");
     ip_print(src);
     printf("\n\r");
 #endif
-    ip_io->io.buf[0] = ICMP_CMD_ECHO_REPLY;
-    icmp_tx(tcpip, ip_io, src);
+    ((uint8_t*)io_data(io))[0] = ICMP_CMD_ECHO_REPLY;
+    icmp_tx(tcpip, io, src);
 }
 #endif
 
 #if (ICMP_ECHO)
 static bool icmp_cmd_echo_request(TCPIP* tcpip)
 {
-    IP_IO ip_io;
-    if (ip_allocate_io(tcpip, &ip_io, ICMP_DATA_MAGIC_SIZE + ICMP_HEADER_SIZE, PROTO_ICMP) == NULL)
+    IO* io = ip_allocate_io(tcpip, ICMP_DATA_MAGIC_SIZE + ICMP_HEADER_SIZE, PROTO_ICMP);
+    if (io == NULL)
         return false;
-    ip_io.io.size = ICMP_DATA_MAGIC_SIZE + ICMP_HEADER_SIZE;
+    io->data_size = ICMP_DATA_MAGIC_SIZE + ICMP_HEADER_SIZE;
     //type
-    ip_io.io.buf[0] = ICMP_CMD_ECHO;
+    ((uint8_t*)io_data(io))[0] = ICMP_CMD_ECHO;
     //code
-    ip_io.io.buf[1] = 0;
+    ((uint8_t*)io_data(io))[1] = 0;
     //id
-    ip_io.io.buf[4] = (tcpip->icmp.id >> 8) & 0xff;
-    ip_io.io.buf[5] = tcpip->icmp.id & 0xff;
+    ((uint8_t*)io_data(io))[4] = (tcpip->icmp.id >> 8) & 0xff;
+    ((uint8_t*)io_data(io))[5] = tcpip->icmp.id & 0xff;
     //sequence
-    ip_io.io.buf[6] = (tcpip->icmp.seq >> 8) & 0xff;
-    ip_io.io.buf[7] = tcpip->icmp.seq & 0xff;
-    memcpy(ip_io.io.buf + ICMP_HEADER_SIZE, __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE);
+    ((uint8_t*)io_data(io))[6] = (tcpip->icmp.seq >> 8) & 0xff;
+    ((uint8_t*)io_data(io))[7] = tcpip->icmp.seq & 0xff;
+    memcpy(((uint8_t*)io_data(io)) + ICMP_HEADER_SIZE, __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE);
     tcpip->icmp.ttl = tcpip_seconds(tcpip) + ICMP_ECHO_TIMEOUT;
-    icmp_tx(tcpip, &ip_io, &tcpip->icmp.dst);
+    icmp_tx(tcpip, io, &tcpip->icmp.dst);
     return true;
 }
 
@@ -108,7 +108,7 @@ static inline void icmp_ping_request(TCPIP* tcpip, const IP* dst, unsigned int c
     icmp_echo_next(tcpip);
 }
 
-static inline void icmp_cmd_echo_reply(TCPIP* tcpip, IP_IO* ip_io, IP* src)
+static inline void icmp_cmd_echo_reply(TCPIP* tcpip, IO* io, IP* src)
 {
     bool success = true;
 #if (ICMP_DEBUG)
@@ -119,34 +119,34 @@ static inline void icmp_cmd_echo_reply(TCPIP* tcpip, IP_IO* ip_io, IP* src)
     //compare src, sequence, id and data
     if (tcpip->icmp.dst.u32.ip != src->u32.ip)
         success = false;
-    if (tcpip->icmp.id != ICMP_ID(ip_io->io.buf) || tcpip->icmp.seq != ICMP_SEQ(ip_io->io.buf))
+    if (tcpip->icmp.id != ICMP_ID(((uint8_t*)io_data(io))) || tcpip->icmp.seq != ICMP_SEQ(((uint8_t*)io_data(io))))
         success = false;
-    if (memcmp(ip_io->io.buf + ICMP_HEADER_SIZE, __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE))
+    if (memcmp(((uint8_t*)io_data(io)) + ICMP_HEADER_SIZE, __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE))
         success = false;
     if (success)
         ++tcpip->icmp.success_count;
-    ip_release_io(tcpip, ip_io);
+    ip_release_io(tcpip, io);
     icmp_echo_next(tcpip);
 }
 #endif
 
 #if (ICMP_FLOW_CONTROL)
-static inline void icmp_cmd_destination_unreachable(TCPIP* tcpip, IP_IO* ip_io)
+static inline void icmp_cmd_destination_unreachable(TCPIP* tcpip, IO* io)
 {
     IP dst;
     //useless if no original header provided
-    if (ip_io->io.size < ICMP_HEADER_SIZE + IP_HEADER_SIZE)
+    if (io->data_size < ICMP_HEADER_SIZE + IP_HEADER_SIZE)
     {
-        ip_release_io(tcpip, ip_io);
+        ip_release_io(tcpip, io);
         return;
     }
-    dst.u32.ip = *((uint32_t*)(ip_io->io.buf + ICMP_HEADER_SIZE + 16));
+    dst.u32.ip = *((uint32_t*)(((uint8_t*)io_data(io)) + ICMP_HEADER_SIZE + 16));
 #if (ICMP_DEBUG)
-    printf("ICMP: DESTINATION UNREACHABLE(%d) ", ICMP_CODE(ip_io->io.buf));
+    printf("ICMP: DESTINATION UNREACHABLE(%d) ", ICMP_CODE(((uint8_t*)io_data(io))));
     ip_print(&dst);
     printf("\n\r");
 #endif
-    switch (ICMP_CODE(ip_io->io.buf))
+    switch (ICMP_CODE(((uint8_t*)io_data(io))))
     {
     case ICMP_NET_UNREACHABLE:
     case ICMP_HOST_UNREACHABLE:
@@ -190,64 +190,66 @@ void icmp_timer(TCPIP* tcpip, unsigned int seconds)
 #endif
 }
 
-void icmp_rx(TCPIP* tcpip, IP_IO* ip_io, IP* src)
+void icmp_rx(TCPIP* tcpip, IO *io, IP* src)
 {
     //drop broken ICMP without control, because ICMP is control protocol itself
-    if (ip_io->io.size < ICMP_HEADER_SIZE)
+    if (io->data_size < ICMP_HEADER_SIZE)
     {
-        ip_release_io(tcpip, ip_io);
+        ip_release_io(tcpip, io);
         return;
     }
-    if (ip_checksum(ip_io->io.buf, ip_io->io.size))
+    if (ip_checksum(((uint8_t*)io_data(io)), io->data_size))
     {
-        ip_release_io(tcpip, ip_io);
+        ip_release_io(tcpip, io);
         return;
     }
 
-    switch (ICMP_TYPE(ip_io->io.buf))
+    switch (ICMP_TYPE(((uint8_t*)io_data(io))))
     {
 #if (ICMP_ECHO)
     case ICMP_CMD_ECHO_REPLY:
-        icmp_cmd_echo_reply(tcpip, ip_io, src);
+        icmp_cmd_echo_reply(tcpip, io, src);
         break;
 #endif
 #if (ICMP_ECHO_REPLY)
     case ICMP_CMD_ECHO:
-        icmp_cmd_echo(tcpip, ip_io, src);
+        icmp_cmd_echo(tcpip, io, src);
         break;
 #endif
 #if (ICMP_FLOW_CONTROL)
     case  ICMP_CMD_DESTINATION_UNREACHABLE:
-        icmp_cmd_destination_unreachable(tcpip, ip_io);
+        icmp_cmd_destination_unreachable(tcpip, io);
         break;
 #endif //ICMP_FLOW_CONTROL
     default:
 #if (ICMP_DEBUG)
-        printf("ICMP: unhandled type %d from ", ICMP_TYPE(ip_io->io.buf));
+        printf("ICMP: unhandled type %d from ", ICMP_TYPE(((uint8_t*)io_data(io))));
         ip_print(src);
         printf("\n\r");
 #endif
-        ip_release_io(tcpip, ip_io);
+        ip_release_io(tcpip, io);
         break;
 
     }
 }
 
 #if (ICMP_FLOW_CONTROL)
-static void icmp_control_prepare(TCPIP* tcpip, uint8_t cmd, uint8_t code, IP_IO* original)
+static void icmp_control_prepare(TCPIP* tcpip, uint8_t cmd, uint8_t code, IO* original)
 {
+    IP_STACK* ip_stack;
+    ip_stack = io_stack(original);
     //cmd
-    original->io.buf[0] = cmd;
+    ((uint8_t*)io_data(original))[0] = cmd;
     //code
-    original->io.buf[1] = code;
+    ((uint8_t*)io_data(original))[1] = code;
     //generally unused
-    *(uint32_t*)(original->io.buf + 4) = 0;
+    *(uint32_t*)(((uint8_t*)io_data(original)) + 4) = 0;
     //64 bits + original IP header
-    memmove(original->io.buf + ICMP_HEADER_SIZE, original->io.buf - original->hdr_size, original->hdr_size + 8);
+    memmove(((uint8_t*)io_data(original)) + ICMP_HEADER_SIZE, ((uint8_t*)io_data(original)) - ip_stack->hdr_size, ip_stack->hdr_size + 8);
 }
 
 
-void icmp_destination_unreachable(TCPIP* tcpip, uint8_t code, IP_IO* original, const IP *dst)
+void icmp_destination_unreachable(TCPIP* tcpip, uint8_t code, IO* original, const IP *dst)
 {
 #if (ICMP_DEBUG)
     printf("ICMP: Destination unreachable(%d) to ", code);
@@ -258,7 +260,7 @@ void icmp_destination_unreachable(TCPIP* tcpip, uint8_t code, IP_IO* original, c
     icmp_tx(tcpip, original, dst);
 }
 
-void icmp_time_exceeded(TCPIP* tcpip, uint8_t code, IP_IO* original, const IP* dst)
+void icmp_time_exceeded(TCPIP* tcpip, uint8_t code, IO* original, const IP* dst)
 {
 #if (ICMP_DEBUG)
     printf("ICMP: Time exceeded(%d) to ", code);
@@ -269,7 +271,7 @@ void icmp_time_exceeded(TCPIP* tcpip, uint8_t code, IP_IO* original, const IP* d
     icmp_tx(tcpip, original, dst);
 }
 
-void icmp_parameter_problem(TCPIP* tcpip, uint8_t offset, IP_IO* original, const IP* dst)
+void icmp_parameter_problem(TCPIP* tcpip, uint8_t offset, IO* original, const IP* dst)
 {
 #if (ICMP_DEBUG)
     printf("ICMP: Parameter problem(%d) to ", offset);
@@ -277,7 +279,7 @@ void icmp_parameter_problem(TCPIP* tcpip, uint8_t offset, IP_IO* original, const
     printf("\n\r");
 #endif
     icmp_control_prepare(tcpip, ICMP_CMD_PARAMETER_PROBLEM, 0, original);
-    original->io.buf[4] = offset;
+    ((uint8_t*)io_data(original))[4] = offset;
     icmp_tx(tcpip, original, dst);
 }
 

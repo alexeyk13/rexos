@@ -22,8 +22,8 @@ typedef struct _TCPIP {
     unsigned seconds;
     ETH_CONN_TYPE conn;
     //stack itself - private use
-    unsigned int blocks_allocated, tx_count;
-    ARRAY* free_blocks;
+    unsigned int io_allocated, tx_count;
+    ARRAY* free_io;
     ARRAY* tx_queue;
     bool active, connected;
     TCPIP_MAC mac;
