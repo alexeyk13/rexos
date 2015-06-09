@@ -106,7 +106,7 @@ static void stm32_eth_flush(ETH_DRV* drv)
         drv->rx[i] = NULL;
         __enable_irq();
         if (io != NULL)
-            io_complete_error(HAL_CMD(HAL_ETH, IPC_READ), drv->tcpip, 0, io, ERROR_IO_CANCELLED);
+            io_complete_error(drv->tcpip, HAL_CMD(HAL_ETH, IPC_READ), 0, io, ERROR_IO_CANCELLED);
 
         __disable_irq();
         drv->tx_des[i].ctl = 0;
@@ -114,7 +114,7 @@ static void stm32_eth_flush(ETH_DRV* drv)
         drv->tx[i] = NULL;
         __enable_irq();
         if (io != NULL)
-            io_complete_error(HAL_CMD(HAL_ETH, IPC_WRITE), drv->tcpip, 0, io, ERROR_IO_CANCELLED);
+            io_complete_error(drv->tcpip, HAL_CMD(HAL_ETH, IPC_WRITE), 0, io, ERROR_IO_CANCELLED);
     }
     drv->cur_rx = (ETH->DMACHRDR == (unsigned int)(&drv->rx_des[0]) ? 0 : 1);
     drv->cur_tx = (ETH->DMACHTDR == (unsigned int)(&drv->tx_des[0]) ? 0 : 1);
@@ -124,14 +124,14 @@ static void stm32_eth_flush(ETH_DRV* drv)
     drv->rx = NULL;
     __enable_irq();
     if (io != NULL)
-        io_complete_error(HAL_CMD(HAL_ETH, IPC_READ), drv->tcpip, 0, io, ERROR_IO_CANCELLED);
+        io_complete_error(drv->tcpip, HAL_CMD(HAL_ETH, IPC_READ), 0, io, ERROR_IO_CANCELLED);
 
     __disable_irq();
     io = drv->tx;
     drv->tx = NULL;
     __enable_irq();
     if (block != NULL)
-        io_complete_error(HAL_CMD(HAL_ETH, IPC_WRITE), drv->tcpip, 0, io, ERROR_IO_CANCELLED);
+        io_complete_error(drv->tcpip, HAL_CMD(HAL_ETH, IPC_WRITE), 0, io, ERROR_IO_CANCELLED);
 #endif
 }
 
@@ -194,7 +194,7 @@ void stm32_eth_isr(int vector, void* param)
             if ((drv->rx[drv->cur_rx] != NULL) && ((drv->rx_des[drv->cur_rx].ctl & ETH_RDES_OWN) == 0))
             {
                 drv->rx[drv->cur_rx]->data_size = (drv->rx_des[drv->cur_rx].ctl & ETH_RDES_FL_MASK) >> ETH_RDES_FL_POS;
-                iio_complete(HAL_CMD(HAL_ETH, IPC_READ), drv->tcpip, 0, drv->rx[drv->cur_rx]);
+                iio_complete(drv->tcpip, HAL_CMD(HAL_ETH, IPC_READ), 0, drv->rx[drv->cur_rx]);
                 drv->rx[drv->cur_rx] = NULL;
                 drv->cur_rx = (drv->cur_rx + 1) & 1;
             }
@@ -205,7 +205,7 @@ void stm32_eth_isr(int vector, void* param)
         if (drv->rx != NULL)
         {
             drv->rx->data_size = (drv->rx_des.ctl & ETH_RDES_FL_MASK) >> ETH_RDES_FL_POS;
-            iio_complete(HAL_CMD(HAL_ETH, IPC_READ), drv->tcpip, 0, drv->rx);
+            iio_complete(drv->tcpip, HAL_CMD(HAL_ETH, IPC_READ), 0, drv->rx);
             drv->rx = NULL;
         }
 #endif
@@ -218,7 +218,7 @@ void stm32_eth_isr(int vector, void* param)
         {
             if ((drv->tx[drv->cur_tx] != NULL) && ((drv->tx_des[drv->cur_tx].ctl & ETH_TDES_OWN) == 0))
             {
-                iio_complete(HAL_CMD(HAL_ETH, IPC_WRITE), drv->tcpip, 0, drv->tx[drv->cur_tx]);
+                iio_complete(drv->tcpip, HAL_CMD(HAL_ETH, IPC_WRITE), 0, drv->tx[drv->cur_tx]);
                 drv->tx[drv->cur_tx] = NULL;
                 drv->cur_tx = (drv->cur_tx + 1) & 1;
             }
@@ -228,7 +228,7 @@ void stm32_eth_isr(int vector, void* param)
 #else
         if (drv->tx != NULL)
         {
-            iio_complete(HAL_CMD(HAL_ETH, IPC_WRITE), drv->tcpip, 0, drv->tx);
+            iio_complete(drv->tcpip, HAL_CMD(HAL_ETH, IPC_WRITE), 0, drv->tx);
             drv->tx = NULL;
         }
 #endif

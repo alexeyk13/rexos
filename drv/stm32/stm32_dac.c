@@ -86,7 +86,7 @@ void stm32_dac_dma_isr(int vector, void* param)
         }
         else
         {
-            iio_complete(HAL_CMD(HAL_DAC, IPC_WRITE), core->dac.channels[num].process, num, core->dac.channels[num].io);
+            iio_complete(core->dac.channels[num].process, HAL_CMD(HAL_DAC, IPC_WRITE), num, core->dac.channels[num].io);
             core->dac.channels[num].io = NULL;
         }
     }
@@ -205,7 +205,7 @@ static void stm32_dac_flush(CORE* core, int num)
     core->dac.channels[num].io = NULL;
     __enable_irq();
     if (io != NULL)
-        io_complete_error(HAL_CMD(HAL_DAC, IPC_WRITE), core->dac.channels[num].process, num, io, ERROR_IO_CANCELLED);
+        io_complete_error(core->dac.channels[num].process, HAL_CMD(HAL_DAC, IPC_WRITE), num, io, ERROR_IO_CANCELLED);
 }
 #endif //DAC_STREAM
 

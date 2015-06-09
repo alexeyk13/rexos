@@ -80,7 +80,7 @@ bool stm32_otg_ep_flush(SHARED_USB_DRV* drv, int num)
     }
     if (ep->io != NULL)
     {
-        io_complete_error(HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), drv->usb.device, num, ep->io, ERROR_IO_CANCELLED);
+        io_complete_error(drv->usb.device, HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
         ep_reg_data(num)->CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_SNAK;
     }
@@ -167,7 +167,7 @@ static inline void stm32_otg_rx(SHARED_USB_DRV* drv)
 
         if (ep->io->data_size >= ep->size)
         {
-            iio_complete(HAL_CMD(HAL_USB, IPC_READ), drv->usb.device, ep_num, ep->io);
+            iio_complete(drv->usb.device, HAL_CMD(HAL_USB, IPC_READ), ep_num, ep->io);
             ep->io_active = false;
             ep->io = NULL;
         }
@@ -234,7 +234,7 @@ void usb_on_isr(int vector, void* param)
             if (drv->usb.in[i]->size >= drv->usb.in[i]->io->data_size)
             {
                 drv->usb.in[i]->io_active = false;
-                iio_complete(HAL_CMD(HAL_USB, IPC_WRITE), drv->usb.device, USB_EP_IN | i, drv->usb.in[i]->io);
+                iio_complete(drv->usb.device, HAL_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | i, drv->usb.in[i]->io);
                 drv->usb.in[i]->io = NULL;
             }
             else

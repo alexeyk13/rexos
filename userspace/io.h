@@ -153,13 +153,13 @@ void io_read(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsi
 
 /**
     \brief send IO complete to another process
-    \param cmd: command to send
     \param process: receiver process
+    \param cmd: command to send
     \param handle: user handle
     \param io: pointer to IO structure
     \retval none.
 */
-void io_complete(unsigned int cmd, HANDLE process, unsigned int handle, IO* io);
+void io_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io);
 
 /**
     \brief send IO complete to another process with error code
@@ -170,7 +170,7 @@ void io_complete(unsigned int cmd, HANDLE process, unsigned int handle, IO* io);
     \param error: error code to set
     \retval none.
 */
-void io_complete_error(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, int error);
+void io_complete_error(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int error);
 
 /**
     \brief send IO to another process with error set
@@ -189,24 +189,24 @@ void iio_send(IPC* ipc);
 
 /**
     \brief send IO complete to another process. isr version
-    \param cmd: command to send
     \param process: receiver process
+    \param cmd: command to send
     \param handle: user handle
     \param io: pointer to IO structure
     \retval none.
 */
-void iio_complete(unsigned int cmd, HANDLE process, unsigned int handle, IO* io);
+void iio_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io);
 
 /**
     \brief send IO complete to another process with error code. isr version
-    \param cmd: command to send
     \param process: receiver process
+    \param cmd: command to send
     \param handle: user handle
     \param io: pointer to IO structure
     \param error: error code to set
     \retval none.
 */
-void iio_complete_error(unsigned int cmd, HANDLE process, unsigned int handle, IO* io, int error);
+void iio_complete_error(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int error);
 
 /**
     \brief send IO to another process. Wait for response.
