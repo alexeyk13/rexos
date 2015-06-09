@@ -189,5 +189,6 @@ int io_read_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, 
 
 void io_destroy(IO* io)
 {
-    svc_call(SVC_IO_DESTROY, (unsigned int)(io->kio), 0, 0);
+    if (io != NULL)
+        svc_call(SVC_IO_DESTROY, (unsigned int)(io->kio), 0, 0);
 }
