@@ -205,6 +205,16 @@ void usbd_usb_ep_flush(USBD* usbd, unsigned int num)
     ack(usbd->usb, HAL_CMD(HAL_USB, IPC_FLUSH), num, 0, 0);
 }
 
+void usbd_usb_ep_set_stall(USBD* usbd, unsigned int num)
+{
+    ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_SET_STALL), num, 0, 0);
+}
+
+void usbd_usb_ep_clear_stall(USBD* usbd, unsigned int num)
+{
+    ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_CLEAR_STALL), num, 0, 0);
+}
+
 void usbd_usb_ep_write(USBD* usbd, unsigned int ep_num, IO* io)
 {
     io_write(usbd->usb, HAL_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | ep_num, io);
@@ -297,8 +307,8 @@ void usbd_fatal(USBD* usbd)
         usbd_inform(usbd, USBD_ALERT_RESET);
         usbd_class_reset(usbd);
     }
-    ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_SET_STALL), 0, 0, 0);
-    ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_SET_STALL), USB_EP_IN | 0, 0, 0);
+    usbd_usb_ep_set_stall(usbd, 0);
+    usbd_usb_ep_set_stall(usbd, USB_EP_IN | 0);
 }
 
 void usbd_fatal_stub(USBD* usbd)
@@ -744,7 +754,7 @@ static inline int usbd_endpoint_set_feature(USBD* usbd)
     switch (usbd->setup.wValue)
     {
     case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_SET_STALL), usbd->setup.wIndex, 0, 0);
+        usbd_usb_ep_set_stall(usbd, usbd->setup.wIndex);
         res = 0;
         break;
     default:
@@ -762,7 +772,7 @@ static inline int usbd_endpoint_clear_feature(USBD* usbd)
     switch (usbd->setup.wValue)
     {
     case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_CLEAR_STALL), usbd->setup.wIndex, 0, 0);
+        usbd_usb_ep_clear_stall(usbd, usbd->setup.wIndex);
         res = 0;
         break;
     default:
@@ -842,7 +852,7 @@ static void usbd_setup_response(USBD* usbd, int res)
     else
     {
         if ((usbd->setup.bmRequestType & BM_REQUEST_RECIPIENT) == BM_REQUEST_RECIPIENT_ENDPOINT)
-            ack(usbd->usb, HAL_CMD(HAL_USB, USB_EP_SET_STALL), usbd->setup.wIndex, 0, 0);
+            usbd_usb_ep_set_stall(usbd, usbd->setup.wIndex);
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
 #if (USBD_DEBUG_ERRORS)
         printf("Unhandled ");

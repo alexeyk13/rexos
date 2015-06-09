@@ -37,6 +37,8 @@ void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned i
 void usbd_usb_ep_open(USBD* usbd, unsigned int num, USB_EP_TYPE type, unsigned int size);
 void usbd_usb_ep_close(USBD* usbd, unsigned int num);
 void usbd_usb_ep_flush(USBD* usbd, unsigned int num);
+void usbd_usb_ep_set_stall(USBD* usbd, unsigned int num);
+void usbd_usb_ep_clear_stall(USBD* usbd, unsigned int num);
 void usbd_usb_ep_write(USBD* usbd, unsigned int ep_num, IO* io);
 void usbd_usb_ep_read(USBD* usbd, unsigned int ep_num, IO* io, unsigned int size);
 #if (USBD_DEBUG)
