@@ -138,7 +138,7 @@ bool lpc_usb_ep_flush(SHARED_USB_DRV* drv, int num)
     lpc_usb_ep_reset(drv, num);
     if (ep->io != NULL)
     {
-        io_complete_error(HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), drv->usb.device, num, ep->io, ERROR_IO_CANCELLED);
+        io_complete_error(drv->usb.device, HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
     }
     return true;
@@ -224,7 +224,7 @@ static inline void lpc_usb_out(SHARED_USB_DRV* drv, int num)
     if (ep->io->data_size >= ep->size || cnt < ep->mps)
     {
         ep->io_active = false;
-        iio_complete(HAL_CMD(HAL_USB, IPC_READ), drv->usb.device, num, ep->io);
+        iio_complete(drv->usb.device, HAL_CMD(HAL_USB, IPC_READ), num, ep->io);
         ep->io = NULL;
     }
     else
@@ -244,7 +244,7 @@ static inline void lpc_usb_in(SHARED_USB_DRV* drv, int num)
     if (ep->size >= ep->io->data_size)
     {
         ep->io_active = false;
-        iio_complete(HAL_CMD(HAL_USB, IPC_WRITE), drv->usb.device, USB_EP_IN | num, ep->io);
+        iio_complete(drv->usb.device, HAL_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | num, ep->io);
         ep->io = NULL;
     }
     else
