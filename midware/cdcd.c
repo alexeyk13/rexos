@@ -9,7 +9,6 @@
 #include "../userspace/sys.h"
 #include "../userspace/stdio.h"
 #include "../userspace/io.h"
-#include "../userspace/direct.h"
 #include "../userspace/uart.h"
 #include "../userspace/stdlib.h"
 #include "../userspace/cdc.h"
