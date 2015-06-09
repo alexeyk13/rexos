@@ -160,6 +160,41 @@ typedef struct {
     uint8_t msg_specific[3];
 } CCID_MESSAGE;
 
+typedef struct {
+    uint8_t bMessageType;
+    uint8_t bmSlotICCState;
+} CCID_NOTIFY_SLOT_CHANGE;
+
+typedef struct {
+    uint8_t bMessageType;
+    uint32_t dwLength;
+    uint8_t bSlot;
+    uint8_t bSeq;
+    uint8_t bStatus;
+    uint8_t bError;
+    uint8_t bClockStatus;
+} CCID_SLOT_STATUS;
+
+typedef struct {
+    uint8_t bMessageType;
+    uint32_t dwLength;
+    uint8_t bSlot;
+    uint8_t bSeq;
+    uint8_t bStatus;
+    uint8_t bError;
+    uint8_t bChainParameter;
+} CCID_DATA_BLOCK;
+
+typedef struct {
+    uint8_t bMessageType;
+    uint32_t dwLength;
+    uint8_t bSlot;
+    uint8_t bSeq;
+    uint8_t bStatus;
+    uint8_t bError;
+    uint8_t bProtocolNum;
+} CCID_PARAMS;
+
 //CCID bulk out
 #define PC_TO_RDR_ICC_POWER_ON                          0x62
 #define PC_TO_RDR_ICC_POWER_OFF                         0x63
@@ -188,23 +223,17 @@ typedef struct {
 #define RDR_TO_PC_HARDWARE_ERROR                        0x51
 
 typedef enum {
-    //requests from application
-    USB_CCID_CARD_INSERT = USBD_MAX,
-    USB_CCID_CARD_REMOVE,
-    USB_CCID_CARD_POWER_ON,
-    USB_CCID_CARD_POWER_OFF,
-    USB_CCID_CARD_HW_ERROR,
-    USB_CCID_CARD_RESET,
-    USB_CCID_CARD_SET_PARAMS,
-    USB_CCID_CARD_GET_PARAMS,
     //requests from host
-    USB_CCID_HOST_POWER_ON,
-    USB_CCID_HOST_POWER_OFF,
-    USB_CCID_HOST_SET_PARAMS,
-    USB_CCID_HOST_RESET_PARAMS,
-    USB_CCID_HOST_ABORT,
-    USB_CCID_MAX
-} USB_CCID_REQUESTS;
+    USB_CCID_APDU = IPC_USER,
+    USB_CCID_POWER_ON,
+    USB_CCID_POWER_OFF,
+    USB_CCID_GET_PARAMS,
+    USB_CCID_SET_PARAMS,
+    USB_CCID_RESET_PARAMS,
+    //announce from card
+    USB_CCID_CARD_INSERTED,
+    USB_CCID_CARD_REMOVED
+} USB_CCID_IPC;
 
 #define CCID_SLOT_ERROR_CMD_ABORTED                     0xff
 #define CCID_SLOT_ERROR_ICC_MUTE                        0xfe
@@ -227,9 +256,9 @@ typedef enum {
 #define CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE       (1 << 0)
 #define CCID_SLOT_STATUS_ICC_NOT_PRESENT                (2 << 0)
 
-#define CCID_SLOT_STATUS_NO_ERROR                       (0 << 6)
-#define CCID_SLOT_STATUS_FAIL                           (1 << 6)
-#define CCID_SLOT_STATUS_TIMEOUT                        (2 << 6)
+#define CCID_SLOT_STATUS_COMMAND_NO_ERROR               (0 << 6)
+#define CCID_SLOT_STATUS_COMMAND_FAIL                   (1 << 6)
+#define CCID_SLOT_STATUS_COMMAND_TIME_EXTENSION         (2 << 6)
 
 #define CCID_CLOCK_STATUS_RUNNING                       0
 #define CCID_CLOCK_STATUS_STOPPED_H                     1
