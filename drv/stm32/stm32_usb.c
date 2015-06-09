@@ -125,7 +125,7 @@ bool stm32_usb_ep_flush(SHARED_USB_DRV* drv, unsigned int num)
         ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_NAK);
     if (ep->io != NULL)
     {
-        io_complete_error(drv->usb.device, HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
+        io_complete_ex(drv->usb.device, HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
     }
     ep->io_active = false;

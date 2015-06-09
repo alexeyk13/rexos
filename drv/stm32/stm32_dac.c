@@ -205,7 +205,7 @@ static void stm32_dac_flush(CORE* core, int num)
     core->dac.channels[num].io = NULL;
     __enable_irq();
     if (io != NULL)
-        io_complete_error(core->dac.channels[num].process, HAL_CMD(HAL_DAC, IPC_WRITE), num, io, ERROR_IO_CANCELLED);
+        io_complete_ex(core->dac.channels[num].process, HAL_CMD(HAL_DAC, IPC_WRITE), num, io, ERROR_IO_CANCELLED);
 }
 #endif //DAC_STREAM
 

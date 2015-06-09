@@ -112,14 +112,14 @@ void io_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
     svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
 }
 
-void io_complete_error(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int error)
+void io_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3)
 {
     IPC ipc;
     ipc.cmd = cmd;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
-    ipc.param3 = error;
+    ipc.param3 = (unsigned int)param3;
     svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
 }
 
@@ -145,14 +145,14 @@ void iio_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
     __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
 }
 
-void iio_complete_error(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int error)
+void io_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3)
 {
     IPC ipc;
     ipc.cmd = cmd;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
-    ipc.param3 = error;
+    ipc.param3 = (unsigned int)param3;
     __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
 }
 

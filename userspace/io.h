@@ -167,10 +167,10 @@ void io_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io);
     \param process: receiver process
     \param handle: user handle
     \param io: pointer to IO structure
-    \param error: error code to set
+    \param param3: ext param or error
     \retval none.
 */
-void io_complete_error(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int error);
+void io_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3);
 
 /**
     \brief send IO to another process with error set

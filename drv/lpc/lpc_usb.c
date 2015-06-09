@@ -138,7 +138,7 @@ bool lpc_usb_ep_flush(SHARED_USB_DRV* drv, int num)
     lpc_usb_ep_reset(drv, num);
     if (ep->io != NULL)
     {
-        io_complete_error(drv->usb.device, HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
+        io_complete_ex(drv->usb.device, HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
     }
     return true;

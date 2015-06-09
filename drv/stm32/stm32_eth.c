@@ -106,7 +106,7 @@ static void stm32_eth_flush(ETH_DRV* drv)
         drv->rx[i] = NULL;
         __enable_irq();
         if (io != NULL)
-            io_complete_error(drv->tcpip, HAL_CMD(HAL_ETH, IPC_READ), 0, io, ERROR_IO_CANCELLED);
+            io_complete_ex(drv->tcpip, HAL_CMD(HAL_ETH, IPC_READ), 0, io, ERROR_IO_CANCELLED);
 
         __disable_irq();
         drv->tx_des[i].ctl = 0;
@@ -114,7 +114,7 @@ static void stm32_eth_flush(ETH_DRV* drv)
         drv->tx[i] = NULL;
         __enable_irq();
         if (io != NULL)
-            io_complete_error(drv->tcpip, HAL_CMD(HAL_ETH, IPC_WRITE), 0, io, ERROR_IO_CANCELLED);
+            io_complete_ex(drv->tcpip, HAL_CMD(HAL_ETH, IPC_WRITE), 0, io, ERROR_IO_CANCELLED);
     }
     drv->cur_rx = (ETH->DMACHRDR == (unsigned int)(&drv->rx_des[0]) ? 0 : 1);
     drv->cur_tx = (ETH->DMACHTDR == (unsigned int)(&drv->tx_des[0]) ? 0 : 1);
@@ -124,14 +124,14 @@ static void stm32_eth_flush(ETH_DRV* drv)
     drv->rx = NULL;
     __enable_irq();
     if (io != NULL)
-        io_complete_error(drv->tcpip, HAL_CMD(HAL_ETH, IPC_READ), 0, io, ERROR_IO_CANCELLED);
+        io_complete_ex(drv->tcpip, HAL_CMD(HAL_ETH, IPC_READ), 0, io, ERROR_IO_CANCELLED);
 
     __disable_irq();
     io = drv->tx;
     drv->tx = NULL;
     __enable_irq();
     if (block != NULL)
-        io_complete_error(drv->tcpip, HAL_CMD(HAL_ETH, IPC_WRITE), 0, io, ERROR_IO_CANCELLED);
+        io_complete_ex(drv->tcpip, HAL_CMD(HAL_ETH, IPC_WRITE), 0, io, ERROR_IO_CANCELLED);
 #endif
 }
 
