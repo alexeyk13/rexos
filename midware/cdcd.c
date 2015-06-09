@@ -354,7 +354,6 @@ static inline int get_line_coding(CDCD* cdcd, IO* io)
 #if (USBD_CDC_DEBUG_REQUESTS)
     printf("CDCD get line coding: %d %d%c%d\n\r", cdcd->baud.baud, cdcd->baud.data_bits, cdcd->baud.parity, cdcd->baud.stop_bits);
 #endif
-    io->data_size = sizeof(LINE_CODING_STRUCT);
     return sizeof(LINE_CODING_STRUCT);
 }
 
