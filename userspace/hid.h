@@ -7,6 +7,8 @@
 #ifndef HID_H
 #define HID_H
 
+#include "ipc.h"
+
 #pragma pack(push, 1)
 
 #define HID_INTERFACE_CLASS                                                             3
@@ -603,7 +605,7 @@ typedef struct {
 
 typedef enum {
     //reserved for system use
-    USB_HID_KBD_IDLE = 0,
+    USB_HID_KBD_IDLE = IPC_USER,
     USB_HID_KBD_MODIFIER_CHANGE,
     USB_HID_KBD_KEY_PRESS,
     USB_HID_KBD_KEY_RELEASE,

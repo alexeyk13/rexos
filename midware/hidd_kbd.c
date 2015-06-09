@@ -208,7 +208,7 @@ static inline int hidd_kbd_set_report(USBD* usbd, HIDD_KBD* hidd, IO* io, unsign
     printf("HIDD KBD: set LEDs %#X\n\r", report[0]);
 #endif
     if (hidd->kbd.leds != report[0])
-        usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_LEDS_STATE_CHANGED, report[0], 0);
+        usbd_post_user(usbd, hidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_HID_KBD_LEDS_STATE_CHANGED), report[0], 0);
     hidd->kbd.leds = report[0];
     return 0;
 }
@@ -284,7 +284,7 @@ int hidd_kbd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
 
 static inline void hidd_kbd_write_complete(USBD* usbd, HIDD_KBD* hidd)
 {
-    usbd_post_user(usbd, hidd->iface, 0, hidd->state, 0, 0);
+    usbd_post_user(usbd, hidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, hidd->state), 0, 0);
     hidd->state = USB_HID_KBD_IDLE;
 }
 
@@ -292,7 +292,7 @@ static inline void hidd_kbd_modifier_change(USBD* usbd, HIDD_KBD* hidd, uint8_t 
 {
     if (hidd->state != USB_HID_KBD_IDLE)
     {
-        usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_MODIFIER_CHANGE, 0, ERROR_IN_PROGRESS);
+        usbd_post_user(usbd, hidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_HID_KBD_MODIFIER_CHANGE), 0, ERROR_IN_PROGRESS);
         return;
     }
     hidd->kbd.modifier = modifier;
@@ -306,13 +306,13 @@ static inline void hidd_kbd_key_press(USBD* usbd, HIDD_KBD* hidd, unsigned int k
     int i;
     if (hidd->state != USB_HID_KBD_IDLE)
     {
-        usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_KEY_PRESS, 0, ERROR_IN_PROGRESS);
+        usbd_post_user(usbd, hidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_HID_KBD_KEY_PRESS), 0, ERROR_IN_PROGRESS);
         return;
     }
     for (i = 0; i < 6 && hidd->kbd.keys[i]; ++i)
         if (hidd->kbd.keys[i] == key)
         {
-            usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_KEY_PRESS, 0, ERROR_ALREADY_CONFIGURED);
+            usbd_post_user(usbd, hidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_HID_KBD_KEY_PRESS), 0, ERROR_ALREADY_CONFIGURED);
             return;
         }
 
@@ -345,7 +345,7 @@ static inline void hidd_kbd_key_release(USBD* usbd, HIDD_KBD* hidd, unsigned int
     int i;
     if (hidd->state != USB_HID_KBD_IDLE)
     {
-        usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_KEY_RELEASE, 0, ERROR_IN_PROGRESS);
+        usbd_post_user(usbd, hidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_HID_KBD_KEY_RELEASE), 0, ERROR_IN_PROGRESS);
         return;
     }
     hidd->over = false;
