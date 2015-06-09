@@ -8,7 +8,6 @@
 #include "../../userspace/sys.h"
 #include "../../userspace/usb.h"
 #include "../../userspace/irq.h"
-#include "../../userspace/file.h"
 #include "../../userspace/lpc_driver.h"
 #include "lpc_gpio.h"
 #include "lpc_power.h"
