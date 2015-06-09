@@ -7,13 +7,10 @@
 #include "hidd_kbd.h"
 #include "../userspace/hid.h"
 #include "../userspace/stdlib.h"
-#include "../userspace/file.h"
+#include "../userspace/usb.h"
 #include "sys_config.h"
-#include "usbdp.h"
-
 #include "../userspace/stdio.h"
-#include "../userspace/block.h"
-#include "../userspace/sys.h"
+#include "../userspace/io.h"
 #include <string.h>
 
 //report descriptor
@@ -54,8 +51,7 @@ static const uint8_t __KBD_REPORT[HID_BOOT_KEYBOARD_REPORT_SIZE] =
 };
 
 typedef struct {
-    HANDLE usb;
-    HANDLE block;
+    IO* io;
     BOOT_KEYBOARD kbd;
     uint8_t in_ep, iface;
     uint8_t idle;
@@ -64,27 +60,23 @@ typedef struct {
 
 static void hidd_kbd_destroy(HIDD_KBD* hidd)
 {
-    block_destroy(hidd->block);
+    io_destroy(hidd->io);
     free(hidd);
 }
 
-static void hidd_kbd_send_report(HIDD_KBD* hidd)
+static void hidd_kbd_send_report(USBD* usbd, HIDD_KBD* hidd)
 {
-    uint8_t* report = block_open(hidd->block);
+    uint8_t* report = io_data(hidd->io);
     if (report == NULL)
         return;
     report[0] = hidd->kbd.modifier;
     report[1] = 0;
+    hidd->io->data_size = 2;
     if (hidd->boot_protocol)
-    {
-        memcpy(report + 2, &hidd->kbd.keys, 6);
-        fwrite_async(hidd->usb, HAL_USB, USB_EP_IN | hidd->in_ep, hidd->block, 8);
-    }
+        io_data_append(hidd->io, &hidd->kbd.keys, 6);
     else
-    {
-        memcpy(report + 2, &hidd->kbd.leds, sizeof(BOOT_KEYBOARD) - 2);
-        fwrite_async(hidd->usb, HAL_USB, USB_EP_IN | hidd->in_ep, hidd->block, sizeof(BOOT_KEYBOARD));
-    }
+        io_data_append(hidd->io, &hidd->kbd.leds, sizeof(BOOT_KEYBOARD) - 2);
+    usbd_usb_ep_write(usbd, hidd->in_ep, hidd->io);
 }
 
 void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
@@ -92,16 +84,15 @@ void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cf
     USB_INTERFACE_DESCRIPTOR_TYPE* iface;
     USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
     uint8_t in_ep, in_ep_size, hid_iface;
-    unsigned int size;
     in_ep = in_ep_size = hid_iface = 0;
 
     //check control/data ep here
-    for (iface = usbdp_get_first_interface(cfg); iface != NULL; iface = usbdp_get_next_interface(cfg, iface))
+    for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
     {
         if (iface->bInterfaceClass == HID_INTERFACE_CLASS && iface->bInterfaceSubClass == HID_SUBCLASS_BOOT_INTERFACE &&
             iface->bInterfaceProtocol == HID_PROTOCOL_KEYBOARD)
         {
-            ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usbdp_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
+            ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
             if (ep != NULL)
             {
                 in_ep = USB_EP_NUM(ep->bEndpointAddress);
@@ -118,14 +109,13 @@ void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cf
     HIDD_KBD* hidd = (HIDD_KBD*)malloc(sizeof(HIDD_KBD));
     if (hidd == NULL)
         return;
-    hidd->block = block_create(in_ep_size);
+    hidd->io = io_create(in_ep_size);
 
-    if (hidd->block == INVALID_HANDLE)
+    if (hidd->io == NULL)
     {
         hidd_kbd_destroy(hidd);
         return;
     }
-    hidd->usb = object_get(SYS_OBJ_USB);
     hidd->iface = hid_iface;
     hidd->in_ep = in_ep;
     hidd->suspended = false;
@@ -139,18 +129,16 @@ void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cf
     printf("Found USB HID device class, EP%d, iface: %d\n\r", hidd->in_ep, hidd->iface);
 #endif //USBD_HID_DEBUG_REQUESTS
 
-    size = in_ep_size;
-    fopen_p(hidd->usb, HAL_USB, USB_EP_IN | hidd->in_ep, USB_EP_INTERRUPT, (void*)size);
     usbd_register_interface(usbd, hidd->iface, &__HIDD_KBD_CLASS, hidd);
     usbd_register_endpoint(usbd, hidd->iface, hidd->in_ep);
-
+    usbd_usb_ep_open(usbd, USB_EP_IN | hidd->in_ep, USB_EP_INTERRUPT, in_ep_size);
 }
 
 void hidd_kbd_class_reset(USBD* usbd, void* param)
 {
     HIDD_KBD* hidd = (HIDD_KBD*)param;
 
-    fclose(hidd->usb, HAL_USB, USB_EP_IN | hidd->in_ep);
+    usbd_usb_ep_close(usbd, USB_EP_IN | hidd->in_ep);
     usbd_unregister_endpoint(usbd, hidd->iface, hidd->in_ep);
     usbd_unregister_interface(usbd, hidd->iface, &__HIDD_KBD_CLASS);
 
@@ -160,7 +148,7 @@ void hidd_kbd_class_reset(USBD* usbd, void* param)
 void hidd_kbd_class_suspend(USBD* usbd, void* param)
 {
     HIDD_KBD* hidd = (HIDD_KBD*)param;
-    fflush(hidd->usb, HAL_USB, USB_EP_IN | hidd->in_ep);
+    usbd_usb_ep_flush(usbd, USB_EP_IN | hidd->in_ep);
     hidd->state = USB_HID_KBD_IDLE;
     hidd->suspended = true;
 }
@@ -171,31 +159,26 @@ void hidd_kbd_class_resume(USBD* usbd, void* param)
     hidd->suspended = false;
 }
 
-static inline int hidd_kbd_get_descriptor(HIDD_KBD* hidd, unsigned int value, unsigned int index, HANDLE block)
+static inline int hidd_kbd_get_descriptor(HIDD_KBD* hidd, unsigned int value, unsigned int index, IO* io)
 {
     int res = -1;
-    uint8_t* descriptor = block_open(block);
-    if (descriptor == NULL)
-        return -1;
     switch (value)
     {
     case HID_REPORT_DESCRIPTOR_TYPE:
 #if (USBD_HID_DEBUG_REQUESTS)
         printf("HIDD KBD: get REPORT DESCRIPTOR\n\r");
 #endif
-        memcpy(descriptor, &__KBD_REPORT, HID_BOOT_KEYBOARD_REPORT_SIZE);
+        io_data_write(io, &__KBD_REPORT, HID_BOOT_KEYBOARD_REPORT_SIZE);
         res = HID_BOOT_KEYBOARD_REPORT_SIZE;
         break;
     }
     return res;
 }
 
-static inline int hidd_kbd_get_report(HIDD_KBD* hidd, unsigned int type, HANDLE block)
+static inline int hidd_kbd_get_report(HIDD_KBD* hidd, unsigned int type, IO* io)
 {
     int res = -1;
-    uint8_t* report = block_open(block);
-    if (report == NULL)
-        return -1;
+    uint8_t* report = io_data(io);
     switch (type)
     {
     case HID_REPORT_TYPE_INPUT:
@@ -218,11 +201,9 @@ static inline int hidd_kbd_get_report(HIDD_KBD* hidd, unsigned int type, HANDLE 
     return res;
 }
 
-static inline int hidd_kbd_set_report(USBD* usbd, HIDD_KBD* hidd, HANDLE block, unsigned int length)
+static inline int hidd_kbd_set_report(USBD* usbd, HIDD_KBD* hidd, IO* io, unsigned int length)
 {
-    uint8_t* report = block_open(block);
-    if (report == NULL)
-        return -1;
+    uint8_t* report = io_data(io);
 #if (USBD_HID_DEBUG_REQUESTS)
     printf("HIDD KBD: set LEDs %#X\n\r", report[0]);
 #endif
@@ -232,15 +213,13 @@ static inline int hidd_kbd_set_report(USBD* usbd, HIDD_KBD* hidd, HANDLE block, 
     return 0;
 }
 
-static inline int hidd_kbd_get_idle(HIDD_KBD* hidd, HANDLE block)
+static inline int hidd_kbd_get_idle(HIDD_KBD* hidd, IO* io)
 {
+    uint8_t* report = io_data(io);
 #if (USBD_HID_DEBUG_REQUESTS)
     printf("HIDD KBD: get idle\n\r");
 #endif
-    uint8_t* ptr = block_open(block);
-    if (ptr == NULL)
-        return -1;
-    ptr[0] = hidd->idle;
+    report[0] = hidd->idle;
     return 1;
 }
 
@@ -253,19 +232,17 @@ static inline int hidd_kbd_set_idle(HIDD_KBD* hidd, unsigned int value)
     return 0;
 }
 
-static inline int hidd_kbd_get_protocol(HIDD_KBD* hidd, HANDLE block)
+static inline int hidd_kbd_get_protocol(HIDD_KBD* hidd, IO* io)
 {
+    uint8_t* report = io_data(io);
 #if (USBD_HID_DEBUG_REQUESTS)
     printf("HIDD KBD: get protocol\n\r");
 #endif
-    uint8_t* ptr = block_open(block);
-    if (ptr == NULL)
-        return -1;
-    ptr[0] = hidd->boot_protocol;
+    report[0] = hidd->boot_protocol;
     return 1;
 }
 
-static inline int hidd_kbd_set_protocol(HIDD_KBD* hidd, unsigned int protocol, HANDLE block)
+static inline int hidd_kbd_set_protocol(HIDD_KBD* hidd, unsigned int protocol, IO* io)
 {
 #if (USBD_HID_DEBUG_REQUESTS)
     printf("HIDD KBD: set protocol: %d\n\r", protocol & 1);
@@ -274,32 +251,32 @@ static inline int hidd_kbd_set_protocol(HIDD_KBD* hidd, unsigned int protocol, H
     return 0;
 }
 
-int hidd_kbd_class_setup(USBD* usbd, void* param, SETUP* setup, HANDLE block)
+int hidd_kbd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
 {
     HIDD_KBD* hidd = (HIDD_KBD*)param;
     unsigned int res = -1;
     switch (setup->bRequest)
     {
     case USB_REQUEST_GET_DESCRIPTOR:
-        res = hidd_kbd_get_descriptor(hidd, setup->wValue >> 8, setup->wValue & 0xff, block);
+        res = hidd_kbd_get_descriptor(hidd, setup->wValue >> 8, setup->wValue & 0xff, io);
         break;
     case HID_GET_REPORT:
-        res = hidd_kbd_get_report(hidd, setup->wValue >> 8, block);
+        res = hidd_kbd_get_report(hidd, setup->wValue >> 8, io);
         break;
     case HID_GET_IDLE:
-        res = hidd_kbd_get_idle(hidd, block);
+        res = hidd_kbd_get_idle(hidd, io);
         break;
     case HID_SET_REPORT:
-        res = hidd_kbd_set_report(usbd, hidd, block, setup->wLength);
+        res = hidd_kbd_set_report(usbd, hidd, io, setup->wLength);
         break;
     case HID_SET_IDLE:
         res = hidd_kbd_set_idle(hidd, setup->wValue >> 8);
         break;
     case HID_GET_PROTOCOL:
-        res = hidd_kbd_get_protocol(hidd, block);
+        res = hidd_kbd_get_protocol(hidd, io);
         break;
     case HID_SET_PROTOCOL:
-        res = hidd_kbd_set_protocol(hidd, setup->wValue, block);
+        res = hidd_kbd_set_protocol(hidd, setup->wValue, io);
         break;
     }
     return res;
@@ -315,13 +292,12 @@ static inline void hidd_kbd_modifier_change(USBD* usbd, HIDD_KBD* hidd, uint8_t 
 {
     if (hidd->state != USB_HID_KBD_IDLE)
     {
-        error(ERROR_IN_PROGRESS);
-        usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_MODIFIER_CHANGE, 0, 0);
+        usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_MODIFIER_CHANGE, 0, ERROR_IN_PROGRESS);
         return;
     }
     hidd->kbd.modifier = modifier;
     hidd->state = USB_HID_KBD_MODIFIER_CHANGE;
-    hidd_kbd_send_report(hidd);
+    hidd_kbd_send_report(usbd, hidd);
 }
 
 static inline void hidd_kbd_key_press(USBD* usbd, HIDD_KBD* hidd, unsigned int key)
@@ -330,15 +306,13 @@ static inline void hidd_kbd_key_press(USBD* usbd, HIDD_KBD* hidd, unsigned int k
     int i;
     if (hidd->state != USB_HID_KBD_IDLE)
     {
-        error(ERROR_IN_PROGRESS);
-        usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_KEY_PRESS, 0, 0);
+        usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_KEY_PRESS, 0, ERROR_IN_PROGRESS);
         return;
     }
     for (i = 0; i < 6 && hidd->kbd.keys[i]; ++i)
         if (hidd->kbd.keys[i] == key)
         {
-            error(ERROR_ALREADY_CONFIGURED);
-            usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_KEY_PRESS, 0, 0);
+            usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_KEY_PRESS, 0, ERROR_ALREADY_CONFIGURED);
             return;
         }
 
@@ -363,7 +337,7 @@ static inline void hidd_kbd_key_press(USBD* usbd, HIDD_KBD* hidd, unsigned int k
         }
     }
     hidd->state = USB_HID_KBD_KEY_PRESS;
-    hidd_kbd_send_report(hidd);
+    hidd_kbd_send_report(usbd, hidd);
 }
 
 static inline void hidd_kbd_key_release(USBD* usbd, HIDD_KBD* hidd, unsigned int key)
@@ -371,8 +345,7 @@ static inline void hidd_kbd_key_release(USBD* usbd, HIDD_KBD* hidd, unsigned int
     int i;
     if (hidd->state != USB_HID_KBD_IDLE)
     {
-        error(ERROR_IN_PROGRESS);
-        usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_KEY_RELEASE, 0, 0);
+        usbd_post_user(usbd, hidd->iface, 0, USB_HID_KBD_KEY_RELEASE, 0, ERROR_IN_PROGRESS);
         return;
     }
     hidd->over = false;
@@ -381,15 +354,13 @@ static inline void hidd_kbd_key_release(USBD* usbd, HIDD_KBD* hidd, unsigned int
         if (hidd->kbd.keys[i] == key)
         {
             for (;i < 5 && hidd->kbd.keys[i + 1]; ++i)
-            {
                 hidd->kbd.keys[i] = hidd->kbd.keys[i + 1];
-            }
             hidd->kbd.keys[i] = 0;
             break;
         }
     }
     hidd->state = USB_HID_KBD_KEY_RELEASE;
-    hidd_kbd_send_report(hidd);
+    hidd_kbd_send_report(usbd, hidd);
 }
 
 static inline void hidd_kbd_get_leds_state(HIDD_KBD* hidd, IPC* ipc)
