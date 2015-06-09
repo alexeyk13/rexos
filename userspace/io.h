@@ -203,10 +203,10 @@ void iio_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
     \param cmd: command to send
     \param handle: user handle
     \param io: pointer to IO structure
-    \param error: error code to set
+    \param param3: ext param or error
     \retval none.
 */
-void iio_complete_error(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int error);
+void iio_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3);
 
 /**
     \brief send IO to another process. Wait for response.

@@ -145,7 +145,7 @@ void iio_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
     __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
 }
 
-void io_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3)
+void iio_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3)
 {
     IPC ipc;
     ipc.cmd = cmd;
