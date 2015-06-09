@@ -137,12 +137,25 @@ void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned i
     if (usbd->user == INVALID_HANDLE)
         return;
     IPC ipc;
-    ipc.cmd = HAL_CMD(HAL_USBD_IFACE, cmd);
+    ipc.cmd = cmd;
     ipc.process = usbd->user;
     ipc.param1 = USBD_IFACE(iface, num);
     ipc.param2 = param2;
     ipc.param3 = param3;
     ipc_post(&ipc);
+}
+
+void usbd_io_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned int cmd, IO* io, unsigned int param3)
+{
+    if (usbd->user == INVALID_HANDLE)
+        return;
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.process = usbd->user;
+    ipc.param1 = USBD_IFACE(iface, num);
+    ipc.param2 = (unsigned int)io;
+    ipc.param3 = param3;
+    io_send(&ipc);
 }
 
 bool usbd_register_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* usbd_class, void* param)
