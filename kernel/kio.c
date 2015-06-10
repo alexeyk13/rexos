@@ -42,8 +42,6 @@ static void kio_destroy_internal(KIO* kio)
 
 static bool kio_send_internal(PROCESS* process, KIO* kio, IPC* ipc)
 {
-    CHECK_HANDLE(kio, sizeof(KIO));
-    CHECK_MAGIC(kio, MAGIC_KIO);
     if (process != kio->granted)
     {
         kprocess_error(process, ERROR_ACCESS_DENIED);
@@ -63,6 +61,8 @@ static bool kio_send_internal(PROCESS* process, KIO* kio, IPC* ipc)
 void kio_send(KIO* kio, IPC* ipc)
 {
     PROCESS* process = kprocess_get_current();
+    CHECK_HANDLE(kio, sizeof(KIO));
+    CHECK_MAGIC(kio, MAGIC_KIO);
     CHECK_ADDRESS(process, ipc, sizeof(IPC));
     kio_send_internal(process, kio, ipc);
 }
@@ -70,6 +70,8 @@ void kio_send(KIO* kio, IPC* ipc)
 void kio_call(KIO* kio, IPC* ipc, TIME* time)
 {
     PROCESS* process = kprocess_get_current();
+    CHECK_HANDLE(kio, sizeof(KIO));
+    CHECK_MAGIC(kio, MAGIC_KIO);
     CHECK_ADDRESS(process, ipc, sizeof(IPC));
     HANDLE wait_process = (HANDLE)(ipc->process);
     if (kio_send_internal(process, kio, ipc))
