@@ -52,10 +52,11 @@ static const uint8_t __KBD_REPORT[HID_BOOT_KEYBOARD_REPORT_SIZE] =
 
 typedef struct {
     IO* io;
+    unsigned int state;
     BOOT_KEYBOARD kbd;
     uint8_t in_ep, iface;
     uint8_t idle;
-    uint8_t suspended, boot_protocol, state, over;
+    uint8_t suspended, boot_protocol, over;
 } HIDD_KBD;
 
 static void hidd_kbd_destroy(HIDD_KBD* hidd)

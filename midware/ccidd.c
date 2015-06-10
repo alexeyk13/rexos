@@ -10,12 +10,6 @@
 #include "sys_config.h"
 
 typedef enum {
-    CCIDD_CARD_STATE_NOT_PRESENT = 0,
-    CCIDD_CARD_STATE_INSERTED,
-    CCIDD_CARD_STATE_POWERED
-} CCIDD_CARD_STATE;
-
-typedef enum {
     CCIDD_STATE_IDLE = 0,
     CCIDD_STATE_CARD_REQUEST,
     CCIDD_STATE_TX,
@@ -27,7 +21,7 @@ typedef struct {
     IO* status_io;
     CCIDD_STATE state;
     unsigned int request;
-    uint8_t data_ep, data_ep_size, status_ep, iface, seq, status_busy, card_state, aborting;
+    uint8_t data_ep, data_ep_size, status_ep, iface, seq, status_busy, slot_status, aborting;
 } CCIDD;
 
 static void ccidd_destroy(CCIDD* ccidd)
@@ -55,9 +49,9 @@ static void ccidd_notify_slot_change(USBD* usbd, CCIDD* ccidd, unsigned int chan
         notify = io_data(ccidd->status_io);
         notify->bMessageType = RDR_TO_PC_NOTIFY_SLOT_CHANGE;
         mask = change_mask;
-        if (ccidd->card_state != CCIDD_CARD_STATE_NOT_PRESENT)
+        if (ccidd->slot_status != CCID_SLOT_STATUS_ICC_NOT_PRESENT)
             mask |= (1 << 0);
-        notify->bmSlotICCState = mask;
+        notify->bmSlotICCState = 3;
         ccidd->status_io->data_size = sizeof(CCID_NOTIFY_SLOT_CHANGE);
         usbd_usb_ep_write(usbd, USB_EP_IN | ccidd->status_ep, ccidd->status_io);
         ccidd->status_busy = true;
@@ -66,7 +60,7 @@ static void ccidd_notify_slot_change(USBD* usbd, CCIDD* ccidd, unsigned int chan
 
 static inline uint8_t ccidd_slot_status_register(CCIDD* ccidd, unsigned int command_status)
 {
-    return ((ccidd->card_state & 3) << 0) | (command_status & 3) << 6;
+    return ((ccidd->slot_status & 3) << 0) | (command_status & 3) << 6;
 }
 
 static void ccidd_send_slot_status(USBD* usbd, CCIDD* ccidd, uint8_t seq, uint8_t error, uint8_t status)
@@ -120,7 +114,7 @@ static void ccidd_send_params(USBD* usbd, CCIDD* ccidd, uint8_t error, uint8_t s
 static void ccidd_user_request(USBD* usbd, CCIDD* ccidd, unsigned int req, uint8_t param)
 {
     //hide ccid message to user
-    ccidd->io->data_offset = sizeof(CCID_MESSAGE);
+    ccidd->io->data_offset += sizeof(CCID_MESSAGE);
     ccidd->io->data_size -= sizeof(CCID_MESSAGE);
     ccidd->request = req;
     usbd_io_user(usbd, ccidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, req), ccidd->io, param);
@@ -181,9 +175,9 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
                 continue;
             }
 #if (USBD_CCID_REMOVABLE_CARD)
-            ccidd->card_state = CCID_SLOT_STATUS_ICC_NOT_PRESENT;
+            ccidd->slot_status = CCID_SLOT_STATUS_ICC_NOT_PRESENT;
 #else
-            ccidd->card_state = CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE;
+            ccidd->slot_status = CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE;
 #endif //USBD_CCID_REMOVABLE_CARD
             ccidd->state = CCIDD_STATE_IDLE;
             ccidd->aborting = false;
@@ -287,8 +281,8 @@ static inline void ccidd_power_off(USBD* usbd, CCIDD* ccidd)
     CCID_MESSAGE* msg = io_data(ccidd->io);
     printf("CCIDD: ICC slot%d power off\n\r", msg->bSlot);
 #endif //USBD_CCID_DEBUG_REQUESTS
-    if (ccidd->card_state == CCIDD_CARD_STATE_POWERED)
-        ccidd->card_state = CCIDD_CARD_STATE_INSERTED;
+    if (ccidd->slot_status == CCID_SLOT_STATUS_ICC_PRESENT_AND_ACTIVE)
+        ccidd->slot_status = CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE;
     ccidd_send_slot_status(usbd, ccidd, ccidd->seq, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR);
     usbd_post_user(usbd, ccidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_CCID_POWER_OFF), 0, 0);
 }
@@ -427,18 +421,18 @@ static void ccidd_tx_complete(USBD* usbd, CCIDD* ccidd)
 #if (USBD_CCID_REMOVABLE_CARD)
 static inline void ccidd_card_inserted(USBD* usbd, CCIDD* ccidd)
 {
-    if (ccidd->card_state == CCIDD_CARD_STATE_NOT_PRESENT)
+    if (ccidd->slot_status == CCID_SLOT_STATUS_ICC_NOT_PRESENT)
     {
-        ccidd->card_state = CCIDD_CARD_STATE_INSERTED;
+        ccidd->slot_status = CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE;
         ccidd_notify_state_change(usbd, ccidd);
     }
 }
 
 static inline void ccidd_card_removed(USBD* usbd, CCIDD* ccidd)
 {
-    if (ccidd->card_state != CCIDD_CARD_STATE_NOT_PRESENT)
+    if (ccidd->slot_status != CCID_SLOT_STATUS_ICC_NOT_PRESENT)
     {
-        ccidd->card_state = CCIDD_CARD_STATE_NOT_PRESENT;
+        ccidd->slot_status = CCID_SLOT_STATUS_ICC_NOT_PRESENT;
         ccidd_notify_state_change(usbd, ccidd);
     }
 }
@@ -458,7 +452,7 @@ static inline void ccidd_power_on_response(USBD* usbd, CCIDD* ccidd, int param3)
         }
         return;
     }
-    ccidd->card_state = CCIDD_CARD_STATE_POWERED;
+    ccidd->slot_status = CCID_SLOT_STATUS_ICC_PRESENT_AND_ACTIVE;
     ccidd_send_data_block(usbd, ccidd, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR);
 }
 
@@ -486,10 +480,10 @@ static inline void ccidd_params_response(USBD* usbd, CCIDD* ccidd, int param3)
         switch (param3)
         {
         case ERROR_HARDWARE:
-            ccidd_send_params(usbd, ccidd, CCID_SLOT_ERROR_HW_ERROR, CCID_SLOT_STATUS_COMMAND_FAIL, CCID_PROTOCOL_T1);
+            ccidd_send_params(usbd, ccidd, CCID_SLOT_ERROR_HW_ERROR, CCID_SLOT_STATUS_COMMAND_FAIL, CCID_T_1);
             break;
         default:
-            ccidd_send_params(usbd, ccidd, CCID_SLOT_ERROR_CMD_NOT_SUPPORTED, CCID_SLOT_STATUS_COMMAND_FAIL, CCID_PROTOCOL_T1);
+            ccidd_send_params(usbd, ccidd, CCID_SLOT_ERROR_CMD_NOT_SUPPORTED, CCID_SLOT_STATUS_COMMAND_FAIL, CCID_T_1);
         }
         return;
     }
