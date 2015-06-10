@@ -113,11 +113,4 @@ typedef enum {
 #define I2C_LEN_SIZE_POS            8
 #define I2C_LEN_SIZE_MASK           (0xf << 8)
 
-typedef enum {
-    I2C_IO_IDLE = 0,
-    I2C_IO_TX,
-    I2C_IO_RX
-} I2C_IO;
-
-
 #endif // LPC_DRIVER_H

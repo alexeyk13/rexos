@@ -10,8 +10,6 @@
 #include "lpc_power.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/irq.h"
-#include "../../userspace/block.h"
-#include "../../userspace/file.h"
 #include "../../userspace/timer.h"
 
 #define get_system_clock                            lpc_power_get_system_clock_inside
@@ -35,80 +33,79 @@
 
 void lpc_i2c_isr_error(CORE* core, I2C_PORT port, int error)
 {
+    I2C* i2c = core->i2c.i2cs[port];
     LPC_I2C->CONSET = I2C_CONSET_STO;
 #if (LPC_I2C_TIMEOUT_MS)
-    timer_istop(core->i2c.i2cs[port]->timer);
+    timer_istop(i2c->timer);
 #endif
-    switch (core->i2c.i2cs[I2C_0]->io)
-    {
-    case I2C_IO_TX:
-        fiwrite_complete(core->i2c.i2cs[port]->process, HAL_I2C, port, core->i2c.i2cs[port]->block, error);
-        break;
-    default:
-        firead_complete(core->i2c.i2cs[port]->process, HAL_I2C, port, core->i2c.i2cs[port]->block, error);
-        break;
-    }
-    core->i2c.i2cs[port]->io = I2C_IO_IDLE;
+    iio_complete_ex(i2c->process, HAL_CMD(HAL_I2C, (i2c->io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, error);
+    i2c->io_mode = I2C_IO_MODE_IDLE;
 }
 
 static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
 {
-     switch(LPC_I2C->STAT)
-     {
-     case I2C_STAT_START:
-         //transmit address
-         LPC_I2C->DAT = (core->i2c.i2cs[port]->sla << 1) | 0;
-         LPC_I2C->CONCLR = I2C_CONCLR_STAC;
-         break;
-     case I2C_STAT_SLAW_NACK:
-         lpc_i2c_isr_error(core, port, ERROR_NAK);
-         break;
-     case I2C_STAT_DATW_NACK:
-         //only acceptable for last byte
-         if (core->i2c.i2cs[port]->processed < core->i2c.i2cs[port]->size || core->i2c.i2cs[port]->addr_processed < ADDR_SIZE(core, port))
-         {
-             lpc_i2c_isr_error(core, port, ERROR_NAK);
-             break;
-         }
-     case I2C_STAT_SLAW_ACK:
-     case I2C_STAT_DATW_ACK:
-         if (core->i2c.i2cs[port]->addr_processed < ADDR_SIZE(core, port))
-             LPC_I2C->DAT = ADDR_BYTE(core, port);
-         else if (core->i2c.i2cs[port]->processed < core->i2c.i2cs[port]->size)
-             LPC_I2C->DAT = core->i2c.i2cs[port]->ptr[core->i2c.i2cs[port]->processed++];
-         //last byte
-         else
-         {
-             LPC_I2C->CONSET = I2C_CONSET_STO;
+    I2C* i2c = core->i2c.i2cs[port];
+    switch(LPC_I2C->STAT)
+    {
+    case I2C_STAT_START:
+        //transmit address
+        LPC_I2C->DAT = (i2c->sla << 1) | 0;
+        LPC_I2C->CONCLR = I2C_CONCLR_STAC;
+        break;
+    case I2C_STAT_SLAW_NACK:
+        lpc_i2c_isr_error(core, port, ERROR_NAK);
+        break;
+    case I2C_STAT_DATW_NACK:
+        //only acceptable for last byte
+        if (i2c->size < i2c->io->data_size || i2c->addr_processed < ADDR_SIZE(core, port))
+        {
+            lpc_i2c_isr_error(core, port, ERROR_NAK);
+            break;
+        }
+        //follow down
+    case I2C_STAT_SLAW_ACK:
+    case I2C_STAT_DATW_ACK:
+        if (i2c->addr_processed < ADDR_SIZE(core, port))
+            LPC_I2C->DAT = ADDR_BYTE(core, port);
+        else if (i2c->size < i2c->io->data_size)
+        {
+            LPC_I2C->DAT = *((uint8_t*)(io_data(i2c->io) + i2c->io->data_size));
+            ++i2c->io->data_size;
+        }
+        //last byte
+        else
+        {
+            LPC_I2C->CONSET = I2C_CONSET_STO;
 #if (LPC_I2C_TIMEOUT_MS)
-             timer_istop(core->i2c.i2cs[port]->timer);
+            timer_istop(i2c->timer);
 #endif
-             fiwrite_complete(core->i2c.i2cs[port]->process, HAL_I2C, port, core->i2c.i2cs[port]->block, core->i2c.i2cs[port]->processed);
-             core->i2c.i2cs[port]->io = I2C_IO_IDLE;
-         }
-         break;
-     default:
+            iio_complete(i2c->process, HAL_CMD(HAL_I2C, IPC_WRITE), port, i2c->io);
+            i2c->io_mode = I2C_IO_MODE_IDLE;
+        }
+        break;
+    default:
          lpc_i2c_isr_error(core, port, ERROR_INVALID_STATE);
          break;
-     }
+    }
 }
 
 static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
 {
+    I2C* i2c = core->i2c.i2cs[port];
     switch(LPC_I2C->STAT)
     {
     case I2C_STAT_START:
         //transmit address W
         if (ADDR_SIZE(core, port))
         {
-            LPC_I2C->DAT = (core->i2c.i2cs[port]->sla << 1) | 0;
+            LPC_I2C->DAT = (i2c->sla << 1) | 0;
             LPC_I2C->CONCLR = I2C_CONCLR_STAC;
             break;
         }
     case I2C_STAT_REPEATED_START:
         //transmit address R
         LPC_I2C->CONCLR = I2C_CONCLR_STAC;
-        LPC_I2C->DAT = (core->i2c.i2cs[port]->sla << 1) | 1;
+        LPC_I2C->DAT = (i2c->sla << 1) | 1;
         break;
     case I2C_STAT_SLAR_NACK:
     case I2C_STAT_SLAW_NACK:
@@ -116,14 +113,14 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
         break;
     case I2C_STAT_DATW_NACK:
         //only acceptable for last W byte
-        if (core->i2c.i2cs[port]->addr_processed < ADDR_SIZE(core, port))
+        if (i2c->addr_processed < ADDR_SIZE(core, port))
         {
             lpc_i2c_isr_error(core, port, ERROR_NAK);
             break;
         }
     case I2C_STAT_SLAW_ACK:
     case I2C_STAT_DATW_ACK:
-        if (core->i2c.i2cs[port]->addr_processed < ADDR_SIZE(core, port))
+        if (i2c->addr_processed < ADDR_SIZE(core, port))
             LPC_I2C->DAT = ADDR_BYTE(core, port);
         //last addr byte, rS
         else
@@ -133,19 +130,20 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
         LPC_I2C->CONSET = I2C_CONSET_AA;
         break;
     case I2C_STAT_DATR_ACK:
-        if (core->i2c.i2cs[port]->rx_len_processed < RX_LEN_SIZE(core, port))
+        if (i2c->rx_len_processed < RX_LEN_SIZE(core, port))
         {
             RX_LEN_SET_BYTE(core, port, LPC_I2C->DAT);
-            if (++(core->i2c.i2cs[port]->rx_len_processed) >= RX_LEN_SIZE(core, port))
+            if (++(i2c->rx_len_processed) >= RX_LEN_SIZE(core, port))
             {
-                if (core->i2c.i2cs[port]->size > core->i2c.i2cs[port]->rx_len)
-                    core->i2c.i2cs[port]->size = core->i2c.i2cs[port]->rx_len;
+                if (i2c->size > i2c->rx_len)
+                    i2c->size = i2c->rx_len;
             }
         }
         else
-            core->i2c.i2cs[port]->ptr[core->i2c.i2cs[port]->processed++] = LPC_I2C->DAT;
+            *((uint8_t*)(io_data(i2c->io) + i2c->io->data_size)) = LPC_I2C->DAT;
+            ++i2c->io->data_size;
         //need more? send ACK
-        if (core->i2c.i2cs[port]->processed + 1 < core->i2c.i2cs[port]->size)
+        if (i2c->io->data_size + 1 < i2c->size)
             LPC_I2C->CONSET = I2C_CONSET_AA;
         //received all - send NAK
         else
@@ -153,14 +151,15 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
         break;
     case I2C_STAT_DATR_NACK:
         //last byte
-        core->i2c.i2cs[port]->ptr[core->i2c.i2cs[port]->processed++] = LPC_I2C->DAT;
+        *((uint8_t*)(io_data(i2c->io) + i2c->io->data_size)) = LPC_I2C->DAT;
+        ++i2c->io->data_size;
         //stop transmission
         LPC_I2C->CONSET = I2C_CONSET_STO;
 #if (LPC_I2C_TIMEOUT_MS)
-        timer_istop(core->i2c.i2cs[port]->timer);
+        timer_istop(i2c->timer);
 #endif
-        firead_complete(core->i2c.i2cs[port]->process, HAL_I2C, port, core->i2c.i2cs[port]->block, core->i2c.i2cs[port]->processed);
-        core->i2c.i2cs[port]->io = I2C_IO_IDLE;
+        iio_complete(i2c->process, HAL_CMD(HAL_I2C, IPC_READ), port, i2c->io);
+        i2c->io_mode = I2C_IO_MODE_IDLE;
         break;
     default:
         lpc_i2c_isr_error(core, port, ERROR_INVALID_STATE);
@@ -171,12 +170,12 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
 void lpc_i2c_on_isr(int vector, void* param)
 {
     CORE* core = (CORE*)param;
-    switch (core->i2c.i2cs[I2C_0]->io)
+    switch (core->i2c.i2cs[I2C_0]->io_mode)
     {
-    case I2C_IO_TX:
+    case I2C_IO_MODE_TX:
         lpc_i2c_isr_tx(core, I2C_0);
         break;
-    case I2C_IO_RX:
+    case I2C_IO_MODE_RX:
         lpc_i2c_isr_rx(core, I2C_0);
         break;
     default:
@@ -187,31 +186,32 @@ void lpc_i2c_on_isr(int vector, void* param)
 
 void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int sla)
 {
-    if (core->i2c.i2cs[port])
+    I2C* i2c = core->i2c.i2cs[port];
+    if (i2c)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
-    core->i2c.i2cs[port] = malloc(sizeof(I2C));
-    if (core->i2c.i2cs[port] == NULL)
+    i2c = malloc(sizeof(I2C));
+    if (i2c == NULL)
     {
         error(ERROR_OUT_OF_MEMORY);
         return;
     }
 #if (LPC_I2C_TIMEOUT_MS)
-    core->i2c.i2cs[port]->timer = timer_create(port, HAL_I2C);
-    if (core->i2c.i2cs[port]->timer == INVALID_HANDLE)
+    i2c->timer = timer_create(port, HAL_I2C);
+    if (i2c->timer == INVALID_HANDLE)
     {
-        free(core->i2c.i2cs[port]);
-        core->i2c.i2cs[port] = NULL;
+        free(i2c);
+        i2c = NULL;
         return;
     }
 #endif
-    core->i2c.i2cs[port]->sla = sla & 0x7f;
-    core->i2c.i2cs[port]->mode = mode;
-    core->i2c.i2cs[port]->block = INVALID_HANDLE;
-    core->i2c.i2cs[port]->io = I2C_IO_IDLE;
-    core->i2c.i2cs[port]->addr = 0;
+    i2c->sla = sla & 0x7f;
+    i2c->mode = mode;
+    i2c->io = NULL;
+    i2c->io_mode = I2C_IO_MODE_IDLE;
+    i2c->addr = 0;
     //setup pins
     ack_gpio(core, HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), I2C_SCL_PIN, PIN_MODE_I2C_SCL | (mode & I2C_FAST_SPEED ? GPIO_I2C_MODE_FAST : GPIO_I2C_MODE_STANDART), 0);
     ack_gpio(core, HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), I2C_SDA_PIN, PIN_MODE_I2C_SDA | (mode & I2C_FAST_SPEED ? GPIO_I2C_MODE_FAST : GPIO_I2C_MODE_STANDART), 0);
@@ -231,7 +231,8 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int sla
 
 void lpc_i2c_close(CORE* core, I2C_PORT port)
 {
-    if (core->i2c.i2cs[port] == NULL)
+    I2C* i2c = core->i2c.i2cs[port];
+    if (i2c == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
@@ -249,45 +250,33 @@ void lpc_i2c_close(CORE* core, I2C_PORT port)
     ack_gpio(core, HAL_CMD(HAL_GPIO, LPC_GPIO_DISABLE_PIN), I2C_SDA_PIN, 0, 0);
 }
 
-static inline void lpc_i2c_read(CORE* core, I2C_PORT port, HANDLE block, unsigned int size, HANDLE process)
+static inline void lpc_i2c_read(CORE* core, IPC* ipc)
 {
-    if (size && block == INVALID_HANDLE)
+    I2C_PORT port = (I2C_PORT)ipc->param1;
+    I2C* i2c = core->i2c.i2cs[port];
+    if (i2c == NULL)
     {
-        fread_complete(process, HAL_I2C, port, block, ERROR_INVALID_PARAMS);
+        io_send_error(ipc, ERROR_NOT_CONFIGURED);
         return;
     }
-    if (core->i2c.i2cs[port] == NULL)
+    if (i2c->io_mode != I2C_IO_MODE_IDLE)
     {
-        fread_complete(process, HAL_I2C, port, block, ERROR_NOT_CONFIGURED);
+        io_send_error(ipc, ERROR_IN_PROGRESS);
         return;
     }
-    if (core->i2c.i2cs[port]->io != I2C_IO_IDLE)
-    {
-        fread_complete(process, HAL_I2C, port, block, ERROR_IN_PROGRESS);
-        return;
-    }
-    if (size)
-    {
-        core->i2c.i2cs[port]->ptr = block_open(block);
-        if (core->i2c.i2cs[port]->ptr == NULL)
-        {
-            fread_complete(process, HAL_I2C, port, block, get_last_error());
-            return;
-        }
-    }
-    core->i2c.i2cs[port]->process = process;
-    core->i2c.i2cs[port]->block = block;
-    core->i2c.i2cs[port]->size = size;
-    core->i2c.i2cs[port]->processed = 0;
-    core->i2c.i2cs[port]->addr_processed = 0;
-    core->i2c.i2cs[port]->rx_len_processed = 0;
-    core->i2c.i2cs[port]->rx_len = 0;
-    core->i2c.i2cs[port]->io = I2C_IO_RX;
+    i2c->process = ipc->process;
+    i2c->io = (IO*)ipc->param2;
+    i2c->io->data_size = 0;
+    i2c->size = ipc->param3;
+    i2c->addr_processed = 0;
+    i2c->rx_len_processed = 0;
+    i2c->rx_len = 0;
+    i2c->io_mode = I2C_IO_MODE_RX;
 
     //reset
     LPC_I2C->CONCLR = I2C_CLEAR;
 #if (LPC_I2C_TIMEOUT_MS)
-    timer_start_ms(core->i2c.i2cs[port]->timer, LPC_I2C_TIMEOUT_MS, 0);
+    timer_start_ms(i2c->timer, LPC_I2C_TIMEOUT_MS, 0);
 #endif
 
     //set START
@@ -295,45 +284,32 @@ static inline void lpc_i2c_read(CORE* core, I2C_PORT port, HANDLE block, unsigne
     //all rest in isr
 }
 
-static inline void lpc_i2c_write(CORE* core, I2C_PORT port, HANDLE block, unsigned int size, HANDLE process)
+static inline void lpc_i2c_write(CORE* core, IPC* ipc)
 {
-    if (size && block == INVALID_HANDLE)
+    I2C_PORT port = (I2C_PORT)ipc->param1;
+    I2C* i2c = core->i2c.i2cs[port];
+    if (i2c == NULL)
     {
-        fwrite_complete(process, HAL_I2C, port, block, ERROR_INVALID_PARAMS);
+        io_send_error(ipc, ERROR_NOT_CONFIGURED);
         return;
     }
-    if (core->i2c.i2cs[port] == NULL)
+    if (i2c->io_mode != I2C_IO_MODE_IDLE)
     {
-        fwrite_complete(process, HAL_I2C, port, block, ERROR_NOT_CONFIGURED);
+        io_send_error(ipc, ERROR_IN_PROGRESS);
         return;
     }
-    if (core->i2c.i2cs[port]->io != I2C_IO_IDLE)
-    {
-        fwrite_complete(process, HAL_I2C, port, block, ERROR_IN_PROGRESS);
-        return;
-    }
-    if (size)
-    {
-        core->i2c.i2cs[port]->ptr = block_open(block);
-        if (core->i2c.i2cs[port]->ptr == NULL)
-        {
-            fwrite_complete(process, HAL_I2C, port, block, get_last_error());
-            return;
-        }
-    }
-    core->i2c.i2cs[port]->process = process;
-    core->i2c.i2cs[port]->block = block;
-    core->i2c.i2cs[port]->size = size;
-    core->i2c.i2cs[port]->processed = 0;
-    core->i2c.i2cs[port]->addr_processed = 0;
-    core->i2c.i2cs[port]->rx_len_processed = 0;
-    core->i2c.i2cs[port]->rx_len = 0;
-    core->i2c.i2cs[port]->io = I2C_IO_TX;
+    i2c->process = ipc->process;
+    i2c->io = (IO*)ipc->param2;
+    i2c->size = 0;
+    i2c->addr_processed = 0;
+    i2c->rx_len_processed = 0;
+    i2c->rx_len = 0;
+    i2c->io_mode = I2C_IO_MODE_TX;
 
     //reset
     LPC_I2C->CONCLR = I2C_CLEAR;
 #if (LPC_I2C_TIMEOUT_MS)
-    timer_start_ms(core->i2c.i2cs[port]->timer, LPC_I2C_TIMEOUT_MS, 0);
+    timer_start_ms(i2c->timer, LPC_I2C_TIMEOUT_MS, 0);
 #endif
     //set START
     LPC_I2C->CONSET = I2C_CONSET_I2EN | I2C_CONSET_STA;
@@ -348,24 +324,17 @@ static inline void lpc_i2c_seek(CORE* core, I2C_PORT port, unsigned int pos)
 #if (LPC_I2C_TIMEOUT_MS)
 static inline void lpc_i2c_timeout(CORE* core, I2C_PORT port)
 {
-    I2C_IO io;
+    I2C_IO_MODE io_mode;
+    I2C* i2c = core->i2c.i2cs[port];
     __disable_irq();
-    io = core->i2c.i2cs[port]->io;
-    core->i2c.i2cs[port]->io = I2C_IO_IDLE;
+    io_mode = i2c->io_mode;
+    i2c->io_mode = I2C_IO_MODE_IDLE;
     __enable_irq();
     //handled right now in isr
-    if (io == I2C_IO_IDLE)
+    if (io_mode == I2C_IO_MODE_IDLE)
         return;
     LPC_I2C->CONSET = I2C_CONSET_STO;
-    switch (io)
-    {
-    case I2C_IO_TX:
-        fiwrite_complete(core->i2c.i2cs[port]->process, HAL_I2C, port, core->i2c.i2cs[port]->block, ERROR_TIMEOUT);
-        break;
-    default:
-        firead_complete(core->i2c.i2cs[port]->process, HAL_I2C, port, core->i2c.i2cs[port]->block, ERROR_TIMEOUT);
-        break;
-    }
+    io_complete_ex(i2c->process, HAL_CMD(HAL_I2C, (io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, ERROR_TIMEOUT);
 }
 #endif
 
@@ -396,11 +365,11 @@ bool lpc_i2c_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
     case IPC_WRITE:
-        lpc_i2c_write(core, port, ipc->param2, ipc->param3, ipc->process);
+        lpc_i2c_write(core, ipc);
         //async message, no write
         break;
     case IPC_READ:
-        lpc_i2c_read(core, port, ipc->param2, ipc->param3, ipc->process);
+        lpc_i2c_read(core, ipc);
         //async message, no write
         break;
     case IPC_SEEK:

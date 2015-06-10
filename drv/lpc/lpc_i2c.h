@@ -9,19 +9,26 @@
 
 #include "lpc_config.h"
 #include "lpc_core.h"
-#include "../../userspace/sys.h"
+#include "../../userspace/ipc.h"
+#include "../../userspace/io.h"
 #include "../../userspace/lpc_driver.h"
 
+typedef enum {
+    I2C_IO_MODE_IDLE = 0,
+    I2C_IO_MODE_TX,
+    I2C_IO_MODE_RX
+} I2C_IO_MODE;
+
 typedef struct  {
+    IO* io;
     HANDLE block, process;
 #if (LPC_I2C_TIMEOUT_MS)
     HANDLE timer;
 #endif
-    char* ptr;
-    I2C_IO io;
+    I2C_IO_MODE io_mode;
     unsigned int addr, rx_len;
     uint16_t mode;
-    uint16_t processed, size;
+    uint16_t size;
     uint8_t sla, addr_processed, rx_len_processed;
 } I2C;
 
