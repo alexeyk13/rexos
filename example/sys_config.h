@@ -54,6 +54,7 @@
 #define USBD_CDC_CLASS                                      1
 #define USBD_HID_KBD_CLASS                                  0
 #define USBD_CCID_CLASS                                     0
+#define USBD_MSC_CLASS                                      0
 
 //----------------------------- CDCD class --------------------------------------------
 //At least EP size required, or data will be lost. Double EP size is recommended
@@ -70,13 +71,19 @@
 #define USBD_HID_DEBUG_IO                                   0
 
 //----------------------------- CCIDD class -------------------------------------------
-#define USBD_CCID_MAX_ATR_SIZE                              32
-#define USBD_CCID_BLOCK_SIZE                                512
+#define USBD_CCID_REMOVABLE_CARD                            0
 
 #define USBD_CCID_DEBUG_ERRORS                              0
 #define USBD_CCID_DEBUG_REQUESTS                            0
 #define USBD_CCID_DEBUG_IO                                  0
 
+//------------------------------ MSCD class -------------------------------------------
+#define USBD_MSC_DEBUG_ERRORS                               0
+#define USBD_MSC_DEBUG_REQUESTS                             0
+#define USBD_MSC_DEBUG_IO                                   0
+
+//only one LUN supported for now
+#define USBD_MSC_LUN_COUNT                                  1
 //------------------------------ PIN board -------------------------------------------
 #define PINBOARD_PROCESS_SIZE                               500
 #define PINBOARD_POLL_TIME_MS                               100

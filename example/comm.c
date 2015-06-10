@@ -7,8 +7,6 @@
 #include "comm.h"
 #include "../../rexos/userspace/stdio.h"
 #include "../../rexos/userspace/usb.h"
-#include "../../rexos/userspace/file.h"
-#include "../../rexos/userspace/sys.h"
 #include "../../rexos/userspace/stream.h"
 #include "../../rexos/midware/usbd.h"
 #include "../../rexos/drv/stm32/stm32_usb.h"
@@ -94,15 +92,15 @@ void comm_init(APP *app)
     usbd = process_create(&__USBD);
     ack(usbd, HAL_CMD(HAL_USBD, USBD_REGISTER_HANDLER), 0, 0, 0);
 
-/*    libusb_register_descriptor(0, 0, &__DEVICE_DESCRIPTOR, sizeof(__DEVICE_DESCRIPTOR));
-    libusb_register_descriptor(0, 0, &__CONFIGURATION_DESCRIPTOR, sizeof(__CONFIGURATION_DESCRIPTOR));
-    libusb_register_descriptor(0, 0, &__STRING_WLANGS, __STRING_WLANGS[0]);
-    libusb_register_descriptor(1, 0x0409, &__STRING_MANUFACTURER, __STRING_MANUFACTURER[0]);
-    libusb_register_descriptor(2, 0x0409, &__STRING_PRODUCT, __STRING_PRODUCT[0]);
-    libusb_register_descriptor(3, 0x0409, &__STRING_SERIAL, __STRING_SERIAL[0]);
-    libusb_register_descriptor(4, 0x0409, &__STRING_DEFAULT, __STRING_DEFAULT[0]);
-*/
-    fopen(object_get(SYS_OBJ_USBD), HAL_USBD, 0, 0);
+    usbd_register_const_descriptor(&__DEVICE_DESCRIPTOR, 0, 0);
+    usbd_register_const_descriptor(&__CONFIGURATION_DESCRIPTOR, 0, 0);
+    usbd_register_const_descriptor(&__STRING_WLANGS, 0, 0);
+    usbd_register_const_descriptor(&__STRING_MANUFACTURER, 1, 0x0409);
+    usbd_register_const_descriptor(&__STRING_PRODUCT, 2, 0x0409);
+    usbd_register_const_descriptor(&__STRING_SERIAL, 3, 0x0409);
+    usbd_register_const_descriptor(&__STRING_DEFAULT, 4, 0x0409);
+
+    ack(usbd, HAL_CMD(HAL_USBD, IPC_OPEN), 0, 0, 0);
 
     printf("Comm init\n\r");
 }

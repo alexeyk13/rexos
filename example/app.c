@@ -12,7 +12,6 @@
 #include "../userspace/stdlib.h"
 #include "../userspace/ipc.h"
 #include "../userspace/timer.h"
-#include "../userspace/file.h"
 #include "../userspace/wdt.h"
 #include "../userspace/uart.h"
 #include "../midware/pinboard.h"
@@ -65,7 +64,7 @@ static inline void app_setup_dbg()
 {
     BAUD baudrate;
     ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), DBG_CONSOLE_TX_PIN, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, DBG_CONSOLE_TX_PIN_AF);
-    fopen(object_get(SYS_OBJ_UART), HAL_UART, DBG_CONSOLE, FILE_MODE_WRITE);
+    ack(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_OPEN), DBG_CONSOLE, FILE_MODE_WRITE, 0);
     baudrate.baud = DBG_CONSOLE_BAUD;
     baudrate.data_bits = 8;
     baudrate.parity = 'N';
@@ -110,38 +109,34 @@ void app()
     comm_init(&app);
 
 
-    fopen(object_get(SYS_OBJ_ADC), HAL_ADC, STM32_ADC_DEVICE, 0);
-    fopen(object_get(SYS_OBJ_ADC), HAL_ADC, STM32_ADC_VREF, STM32_ADC_SMPR_55_5);
+    ack(object_get(SYS_OBJ_ADC), HAL_CMD(HAL_ADC, IPC_OPEN), STM32_ADC_DEVICE, 0, 0);
+    ack(object_get(SYS_OBJ_ADC), HAL_CMD(HAL_ADC, IPC_OPEN), STM32_ADC_VREF, STM32_ADC_SMPR_55_5, 0);
     adc_get(STM32_ADC_VREF);
 
 
     for (;;)
     {
-        error(ERROR_OK);
-        ipc_read_ms(&ipc, 0, ANY_HANDLE);
+        ipc_read(&ipc);
         need_post = false;
-        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
+        switch (HAL_ITEM(ipc.cmd))
+        {
+        case USBD_ALERT:
+            comm_usbd_alert(&app, ipc.param1);
+            break;
+        case IPC_STREAM_WRITE:
+            comm_usbd_stream_rx(&app, ipc.param3);
+            break;
+        case IPC_TIMEOUT:
+            app_timeout(&app);
+            break;
+        default:
+            printf("Unhandled cmd: %#X\n\r", ipc.cmd);
+            printf("sender: %#X\n\r", ipc.process);
+            printf("p1: %#X\n\r", ipc.param1);
+            error(ERROR_NOT_SUPPORTED);
             need_post = true;
-        else
-            switch (HAL_ITEM(ipc.cmd))
-            {
-            case USBD_ALERT:
-                comm_usbd_alert(&app, ipc.param1);
-                break;
-            case IPC_STREAM_WRITE:
-                comm_usbd_stream_rx(&app, ipc.param3);
-                break;
-            case IPC_TIMEOUT:
-                app_timeout(&app);
-                break;
-            default:
-                printf("Unhandled cmd: %#X\n\r", ipc.cmd);
-                printf("sender: %#X\n\r", ipc.process);
-                printf("p1: %#X\n\r", ipc.param1);
-                error(ERROR_NOT_SUPPORTED);
-                need_post = true;
-                break;
-            }
+            break;
+        }
         if (need_post)
             ipc_post_or_error(&ipc);
     }

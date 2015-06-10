@@ -36,9 +36,6 @@
 
 //------------------------------------- EEPROM --------------------------------------------
 #define LPC_EEPROM_DRIVER                   1
-
-//increase for perfomance, decrease for memory saving. Must be 4 bytes aligned.
-#define LPC_EEPROM_BUF_SIZE                 20
 //-------------------------------------- GPIO ---------------------------------------------
 #define GPIO_HYSTERESIS                     1
 
