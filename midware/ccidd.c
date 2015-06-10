@@ -287,7 +287,10 @@ static inline void ccidd_power_off(USBD* usbd, CCIDD* ccidd)
     CCID_MESSAGE* msg = io_data(ccidd->io);
     printf("CCIDD: ICC slot%d power off\n\r", msg->bSlot);
 #endif //USBD_CCID_DEBUG_REQUESTS
-    ccidd_user_request(usbd, ccidd, USB_CCID_POWER_OFF, 0);
+    if (ccidd->card_state == CCIDD_CARD_STATE_POWERED)
+        ccidd->card_state = CCIDD_CARD_STATE_INSERTED;
+    ccidd_send_slot_status(usbd, ccidd, ccidd->seq, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR);
+    usbd_post_user(usbd, ccidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_CCID_POWER_OFF), 0, 0);
 }
 
 static inline void ccidd_get_slot_status(USBD* usbd, CCIDD* ccidd)
@@ -421,43 +424,43 @@ static void ccidd_tx_complete(USBD* usbd, CCIDD* ccidd)
     ccidd_rx(usbd, ccidd);
 }
 
-//TODO:
-/*
-static inline void ccidd_card_insert(USBD* usbd, CCIDD* ccidd)
+#if (USBD_CCID_REMOVABLE_CARD)
+static inline void ccidd_card_inserted(USBD* usbd, CCIDD* ccidd)
 {
-    switch (ccidd->state)
+    if (ccidd->card_state == CCIDD_CARD_STATE_NOT_PRESENT)
     {
-    case CCIDD_STATE_NO_CARD:
-        ccidd->state = CCIDD_STATE_CARD_INSERTED;
+        ccidd->card_state = CCIDD_CARD_STATE_INSERTED;
         ccidd_notify_state_change(usbd, ccidd);
-        break;
-    case CCIDD_STATE_CARD_INSERTED:
-        //no state change
-        break;
-    default:
-        //wrong state, ignore
-        break;
     }
 }
 
-static inline void ccidd_card_remove(USBD* usbd, CCIDD* ccidd)
+static inline void ccidd_card_removed(USBD* usbd, CCIDD* ccidd)
 {
-    switch (ccidd->state)
+    if (ccidd->card_state != CCIDD_CARD_STATE_NOT_PRESENT)
     {
-    case CCIDD_STATE_CARD_POWERED:
-    case CCIDD_STATE_CARD_INSERTED:
-        ccidd->state = CCIDD_STATE_NO_CARD;
+        ccidd->card_state = CCIDD_CARD_STATE_NOT_PRESENT;
         ccidd_notify_state_change(usbd, ccidd);
-        break;
-    case CCIDD_STATE_NO_CARD:
-        //no state change
-        break;
-    default:
-        //wrong state, ignore
-        break;
     }
 }
-*/
+#endif //USBD_CCID_REMOVABLE_CARD
+
+static inline void ccidd_power_on_response(USBD* usbd, CCIDD* ccidd, int param3)
+{
+    if (param3 < 0)
+    {
+        switch (param3)
+        {
+        case ERROR_HARDWARE:
+            ccidd_send_data_block(usbd, ccidd, CCID_SLOT_ERROR_HW_ERROR, CCID_SLOT_STATUS_COMMAND_FAIL);
+            break;
+        default:
+            ccidd_send_data_block(usbd, ccidd, CCID_SLOT_ERROR_CMD_NOT_SUPPORTED, CCID_SLOT_STATUS_COMMAND_FAIL);
+        }
+        return;
+    }
+    ccidd->card_state = CCIDD_CARD_STATE_POWERED;
+    ccidd_send_data_block(usbd, ccidd, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR);
+}
 
 static inline void ccidd_data_block_response(USBD* usbd, CCIDD* ccidd, int param3)
 {
@@ -493,17 +496,6 @@ static inline void ccidd_params_response(USBD* usbd, CCIDD* ccidd, int param3)
     ccidd_send_params(usbd, ccidd, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR, (CCID_PROTOCOL)param3);
 }
 
-static inline void ccidd_power_off_response(USBD* usbd, CCIDD* ccidd, int param3)
-{
-    if (param3 < 0)
-    {
-        ccidd_send_slot_status(usbd, ccidd, ccidd->seq, CCID_SLOT_ERROR_CMD_NOT_SUPPORTED, CCID_SLOT_STATUS_COMMAND_FAIL);
-        return;
-    }
-    ccidd_send_slot_status(usbd, ccidd, ccidd->seq, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR);
-}
-
-
 static inline bool ccidd_driver_event(USBD* usbd, CCIDD* ccidd, IPC* ipc)
 {
     bool need_post = false;
@@ -536,11 +528,10 @@ static inline void ccidd_user_response(USBD* usbd, CCIDD* ccidd, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case USB_CCID_POWER_ON:
+        ccidd_power_on_response(usbd, ccidd, ipc->param3);
+        break;
     case USB_CCID_APDU:
         ccidd_data_block_response(usbd, ccidd, ipc->param3);
-        break;
-    case USB_CCID_POWER_OFF:
-        ccidd_power_off_response(usbd, ccidd, ipc->param3);
         break;
     case USB_CCID_GET_PARAMS:
     case USB_CCID_SET_PARAMS:
@@ -559,13 +550,14 @@ bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
     else
         switch (HAL_ITEM(ipc->cmd))
         {
-        //TODO:
-/*        case USB_CCID_CARD_INSERTED:
-            ccidd_card_insert(usbd, ccidd);
+#if (USBD_CCID_REMOVABLE_CARD)
+        case USB_CCID_CARD_INSERTED:
+            ccidd_card_inserted(usbd, ccidd);
             break;
         case USB_CCID_CARD_REMOVED:
-            ccidd_card_remove(usbd, ccidd);
-            break;*/
+            ccidd_card_removed(usbd, ccidd);
+            break;
+#endif //USBD_CCID_REMOVABLE_CARD
         case USB_CCID_POWER_ON:
         case USB_CCID_POWER_OFF:
         case USB_CCID_GET_PARAMS:
