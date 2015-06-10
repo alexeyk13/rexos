@@ -14,7 +14,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Very thin kernel. 
 - Independent library level, accessible both from kernel and userspace
 - Independent system and drivers in userspace
-- Syncronization: ipc, stream, direct IO, block
+- Syncronization: ipc, stream, io
 - Soft timers
 - Embedded dynamic memory manager, for every process
 - Safe and MPU ready. All supervisor-specific calls are wrapped around 
@@ -76,6 +76,16 @@ ARM7 features:
 
 History
 =======
+0.3.0
+- New sync object - io. block successor with embedded header and stack
+- block and direct are now deprecated
+- lpc/stm32 drivers, usb device stack moved to io interface
+- array now userspace library
+- ccid device interface simplified
+- usb descriptor parser moved to userspace usb part
+- usb descriptor registering interface simplified
+- ipc_read now automatically answer on IPC_PING and clearing last error
+
 0.2.9
 - HAL is now part of cmd in IPC
 - new HAL item: USBD_IFACE. USBD class interface updated
