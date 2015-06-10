@@ -57,7 +57,6 @@
 #define USB_SOFT_CONNECT                    1
 //-------------------------------------- I2C ----------------------------------------------
 #define LPC_I2C_DRIVER                      1
-#define LPC_I2C_PROCESS_SIZE                480
 
 //in some application slave devices may hang bus for infinite time.
 //Set this value greater than 0 to solve problem. Soft timers is required.
