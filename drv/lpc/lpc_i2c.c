@@ -57,7 +57,7 @@ static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
         break;
     case I2C_STAT_DATW_NACK:
         //only acceptable for last byte
-        if (i2c->size < i2c->io->data_size || i2c->addr_processed < ADDR_SIZE(core, port))
+        if ((i2c->size < i2c->io->data_size) || i2c->addr_processed < ADDR_SIZE(core, port))
         {
             lpc_i2c_isr_error(core, port, ERROR_NAK);
             break;
@@ -68,10 +68,7 @@ static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
         if (i2c->addr_processed < ADDR_SIZE(core, port))
             LPC_I2C->DAT = ADDR_BYTE(core, port);
         else if (i2c->size < i2c->io->data_size)
-        {
-            LPC_I2C->DAT = *((uint8_t*)(io_data(i2c->io) + i2c->io->data_size));
-            ++i2c->io->data_size;
-        }
+            LPC_I2C->DAT = ((uint8_t*)io_data(i2c->io))[i2c->size++];
         //last byte
         else
         {
@@ -140,8 +137,7 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
             }
         }
         else
-            *((uint8_t*)(io_data(i2c->io) + i2c->io->data_size)) = LPC_I2C->DAT;
-            ++i2c->io->data_size;
+            ((uint8_t*)io_data(i2c->io))[i2c->io->data_size++] = LPC_I2C->DAT;
         //need more? send ACK
         if (i2c->io->data_size + 1 < i2c->size)
             LPC_I2C->CONSET = I2C_CONSET_AA;
@@ -151,8 +147,7 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
         break;
     case I2C_STAT_DATR_NACK:
         //last byte
-        *((uint8_t*)(io_data(i2c->io) + i2c->io->data_size)) = LPC_I2C->DAT;
-        ++i2c->io->data_size;
+        ((uint8_t*)io_data(i2c->io))[i2c->io->data_size++] = LPC_I2C->DAT;
         //stop transmission
         LPC_I2C->CONSET = I2C_CONSET_STO;
 #if (LPC_I2C_TIMEOUT_MS)
@@ -212,6 +207,7 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int sla
     i2c->io = NULL;
     i2c->io_mode = I2C_IO_MODE_IDLE;
     i2c->addr = 0;
+    core->i2c.i2cs[port] = i2c;
     //setup pins
     ack_gpio(core, HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), I2C_SCL_PIN, PIN_MODE_I2C_SCL | (mode & I2C_FAST_SPEED ? GPIO_I2C_MODE_FAST : GPIO_I2C_MODE_STANDART), 0);
     ack_gpio(core, HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), I2C_SDA_PIN, PIN_MODE_I2C_SDA | (mode & I2C_FAST_SPEED ? GPIO_I2C_MODE_FAST : GPIO_I2C_MODE_STANDART), 0);
