@@ -73,6 +73,9 @@ bool lpc_eep_request(CORE* core, IPC* ipc)
     case IPC_WRITE:
         lpc_eep_write(core, ipc);
         break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
     }
     return need_post;
 }
