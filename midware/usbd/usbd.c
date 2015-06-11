@@ -53,7 +53,7 @@ typedef struct _USBD {
     USB_SETUP_STATE setup_state;
     // USBD state machine
     USBD_STATE state;
-    bool self_powered, remote_wakeup;
+    bool self_powered, remote_wakeup, suspended;
 #if (USB_TEST_MODE_SUPPORT)
     USB_TEST_MODES test_mode;
 #endif //USB_TEST_MODE_SUPPORT
@@ -178,27 +178,27 @@ bool usbd_unregister_interface(USBD* usbd, unsigned int iface, const USBD_CLASS*
     return true;
 }
 
-bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int num)
+bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int ep_num)
 {
-    if (iface >= usbd->ifacecnt || num >= USB_EP_COUNT_MAX)
+    if (iface >= usbd->ifacecnt || ep_num >= USB_EP_COUNT_MAX)
         return false;
     if (IFACE(usbd, iface)->usbd_class == &__USBD_STUB_CLASS)
         return false;
-    if (usbd->ep_iface[num] != USBD_INVALID_INTERFACE)
+    if (usbd->ep_iface[ep_num] != USBD_INVALID_INTERFACE)
         return false;
-    usbd->ep_iface[num] = iface;
+    usbd->ep_iface[ep_num] = iface;
     return true;
 }
 
-bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int num)
+bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int ep_num)
 {
-    if (iface >= usbd->ifacecnt || num >= USB_EP_COUNT_MAX)
+    if (iface >= usbd->ifacecnt || ep_num >= USB_EP_COUNT_MAX)
         return false;
     if (IFACE(usbd, iface)->usbd_class == &__USBD_STUB_CLASS)
         return false;
-    if (usbd->ep_iface[num] != iface)
+    if (usbd->ep_iface[ep_num] != iface)
         return false;
-    usbd->ep_iface[num] = USBD_INVALID_INTERFACE;
+    usbd->ep_iface[ep_num] = USBD_INVALID_INTERFACE;
     return true;
 }
 
@@ -488,6 +488,7 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
         usbd_usb_ep_open(usbd, USB_EP_IN | 0, USB_EP_CONTROL, usbd->ep0_size);
     }
     usbd->setup_state = USB_SETUP_STATE_REQUEST;
+    usbd->suspended = false;
 }
 
 static inline void usbd_suspend(USBD* usbd)
@@ -505,6 +506,7 @@ static inline void usbd_suspend(USBD* usbd)
         }
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
     }
+    usbd->suspended = true;
 }
 
 static inline void usbd_wakeup(USBD* usbd)
@@ -516,6 +518,7 @@ static inline void usbd_wakeup(USBD* usbd)
 #endif
         usbd_class_resume(usbd);
     }
+    usbd->suspended = false;
 }
 
 static inline int usbd_device_get_status(USBD* usbd)
@@ -1035,6 +1038,7 @@ static inline void usbd_init(USBD* usbd)
     usbd->user = INVALID_HANDLE;
     usbd->usb = object_get(SYS_OBJ_USB);
     usbd->io = NULL;
+    usbd->suspended = false;
     array_create(&usbd->ifaces, sizeof(USBD_IFACE_ENTRY), 1);
     //at least 5: manufacturer, product, string 0, device, configuration
     array_create(&usbd->descriptors, sizeof(USBD_DESCRIPTOR), 5);
@@ -1163,6 +1167,8 @@ static inline bool usbd_class_interface_request(USBD* usbd, IPC* ipc, unsigned i
         error(ERROR_INVALID_PARAMS);
         return true;
     }
+    if (usbd->suspended)
+        return false;
     return IFACE(usbd, iface)->usbd_class->usbd_class_request(usbd, IFACE(usbd, iface)->param, ipc);
 }
 
@@ -1173,6 +1179,8 @@ static inline bool usbd_class_endpoint_request(USBD *usbd, IPC* ipc, unsigned in
         error(ERROR_INVALID_PARAMS);
         return true;
     }
+    if (usbd->suspended)
+        return false;
     return IFACE(usbd, usbd->ep_iface[num])->usbd_class->usbd_class_request(usbd, IFACE(usbd, usbd->ep_iface[num])->param, ipc);
 }
 

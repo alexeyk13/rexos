@@ -26,8 +26,8 @@ typedef struct {
 
 bool usbd_register_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* usbd_class, void* param);
 bool usbd_unregister_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* usbd_class);
-bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int num);
-bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int num);
+bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int ep_num);
+bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int ep_num);
 
 HANDLE usbd_user(USBD* usbd);
 HANDLE usbd_usb(USBD* usbd);
