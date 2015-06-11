@@ -20,6 +20,7 @@
 #pragma pack(push, 1)
 
 #define MSC_CBW_SIGNATURE                                                               0x43425355
+#define MSC_CBW_FLAG_DATA_IN(flags)                                                     ((flags) & (1 << 7))
 
 typedef struct {
     uint32_t	dCBWSignature;

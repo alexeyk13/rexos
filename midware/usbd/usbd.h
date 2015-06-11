@@ -7,9 +7,10 @@
 #ifndef USBD_H
 #define USBD_H
 
-#include "../userspace/process.h"
-#include "../userspace/usb.h"
-#include "../userspace/io.h"
+#include "../../userspace/process.h"
+#include "../../userspace/usb.h"
+#include "../../userspace/io.h"
+#include "../../userspace/types.h"
 #include "sys_config.h"
 
 typedef struct _USBD USBD;
@@ -22,8 +23,6 @@ typedef struct {
     int (*usbd_class_setup)(USBD*, void*, SETUP*, IO*);
     bool (*usbd_class_request)(USBD*, void*, IPC*);
 } USBD_CLASS;
-
-extern const REX __USBD;
 
 bool usbd_register_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* usbd_class, void* param);
 bool usbd_unregister_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* usbd_class);

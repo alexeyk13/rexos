@@ -5,12 +5,12 @@
 */
 
 #include "mscd.h"
-#include "../userspace/sys.h"
-#include "../userspace/stdio.h"
-#include "../userspace/io.h"
-#include "../userspace/uart.h"
-#include "../userspace/stdlib.h"
-#include "../userspace/msc.h"
+#include "../../userspace/sys.h"
+#include "../../userspace/stdio.h"
+#include "../../userspace/io.h"
+#include "../../userspace/uart.h"
+#include "../../userspace/stdlib.h"
+#include "../../userspace/msc.h"
 #include <stdint.h>
 #include "usb.h"
 #include "sys_config.h"
@@ -18,6 +18,7 @@
 typedef enum  {
     MSCD_STATE_CBW = 0,
     MSCD_STATE_DATA_IN,
+    MSCD_STATE_STORAGE,
     MSCD_STATE_DATA_OUT,
     MSCD_STATE_CSW
 } MSCD_STATE;
@@ -26,6 +27,7 @@ typedef struct {
     uint8_t ep_num, iface_num;
     uint16_t ep_size;
     IO* control;
+    IO* data;
 
     //in feature this will make LUN
     MSCD_STATE state;
@@ -37,6 +39,7 @@ typedef struct {
 static void mscd_destroy(MSCD* mscd)
 {
     io_destroy(mscd->control);
+    io_destroy(mscd->data);
     free(mscd);
 }
 
@@ -80,7 +83,9 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     mscd->in = mscd->out = NULL;
     mscd->state = MSCD_STATE_CBW;
     mscd->control = io_create(ep_size);
-    if (mscd->control == NULL)
+    //TODO: scsi stack size
+    mscd->data = io_create(USBD_MSC_MAX_IO_SIZE);
+    if (mscd->control == NULL || mscd->data == NULL)
     {
         mscd_destroy(mscd);
         return;
@@ -155,10 +160,16 @@ int mscd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
     return res;
 }
 
-static inline void mscd_cbw(USBD* usbd, MSCD* mscd, int size)
+static void mscd_scsi_request(USBD* usbd, MSCD* mscd)
+{
+    printd("time for scsi");
+
+}
+
+static inline void mscd_cbw(USBD* usbd, MSCD* mscd)
 {
     CBW* cbw = io_data(mscd->control);
-    if (size < sizeof(CBW) || cbw->dCBWSignature != MSC_CBW_SIGNATURE)
+    if (mscd->control->data_size < sizeof(CBW) || cbw->dCBWSignature != MSC_CBW_SIGNATURE)
     {
 #if (USBD_MSC_DEBUG_REQUESTS)
         printf("MSCD: Fatal - invalid CBW\n\r");
@@ -166,45 +177,43 @@ static inline void mscd_cbw(USBD* usbd, MSCD* mscd, int size)
         mscd_fatal(usbd, mscd);
     }
     mscd->tag = cbw->dCBWTag;
-#if (USB_MSC_DEBUG_FLOW)
-    printf("USB_MSC: dCBWTag: %08x\n\r", msc->cbw.dCBWTag);
-    printf("USB_MSC: dCBWDataTransferLength: %08x\n\r", msc->cbw.dCBWDataTransferLength);
-    printf("USB_MSC: dCBWDataFlags: %02x\n\r", msc->cbw.bmCBWFlags);
-    printf("USB_MSC: dCBWLUN: %02x\n\r", msc->cbw.bCBWLUN);
+#if (USBD_MSC_DEBUG_IO)
+    printf("USB_MSC: dCBWTag: %d\n\r", cbw->dCBWTag);
+    printf("USB_MSC: dCBWDataTransferLength: %d\n\r", cbw->dCBWDataTransferLength);
+    printf("USB_MSC: dCBWDataFlags: %02x\n\r", cbw->bmCBWFlags);
+    printf("USB_MSC: dCBWLUN: %d\n\r", cbw->bCBWLUN);
+    //remove me
     printf("USB_MSC: dCBWCB:");
     int i;
-    for (i = 0; i < msc->cbw.bCBWCBLength; ++i)
-        printf(" %02x", msc->cbw.CBWCB[i]);
-    printf(" (%d)\n\r", msc->cbw.bCBWCBLength);
-#endif
-    //TODO: ifdef
-    printf("MSCD: Rx CBW\n\r");
-
+    for (i = 0; i < cbw->bCBWCBLength; ++i)
+        printf(" %02x", cbw->CBWCB[i]);
+    printf(" (%d)\n\r", cbw->bCBWCBLength);
+#endif //USBD_MSC_DEBUG_IO
+    if (MSC_CBW_FLAG_DATA_IN(cbw->bmCBWFlags) || cbw->dCBWDataTransferLength == 0)
+        mscd_scsi_request(usbd, mscd);
+    else
+    {
+        mscd->state = MSCD_STATE_DATA_OUT;
+        usbd_usb_ep_read(usbd, mscd->ep_num, mscd->data, cbw->dCBWDataTransferLength);
+    }
 }
 
-static inline void mscd_usb_read_control(USBD* usbd, MSCD* mscd, int size)
+static inline void mscd_usb_rx(USBD* usbd, MSCD* mscd)
 {
     switch (mscd->state)
     {
     case MSCD_STATE_CBW:
-        mscd_cbw(usbd, mscd, size);
+        mscd_cbw(usbd, mscd);
         break;
-    case MSCD_STATE_CSW:
-        //TODO:
-        printd("csw \n\r");
+    case MSCD_STATE_DATA_OUT:
+        mscd_scsi_request(usbd, mscd);
         break;
     default:
 #if (USBD_MSC_DEBUG_REQUESTS)
-        printf("MSCD: Fatal - wrong stage - %d\n\r", mscd->state);
+        printf("MSCD: Fatal - invalid stage - %d\n\r", mscd->state);
 #endif //USBD_CDC_DEBUG_REQUESTS
         mscd_fatal(usbd, mscd);
     }
-}
-
-static inline void mscd_usb_read(USBD* usbd, MSCD* mscd, IO* io, int size)
-{
-    //TODO:
-    printd("msc rx\n\r");
 }
 
 static inline bool mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
@@ -213,10 +222,10 @@ static inline bool mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
-        if ((IO*)ipc->param2 == mscd->control)
-            mscd_usb_read_control(usbd, mscd, (int)ipc->param3);
-        else
-            mscd_usb_read(usbd, mscd, (IO*)ipc->param2, (int)ipc->param3);
+        mscd_usb_rx(usbd, mscd);
+        break;
+    case IPC_WRITE:
+        printd("todo\n\r");
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -234,6 +243,7 @@ bool mscd_class_request(USBD* usbd, void* param, IPC* ipc)
     else
         switch (HAL_ITEM(ipc->cmd))
         {
+        //TODO: interface request
         default:
             error(ERROR_NOT_SUPPORTED);
             need_post = true;

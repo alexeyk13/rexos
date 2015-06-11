@@ -5,12 +5,11 @@
 */
 
 #include "usbd.h"
-#include "../userspace/sys.h"
-#include "../userspace/usb.h"
-#include "../userspace/stdio.h"
-#include "../userspace/stdlib.h"
+#include "../../userspace/sys.h"
+#include "../../userspace/stdio.h"
+#include "../../userspace/stdlib.h"
 #include <string.h>
-#include "../userspace/array.h"
+#include "../../userspace/array.h"
 #if (USBD_CDC_CLASS)
 #include "cdcd.h"
 #endif //USBD_CDC_CLASS

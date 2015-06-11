@@ -7,9 +7,10 @@
 #ifndef USB_H
 #define USB_H
 
-#include "sys.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "process.h"
+#include "ipc.h"
 
 //--------------------------------------------------- USB general --------------------------------------------------------------
 
@@ -204,6 +205,8 @@ USB_DESCRIPTOR_TYPE* usb_interface_get_first_descriptor(const USB_CONFIGURATION_
 USB_DESCRIPTOR_TYPE* usb_interface_get_next_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_DESCRIPTOR_TYPE* start, unsigned int type);
 
 //--------------------------------------------------- USB device ---------------------------------------------------------------
+
+extern const REX __USBD;
 
 typedef enum {
     USBD_ALERT = IPC_USER,

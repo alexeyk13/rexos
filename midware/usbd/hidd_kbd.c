@@ -5,12 +5,12 @@
 */
 
 #include "hidd_kbd.h"
-#include "../userspace/hid.h"
-#include "../userspace/stdlib.h"
-#include "../userspace/usb.h"
+#include "../../userspace/hid.h"
+#include "../../userspace/stdlib.h"
+#include "../../userspace/usb.h"
 #include "sys_config.h"
-#include "../userspace/stdio.h"
-#include "../userspace/io.h"
+#include "../../userspace/stdio.h"
+#include "../../userspace/io.h"
 #include <string.h>
 
 //report descriptor

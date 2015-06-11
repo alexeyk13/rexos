@@ -8,6 +8,7 @@
 #include "io.h"
 #include "error.h"
 #include "object.h"
+#include "sys_config.h"
 #include <string.h>
 
 #define D_OFFSET(d, cfg)                            (((unsigned int)(d)) - ((unsigned int)(cfg)))
