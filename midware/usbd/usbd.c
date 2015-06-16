@@ -505,8 +505,8 @@ static inline void usbd_suspend(USBD* usbd)
             usbd_usb_ep_flush(usbd, USB_EP_IN | 0);
         }
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
+        usbd->suspended = true;
     }
-    usbd->suspended = true;
 }
 
 static inline void usbd_wakeup(USBD* usbd)
@@ -517,8 +517,8 @@ static inline void usbd_wakeup(USBD* usbd)
         printf("USB device wakeup\n\r");
 #endif
         usbd_class_resume(usbd);
+        usbd->suspended = false;
     }
-    usbd->suspended = false;
 }
 
 static inline int usbd_device_get_status(USBD* usbd)

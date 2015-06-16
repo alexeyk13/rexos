@@ -221,7 +221,7 @@ typedef enum {
 }USBD_IPCS;
 
 typedef enum {
-    USBD_ALERT_RESET,
+    USBD_ALERT_RESET = 0,
     USBD_ALERT_SUSPEND,
     USBD_ALERT_RESUME,
     USBD_ALERT_CONFIGURED
