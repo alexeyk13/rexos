@@ -8,6 +8,7 @@
 #include "stm32_core_private.h"
 #include "stm32_config.h"
 #include "../../userspace/io.h"
+#include "../../userspace/stm32_driver.h"
 #include "string.h"
 
 #define PEKEY1                          0x89ABCDEF
@@ -18,6 +19,7 @@
 
 static inline void stm32_eep_seek(CORE* core, unsigned int addr)
 {
+    addr += EEP_BASE;
     if (addr < EEP_BASE || addr >= EEP_BASE + EEP_SIZE)
     {
         error(ERROR_OUT_OF_RANGE);
