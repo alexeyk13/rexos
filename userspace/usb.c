@@ -56,8 +56,7 @@ USB_DESCRIPTOR_TYPE* usb_interface_get_next_descriptor(const USB_CONFIGURATION_D
 
 static bool usbd_register_descriptor_internal(IO* io, unsigned int index, unsigned int lang)
 {
-    io_push(io, sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT));
-    USBD_DESCRIPTOR_REGISTER_STRUCT* udrs = io_stack(io);
+    USBD_DESCRIPTOR_REGISTER_STRUCT* udrs = io_push(io, sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT));
 
     udrs->index = index;
     udrs->lang = lang;

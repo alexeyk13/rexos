@@ -63,14 +63,14 @@ void* io_stack(IO* io);
     \param size: data size
     \retval none
 */
-void io_push(IO* io, unsigned int size);
+void *io_push(IO* io, unsigned int size);
 
 /**
     \brief push data to IO stack
     \param io: IO pointer
     \param data: data to push
     \param size: data size
-    \retval none
+    \retval new stack pointer or NULL
 */
 void io_push_data(IO* io, void* data, unsigned int size);
 
@@ -78,9 +78,9 @@ void io_push_data(IO* io, void* data, unsigned int size);
     \brief pop IO stack
     \param io: IO pointer
     \param size: data size
-    \retval none
+    \retval restored stack pointer or NULL
 */
-void io_pop(IO* io, unsigned int size);
+void* io_pop(IO* io, unsigned int size);
 
 /**
     \brief get IO free space
