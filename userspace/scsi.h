@@ -99,9 +99,34 @@
 
 #define SCSI_CMD_READ_DEFECT_DATA12                                     0xb7
 
+//------------------------------- SCSI inquiry specific --------------------------------------------------
 #define SCSI_INQUIRY_EVPD                                               (1 << 0)
 
-#define SCSI_VERIFY_BYTCHK                                              (1 << 1)
+#define SCSI_PERIPHERAL_QUALIFIER_MASK                                  (7 << 5)
+#define SCSI_PERIPHERAL_QUALIFIER_DEVICE_CONNECTED                      (0 << 5)
+#define SCSI_PERIPHERAL_QUALIFIER_DEVICE_NOT_CONNECTED                  (1 << 5)
+#define SCSI_PERIPHERAL_QUALIFIER_DEVICE_NOT_SUPPORTED                  (3 << 5)
+
+#define SCSI_PERIPHERAL_DEVICE_TYPE_MASK                                (0x1f << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_DIRECT_ACCESS                       (0 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_SEQUENTAL_ACCESS                    (1 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_PRINTER                             (2 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_PROCESSOR                           (3 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_WRITE_ONCE                          (4 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_CD_DVD                              (5 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_OPTICAL_MEMORY                      (7 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_MEDIA_CHANGER                       (8 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_RAID                                (0x0c << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_ENCLOSURE                           (0x0d << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_RBC                                 (0x0e << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_OCRW                                (0x0f << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_OSD                                 (0x11 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_ADI                                 (0x12 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_CLAUSE9                             (0x13 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_ZBC                                 (0x14 << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_WELL_KNOWN_LU                       (0x1e << 0)
+#define SCSI_PERIPHERAL_DEVICE_TYPE_NO_DEVICE                           (0x1f << 0)
+
 
 //codes for EPVD
 #define INQUIRY_VITAL_PAGE_SUPPORTED_PAGES                              0x00
@@ -109,7 +134,9 @@
 #define INQUIRY_VITAL_PAGE_ASCII_OPERATIONS                             0x82
 #define INQUIRY_VITAL_PAGE_DEVICE_INFO                                  0x83
 
-//sense key for error recovery
+#define SCSI_VERIFY_BYTCHK                                              (1 << 1)
+
+//----------------------------- sense key for error recovery -----------------------------------------------
 #define SENSE_KEY_NO_SENSE                                              0x00
 #define SENSE_RECOVERED_ERROR                                           0x01
 #define SENSE_KEY_NOT_READY                                             0x02
@@ -125,7 +152,7 @@
 #define SENSE_KEY_VOLUME_OVERFLOW                                       0x0d
 #define SENSE_KEY_MISCOMPARE                                            0x0e
 
-//ASC + ASQ qualifier codes
+//----------------------------------- ASC + ASQ qualifier codes ---------------------------------------------
 #define ASCQ_NO_ADDITIONAL_SENSE_INFORMATION                            0x0000
 #define ASCQ_PERIPHERAL_DEVICE_WRITE_FAULT                              0x0300
 #define ASCQ_LOGICAL_UNIT_COMMUNICATION_FAILURE                         0x0800
@@ -159,6 +186,17 @@ typedef enum {
     SCSI_REQUEST_STORAGE_INFO,
     SCSI_REQUEST_MEDIA_INFO
 } SCSI_REQUEST;
+
+typedef struct {
+    const char* const vendor;
+    const char* const product;
+    const char* const revision;
+    uint16_t flags;
+    uint8_t scsi_device_type;
+    uint8_t align;
+}SCSI_STORAGE_DESCRIPTOR;
+
+#define SCSI_STORAGE_DESCRIPTOR_REMOVABLE                               (1 << 0)
 
 typedef struct {
     SCSI_REQUEST request;
