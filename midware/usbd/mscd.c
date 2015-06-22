@@ -337,14 +337,12 @@ static inline void mscd_storage_response(USBD* usbd, MSCD* mscd, int param3)
         usbd_usb_ep_read(usbd, mscd->ep_num, mscd->control, mscd->ep_size);
         return;
     }
-    if (param3 < 0)
-    {
-        mscd->resp = SCSIS_RESPONSE_PHASE_ERROR;
-        mscd_csw(usbd, mscd);
-    }
+    if (param3 >= 0)
+        mscd_scsi_request(usbd, mscd);
     else
     {
-        mscd->resp = scsis_storage_response(mscd->scsis, mscd->data);
+        mscd->resp = SCSIS_RESPONSE_PHASE_ERROR;
+        scsis_reset(mscd->scsis);
         mscd_csw(usbd, mscd);
     }
 }

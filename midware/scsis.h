@@ -22,9 +22,6 @@ typedef enum {
 void scsis_reset(SCSIS* scsis);
 SCSIS* scsis_create();
 SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, IO* io);
-SCSIS_RESPONSE scsis_storage_response(SCSIS* scsis, IO* io);
 void scsis_destroy(SCSIS* scsis);
-
-//TODO:
 
 #endif // SCSIS_H
