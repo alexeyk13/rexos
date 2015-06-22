@@ -31,9 +31,7 @@ SCSIS* scsis_create()
 
 SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, IO* io)
 {
-    SCSIS_RESPONSE res = scsis_request_storage(scsis, io);
-    if (res != SCSIS_RESPONSE_PASS)
-        return res;
+    SCSIS_RESPONSE res = SCSIS_RESPONSE_FAIL;
     switch (req[0])
     {
     case SCSI_CMD_INQUIRY:
