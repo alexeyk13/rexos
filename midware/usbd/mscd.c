@@ -223,7 +223,7 @@ static void mscd_request_processed(USBD* usbd, MSCD* mscd)
 static void mscd_scsi_request(USBD* usbd, MSCD* mscd)
 {
     CBW* cbw = io_data(mscd->control);
-    mscd->resp = scsis_request(mscd->scsis, cbw->CBWCB, cbw->bCBWCBLength, mscd->data);
+    mscd->resp = scsis_request(mscd->scsis, cbw->CBWCB, mscd->data);
     if (mscd->resp == SCSIS_RESPONSE_STORAGE_REQUEST)
     {
         mscd->state = MSCD_STATE_STORAGE;

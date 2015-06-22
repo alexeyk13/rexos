@@ -13,6 +13,7 @@
 
 void scsis_reset(SCSIS* scsis)
 {
+    scsis_error_reset(scsis);
     //TODO:
 }
 
@@ -23,31 +24,26 @@ SCSIS* scsis_create()
         return NULL;
     scsis->storage = NULL;
     scsis->media = NULL;
+    scsis_error_init(scsis);
     scsis_reset(scsis);
     return scsis;
 }
 
-SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, unsigned int size, IO* io)
+SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, IO* io)
 {
     SCSIS_RESPONSE resp = SCSIS_RESPONSE_FAIL;
-    //TODO: if less 6 fail error
     switch (req[0])
     {
     case SCSI_CMD_INQUIRY:
-        //TODO: if request less 6 return
         resp = scsis_pc_inquiry(scsis, req, io);
         break;
     default:
-        //TODO: request dump here, sense error
+        scsis_error(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_COMMAND_OPERATION_CODE);
+#if (SCSI_DEBUG_ERRORS)
+        printf("SCSI: unknown cmd opcode: %02xh\n\r", req[0]);
+#endif //SCSI_DEBUG_ERRORS
         break;
     }
-
-    //TODO: remove me
-    printf("scsis request\n\r");
-    int i;
-    for (i = 0; i < size; ++i)
-        printf(" %02x", req[i]);
-    printf(" (%d)\n\r", size);
     return resp;
 }
 
