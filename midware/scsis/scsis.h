@@ -8,7 +8,7 @@
 #define SCSIS_H
 
 #include <stdint.h>
-#include "../userspace/io.h"
+#include "../../userspace/io.h"
 
 typedef struct _SCSIS SCSIS;
 
@@ -22,6 +22,7 @@ typedef enum {
 void scsis_reset(SCSIS* scsis);
 SCSIS* scsis_create();
 SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, IO* io);
+void scsis_media_removed(SCSIS* scsis);
 void scsis_destroy(SCSIS* scsis);
 
 #endif // SCSIS_H

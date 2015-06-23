@@ -57,7 +57,8 @@ typedef struct {
 
 typedef enum {
     //requests from host
-    USB_MSC_STORAGE_REQUEST = IPC_USER
+    USB_MSC_STORAGE_REQUEST = IPC_USER,
+    USB_MSC_MEDIA_REMOVED
 } USB_MSC_IPC;
 
 #endif // MSC_H

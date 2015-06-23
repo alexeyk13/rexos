@@ -5,8 +5,8 @@
 */
 
 #include "scsis_private.h"
-#include "../userspace/stdio.h"
-#include "../userspace/stdlib.h"
+#include "../../userspace/stdio.h"
+#include "../../userspace/stdlib.h"
 #include <string.h>
 
 void scsis_error_init(SCSIS* scsis)
@@ -43,7 +43,7 @@ void scsis_error_get(SCSIS* scsis, SCSIS_ERROR error)
     }
 }
 
-SCSIS_RESPONSE scsis_request_storage(SCSIS* scsis, IO *io)
+SCSIS_RESPONSE scsis_get_storage_descriptor(SCSIS* scsis, IO *io)
 {
     SCSI_STACK* stack;
     SCSI_REQUEST req;
@@ -51,10 +51,11 @@ SCSIS_RESPONSE scsis_request_storage(SCSIS* scsis, IO *io)
         return SCSIS_RESPONSE_PASS;
     if (scsis->storage_request)
     {
+        scsis->storage_request = false;
         stack = io_stack(io);
         req = stack->request;
         io_pop(io, sizeof(SCSI_STACK));
-        if (req != SCSI_REQUEST_STORAGE_INFO || io->data_size < sizeof(void*))
+        if (req != SCSI_REQUEST_STORAGE_DESCRIPTOR || io->data_size < sizeof(void*))
             return SCSIS_RESPONSE_PHASE_ERROR;
         scsis->storage = malloc(io->data_size);
 
@@ -68,7 +69,43 @@ SCSIS_RESPONSE scsis_request_storage(SCSIS* scsis, IO *io)
     stack = io_push(io, sizeof(SCSI_STACK));
     if (stack == NULL)
         return SCSIS_RESPONSE_PHASE_ERROR;
-    stack->request = SCSI_REQUEST_STORAGE_INFO;
+    stack->request = SCSI_REQUEST_STORAGE_DESCRIPTOR;
+    scsis->storage_request = true;
+    return SCSIS_RESPONSE_STORAGE_REQUEST;
+}
+
+SCSIS_RESPONSE scsis_get_media_descriptor(SCSIS* scsis, IO* io)
+{
+    SCSI_STACK* stack;
+    SCSI_REQUEST req;
+    if (scsis->media)
+        return SCSIS_RESPONSE_PASS;
+    if (scsis->storage_request)
+    {
+        scsis->storage_request = false;
+        stack = io_stack(io);
+        req = stack->request;
+        io_pop(io, sizeof(SCSI_STACK));
+        if (req != SCSI_REQUEST_MEDIA_DESCRIPTOR)
+            return SCSIS_RESPONSE_PHASE_ERROR;
+        //no media present, not error
+        if (stack->size < 0)
+            return SCSIS_RESPONSE_PASS;
+        if (io->data_size < sizeof(void*))
+            return SCSIS_RESPONSE_PHASE_ERROR;
+
+        scsis->media = malloc(io->data_size);
+        if (scsis->media == NULL)
+            return SCSIS_RESPONSE_PHASE_ERROR;
+        memcpy(scsis->media, io_data(io), io->data_size);
+        return SCSIS_RESPONSE_PASS;
+    }
+
+    //make request
+    stack = io_push(io, sizeof(SCSI_STACK));
+    if (stack == NULL)
+        return SCSIS_RESPONSE_PHASE_ERROR;
+    stack->request = SCSI_REQUEST_MEDIA_DESCRIPTOR;
     scsis->storage_request = true;
     return SCSIS_RESPONSE_STORAGE_REQUEST;
 }

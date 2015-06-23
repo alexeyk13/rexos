@@ -12,7 +12,7 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/msc.h"
 #include "../../userspace/scsi.h"
-#include "../scsis.h"
+#include "../scsis/scsis.h"
 #include <stdint.h>
 #include "usb.h"
 #include "sys_config.h"
@@ -358,6 +358,10 @@ bool mscd_class_request(USBD* usbd, void* param, IPC* ipc)
         {
         case USB_MSC_STORAGE_REQUEST:
             mscd_storage_response(usbd, mscd, (int)ipc->param3);
+            break;
+        case USB_MSC_MEDIA_REMOVED:
+            scsis_media_removed(mscd->scsis);
+            need_post = true;
             break;
         default:
             error(ERROR_NOT_SUPPORTED);

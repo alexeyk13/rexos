@@ -7,9 +7,9 @@
 #include "scsis.h"
 #include "scsis_private.h"
 #include "scsis_pc.h"
-#include "../userspace/stdlib.h"
-#include "../userspace/stdio.h"
-#include "../userspace/scsi.h"
+#include "../../userspace/stdlib.h"
+#include "../../userspace/stdio.h"
+#include "../../userspace/scsi.h"
 
 void scsis_reset(SCSIS* scsis)
 {
@@ -34,6 +34,9 @@ SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, IO* io)
     SCSIS_RESPONSE res = SCSIS_RESPONSE_FAIL;
     switch (req[0])
     {
+    case SCSI_CMD_TEST_UNIT_READY:
+        res = scsis_pc_test_unit_ready(scsis, req, io);
+        break;
     case SCSI_CMD_INQUIRY:
         res = scsis_pc_inquiry(scsis, req, io);
         break;
@@ -45,6 +48,11 @@ SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, IO* io)
         break;
     }
     return res;
+}
+
+void scsis_media_removed(SCSIS* scsis)
+{
+    scsis->media = NULL;
 }
 
 void scsis_destroy(SCSIS* scsis)
