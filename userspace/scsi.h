@@ -48,6 +48,9 @@ typedef struct {
 } SCSI_STORAGE_DESCRIPTOR;
 
 typedef struct {
+    uint32_t num_sectors;
+    uint32_t num_sectors_hi;
+    uint32_t sector_size;
     char* serial;
 } SCSI_MEDIA_DESCRIPTOR;
 

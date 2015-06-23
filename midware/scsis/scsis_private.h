@@ -123,6 +123,9 @@
 
 #define SCSI_VERIFY_BYTCHK                                              (1 << 1)
 
+//----------------------------- SCSI read capacity specific ------------------------------------------------
+#define SCSI_READ_CAPACITY_PMI                                          (1 << 0)
+
 //----------------------------- sense key for error recovery -----------------------------------------------
 #define SENSE_KEY_NO_SENSE                                              0x00
 #define SENSE_RECOVERED_ERROR                                           0x01
@@ -183,5 +186,7 @@ void scsis_error(SCSIS* scsis, uint8_t key_sense, uint16_t ascq);
 void scsis_error_get(SCSIS* scsis, SCSIS_ERROR error);
 SCSIS_RESPONSE scsis_get_storage_descriptor(SCSIS* scsis, IO* io);
 SCSIS_RESPONSE scsis_get_media_descriptor(SCSIS* scsis, IO* io);
+//failure if no media inserted
+SCSIS_RESPONSE scsis_get_media(SCSIS* scsis, IO* io);
 
 #endif // SCSIS_PRIVATE_H

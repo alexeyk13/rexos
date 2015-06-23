@@ -109,3 +109,16 @@ SCSIS_RESPONSE scsis_get_media_descriptor(SCSIS* scsis, IO* io)
     scsis->storage_request = true;
     return SCSIS_RESPONSE_STORAGE_REQUEST;
 }
+
+SCSIS_RESPONSE scsis_get_media(SCSIS* scsis, IO* io)
+{
+    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
+    if (res != SCSIS_RESPONSE_PASS)
+        return res;
+    if (scsis->media == NULL)
+    {
+        scsis_error(scsis, SENSE_KEY_NOT_READY, ASCQ_MEDIUM_NOT_PRESENT);
+        return SCSIS_RESPONSE_FAIL;
+    }
+    return res;
+}

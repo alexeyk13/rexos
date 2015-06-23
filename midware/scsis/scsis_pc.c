@@ -77,5 +77,13 @@ SCSIS_RESPONSE scsis_pc_test_unit_ready(SCSIS* scsis, uint8_t* req, IO* io)
         scsis_error(scsis, SENSE_KEY_NOT_READY, ASCQ_MEDIUM_NOT_PRESENT);
         res = SCSIS_RESPONSE_FAIL;
     }
-    return res;
+    return SCSIS_RESPONSE_PASS;
+}
+
+SCSIS_RESPONSE scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req, IO* io)
+{
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI mode sense (6) page: %#X, subpage%#X\n\r", req[2] & 0x3f, req[3]);
+#endif //SCSI_DEBUG_REQUESTS
+    return SCSIS_RESPONSE_FAIL;
 }

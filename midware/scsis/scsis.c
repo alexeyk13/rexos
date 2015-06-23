@@ -7,6 +7,7 @@
 #include "scsis.h"
 #include "scsis_private.h"
 #include "scsis_pc.h"
+#include "scsis_bc.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/scsi.h"
@@ -14,7 +15,8 @@
 void scsis_reset(SCSIS* scsis)
 {
     scsis->storage_request = false;
-    //TODO: ?
+    scsis->storage = NULL;
+    scsis->media = NULL;
 }
 
 SCSIS* scsis_create()
@@ -22,8 +24,6 @@ SCSIS* scsis_create()
     SCSIS* scsis = malloc(sizeof(SCSIS));
     if (scsis == NULL)
         return NULL;
-    scsis->storage = NULL;
-    scsis->media = NULL;
     scsis_error_init(scsis);
     scsis_reset(scsis);
     return scsis;
@@ -34,11 +34,17 @@ SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, IO* io)
     SCSIS_RESPONSE res = SCSIS_RESPONSE_FAIL;
     switch (req[0])
     {
+    case SCSI_CMD_MODE_SENSE6:
+        res = scsis_pc_mode_sense6(scsis, req, io);
+        break;
     case SCSI_CMD_TEST_UNIT_READY:
         res = scsis_pc_test_unit_ready(scsis, req, io);
         break;
     case SCSI_CMD_INQUIRY:
         res = scsis_pc_inquiry(scsis, req, io);
+        break;
+    case SCSI_CMD_READ_CAPACITY10:
+        res = scsis_bc_read_capacity10(scsis, req, io);
         break;
     default:
 #if (SCSI_DEBUG_ERRORS)
