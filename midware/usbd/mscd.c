@@ -227,7 +227,7 @@ static void mscd_scsi_request(USBD* usbd, MSCD* mscd)
     if (mscd->resp == SCSIS_RESPONSE_STORAGE_REQUEST)
     {
         mscd->state = MSCD_STATE_STORAGE;
-        usbd_io_user(usbd, mscd->iface_num, cbw->bCBWLUN, HAL_CMD(HAL_USBD_IFACE, USB_MSC_STORAGE_REQUEST), mscd->control, 0);
+        usbd_io_user(usbd, mscd->iface_num, cbw->bCBWLUN, HAL_CMD(HAL_USBD_IFACE, USB_MSC_STORAGE_REQUEST), mscd->data, 0);
     }
     else
         mscd_request_processed(usbd, mscd);
