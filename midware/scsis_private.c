@@ -7,7 +7,6 @@
 #include "scsis_private.h"
 #include "../userspace/stdio.h"
 #include "../userspace/stdlib.h"
-#include "../userspace/scsi.h"
 #include <string.h>
 
 void scsis_error_init(SCSIS* scsis)
@@ -70,5 +69,6 @@ SCSIS_RESPONSE scsis_request_storage(SCSIS* scsis, IO *io)
     if (stack == NULL)
         return SCSIS_RESPONSE_PHASE_ERROR;
     stack->request = SCSI_REQUEST_STORAGE_INFO;
+    scsis->storage_request = true;
     return SCSIS_RESPONSE_STORAGE_REQUEST;
 }

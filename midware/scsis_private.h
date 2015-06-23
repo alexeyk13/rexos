@@ -11,6 +11,7 @@
 #include "sys_config.h"
 #include "../userspace/rb.h"
 #include "../userspace/io.h"
+#include "../userspace/scsi.h"
 #include "scsis.h"
 
 typedef struct {
@@ -20,7 +21,7 @@ typedef struct {
 } SCSIS_ERROR;
 
 typedef struct _SCSIS {
-    void* storage;
+    SCSI_STORAGE_DESCRIPTOR** storage;
     void* media;
     bool storage_request;
     SCSIS_ERROR errors[SCSI_SENSE_DEPTH];
