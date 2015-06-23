@@ -59,6 +59,7 @@ static void mscd_flush(USBD* usbd, MSCD* mscd)
     usbd_usb_ep_flush(usbd, mscd->ep_num);
     usbd_usb_ep_flush(usbd, USB_EP_IN | mscd->ep_num);
     scsis_reset(mscd->scsis);
+    io_reset(mscd->data);
     mscd->state = MSCD_STATE_CBW;
 }
 
@@ -343,6 +344,7 @@ static inline void mscd_storage_response(USBD* usbd, MSCD* mscd, int param3)
     {
         mscd->resp = SCSIS_RESPONSE_PHASE_ERROR;
         scsis_reset(mscd->scsis);
+        io_reset(mscd->data);
         mscd_csw(usbd, mscd);
     }
 }
