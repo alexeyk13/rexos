@@ -239,9 +239,9 @@ static inline void mscd_cbw(USBD* usbd, MSCD* mscd)
     CBW* cbw = io_data(mscd->control);
     if (mscd->control->data_size < sizeof(CBW) || cbw->dCBWSignature != MSC_CBW_SIGNATURE)
     {
-#if (USBD_MSC_DEBUG_REQUESTS)
+#if (USBD_MSC_DEBUG_ERRORS)
         printf("MSCD: Fatal - invalid CBW\n\r");
-#endif //USBD_CDC_DEBUG_REQUESTS
+#endif //USBD_CDC_DEBUG_ERRORS
         mscd_fatal(usbd, mscd);
     }
 #if (USBD_MSC_DEBUG_IO)
@@ -276,9 +276,9 @@ static inline void mscd_usb_rx(USBD* usbd, MSCD* mscd)
         mscd_scsi_request(usbd, mscd);
         break;
     default:
-#if (USBD_MSC_DEBUG_REQUESTS)
+#if (USBD_MSC_DEBUG_ERRORS)
         printf("MSCD: invalid stage on read - %d\n\r", mscd->state);
-#endif //USBD_CDC_DEBUG_REQUESTS
+#endif //USBD_CDC_DEBUG_ERRORS
         mscd_fatal(usbd, mscd);
     }
 }
@@ -304,9 +304,9 @@ static inline void mscd_usb_tx(USBD* usbd, MSCD* mscd)
         mscd_csw(usbd, mscd);
         break;
     default:
-#if (USBD_MSC_DEBUG_REQUESTS)
+#if (USBD_MSC_DEBUG_ERRORS)
         printf("MSCD: invalid stage on write - %d\n\r", mscd->state);
-#endif //USBD_CDC_DEBUG_REQUESTS
+#endif //USBD_CDC_DEBUG_ERRORS
         mscd_fatal(usbd, mscd);
     }
 }

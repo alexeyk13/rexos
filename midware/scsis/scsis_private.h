@@ -126,6 +126,38 @@
 //----------------------------- SCSI read capacity specific ------------------------------------------------
 #define SCSI_READ_CAPACITY_PMI                                          (1 << 0)
 
+//------------------------------- SCSI mode sense specific -------------------------------------------------
+#define SCSI_MODE_SENSE_DBD                                             (1 << 3)
+
+//SPC
+#define MODE_SENSE_PAGE_DISCONNECT_RECONNECT                            0x02
+#define MODE_SENSE_PAGE_CONTROL                                         0x0a
+#define MODE_SENSE_PAGE_EXTENDED                                        0x15
+#define MODE_SENSE_PAGE_EXTENDED_DEVICE_TYPE_SPECIFIC                   0x16
+#define MODE_SENSE_PAGE_PROTOCOL_SPECIFIC_LOGICAL_UNIT                  0x18
+#define MODE_SENSE_PAGE_PROTOCOL_SPECIFIC_PORT                          0x18
+#define MODE_SENSE_PAGE_POWER                                           0x1a
+#define MODE_SENSE_PAGE_ALL_PAGES                                       0x3f
+
+#define MODE_SENSE_SUBPAGE_ALL                                          0xff
+#define MODE_SENSE_SUBPAGE_NONE                                         0x00
+
+//SBC
+#define MODE_SENSE_PAGE_READ_WRITE_ERROR_RECOVERY                       0x01
+#define MODE_SENSE_PAGE_VERIFY_ERROR_RECOVERY                           0x07
+#define MODE_SENSE_PAGE_CACHING                                         0x08
+#define MODE_SENSE_PAGE_XOR_CONTROL                                     0x10
+#define MODE_SENSE_PAGE_ENCLOSURE_SERVICE_MANAGEMENT                    0x14
+#define MODE_SENSE_PAGE_SERVICE                                         0x1c
+
+#define MODE_SENSE_SUBPAGE_CONTROL                                      0x00
+#define MODE_SENSE_SUBPAGE_CONTROL_EXTENSION                            0x01
+#define MODE_SENSE_SUBPAGE_APPLICATION_TAG                              0x02
+
+#define MODE_SENSE_SUBPAGE_INFORMATION_EXCEPTION_CONTROL                0x00
+#define MODE_SENSE_SUBPAGE_BACKGROUND_CONTROL                           0x01
+#define MODE_SENSE_SUBPAGE_LOGICAL_BLOCK_PROVISIONING                   0x02
+
 //----------------------------- sense key for error recovery -----------------------------------------------
 #define SENSE_KEY_NO_SENSE                                              0x00
 #define SENSE_RECOVERED_ERROR                                           0x01

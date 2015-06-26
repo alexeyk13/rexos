@@ -5,6 +5,7 @@
 */
 
 #include "scsis_pc.h"
+#include "scsis_bc.h"
 #include "scsis_private.h"
 #include "sys_config.h"
 #include "../../userspace/stdio.h"
@@ -80,10 +81,45 @@ SCSIS_RESPONSE scsis_pc_test_unit_ready(SCSIS* scsis, uint8_t* req, IO* io)
     return SCSIS_RESPONSE_PASS;
 }
 
+/*
+    mode sense header
+
+    0 len - 1
+    1 medium type
+    2 device specific
+    3 device descriptor size
+ */
+
 SCSIS_RESPONSE scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req, IO* io)
 {
+    unsigned int page, subpage, len;
+    bool dbd;
+    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
+    if (res != SCSIS_RESPONSE_PASS)
+        return res;
+    page = req[2] & 0x3f;
+    subpage = req[3];
+    dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
+    len = req[4];
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI mode sense (6) page: %#X, subpage%#X\n\r", req[2] & 0x3f, req[3]);
+    printf("SCSI mode sense (6) page: %#X, subpage%#X, dbd: %d\n\r", page, subpage, dbd);
 #endif //SCSI_DEBUG_REQUESTS
-    return SCSIS_RESPONSE_FAIL;
+    io->data_size = 4;
+    switch ((*scsis->storage)->scsi_device_type)
+    {
+    case SCSI_PERIPHERAL_DEVICE_TYPE_DIRECT_ACCESS:
+        scsis_bc_mode_sense_fill_header(scsis, io, dbd);
+        res = scsis_bc_mode_sense_add_page(scsis, io, page, subpage);
+        break;
+    default:
+        scsis_error(scsis, SENSE_KEY_HARDWARE_ERROR, ASCQ_INTERNAL_TARGET_FAILURE);
+        res = SCSIS_RESPONSE_FAIL;
+    }
+
+    if (io->data_size > 256)
+        io->data_size = 256;
+    if (io->data_size > len)
+        io->data_size = len;
+    *(uint8_t*)io_data(io) = io->data_size - 1;
+    return res;
 }

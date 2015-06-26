@@ -62,6 +62,8 @@ SCSIS_RESPONSE scsis_get_storage_descriptor(SCSIS* scsis, IO *io)
         if (scsis->storage == NULL)
             return SCSIS_RESPONSE_PHASE_ERROR;
         memcpy(scsis->storage, io_data(io), io->data_size);
+        if (*(scsis->storage) == NULL)
+            *(scsis->storage) = ((void*)(scsis->storage)) + sizeof(void*);
         return SCSIS_RESPONSE_PASS;
     }
 
@@ -98,6 +100,8 @@ SCSIS_RESPONSE scsis_get_media_descriptor(SCSIS* scsis, IO* io)
         if (scsis->media == NULL)
             return SCSIS_RESPONSE_PHASE_ERROR;
         memcpy(scsis->media, io_data(io), io->data_size);
+        if (*(scsis->media) == NULL)
+            *(scsis->media) = ((void*)(scsis->media)) + sizeof(void*);
         return SCSIS_RESPONSE_PASS;
     }
 
