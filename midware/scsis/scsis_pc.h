@@ -17,5 +17,7 @@ SCSIS_RESPONSE scsis_pc_inquiry(SCSIS* scsis, uint8_t* req, IO* io);
 SCSIS_RESPONSE scsis_pc_test_unit_ready(SCSIS* scsis, uint8_t* req, IO* io);
 SCSIS_RESPONSE scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req, IO* io);
 SCSIS_RESPONSE scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req, IO* io);
+SCSIS_RESPONSE scsis_pc_mode_select6(SCSIS* scsis, uint8_t* req, IO* io);
+SCSIS_RESPONSE scsis_pc_mode_select10(SCSIS* scsis, uint8_t* req, IO* io);
 
 #endif // SCSIS_PC_H

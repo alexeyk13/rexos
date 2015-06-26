@@ -169,3 +169,29 @@ SCSIS_RESPONSE scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req, IO* io)
     return res;
 }
 #endif //SCSI_LONG_LBA
+
+SCSIS_RESPONSE scsis_pc_mode_select6(SCSIS* scsis, uint8_t* req, IO* io)
+{
+    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
+    if (res != SCSIS_RESPONSE_PASS)
+        return res;
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI mode select (6)\n\r");
+#endif //SCSI_DEBUG_REQUESTS
+    //generally for compatibility only
+    return res;
+}
+
+#if (SCSI_LONG_LBA)
+SCSIS_RESPONSE scsis_pc_mode_select10(SCSIS* scsis, uint8_t* req, IO* io)
+{
+    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
+    if (res != SCSIS_RESPONSE_PASS)
+        return res;
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI mode select (10)\n\r");
+#endif //SCSI_DEBUG_REQUESTS
+    //generally for compatibility only
+    return res;
+}
+#endif //SCSI_LONG_LBA

@@ -42,6 +42,14 @@ SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, IO* io)
         res = scsis_pc_mode_sense10(scsis, req, io);
         break;
 #endif //SCSI_LONG_LBA
+    case SCSI_CMD_MODE_SELECT6:
+        res = scsis_pc_mode_select6(scsis, req, io);
+        break;
+#if (SCSI_LONG_LBA)
+    case SCSI_CMD_MODE_SELECT10:
+        res = scsis_pc_mode_select10(scsis, req, io);
+        break;
+#endif //SCSI_LONG_LBA
     case SCSI_CMD_TEST_UNIT_READY:
         res = scsis_pc_test_unit_ready(scsis, req, io);
         break;
