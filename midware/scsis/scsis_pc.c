@@ -92,24 +92,23 @@ SCSIS_RESPONSE scsis_pc_test_unit_ready(SCSIS* scsis, uint8_t* req, IO* io)
 
 SCSIS_RESPONSE scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req, IO* io)
 {
-    unsigned int page, subpage, len;
+    unsigned int psp, len;
     bool dbd;
     SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
     if (res != SCSIS_RESPONSE_PASS)
         return res;
-    page = req[2] & 0x3f;
-    subpage = req[3];
+    psp = ((req[2] & 0x3f) << 8) | req[3];
     dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
     len = req[4];
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI mode sense (6) page: %#X, subpage%#X, dbd: %d\n\r", page, subpage, dbd);
+    printf("SCSI mode sense (6) page, subpage: %#04X, dbd: %d\n\r", psp, dbd);
 #endif //SCSI_DEBUG_REQUESTS
     io->data_size = 4;
     switch ((*scsis->storage)->scsi_device_type)
     {
     case SCSI_PERIPHERAL_DEVICE_TYPE_DIRECT_ACCESS:
         scsis_bc_mode_sense_fill_header(scsis, io, dbd);
-        res = scsis_bc_mode_sense_add_page(scsis, io, page, subpage);
+        res = scsis_bc_mode_sense_add_page(scsis, io, psp);
         break;
     default:
         scsis_error(scsis, SENSE_KEY_HARDWARE_ERROR, ASCQ_INTERNAL_TARGET_FAILURE);
@@ -123,3 +122,50 @@ SCSIS_RESPONSE scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req, IO* io)
     *(uint8_t*)io_data(io) = io->data_size - 1;
     return res;
 }
+
+#if (SCSI_LONG_LBA)
+/*
+    mode sense 10 header
+
+    0 hi len - 1
+    1 lo len - 1
+    2 medium type
+    3 device specific
+    4 reserved
+    5 reserved
+    6 device descriptor size hi
+    7 device descriptor size lo
+ */
+
+SCSIS_RESPONSE scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req, IO* io)
+{
+    unsigned int psp, len;
+    bool dbd, llbaa;
+    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
+    if (res != SCSIS_RESPONSE_PASS)
+        return res;
+    psp = ((req[2] & 0x3f) << 8) | req[3];
+    dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
+    llbaa = (req[1] & SCSI_MODE_SENSE_LLBAA) ? true : false;
+    len = be2short(req + 7);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI mode sense (10) page, subpage: %#04X, dbd: %d, llbaa: %d\n\r", psp, dbd, llbaa);
+#endif //SCSI_DEBUG_REQUESTS
+    io->data_size = 4;
+    switch ((*scsis->storage)->scsi_device_type)
+    {
+    case SCSI_PERIPHERAL_DEVICE_TYPE_DIRECT_ACCESS:
+        scsis_bc_mode_sense_fill_header_long(scsis, io, dbd, llbaa);
+        res = scsis_bc_mode_sense_add_page(scsis, io, psp);
+        break;
+    default:
+        scsis_error(scsis, SENSE_KEY_HARDWARE_ERROR, ASCQ_INTERNAL_TARGET_FAILURE);
+        res = SCSIS_RESPONSE_FAIL;
+    }
+
+    if (io->data_size > len)
+        io->data_size = len;
+    short2be(io_data(io), io->data_size - 1);
+    return res;
+}
+#endif //SCSI_LONG_LBA

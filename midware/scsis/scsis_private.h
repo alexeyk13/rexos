@@ -79,8 +79,8 @@
 #define SCSI_CMD_PREFETCH16                                             0x90
 #define SCSI_CMD_SYNCHRONIZE_CACHE16                                    0x91
 #define SCSI_CMD_WRITE_SAME16                                           0x93
-#define SCSI_CMD_READ_CAPACITY16                                        0x9e
-#define SCSI_CMD_READ_LONG16                                            0x9e
+#define SCSI_CMD_READ_CAPACITY16                                        0x109e
+#define SCSI_CMD_READ_LONG16                                            0x119e
 #define SCSI_CMD_WRITE_LONG16                                           0x9f
 
 #define SCSI_CMD_REPORT_LUNS                                            0xa0
@@ -128,35 +128,31 @@
 
 //------------------------------- SCSI mode sense specific -------------------------------------------------
 #define SCSI_MODE_SENSE_DBD                                             (1 << 3)
+#define SCSI_MODE_SENSE_LLBAA                                           (1 << 4)
 
 //SPC
-#define MODE_SENSE_PAGE_DISCONNECT_RECONNECT                            0x02
-#define MODE_SENSE_PAGE_CONTROL                                         0x0a
-#define MODE_SENSE_PAGE_EXTENDED                                        0x15
-#define MODE_SENSE_PAGE_EXTENDED_DEVICE_TYPE_SPECIFIC                   0x16
-#define MODE_SENSE_PAGE_PROTOCOL_SPECIFIC_LOGICAL_UNIT                  0x18
-#define MODE_SENSE_PAGE_PROTOCOL_SPECIFIC_PORT                          0x18
-#define MODE_SENSE_PAGE_POWER                                           0x1a
-#define MODE_SENSE_PAGE_ALL_PAGES                                       0x3f
+#define MODE_SENSE_PSP_CONTROL_ALL                                      0x0aff
+#define MODE_SENSE_PSP_POWER_CONDITION                                  0x1a00
+#define MODE_SENSE_PSP_POWER_CONSUMPTION                                0x1a01
+#define MODE_SENSE_PSP_POWER_ALL                                        0x1aff
 
-#define MODE_SENSE_SUBPAGE_ALL                                          0xff
-#define MODE_SENSE_SUBPAGE_NONE                                         0x00
+#define MODE_SENSE_PSP_ALL_PAGES                                        0x3f00
+#define MODE_SENSE_PSP_ALL_PAGES_SUBPAGES                               0x3fff
 
 //SBC
-#define MODE_SENSE_PAGE_READ_WRITE_ERROR_RECOVERY                       0x01
-#define MODE_SENSE_PAGE_VERIFY_ERROR_RECOVERY                           0x07
-#define MODE_SENSE_PAGE_CACHING                                         0x08
-#define MODE_SENSE_PAGE_XOR_CONTROL                                     0x10
-#define MODE_SENSE_PAGE_ENCLOSURE_SERVICE_MANAGEMENT                    0x14
-#define MODE_SENSE_PAGE_SERVICE                                         0x1c
-
-#define MODE_SENSE_SUBPAGE_CONTROL                                      0x00
-#define MODE_SENSE_SUBPAGE_CONTROL_EXTENSION                            0x01
-#define MODE_SENSE_SUBPAGE_APPLICATION_TAG                              0x02
-
-#define MODE_SENSE_SUBPAGE_INFORMATION_EXCEPTION_CONTROL                0x00
-#define MODE_SENSE_SUBPAGE_BACKGROUND_CONTROL                           0x01
-#define MODE_SENSE_SUBPAGE_LOGICAL_BLOCK_PROVISIONING                   0x02
+#define MODE_SENSE_PSP_READ_WRITE_ERROR_RECOVERY                        0x0100
+#define MODE_SENSE_PSP_DISCONNECT_RECONNECT                             0x0200
+#define MODE_SENSE_PSP_VERIFY_ERROR_RECOVERY                            0x0700
+#define MODE_SENSE_PSP_CACHING                                          0x0800
+#define MODE_SENSE_PSP_CONTROL                                          0x0a00
+#define MODE_SENSE_PSP_CONTROL_EX                                       0x0a01
+#define MODE_SENSE_PSP_APPLICATION_TAG                                  0x0a02
+#define MODE_SENSE_PSP_XOR_CONTROL                                      0x1000
+#define MODE_SENSE_PSP_ENCLOSURE_SERVICE_MANAGEMENT                     0x1400
+#define MODE_SENSE_PSP_INFORMATION_EXCEPTION_CONTROL                    0x1c00
+#define MODE_SENSE_PSP_BACKGROUND_CONTROL                               0x1c01
+#define MODE_SENSE_PSP_LOGICAL_BLOCK_PROVISIONING                       0x1c02
+#define MODE_SENSE_PSP_SERVICE_ALL                                      0x1cff
 
 //----------------------------- sense key for error recovery -----------------------------------------------
 #define SENSE_KEY_NO_SENSE                                              0x00

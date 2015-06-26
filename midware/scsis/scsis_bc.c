@@ -38,7 +38,7 @@ SCSIS_RESPONSE scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req, IO* io)
     return SCSIS_RESPONSE_PASS;
 }
 
-static inline unsigned int scsis_bc_append_block_descriptors(SCSIS* scsis, IO* io)
+static unsigned short scsis_bc_append_block_descriptors(SCSIS* scsis, IO* io)
 {
     //append to end
     uint8_t* buf = io_data(io) + io->data_size;
@@ -49,6 +49,20 @@ static inline unsigned int scsis_bc_append_block_descriptors(SCSIS* scsis, IO* i
     io->data_size += 8;
     return 8;
 }
+
+#if (SCSI_LONG_LBA)
+static inline unsigned short scsis_bc_append_block_descriptors_long_lba(SCSIS* scsis, IO* io)
+{
+    //append to end
+    uint8_t* buf = io_data(io) + io->data_size;
+    int2be(buf, (*scsis->media)->num_sectors_hi);
+    int2be(buf + 4, (*scsis->media)->num_sectors);
+    int2be(buf + 8, 0);
+    int2be(buf + 12, (*scsis->media)->sector_size);
+    io->data_size += 16;
+    return 16;
+}
+#endif //SCSI_LONG_LBA
 
 void scsis_bc_mode_sense_fill_header(SCSIS* scsis, IO *io, bool dbd)
 {
@@ -63,36 +77,55 @@ void scsis_bc_mode_sense_fill_header(SCSIS* scsis, IO *io, bool dbd)
         header[3] = scsis_bc_append_block_descriptors(scsis, io);
 }
 
+#if (SCSI_LONG_LBA)
+void scsis_bc_mode_sense_fill_header_long(SCSIS* scsis, IO* io, bool dbd, bool long_lba)
+{
+    unsigned short len = 0;
+    uint8_t* header = io_data(io);
+    //medium type according to SBC
+    header[2] = 0;
+    //no WP, no caching DPOFUA support
+    header[3] = 0;
+
+    header[4] = 0;
+    header[5] = 0;
+    if (!dbd)
+    {
+        if (long_lba && (*scsis->media)->num_sectors_hi))
+        {
+            len = scsis_bc_append_block_descriptors_long_lba(scsis, io);
+            //LONGLBA
+            header[4] |= (1 << 0);
+        }
+        else
+            len = scsis_bc_append_block_descriptors(scsis, io);
+    }
+    short2be(header + 6, len);
+}
+#endif //SCSI_LONG_LBA
+
 static void scsis_bc_mode_sense_add_caching_page(SCSIS* scsis, IO* io)
 {
     uint8_t* data = io_data(io) + io->data_size;
     memset(data, 0, 20);
-    data[0] = MODE_SENSE_PAGE_CACHING;
+    data[0] = MODE_SENSE_PSP_CACHING >> 8;
     data[1] = 20 - 2;
     //RCD
     data[2] = (1 << 0);
     io->data_size += 20;
 }
 
-SCSIS_RESPONSE scsis_bc_mode_sense_add_page(SCSIS* scsis, IO* io, unsigned int page, unsigned int subpage)
+SCSIS_RESPONSE scsis_bc_mode_sense_add_page(SCSIS* scsis, IO* io, unsigned int psp)
 {
     SCSIS_RESPONSE res = SCSIS_RESPONSE_FAIL;
 
-    switch (page)
+    switch (psp)
     {
-    case MODE_SENSE_PAGE_ALL_PAGES:
-        if (subpage == MODE_SENSE_SUBPAGE_ALL || subpage == MODE_SENSE_SUBPAGE_NONE)
-        {
-            scsis_bc_mode_sense_add_caching_page(scsis, io);
-            res = SCSIS_RESPONSE_PASS;
-        }
-        break;
-    case MODE_SENSE_PAGE_CACHING:
-        if (subpage == MODE_SENSE_SUBPAGE_NONE)
-        {
-            scsis_bc_mode_sense_add_caching_page(scsis, io);
-            res = SCSIS_RESPONSE_PASS;
-        }
+    case MODE_SENSE_PSP_ALL_PAGES:
+    case MODE_SENSE_PSP_ALL_PAGES_SUBPAGES:
+    case MODE_SENSE_PSP_CACHING:
+        scsis_bc_mode_sense_add_caching_page(scsis, io);
+        res = SCSIS_RESPONSE_PASS;
         break;
     default:
         break;

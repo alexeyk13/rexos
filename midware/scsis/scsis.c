@@ -32,11 +32,16 @@ SCSIS* scsis_create()
 SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, IO* io)
 {
     SCSIS_RESPONSE res = SCSIS_RESPONSE_FAIL;
-    switch (req[0])
+    switch (req[0] | ((req[1] & 0x1f) << 8))
     {
     case SCSI_CMD_MODE_SENSE6:
         res = scsis_pc_mode_sense6(scsis, req, io);
         break;
+#if (SCSI_LONG_LBA)
+    case SCSI_CMD_MODE_SENSE10:
+        res = scsis_pc_mode_sense10(scsis, req, io);
+        break;
+#endif //SCSI_LONG_LBA
     case SCSI_CMD_TEST_UNIT_READY:
         res = scsis_pc_test_unit_ready(scsis, req, io);
         break;
