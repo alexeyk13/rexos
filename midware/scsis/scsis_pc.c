@@ -195,3 +195,26 @@ SCSIS_RESPONSE scsis_pc_mode_select10(SCSIS* scsis, uint8_t* req, IO* io)
     return res;
 }
 #endif //SCSI_LONG_LBA
+
+SCSIS_RESPONSE scsis_pc_request_sense(SCSIS* scsis, uint8_t* req, IO* io)
+{
+    SCSIS_ERROR err;
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI request sense\n\r");
+#endif //SCSI_DEBUG_REQUESTS
+    if (req[1] & SCSI_REQUEST_SENSE_DESC)
+    {
+        scsis_error(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
+        return SCSIS_RESPONSE_FAIL;
+    }
+    io->data_size = 18;
+    memset(io_data(io), 0, io->data_size);
+    uint8_t* page = io_data(io);
+    scsis_error_get(scsis, &err);
+    page[0] = SCSI_SENSE_CURRENT_FIXED;
+    page[2] = err.key_sense & 0xf;
+    page[7] = io->data_size - 8;
+    page[12] = (err.ascq >> 8) & 0xff;
+    page[13] = (err.ascq >> 0) & 0xff;
+    return SCSIS_RESPONSE_PASS;
+}

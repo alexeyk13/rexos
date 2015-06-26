@@ -154,6 +154,14 @@
 #define MODE_SENSE_PSP_LOGICAL_BLOCK_PROVISIONING                       0x1c02
 #define MODE_SENSE_PSP_SERVICE_ALL                                      0x1cff
 
+//----------------------------- SCSI request sense specific ------------------------------------------------
+#define SCSI_SENSE_CURRENT_FIXED                                        0x70
+#define SCSI_SENSE_DEFERRED_FIXED                                       0x71
+#define SCSI_SENSE_CURRENT_DESCRIPTOR                                   0x72
+#define SCSI_SENSE_DEFERRED_DESCRIPTOR                                  0x73
+
+#define SCSI_REQUEST_SENSE_DESC                                         (1 << 0)
+
 //----------------------------- sense key for error recovery -----------------------------------------------
 #define SENSE_KEY_NO_SENSE                                              0x00
 #define SENSE_RECOVERED_ERROR                                           0x01
@@ -211,7 +219,7 @@ typedef struct _SCSIS {
 
 void scsis_error_init(SCSIS* scsis);
 void scsis_error(SCSIS* scsis, uint8_t key_sense, uint16_t ascq);
-void scsis_error_get(SCSIS* scsis, SCSIS_ERROR error);
+void scsis_error_get(SCSIS* scsis, SCSIS_ERROR* err);
 SCSIS_RESPONSE scsis_get_storage_descriptor(SCSIS* scsis, IO* io);
 SCSIS_RESPONSE scsis_get_media_descriptor(SCSIS* scsis, IO* io);
 //failure if no media inserted

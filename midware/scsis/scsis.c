@@ -56,6 +56,9 @@ SCSIS_RESPONSE scsis_request(SCSIS* scsis, uint8_t* req, IO* io)
     case SCSI_CMD_INQUIRY:
         res = scsis_pc_inquiry(scsis, req, io);
         break;
+    case SCSI_CMD_REQUEST_SENSE:
+        res = scsis_pc_request_sense(scsis, req, io);
+        break;
     case SCSI_CMD_READ_CAPACITY10:
         res = scsis_bc_read_capacity10(scsis, req, io);
         break;

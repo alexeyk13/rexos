@@ -27,19 +27,19 @@ void scsis_error(SCSIS* scsis, uint8_t key_sense, uint16_t ascq)
 #endif //SCSI_DEBUG_ERRORS
 }
 
-void scsis_error_get(SCSIS* scsis, SCSIS_ERROR error)
+void scsis_error_get(SCSIS* scsis, SCSIS_ERROR *err)
 {
     unsigned int idx;
     if (rb_is_empty(&scsis->rb_error))
     {
-        error.key_sense = SENSE_KEY_NO_SENSE;
-        error.ascq = ASCQ_NO_ADDITIONAL_SENSE_INFORMATION;
+        err->key_sense = SENSE_KEY_NO_SENSE;
+        err->ascq = ASCQ_NO_ADDITIONAL_SENSE_INFORMATION;
     }
     else
     {
         idx = rb_get(&scsis->rb_error);
-        error.key_sense = scsis->errors[idx].key_sense;
-        error.ascq = scsis->errors[idx].ascq;
+        err->key_sense = scsis->errors[idx].key_sense;
+        err->ascq = scsis->errors[idx].ascq;
     }
 }
 
