@@ -57,7 +57,6 @@ typedef struct {
 #define SCSI_STORAGE_DESCRIPTOR_REMOVABLE                               (1 << 0)
 
 typedef struct {
-    SCSI_REQUEST request;
     unsigned int addr, addr_hi;
     //or error code on failure
     int size;

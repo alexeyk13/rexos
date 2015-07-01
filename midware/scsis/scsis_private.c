@@ -7,6 +7,7 @@
 #include "scsis_private.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/stdlib.h"
+#include "sys_config.h"
 #include <string.h>
 
 void scsis_error_init(SCSIS* scsis)
@@ -43,86 +44,131 @@ void scsis_error_get(SCSIS* scsis, SCSIS_ERROR *err)
     }
 }
 
-SCSIS_RESPONSE scsis_get_storage_descriptor(SCSIS* scsis, IO *io)
+void scsis_host_request(SCSIS* scsis, SCSIS_REQUEST request)
 {
-    SCSI_STACK* stack;
-    SCSI_REQUEST req;
-    if (scsis->storage)
-        return SCSIS_RESPONSE_PASS;
-    if (scsis->storage_request)
-    {
-        scsis->storage_request = false;
-        stack = io_stack(io);
-        req = stack->request;
-        io_pop(io, sizeof(SCSI_STACK));
-        if (req != SCSI_REQUEST_STORAGE_DESCRIPTOR || io->data_size < sizeof(void*))
-            return SCSIS_RESPONSE_PHASE_ERROR;
-        scsis->storage = malloc(io->data_size);
+    scsis->cb_host(scsis->param, scsis->io, request);
+}
 
+void scsis_storage_request(SCSIS* scsis, SCSIS_REQUEST request)
+{
+    scsis->cb_storage(scsis->param, scsis->io, request);
+}
+
+void scsis_fatal(SCSIS* scsis)
+{
+    scsis_reset(scsis);
+    scsis_host_request(scsis, SCSIS_REQUEST_INTERNAL_ERROR);
+}
+
+void scsis_fail(SCSIS* scsis, uint8_t key_sense, uint16_t ascq)
+{
+    scsis_error(scsis, key_sense, ascq);
+    scsis->state = SCSIS_STATE_IDLE;
+    scsis_host_request(scsis, SCSIS_REQUEST_FAIL);
+}
+
+void scsis_pass(SCSIS* scsis)
+{
+    scsis->state = SCSIS_STATE_IDLE;
+    scsis_host_request(scsis, SCSIS_REQUEST_PASS);
+}
+
+bool scsis_get_storage_descriptor(SCSIS* scsis)
+{
+    if (scsis->storage)
+        return true;
+
+    switch (scsis->state)
+    {
+    case SCSIS_STATE_STORAGE_DESCRIPTOR_REQUEST:
+        if (scsis->io->data_size < sizeof(void*))
+        {
+#if (SCSI_DEBUG_ERRORS)
+            printf("SCSI: invalid storage descriptor response\n\r");
+#endif //SCSI_DEBUG_ERRORS
+            scsis_fatal(scsis);
+            return false;
+        }
+        scsis->storage = malloc(scsis->io->data_size);
         if (scsis->storage == NULL)
-            return SCSIS_RESPONSE_PHASE_ERROR;
-        memcpy(scsis->storage, io_data(io), io->data_size);
+        {
+#if (SCSI_DEBUG_ERRORS)
+            printf("SCSI: out of memory\n\r");
+#endif //SCSI_DEBUG_ERRORS
+            scsis_fatal(scsis);
+            return false;
+        }
+        memcpy(scsis->storage, io_data(scsis->io), scsis->io->data_size);
         if (*(scsis->storage) == NULL)
             *(scsis->storage) = ((void*)(scsis->storage)) + sizeof(void*);
-        return SCSIS_RESPONSE_PASS;
+        scsis->state = SCSIS_STATE_IDLE;
+        break;
+    case SCSIS_STATE_IDLE:
+        scsis->state = SCSIS_STATE_STORAGE_DESCRIPTOR_REQUEST;
+        scsis_storage_request(scsis, SCSIS_REQUEST_GET_STORAGE_DESCRIPTOR);
+        return false;
+    default:
+#if (SCSI_DEBUG_ERRORS)
+        printf("SCSI: invalid state on descriptor request: %d\n\r", scsis->state);
+#endif //SCSI_DEBUG_ERRORS
+        scsis_fatal(scsis);
+        return false;
     }
-
-    //make request
-    stack = io_push(io, sizeof(SCSI_STACK));
-    if (stack == NULL)
-        return SCSIS_RESPONSE_PHASE_ERROR;
-    stack->request = SCSI_REQUEST_STORAGE_DESCRIPTOR;
-    scsis->storage_request = true;
-    return SCSIS_RESPONSE_STORAGE_REQUEST;
+    return true;
 }
 
-SCSIS_RESPONSE scsis_get_media_descriptor(SCSIS* scsis, IO* io)
+bool scsis_get_media_descriptor(SCSIS* scsis)
 {
-    SCSI_STACK* stack;
-    SCSI_REQUEST req;
     if (scsis->media)
-        return SCSIS_RESPONSE_PASS;
-    if (scsis->storage_request)
-    {
-        scsis->storage_request = false;
-        stack = io_stack(io);
-        req = stack->request;
-        io_pop(io, sizeof(SCSI_STACK));
-        if (req != SCSI_REQUEST_MEDIA_DESCRIPTOR)
-            return SCSIS_RESPONSE_PHASE_ERROR;
-        //no media present, not error
-        if (stack->size < 0)
-            return SCSIS_RESPONSE_PASS;
-        if (io->data_size < sizeof(void*))
-            return SCSIS_RESPONSE_PHASE_ERROR;
+        return true;
 
-        scsis->media = malloc(io->data_size);
+    switch (scsis->state)
+    {
+    case SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST:
+        if (scsis->io->data_size < sizeof(void*))
+        {
+#if (SCSI_DEBUG_ERRORS)
+            printf("SCSI: invalid media descriptor response\n\r");
+#endif //SCSI_DEBUG_ERRORS
+            scsis_fatal(scsis);
+            return false;
+        }
+        scsis->media = malloc(scsis->io->data_size);
         if (scsis->media == NULL)
-            return SCSIS_RESPONSE_PHASE_ERROR;
-        memcpy(scsis->media, io_data(io), io->data_size);
+        {
+#if (SCSI_DEBUG_ERRORS)
+            printf("SCSI: out of memory\n\r");
+#endif //SCSI_DEBUG_ERRORS
+            scsis_fatal(scsis);
+            return false;
+        }
+        memcpy(scsis->media, io_data(scsis->io), scsis->io->data_size);
         if (*(scsis->media) == NULL)
             *(scsis->media) = ((void*)(scsis->media)) + sizeof(void*);
-        return SCSIS_RESPONSE_PASS;
+        scsis->state = SCSIS_STATE_IDLE;
+        break;
+    case SCSIS_STATE_IDLE:
+        scsis->state = SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST;
+        scsis_storage_request(scsis, SCSIS_REQUEST_GET_MEDIA_DESCRIPTOR);
+        return false;
+    default:
+#if (SCSI_DEBUG_ERRORS)
+        printf("SCSI: invalid state on descriptor request: %d\n\r", scsis->state);
+#endif //SCSI_DEBUG_ERRORS
+        scsis_fatal(scsis);
+        return false;
     }
-
-    //make request
-    stack = io_push(io, sizeof(SCSI_STACK));
-    if (stack == NULL)
-        return SCSIS_RESPONSE_PHASE_ERROR;
-    stack->request = SCSI_REQUEST_MEDIA_DESCRIPTOR;
-    scsis->storage_request = true;
-    return SCSIS_RESPONSE_STORAGE_REQUEST;
+    return true;
 }
 
-SCSIS_RESPONSE scsis_get_media(SCSIS* scsis, IO* io)
+bool scsis_get_media(SCSIS* scsis)
 {
-    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
-    if (res != SCSIS_RESPONSE_PASS)
-        return res;
+    if (!scsis_get_media_descriptor(scsis))
+        return false;
     if (scsis->media == NULL)
     {
-        scsis_error(scsis, SENSE_KEY_NOT_READY, ASCQ_MEDIUM_NOT_PRESENT);
-        return SCSIS_RESPONSE_FAIL;
+        scsis_fail(scsis, SENSE_KEY_NOT_READY, ASCQ_MEDIUM_NOT_PRESENT);
+        return false;
     }
-    return res;
+    return true;
 }

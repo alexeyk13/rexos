@@ -12,6 +12,7 @@
 #include "../../userspace/rb.h"
 #include "../../userspace/io.h"
 #include "../../userspace/scsi.h"
+#include "sys_config.h"
 #include "scsis.h"
 
 #define SCSI_CMD_TEST_UNIT_READY                                        0x00
@@ -203,6 +204,16 @@
 #define ASCQ_COMMAND_PHASE_ERROR                                        0x4a00
 #define ASCQ_DATA_PHASE_ERROR                                           0x4b00
 
+typedef enum {
+    SCSIS_STATE_IDLE = 0,
+    SCSIS_STATE_COMPLETE,
+    SCSIS_STATE_STORAGE_DESCRIPTOR_REQUEST,
+    SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST,
+    SCSIS_STATE_READ,
+    SCSIS_STATE_WRITE,
+    SCSIS_STATE_VERIFY
+} SCSIS_STATE;
+
 typedef struct {
     uint8_t key_sense;
     uint8_t align;
@@ -212,17 +223,31 @@ typedef struct {
 typedef struct _SCSIS {
     SCSI_STORAGE_DESCRIPTOR** storage;
     SCSI_MEDIA_DESCRIPTOR** media;
-    bool storage_request;
+    SCSIS_STATE state;
     SCSIS_ERROR errors[SCSI_SENSE_DEPTH];
     RB rb_error;
+    IO* io;
+    SCSIS_CB cb_host;
+    SCSIS_CB cb_storage;
+    void* param;
+    unsigned int lba, count;
+#if (SCSI_LONG_LBA)
+    unsigned int lba_hi;
+#endif //SCSI_LONG_LBA
 } SCSIS;
 
 void scsis_error_init(SCSIS* scsis);
 void scsis_error(SCSIS* scsis, uint8_t key_sense, uint16_t ascq);
 void scsis_error_get(SCSIS* scsis, SCSIS_ERROR* err);
-SCSIS_RESPONSE scsis_get_storage_descriptor(SCSIS* scsis, IO* io);
-SCSIS_RESPONSE scsis_get_media_descriptor(SCSIS* scsis, IO* io);
+void scsis_host_request(SCSIS* scsis, SCSIS_REQUEST request);
+void scsis_storage_request(SCSIS* scsis, SCSIS_REQUEST request);
+void scsis_fatal(SCSIS* scsis);
+void scsis_fail(SCSIS* scsis, uint8_t key_sense, uint16_t ascq);
+void scsis_pass(SCSIS* scsis);
+
+bool scsis_get_storage_descriptor(SCSIS* scsis);
+bool scsis_get_media_descriptor(SCSIS* scsis);
 //failure if no media inserted
-SCSIS_RESPONSE scsis_get_media(SCSIS* scsis, IO* io);
+bool scsis_get_media(SCSIS* scsis);
 
 #endif // SCSIS_PRIVATE_H

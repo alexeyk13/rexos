@@ -13,16 +13,16 @@
 #include "../../userspace/endian.h"
 #include <string.h>
 
-static inline SCSIS_RESPONSE scsis_pc_standart_inquiry(SCSIS* scsis, IO* io)
+static inline void scsis_pc_standart_inquiry(SCSIS* scsis)
 {
     int i;
-    uint8_t* data = io_data(io);
+    uint8_t* data = io_data(scsis->io);
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI standart INQUIRY\n\r");
 #endif //SCSI_DEBUG_REQUESTS
 
-    io->data_size = 36;
-    memset(data, 0, io->data_size);
+    scsis->io->data_size = 36;
+    memset(data, 0, scsis->io->data_size);
     //0: peripheral qualifier: device present, peripheral device type
     data[0] = (*scsis->storage)->scsi_device_type & SCSI_PERIPHERAL_DEVICE_TYPE_MASK;
     //1: removable, lu_cong
@@ -32,7 +32,7 @@ static inline SCSIS_RESPONSE scsis_pc_standart_inquiry(SCSIS* scsis, IO* io)
     //3: normaca, hisup, response data formata
     data[3] = 0x2;
     //4: additional len
-    data[4] = io->data_size - 5;
+    data[4] = scsis->io->data_size - 5;
     //5: SCCS, ACC, TPGS, 3PC, PROTECT
     //6: ENC_SERV, VS, MULTI_P, ADDR16
     //7: WBUS16, SYNC, CMD_QUE, VS
@@ -43,15 +43,13 @@ static inline SCSIS_RESPONSE scsis_pc_standart_inquiry(SCSIS* scsis, IO* io)
     for (i = 8; i < 36; ++i)
         if (data[i] < ' ' || data[i] > '~')
             data[i] = ' ';
-    return SCSIS_RESPONSE_PASS;
 }
 
-SCSIS_RESPONSE scsis_pc_inquiry(SCSIS* scsis, uint8_t* req, IO* io)
+void scsis_pc_inquiry(SCSIS* scsis, uint8_t* req)
 {
     unsigned int len;
-    SCSIS_RESPONSE res = scsis_get_storage_descriptor(scsis, io);
-    if (res != SCSIS_RESPONSE_PASS)
-        return res;
+    if (!scsis_get_storage_descriptor(scsis))
+        return;
     len = be2short(req + 3);
     if (req[1] & SCSI_INQUIRY_EVPD)
     {
@@ -59,26 +57,24 @@ SCSIS_RESPONSE scsis_pc_inquiry(SCSIS* scsis, uint8_t* req, IO* io)
         //TODO: vital page request
     }
     else
-        res = scsis_pc_standart_inquiry(scsis, io);
-    if (io->data_size > len)
-        io->data_size = len;
-    return res;
+        scsis_pc_standart_inquiry(scsis);
+    if (scsis->io->data_size > len)
+        scsis->io->data_size = len;
+    scsis->state = SCSIS_STATE_COMPLETE;
+    scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
 }
 
-SCSIS_RESPONSE scsis_pc_test_unit_ready(SCSIS* scsis, uint8_t* req, IO* io)
+void scsis_pc_test_unit_ready(SCSIS* scsis, uint8_t* req)
 {
-    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
-    if (res != SCSIS_RESPONSE_PASS)
-        return res;
+    if (!scsis_get_media_descriptor(scsis))
+        return;
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI test unit ready: %d\n\r", scsis->media ? 1 : 0);
 #endif //SCSI_DEBUG_REQUESTS
-    if (scsis->media == NULL)
-    {
-        scsis_error(scsis, SENSE_KEY_NOT_READY, ASCQ_MEDIUM_NOT_PRESENT);
-        res = SCSIS_RESPONSE_FAIL;
-    }
-    return SCSIS_RESPONSE_PASS;
+    if (scsis->media)
+        scsis_pass(scsis);
+    else
+        scsis_fail(scsis, SENSE_KEY_NOT_READY, ASCQ_MEDIUM_NOT_PRESENT);
 }
 
 /*
@@ -90,37 +86,41 @@ SCSIS_RESPONSE scsis_pc_test_unit_ready(SCSIS* scsis, uint8_t* req, IO* io)
     3 device descriptor size
  */
 
-SCSIS_RESPONSE scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req, IO* io)
+void scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req)
 {
     unsigned int psp, len;
-    bool dbd;
-    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
-    if (res != SCSIS_RESPONSE_PASS)
-        return res;
+    bool dbd, res;
+    if (!scsis_get_media_descriptor(scsis))
+        return;
+    res = false;
     psp = ((req[2] & 0x3f) << 8) | req[3];
     dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
     len = req[4];
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI mode sense (6) page, subpage: %#04X, dbd: %d\n\r", psp, dbd);
 #endif //SCSI_DEBUG_REQUESTS
-    io->data_size = 4;
+    scsis->io->data_size = 4;
     switch ((*scsis->storage)->scsi_device_type)
     {
     case SCSI_PERIPHERAL_DEVICE_TYPE_DIRECT_ACCESS:
-        scsis_bc_mode_sense_fill_header(scsis, io, dbd);
-        res = scsis_bc_mode_sense_add_page(scsis, io, psp);
+        scsis_bc_mode_sense_fill_header(scsis, dbd);
+        res = scsis_bc_mode_sense_add_page(scsis, psp);
         break;
     default:
-        scsis_error(scsis, SENSE_KEY_HARDWARE_ERROR, ASCQ_INTERNAL_TARGET_FAILURE);
-        res = SCSIS_RESPONSE_FAIL;
+        scsis_fail(scsis, SENSE_KEY_HARDWARE_ERROR, ASCQ_INTERNAL_TARGET_FAILURE);
+        return;
     }
 
-    if (io->data_size > 256)
-        io->data_size = 256;
-    if (io->data_size > len)
-        io->data_size = len;
-    *(uint8_t*)io_data(io) = io->data_size - 1;
-    return res;
+    if (res)
+    {
+        if (scsis->io->data_size > 256)
+            scsis->io->data_size = 256;
+        if (scsis->io->data_size > len)
+            scsis->io->data_size = len;
+        *(uint8_t*)io_data(scsis->io) = scsis->io->data_size - 1;
+        scsis->state = SCSIS_STATE_COMPLETE;
+        scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+    }
 }
 
 #if (SCSI_LONG_LBA)
@@ -137,13 +137,13 @@ SCSIS_RESPONSE scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req, IO* io)
     7 device descriptor size lo
  */
 
-SCSIS_RESPONSE scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req, IO* io)
+void scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req)
 {
     unsigned int psp, len;
-    bool dbd, llbaa;
-    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
-    if (res != SCSIS_RESPONSE_PASS)
-        return res;
+    bool dbd, llbaa, res;
+    if (!scsis_get_media_descriptor(scsis))
+        return;
+    res = false;
     psp = ((req[2] & 0x3f) << 8) | req[3];
     dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
     llbaa = (req[1] & SCSI_MODE_SENSE_LLBAA) ? true : false;
@@ -151,52 +151,54 @@ SCSIS_RESPONSE scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req, IO* io)
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI mode sense (10) page, subpage: %#04X, dbd: %d, llbaa: %d\n\r", psp, dbd, llbaa);
 #endif //SCSI_DEBUG_REQUESTS
-    io->data_size = 4;
+    scsis->io->data_size = 4;
     switch ((*scsis->storage)->scsi_device_type)
     {
     case SCSI_PERIPHERAL_DEVICE_TYPE_DIRECT_ACCESS:
-        scsis_bc_mode_sense_fill_header_long(scsis, io, dbd, llbaa);
-        res = scsis_bc_mode_sense_add_page(scsis, io, psp);
+        scsis_bc_mode_sense_fill_header_long(scsis, dbd, llbaa);
+        res = scsis_bc_mode_sense_add_page(scsis, psp);
         break;
     default:
-        scsis_error(scsis, SENSE_KEY_HARDWARE_ERROR, ASCQ_INTERNAL_TARGET_FAILURE);
-        res = SCSIS_RESPONSE_FAIL;
+        scsis_fail(scsis, SENSE_KEY_HARDWARE_ERROR, ASCQ_INTERNAL_TARGET_FAILURE);
+        return;
     }
 
-    if (io->data_size > len)
-        io->data_size = len;
-    short2be(io_data(io), io->data_size - 1);
-    return res;
+    if (res)
+    {
+        if (scsis->io->data_size > len)
+            scsis->io->data_size = len;
+        short2be(io_data(scsis->io), scsis->io->data_size - 1);
+        scsis->state = SCSIS_STATE_COMPLETE;
+        scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+    }
 }
 #endif //SCSI_LONG_LBA
 
-SCSIS_RESPONSE scsis_pc_mode_select6(SCSIS* scsis, uint8_t* req, IO* io)
+void scsis_pc_mode_select6(SCSIS* scsis, uint8_t* req)
 {
-    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
-    if (res != SCSIS_RESPONSE_PASS)
-        return res;
+    if (!scsis_get_media_descriptor(scsis))
+        return;
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI mode select (6)\n\r");
 #endif //SCSI_DEBUG_REQUESTS
     //generally for compatibility only
-    return res;
+    scsis_pass(scsis);
 }
 
 #if (SCSI_LONG_LBA)
-SCSIS_RESPONSE scsis_pc_mode_select10(SCSIS* scsis, uint8_t* req, IO* io)
+void scsis_pc_mode_select10(SCSIS* scsis, uint8_t* req)
 {
-    SCSIS_RESPONSE res = scsis_get_media_descriptor(scsis, io);
-    if (res != SCSIS_RESPONSE_PASS)
-        return res;
+    if (!scsis_get_media_descriptor(scsis))
+        return;
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI mode select (10)\n\r");
 #endif //SCSI_DEBUG_REQUESTS
     //generally for compatibility only
-    return res;
+    scsis_pass(scsis);
 }
 #endif //SCSI_LONG_LBA
 
-SCSIS_RESPONSE scsis_pc_request_sense(SCSIS* scsis, uint8_t* req, IO* io)
+void scsis_pc_request_sense(SCSIS* scsis, uint8_t* req)
 {
     SCSIS_ERROR err;
 #if (SCSI_DEBUG_REQUESTS)
@@ -204,17 +206,19 @@ SCSIS_RESPONSE scsis_pc_request_sense(SCSIS* scsis, uint8_t* req, IO* io)
 #endif //SCSI_DEBUG_REQUESTS
     if (req[1] & SCSI_REQUEST_SENSE_DESC)
     {
-        scsis_error(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
-        return SCSIS_RESPONSE_FAIL;
+        scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
+        return;
     }
-    io->data_size = 18;
-    memset(io_data(io), 0, io->data_size);
-    uint8_t* page = io_data(io);
+    scsis->io->data_size = 18;
+    memset(io_data(scsis->io), 0, scsis->io->data_size);
+    uint8_t* page = io_data(scsis->io);
     scsis_error_get(scsis, &err);
     page[0] = SCSI_SENSE_CURRENT_FIXED;
     page[2] = err.key_sense & 0xf;
-    page[7] = io->data_size - 8;
+    page[7] = scsis->io->data_size - 8;
     page[12] = (err.ascq >> 8) & 0xff;
     page[13] = (err.ascq >> 0) & 0xff;
-    return SCSIS_RESPONSE_PASS;
+
+    scsis->state = SCSIS_STATE_COMPLETE;
+    scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
 }

@@ -14,11 +14,13 @@
 #include "scsis.h"
 #include <stdbool.h>
 
-SCSIS_RESPONSE scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req, IO* io);
+void scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req);
+void scsis_bc_read6(SCSIS* scsis, uint8_t* req);
+void scsis_bc_read10(SCSIS* scsis, uint8_t* req);
 
 //for scsis_pc
-void scsis_bc_mode_sense_fill_header(SCSIS* scsis, IO* io, bool dbd);
-void scsis_bc_mode_sense_fill_header_long(SCSIS* scsis, IO* io, bool dbd, bool long_lba);
-SCSIS_RESPONSE scsis_bc_mode_sense_add_page(SCSIS* scsis, IO* io, unsigned int psp);
+void scsis_bc_mode_sense_fill_header(SCSIS* scsis, bool dbd);
+void scsis_bc_mode_sense_fill_header_long(SCSIS* scsis, bool dbd, bool long_lba);
+bool scsis_bc_mode_sense_add_page(SCSIS* scsis, unsigned int psp);
 
 #endif // SCSIS_BC_H
