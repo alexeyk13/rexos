@@ -8,6 +8,7 @@
 #define SCSI_H
 
 #include <stdint.h>
+#include "sys_config.h"
 
 #define SCSI_PERIPHERAL_DEVICE_TYPE_DIRECT_ACCESS                       (0 << 0)
 #define SCSI_PERIPHERAL_DEVICE_TYPE_SEQUENTAL_ACCESS                    (1 << 0)
@@ -57,9 +58,12 @@ typedef struct {
 #define SCSI_STORAGE_DESCRIPTOR_REMOVABLE                               (1 << 0)
 
 typedef struct {
-    unsigned int addr, addr_hi;
+    unsigned int lba;
     //or error code on failure
     int size;
+#if (SCSI_LONG_LBA)
+    unsigned int lba_hi;
+#endif //SCSI_LONG_LBA
 } SCSI_STACK;
 
 #pragma pack(pop)

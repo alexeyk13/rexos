@@ -58,6 +58,7 @@
 #define SCSI_CMD_PERSISTENT_RESERVE_IN                                  0x5e
 #define SCSI_CMD_PERSISTENT_RESERVE_OUT                                 0x5f
 
+#define SCSI_CMD_EXT_7F                                                 0x7f
 #define SCSI_CMD_READ32                                                 0x7f
 #define SCSI_CMD_WRITE32                                                0x7f
 #define SCSI_CMD_WRITE_AND_VERIFY32                                     0x7f
@@ -70,6 +71,7 @@
 
 #define SCSI_CMD_EXTENDED_COPY                                          0x83
 #define SCSI_CMD_RECEIVE_COPY_RESULTS                                   0x84
+#define SCSI_CMD_ATA_PASS_THROUGH16                                     0x85
 #define SCSI_CMD_READ16                                                 0x88
 #define SCSI_CMD_WRITE16                                                0x8a
 #define SCSI_CMD_READ_ATTRIBUTE                                         0x8c
@@ -80,11 +82,16 @@
 #define SCSI_CMD_PREFETCH16                                             0x90
 #define SCSI_CMD_SYNCHRONIZE_CACHE16                                    0x91
 #define SCSI_CMD_WRITE_SAME16                                           0x93
-#define SCSI_CMD_READ_CAPACITY16                                        0x109e
-#define SCSI_CMD_READ_LONG16                                            0x119e
+#define SCSI_CMD_EXT_9E                                                 0x9e
+
+#define SCSI_CMD_EXT_9E_READ_CAPACITY16                                 0x10
+#define SCSI_CMD_EXT_9E_READ_LONG16                                     0x11
+
 #define SCSI_CMD_WRITE_LONG16                                           0x9f
 
 #define SCSI_CMD_REPORT_LUNS                                            0xa0
+#define SCSI_CMD_ATA_PASS_THROUGH12                                     0xa1
+#define SCSI_CMD_EXT_A3                                                 0xa3
 #define SCSI_CMD_REPORT_ALIASES                                         0xa3
 #define SCSI_CMD_REPORT_PRIORITY                                        0xa3
 #define SCSI_CMD_REPORT_SUPPORTED_OPERATION_CODES                       0xa3
@@ -182,8 +189,10 @@
 //----------------------------------- ASC + ASQ qualifier codes ---------------------------------------------
 #define ASCQ_NO_ADDITIONAL_SENSE_INFORMATION                            0x0000
 #define ASCQ_PERIPHERAL_DEVICE_WRITE_FAULT                              0x0300
+#define ASCQ_LOGICAL_UNIT_NOT_READY_OPERATION_IN_PROGRESS               0x0407
 #define ASCQ_LOGICAL_UNIT_COMMUNICATION_FAILURE                         0x0800
 #define ASCQ_LOGICAL_UNIT_COMMUNICATION_TIMEOUT                         0x0801
+#define ASCQ_LOGICAL_UNIT_COMMUNICATION_CRC_ERROR                       0x0803
 #define ASCQ_WRITE_ERROR                                                0x0c00
 #define ASCQ_ERROR_LOG_OVERFLOW                                         0x0a00
 #define ASCQ_UNRECOVERED_READ_ERROR                                     0x1100
@@ -201,8 +210,8 @@
 #define ASCQ_COMMAND_SEQUENCE_ERROR                                     0x2c00
 #define ASCQ_MEDIUM_NOT_PRESENT                                         0x3a00
 #define ASCQ_INTERNAL_TARGET_FAILURE                                    0x4400
+#define ASCQ_DATA_PHASE_CRC_ERROR_DETECTED                              0x4700
 #define ASCQ_COMMAND_PHASE_ERROR                                        0x4a00
-#define ASCQ_DATA_PHASE_ERROR                                           0x4b00
 
 typedef enum {
     SCSIS_STATE_IDLE = 0,
@@ -230,7 +239,7 @@ typedef struct _SCSIS {
     SCSIS_CB cb_host;
     SCSIS_CB cb_storage;
     void* param;
-    unsigned int lba, count;
+    unsigned int lba, count, count_cur;
 #if (SCSI_LONG_LBA)
     unsigned int lba_hi;
 #endif //SCSI_LONG_LBA

@@ -38,19 +38,130 @@ void scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req)
     scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
 }
 
-static void scsis_read(SCSIS* scsis)
+static void scsis_io(SCSIS* scsis)
 {
-    //TODO:
-/*    if (len > 1)
+    SCSI_STACK* stack = io_stack(scsis->io);
+    if (!scsis_get_media(scsis))
+        return;
+    //request completed
+    if (scsis->count == 0)
     {
-        scsis_error(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_PARAMETER_LIST);
-        return SCSIS_RESPONSE_FAIL;
+        scsis_pass(scsis);
+        return;
     }
-    memset(io_data(io), 0, 512);
-    io->data_size = 512;*/
-///    return SCSIS_RESPONSE_PASS;
+    scsis->count_cur = SCSI_IO_SIZE / (*scsis->media)->sector_size;
+    if (scsis->count_cur == 0)
+    {
+#if (SCSI_DEBUG_ERRORS)
+        printf("SCSI: failure due to inproper configuration\n\r");
+#endif //SCSI_DEBUG_ERRORS
+        scsis_fatal(scsis);
+    }
+    if (scsis->count < scsis->count_cur)
+        scsis->count_cur = scsis->count;
+    stack->size = scsis->count_cur * (*scsis->media)->sector_size;
+    stack->lba = scsis->lba;
+#if (SCSI_LONG_LBA)
+    stack->lba_hi = 0;
+#endif //SCSI_LONG_LBA
+
+    scsis->count -= scsis->count_cur;
+    scsis->lba += scsis->count_cur;
+#if (SCSI_LONG_LBA)
+    if (scsis->lba < stack->lba)
+        ++stack->lba_hi;
+#endif //SCSI_LONG_LBA
+
+    switch (scsis->state)
+    {
+    case SCSIS_STATE_READ:
+        scsis_storage_request(scsis, SCSIS_REQUEST_READ);
+        break;
+    case SCSIS_STATE_WRITE:
+    case SCSIS_STATE_VERIFY:
+        scsis_host_request(scsis, SCSIS_REQUEST_READ);
+        break;
+    default:
+#if (SCSI_DEBUG_ERRORS)
+        printf("SCSI: invalid state on io: %d\n\r", scsis->state);
+#endif //SCSI_DEBUG_ERRORS
+        scsis_fatal(scsis);
+    }
 }
 
+static bool scsis_bc_io_response_check(SCSIS* scsis)
+{
+    SCSI_STACK* stack = io_stack(scsis->io);
+    if (!scsis_get_media(scsis))
+        return false;
+    if (stack->size < 0)
+    {
+        switch (stack->size)
+        {
+        case ERROR_CRC:
+            scsis_fail(scsis, SENSE_KEY_MEDIUM_ERROR, ASCQ_LOGICAL_UNIT_COMMUNICATION_CRC_ERROR);
+            break;
+        case ERROR_IN_PROGRESS:
+            scsis_fail(scsis, SENSE_KEY_MEDIUM_ERROR, ASCQ_LOGICAL_UNIT_NOT_READY_OPERATION_IN_PROGRESS);
+            break;
+        case ERROR_ACCESS_DENIED:
+            scsis_fail(scsis, SENSE_KEY_MEDIUM_ERROR, ASCQ_WRITE_PROTECTED);
+            break;
+        case ERROR_INVALID_PARAMS:
+            scsis_fail(scsis, SENSE_KEY_MEDIUM_ERROR, ASCQ_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE);
+            break;
+        default:
+            scsis_fail(scsis, SENSE_KEY_HARDWARE_ERROR, ASCQ_LOGICAL_UNIT_COMMUNICATION_FAILURE);
+            break;
+        }
+        return false;
+    }
+    if (stack->size != scsis->count_cur * (*scsis->media)->sector_size)
+    {
+        scsis_fatal(scsis);
+        return false;
+    }
+    return true;
+}
+
+void scsis_bc_host_io_complete(SCSIS* scsis)
+{
+    if (!scsis_bc_io_response_check(scsis))
+        return;
+    switch (scsis->state)
+    {
+    case SCSIS_STATE_READ:
+        scsis_io(scsis);
+        break;
+    case SCSIS_STATE_WRITE:
+        //TODO: the best place to put async io is here
+        scsis_storage_request(scsis, SCSIS_REQUEST_WRITE);
+        break;
+    case SCSIS_STATE_VERIFY:
+        scsis_storage_request(scsis, SCSIS_REQUEST_VERIFY);
+        break;
+    default:
+        break;
+    }
+}
+
+void scsis_bc_storage_io_complete(SCSIS* scsis)
+{
+    if (!scsis_bc_io_response_check(scsis))
+        return;
+    switch (scsis->state)
+    {
+    case SCSIS_STATE_READ:
+        scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+        break;
+    case SCSIS_STATE_WRITE:
+    case SCSIS_STATE_VERIFY:
+        scsis_io(scsis);
+        break;
+    default:
+        break;
+    }
+}
 void scsis_bc_read6(SCSIS* scsis, uint8_t* req)
 {
     if (!scsis_get_media(scsis))
@@ -65,8 +176,8 @@ void scsis_bc_read6(SCSIS* scsis, uint8_t* req)
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI read(6) lba: %#08X, len: %#X\n\r", scsis->lba, scsis->count);
 #endif //SCSI_DEBUG_REQUESTS
-    //?????
-    scsis_read(scsis);
+    scsis->state = SCSIS_STATE_READ;
+    scsis_io(scsis);
 }
 
 void scsis_bc_read10(SCSIS* scsis, uint8_t* req)
@@ -81,8 +192,8 @@ void scsis_bc_read10(SCSIS* scsis, uint8_t* req)
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI read(10) lba: %#08X, len: %#X\n\r", scsis->lba, scsis->count);
 #endif //SCSI_DEBUG_REQUESTS
-    //?????
-    scsis_read(scsis);
+    scsis->state = SCSIS_STATE_READ;
+    scsis_io(scsis);
 }
 
 static unsigned short scsis_bc_append_block_descriptors(SCSIS* scsis)

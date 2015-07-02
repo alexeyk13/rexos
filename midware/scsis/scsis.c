@@ -8,6 +8,7 @@
 #include "scsis_private.h"
 #include "scsis_pc.h"
 #include "scsis_bc.h"
+#include "scsis_sat.h"
 #include "sys_config.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/stdio.h"
@@ -50,8 +51,7 @@ void scsis_reset(SCSIS* scsis)
 
 static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
 {
-    unsigned int cmd = req[0] | (((unsigned int)(req[1] & 0x1f)) << 8);
-    switch (cmd)
+    switch (req[0])
     {
     case SCSI_CMD_MODE_SENSE6:
         scsis_pc_mode_sense6(scsis, req);
@@ -89,9 +89,9 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
         break;
     default:
 #if (SCSI_DEBUG_ERRORS)
-        printf("SCSI: unknown cmd opcode: %02xh\n\r", cmd);
+        printf("SCSI: unknown cmd opcode: %02xh\n\r", req[0]);
 #endif //SCSI_DEBUG_ERRORS
-        scsis_error(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_COMMAND_OPERATION_CODE);
+        scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_COMMAND_OPERATION_CODE);
         break;
     }
 }
@@ -122,13 +122,9 @@ void scsis_host_io_complete(SCSIS* scsis)
         scsis_pass(scsis);
         break;
     case SCSIS_STATE_READ:
-        //TODO:
-        break;
     case SCSIS_STATE_WRITE:
-        //TODO:
-        break;
     case SCSIS_STATE_VERIFY:
-        //TODO:
+        scsis_bc_host_io_complete(scsis);
         break;
     default:
 #if (SCSI_DEBUG_ERRORS)
@@ -153,13 +149,9 @@ void scsis_storage_io_complete(SCSIS* scsis)
     switch (scsis->state)
     {
     case SCSIS_STATE_READ:
-        //TODO:
-        break;
     case SCSIS_STATE_WRITE:
-        //TODO:
-        break;
     case SCSIS_STATE_VERIFY:
-        //TODO:
+        scsis_bc_storage_io_complete(scsis);
         break;
     default:
 #if (SCSI_DEBUG_ERRORS)

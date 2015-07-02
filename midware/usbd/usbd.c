@@ -599,6 +599,12 @@ static inline int usbd_set_address(USBD* usbd)
             usbd->state = USBD_STATE_DEFAULT;
         break;
     default:
+        //some hosts doesn't issuing reset on reset request
+        usbd->configuration = 0;
+
+        usbd->state = USBD_STATE_ADDRESSED;
+        usbd_inform(usbd, USBD_ALERT_RESET);
+        usbd_class_reset(usbd);
         break;
     }
     return 0;
