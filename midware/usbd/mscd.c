@@ -76,6 +76,11 @@ static void mscd_write_csw(USBD* usbd, MSCD* mscd)
     mscd->control->data_size = sizeof(CSW);
     usbd_usb_ep_write(usbd, mscd->ep_num, mscd->control);
     mscd->state = MSCD_STATE_CSW;
+#if (USBD_MSC_DEBUG_IO)
+    printf("USB_MSC: dCSWTag: %d\n\r", csw->dCSWTag);
+    printf("USB_MSC: dCSWDataResidue: %d\n\r", csw->dCSWDataResidue);
+    printf("USB_MSC: bCSWStatus: %d\n\r", csw->bCSWStatus);
+#endif //USBD_MSC_DEBUG_IO
 }
 
 static void mscd_request_processed(USBD* usbd, MSCD* mscd)
@@ -129,9 +134,13 @@ void mscd_host_cb(void* param, IO* io, SCSIS_REQUEST request)
             size = ((SCSI_STACK*)io_data(io))->size;
             if (size > mscd->residue)
                 size = mscd->residue;
+            mscd->residue -= size;
             usbd_usb_ep_read(mscd->usbd, mscd->ep_num, io, size);
             break;
         case SCSIS_REQUEST_WRITE:
+            if (io->data_size > mscd->residue)
+                io->data_size = mscd->residue;
+            mscd->residue -= io->data_size;
             usbd_usb_ep_write(mscd->usbd, mscd->ep_num, io);
             break;
         case SCSIS_REQUEST_PASS:
@@ -248,6 +257,7 @@ void mscd_class_reset(USBD* usbd, void* param)
 {
     MSCD* mscd = (MSCD*)param;
 
+    mscd_flush(usbd, mscd);
     usbd_unregister_endpoint(usbd, mscd->iface_num, mscd->ep_num);
     usbd_unregister_interface(usbd, mscd->iface_num, &__MSCD_CLASS);
     usbd_usb_ep_close(usbd, mscd->ep_num);
