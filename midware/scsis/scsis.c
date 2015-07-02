@@ -87,6 +87,15 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
     case SCSI_CMD_READ10:
         scsis_bc_read10(scsis, req);
         break;
+#if (SCSI_SAT)
+    //SAT
+    case SCSI_CMD_ATA_PASS_THROUGH12:
+        scsis_sat_ata_pass_through12(scsis, req);
+        break;
+    case SCSI_CMD_ATA_PASS_THROUGH16:
+        scsis_sat_ata_pass_through16(scsis, req);
+        break;
+#endif //SCSI_SAT
     default:
 #if (SCSI_DEBUG_ERRORS)
         printf("SCSI: unknown cmd opcode: %02xh\n\r", req[0]);

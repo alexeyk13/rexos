@@ -13,5 +13,7 @@
 
 #include "scsis.h"
 
+void scsis_sat_ata_pass_through12(SCSIS* scsis, uint8_t* req);
+void scsis_sat_ata_pass_through16(SCSIS* scsis, uint8_t* req);
 
 #endif // SCSIS_SAT_H
