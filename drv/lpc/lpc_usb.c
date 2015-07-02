@@ -429,7 +429,7 @@ static inline void lpc_usb_open_ep(SHARED_USB_DRV* drv, int num, USB_EP_TYPE typ
     if (type == USB_EP_ISOCHRON)
         *USB_EP_LISTSTS(num, 0) |= USB_EP_LISTST_T;
     if (USB_EP_NUM(num))
-        *USB_EP_LISTSTS(num, 0) &= USB_EP_LISTST_D;
+        *USB_EP_LISTSTS(num, 0) &= ~USB_EP_LISTST_D;
     LPC_USB->INTEN |= USB_EP_INT_BIT(num);
 }
 
