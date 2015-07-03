@@ -17,10 +17,10 @@ static inline void scsis_pc_standart_inquiry(SCSIS* scsis)
 {
     int i;
     uint8_t* data = io_data(scsis->io);
+
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI standart INQUIRY\n\r");
 #endif //SCSI_DEBUG_REQUESTS
-
     scsis->io->data_size = 36;
     memset(data, 0, scsis->io->data_size);
     //0: peripheral qualifier: device present, peripheral device type
@@ -45,6 +45,45 @@ static inline void scsis_pc_standart_inquiry(SCSIS* scsis)
             data[i] = ' ';
 }
 
+static inline void scsis_pc_vpd_00(SCSIS* scsis)
+{
+    uint8_t* data = io_data(scsis->io);
+    uint8_t* page = data + 4;
+
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI inquiry VPD supported pages\n\r");
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->io->data_size = 6;
+
+    data[0] = (*scsis->storage)->scsi_device_type & SCSI_PERIPHERAL_DEVICE_TYPE_MASK;
+    data[1] = INQUIRY_VITAL_PAGE_SUPPORTED_PAGES;
+    short2be(data + 2, scsis->io->data_size - 4);
+
+    page[0] = INQUIRY_VITAL_PAGE_SUPPORTED_PAGES;
+    page[1] = INQUIRY_VITAL_PAGE_DEVICE_INFO;
+}
+
+static inline void scsis_pc_vpd_83(SCSIS* scsis)
+{
+    uint8_t* data = io_data(scsis->io);
+    uint8_t* page = data + 4;
+
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI inquiry VPD device info\n\r");
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->io->data_size = 4 + 2 + ((strlen((*scsis->storage)->product) + 4) & ~3);
+    memset(data, 0, scsis->io->data_size);
+
+    data[0] = (*scsis->storage)->scsi_device_type & SCSI_PERIPHERAL_DEVICE_TYPE_MASK;
+    data[1] = INQUIRY_VITAL_PAGE_DEVICE_INFO;
+    short2be(data + 2, scsis->io->data_size - 4);
+
+    //ASCII data
+    page[0] = 0x02;
+    page[1] = IVPD_ASSOCIATION_DESIGNATOR_DEVICE | IVPD_DESIGNATOR_TYPE_SCSI_NAME_STRING;
+    strcpy((char*)page + 2, (*scsis->storage)->product);
+}
+
 void scsis_pc_inquiry(SCSIS* scsis, uint8_t* req)
 {
     unsigned int len;
@@ -53,8 +92,21 @@ void scsis_pc_inquiry(SCSIS* scsis, uint8_t* req)
     len = be2short(req + 3);
     if (req[1] & SCSI_INQUIRY_EVPD)
     {
-        printd("evpd\n\r");
-        //TODO: vital page request
+        switch(req[2])
+        {
+        case INQUIRY_VITAL_PAGE_SUPPORTED_PAGES:
+            scsis_pc_vpd_00(scsis);
+            break;
+        case INQUIRY_VITAL_PAGE_DEVICE_INFO:
+            scsis_pc_vpd_83(scsis);
+            break;
+        default:
+#if (SCSI_DEBUG_REQUESTS)
+            printf("SCSI VPD INQUIRY, page: %02xh not supported\n\r", req[2]);
+#endif //SCSI_DEBUG_REQUESTS
+            scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
+            return;
+        }
     }
     else
         scsis_pc_standart_inquiry(scsis);

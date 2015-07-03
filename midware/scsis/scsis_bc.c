@@ -26,9 +26,9 @@ void scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req)
         scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
         return;
     }
-    if ((*scsis->media)->num_sectors_hi)
+    if (((*scsis->media)->num_sectors_hi) || ((*scsis->media)->num_sectors < lba))
         lba = 0xffffffff;
-    else if ((*scsis->media)->num_sectors > lba)
+    else
         lba = (*scsis->media)->num_sectors - 1;
     int2be(io_data(scsis->io) + 0, lba);
     int2be(io_data(scsis->io) + 4, (*scsis->media)->sector_size);
@@ -37,6 +37,49 @@ void scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req)
     scsis->state = SCSIS_STATE_COMPLETE;
     scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
 }
+
+#if (SCSI_LONG_LBA)
+void scsis_bc_read_capacity16(SCSIS* scsis, uint8_t* req)
+{
+    unsigned int lba, lba_hi, len;
+    if (!scsis_get_media(scsis))
+        return;
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI read capacity (16)\n\r");
+#endif //SCSI_DEBUG_REQUESTS
+    lba_hi = be2int(req + 2);
+    lba = be2int(req + 6);
+    len = be2int(req + 10);
+    if ((lba || lba_hi) && ((req[16] & SCSI_READ_CAPACITY_PMI) == 0))
+    {
+        scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
+        return;
+    }
+    if (((*scsis->media)->num_sectors_hi < lba_hi) || (((*scsis->media)->num_sectors_hi == lba_hi) && ((*scsis->media)->num_sectors_hi < lba_hi)))
+        lba_hi = lba = 0xffffffff;
+    else
+    {
+        lba_hi = (*scsis->media)->num_sectors_hi;
+        if ((*scsis->media)->num_sectors == 0)
+        {
+            lba = 0xffffffff;
+            --lba_hi;
+        }
+        else
+            lba = (*scsis->media)->num_sectors - 1;
+    }
+    scsis->io->data_size = 32;
+    memset(io_data(scsis->io), 0, scsis->io->data_size);
+    int2be(io_data(scsis->io) + 0, lba_hi);
+    int2be(io_data(scsis->io) + 4, lba);
+    int2be(io_data(scsis->io) + 8, (*scsis->media)->sector_size);
+    if (scsis->io->data_size > len)
+        scsis->io->data_size = len;
+
+    scsis->state = SCSIS_STATE_COMPLETE;
+    scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+}
+#endif //SCSI_LONG_LBA
 
 static void scsis_io(SCSIS* scsis)
 {

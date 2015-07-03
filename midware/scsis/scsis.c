@@ -53,46 +53,61 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
 {
     switch (req[0])
     {
-    case SCSI_CMD_MODE_SENSE6:
+    case SCSI_SPC_CMD_MODE_SENSE6:
         scsis_pc_mode_sense6(scsis, req);
         break;
 #if (SCSI_LONG_LBA)
-    case SCSI_CMD_MODE_SENSE10:
+    case SCSI_SPC_CMD_MODE_SENSE10:
         scsis_pc_mode_sense10(scsis, req);
         break;
 #endif //SCSI_LONG_LBA
-    case SCSI_CMD_MODE_SELECT6:
+    case SCSI_SPC_CMD_MODE_SELECT6:
         scsis_pc_mode_select6(scsis, req);
         break;
 #if (SCSI_LONG_LBA)
-    case SCSI_CMD_MODE_SELECT10:
+    case SCSI_SPC_CMD_MODE_SELECT10:
         scsis_pc_mode_select10(scsis, req);
         break;
 #endif //SCSI_LONG_LBA
-    case SCSI_CMD_TEST_UNIT_READY:
+    case SCSI_SPC_CMD_TEST_UNIT_READY:
         scsis_pc_test_unit_ready(scsis, req);
         break;
-    case SCSI_CMD_INQUIRY:
+    case SCSI_SPC_CMD_INQUIRY:
         scsis_pc_inquiry(scsis, req);
         break;
-    case SCSI_CMD_REQUEST_SENSE:
+    case SCSI_SPC_CMD_REQUEST_SENSE:
         scsis_pc_request_sense(scsis, req);
         break;
-    case SCSI_CMD_READ_CAPACITY10:
+    case SCSI_SBC_CMD_READ_CAPACITY10:
         scsis_bc_read_capacity10(scsis, req);
         break;
-    case SCSI_CMD_READ6:
+#if (SCSI_LONG_LBA)
+    case SCSI_SBC_CMD_EXT_9E:
+        switch (req[1] & 0x1f)
+        {
+        case SCSI_SBC_CMD_EXT_9E_READ_CAPACITY16:
+            scsis_bc_read_capacity16(scsis, req);
+            break;
+        default:
+#if (SCSI_DEBUG_ERRORS)
+            printf("SCSI: unknown cmd 0x9e action: %02xh\n\r", req[1] & 0x1f);
+#endif //SCSI_DEBUG_ERRORS
+            scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_COMMAND_OPERATION_CODE);
+        }
+        break;
+#endif //SCSI_LONG_LBA
+    case SCSI_SBC_CMD_READ6:
         scsis_bc_read6(scsis, req);
         break;
-    case SCSI_CMD_READ10:
+    case SCSI_SBC_CMD_READ10:
         scsis_bc_read10(scsis, req);
         break;
 #if (SCSI_SAT)
     //SAT
-    case SCSI_CMD_ATA_PASS_THROUGH12:
+    case SCSI_SAT_CMD_ATA_PASS_THROUGH12:
         scsis_sat_ata_pass_through12(scsis, req);
         break;
-    case SCSI_CMD_ATA_PASS_THROUGH16:
+    case SCSI_SAT_CMD_ATA_PASS_THROUGH16:
         scsis_sat_ata_pass_through16(scsis, req);
         break;
 #endif //SCSI_SAT
