@@ -105,7 +105,7 @@ static void scsis_io(SCSIS* scsis)
     stack->size = scsis->count_cur * (*scsis->media)->sector_size;
     stack->lba = scsis->lba;
 #if (SCSI_LONG_LBA)
-    stack->lba_hi = 0;
+    stack->lba_hi = scsis->lba_hi;
 #endif //SCSI_LONG_LBA
 
     scsis->count -= scsis->count_cur;
@@ -238,6 +238,52 @@ void scsis_bc_read10(SCSIS* scsis, uint8_t* req)
     scsis->state = SCSIS_STATE_READ;
     scsis_io(scsis);
 }
+
+void scsis_bc_read12(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 2);
+#if (SCSI_LONG_LBA)
+    scsis->lba_hi = 0;
+#endif //SCSI_LONG_LBA
+    scsis->count = be2short(req + 6);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI read(12) lba: %#08X, len: %#X\n\r", scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_READ;
+    scsis_io(scsis);
+}
+
+#if (SCSI_LONG_LBA)
+void scsis_bc_read16(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 2);
+    scsis->lba_hi = be2int(req + 6);
+    scsis->count = be2short(req + 10);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI read(16) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_READ;
+    scsis_io(scsis);
+}
+
+void scsis_bc_read32(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 12);
+    scsis->lba_hi = be2int(req + 16);
+    scsis->count = be2short(req + 28);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI read(16) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_READ;
+    scsis_io(scsis);
+}
+#endif //SCSI_LONG_LBA
 
 static unsigned short scsis_bc_append_block_descriptors(SCSIS* scsis)
 {

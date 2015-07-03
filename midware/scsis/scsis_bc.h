@@ -21,6 +21,9 @@ void scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read_capacity16(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read6(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read10(SCSIS* scsis, uint8_t* req);
+void scsis_bc_read12(SCSIS* scsis, uint8_t* req);
+void scsis_bc_read16(SCSIS* scsis, uint8_t* req);
+void scsis_bc_read32(SCSIS* scsis, uint8_t* req);
 
 //for scsis_pc
 void scsis_bc_mode_sense_fill_header(SCSIS* scsis, bool dbd);

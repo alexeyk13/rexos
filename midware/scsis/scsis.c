@@ -13,6 +13,7 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/scsi.h"
+#include "../../userspace/endian.h"
 
 SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param)
 {
@@ -81,27 +82,33 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
     case SCSI_SBC_CMD_READ_CAPACITY10:
         scsis_bc_read_capacity10(scsis, req);
         break;
-#if (SCSI_LONG_LBA)
-    case SCSI_SBC_CMD_EXT_9E:
-        switch (req[1] & 0x1f)
-        {
-        case SCSI_SBC_CMD_EXT_9E_READ_CAPACITY16:
-            scsis_bc_read_capacity16(scsis, req);
-            break;
-        default:
-#if (SCSI_DEBUG_ERRORS)
-            printf("SCSI: unknown cmd 0x9e action: %02xh\n\r", req[1] & 0x1f);
-#endif //SCSI_DEBUG_ERRORS
-            scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_COMMAND_OPERATION_CODE);
-        }
-        break;
-#endif //SCSI_LONG_LBA
     case SCSI_SBC_CMD_READ6:
         scsis_bc_read6(scsis, req);
         break;
     case SCSI_SBC_CMD_READ10:
         scsis_bc_read10(scsis, req);
         break;
+    case SCSI_SBC_CMD_READ12:
+        scsis_bc_read12(scsis, req);
+        break;
+#if (SCSI_LONG_LBA)
+    case SCSI_SBC_CMD_READ16:
+        scsis_bc_read16(scsis, req);
+        break;
+    case SCSI_SBC_CMD_EXT_7F:
+        switch (be2short(req + 2))
+        {
+        case SCSI_SBC_CMD_EXT_7F_READ32:
+            scsis_bc_read32(scsis, req);
+            break;
+        default:
+#if (SCSI_DEBUG_ERRORS)
+            printf("SCSI: unknown cmd 0x7f action: %02xh\n\r", be2short(req + 2));
+#endif //SCSI_DEBUG_ERRORS
+            scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_COMMAND_OPERATION_CODE);
+        }
+        break;
+#endif //SCSI_LONG_LBA
 #if (SCSI_SAT)
     //SAT
     case SCSI_SAT_CMD_ATA_PASS_THROUGH12:
