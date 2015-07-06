@@ -255,6 +255,56 @@ void scsis_bc_read12(SCSIS* scsis, uint8_t* req)
     scsis_io(scsis);
 }
 
+void scsis_bc_write6(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = ((req[1] & 0x1f) << 16) | be2short(req + 2);
+#if (SCSI_LONG_LBA)
+    scsis->lba_hi = 0;
+#endif //SCSI_LONG_LBA
+    scsis->count = req[4];
+    if (scsis->count == 0)
+        scsis->count = 256;
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI write(6) lba: %#08X, len: %#X\n\r", scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_WRITE;
+    scsis_io(scsis);
+}
+
+void scsis_bc_write10(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 2);
+#if (SCSI_LONG_LBA)
+    scsis->lba_hi = 0;
+#endif //SCSI_LONG_LBA
+    scsis->count = be2short(req + 7);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI write(10) lba: %#08X, len: %#X\n\r", scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_WRITE;
+    scsis_io(scsis);
+}
+
+void scsis_bc_write12(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 2);
+#if (SCSI_LONG_LBA)
+    scsis->lba_hi = 0;
+#endif //SCSI_LONG_LBA
+    scsis->count = be2short(req + 6);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI write(12) lba: %#08X, len: %#X\n\r", scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_WRITE;
+    scsis_io(scsis);
+}
+
 #if (SCSI_LONG_LBA)
 void scsis_bc_read16(SCSIS* scsis, uint8_t* req)
 {

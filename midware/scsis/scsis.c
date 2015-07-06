@@ -91,6 +91,15 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
     case SCSI_SBC_CMD_READ12:
         scsis_bc_read12(scsis, req);
         break;
+    case SCSI_SBC_CMD_WRITE6:
+        scsis_bc_write6(scsis, req);
+        break;
+    case SCSI_SBC_CMD_WRITE10:
+        scsis_bc_write10(scsis, req);
+        break;
+    case SCSI_SBC_CMD_WRITE12:
+        scsis_bc_write12(scsis, req);
+        break;
 #if (SCSI_LONG_LBA)
     case SCSI_SBC_CMD_READ16:
         scsis_bc_read16(scsis, req);

@@ -22,6 +22,9 @@ void scsis_bc_read_capacity16(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read6(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read10(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read12(SCSIS* scsis, uint8_t* req);
+void scsis_bc_write6(SCSIS* scsis, uint8_t* req);
+void scsis_bc_write10(SCSIS* scsis, uint8_t* req);
+void scsis_bc_write12(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read16(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read32(SCSIS* scsis, uint8_t* req);
 
