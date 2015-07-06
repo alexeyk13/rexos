@@ -131,7 +131,7 @@ void mscd_host_cb(void* param, IO* io, SCSIS_REQUEST request)
         switch (request)
         {
         case SCSIS_REQUEST_READ:
-            size = ((SCSI_STACK*)io_data(io))->size;
+            size = ((SCSI_STACK*)io_stack(io))->size;
             if (size > mscd->residue)
                 size = mscd->residue;
             mscd->residue -= size;
