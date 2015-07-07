@@ -121,7 +121,10 @@ static void scsis_io(SCSIS* scsis)
         scsis_storage_request(scsis, SCSIS_REQUEST_READ);
         break;
     case SCSIS_STATE_WRITE:
+#if (SCSI_VERIFY_SUPPORTED)
     case SCSIS_STATE_VERIFY:
+    case SCSIS_STATE_WRITE_VERIFY:
+#endif //SCSI_VERIFY_SUPPORTED
         scsis_host_request(scsis, SCSIS_REQUEST_READ);
         break;
     default:
@@ -180,9 +183,14 @@ void scsis_bc_host_io_complete(SCSIS* scsis)
         //TODO: the best place to put async io is here
         scsis_storage_request(scsis, SCSIS_REQUEST_WRITE);
         break;
+#if (SCSI_VERIFY_SUPPORTED)
     case SCSIS_STATE_VERIFY:
         scsis_storage_request(scsis, SCSIS_REQUEST_VERIFY);
         break;
+    case SCSIS_STATE_WRITE_VERIFY:
+        scsis_storage_request(scsis, SCSIS_REQUEST_WRITE_VERIFY);
+        break;
+#endif //SCSI_VERIFY_SUPPORTED
     default:
         break;
     }
@@ -198,7 +206,10 @@ void scsis_bc_storage_io_complete(SCSIS* scsis)
         scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
         break;
     case SCSIS_STATE_WRITE:
+#if (SCSI_VERIFY_SUPPORTED)
     case SCSIS_STATE_VERIFY:
+    case SCSIS_STATE_WRITE_VERIFY:
+#endif //SCSI_VERIFY_SUPPORTED
         scsis_io(scsis);
         break;
     default:
@@ -337,6 +348,38 @@ void scsis_bc_verify12(SCSIS* scsis, uint8_t* req)
     scsis->state = SCSIS_STATE_VERIFY;
     scsis_io(scsis);
 }
+
+void scsis_bc_write_verify10(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 2);
+#if (SCSI_LONG_LBA)
+    scsis->lba_hi = 0;
+#endif //SCSI_LONG_LBA
+    scsis->count = be2short(req + 7);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI write and verify(10) lba: %#08X, len: %#X\n\r", scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_WRITE_VERIFY;
+    scsis_io(scsis);
+}
+
+void scsis_bc_write_verify12(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 2);
+#if (SCSI_LONG_LBA)
+    scsis->lba_hi = 0;
+#endif //SCSI_LONG_LBA
+    scsis->count = be2short(req + 6);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI write and verify(12) lba: %#08X, len: %#X\n\r", scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_WRITE_VERIFY;
+    scsis_io(scsis);
+}
 #endif //SCSI_VERIFY_SUPPORTED
 
 #if (SCSI_LONG_LBA)
@@ -422,6 +465,34 @@ void scsis_bc_verify32(SCSIS* scsis, uint8_t* req)
     printf("SCSI verify(32) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
 #endif //SCSI_DEBUG_REQUESTS
     scsis->state = SCSIS_STATE_VERIFY;
+    scsis_io(scsis);
+}
+
+void scsis_bc_write_verify16(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 2);
+    scsis->lba_hi = be2int(req + 6);
+    scsis->count = be2short(req + 10);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI write and verify(16) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_WRITE_VERIFY;
+    scsis_io(scsis);
+}
+
+void scsis_bc_write_verify32(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 12);
+    scsis->lba_hi = be2int(req + 16);
+    scsis->count = be2short(req + 28);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI write and verify(32) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_WRITE_VERIFY;
     scsis_io(scsis);
 }
 #endif //SCSI_VERIFY_SUPPORTED

@@ -97,6 +97,12 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
     case SCSI_SBC_CMD_VERIFY12:
         scsis_bc_verify12(scsis, req);
         break;
+    case SCSI_SBC_CMD_WRITE_AND_VERIFY10:
+        scsis_bc_write_verify10(scsis, req);
+        break;
+    case SCSI_SBC_CMD_WRITE_AND_VERIFY12:
+        scsis_bc_write_verify12(scsis, req);
+        break;
 #endif //SCSI_VERIFY_SUPPORTED
 #if (SCSI_LONG_LBA)
     case SCSI_SPC_CMD_MODE_SENSE10:
@@ -115,6 +121,9 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
     case SCSI_SBC_CMD_VERIFY16:
         scsis_bc_verify16(scsis, req);
         break;
+    case SCSI_SBC_CMD_WRITE_AND_VERIFY16:
+        scsis_bc_write_verify16(scsis, req);
+        break;
 #endif //SCSI_VERIFY_SUPPORTED
     case SCSI_SBC_CMD_EXT_7F:
         switch (be2short(req + 2))
@@ -128,6 +137,9 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
 #if (SCSI_VERIFY_SUPPORTED)
         case SCSI_SBC_CMD_EXT_7F_VERIFY32:
             scsis_bc_verify32(scsis, req);
+            break;
+        case SCSI_SBC_CMD_EXT_7F_WRITE_AND_VERIFY32:
+            scsis_bc_write_verify32(scsis, req);
             break;
 #endif //SCSI_VERIFY_SUPPORTED
         default:

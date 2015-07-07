@@ -27,12 +27,16 @@ void scsis_bc_write10(SCSIS* scsis, uint8_t* req);
 void scsis_bc_write12(SCSIS* scsis, uint8_t* req);
 void scsis_bc_verify10(SCSIS* scsis, uint8_t* req);
 void scsis_bc_verify12(SCSIS* scsis, uint8_t* req);
+void scsis_bc_write_verify10(SCSIS* scsis, uint8_t* req);
+void scsis_bc_write_verify12(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read16(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read32(SCSIS* scsis, uint8_t* req);
 void scsis_bc_write16(SCSIS* scsis, uint8_t* req);
 void scsis_bc_write32(SCSIS* scsis, uint8_t* req);
 void scsis_bc_verify16(SCSIS* scsis, uint8_t* req);
 void scsis_bc_verify32(SCSIS* scsis, uint8_t* req);
+void scsis_bc_write_verify16(SCSIS* scsis, uint8_t* req);
+void scsis_bc_write_verify32(SCSIS* scsis, uint8_t* req);
 
 //for scsis_pc
 void scsis_bc_mode_sense_fill_header(SCSIS* scsis, bool dbd);
