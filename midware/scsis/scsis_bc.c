@@ -305,6 +305,40 @@ void scsis_bc_write12(SCSIS* scsis, uint8_t* req)
     scsis_io(scsis);
 }
 
+#if (SCSI_VERIFY_SUPPORTED)
+void scsis_bc_verify10(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 2);
+#if (SCSI_LONG_LBA)
+    scsis->lba_hi = 0;
+#endif //SCSI_LONG_LBA
+    scsis->count = be2short(req + 7);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI verify(10) lba: %#08X, len: %#X\n\r", scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_VERIFY;
+    scsis_io(scsis);
+}
+
+void scsis_bc_verify12(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 2);
+#if (SCSI_LONG_LBA)
+    scsis->lba_hi = 0;
+#endif //SCSI_LONG_LBA
+    scsis->count = be2short(req + 6);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI verify(12) lba: %#08X, len: %#X\n\r", scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_VERIFY;
+    scsis_io(scsis);
+}
+#endif //SCSI_VERIFY_SUPPORTED
+
 #if (SCSI_LONG_LBA)
 void scsis_bc_read16(SCSIS* scsis, uint8_t* req)
 {
@@ -328,7 +362,7 @@ void scsis_bc_read32(SCSIS* scsis, uint8_t* req)
     scsis->lba_hi = be2int(req + 16);
     scsis->count = be2short(req + 28);
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI read(16) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
+    printf("SCSI read(32) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
 #endif //SCSI_DEBUG_REQUESTS
     scsis->state = SCSIS_STATE_READ;
     scsis_io(scsis);
@@ -356,11 +390,41 @@ void scsis_bc_write32(SCSIS* scsis, uint8_t* req)
     scsis->lba_hi = be2int(req + 16);
     scsis->count = be2short(req + 28);
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI write(16) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
+    printf("SCSI write(32) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
 #endif //SCSI_DEBUG_REQUESTS
     scsis->state = SCSIS_STATE_WRITE;
     scsis_io(scsis);
 }
+
+#if (SCSI_VERIFY_SUPPORTED)
+void scsis_bc_verify16(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 2);
+    scsis->lba_hi = be2int(req + 6);
+    scsis->count = be2short(req + 10);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI verify(16) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_VERIFY;
+    scsis_io(scsis);
+}
+
+void scsis_bc_verify32(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    scsis->lba = be2int(req + 12);
+    scsis->lba_hi = be2int(req + 16);
+    scsis->count = be2short(req + 28);
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI verify(32) lba: %#08X%08X, len: %#X\n\r", scsis->lba_hi, scsis->lba, scsis->count);
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->state = SCSIS_STATE_VERIFY;
+    scsis_io(scsis);
+}
+#endif //SCSI_VERIFY_SUPPORTED
 #endif //SCSI_LONG_LBA
 
 static unsigned short scsis_bc_append_block_descriptors(SCSIS* scsis)

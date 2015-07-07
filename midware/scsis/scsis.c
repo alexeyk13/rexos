@@ -90,6 +90,14 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
     case SCSI_SBC_CMD_WRITE12:
         scsis_bc_write12(scsis, req);
         break;
+#if (SCSI_VERIFY_SUPPORTED)
+    case SCSI_SBC_CMD_VERIFY10:
+        scsis_bc_verify10(scsis, req);
+        break;
+    case SCSI_SBC_CMD_VERIFY12:
+        scsis_bc_verify12(scsis, req);
+        break;
+#endif //SCSI_VERIFY_SUPPORTED
 #if (SCSI_LONG_LBA)
     case SCSI_SPC_CMD_MODE_SENSE10:
         scsis_pc_mode_sense10(scsis, req);
@@ -103,6 +111,11 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
     case SCSI_SBC_CMD_WRITE16:
         scsis_bc_write16(scsis, req);
         break;
+#if (SCSI_VERIFY_SUPPORTED)
+    case SCSI_SBC_CMD_VERIFY16:
+        scsis_bc_verify16(scsis, req);
+        break;
+#endif //SCSI_VERIFY_SUPPORTED
     case SCSI_SBC_CMD_EXT_7F:
         switch (be2short(req + 2))
         {
@@ -112,6 +125,11 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
         case SCSI_SBC_CMD_EXT_7F_WRITE32:
             scsis_bc_write32(scsis, req);
             break;
+#if (SCSI_VERIFY_SUPPORTED)
+        case SCSI_SBC_CMD_EXT_7F_VERIFY32:
+            scsis_bc_verify32(scsis, req);
+            break;
+#endif //SCSI_VERIFY_SUPPORTED
         default:
 #if (SCSI_DEBUG_ERRORS)
             printf("SCSI: unknown cmd 0x7f action: %02xh\n\r", be2short(req + 2));
