@@ -84,6 +84,20 @@
 
 //only one LUN supported for now
 #define USBD_MSC_LUN_COUNT                                  1
+//-------------------------------- SCSI ----------------------------------------------
+#define SCSI_SENSE_DEPTH                                    10
+//can be disabled for flash memory saving
+#define SCSI_LONG_LBA                                       0
+#define SCSI_VERIFY_SUPPORTED                               0
+//SATA over SCSI. Just stub for more verbose error processing
+//Found on some linux recent kernels
+#define SCSI_SAT                                            0
+//exclude SCSI stack. Generally sector_size * num_sectors
+#define SCSI_IO_SIZE                                        512
+
+#define SCSI_DEBUG_REQUESTS                                 1
+#define SCSI_DEBUG_ERRORS                                   1
+
 //------------------------------ PIN board -------------------------------------------
 #define PINBOARD_PROCESS_SIZE                               500
 #define PINBOARD_POLL_TIME_MS                               100

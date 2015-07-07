@@ -35,6 +35,8 @@ unavailable, another HPET timer can be used for RTC emulation
   * USB device CDC ACM class
   * USB device HID Boot Keyboard class
   * USB device CCID class
+  * USB device MSC class
+  * SCSI stack: SPC5, SBC3
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -76,6 +78,10 @@ ARM7 features:
 
 History
 =======
+0.3.1
+- USB mass storage class
+- SCSI stack: SPC5, SBC3
+
 0.3.0
 - New sync object - io. block successor with embedded header and stack
 - block and direct are now deprecated
