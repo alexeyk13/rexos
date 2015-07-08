@@ -180,7 +180,10 @@ void scsis_bc_host_io_complete(SCSIS* scsis)
         scsis_io(scsis);
         break;
     case SCSIS_STATE_WRITE:
-        //TODO: the best place to put async io is here
+#if (SCSI_WRITE_CACHE)
+        if (scsis->count <= scsis->count_cur)
+            scsis_host_request(scsis, SCSIS_REQUEST_PASS);
+#endif //SCSI_WRITE_CACHE
         scsis_storage_request(scsis, SCSIS_REQUEST_WRITE);
         break;
 #if (SCSI_VERIFY_SUPPORTED)
