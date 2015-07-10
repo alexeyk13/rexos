@@ -38,17 +38,17 @@ typedef struct _SYSTIME{
 }SYSTIME;
 
 typedef struct {
-    int (*time_compare)(SYSTIME*, SYSTIME*);
-    void (*time_add)(SYSTIME*, SYSTIME*, SYSTIME*);
-    void (*time_sub)(SYSTIME*, SYSTIME*, SYSTIME*);
-    void (*us_to_time)(int, SYSTIME*);
-    void (*ms_to_time)(int, SYSTIME*);
-    int (*time_to_us)(SYSTIME*);
-    int (*time_to_ms)(SYSTIME*);
-    SYSTIME* (*time_elapsed)(SYSTIME*, SYSTIME*);
-    unsigned int (*time_elapsed_ms)(SYSTIME*);
-    unsigned int (*time_elapsed_us)(SYSTIME*);
-} LIB_TIME;
+    int (*lib_systime_compare)(SYSTIME*, SYSTIME*);
+    void (*lib_systime_add)(SYSTIME*, SYSTIME*, SYSTIME*);
+    void (*lib_systime_sub)(SYSTIME*, SYSTIME*, SYSTIME*);
+    void (*lib_us_to_systime)(int, SYSTIME*);
+    void (*lib_ms_to_systime)(int, SYSTIME*);
+    int (*lib_systime_to_us)(SYSTIME*);
+    int (*lib_systime_to_ms)(SYSTIME*);
+    SYSTIME* (*lib_systime_elapsed)(SYSTIME*, SYSTIME*);
+    unsigned int (*lib_systime_elapsed_ms)(SYSTIME*);
+    unsigned int (*lib_systime_elapsed_us)(SYSTIME*);
+} LIB_SYSTIME;
 
 #define TIMER_MODE_PERIODIC                                                (1 << 0)
 
@@ -60,9 +60,9 @@ typedef struct {
     if "from" > "to", return -1, \n
     if "from" == "t", return 0
 */
-__STATIC_INLINE int time_compare(SYSTIME* from, SYSTIME* to)
+__STATIC_INLINE int systime_compare(SYSTIME* from, SYSTIME* to)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_compare(from, to);
+    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_compare(from, to);
 }
 
 /**
@@ -72,9 +72,9 @@ __STATIC_INLINE int time_compare(SYSTIME* from, SYSTIME* to)
     \param res: result time. Safe to be same as "from" or "to"
     \retval none
 */
-__STATIC_INLINE void time_add(SYSTIME* from, SYSTIME* to, SYSTIME* res)
+__STATIC_INLINE void systime_add(SYSTIME* from, SYSTIME* to, SYSTIME* res)
 {
-    ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_add(from, to, res);
+    ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_add(from, to, res);
 }
 
 /**
@@ -84,9 +84,9 @@ __STATIC_INLINE void time_add(SYSTIME* from, SYSTIME* to, SYSTIME* res)
     \param res: result time. Safe to be same as "from" or "to"
     \retval none
 */
-__STATIC_INLINE void time_sub(SYSTIME* from, SYSTIME* to, SYSTIME* res)
+__STATIC_INLINE void systime_sub(SYSTIME* from, SYSTIME* to, SYSTIME* res)
 {
-    ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_sub(from, to, res);
+    ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_sub(from, to, res);
 }
 
 /**
@@ -95,9 +95,9 @@ __STATIC_INLINE void time_sub(SYSTIME* from, SYSTIME* to, SYSTIME* res)
     \param time: pointer to allocated result \ref SYSTIME structure
     \retval none
 */
-__STATIC_INLINE void us_to_time(int us, SYSTIME* time)
+__STATIC_INLINE void us_to_systime(int us, SYSTIME* time)
 {
-    ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->us_to_time(us, time);
+    ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_us_to_systime(us, time);
 }
 
 /**
@@ -106,9 +106,9 @@ __STATIC_INLINE void us_to_time(int us, SYSTIME* time)
     \param time: pointer to allocated result \ref SYSTIME structure
     \retval none
 */
-__STATIC_INLINE void ms_to_time(int ms, SYSTIME* time)
+__STATIC_INLINE void ms_to_systime(int ms, SYSTIME* time)
 {
-    ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->ms_to_time(ms, time);
+    ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_ms_to_systime(ms, time);
 }
 
 /**
@@ -116,9 +116,9 @@ __STATIC_INLINE void ms_to_time(int ms, SYSTIME* time)
     \param time: pointer to \ref SYSTIME structure. Maximal value: 0hr, 35 min, 46 seconds
     \retval time in microseconds
 */
-__STATIC_INLINE int time_to_us(SYSTIME* time)
+__STATIC_INLINE int systime_to_us(SYSTIME* time)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_to_us(time);
+    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_to_us(time);
 }
 
 /**
@@ -126,9 +126,9 @@ __STATIC_INLINE int time_to_us(SYSTIME* time)
     \param time: pointer to \ref SYSTIME structure. Maximal value: 24days, 20hr, 31 min, 22 seconds
     \retval time in milliseconds
 */
-__STATIC_INLINE int time_to_ms(SYSTIME* time)
+__STATIC_INLINE int systime_to_ms(SYSTIME* time)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_to_ms(time);
+    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_to_ms(time);
 }
 
 /**
@@ -137,9 +137,9 @@ __STATIC_INLINE int time_to_ms(SYSTIME* time)
     \param res: pointer to provided structure, containing result \ref SYSTIME
     \retval same as res parameter
 */
-__STATIC_INLINE SYSTIME* time_elapsed(SYSTIME* from, SYSTIME* res)
+__STATIC_INLINE SYSTIME* systime_elapsed(SYSTIME* from, SYSTIME* res)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_elapsed(from, res);
+    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_elapsed(from, res);
 }
 
 /**
@@ -147,9 +147,9 @@ __STATIC_INLINE SYSTIME* time_elapsed(SYSTIME* from, SYSTIME* res)
     \param from: pointer to provided structure, containing base \ref SYSTIME
     \retval elapsed time in milliseconds
 */
-__STATIC_INLINE unsigned int time_elapsed_ms(SYSTIME* from)
+__STATIC_INLINE unsigned int systime_elapsed_ms(SYSTIME* from)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_elapsed_ms(from);
+    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_elapsed_ms(from);
 }
 
 /**
@@ -157,9 +157,9 @@ __STATIC_INLINE unsigned int time_elapsed_ms(SYSTIME* from)
     \param from: pointer to provided structure, containing base \ref SYSTIME
     \retval elapsed time in microseconds
 */
-__STATIC_INLINE unsigned int time_elapsed_us(SYSTIME* from)
+__STATIC_INLINE unsigned int systime_elapsed_us(SYSTIME* from)
 {
-    return ((const LIB_TIME*)__GLOBAL->lib[LIB_ID_TIME])->time_elapsed_us(from);
+    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_elapsed_us(from);
 }
 
 /**
@@ -238,7 +238,7 @@ __STATIC_INLINE void timer_start(HANDLE timer, SYSTIME* time, unsigned int mode)
 __STATIC_INLINE void timer_start_ms(HANDLE timer, unsigned int time_ms, unsigned int mode)
 {
     SYSTIME time;
-    ms_to_time(time_ms, &time);
+    ms_to_systime(time_ms, &time);
     timer_start(timer, &time, mode);
 }
 
@@ -252,7 +252,7 @@ __STATIC_INLINE void timer_start_ms(HANDLE timer, unsigned int time_ms, unsigned
 __STATIC_INLINE void timer_start_us(HANDLE timer, unsigned int time_us, unsigned int mode)
 {
     SYSTIME time;
-    us_to_time(time_us, &time);
+    us_to_systime(time_us, &time);
     timer_start(timer, &time, mode);
 }
 

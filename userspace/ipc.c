@@ -53,7 +53,7 @@ void ipc_read(IPC* ipc)
 bool ipc_read_ms(IPC* ipc, unsigned int ms, HANDLE wait_process)
 {
     SYSTIME timeout;
-    ms_to_time(ms, &timeout);
+    ms_to_systime(ms, &timeout);
     svc_call(SVC_IPC_READ, (unsigned int)ipc, (unsigned int)&timeout, wait_process);
     return get_last_error() == ERROR_OK;
 }
@@ -66,7 +66,7 @@ void ipc_call(IPC* ipc, SYSTIME* timeout)
 void ipc_call_ms(IPC* ipc, unsigned int ms)
 {
     SYSTIME timeout;
-    ms_to_time(ms, &timeout);
+    ms_to_systime(ms, &timeout);
     ipc_call(ipc, &timeout);
 }
 

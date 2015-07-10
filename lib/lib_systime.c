@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "lib_time.h"
+#include "lib_systime.h"
 #include "../userspace/systime.h"
 #include "../userspace/types.h"
 
@@ -16,7 +16,7 @@
 #define MAX_MS_DELTA                        2147482
 
 
-static int __time_compare(SYSTIME* from, SYSTIME* to)
+static int lib_systime_compare(SYSTIME* from, SYSTIME* to)
 {
     int res = -1;
     if (to->sec > from->sec)
@@ -32,7 +32,7 @@ static int __time_compare(SYSTIME* from, SYSTIME* to)
     return res;
 }
 
-static void __time_add(SYSTIME* from, SYSTIME* to, SYSTIME* res)
+static void lib_systime_add(SYSTIME* from, SYSTIME* to, SYSTIME* res)
 {
     res->sec = to->sec + from->sec;
     res->usec = to->usec + from->usec;
@@ -44,9 +44,9 @@ static void __time_add(SYSTIME* from, SYSTIME* to, SYSTIME* res)
     }
 }
 
-static void __time_sub(SYSTIME* from, SYSTIME* to, SYSTIME* res)
+static void lib_systime_sub(SYSTIME* from, SYSTIME* to, SYSTIME* res)
 {
-    if (__time_compare(from, to) > 0)
+    if (lib_systime_compare(from, to) > 0)
     {
         res->sec = to->sec - from->sec;
         //borrow
@@ -62,61 +62,61 @@ static void __time_sub(SYSTIME* from, SYSTIME* to, SYSTIME* res)
         res->sec = res->usec = 0;
 }
 
-static void __us_to_time(int us, SYSTIME* time)
+static void lib_us_to_systime(int us, SYSTIME* time)
 {
     time->sec = us / USEC_1S;
     time->usec = us % USEC_1S;
 }
 
-static void __ms_to_time(int ms, SYSTIME* time)
+static void lib_ms_to_systime(int ms, SYSTIME* time)
 {
     time->sec = ms / MSEC_1S;
     time->usec = (ms % MSEC_1S) * USEC_1MS;
 }
 
-static int __time_to_us(SYSTIME* time)
+static int lib_systime_to_us(SYSTIME* time)
 {
     return time->sec <= MAX_US_DELTA ? (int)(time->sec * USEC_1S + time->usec) : (int)(MAX_US_DELTA * USEC_1S);
 }
 
-static int __time_to_ms(SYSTIME* time)
+static int lib_systime_to_ms(SYSTIME* time)
 {
     return time->sec <= MAX_MS_DELTA ? (int)(time->sec * MSEC_1S + time->usec / USEC_1MS) : (int)(MAX_MS_DELTA * MSEC_1S);
 }
 
-static SYSTIME* __time_elapsed(SYSTIME* from, SYSTIME* res)
+static SYSTIME* lib_systime_elapsed(SYSTIME* from, SYSTIME* res)
 {
     SYSTIME to;
     get_uptime(&to);
-    __time_sub(from, &to, res);
+    lib_systime_sub(from, &to, res);
     return res;
 }
 
-static unsigned int __time_elapsed_ms(SYSTIME* from)
+static unsigned int lib_systime_elapsed_ms(SYSTIME* from)
 {
     SYSTIME to;
     get_uptime(&to);
-    __time_sub(from, &to, &to);
-    return __time_to_ms(&to);
+    lib_systime_sub(from, &to, &to);
+    return lib_systime_to_ms(&to);
 }
 
-static unsigned int __time_elapsed_us(SYSTIME* from)
+static unsigned int lib_systime_elapsed_us(SYSTIME* from)
 {
     SYSTIME to;
     get_uptime(&to);
-    __time_sub(from, &to, &to);
-    return __time_to_us(&to);
+    lib_systime_sub(from, &to, &to);
+    return lib_systime_to_us(&to);
 }
 
-const LIB_TIME __LIB_TIME = {
-    __time_compare,
-    __time_add,
-    __time_sub,
-    __us_to_time,
-    __ms_to_time,
-    __time_to_us,
-    __time_to_ms,
-    __time_elapsed,
-    __time_elapsed_ms,
-    __time_elapsed_us
+const LIB_SYSTIME __LIB_SYSTIME = {
+    lib_systime_compare,
+    lib_systime_add,
+    lib_systime_sub,
+    lib_us_to_systime,
+    lib_ms_to_systime,
+    lib_systime_to_us,
+    lib_systime_to_ms,
+    lib_systime_elapsed,
+    lib_systime_elapsed_ms,
+    lib_systime_elapsed_us
 };

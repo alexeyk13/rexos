@@ -65,7 +65,7 @@ static inline void find_shoot_next()
     while (__KERNEL->timers)
     {
         ksystime_get_uptime_internal(&uptime);
-        if (time_compare(&__KERNEL->timers->time, &uptime) >= 0)
+        if (systime_compare(&__KERNEL->timers->time, &uptime) >= 0)
         {
             cur = __KERNEL->timers;
             cur->active = false;
@@ -144,11 +144,11 @@ void ksystime_timer_start_internal(KTIMER* timer, SYSTIME *time)
     ksystime_get_uptime(&uptime);
     timer->time.sec = time->sec;
     timer->time.usec = time->usec;
-    time_add(&uptime, &timer->time, &timer->time);
+    systime_add(&uptime, &timer->time, &timer->time);
     disable_interrupts();
     dlist_enum_start((DLIST**)&__KERNEL->timers, &de);
     while (dlist_enum(&de, (DLIST**)&cur))
-        if (time_compare(&cur->time, &timer->time) < 0)
+        if (systime_compare(&cur->time, &timer->time) < 0)
         {
             dlist_add_before((DLIST**)&__KERNEL->timers, (DLIST*)cur, (DLIST*)timer);
             found = true;

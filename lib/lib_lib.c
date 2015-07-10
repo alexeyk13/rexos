@@ -9,7 +9,7 @@
 #include "kernel_config.h"
 #include "lib_std.h"
 #include "lib_stdio.h"
-#include "lib_time.h"
+#include "lib_systime.h"
 #include "lib_heap.h"
 #if (KERNEL_LIB_GPIO)
 #include "lib_gpio.h"
@@ -25,8 +25,8 @@ const void *const __LIB[] = {
     (const void *const)&__LIB_STD,
     //lib_stdio.h
     (const void *const )&__LIB_STDIO,
-    //lib_time.h
-    (const void *const)&__LIB_TIME,
+    //lib_systime.h
+    (const void *const)&__LIB_SYSTIME,
     //lib_heap.h
     (const void *const )&__LIB_HEAP,
 #if (KERNEL_LIB_GPIO)

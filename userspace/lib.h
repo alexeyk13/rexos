@@ -14,10 +14,9 @@
 typedef enum {
     LIB_ID_STD = 0,
     LIB_ID_STDIO,
-    LIB_ID_TIME,
+    LIB_ID_SYSTIME,
     LIB_ID_HEAP,
     LIB_ID_GPIO,
-    LIB_ID_GUI,
     LIB_ID_MAX
 } LIB_ID;
 

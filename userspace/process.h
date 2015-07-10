@@ -226,7 +226,7 @@ __STATIC_INLINE void sleep(SYSTIME* time)
 __STATIC_INLINE void sleep_ms(unsigned int ms)
 {
     SYSTIME time;
-    ms_to_time(ms, &time);
+    ms_to_systime(ms, &time);
     sleep(&time);
 }
 
@@ -238,7 +238,7 @@ __STATIC_INLINE void sleep_ms(unsigned int ms)
 __STATIC_INLINE void sleep_us(unsigned int us)
 {
     SYSTIME time;
-    us_to_time(us, &time);
+    us_to_systime(us, &time);
     sleep(&time);
 }
 

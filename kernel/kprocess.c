@@ -88,8 +88,8 @@ void kprocess_remove_from_active_list(PROCESS* process)
     dlist_add_tail((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
     SYSTIME time;
     ksystime_get_uptime_internal(&time);
-    time_sub(&(process->uptime_start), &time, &time);
-    time_add(&time, &(process->uptime), &(process->uptime));
+    systime_sub(&(process->uptime_start), &time, &time);
+    systime_add(&time, &(process->uptime), &(process->uptime));
 #endif
 }
 
