@@ -236,13 +236,6 @@ int get_adc_clock()
 }
 #endif
 
-#if (STM32_DECODE_RESET)
-RESET_REASON get_reset_reason(CORE* core)
-{
-    return core->power.reset_reason;
-}
-#endif //STM32_DECODE_RESET
-
 static inline void power_dma_on(CORE* core, STM32_DMA dma)
 {
     if (core->power.dma_count[dma]++ == 0)
@@ -594,45 +587,43 @@ static inline void set_clock_source(CORE* core, STM32_CLOCK_SOURCE_TYPE cst, uns
 }
 
 #if (STM32_DECODE_RESET)
-static inline void decode_reset_reason(CORE* core)
+void decode_reset_reason(CORE* core)
+//static inline void decode_reset_reason(CORE* core)
 {
-    core->power.reset_reason = RESET_REASON_UNKNOWN;
-    if (RCC->CSR & RCC_CSR_LPWRRSTF)
-        core->power.reset_reason = RESET_REASON_LOW_POWER;
-    else if (RCC->CSR & (RCC_CSR_WWDGRSTF | RCC_CSR_WDGRSTF))
-        core->power.reset_reason = RESET_REASON_WATCHDOG;
-    else if (RCC->CSR & RCC_CSR_SFTRSTF)
-        core->power.reset_reason = RESET_REASON_SOFTWARE;
-    else if (RCC->CSR & RCC_CSR_PORRSTF)
-        core->power.reset_reason = RESET_REASON_POWERON;
-    else if (RCC->CSR & RCC_CSR_PADRSTF)
-        core->power.reset_reason = RESET_REASON_PIN_RST;
+#if !(POWER_MANAGEMENT_SUPPORT) && !(STM32_RTC_DRIVER)
+    RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+#endif //!(POWER_MANAGEMENT_SUPPORT) && !(STM32_RTC_DRIVER)
+    if ((PWR->CSR & (PWR_CSR_WUF | PWR_CSR_SBF)) == (PWR_CSR_WUF | PWR_CSR_SBF))
+        core->power.reset_reason = RESET_REASON_WAKEUP;
+    else
+    {
+        core->power.reset_reason = RESET_REASON_UNKNOWN;
+        if (RCC->CSR & RCC_CSR_LPWRRSTF)
+            core->power.reset_reason = RESET_REASON_LOW_POWER;
+        else if (RCC->CSR & (RCC_CSR_WWDGRSTF | RCC_CSR_WDGRSTF))
+            core->power.reset_reason = RESET_REASON_WATCHDOG;
+        else if (RCC->CSR & RCC_CSR_SFTRSTF)
+            core->power.reset_reason = RESET_REASON_SOFTWARE;
+        else if (RCC->CSR & RCC_CSR_PORRSTF)
+            core->power.reset_reason = RESET_REASON_POWERON;
+        else if (RCC->CSR & RCC_CSR_PADRSTF)
+            core->power.reset_reason = RESET_REASON_PIN_RST;
+#if defined(STM32L0)
+        else if (RCC->CSR & RCC_CSR_OBL)
+            core->power.reset_reason = RESET_REASON_OPTION_BYTES;
+#endif //STM32L0
+    }
+    PWR->CR |= PWR_CR_CWUF | PWR_CR_CSBF;
     RCC->CSR |= RCC_CSR_RMVF;
+#if !(POWER_MANAGEMENT_SUPPORT) && !(STM32_RTC_DRIVER)
+    RCC->APB1ENR &= ~RCC_APB1ENR_PWREN;
+#endif //!(POWER_MANAGEMENT_SUPPORT) && !(STM32_RTC_DRIVER)
 }
 #endif //STM32_DECODE_RESET
 
 void stm32_power_init(CORE* core)
 {
     int i;
-#if (POWER_MANAGEMENT_SUPPORT)
-    //clear power down flags
-    PWR->CR |= PWR_CR_CSBF | PWR_CR_CWUF;
-#if defined (STM32L0)
-    PWR->CSR &= ~(PWR_CSR_EWUP2 | PWR_CSR_EWUP2);
-#else
-    PWR->CSR &= ~PWR_CSR_EWUP;
-#endif //STM32L0
-#endif //POWER_MANAGEMENT_SUPPORT
-
-    core->power.write_count = 0;
-    for (i = 0; i < DMA_COUNT; ++i)
-        core->power.dma_count[i] = 0;
-#if (STM32_DECODE_RESET)
-#if defined(STM32F1)
-    decode_reset_reason(core);
-#endif
-#endif //STM32_DECODE_RESET
-
     RCC->APB1ENR = 0;
     RCC->APB2ENR = 0;
 
@@ -648,6 +639,31 @@ void stm32_power_init(CORE* core)
 #if defined(STM32F10X_CL) || defined(STM32F100)
     RCC->CFGR2 = 0;
 #endif
+
+#if (POWER_MANAGEMENT_SUPPORT) || (STM32_RTC_DRIVER)
+    RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+#endif //(POWER_MANAGEMENT_SUPPORT) || (STM32_RTC_DRIVER)
+#if (POWER_MANAGEMENT_SUPPORT)
+#if (SYSCFG_ENABLED)
+#if defined(STM32F1)
+    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+#else
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+#endif
+#endif //SYSCFG_ENABLED
+#if defined (STM32L0)
+    PWR->CSR &= ~(PWR_CSR_EWUP2 | PWR_CSR_EWUP2);
+#else
+    PWR->CSR &= ~PWR_CSR_EWUP;
+#endif //STM32L0
+#endif //POWER_MANAGEMENT_SUPPORT
+
+    core->power.write_count = 0;
+    for (i = 0; i < DMA_COUNT; ++i)
+        core->power.dma_count[i] = 0;
+#if (STM32_DECODE_RESET)
+    decode_reset_reason(core);
+#endif //STM32_DECODE_RESET
 
 #if (POWER_MANAGEMENT_SUPPORT) && (LOW_POWER_ON_STARTUP)
 #if defined (STM32L0)
@@ -675,7 +691,7 @@ bool stm32_power_request(CORE* core, IPC* ipc)
         break;
 #if (STM32_DECODE_RESET)
     case STM32_POWER_GET_RESET_REASON:
-        ipc->param2 = get_reset_reason(core);
+        ipc->param2 = core->power.reset_reason;
         need_post = true;
         break;
 #endif //STM32_DECODE_RESET

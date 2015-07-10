@@ -33,11 +33,9 @@ void stm32_rtc_isr(int vector, void* param)
 static inline void backup_on()
 {
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
-    //enable POWER and BACKUP interface
-    RCC->APB1ENR |= RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN;
-    PWR->CR |= PWR_CR_DBP;
+    //enable BACKUP interface
+    RCC->APB1ENR |= RCC_APB1ENR_BKPEN;
 #elif defined(STM32L0)
-    RCC->APB1ENR |= RCC_APB1ENR_PWREN;
     PWR->CR |= PWR_CR_DBP;
     //HSE as clock source can cause faults on pin reset, so reset backup domain is required
 #if !(LSE_VALUE)
@@ -53,6 +51,7 @@ static inline void backup_on()
     RTC->WPR = 0x53;
     __enable_irq();
 #endif
+    PWR->CR |= PWR_CR_DBP;
 }
 
 static inline void backup_off()
@@ -60,14 +59,13 @@ static inline void backup_off()
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     //disable POWER and BACKUP interface
     PWR->CR &= ~PWR_CR_DBP;
-    RCC->APB1ENR &= ~(RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN);
+    RCC->APB1ENR &= ~RCC_APB1ENR_BKPEN;
 #elif defined(STM32L0)
     __disable_irq();
     RTC->WPR = 0x00;
     RTC->WPR = 0xff;
     __enable_irq();
     PWR->CR &= ~PWR_CR_DBP;
-    RCC->APB1ENR &= ~RCC_APB1ENR_PWREN;
 #endif
 }
 
