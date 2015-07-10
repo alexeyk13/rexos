@@ -8,7 +8,7 @@
 #define KPROCESS_H
 
 #include "../userspace/process.h"
-#include "ktimer.h"
+#include "ksystime.h"
 #include "kernel_config.h"
 #include "dbg.h"
 #include "kipc.h"
@@ -27,8 +27,8 @@ typedef struct _PROCESS {
     KTIMER timer;                                                      //timer for process sleep and sync objects timeouts
     void* sync_object;                                                 //sync object we are waiting for
 #if (KERNEL_PROCESS_STAT)
-    TIME uptime;
-    TIME uptime_start;
+    SYSTIME uptime;
+    SYSTIME uptime_start;
 #endif //KERNEL_PROCESS_STAT
 #if (KERNEL_BD)
     BLOCK* blocks;
@@ -51,7 +51,7 @@ void kprocess_get_priority(PROCESS* process, unsigned int* priority);
 void kprocess_get_current_svc(PROCESS** var);
 
 //called from other places in kernel, IRQ disabled
-void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
+void kprocess_sleep(PROCESS* process, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
 void kprocess_wakeup(PROCESS* process);
 void kprocess_set_current_priority(PROCESS* process, unsigned int priority);
 

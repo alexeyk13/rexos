@@ -4,19 +4,19 @@
     All rights reserved.
 */
 
-#ifndef KTIMER_H
-#define KTIMER_H
+#ifndef KSYSTIME_H
+#define KSYSTIME_H
 
 #include "../userspace/time.h"
 #include "../userspace/dlist.h"
-#include "../userspace/timer.h"
+#include "../userspace/systime.h"
 #include "../userspace/ipc.h"
 #include "kernel_config.h"
 #include "dbg.h"
 
 typedef struct {
     DLIST list;
-    TIME time;
+    SYSTIME time;
     void (*callback)(void*);
     void* param;
     bool active;
@@ -29,28 +29,28 @@ typedef struct {
     unsigned int mode;
     unsigned int param;
     HAL hal;
-    TIME time;
+    SYSTIME time;
 } SOFT_TIMER;
 
 //called from process handler
-void ktimer_start_internal(KTIMER* timer, TIME* time);
-void ktimer_stop_internal(KTIMER* timer);
-void ktimer_init_internal(KTIMER* timer, void (*callback)(void*), void* param);
-void ktimer_get_uptime_internal(TIME* res);
+void ksystime_timer_start_internal(KTIMER* timer, SYSTIME* time);
+void ksystime_timer_stop_internal(KTIMER* timer);
+void ksystime_timer_init_internal(KTIMER* timer, void (*callback)(void*), void* param);
+void ksystime_get_uptime_internal(SYSTIME* res);
 
 //called from svc handler
-void ktimer_hpet_timeout();
-void ktimer_second_pulse();
-void ktimer_get_uptime(TIME* res);
-void ktimer_setup(const CB_SVC_TIMER* cb_ktimer, void* cb_ktimer_param);
+void ksystime_hpet_timeout();
+void ksystime_second_pulse();
+void ksystime_get_uptime(SYSTIME* res);
+void ksystime_hpet_setup(const CB_SVC_TIMER* cb_ktimer, void* cb_ktimer_param);
 
-void ktimer_create(SOFT_TIMER **timer, HANDLE param, HAL hal);
-void ktimer_destroy(SOFT_TIMER* timer);
-void ktimer_start(SOFT_TIMER* timer, TIME* time, unsigned int mode);
-void ktimer_stop(SOFT_TIMER* timer);
+void ksystime_soft_timer_create(SOFT_TIMER **timer, HANDLE param, HAL hal);
+void ksystime_soft_timer_destroy(SOFT_TIMER* timer);
+void ksystime_soft_timer_start(SOFT_TIMER* timer, SYSTIME* time, unsigned int mode);
+void ksystime_soft_timer_stop(SOFT_TIMER* timer);
 
 //called from startup
-void ktimer_init();
+void ksystime_init();
 
 
-#endif // KTIMER_H
+#endif // KSYSTIME_H

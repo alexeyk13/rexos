@@ -24,12 +24,12 @@ typedef struct {
 //called from kernel directly
 void kipc_init(HANDLE handle, int size);
 void kipc_post_process(IPC* ipc, HANDLE sender);
-void kipc_read_process(PROCESS* process, IPC* ipc, TIME* time, HANDLE wait_process, unsigned int cmd);
+void kipc_read_process(PROCESS* process, IPC* ipc, SYSTIME* time, HANDLE wait_process, unsigned int cmd);
 
 //called from svc
 void kipc_post(IPC* ipc);
-void kipc_read(IPC* ipc, TIME* time, HANDLE wait_process);
-void kipc_call(IPC* ipc, TIME* time);
+void kipc_read(IPC* ipc, SYSTIME* time, HANDLE wait_process);
+void kipc_call(IPC* ipc, SYSTIME* time);
 
 void kipc_lock_release(HANDLE process);
 

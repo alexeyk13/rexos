@@ -7,7 +7,7 @@
 #include "pinboard.h"
 #include "../userspace/array.h"
 #include "../userspace/time.h"
-#include "../userspace/timer.h"
+#include "../userspace/systime.h"
 #include "../userspace/sys.h"
 #include "../userspace/gpio.h"
 #include "sys_config.h"
@@ -17,7 +17,7 @@ typedef struct {
     unsigned int pin;
     unsigned int mode;
     unsigned int long_ms;
-    TIME press_time;
+    SYSTIME press_time;
     bool pressed, long_press;
 } KEY;
 

@@ -10,7 +10,7 @@
 #include "lpc_power.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/irq.h"
-#include "../../userspace/timer.h"
+#include "../../userspace/systime.h"
 
 #define get_system_clock                            lpc_power_get_system_clock_inside
 #define ack_gpio                                    lpc_gpio_request_inside

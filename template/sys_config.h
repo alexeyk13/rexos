@@ -90,6 +90,8 @@
 //can be disabled for flash memory saving
 #define SCSI_LONG_LBA                                       0
 #define SCSI_VERIFY_SUPPORTED                               0
+//send PASS before data was written
+#define SCSI_WRITE_CACHE                                    1
 //SATA over SCSI. Just stub for more verbose error processing
 //Found on some linux recent kernels
 #define SCSI_SAT                                            0

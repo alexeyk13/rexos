@@ -30,11 +30,11 @@ static inline int kipc_index(PROCESS* process, HANDLE wait_process, unsigned int
     return -1;
 }
 
-void kipc_read_process(PROCESS *process, IPC* ipc, TIME* time, HANDLE wait_process, unsigned int cmd)
+void kipc_read_process(PROCESS *process, IPC* ipc, SYSTIME* time, HANDLE wait_process, unsigned int cmd)
 {
     int i;
     IPC tmp;
-    CHECK_ADDRESS(process, time, sizeof(TIME));
+    CHECK_ADDRESS(process, time, sizeof(SYSTIME));
 #if (KERNEL_IPC_DEBUG)
     if (wait_process == (HANDLE)process)
         printk("Warning: calling wait IPC with receiver same as caller can cause deadlock! process: %s\n\r", kprocess_name(process));
@@ -137,14 +137,14 @@ void kipc_post(IPC* ipc)
     kipc_post_process(ipc, (HANDLE)process);
 }
 
-void kipc_read(IPC* ipc, TIME* time, HANDLE wait_process)
+void kipc_read(IPC* ipc, SYSTIME* time, HANDLE wait_process)
 {
     PROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, ipc, sizeof(IPC));
     kipc_read_process(process, ipc, time, wait_process, ANY_CMD);
 }
 
-void kipc_call(IPC* ipc, TIME* time)
+void kipc_call(IPC* ipc, SYSTIME* time)
 {
     PROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, ipc, sizeof(IPC));

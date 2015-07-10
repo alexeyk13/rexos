@@ -12,7 +12,7 @@
 #include "../../userspace/sys.h"
 #include "../../userspace/time.h"
 #include "../../userspace/irq.h"
-#include "../../userspace/timer.h"
+#include "../../userspace/systime.h"
 
 #if defined(STM32L0)
 #define RTC_EXTI_LINE                               20

@@ -43,7 +43,7 @@ void kprocess_add_to_active_list(PROCESS* process)
     DLIST_ENUM de;
     PROCESS* cur;
 #if (KERNEL_PROCESS_STAT)
-    ktimer_get_uptime_internal(&process->uptime_start);
+    ksystime_get_uptime_internal(&process->uptime_start);
     dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
 #endif
     //return from core HALT
@@ -86,8 +86,8 @@ void kprocess_remove_from_active_list(PROCESS* process)
         dlist_remove((DLIST**)&__KERNEL->processes, (DLIST*)process);
 #if (KERNEL_PROCESS_STAT)
     dlist_add_tail((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
-    TIME time;
-    ktimer_get_uptime_internal(&time);
+    SYSTIME time;
+    ksystime_get_uptime_internal(&time);
     time_sub(&(process->uptime_start), &time, &time);
     time_add(&time, &(process->uptime), &(process->uptime));
 #endif
@@ -98,7 +98,7 @@ void kprocess_wakeup_internal(PROCESS* process)
     if  (process->flags & PROCESS_FLAGS_WAITING)
     {
         //if timer is still active, kill him
-        ktimer_stop_internal(&process->timer);
+        ksystime_timer_stop_internal(&process->timer);
         process->flags &= ~PROCESS_SYNC_MASK;
 
         switch (process->flags & PROCESS_MODE_MASK)
@@ -165,7 +165,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->flags = 0;
             (*process)->base_priority = rex->priority;
             (*process)->sp = (void*)((unsigned int)(*process)->heap + rex->size);
-            ktimer_init_internal(&(*process)->timer, kprocess_timeout, (*process));
+            ksystime_timer_init_internal(&(*process)->timer, kprocess_timeout, (*process));
             (*process)->size = rex->size;
             kipc_init((HANDLE)*process, rex->ipc_size);
 #if (KERNEL_BD)
@@ -303,7 +303,7 @@ void kprocess_destroy(PROCESS* process)
     if  (process->flags & PROCESS_FLAGS_WAITING)
     {
         //if timer is still active, kill him
-        ktimer_stop_internal(&process->timer);
+        ksystime_timer_stop_internal(&process->timer);
         //say sync object to release us
         switch (process->flags & PROCESS_SYNC_MASK)
         {
@@ -328,7 +328,7 @@ void kprocess_destroy(PROCESS* process)
     kfree(process);
 }
 
-void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
+void kprocess_sleep(PROCESS* process, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
 {
     CHECK_HANDLE(process, sizeof(PROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
@@ -341,7 +341,7 @@ void kprocess_sleep(PROCESS* process, TIME* time, PROCESS_SYNC_TYPE sync_type, v
     enable_interrupts();
     //create timer if not infinite
     if (time && (time->sec || time->usec))
-        ktimer_start_internal(&process->timer, time);
+        ksystime_timer_start_internal(&process->timer, time);
 }
 
 void kprocess_wakeup(PROCESS* process)
@@ -491,7 +491,7 @@ void process_stat(PROCESS* process)
 static inline void kernel_stat()
 {
 #if (KERNEL_PROCESS_STAT)
-    TIME uptime;
+    SYSTIME uptime;
 #endif
     POOL_STAT stat;
     LIB_ENTER;
@@ -515,7 +515,7 @@ static inline void kernel_stat()
     }
 
 #if (KERNEL_PROCESS_STAT)
-    ktimer_get_uptime_internal(&uptime);
+    ksystime_get_uptime_internal(&uptime);
     printk("%3d:%02d.%03d", uptime.sec / 60, uptime.sec % 60, uptime.usec / 1000);
 #endif
     printk("\n\r");

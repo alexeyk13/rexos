@@ -71,7 +71,9 @@ typedef enum {
     RESET_REASON_WATCHDOG,
     RESET_REASON_SOFTWARE,
     RESET_REASON_POWERON,
-    RESET_REASON_PIN_RST
+    RESET_REASON_PIN_RST,
+    RESET_REASON_WAKEUP,
+    RESET_REASON_OPTION_BYTES
 } RESET_REASON;
 
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
@@ -80,17 +82,7 @@ typedef enum {
     STM32_GPIO_ENABLE_PIN = IPC_USER,
     STM32_GPIO_DISABLE_PIN,
     STM32_GPIO_ENABLE_EXTI,
-    STM32_GPIO_DISABLE_EXTI,
-    STM32_GPIO_DISABLE_JTAG
-#if defined(STM32F1)
-    ,
-    STM32_GPIO_ENABLE_AFIO,
-    STM32_GPIO_DISABLE_AFIO
-#elif defined(STM32L0)
-    ,
-    STM32_GPIO_ENABLE_SYSCFG,
-    STM32_GPIO_DISABLE_SYSCFG
-#endif
+    STM32_GPIO_DISABLE_EXTI
 } STM32_GPIO_IPCS;
 
 typedef enum {
@@ -194,9 +186,6 @@ typedef enum {
 #define EXTI_FLAGS_RISING                            (1 << 0)
 #define EXTI_FLAGS_FALLING                           (1 << 1)
 #define EXTI_FLAGS_EDGE_MASK                         (3 << 0)
-#define EXTI_FLAGS_PULLUP                            (1 << 2)
-#define EXTI_FLAGS_PULLDOWN                          (1 << 3)
-#define EXTI_FLAGS_PULL_MASK                         (3 << 2)
 
 typedef GPIO_TypeDef* GPIO_TypeDef_P;
 extern const GPIO_TypeDef_P GPIO[];

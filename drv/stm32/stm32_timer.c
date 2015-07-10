@@ -10,7 +10,7 @@
 #include "stm32_power.h"
 #include "stm32_core_private.h"
 #include "../../userspace/error.h"
-#include "../../userspace/timer.h"
+#include "../../userspace/systime.h"
 #include "../../userspace/irq.h"
 #include <string.h>
 

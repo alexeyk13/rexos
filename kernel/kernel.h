@@ -96,7 +96,7 @@ typedef struct {
 #endif
 
     //------------------------- timer specific -------------------------
-    TIME uptime;
+    SYSTIME uptime;
 
     //callback for HPET timer
     CB_SVC_TIMER cb_ktimer;

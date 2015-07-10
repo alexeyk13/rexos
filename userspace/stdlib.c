@@ -5,13 +5,13 @@
 */
 
 #include "stdlib.h"
-#include "timer.h"
+#include "systime.h"
 #include "process.h"
 
 unsigned int srand()
 {
     unsigned int seed;
-    TIME uptime;
+    SYSTIME uptime;
     seed = 0x30d02149;
     int i;
     for (i = 0; i < 0x80; ++i)
@@ -24,7 +24,7 @@ unsigned int srand()
 
 unsigned int rand(unsigned int* seed)
 {
-    TIME uptime;
+    SYSTIME uptime;
     get_uptime(&uptime);
     (*seed) = (*seed) * 0x1b8365e9 + 0x6071d;
     (*seed) ^= uptime.usec;

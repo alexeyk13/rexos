@@ -9,7 +9,7 @@
 #include "lpc_power.h"
 #include "lpc_config.h"
 #include "lpc_gpio.h"
-#include "../../userspace/timer.h"
+#include "../../userspace/systime.h"
 #include "../../userspace/irq.h"
 
 #define TC16PC                                      15

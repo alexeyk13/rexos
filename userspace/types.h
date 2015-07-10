@@ -25,11 +25,6 @@
 #define FILE_MODE_WRITE                     (1 << 1)
 #define FILE_MODE_READ_WRITE                (FILE_MODE_READ | FILE_MODE_WRITE)
 
-/** \addtogroup lib_time time
-    time routines
-    \{
- */
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>

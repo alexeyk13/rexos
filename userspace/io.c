@@ -8,6 +8,7 @@
 #include "svc.h"
 #include "error.h"
 #include <string.h>
+#include "systime.h"
 
 void* io_data(IO* io)
 {
@@ -164,7 +165,7 @@ void iio_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* 
 
 void io_call(IPC* ipc)
 {
-    TIME time;
+    SYSTIME time;
     time.sec = time.usec = 0;
     svc_call(SVC_IO_CALL, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, (unsigned int)&time);
 }

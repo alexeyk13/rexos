@@ -7,7 +7,7 @@
 #ifndef LIB_TIME_H
 #define LIB_TIME_H
 
-#include "../userspace/time.h"
+#include "../userspace/systime.h"
 
 extern const LIB_TIME __LIB_TIME;
 

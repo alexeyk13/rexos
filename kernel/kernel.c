@@ -70,7 +70,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kprocess_destroy((PROCESS*)param1);
         break;
     case SVC_PROCESS_SLEEP:
-        kprocess_sleep(kprocess_get_current(), (TIME*)param1, PROCESS_SYNC_TIMER_ONLY, NULL);
+        kprocess_sleep(kprocess_get_current(), (SYSTIME*)param1, PROCESS_SYNC_TIMER_ONLY, NULL);
         break;
 #if (KERNEL_PROFILING)
     case SVC_PROCESS_SWITCH_TEST:
@@ -89,38 +89,38 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         break;
     //system timer related
     case SVC_TIMER_HPET_TIMEOUT:
-        ktimer_hpet_timeout();
+        ksystime_hpet_timeout();
         break;
     case SVC_TIMER_SECOND_PULSE:
-        ktimer_second_pulse();
+        ksystime_second_pulse();
         break;
     case SVC_TIMER_GET_UPTIME:
-        ktimer_get_uptime((TIME*)param1);
+        ksystime_get_uptime((SYSTIME*)param1);
         break;
     case SVC_TIMER_SETUP:
-        ktimer_setup((CB_SVC_TIMER*)param1, (void*)param2);
+        ksystime_hpet_setup((CB_SVC_TIMER*)param1, (void*)param2);
         break;
     case SVC_TIMER_CREATE:
-        ktimer_create((SOFT_TIMER**)param1, param2, (HAL)param3);
+        ksystime_soft_timer_create((SOFT_TIMER**)param1, param2, (HAL)param3);
         break;
     case SVC_TIMER_START:
-        ktimer_start((SOFT_TIMER*)param1, (TIME*)param2, param3);
+        ksystime_soft_timer_start((SOFT_TIMER*)param1, (SYSTIME*)param2, param3);
         break;
     case SVC_TIMER_STOP:
-        ktimer_stop((SOFT_TIMER*)param1);
+        ksystime_soft_timer_stop((SOFT_TIMER*)param1);
         break;
     case SVC_TIMER_DESTROY:
-        ktimer_destroy((SOFT_TIMER*)param1);
+        ksystime_soft_timer_destroy((SOFT_TIMER*)param1);
         break;
     //ipc related
     case SVC_IPC_POST:
         kipc_post((IPC*)param1);
         break;
     case SVC_IPC_READ:
-        kipc_read((IPC*)param1, (TIME*)param2, param3);
+        kipc_read((IPC*)param1, (SYSTIME*)param2, param3);
         break;
     case SVC_IPC_CALL:
-        kipc_call((IPC*)param1, (TIME*)param2);
+        kipc_call((IPC*)param1, (SYSTIME*)param2);
         break;
     //stream related
     case SVC_STREAM_CREATE:
@@ -197,7 +197,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kio_send((KIO*)param1, (IPC*)param2);
         break;
     case SVC_IO_CALL:
-        kio_call((KIO*)param1, (IPC*)param2, (TIME*)param3);
+        kio_call((KIO*)param1, (IPC*)param2, (SYSTIME*)param3);
         break;
     case SVC_IO_DESTROY:
         kio_destroy((KIO*)param1);
@@ -250,8 +250,8 @@ void startup()
     //initialize paged area
     pool_init(&__KERNEL->paged, (void*)(SRAM_BASE + KERNEL_GLOBAL_SIZE + sizeof(KERNEL)));
 
-    //initilize timer
-    ktimer_init();
+    //initilize system time
+    ksystime_init();
 
     //initialize kernel objects
     kobject_init();

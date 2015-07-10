@@ -8,7 +8,8 @@
 #define IPC_H
 
 #include "types.h"
-#include "time.h"
+
+typedef struct _SYSTIME SYSTIME;
 
 typedef enum {
     IPC_PING = 0x0,
@@ -128,10 +129,10 @@ bool ipc_read_ms(IPC* ipc, unsigned int ms, HANDLE wait_process);
 /**
     \brief post IPC, wait for IPC, peek IPC
     \param ipc: IPC structure to send and receive
-    \param timeout: pointer to TIME structure
+    \param timeout: pointer to SYSTIME structure
     \retval none
 */
-void ipc_call(IPC* ipc, TIME* timeout);
+void ipc_call(IPC* ipc, SYSTIME* timeout);
 
 bool call(IPC* ipc);
 

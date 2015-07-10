@@ -67,7 +67,7 @@ void kio_send(KIO* kio, IPC* ipc)
     kio_send_internal(process, kio, ipc);
 }
 
-void kio_call(KIO* kio, IPC* ipc, TIME* time)
+void kio_call(KIO* kio, IPC* ipc, SYSTIME* time)
 {
     PROCESS* process = kprocess_get_current();
     CHECK_HANDLE(kio, sizeof(KIO));

@@ -8,6 +8,7 @@
 #include "heap.h"
 #include "svc.h"
 #include "error.h"
+#include "systime.h"
 
 void ipc_post(IPC* ipc)
 {
@@ -51,20 +52,20 @@ void ipc_read(IPC* ipc)
 
 bool ipc_read_ms(IPC* ipc, unsigned int ms, HANDLE wait_process)
 {
-    TIME timeout;
+    SYSTIME timeout;
     ms_to_time(ms, &timeout);
     svc_call(SVC_IPC_READ, (unsigned int)ipc, (unsigned int)&timeout, wait_process);
     return get_last_error() == ERROR_OK;
 }
 
-void ipc_call(IPC* ipc, TIME* timeout)
+void ipc_call(IPC* ipc, SYSTIME* timeout)
 {
     svc_call(SVC_IPC_CALL, (unsigned int)ipc, (unsigned int)timeout, 0);
 }
 
 void ipc_call_ms(IPC* ipc, unsigned int ms)
 {
-    TIME timeout;
+    SYSTIME timeout;
     ms_to_time(ms, &timeout);
     ipc_call(ipc, &timeout);
 }

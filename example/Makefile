@@ -49,7 +49,7 @@ VPATH                      += $(INCLUDE_FOLDERS)
 SRC_C                       = kcortexm.c
 SRC_AS                      = startup_cortexm.S cortexm.S
 #kernel
-SRC_C                      += kernel.c dbg.c kirq.c kio.c kprocess.c ktimer.c kipc.c kstream.c kobject.c
+SRC_C                      += kernel.c dbg.c kirq.c kio.c kprocess.c ksystime.c kipc.c kstream.c kobject.c
 #lib
 SRC_C                      += lib_lib.c lib_time.c pool.c printf.c lib_std.c lib_stdio.c lib_heap.c stm32_lib_gpio.c usb.c
 #userspace

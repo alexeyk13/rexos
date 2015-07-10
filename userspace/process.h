@@ -26,7 +26,7 @@
  */
 
 #include "svc.h"
-#include "time.h"
+#include "systime.h"
 #include "heap.h"
 
 #define PROCESS_FLAGS_ACTIVE                                     (1 << 0)
@@ -210,10 +210,10 @@ __STATIC_INLINE void process_exit()
 
 /**
     \brief put current process in waiting state
-    \param time: pointer to TIME structure
+    \param time: pointer to SYSTIME structure
     \retval none
 */
-__STATIC_INLINE void sleep(TIME* time)
+__STATIC_INLINE void sleep(SYSTIME* time)
 {
     svc_call(SVC_PROCESS_SLEEP, (unsigned int)time, 0, 0);
 }
@@ -225,7 +225,7 @@ __STATIC_INLINE void sleep(TIME* time)
 */
 __STATIC_INLINE void sleep_ms(unsigned int ms)
 {
-    TIME time;
+    SYSTIME time;
     ms_to_time(ms, &time);
     sleep(&time);
 }
@@ -237,7 +237,7 @@ __STATIC_INLINE void sleep_ms(unsigned int ms)
 */
 __STATIC_INLINE void sleep_us(unsigned int us)
 {
-    TIME time;
+    SYSTIME time;
     us_to_time(us, &time);
     sleep(&time);
 }

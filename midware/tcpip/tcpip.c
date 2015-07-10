@@ -9,7 +9,7 @@
 #include "../../userspace/ipc.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdio.h"
-#include "../../userspace/timer.h"
+#include "../../userspace/systime.h"
 #include "sys_config.h"
 #include "mac.h"
 #include "arp.h"

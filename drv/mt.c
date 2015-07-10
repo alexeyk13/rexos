@@ -7,7 +7,7 @@
 #include "mt.h"
 #include "../userspace/gpio.h"
 #include "../userspace/stdio.h"
-#include "../userspace/timer.h"
+#include "../userspace/systime.h"
 
 #define CLKS_TEST_ROUNDS                10000000
 
