@@ -88,28 +88,28 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kirq_unregister((int)param1);
         break;
     //system timer related
-    case SVC_TIMER_HPET_TIMEOUT:
+    case SVC_SYSTIME_HPET_TIMEOUT:
         ksystime_hpet_timeout();
         break;
-    case SVC_TIMER_SECOND_PULSE:
+    case SVC_SYSTIME_SECOND_PULSE:
         ksystime_second_pulse();
         break;
-    case SVC_TIMER_GET_UPTIME:
+    case SVC_SYSTIME_GET_UPTIME:
         ksystime_get_uptime((SYSTIME*)param1);
         break;
-    case SVC_TIMER_SETUP:
+    case SVC_SYSTIME_HPET_SETUP:
         ksystime_hpet_setup((CB_SVC_TIMER*)param1, (void*)param2);
         break;
-    case SVC_TIMER_CREATE:
+    case SVC_SYSTIME_SOFT_TIMER_CREATE:
         ksystime_soft_timer_create((SOFT_TIMER**)param1, param2, (HAL)param3);
         break;
-    case SVC_TIMER_START:
+    case SVC_SYSTIME_SOFT_TIMER_START:
         ksystime_soft_timer_start((SOFT_TIMER*)param1, (SYSTIME*)param2, param3);
         break;
-    case SVC_TIMER_STOP:
+    case SVC_SYSTIME_SOFT_TIMER_STOP:
         ksystime_soft_timer_stop((SOFT_TIMER*)param1);
         break;
-    case SVC_TIMER_DESTROY:
+    case SVC_SYSTIME_SOFT_TIMER_DESTROY:
         ksystime_soft_timer_destroy((SOFT_TIMER*)param1);
         break;
     //ipc related

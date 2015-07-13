@@ -27,7 +27,7 @@ void stm32_rtc_isr(int vector, void* param)
     EXTI->PR = 1 << RTC_EXTI_LINE;
     RTC->ISR &= ~RTC_ISR_WUTF;
 #endif
-    timer_second_pulse();
+    systime_second_pulse();
 }
 
 static inline void backup_on()

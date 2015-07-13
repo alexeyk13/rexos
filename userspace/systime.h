@@ -7,10 +7,7 @@
 #ifndef SYSTIME_H
 #define SYSTIME_H
 
-#include "cc_macro.h"
-#include "lib.h"
-#include "svc.h"
-#include "heap.h"
+#include "types.h"
 #include "ipc.h"
 
 /** \addtogroup timer timer
@@ -60,10 +57,7 @@ typedef struct {
     if "from" > "to", return -1, \n
     if "from" == "t", return 0
 */
-__STATIC_INLINE int systime_compare(SYSTIME* from, SYSTIME* to)
-{
-    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_compare(from, to);
-}
+int systime_compare(SYSTIME* from, SYSTIME* to);
 
 /**
     \brief res = from + to
@@ -72,10 +66,7 @@ __STATIC_INLINE int systime_compare(SYSTIME* from, SYSTIME* to)
     \param res: result time. Safe to be same as "from" or "to"
     \retval none
 */
-__STATIC_INLINE void systime_add(SYSTIME* from, SYSTIME* to, SYSTIME* res)
-{
-    ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_add(from, to, res);
-}
+void systime_add(SYSTIME* from, SYSTIME* to, SYSTIME* res);
 
 /**
     \brief res = to - from
@@ -84,10 +75,7 @@ __STATIC_INLINE void systime_add(SYSTIME* from, SYSTIME* to, SYSTIME* res)
     \param res: result time. Safe to be same as "from" or "to"
     \retval none
 */
-__STATIC_INLINE void systime_sub(SYSTIME* from, SYSTIME* to, SYSTIME* res)
-{
-    ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_sub(from, to, res);
-}
+void systime_sub(SYSTIME* from, SYSTIME* to, SYSTIME* res);
 
 /**
     \brief convert time in microseconds to \ref SYSTIME structure
@@ -95,10 +83,7 @@ __STATIC_INLINE void systime_sub(SYSTIME* from, SYSTIME* to, SYSTIME* res)
     \param time: pointer to allocated result \ref SYSTIME structure
     \retval none
 */
-__STATIC_INLINE void us_to_systime(int us, SYSTIME* time)
-{
-    ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_us_to_systime(us, time);
-}
+void us_to_systime(int us, SYSTIME* time);
 
 /**
     \brief convert time in milliseconds to \ref SYSTIME structure
@@ -106,30 +91,21 @@ __STATIC_INLINE void us_to_systime(int us, SYSTIME* time)
     \param time: pointer to allocated result \ref SYSTIME structure
     \retval none
 */
-__STATIC_INLINE void ms_to_systime(int ms, SYSTIME* time)
-{
-    ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_ms_to_systime(ms, time);
-}
+void ms_to_systime(int ms, SYSTIME* time);
 
 /**
     \brief convert time from \ref SYSTIME structure to microseconds
     \param time: pointer to \ref SYSTIME structure. Maximal value: 0hr, 35 min, 46 seconds
     \retval time in microseconds
 */
-__STATIC_INLINE int systime_to_us(SYSTIME* time)
-{
-    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_to_us(time);
-}
+int systime_to_us(SYSTIME* time);
 
 /**
     \brief convert time from \ref SYSTIME structure to milliseconds
     \param time: pointer to \ref SYSTIME structure. Maximal value: 24days, 20hr, 31 min, 22 seconds
     \retval time in milliseconds
 */
-__STATIC_INLINE int systime_to_ms(SYSTIME* time)
-{
-    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_to_ms(time);
-}
+int systime_to_ms(SYSTIME* time);
 
 /**
     \brief time, elapsed between "from" and now
@@ -137,71 +113,49 @@ __STATIC_INLINE int systime_to_ms(SYSTIME* time)
     \param res: pointer to provided structure, containing result \ref SYSTIME
     \retval same as res parameter
 */
-__STATIC_INLINE SYSTIME* systime_elapsed(SYSTIME* from, SYSTIME* res)
-{
-    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_elapsed(from, res);
-}
+SYSTIME* systime_elapsed(SYSTIME* from, SYSTIME* res);
 
 /**
     \brief time, elapsed between "from" and now in milliseconds
     \param from: pointer to provided structure, containing base \ref SYSTIME
     \retval elapsed time in milliseconds
 */
-__STATIC_INLINE unsigned int systime_elapsed_ms(SYSTIME* from)
-{
-    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_elapsed_ms(from);
-}
+unsigned int systime_elapsed_ms(SYSTIME* from);
 
 /**
     \brief time, elapsed between "from" and now in microseconds
     \param from: pointer to provided structure, containing base \ref SYSTIME
     \retval elapsed time in microseconds
 */
-__STATIC_INLINE unsigned int systime_elapsed_us(SYSTIME* from)
-{
-    return ((const LIB_SYSTIME*)__GLOBAL->lib[LIB_ID_SYSTIME])->lib_systime_elapsed_us(from);
-}
+unsigned int systime_elapsed_us(SYSTIME* from);
 
 /**
     \brief get uptime up to 1us
     \param uptime pointer to structure, holding result value
     \retval none
 */
-__STATIC_INLINE void get_uptime(SYSTIME* uptime)
-{
-    svc_call(SVC_TIMER_GET_UPTIME, (unsigned int)uptime, 0, 0);
-}
+void get_uptime(SYSTIME* uptime);
 
 /**
     \brief produce kernel second pulse
     \param sb_svc_timer pointer to init structure
     \retval none
 */
-__STATIC_INLINE void timer_setup(CB_SVC_TIMER* cb_svc_timer, void* cb_svc_timer_param)
-{
-    svc_call(SVC_TIMER_SETUP, (unsigned int)cb_svc_timer, (unsigned int)cb_svc_timer_param, 0);
-}
+void systime_hpet_setup(CB_SVC_TIMER* cb_svc_timer, void* cb_svc_timer_param);
 
 /**
     \brief produce kernel second pulse
     \details Must be called in IRQ context, or call will fail
     \retval none
 */
-__STATIC_INLINE void timer_second_pulse()
-{
-    __GLOBAL->svc_irq(SVC_TIMER_SECOND_PULSE, 0, 0, 0);
-}
+void systime_second_pulse();
 
 /**
     \brief produce kernel signal of HPET timeout
     \details Must be called in IRQ context, or call will fail
     \retval none
 */
-__STATIC_INLINE void timer_hpet_timeout()
-{
-    __GLOBAL->svc_irq(SVC_TIMER_HPET_TIMEOUT, 0, 0, 0);
-}
-
+void systime_hpet_timeout();
 
 /**
     \brief create soft timer. Make sure, enalbed in kernel
@@ -209,12 +163,7 @@ __STATIC_INLINE void timer_hpet_timeout()
     \param hal: HAL group
     \retval HANDLE of timer, or invalid handle
 */
-__STATIC_INLINE HANDLE timer_create(unsigned int param, HAL hal)
-{
-    HANDLE handle;
-    svc_call(SVC_TIMER_CREATE, (unsigned int)&handle, param, (unsigned int)hal);
-    return handle;
-}
+HANDLE timer_create(unsigned int param, HAL hal);
 
 /**
     \brief start soft timer
@@ -223,10 +172,7 @@ __STATIC_INLINE HANDLE timer_create(unsigned int param, HAL hal)
     \param mode soft timer. Mode TIMER_MODE_PERIODIC is only supported for now.
     \retval none.
 */
-__STATIC_INLINE void timer_start(HANDLE timer, SYSTIME* time, unsigned int mode)
-{
-    svc_call(SVC_TIMER_START, (unsigned int)timer, (unsigned int)time, mode);
-}
+void timer_start(HANDLE timer, SYSTIME* time, unsigned int mode);
 
 /**
     \brief start soft timer in ms units
@@ -235,12 +181,7 @@ __STATIC_INLINE void timer_start(HANDLE timer, SYSTIME* time, unsigned int mode)
     \param mode soft timer. Mode TIMER_MODE_PERIODIC is only supported for now.
     \retval none.
 */
-__STATIC_INLINE void timer_start_ms(HANDLE timer, unsigned int time_ms, unsigned int mode)
-{
-    SYSTIME time;
-    ms_to_systime(time_ms, &time);
-    timer_start(timer, &time, mode);
-}
+void timer_start_ms(HANDLE timer, unsigned int time_ms, unsigned int mode);
 
 /**
     \brief start soft timer in us units
@@ -249,42 +190,28 @@ __STATIC_INLINE void timer_start_ms(HANDLE timer, unsigned int time_ms, unsigned
     \param mode soft timer. Mode TIMER_MODE_PERIODIC is only supported for now.
     \retval none.
 */
-__STATIC_INLINE void timer_start_us(HANDLE timer, unsigned int time_us, unsigned int mode)
-{
-    SYSTIME time;
-    us_to_systime(time_us, &time);
-    timer_start(timer, &time, mode);
-}
+void timer_start_us(HANDLE timer, unsigned int time_us, unsigned int mode);
 
 /**
     \brief stop soft timer
     \param timer soft timer handle
     \retval none.
 */
-__STATIC_INLINE void timer_stop(HANDLE timer)
-{
-    svc_call(SVC_TIMER_STOP, (unsigned int)timer, 0, 0);
-}
+void timer_stop(HANDLE timer);
 
 /**
     \brief stop soft timer, isr version
     \param timer soft timer handle
     \retval none.
 */
-__STATIC_INLINE void timer_istop(HANDLE timer)
-{
-    __GLOBAL->svc_irq(SVC_TIMER_STOP, (unsigned int)timer, 0, 0);
-}
+void timer_istop(HANDLE timer);
 
 /**
     \brief destroy soft timer
     \param timer soft timer handle
     \retval none.
 */
-__STATIC_INLINE void timer_destroy(HANDLE timer)
-{
-    svc_call(SVC_TIMER_DESTROY, (unsigned int)timer, 0, 0);
-}
+void timer_destroy(HANDLE timer);
 
 /** \} */ // end of systime group
 

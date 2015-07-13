@@ -28,12 +28,12 @@ void lpc_timer_isr(int vector, void* param)
     if ((__TIMER_REGS[SECOND_TIMER]->IR & (1 << HPET_CHANNEL)) && (__TIMER_REGS[SECOND_TIMER]->MCR & (1 << (HPET_CHANNEL * 3))))
     {
         __TIMER_REGS[SECOND_TIMER]->IR = 1 << HPET_CHANNEL;
-        timer_hpet_timeout();
+        systime_hpet_timeout();
     }
     if (__TIMER_REGS[SECOND_TIMER]->IR & (1 << SECOND_CHANNEL))
     {
         __TIMER_REGS[SECOND_TIMER]->IR = (1 << SECOND_CHANNEL);
-        timer_second_pulse();
+        systime_second_pulse();
     }
 }
 
@@ -203,7 +203,7 @@ void lpc_timer_init(CORE *core)
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
-    timer_setup(&cb_svc_timer, core);
+    systime_hpet_setup(&cb_svc_timer, core);
 }
 
 bool lpc_timer_request(CORE* core, IPC* ipc)

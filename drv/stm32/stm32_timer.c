@@ -262,7 +262,7 @@ static inline void stm32_timer_setup_channel(int num, int channel, TIMER_CHANNEL
 void hpet_isr(int vector, void* param)
 {
     TIMER_REGS[HPET_TIMER]->SR &= ~TIM_SR_UIF;
-    timer_hpet_timeout();
+    systime_hpet_timeout();
 }
 
 void hpet_start(unsigned int value, void* param)
@@ -316,7 +316,7 @@ void stm32_timer_init(CORE *core)
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
-    timer_setup(&cb_svc_timer, core);
+    systime_hpet_setup(&cb_svc_timer, core);
 #if !(STM32_RTC_DRIVER)
     irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)core);
     stm32_timer_open(core, SECOND_PULSE_TIMER, TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
