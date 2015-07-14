@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -12,6 +12,9 @@
 #include "stm32_config.h"
 #include "adc.h"
 #include "power.h"
+#include "process.h"
+
+extern const REX __STM32_CORE;
 
 //-------------------------------------------------- POWER ---------------------------------------------------------------------
 

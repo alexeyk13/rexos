@@ -8,7 +8,7 @@
 #include "../../rexos/userspace/stdio.h"
 #include "../../rexos/userspace/usb.h"
 #include "../../rexos/userspace/stream.h"
-#include "../../rexos/midware/usbd.h"
+#include "../../rexos/midware/usbd/usbd.h"
 #include "../../rexos/drv/stm32/stm32_usb.h"
 #include "usb_desc.h"
 #include "sys_config.h"

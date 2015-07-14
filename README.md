@@ -78,6 +78,12 @@ ARM7 features:
 
 History
 =======
+0.3.2
+- Y2037 compatible, no POSIX time_t is used anymore. Up to 1M year date supported with BC (by design)
+- TIME is now SYSTIME, time_t now TIME
+- STM32 RTC driver update for new TIME interface
+- SCSI stack: SBC3 write caching support
+
 0.3.1
 - USB mass storage class
 - SCSI stack: SPC5, SBC3

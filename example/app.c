@@ -6,14 +6,14 @@
 
 #include "../userspace/sys.h"
 #include "../userspace/gpio.h"
-#include "../drv/stm32/stm32_core.h"
 #include "../userspace/stm32_driver.h"
 #include "../userspace/stdio.h"
 #include "../userspace/stdlib.h"
 #include "../userspace/ipc.h"
-#include "../userspace/timer.h"
+#include "../userspace/systime.h"
 #include "../userspace/wdt.h"
 #include "../userspace/uart.h"
+#include "../userspace/process.h"
 #include "../midware/pinboard.h"
 #include "app_private.h"
 #include "comm.h"
@@ -40,20 +40,20 @@ const REX __APP = {
 
 static inline void stat()
 {
-    TIME uptime;
+    SYSTIME uptime;
     int i;
     unsigned int diff;
 
     get_uptime(&uptime);
     for (i = 0; i < TEST_ROUNDS; ++i)
         svc_test();
-    diff = time_elapsed_us(&uptime);
+    diff = systime_elapsed_us(&uptime);
     printf("average kernel call time: %d.%dus\n\r", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
     get_uptime(&uptime);
     for (i = 0; i < TEST_ROUNDS; ++i)
         process_switch_test();
-    diff = time_elapsed_us(&uptime);
+    diff = systime_elapsed_us(&uptime);
     printf("average switch time: %d.%dus\n\r", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
     printf("core clock: %d\n\r", get(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_POWER, STM32_POWER_GET_CLOCK), STM32_CLOCK_CORE, 0, 0));
@@ -77,7 +77,7 @@ static inline void app_setup_dbg()
 
 static inline void app_init(APP* app)
 {
-    process_create(&__STM32_CORE);
+//    process_create(&__STM32_CORE);
 
     gpio_enable_pin(B14, GPIO_MODE_OUT);
     gpio_reset_pin(B14);
