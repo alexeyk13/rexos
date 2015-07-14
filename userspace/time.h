@@ -18,6 +18,12 @@
     \{
  */
 
+#define SEC_IN_DAY                          86400ul
+#define MSEC_IN_DAY                         86400000ul
+
+//01.01.2015
+#define EPOCH_DATE                          735598
+
 typedef struct {
     long day;                               //!< day since 01.01.0000 AD. BC is negative: 31.12.-1 is -1
     unsigned int ms;                        //!< milliseconds since midnight

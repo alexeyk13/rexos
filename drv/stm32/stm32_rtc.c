@@ -155,14 +155,15 @@ void stm32_rtc_init()
         RTC->PRER = ((64 - 1) << 16) | (1000000 / 64 - 1);
 #endif
 
+        //00:00
         RTC->TR = 0;
-        RTC->DR = 0;
+        //01.01.2015, thursday
+        RTC->DR = 0x00158101;
         //setup second tick
         RTC->CR &= ~RTC_CR_WUTE;
         while ((RTC->ISR & RTC_ISR_WUTWF) == 0) {}
         RTC->CR |= 4;
         RTC->WUTR = 0;
-        leave_configuration();
     }
     else
         enter_configuration();
@@ -179,32 +180,38 @@ void stm32_rtc_init()
     NVIC_SetPriority(RTC_IRQn, 13);
 }
 
-time_t stm32_rtc_get()
+TIME* stm32_rtc_get(TIME* time)
 {
 #if defined(STM32F1)
-    return (time_t)(((RTC->CNTH) << 16ul) | (RTC->CNTL));
+    unsigned long value = (unsigned long)(((RTC->CNTH) << 16ul) | (RTC->CNTL));
+    time->ms = (value % SEC_IN_DAY) * 1000;
+    time->day = value / SEC_IN_DAY + EPOCH_DATE;
 #else
     //fucking shit
     struct tm ts;
     ts.tm_sec = ((RTC->TR >> 4) & 7) * 10 + (RTC->TR & 0xf);
     ts.tm_min = ((RTC->TR >> 12) & 7) * 10 + ((RTC->TR >> 8) & 0xf);
     ts.tm_hour = ((RTC->TR >> 20) & 3) * 10 + ((RTC->TR >> 16) & 0xf);
+    ts.tm_msec = 0;
 
     ts.tm_mday = ((RTC->DR >> 4) & 3) * 10 + (RTC->DR & 0xf);
     ts.tm_mon = ((RTC->DR >> 12) & 1) * 10 + ((RTC->DR >> 8) & 0xf);
     ts.tm_year = ((RTC->DR >> 20) & 0xf) * 10 + ((RTC->DR >> 16) & 0xf) + 2000;
 
-    return mktime(&ts);
+    return mktime(&ts, time);
 #endif
 }
 
-void stm32_rtc_set(time_t time)
+void stm32_rtc_set(TIME* time)
 {
     enter_configuration();
 #if defined(STM32F1)
-    //reset counter & alarm
-    RTC->CNTH = (uint16_t)(time >> 16ul);
-    RTC->CNTL = (uint16_t)(time & 0xffff);
+    unsigned long value = 0;
+    if (time->day >= EPOCH_DATE)
+        value = (time->day - EPOCH_DATE) * SEC_IN_DAY;
+    value += time->ms / 1000;
+    RTC->CNTH = (uint16_t)(value >> 16ul);
+    RTC->CNTL = (uint16_t)(value & 0xffff);
 
 #else
     //fucking shit
@@ -223,15 +230,20 @@ void stm32_rtc_set(time_t time)
 
 bool stm32_rtc_request(IPC* ipc)
 {
+    TIME time;
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case RTC_GET:
-        ipc->param2 = (unsigned int)stm32_rtc_get();
+        stm32_rtc_get(&time);
+        ipc->param1 = (unsigned int)time.day;
+        ipc->param2 = (unsigned int)time.ms;
         need_post = true;
         break;
     case RTC_SET:
-        stm32_rtc_set((time_t)ipc->param1);
+        time.day = ipc->param1;
+        time.ms = ipc->param2;
+        stm32_rtc_set(&time);
         need_post = true;
         break;
     default:

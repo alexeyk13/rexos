@@ -8,11 +8,8 @@
 #define RTC_H
 
 #include "sys.h"
-#include "ipc.h"
-#include "sys_config.h"
-#include "cc_macro.h"
-#include "ipc.h"
 #include "time.h"
+#include "ipc.h"
 
 typedef enum {
     RTC_GET = IPC_USER,                                     //!< Get RTC value
@@ -21,14 +18,7 @@ typedef enum {
     RTC_HAL_MAX
 } RTC_IPCS;
 
-__STATIC_INLINE time_t rtc_get()
-{
-    return get(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_RTC, RTC_GET), 0, 0, 0);
-}
-
-__STATIC_INLINE void rtc_set(time_t time)
-{
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_RTC, RTC_SET), (unsigned int)time, 0, 0);
-}
+TIME* rtc_get(TIME* time);
+void rtc_set(TIME* time);
 
 #endif // RTC_H
