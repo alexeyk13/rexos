@@ -51,6 +51,14 @@ struct tm {
 bool is_leap_year(long year);
 
 /**
+    \brief return max day number (starting from 1) in year
+    \param year: year to check
+    \param mon: month number from 1
+    \retval max day in month
+*/
+unsigned short year_month_max_day(long year, unsigned short mon);
+
+/**
     \brief POSIX analogue. Convert struct tm to time_t
     \param ts: time in struct \ref tm
     \param time: return time in \ref TIME
