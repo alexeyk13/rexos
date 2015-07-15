@@ -92,6 +92,8 @@
 #define SCSI_VERIFY_SUPPORTED                               0
 //send PASS before data was written
 #define SCSI_WRITE_CACHE                                    1
+//write cache directly from application to usbd
+#define SCSI_READ_CACHE                                     1
 //SATA over SCSI. Just stub for more verbose error processing
 //Found on some linux recent kernels
 #define SCSI_SAT                                            0

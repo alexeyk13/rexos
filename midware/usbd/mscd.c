@@ -20,6 +20,7 @@
 typedef enum  {
     MSCD_STATE_CBW = 0,
     MSCD_STATE_PROCESSING,
+    MSCD_STATE_DIRECT_WRITE,
     MSCD_STATE_ZLP,
     MSCD_STATE_CSW,
     MSCD_STATE_IDLE
@@ -368,8 +369,20 @@ static inline bool mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
-    case IPC_READ:
     case IPC_WRITE:
+#if (SCSI_READ_CACHE)
+        if (mscd->state == MSCD_STATE_DIRECT_WRITE)
+        {
+            //return IO to user
+            usbd_io_user(mscd->usbd, mscd->iface_num, 0, HAL_CMD(HAL_USBD_IFACE, USB_MSC_DIRECT_WRITE), (IO*)ipc->param2, ipc->param3);
+            mscd->state = MSCD_STATE_PROCESSING;
+#if (USBD_MSC_DEBUG_IO)
+            printf("MSC: direct write complete\n\r");
+#endif //USBD_MSC_DEBUG_IO
+            return false;
+        }
+#endif //SCSI_READ_CACHE
+    case IPC_READ:
         mscd_usb_io_complete(usbd, mscd);
         break;
     default:
@@ -392,6 +405,21 @@ static inline void mscd_storage_response(USBD* usbd, MSCD* mscd, int param3)
     scsis_storage_io_complete(mscd->scsis);
 }
 
+#if (SCSI_READ_CACHE)
+static inline void mscd_direct_write(USBD* usbd, MSCD* mscd, IO* io)
+{
+    unsigned int size = io->data_size;
+    usbd_usb_ep_write(usbd, mscd->ep_num, io);
+#if (USBD_MSC_DEBUG_IO)
+    printf("MSC: direct write: %d\n\r", size);
+#endif //USBD_MSC_DEBUG_IO
+    if (size > mscd->residue)
+        size = mscd->residue;
+    mscd->residue -= size;
+    mscd->state = MSCD_STATE_DIRECT_WRITE;
+}
+#endif //SCSI_READ_CACHE
+
 bool mscd_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     MSCD* mscd = (MSCD*)param;
@@ -412,6 +440,11 @@ bool mscd_class_request(USBD* usbd, void* param, IPC* ipc)
             //just forward response to storage
             scsis_storage_io_complete(mscd->scsis);
             break;
+#if (SCSI_READ_CACHE)
+        case USB_MSC_DIRECT_WRITE:
+            mscd_direct_write(usbd, mscd, (IO*)ipc->param2);
+            break;
+#endif //SCSI_READ_CACHE
         case USB_MSC_MEDIA_REMOVED:
             scsis_media_removed(mscd->scsis);
             need_post = true;

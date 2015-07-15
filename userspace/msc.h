@@ -63,7 +63,9 @@ typedef enum {
     USB_MSC_WRITE,
     USB_MSC_VERIFY,
     //storage informing
-    USB_MSC_MEDIA_REMOVED
+    USB_MSC_MEDIA_REMOVED,
+    //direct write to USB if read cache is enabled
+    USB_MSC_DIRECT_WRITE
 } USB_MSC_IPC;
 
 #endif // MSC_H
