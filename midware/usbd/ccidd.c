@@ -11,6 +11,7 @@
 
 typedef enum {
     CCIDD_STATE_IDLE = 0,
+    CCIDD_STATE_RX,
     CCIDD_STATE_CARD_REQUEST,
     CCIDD_STATE_TX,
     CCIDD_STATE_TX_ZLP
@@ -34,7 +35,8 @@ static void ccidd_destroy(CCIDD* ccidd)
 static void ccidd_rx(USBD* usbd, CCIDD* ccidd)
 {
     io_reset(ccidd->io);
-    usbd_usb_ep_read(usbd, ccidd->data_ep, ccidd->io, io_get_free(ccidd->io));
+    //first frame going with data size
+    usbd_usb_ep_read(usbd, ccidd->data_ep, ccidd->io, ccidd->data_ep_size);
 }
 
 static void ccidd_notify_slot_change(USBD* usbd, CCIDD* ccidd, unsigned int change_mask)
@@ -368,29 +370,49 @@ static inline void ccidd_msg_process(USBD* usbd, CCIDD* ccidd)
     }
 }
 
+static inline void ccidd_abort(USBD* usbd, CCIDD* ccidd)
+{
+    ccidd->io->data_offset = 0;
+    CCID_MESSAGE* msg = io_data(ccidd->io);
+    if (msg->bSeq == ccidd->seq && msg->bMessageType == PC_TO_RDR_ABORT)
+    {
+        ccidd->aborting = false;
+        ccidd_send_slot_status(usbd, ccidd, msg->bSeq, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR);
+    }
+    else
+        ccidd_send_slot_status(usbd, ccidd, msg->bSeq, CCID_SLOT_ERROR_CMD_ABORTED, CCID_SLOT_STATUS_COMMAND_FAIL);
+}
+
 static inline void ccidd_rx_complete(USBD* usbd, CCIDD* ccidd)
 {
-    CCID_MESSAGE* msg = io_data(ccidd->io);
-    if (ccidd->aborting)
+    unsigned int len;
+    switch (ccidd->state)
     {
-        if (msg->bSeq == ccidd->seq && msg->bMessageType == PC_TO_RDR_ABORT)
+    case CCIDD_STATE_IDLE:
+        len = ((CCID_MESSAGE*)io_data(ccidd->io))->dwLength;
+        //more than one frame
+        if (len  + sizeof(CCID_MESSAGE) > ccidd->data_ep_size)
         {
-            ccidd->aborting = false;
-            ccidd_send_slot_status(usbd, ccidd, msg->bSeq, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR);
+            ccidd->io->data_size -= ccidd->data_ep_size;
+            ccidd->io->data_offset += ccidd->data_ep_size;
+            ccidd->state = CCIDD_STATE_RX;
+            usbd_usb_ep_read(usbd, ccidd->data_ep, ccidd->io, len  + sizeof(CCID_MESSAGE) - ccidd->data_ep_size);
         }
         else
-            ccidd_send_slot_status(usbd, ccidd, msg->bSeq, CCID_SLOT_ERROR_CMD_ABORTED, CCID_SLOT_STATUS_COMMAND_FAIL);
-    }
-    else if (ccidd->state != CCIDD_STATE_IDLE)
-    {
+            ccidd_msg_process(usbd, ccidd);
+        break;
+    case CCIDD_STATE_RX:
+        ccidd->io->data_size += ccidd->data_ep_size;
+        ccidd->io->data_offset -= ccidd->data_ep_size;
+        ccidd_msg_process(usbd, ccidd);
+        break;
+    default:
         ccidd->state = CCIDD_STATE_IDLE;
         ccidd_rx(usbd, ccidd);
 #if (USBD_CCID_DEBUG_ERRORS)
         printf("CCIDD: invalid state on rx: %d\n\r", ccidd->state);
 #endif //USBD_DEBUG_CLASS_REQUESTS
     }
-    else
-        ccidd_msg_process(usbd, ccidd);
 }
 
 static void ccidd_tx_complete(USBD* usbd, CCIDD* ccidd)
@@ -496,7 +518,10 @@ static inline bool ccidd_driver_event(USBD* usbd, CCIDD* ccidd, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
-        ccidd_rx_complete(usbd, ccidd);
+        if (ccidd->aborting)
+            ccidd_abort(usbd, ccidd);
+        else
+            ccidd_rx_complete(usbd, ccidd);
         break;
     case IPC_WRITE:
         if (USB_EP_NUM(ipc->param1) == ccidd->data_ep)
