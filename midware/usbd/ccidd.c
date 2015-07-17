@@ -5,7 +5,7 @@
 #include "../../userspace/io.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/ipc.h"
-#include "../../usb.h"
+#include "../../userspace/usb.h"
 #include <string.h>
 #include "sys_config.h"
 
