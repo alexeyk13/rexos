@@ -40,12 +40,7 @@ typedef struct {
 
 #endif
 
-
 void lpc_usb_init(SHARED_USB_DRV* drv);
 bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc);
-
-#if !(MONOLITH_USB)
-extern const REX __LPC_USB;
-#endif
 
 #endif // LPC_USB_H

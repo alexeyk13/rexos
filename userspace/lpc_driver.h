@@ -9,8 +9,16 @@
 
 #include "ipc.h"
 #include "uart.h"
+#include "lpc_config.h"
 
 extern const REX __LPC_CORE;
+
+#if !(MONOLITH_USB)
+extern const REX __LPC_USB;
+#endif
+#if !(MONOLITH_UART)
+extern const REX __LPC_UART;
+#endif
 
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 typedef enum {
@@ -26,7 +34,7 @@ typedef enum {
     PIO1_0,     PIO1_1,  PIO1_2,  PIO1_3,  PIO1_4,  PIO1_5,  PIO1_6,  PIO1_7,
     PIO1_8,     PIO1_9,  PIO1_10, PIO1_11, PIO1_12, PIO1_13, PIO1_14, PIO1_15,
     PIO1_16,    PIO1_17, PIO1_18, PIO1_19, PIO1_20, PIO1_21, PIO1_22, PIO1_23,
-    PIO1_24,    PIO1_25, PIO1_26, PIO2_17, PIO1_28, PIO1_29, PIO1_30, PIO1_31,
+    PIO1_24,    PIO1_25, PIO1_26, PIO1_27, PIO1_28, PIO1_29, PIO1_30, PIO1_31,
     PIO2_0,     PIO2_1,  PIO2_2,  PIO2_3,  PIO2_4,  PIO2_5,  PIO2_6,  PIO2_7,
     PIO2_8,     PIO2_9,  PIO2_10, PIO2_11, PIO2_12, PIO2_13, PIO2_14, PIO2_15,
     PIO2_16,    PIO2_17, PIO2_18, PIO2_19, PIO2_20, PIO2_21, PIO2_22, PIO2_23,

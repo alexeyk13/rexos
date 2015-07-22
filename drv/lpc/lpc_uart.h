@@ -41,11 +41,7 @@ typedef struct {
 
 #endif
 
-#if (MONOLITH_UART)
 void lpc_uart_init(SHARED_UART_DRV* drv);
 bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc);
-#else
-extern const REX __LPC_UART;
-#endif
 
 #endif // LPC_UART_H
