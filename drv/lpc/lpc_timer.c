@@ -157,9 +157,6 @@ static inline void lpc_timer_setup_channel(CORE* core, TIMER timer, int channel,
 void lpc_timer_stop(CORE* core, TIMER timer)
 {
     __TIMER_REGS[timer]->TCR &= ~CT_TCR_CEN;
-
-    //disable match interrupt
-    __TIMER_REGS[timer]->MCR &= ~0xfff;
     //clear pending match interrupt
     __TIMER_REGS[timer]->IR = 0xf;
 }

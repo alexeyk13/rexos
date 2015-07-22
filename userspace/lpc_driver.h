@@ -10,6 +10,8 @@
 #include "ipc.h"
 #include "uart.h"
 
+extern const REX __LPC_CORE;
+
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 typedef enum {
     LPC_GPIO_ENABLE_PIN = IPC_USER,
