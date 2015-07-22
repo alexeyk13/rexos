@@ -13,7 +13,7 @@
 
 void lpc_gpio_enable_pin(PIN pin, unsigned int mode)
 {
-    if (pin >= PIN_DEFAULT)
+    if (pin >= PIN_MAX)
     {
         error(ERROR_INVALID_PARAMS);
         return;
@@ -27,7 +27,7 @@ void lpc_gpio_enable_pin(PIN pin, unsigned int mode)
 
 __STATIC_INLINE void lpc_gpio_disable_pin(PIN pin)
 {
-    if (pin >= PIN_DEFAULT)
+    if (pin >= PIN_MAX)
     {
         error(ERROR_INVALID_PARAMS);
         return;
