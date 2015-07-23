@@ -348,7 +348,7 @@
 #endif //defined(LPC11U6x)
 #elif defined(LPC18xx)
 #include "LPC18xx.h"
-#include "lpc11uxx_bits.h"
+#include "lpc18xx_bits.h"
 #endif //defined(LPC11Uxx)
 #endif //LPC
 

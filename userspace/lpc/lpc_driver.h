@@ -7,7 +7,7 @@
 #ifndef LPC_DRIVER_H
 #define LPC_DRIVER_H
 
-#include "core/core.h"
+#include "lpc.h"
 #include "lpc_config.h"
 
 extern const REX __LPC_CORE;
@@ -21,9 +21,9 @@ extern const REX __LPC_UART;
 
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 typedef enum {
-    LPC_GPIO_ENABLE_PIN = IPC_USER,
-    LPC_GPIO_DISABLE_PIN,
-} LPC_GPIO_IPCS;
+    LPC_PIN_ENABLE = IPC_USER,
+    LPC_PIN_DISABLE,
+} LPC_PIN_IPCS;
 
 typedef enum {
     PIO0_0 = 0, PIO0_1,  PIO0_2,  PIO0_3,  PIO0_4,  PIO0_5,  PIO0_6,  PIO0_7,
@@ -57,12 +57,14 @@ typedef enum {
     PIO7_0,     PIO7_1,  PIO7_2,  PIO7_3,  PIO7_4,  PIO7_5,  PIO7_6,  PIO7_7,
     PIO7_8,     PIO7_9,  PIO7_10, PIO7_11, PIO7_12, PIO7_13, PIO7_14, PIO7_15,
     PIO7_16,    PIO7_17, PIO7_18, PIO7_19, PIO7_20, PIO7_21, PIO7_22, PIO7_23,
-    PIO7_24,    PIO7_25, PIO7_26, PIO7_27, PIO7_28, PIO7_29, PIO7_30, PIO7_31
+    PIO7_24,    PIO7_25, PIO7_26, PIO7_27, PIO7_28, PIO7_29, PIO7_30, PIO7_31,
+    PIO_MAX
 } GPIO;
 
 #if defined(LPC11Uxx)
-#define PIN             GPIO
-#define PIN_MAX         PIO2_0
+#define PIN                                     GPIO
+#define PIN_MAX                                 PIO2_0
+
 #else
 typedef enum {
     P0_0 = 0, P0_1,  P0_2,  P0_3,  P0_4,  P0_5,  P0_6,  P0_7,
@@ -133,12 +135,10 @@ typedef enum {
 } PIN;
 #endif
 
-#define LPC_GPIO_MODE_MASK                      0x7ff
-#define LPC_GPIO_MODE_OUT                       (1 << 11)
-
 #define GPIO_PORT(pin)                          ((pin) >> 5)
 #define GPIO_PIN(pin)                           ((pin) & 0x1f)
 #define GPIO_MAKE_PIN(port, pin)                (((port) << 5)  + (pin))
+
 
 //------------------------------------------------ Timer ---------------------------------------------------------------------
 

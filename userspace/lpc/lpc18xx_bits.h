@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -9,509 +9,1298 @@
 
 /******************************************************************************/
 /*                                                                            */
-/*                            SYSCON                                          */
+/*                   CCU (Clock Control Unit)                                 */
 /*                                                                            */
 /******************************************************************************/
 
-/**********  Bit definition for SYSMEMREMAP register  *************************/
-#define SYSCON_SYSMEMREMAP_BOOTLOADER                  (0 << 0)
-#define SYSCON_SYSMEMREMAP_USER_RAM                    (1 << 0)
-#define SYSCON_SYSMEMREMAP_USER_FLASH                  (2 << 0)
+/********  Bit definition for CCUx_PM registers  ******************************/
+#define CCU_PM_PD                               (1 << 0)                /* Initiate power-down mode
+                                                                           0 Normal operation.
+                                                                           1 Clocks with wake-up mode enabled (W = 1) are disabled */
 
-/**********  Bit definition for PRESETCTRL register  **************************/
-#define SYSCON_PRESETCTRL_SSP0_RST_N_POS               0
-#define SYSCON_PRESETCTRL_I2C0_RST_N_POS               1
-#define SYSCON_PRESETCTRL_SSP1_RST_N_POS               2
-#define SYSCON_PRESETCTRL_I2C1_RST_N_POS               3
-#define SYSCON_PRESETCTRL_FRG_RST_N_POS                4
-#define SYSCON_PRESETCTRL_USART1_RST_N_POS             5
-#define SYSCON_PRESETCTRL_USART2_RST_N_POS             6
-#define SYSCON_PRESETCTRL_USART3_RST_N_POS             7
-#define SYSCON_PRESETCTRL_USART4_RST_N_POS             8
-#define SYSCON_PRESETCTRL_SCT0_RST_N_POS               9
-#define SYSCON_PRESETCTRL_SCT1_RST_N_POS               10
+/********  Bit definition for CCU1_BASE_STAT register  ************************/
+#define CCU1_BASE_STAT_APB3_CLK_IND             (1 << 0)                /* Base clock indicator for BASE_APB3_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
+#define CCU1_BASE_STAT_APB1_CLK_IND             (1 << 1)                /* Base clock indicator for BASE_APB1_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
+#define CCU1_BASE_STAT_SPIFI_CLK_IND            (1 << 2)                /* Base clock indicator for BASE_SPIFI_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
+#define CCU1_BASE_STAT_M3_CLK_IND               (1 << 3)                /* Base clock indicator for BASE_M3_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
+#define CCU1_BASE_STAT_USB0_CLK_IND             (1 << 7)                /* Base clock indicator for BASE_USB0_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
+#define CCU1_BASE_STAT_USB1_CLK_IND             (1 << 8)                /* Base clock indicator for BASE_USB1_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
 
-/**********  Bit definition for SYSPLLCTRL register  **************************/
-#define SYSCON_SYSPLLCTRL_MSEL_POS                     0
-#define SYSCON_SYSPLLCTRL_MSEL_MASK                    (0x1f << 0)
+/********  Bit definition for CCU2_BASE_STAT register  ************************/
+#define CCU2_BASE_STAT_UART3_CLK_IND            (1 << 1)                /* Base clock indicator for BASE_UART3_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
+#define CCU2_BASE_STAT_UART2_CLK_IND            (1 << 2)                /* Base clock indicator for BASE_UART2_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
+#define CCU2_BASE_STAT_UART1_CLK_IND            (1 << 3)                /* Base clock indicator for BASE_UART1_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
+#define CCU2_BASE_STAT_UART0_CLK_IND            (1 << 4)                /* Base clock indicator for BASE_UART0_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
+#define CCU2_BASE_STAT_SSP1_CLK_IND             (1 << 5)                /* Base clock indicator for BASE_SSP1_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
+#define CCU2_BASE_STAT_SSP2_CLK_IND             (1 << 6)                /* Base clock indicator for BASE_SSP2_CLK
+                                                                           0 = All branch clocks switched off.
+                                                                           1 = At least one branch clock running */
 
-#define SYSCON_SYSPLLCTRL_PSEL_POS                     5
-#define SYSCON_SYSPLLCTRL_PSEL_MASK                    (3 << 5)
+/********  Bit definition for CCUx_XXX_CFG register  ************************/
+#define CCU_CFG_RUN                             (1 << 0)                /* Run enable
+                                                                           0 Clock is disabled.
+                                                                           1 Clock is enabled */
+#define CCU_CFG_AUTO                            (1 << 1)                /* Auto (AHB disable mechanism) enable
+                                                                           0 Auto is disabled.
+                                                                           1 Auto is enabled */
+#define CCU_CFG_WAKEUP                          (1 << 2)                /* Wake-up configure
+                                                                           0 Wake-up is disabled.
+                                                                           1 Wake-up is enabled */
 
-/**********  Bit definition for SYSPLLSTAT register  **************************/
-#define SYSCON_SYSPLLSTAT_LOCK                         (1 << 0)
-
-/**********  Bit definition for USBPLLCTRL register  **************************/
-#define SYSCON_USBPLLCTRL_MSEL_POS                     0
-#define SYSCON_USBPLLCTRL_PSEL_POS                     5
-
-/**********  Bit definition for USBPLLSTAT register  **************************/
-#define SYSCON_USBPLLSTAT_LOCK                         (1 << 0)
-
-/**********  Bit definition for RTCOSCCTRL register  **************************/
-#define SYSCON_RTCOSCCTRL_RTCOSCEN                     (1 << 0)
-
-/**********  Bit definition for SYSOSCCTRL register  **************************/
-#define SYSCON_SYSOSCCTRL_BYPASS                       (1 << 0)
-#define SYSCON_SYSOSCCTRL_FREQRANGE                    (1 << 1)
-
-/**********  Bit definition for WDTOSCCTRL register  **************************/
-#define SYSCON_WDTOSCCTRL_DIVSEL_POS                   0
-#define SYSCON_WDTOSCCTRL_DIVSEL_MASK                  (0x1f << 0)
-
-#define SYSCON_WDTOSCCTRL_FREQSEL_POS                  5
-#define SYSCON_WDTOSCCTRL_FREQSEL_MASK                 (0xf << 5)
-
-/**********  Bit definition for SYSRSTSTAT register  **************************/
-#define SYSCON_SYSRSTSTAT_POR                          (1 << 0)
-#define SYSCON_SYSRSTSTAT_EXTRST                       (1 << 1)
-#define SYSCON_SYSRSTSTAT_WDT                          (1 << 2)
-#define SYSCON_SYSRSTSTAT_BOD                          (1 << 3)
-#define SYSCON_SYSRSTSTAT_SYSRST                       (1 << 4)
-
-/**********  Bit definition for SYSPLLCLKSEL register  ***********************/
-#define SYSCON_SYSPLLCLKSEL_IRC                        (0 << 0)
-#define SYSCON_SYSPLLCLKSEL_SYSOSC                     (1 << 0)
-#define SYSCON_SYSPLLCLKSEL_RTCOSC                     (3 << 0)
-
-/**********  Bit definition for SYSPLLCLKUEN register  ***********************/
-#define SYSCON_SYSPLLCLKUEN_ENA                        (1 << 0)
-
-/**********  Bit definition for USBPLLCLKSEL register  ***********************/
-#define SYSCON_USBPLLCLKSEL_IRC                        (0 << 0)
-#define SYSCON_USBPLLCLKSEL_SYSOSC                     (1 << 0)
-
-/**********  Bit definition for USBPLLCLKUEN register  ***********************/
-#define SYSCON_USBPLLUEN_ENA                           (1 << 0)
-
-/**********  Bit definition for MAINCLKSEL register  *************************/
-#define SYSCON_MAINCLKSEL_IRC                          (0 << 0)
-#define SYSCON_MAINCLKSEL_PLLSRC                       (1 << 0)
-#define SYSCON_MAINCLKSEL_WDT                          (2 << 0)
-#define SYSCON_MAINCLKSEL_PLL                          (3 << 0)
-
-/**********  Bit definition for MAINCLKUEN register  *************************/
-#define SYSCON_MAINCLKUEN_ENA                          (1 << 0)
-
-/**********  Bit definition for SYSAHBCLKCTRL register  **********************/
-#define SYSCON_SYSAHBCLKCTRL_SYS_POS                   0
-#define SYSCON_SYSAHBCLKCTRL_ROM_POS                   1
-#define SYSCON_SYSAHBCLKCTRL_RAM0_POS                  2
-#define SYSCON_SYSAHBCLKCTRL_FLASHREG_POS              3
-#define SYSCON_SYSAHBCLKCTRL_FLASHARRAY_POS            4
-#define SYSCON_SYSAHBCLKCTRL_I2C0_POS                  5
-#define SYSCON_SYSAHBCLKCTRL_GPIO_POS                  6
-#define SYSCON_SYSAHBCLKCTRL_CT16B0_POS                7
-#define SYSCON_SYSAHBCLKCTRL_CT16B1_POS                8
-#define SYSCON_SYSAHBCLKCTRL_CT32B0_POS                9
-#define SYSCON_SYSAHBCLKCTRL_CT32B1_POS                10
-#define SYSCON_SYSAHBCLKCTRL_SSP0_POS                  11
-#define SYSCON_SYSAHBCLKCTRL_USART0_POS                12
-#define SYSCON_SYSAHBCLKCTRL_ADC_POS                   13
-#define SYSCON_SYSAHBCLKCTRL_USB_POS                   14
-#define SYSCON_SYSAHBCLKCTRL_WWDT_POS                  15
-#define SYSCON_SYSAHBCLKCTRL_IOCON_POS                 16
-#define SYSCON_SYSAHBCLKCTRL_SSP1_POS                  18
-#define SYSCON_SYSAHBCLKCTRL_PINT_POS                  19
-#define SYSCON_SYSAHBCLKCTRL_USART1_POS                20
-#define SYSCON_SYSAHBCLKCTRL_USART2_POS                21
-#define SYSCON_SYSAHBCLKCTRL_USART3_4_POS              22
-#define SYSCON_SYSAHBCLKCTRL_GROUP0INT_POS             23
-#define SYSCON_SYSAHBCLKCTRL_GROUP1INT_POS             24
-#define SYSCON_SYSAHBCLKCTRL_I2C1_POS                  25
-#define SYSCON_SYSAHBCLKCTRL_RAM1_POS                  26
-#define SYSCON_SYSAHBCLKCTRL_USBRAM_POS                27
-#define SYSCON_SYSAHBCLKCTRL_CRC_POS                   28
-#define SYSCON_SYSAHBCLKCTRL_DMA_POS                   29
-#define SYSCON_SYSAHBCLKCTRL_RTC_POS                   30
-#define SYSCON_SYSAHBCLKCTRL_SCT0_1_POS                31
-
-/**********  Bit definition for USBCLKSEL register  **************************/
-#define SYSCON_USBCLKSEL_PLL                           (0 << 0)
-#define SYSCON_USBCLKSEL_MAIN                          (1 << 0)
-
-/**********  Bit definition for USBCLKUEN register  **************************/
-#define SYSCON_USBCLKUEN_ENA                           (1 << 0)
-
-/**********  Bit definition for CLKOUTSEL register  **************************/
-#define SYSCON_CLKOUTSEL_IRC                           (0 << 0)
-#define SYSCON_CLKOUTSEL_SYSOSC                        (1 << 0)
-#define SYSCON_CLKOUTSEL_WDT                           (2 << 0)
-#define SYSCON_CLKOUTSEL_MAIN                          (3 << 0)
-
-/**********  Bit definition for CLKOUTUEN register  **************************/
-#define SYSCON_CLKOUT_ENA                              (1 << 0)
-
-/**********  Bit definition for EXTTRACECMD register  ************************/
-#define SYSCON_EXTTRACECMD_START                       (1 << 0)
-#define SYSCON_EXTTRACECMD_STOP                        (1 << 1)
-
-/**********  Bit definition for BODCTR register  *****************************/
-#define SYSCON_BODCTR_BODRSTLEV_POS                    0
-#define SYSCON_BODCTR_BODRSTLEV_MASK                   (3 << 0)
-#define SYSCON_BODCTR_BODRSTLEV_LEVEL0                 (0 << 0)
-#define SYSCON_BODCTR_BODRSTLEV_LEVEL1                 (1 << 0)
-#define SYSCON_BODCTR_BODRSTLEV_LEVEL2                 (2 << 0)
-#define SYSCON_BODCTR_BODRSTLEV_LEVEL3                 (3 << 0)
-
-#define SYSCON_BODCTR_BODINTVAL_POS                    2
-#define SYSCON_BODCTR_BODINTVAL_MASK                   (3 << 2)
-#define SYSCON_BODCTR_BODINTVAL_LEVEL2                 (2 << 2)
-#define SYSCON_BODCTR_BODINTVAL_LEVEL3                 (3 << 2)
-
-#define SYSCON_BODCTR_BODRSTENA                        (1 << 4)
-
-/**********  Bit definition for NSISRC register  *****************************/
-#define SYSCON_NMISRC_IRQN_POS                         0
-#define SYSCON_NMISRC_IRQN_MASK                        (0xf << 0)
-
-#define SYSCON_NMISRC_NMIEN                            (1 << 31)
-
-/**********  Bit definition for USBCLKCTRL register  *************************/
-#define SYSCON_USBCLKCTRL_APCLK                        (1 << 0)
-#define SYSCON_USBCLKCTRL_POL_CLK                      (1 << 1)
-
-/**********  Bit definition for USBCLKST register  ***************************/
-#define SYSCON_USBCLKST_NEED_CLKST                     (1 << 0)
-
-/**********  Bit definition for STARTERP1 register  **************************/
-#define SYSCON_STARTERP1_RTCINT                        (1 << 12)
-#define SYSCON_STARTERP1_WWDT_BODINT                   (1 << 13)
-#define SYSCON_STARTERP1_USB_WAKEUP                    (1 << 19)
-#define SYSCON_STARTERP1_GROUP0INT                     (1 << 20)
-#define SYSCON_STARTERP1_GROUP1INT                     (1 << 21)
-#define SYSCON_STARTERP1_USART1_4                      (1 << 23)
-#define SYSCON_STARTERP1_USART2_3                      (1 << 24)
-
-/**********  Bit definition for PDSLEEPCFG register  **************************/
-#define SYSCON_PDSLEEPCFG_BODPD                        (1 << 3)
-#define SYSCON_PDSLEEPCFG_WDTOSC_PD                    (1 << 6)
-
-/**********  Bit definition for PDAWAKECFG register  **************************/
-#define SYSCON_PDAWAKECFG_IRCOUT_PD                    (1 << 0)
-#define SYSCON_PDAWAKECFG_IRC_PD                       (1 << 1)
-#define SYSCON_PDAWAKECFG_FLASH_PD                     (1 << 2)
-#define SYSCON_PDAWAKECFG_BOD_PD                       (1 << 3)
-#define SYSCON_PDAWAKECFG_ADC_PD                       (1 << 4)
-#define SYSCON_PDAWAKECFG_SYSOSC_PD                    (1 << 5)
-#define SYSCON_PDAWAKECFG_WDTOSC_PD                    (1 << 6)
-#define SYSCON_PDAWAKECFG_SYSPLL_PD                    (1 << 7)
-#define SYSCON_PDAWAKECFG_USBPLL_PD                    (1 << 8)
-#define SYSCON_PDAWAKECFG_USBPAD_PD                    (1 << 10)
-#define SYSCON_PDAWAKECFG_TEMPSENSE_PD                 (1 << 13)
-
-/**********  Bit definition for PDRUNCFG register  ***************************/
-#define SYSCON_PDRUNCFG_IRCOUT_PD                      (1 << 0)
-#define SYSCON_PDRUNCFG_IRC_PD                         (1 << 1)
-#define SYSCON_PDRUNCFG_FLASH_PD                       (1 << 2)
-#define SYSCON_PDRUNCFG_BOD_PD                         (1 << 3)
-#define SYSCON_PDRUNCFG_ADC_PD                         (1 << 4)
-#define SYSCON_PDRUNCFG_SYSOSC_PD                      (1 << 5)
-#define SYSCON_PDRUNCFG_WDTOSC_PD                      (1 << 6)
-#define SYSCON_PDRUNCFG_SYSPLL_PD                      (1 << 7)
-#define SYSCON_PDRUNCFG_USBPLL_PD                      (1 << 8)
-#define SYSCON_PDRUNCFG_USBPAD_PD                      (1 << 10)
-#define SYSCON_PDRUNCFG_TEMPSENSE_PD                   (1 << 13)
+/******  Bit definition for CCU1_M3_EMCDIV_CFG register  ********************/
+#define CCU1_M3_EMCDIV_CFG_RUN                  (1 << 0)                /* Run enable
+                                                                           0 Clock is disabled.
+                                                                           1 Clock is enabled */
+#define CCU1_M3_EMCDIV_CFG_AUTO                 (1 << 1)                /* Auto (AHB disable mechanism) enable
+                                                                           0 Auto is disabled.
+                                                                           1 Auto is enabled */
+#define CCU1_M3_EMCDIV_CFG_WAKEUP               (1 << 2)                /* Wake-up configure
+                                                                           0 Wake-up is disabled.
+                                                                           1 Wake-up is enabled */
+#define CCU1_M3_EMCDIV_CFG_DIV_MASK             (3 << 5)                /* Clock divider value. This bit field is for write access only. A read of */
+#define CCU1_M3_EMCDIV_CFG_DIV_POS              5                       /* this field returns an invalid value */
+#define CCU1_M3_EMCDIV_CFG_DIV_NO               0                       /* 0x0 No division (divide by 1) */
+#define CCU1_M3_EMCDIV_CFG_DIV_2                1                       /* 0x1 Divide by 2 */
+#define CCU1_M3_EMCDIV_CFG_DIV_STAT_MASK        (3 << 27)               /* Clock divider status. When this bit field is read, the value of the DIV bit */
+#define CCU1_M3_EMCDIV_CFG_DIV_STAT_POS         27                      /* field in this register is returned */
 
 /******************************************************************************/
 /*                                                                            */
-/*                            GPIO                                            */
+/*                   SCU (System Control Unit)                                */
 /*                                                                            */
 /******************************************************************************/
-//common for most IO
-#define GPIO_MODE_NOPULL                        (0 << 3)
-#define GPIO_MODE_PULLDOWN                      (1 << 3)
-#define GPIO_MODE_PULLUP                        (2 << 3)
-#define GPIO_MODE_REPEATER                      (3 << 3)
 
-#define GPIO_HYS                                (1 << 5)
-#define GPIO_INV                                (1 << 6)
-#define GPIO_ANALOG                             (1 << 7)
-#define GPIO_ANALOG_FILTER                      (1 << 8)
-#define GPIO_OPEN_DRAIN                         (1 << 10)
+/********  Bit definition for SCU_SFS* registers  ***************************/
+#define SCU_SFS_EPD                             (1 << 3)                /* Enable pull-down resistor at pad.
+                                                                           0 Disable pull-down.
+                                                                           1 Enable pull-down. Enable both pull-down resistor and pull-up resistor
+                                                                           for repeater mode */
+#define SCU_SFS_EPUN                            (1 << 4)                /* Disable pull-up resistor at pad. By default, the pull-up resistor is enabled at reset.
+                                                                           0 Enable pull-up. Enable both pull-down resistor and pull-up resistor for repeater mode.
+                                                                           1 Disable pull-up */
+#define SCU_SFS_EHS                             (1 << 5)                /* Select Slew rate.
+                                                                           0 Slow (low noise with medium speed)
+                                                                           1 Fast (medium noise with fast speed)*/
+#define SCU_SFS_EZI                             (1 << 6)                /* Input buffer enable. The input buffer is disabled by default at reset and must be
+                                                                           enabled for receiving.
+                                                                           0 Disable input buffer
+                                                                           1 Enable input buffer */
+#define SCU_SFS_ZIF                             (1 << 7)                /* Input glitch filter. Disable the input glitch filter for clocking signals higher than 30 MHz.
+                                                                           0 Enable input glitch filter
+                                                                           1 Disable input glitch filter */
+                                                                        /* Select drive strength. */
+#define SCU_SFS_EHD_NORMAL                      (0 << 8)                /* 0x0 Normal-drive: 4 mA drive strength */
+#define SCU_SFS_EHD_MEDIUM                      (1 << 8)                /* 0x1 Medium-drive: 8 mA drive strength */
+#define SCU_SFS_EHD_HIGH                        (2 << 8)                /* 0x2 High-drive: 14 mA drive strength */
+#define SCU_SFS_EHD_ULTRA_HIGH                  (3 << 8)                /* 0x3 Ultra high-drive: 20 mA drive strength */
 
-//I2C specific mode
-#define GPIO_I2C_MODE_STANDART                  (0 << 8)
-#define GPIO_I2C_MODE_STANDART_IO               (1 << 8)
-#define GPIO_I2C_MODE_FAST                      (2 << 8)
+/******  Bit definition for SCU_SFSUSB registers  ***************************/
+#define SCU_SFSUSB_AIM                          (1 << 0)                /* Differential data input AIP/AIM.
+                                                                           0 Going LOW with full speed edge rate
+                                                                           1 Going HIGH with full speed edge rate */
+#define SCU_SFSUSB_ESEA                         (1 << 1)                /* Control signal for differential input or single input.
+                                                                           0 Reserved. Do not use.
+                                                                           1 Single input. Enables USB1. Use with the on-chip full-speed PHY */
+#define SCU_SFSUSB_EPD                          (1 << 2)                /* Enable pull-down connect.
+                                                                           0 Pull-down disconnected
+                                                                           1 Pull-down connected */
+#define SCU_SFSUSB_EPWR                         (1 << 4)                /* Power mode.
+                                                                           0 Power saving mode (Suspend mode)
+                                                                           1 Normal mode */
+#define SCU_SFSUSB_VBUS                         (1 << 5)                /* Enable the vbus_valid signal. This signal is monitored by the USB1 block. Use this bit
+                                                                           for software de-bouncing of the VBUS sense signal or to indicate the VBUS state to the
+                                                                           USB1 controller when the VBUS signal is present but the USB1_VBUS function is not
+                                                                           connected in the SFSP2_5 register.
+                                                                           Remark: The setting of this bit has no effect if the USB1_VBUS function of pin
+                                                                           P2_5 is enabled through the SFSP2_5 register.
+                                                                           0 VBUS signal LOW or inactive
+                                                                           1 VBUS signal HIGH or active */
 
-//PIO0_0
-#define PIN_MODE_RESET                          0
-#define PIN_MODE_PIO0_0                         1
+/******  Bit definition for SCU_SFSI2C0 registers  **************************/
+#define SCU_SFSI2C0_SCL_EFP                     (1 << 0)                /* Select input glitch filter time constant for the SCL pin.
+                                                                           0 50 ns glitch filter
+                                                                           1 3 ns glitch filter */
+#define SCU_SFSI2C0_SCL_EHD                     (1 << 2)                /* Select I2C mode for the SCL pin.
+                                                                           0 Standard/Fast mode transmit
+                                                                           1 Fast-mode Plus transmit */
+#define SCU_SFSI2C0_SCL_EZI                     (1 << 3)                /* Enable the input receiver for the SCL pin. Always write a 1 to this bit when using
+                                                                           the I2C0.
+                                                                           0 Disabled
+                                                                           1 Enabled */
+#define SCU_SFSI2C0_SCL_ZIF                     (1 << 7)                /* Enable or disable input glitch filter for the  SCL pin. The filter time constant is
+                                                                           determined by bit SCL_EFP.
+                                                                           0 Enable input filter
+                                                                           1 Disable input filter */
+#define SCU_SFSI2C0_SDA_EFP                     (1 << 8)                /* Select input glitch filter time constant for the SDA pin.
+                                                                           0 50 ns glitch filter
+                                                                           1 3 ns glitch filter */
+#define SCU_SFSI2C0_SDA_EHD                     (1 << 10)               /* Select I2C mode for the SDA pin.
+                                                                           0 Standard/Fast mode transmit
+                                                                           1 Fast-mode Plus transmit */
+#define SCU_SFSI2C0_SDA_EZI                     (1 << 11)               /* Enable the input receiver for the SDA pin. Always write a 1 to this bit when using
+                                                                           the I2C0.
+                                                                           0 Disabled
+                                                                           1 Enabled */
+#define SCU_SFSI2C0_SDA_ZIF                     (1 << 15)               /* Enable or disable input glitch filter for the SDA pin. The filter time constant is
+                                                                           determined by bit SDA_EFP.
+                                                                           0 Enable input filter
+                                                                           1 Disable input filter */
 
-//PIO0_1
-#define PIN_MODE_PIO0_1                         0
-#define PIN_MODE_CLKOUT                         1
-#define PIN_MODE_CT32B0_MAT2                    2
-#define PIN_MODE_USB_FTOGGLE                    3
+//P0_0
+#define P0_0_GPIO0_0                            (0 << 0)
+#define P0_0_SSP1_MISO                          (1 << 0)
+#define P0_0_ENET_RXD1                          (2 << 0)
+#define P0_0_I2S0_TX_WS                         (6 << 0)
+#define P0_0_I2S1_TX_WS                         (7 << 0)
 
-//PIO0_2
-#define PIN_MODE_PIO0_2                         0
-#define PIN_MODE_SSEL0                          1
-#define PIN_MODE_CT16B0_CAP0                    2
-#define PIN_MODE_IOH_0                          3
+//P0_1
+#define P0_1_GPIO0_1                            (0 << 0)
+#define P0_1_SSP1_MOSI                          (1 << 0)
+#define P0_1_ENET_COL                           (2 << 0)
+#define P0_1_ENET_TX_EN                         (6 << 0)
+#define P0_1_I2S1_TX_SDA                        (7 << 0)
 
-//PIO0_3
-#define PIN_MODE_PIO0_3                         0
-#define PIN_MODE_VBUS                           1
-#define PIN_MODE_IOH_1                          2
+//P1_0
+#define P1_0_GPIO0_4                            (0 << 0)
+#define P1_0_CTIN_3                             (1 << 0)
+#define P1_0_EMC_A5                             (2 << 0)
+#define P1_0_SSP0_SSEL                          (5 << 0)
+#define P1_0_EMC_D12                            (7 << 0)
 
-//PIO0_4
-#define PIN_MODE_PIO0_4                         0
-#define PIN_MODE_I2C_SCL                        1
-#define PIN_MODE_IOH_2                          2
+//P1_1
+#define P1_1_GPIO0_8                            (0 << 0)
+#define P1_1_CTOUT_7                            (1 << 0)
+#define P1_1_EMC_A6                             (2 << 0)
+#define P1_1_SSP0_MISO                          (5 << 0)
+#define P1_1_EMC_D13                            (7 << 0)
 
-//PIO0_5
-#define PIN_MODE_PIO0_5                         0
-#define PIN_MODE_I2C_SDA                        1
-#define PIN_MODE_IOH_3                          2
+//P1_2
+#define P1_2_GPIO0_9                            (0 << 0)
+#define P1_2_CTOUT_6                            (1 << 0)
+#define P1_2_EMC_A7                             (2 << 0)
+#define P1_2_SSP0_MOSI                          (5 << 0)
+#define P1_2_EMC_D14                            (7 << 0)
 
-//PIO0_6
-#define PIN_MODE_PIO0_6                         0
-#define PIN_MODE_USB_CONNECT                    1
-#define PIN_MODE_SCK0                           2
-#define PIN_MODE_SCK0_IOH_4                     3
+//P1_3
+#define P1_3_GPIO0_10                           (0 << 0)
+#define P1_3_CTOUT_8                            (1 << 0)
+#define P1_3_EMC_OE                             (3 << 0)
+#define P1_3_USB0_IND1                          (4 << 0)
+#define P1_3_SSP1_MISO                          (5 << 0)
+#define P1_3_SD_RST                             (7 << 0)
 
-//PIO0_7
-#define PIN_MODE_PIO0_7                         0
-#define PIN_MODE_CTS                            1
-#define PIN_MODE_IOH_5                          2
+//P1_4
+#define P1_4_GPIO0_11                           (0 << 0)
+#define P1_4_CTOUT_9                            (1 << 0)
+#define P1_4_EMC_BLS0                           (3 << 0)
+#define P1_4_USB0_IND0                          (4 << 0)
+#define P1_4_SSP1_MOSI                          (5 << 0)
+#define P1_4_EMC_D15                            (6 << 0)
+#define P1_4_SD_VOLT1                           (7 << 0)
 
-//PIO0_8
-#define PIN_MODE_PIO0_8                         0
-#define PIN_MODE_MIS00                          1
-#define PIN_MODE_CT16B0_MAT0                    2
-#define PIN_MODE_IOH_6                          4
+//P1_5
+#define P1_5_GPIO1_8                            (0 << 0)
+#define P1_5_CTOUT_10                           (1 << 0)
+#define P1_5_EMC_CS0                            (3 << 0)
+#define P1_5_USB0_PWR_FAULT                     (4 << 0)
+#define P1_5_SSP1_SSEL                          (5 << 0)
+#define P1_5_SD_POW                             (7 << 0)
 
-//PIO0_9
-#define PIN_MODE_PIO0_9                         0
-#define PIN_MODE_MOSI0                          1
-#define PIN_MODE_CT16B0_MAT1                    2
-#define PIN_MODE_IOH_7                          4
+//P1_6
+#define P1_6_GPIO1_9                            (0 << 0)
+#define P1_6_CTIN_5                             (1 << 0)
+#define P1_6_EMC_WE                             (3 << 0)
+#define P1_6_EMC_BLS0                           (5 << 0)
+#define P1_6_SD_CMD                             (7 << 0)
 
-//PIO0_10
-#define PIN_MODE_SWCLK                          0
-#define PIN_MODE_PIO0_10                        1
-#define PIN_MODE_SCK0                           2
-#define PIN_MODE_CT16B0_MAT2                    3
+//P1_7
+#define P1_7_GPIO1_0                            (0 << 0)
+#define P1_7_U1_DSR                             (1 << 0)
+#define P1_7_CTOUT_13                           (2 << 0)
+#define P1_7_EMC_D0                             (3 << 0)
+#define P1_7_USB0_PWR_EN                        (4 << 0)
 
-//PIO0_11
-#define PIN_MODE_TDI                            0
-#define PIN_MODE_PIO0_11                        1
-#define PIN_MODE_AD0                            2
-#define PIN_MODE_CT32B0_MAT3                    3
+//P1_8
+#define P1_8_GPIO1_1                            (0 << 0)
+#define P1_8_U1_DTR                             (1 << 0)
+#define P1_8_CTOUT_12                           (2 << 0)
+#define P1_8_EMC_D1                             (3 << 0)
+#define P1_8_SD_VOLT0                           (7 << 0)
 
-//PIO0_12
-#define PIN_MODE_TMS                            0
-#define PIN_MODE_PIO0_12                        1
-#define PIN_MODE_AD1                            2
-#define PIN_MODE_CT32B1_CAP0                    3
+//P1_9
+#define P1_9_GPIO1_2                            (0 << 0)
+#define P1_9_U1_RTS                             (1 << 0)
+#define P1_9_CTOUT_11                           (2 << 0)
+#define P1_9_EMC_D2                             (3 << 0)
+#define P1_9_SD_DAT0                            (7 << 0)
 
-//PIO0_13
-#define PIN_MODE_TDO                            0
-#define PIN_MODE_PIO0_13                        1
-#define PIN_MODE_AD2                            2
-#define PIN_MODE_CT32B1_MAT0                    3
+//P1_10
+#define P1_10_GPIO1_3                           (0 << 0)
+#define P1_10_U1_RI                             (1 << 0)
+#define P1_10_CTOUT_14                          (2 << 0)
+#define P1_10_EMC_D3                            (3 << 0)
+#define P1_10_SD_DAT1                           (7 << 0)
 
-//PIO0_14
-#define PIN_MODE_TRST                           0
-#define PIN_MODE_PIO0_14                        1
-#define PIN_MODE_AD3                            2
-#define PIN_MODE_CT32B1_MAT1                    3
+//P1_11
+#define P1_11_GPIO1_4                           (0 << 0)
+#define P1_11_U1_CTS                            (1 << 0)
+#define P1_11_CTOUT_15                          (2 << 0)
+#define P1_11_EMC_D4                            (3 << 0)
+#define P1_11_SD_DAT2                           (7 << 0)
 
-//PIO0_15
-#define PIN_MODE_SDIO                           0
-#define PIN_MODE_PIO0_15                        1
-#define PIN_MODE_AD4                            2
-#define PIN_MODE_CT32B1_MAT2                    3
+//P1_12
+#define P1_12_GPIO1_5                           (0 << 0)
+#define P1_12_U1_DCD                            (1 << 0)
+#define P1_12_EMC_D5                            (3 << 0)
+#define P1_12_T0_CAP1                           (4 << 0)
+#define P1_12_SD_DAT3                           (7 << 0)
 
-//PIO0_16
-#define PIN_MODE_PIO0_16                        0
-#define PIN_MODE_AD5                            1
-#define PIN_MODE_CT32B1_MAT3                    2
-#define PIN_MODE_IOH_8                          3
+//P1_13
+#define P1_13_GPIO1_6                           (0 << 0)
+#define P1_13_U1_TXD                            (1 << 0)
+#define P1_13_EMC_D6                            (3 << 0)
+#define P1_13_T0_CAP0                           (4 << 0)
+#define P1_13_SD_CD                             (7 << 0)
 
-//PIO0_17
-#define PIN_MODE_PIO0_17                        0
-#define PIN_MODE_RTS                            1
-#define PIN_MODE_CT32B0_CAP0                    2
-#define PIN_MODE_SCLK                           3
+//P1_14
+#define P1_14_GPIO1_7                           (0 << 0)
+#define P1_14_U1_RXD                            (1 << 0)
+#define P1_14_EMC_D7                            (3 << 0)
+#define P1_14_T0_MAT2                           (4 << 0)
 
-//PIO0_18
-#define PIN_MODE_PIO0_18                        0
-#define PIN_MODE_RXD                            1
-#define PIN_MODE_CT32B0_MAT0                    2
+//P1_15
+#define P1_15_GPIO0_2                           (0 << 0)
+#define P1_15_U2_TXD                            (1 << 0)
+#define P1_15_ENET_RXD0                         (3 << 0)
+#define P1_15_T0_MAT1                           (4 << 0)
+#define P1_15_EMC_D8                            (6 << 0)
 
-//PIO0_19
-#define PIN_MODE_PIO0_19                        0
-#define PIN_MODE_TXD                            1
-#define PIN_MODE_CT32B0_MAT1                    2
+//P1_16
+#define P1_16_GPIO0_3                           (0 << 0)
+#define P1_16_U2_RXD                            (1 << 0)
+#define P1_16_ENET_CRS                          (3 << 0)
+#define P1_16_T0_MAT0                           (4 << 0)
+#define P1_16_EMC_D9                            (6 << 0)
+#define P1_16_ENET_RX_DV                        (7 << 0)
 
-//PIO0_20
-#define PIN_MODE_PIO0_20                        0
-#define PIN_MODE_CT16B1_CAP0                    1
+//P1_17
+#define P1_17_GPIO0_12                          (0 << 0)
+#define P1_17_U2_UCLK                           (1 << 0)
+#define P1_17_ENET_MDIO                         (3 << 0)
+#define P1_17_T0_CAP3                           (4 << 0)
+#define P1_17_CAN1_TD                           (5 << 0)
 
-//PIO0_21
-#define PIN_MODE_PIO0_21                        0
-#define PIN_MODE_CT16B1_MAT0                    1
-#define PIN_MODE_MOSI1                          2
+//P1_18
+#define P1_18_GPIO0_13                          (0 << 0)
+#define P1_18_U2_DIR                            (1 << 0)
+#define P1_18_ENET_TXD0                         (3 << 0)
+#define P1_18_T0_MAT3                           (4 << 0)
+#define P1_18_CAN1_RD                           (5 << 0)
+#define P1_18_EMC_D10                           (7 << 0)
 
-//PIO0_22
-#define PIN_MODE_PIO0_22                        0
-#define PIN_MODE_AD6                            1
-#define PIN_MODE_CT16B1_MAT1                    2
-#define PIN_MODE_MISO1                          3
+//P1_19
+#define P1_19_ENET_TX_CLK                       (0 << 0)
+#define P1_19_SSP1_SCK                          (1 << 0)
+#define P1_19_CLKOUT                            (4 << 0)
+#define P1_19_I2S0_RX_MCLK                      (6 << 0)
+#define P1_19_I2S1_TX_SCK                       (7 << 0)
 
-//PIO0_23
-#define PIN_MODE_PIO0_23                        0
-#define PIN_MODE_AD7                            1
-#define PIN_MODE_IOH_9                          2
+//P1_20
+#define P1_20_GPIO0_15                          (0 << 0)
+#define P1_20_SSP1_SSEL                         (1 << 0)
+#define P1_20_ENET_TXD1                         (3 << 0)
+#define P1_20_T0_CAP2                           (4 << 0)
+#define P1_20_EMC_D11                           (7 << 0)
 
-//PIO1_0
-#define PIN_MODE_PIO1_0                         0
-#define PIN_MODE_CT32B1_MAT1_0                  1
-#define PIN_MODE_IOH_10                         2
+//P2_0
+#define P2_0_U0_TXD                             (1 << 0)
+#define P2_0_EMC_A13                            (2 << 0)
+#define P2_0_USB0_PWR_EN                        (3 << 0)
+#define P2_0_GPIO5_0                            (4 << 0)
+#define P2_0_T3_CAP0                            (6 << 0)
+#define P2_0_ENET_MDC                           (7 << 0)
 
-//PIO1_1
-#define PIN_MODE_PIO1_1                         0
-#define PIN_MODE_CT32B1_MAT1_1                  1
-#define PIN_MODE_IOH_10                         2
+//P2_1
+#define P2_1_U0_RXD                             (1 << 0)
+#define P2_1_EMC_A12                            (2 << 0)
+#define P2_1_USB0_PWR_FAULT                     (3 << 0)
+#define P2_1_GPIO5_1                            (4 << 0)
+#define P2_1_T3_CAP1                            (6 << 0)
 
-//PIO1_2
-#define PIN_MODE_PIO1_2                         0
-#define PIN_MODE_CT32B1_MAT2_1                  1
-#define PIN_MODE_IOH_12                         2
+//P2_2
+#define P2_2_U0_UCLK                            (1 << 0)
+#define P2_2_EMC_A11                            (2 << 0)
+#define P2_2_USB0_IND1                          (3 << 0)
+#define P2_2_GPIO5_2                            (4 << 0)
+#define P2_2_CTIN_6                             (5 << 0)
+#define P2_2_T3_CAP2                            (6 << 0)
+#define P2_2_EMC_CS1                            (7 << 0)
 
-//PIO1_3
-#define PIN_MODE_PIO1_3                         0
-#define PIN_MODE_CT32B1_MAT3_1                  1
-#define PIN_MODE_IOH_13                         2
+//P2_3
+#define P2_3_I2C1_SDA                           (1 << 0)
+#define P2_3_U3_TXD                             (2 << 0)
+#define P2_3_CTIN_1                             (3 << 0)
+#define P2_3_GPIO5_3                            (4 << 0)
+#define P2_3_T3_MAT0                            (6 << 0)
+#define P2_3_USB0_PWR_EN                        (7 << 0)
 
-//PIO1_4
-#define PIN_MODE_PIO1_4                         0
-#define PIN_MODE_CT32B1_CAP0_1_4                1
-#define PIN_MODE_IOH_14                         2
+//P2_4
+#define P2_4_I2C1_SCL                           (1 << 0)
+#define P2_4_U3_RXD                             (2 << 0)
+#define P2_4_CTIN_0                             (3 << 0)
+#define P2_4_GPIO5_4                            (4 << 0)
+#define P2_4_T3_MAT1                            (6 << 0)
+#define P2_4_USB0_PWR_FAULT                     (7 << 0)
 
-//PIO1_5
-#define PIN_MODE_PIO1_5                         0
-#define PIN_MODE_CT32B1_CAP1_1_5                1
-#define PIN_MODE_IOH_15                         2
+//P2_5
+#define P2_5_CTIN_2                             (1 << 0)
+#define P2_5_USB1_VBUS                          (2 << 0)
+#define P2_5_ADCTRIG1                           (3 << 0)
+#define P2_5_GPIO5_5                            (4 << 0)
+#define P2_5_T3_MAT2                            (6 << 0)
+#define P2_5_USB0_IND0                          (7 << 0)
 
-//PIO1_6
-#define PIN_MODE_PIO1_6                         0
-#define PIN_MODE_IOH_16                         1
+//P2_6
+#define P2_6_U0_DIR                             (1 << 0)
+#define P2_6_EMC_A10                            (2 << 0)
+#define P2_6_USB0_IND0                          (3 << 0)
+#define P2_6_GPIO5_6                            (4 << 0)
+#define P2_6_CTIN_7                             (5 << 0)
+#define P2_6_T3_CAP3                            (6 << 0)
+#define P2_6_EMC_BLS1                           (7 << 0)
 
-//PIO1_7
-#define PIN_MODE_PIO1_7                         0
-#define PIN_MODE_IOH_17                         1
+//P2_7
+#define P2_7_GPIO0_7                            (0 << 0)
+#define P2_7_CTOUT_1                            (1 << 0)
+#define P2_7_U3_UCLK                            (2 << 0)
+#define P2_7_EMC_A9                             (3 << 0)
+#define P2_7_T3_MAT3                            (6 << 0)
 
-//PIO1_8
-#define PIN_MODE_PIO1_8                         0
-#define PIN_MODE_IOH_18                         1
+//P2_8
+#define P2_8_CTOUT_0                            (1 << 0)
+#define P2_8_U3_DIR                             (2 << 0)
+#define P2_8_EMC_A8                             (3 << 0)
+#define P2_8_GPIO5_7                            (4 << 0)
 
-//PIO1_9
-#define PIN_MODE_PIO1_9                         0
+//P2_9
+#define P2_9_GPIO1_10                           (0 << 0)
+#define P2_9_CTOUT_3                            (1 << 0)
+#define P2_9_U3_BAUD                            (2 << 0)
+#define P2_9_EMC_A0                             (3 << 0)
 
-//PIO1_10
-#define PIN_MODE_PIO1_10                        0
+//P2_10
+#define P2_10_GPIO0_14                          (0 << 0)
+#define P2_10_CTOUT_2                           (1 << 0)
+#define P2_10_U2_TXD                            (2 << 0)
+#define P2_10_EMC_A1                            (3 << 0)
 
-//PIO1_11
-#define PIN_MODE_PIO1_11                        0
+//P2_11
+#define P2_11_GPIO1_11                          (0 << 0)
+#define P2_11_CTOUT_5                           (1 << 0)
+#define P2_11_U2_RXD                            (2 << 0)
+#define P2_11_EMC_A2                            (3 << 0)
 
-//PIO1_12
-#define PIN_MODE_PIO1_12                        0
+//P2_12
+#define P2_12_GPIO1_12                          (0 << 0)
+#define P2_12_CTOUT_4                           (1 << 0)
+#define P2_12_EMC_A3                            (3 << 0)
+#define P2_12_U2_UCLK                           (7 << 0)
 
-//PIO1_13
-#define PIN_MODE_PIO1_13                        0
-#define PIN_MODE_DTR                            1
-#define PIN_MODE_CT16B0_MAT0_1                  2
-#define PIN_MODE_TXD_1                          3
+//P2_13
+#define P2_13_GPIO1_13                          (0 << 0)
+#define P2_13_CTIN_4                            (1 << 0)
+#define P2_13_EMC_A4                            (3 << 0)
+#define P2_13_U2_DIR                            (7 << 0)
 
-//PIO1_14
-#define PIN_MODE_PIO1_14                        0
-#define PIN_MODE_DSR                            1
-#define PIN_MODE_CT16B0_MAT1_1                  2
-#define PIN_MODE_RXD_1                          3
+//P3_0
+#define P3_0_I2S0_RX_SCK                        (0 << 0)
+#define P3_0_I2S0_RX_MCLK                       (1 << 0)
+#define P3_0_I2S0_TX_SCK                        (2 << 0)
+#define P3_0_I2S0_TX_MCLK                       (3 << 0)
+#define P3_0_SSP0_SCK                           (4 << 0)
 
-//PIO1_15
-#define PIN_MODE_PIO1_15                        0
-#define PIN_MODE_DCD                            1
-#define PIN_MODE_CT16B0_MAT2_1                  2
-#define PIN_MODE_SCK1                           3
+//P3_1
+#define P3_1_I2S0_TX_WS                         (0 << 0)
+#define P3_1_I2S0_RX_WS                         (1 << 0)
+#define P3_1_CAN0_RD                            (2 << 0)
+#define P3_1_USB1_IND1                          (3 << 0)
+#define P3_1_GPIO5_8                            (4 << 0)
+#define P3_1_LCD_VD15                           (6 << 0)
 
-//PIO1_16
-#define PIN_MODE_PIO1_16                        0
-#define PIN_MODE_RI                             1
-#define PIN_MODE_CT16B0_CAP0_1                  2
+//P3_2
+#define P3_2_I2S0_TX_SDA                        (0 << 0)
+#define P3_2_I2S0_RX_SDA                        (1 << 0)
+#define P3_2_CAN0_TD                            (2 << 0)
+#define P3_2_USB1_IND0                          (3 << 0)
+#define P3_2_GPIO5_9                            (4 << 0)
+#define P3_2_LCD_VD14                           (6 << 0)
 
-//PIO1_17
-#define PIN_MODE_PIO1_17                        0
-#define PIN_MODE_CT16B0_CAP1_1                  1
-#define PIN_MODE_RXD_2                          2
+//P3_3
+#define P3_3_SSP0_SCK                           (2 << 0)
+#define P3_3_SPIFI_SCK                          (3 << 0)
+#define P3_3_CGU_OUT1                           (4 << 0)
+#define P3_3_I2S0_TX_MCLK                       (6 << 0)
+#define P3_3_I2S1_TX_SCK                        (7 << 0)
 
-//PIO1_18
-#define PIN_MODE_PIO1_18                        0
-#define PIN_MODE_CT16B1_CAP1_1                  1
-#define PIN_MODE_TXD_2                          2
+//P3_4
+#define P3_4_GPIO1_14                           (0 << 0)
+#define P3_4_SPIFI_SIO3                         (3 << 0)
+#define P3_4_U1_TXD                             (4 << 0)
+#define P3_4_I2S0_TX_WS                         (5 << 0)
+#define P3_4_I2S1_RX_SDA                        (6 << 0)
+#define P3_4_LCD_VD13                           (7 << 0)
 
-//PIO1_19
-#define PIN_MODE_PIO1_19                        0
-#define PIN_MODE_DTR_1                          1
-#define PIN_MODE_SSEL1                          2
+//P3_5
+#define P3_5_GPIO1_15                           (0 << 0)
+#define P3_5_SPIFI_SIO2                         (3 << 0)
+#define P3_5_U1_RXD                             (4 << 0)
+#define P3_5_I2S0_TX_SDA                        (5 << 0)
+#define P3_5_I2S1_RX_WS                         (6 << 0)
+#define P3_5_LCD_VD12                           (7 << 0)
 
-//PIO1_20
-#define PIN_MODE_PIO1_20                        0
-#define PIN_MODE_DSR_1                          1
-#define PIN_MODE_SCK1_1                         2
+//P3_6
+#define P3_6_GPIO0_6                            (0 << 0)
+#define P3_6_SSP0_SSEL                          (2 << 0)
+#define P3_6_SPIFI_MISO                         (3 << 0)
+#define P3_6_SSP0_MISO                          (5 << 0)
 
-//PIO1_21
-#define PIN_MODE_PIO1_21                        0
-#define PIN_MODE_DCD_1                          1
-#define PIN_MODE_MISO1_1                        2
+//P3_7
+#define P3_7_SSP0_MISO                          (2 << 0)
+#define P3_7_SPIFI_MOSI                         (3 << 0)
+#define P3_7_GPIO5_10                           (4 << 0)
+#define P3_7_SSP0_MOSI                          (5 << 0)
 
-//PIO1_22
-#define PIN_MODE_PIO1_22                        0
-#define PIN_MODE_RI_1                           1
-#define PIN_MODE_MOSI1_1                        2
+//P3_8
+#define P3_8_SSP0_MOSI                          (2 << 0)
+#define P3_8_SPIFI_CS                           (3 << 0)
+#define P3_8_GPIO5_11                           (4 << 0)
+#define P3_8_SSP0_SSEL                          (5 << 0)
 
-//PIO1_23
-#define PIN_MODE_PIO1_23                        0
-#define PIN_MODE_CT16B1_MAT1_1                  1
-#define PIN_MODE_SSEL1_1                        2
+//P4_0
+#define P4_0_GPIO2_0                            (0 << 0)
+#define P4_0_MCOA0                              (1 << 0)
+#define P4_0_NMI                                (2 << 0)
+#define P4_0_LCD_VD13                           (5 << 0)
+#define P4_0_U3_UCLK                            (6 << 0)
 
-//PIO1_24
-#define PIN_MODE_PIO1_24                        0
-#define PIN_MODE_CT32B0_MAT0_1                  1
+//P4_1
+#define P4_1_GPIO2_1                            (0 << 0)
+#define P4_1_CTOUT_1                            (1 << 0)
+#define P4_1_LCD_VD0                            (2 << 0)
+#define P4_1_LCD_VD19                           (5 << 0)
+#define P4_1_U3_TXD                             (6 << 0)
+#define P4_1_ENET_COL                           (7 << 0)
 
-//PIO1_25
-#define PIN_MODE_PIO1_25                        0
-#define PIN_MODE_CT32B0_MAT1_1                  1
+//P4_2
+#define P4_2_GPIO2_2                            (0 << 0)
+#define P4_2_CTOUT_0                            (1 << 0)
+#define P4_2_LCD_VD3                            (2 << 0)
+#define P4_2_LCD_VD12                           (5 << 0)
+#define P4_2_U3_RXD                             (6 << 0)
 
-//PIO1_26
-#define PIN_MODE_PIO1_26                        0
-#define PIN_MODE_CT32B0_MAT2_1                  1
-#define PIN_MODE_RXD_3                          2
-#define PIN_MODE_IOH_19                         3
+//P4_3
+#define P4_3_GPIO2_3                            (0 << 0)
+#define P4_3_CTOUT_3                            (1 << 0)
+#define P4_3_LCD_VD2                            (2 << 0)
+#define P4_3_LCD_VD21                           (5 << 0)
+#define P4_3_U3_BAUD                            (6 << 0)
 
-//PIO1_27
-#define PIN_MODE_PIO1_27                        0
-#define PIN_MODE_CT32B0_MAT3_1                  1
-#define PIN_MODE_TXD_3                          2
-#define PIN_MODE_IOH_20                         3
+//P4_4
+#define P4_4_GPIO2_4                            (0 << 0)
+#define P4_4_CTOUT_2                            (1 << 0)
+#define P4_4_LCD_VD1                            (2 << 0)
+#define P4_4_LCD_VD20                           (5 << 0)
+#define P4_4_U3_DIR                             (6 << 0)
 
-//PIO1_28
-#define PIN_MODE_PIO1_28                        0
-#define PIN_MODE_CT32B0_CAP0_1                  1
-#define PIN_MODE_SCLK_1                         2
+//P4_5
+#define P4_5_GPIO2_5                            (0 << 0)
+#define P4_5_CTOUT_5                            (1 << 0)
+#define P4_5_LCD_FP                             (2 << 0)
 
-//PIO1_29
-#define PIN_MODE_PIO1_29                        0
-#define PIN_MODE_SCK0_1                         1
-#define PIN_MODE_CT32B0_CAP1_1                  2
+//P4_6
+#define P4_6_GPIO2_6                            (0 << 0)
+#define P4_6_CTOUT_4                            (1 << 0)
+#define P4_6_LCD_ENAB_LCDM                      (2 << 0)
 
-//PIO1_31
-#define PIN_MODE_PIO1_31                        0
+//P4_7
+#define P4_7_LCD_DCLK                           (0 << 0)
+#define P4_7_GP_CLKIN                           (1 << 0)
+#define P4_7_I2S1_TX_SCK                        (6 << 0)
+#define P4_7_I2S0_TX_SCK                        (7 << 0)
 
+//P4_8
+#define P4_8_CTIN_5                             (1 << 0)
+#define P4_8_LCD_VD9                            (2 << 0)
+#define P4_8_GPIO5_12                           (4 << 0)
+#define P4_8_LCD_VD22                           (5 << 0)
+#define P4_8_CAN1_TD                            (6 << 0)
+
+//P4_9
+#define P4_9_CTIN_6                             (1 << 0)
+#define P4_9_LCD_VD11                           (2 << 0)
+#define P4_9_GPIO5_13                           (4 << 0)
+#define P4_9_LCD_VD15                           (5 << 0)
+#define P4_9_CAN1_RD                            (6 << 0)
+
+//P4_10
+#define P4_10_CTIN_2                            (1 << 0)
+#define P4_10_LCD_VD10                          (2 << 0)
+#define P4_10_GPIO5_14                          (4 << 0)
+#define P4_10_LCD_VD14                          (5 << 0)
+
+//P5_0
+#define P5_0_GPIO2_9                            (0 << 0)
+#define P5_0_MCOB2                              (1 << 0)
+#define P5_0_EMC_D12                            (2 << 0)
+#define P5_0_U1_DSR                             (4 << 0)
+#define P5_0_T1_CAP0                            (5 << 0)
+
+//P5_1
+#define P5_1_GPIO2_10                           (0 << 0)
+#define P5_1_MCI2                               (1 << 0)
+#define P5_1_EMC_D13                            (2 << 0)
+#define P5_1_U1_DTR                             (4 << 0)
+#define P5_1_T1_CAP1                            (5 << 0)
+
+//P5_2
+#define P5_2_GPIO2_11                           (0 << 0)
+#define P5_2_MCI1                               (1 << 0)
+#define P5_2_EMC_D14                            (2 << 0)
+#define P5_2_U1_RTS                             (4 << 0)
+#define P5_2_T1_CAP2                            (5 << 0)
+
+//P5_3
+#define P5_3_GPIO2_12                           (0 << 0)
+#define P5_3_MCI0                               (1 << 0)
+#define P5_3_EMC_D15                            (2 << 0)
+#define P5_3_U1_RI                              (4 << 0)
+#define P5_3_T1_CAP3                            (5 << 0)
+
+//P5_4
+#define P5_4_GPIO2_13                           (0 << 0)
+#define P5_4_MCOB0                              (1 << 0)
+#define P5_4_EMC_D8                             (2 << 0)
+#define P5_4_U1_CTS                             (4 << 0)
+#define P5_4_T1_MAT0                            (5 << 0)
+
+//P5_5
+#define P5_5_GPIO2_14                           (0 << 0)
+#define P5_5_MCOA1                              (1 << 0)
+#define P5_5_EMC_D9                             (2 << 0)
+#define P5_5_U1_DCD                             (4 << 0)
+#define P5_5_T1_MAT1                            (5 << 0)
+
+//P5_6
+#define P5_6_GPIO2_15                           (0 << 0)
+#define P5_6_MCOB1                              (1 << 0)
+#define P5_6_EMC_D10                            (2 << 0)
+#define P5_6_U1_TXD                             (4 << 0)
+#define P5_6_T1_MAT2                            (5 << 0)
+
+//P5_7
+#define P5_7_GPIO2_7                            (0 << 0)
+#define P5_7_MCOA2                              (1 << 0)
+#define P5_7_EMC_D11                            (2 << 0)
+#define P5_7_U1_RXD                             (4 << 0)
+#define P5_7_T1_MAT3                            (5 << 0)
+
+//P6_0
+#define P6_0_I2S0_RX_MCLK                       (1 << 0)
+#define P6_0_I2S0_RX_SCK                        (4 << 0)
+
+//P6_1
+#define P6_1_GPIO3_0                            (0 << 0)
+#define P6_1_EMC_DYCS1                          (1 << 0)
+#define P6_1_U0_UCLK                            (2 << 0)
+#define P6_1_I2S0_RX_WS                         (3 << 0)
+#define P6_1_T2_CAP0                            (5 << 0)
+
+//P6_2
+#define P6_2_GPIO3_1                            (0 << 0)
+#define P6_2_EMC_CKEOUT1                        (1 << 0)
+#define P6_2_U0_DIR                             (2 << 0)
+#define P6_2_I2S0_RX_SDA                        (3 << 0)
+#define P6_2_T2_CAP1                            (5 << 0)
+
+//P6_3
+#define P6_3_GPIO3_2                            (0 << 0)
+#define P6_3_USB0_PWR_EN                        (1 << 0)
+#define P6_3_EMC_CS1                            (3 << 0)
+#define P6_3_T2_CAP2                            (5 << 0)
+
+//P6_4
+#define P6_4_GPIO3_3                            (0 << 0)
+#define P6_4_CTIN_6                             (1 << 0)
+#define P6_4_U0_TXD                             (2 << 0)
+#define P6_4_EMC_CAS                            (3 << 0)
+
+//P6_5
+#define P6_5_GPIO3_4                            (0 << 0)
+#define P6_5_CTOUT_6                            (1 << 0)
+#define P6_5_U0_RXD                             (2 << 0)
+#define P6_5_EMC_RAS                            (3 << 0)
+
+//P6_6
+#define P6_6_GPIO0_5                            (0 << 0)
+#define P6_6_EMC_BLS1                           (1 << 0)
+#define P6_6_USB0_PWR_FAULT                     (3 << 0)
+#define P6_6_T2_CAP3                            (5 << 0)
+
+//P6_7
+#define P6_7_EMC_A15                            (1 << 0)
+#define P6_7_USB0_IND1                          (3 << 0)
+#define P6_7_GPIO5_15                           (4 << 0)
+#define P6_7_T2_MAT0                            (5 << 0)
+
+//P6_8
+#define P6_8_EMC_A14                            (1 << 0)
+#define P6_8_USB0_IND0                          (3 << 0)
+#define P6_8_GPIO5_16                           (4 << 0)
+#define P6_8_T2_MAT1                            (5 << 0)
+
+//P6_9
+#define P6_9_GPIO3_5                            (0 << 0)
+#define P6_9_EMC_DYCS0                          (3 << 0)
+#define P6_9_T2_MAT2                            (5 << 0)
+
+//P6_10
+#define P6_10_GPIO3_6                           (0 << 0)
+#define P6_10_MCABORT                           (1 << 0)
+#define P6_10_EMC_DQMOUT1                       (3 << 0)
+
+//P6_11
+#define P6_11_GPIO3_7                           (0 << 0)
+#define P6_11_EMC_CKEOUT0                       (3 << 0)
+#define P6_11_T2_MAT3                           (5 << 0)
+
+//P6_12
+#define P6_12_GPIO2_8                           (0 << 0)
+#define P6_12_CTOUT_7                           (1 << 0)
+#define P6_12_EMC_DQMOUT0                       (3 << 0)
+
+//P7_0
+#define P7_0_GPIO3_8                            (0 << 0)
+#define P7_0_CTOUT_14                           (1 << 0)
+#define P7_0_LCD_LE                             (3 << 0)
+
+//P7_1
+#define P7_1_GPIO3_9                            (0 << 0)
+#define P7_1_CTOUT_15                           (1 << 0)
+#define P7_1_I2S0_TX_WS                         (2 << 0)
+#define P7_1_LCD_VD19                           (3 << 0)
+#define P7_1_LCD_VD7                            (4 << 0)
+#define P7_1_U2_TXD                             (6 << 0)
+
+//P7_2
+#define P7_2_GPIO3_10                           (0 << 0)
+#define P7_2_CTIN_4                             (1 << 0)
+#define P7_2_I2S0_TX_SDA                        (2 << 0)
+#define P7_2_LCD_VD18                           (3 << 0)
+#define P7_2_LCD_VD6                            (4 << 0)
+#define P7_2_U2_RXD                             (6 << 0)
+
+//P7_3
+#define P7_3_GPIO3_11                           (0 << 0)
+#define P7_3_CTIN_3                             (1 << 0)
+#define P7_3_LCD_VD17                           (3 << 0)
+#define P7_3_LCD_VD5                            (4 << 0)
+
+//P7_4
+#define P7_4_GPIO3_12                           (0 << 0)
+#define P7_4_CTOUT_13                           (1 << 0)
+#define P7_4_LCD_VD16                           (3 << 0)
+#define P7_4_LCD_VD4                            (4 << 0)
+#define P7_4_TRACEDATA_0                        (5 << 0)
+
+//P7_5
+#define P7_5_GPIO3_13                           (0 << 0)
+#define P7_5_CTOUT_12                           (1 << 0)
+#define P7_5_LCD_VD8                            (3 << 0)
+#define P7_5_LCD_VD23                           (4 << 0)
+#define P7_5_TRACEDATA_1                        (5 << 0)
+
+//P7_6
+#define P7_6_GPIO3_14                           (0 << 0)
+#define P7_6_CTOUT_11                           (1 << 0)
+#define P7_6_LCD_LP                             (3 << 0)
+#define P7_6_TRACEDATA_2                        (5 << 0)
+
+//P7_7
+#define P7_7_GPIO3_15                           (0 << 0)
+#define P7_7_CTOUT_8                            (1 << 0)
+#define P7_7_LCD_PWR                            (3 << 0)
+#define P7_7_TRACEDATA_3                        (5 << 0)
+#define P7_7_ENET_MDC                           (6 << 0)
+
+//P8_0
+#define P8_0_GPIO4_0                            (0 << 0)
+#define P8_0_USB0_PWR_FAULT                     (1 << 0)
+#define P8_0_MCI2                               (3 << 0)
+#define P8_0_T0_MAT0                            (7 << 0)
+
+//P8_1
+#define P8_1_GPIO4_1                            (0 << 0)
+#define P8_1_USB0_IND1                          (1 << 0)
+#define P8_1_MCI1                               (3 << 0)
+#define P8_1_T0_MAT1                            (7 << 0)
+
+//P8_2
+#define P8_2_GPIO4_2                            (0 << 0)
+#define P8_2_USB0_IND0                          (1 << 0)
+#define P8_2_MCI0                               (3 << 0)
+#define P8_2_T0_MAT2                            (7 << 0)
+
+//P8_3
+#define P8_3_GPIO4_3                            (0 << 0)
+#define P8_3_USB1_ULPI_D2                       (1 << 0)
+#define P8_3_LCD_VD12                           (3 << 0)
+#define P8_3_LCD_VD19                           (4 << 0)
+#define P8_3_T0_MAT3                            (7 << 0)
+
+//P8_4
+#define P8_4_GPIO4_4                            (0 << 0)
+#define P8_4_USB1_ULPI_D1                       (1 << 0)
+#define P8_4_LCD_VD7                            (3 << 0)
+#define P8_4_LCD_VD16                           (4 << 0)
+#define P8_4_T0_CAP0                            (7 << 0)
+
+//P8_5
+#define P8_5_GPIO4_5                            (0 << 0)
+#define P8_5_USB1_ULPI_D0                       (1 << 0)
+#define P8_5_LCD_VD6                            (3 << 0)
+#define P8_5_LCD_VD8                            (4 << 0)
+#define P8_5_T0_CAP1                            (7 << 0)
+
+//P8_6
+#define P8_6_GPIO4_6                            (0 << 0)
+#define P8_6_USB1_ULPI_NXT                      (1 << 0)
+#define P8_6_LCD_VD5                            (3 << 0)
+#define P8_6_LCD_LP                             (4 << 0)
+#define P8_6_T0_CAP2                            (7 << 0)
+
+//P8_7
+#define P8_7_GPIO4_7                            (0 << 0)
+#define P8_7_USB1_ULPI_STP                      (1 << 0)
+#define P8_7_LCD_VD4                            (3 << 0)
+#define P8_7_LCD_PWR                            (4 << 0)
+#define P8_7_T0_CAP3                            (7 << 0)
+
+//P8_8
+#define P8_8_USB1_ULPI_CLK                      (1 << 0)
+#define P8_8_CGU_OUT0                           (6 << 0)
+#define P8_8_I2S1_TX_MCLK                       (7 << 0)
+
+//P9_0
+#define P9_0_GPIO4_12                           (0 << 0)
+#define P9_0_MCABORT                            (1 << 0)
+#define P9_0_ENET_CRS                           (5 << 0)
+#define P9_0_SSP0_SSEL                          (7 << 0)
+
+//P9_1
+#define P9_1_GPIO4_13                           (0 << 0)
+#define P9_1_MCOA2                              (1 << 0)
+#define P9_1_I2S0_TX_WS                         (4 << 0)
+#define P9_1_ENET_RX_ER                         (5 << 0)
+#define P9_1_SSP0_MISO                          (7 << 0)
+
+//P9_2
+#define P9_2_GPIO4_14                           (0 << 0)
+#define P9_2_MCOB2                              (1 << 0)
+#define P9_2_I2S0_TX_SDA                        (4 << 0)
+#define P9_2_ENET_RXD3                          (5 << 0)
+#define P9_2_SSP0_MOSI                          (7 << 0)
+
+//P9_3
+#define P9_3_GPIO4_15                           (0 << 0)
+#define P9_3_MCOA0                              (1 << 0)
+#define P9_3_USB1_IND1                          (2 << 0)
+#define P9_3_ENET_RXD2                          (5 << 0)
+#define P9_3_U3_TXD                             (7 << 0)
+
+//P9_4
+#define P9_4_MCOB0                              (1 << 0)
+#define P9_4_USB1_IND0                          (2 << 0)
+#define P9_4_GPIO5_17                           (4 << 0)
+#define P9_4_ENET_TXD2                          (5 << 0)
+#define P9_4_U3_RXD                             (7 << 0)
+
+//P9_5
+#define P9_5_MCOA1                              (1 << 0)
+#define P9_5_USB1_VBUS_EN                       (2 << 0)
+#define P9_5_GPIO5_18                           (4 << 0)
+#define P9_5_ENET_TXD3                          (5 << 0)
+#define P9_5_U0_TXD                             (7 << 0)
+
+//P9_6
+#define P9_6_GPIO4_11                           (0 << 0)
+#define P9_6_MCOB1                              (1 << 0)
+#define P9_6_USB1_PWR_FAULT                     (2 << 0)
+#define P9_6_ENET_COL                           (5 << 0)
+#define P9_6_U0_RXD                             (7 << 0)
+
+//PA_0
+#define PA_0_I2S1_RX_MCLK                       (5 << 0)
+#define PA_0_CGU_OUT1                           (6 << 0)
+
+//PA_1
+#define PA_1_GPIO4_8                            (0 << 0)
+#define PA_1_QEI_IDX                            (1 << 0)
+#define PA_1_U2_TXD                             (3 << 0)
+
+//PA_2
+#define PA_2_GPIO4_9                            (0 << 0)
+#define PA_2_QEI_PHB                            (1 << 0)
+#define PA_2_U2_RXD                             (3 << 0)
+
+//PA_3
+#define PA_3_GPIO4_10                           (0 << 0)
+#define PA_3_QEI_PHA                            (1 << 0)
+
+//PA_4
+#define PA_4_CTOUT_9                            (1 << 0)
+#define PA_4_EMC_A23                            (3 << 0)
+#define PA_4_GPIO5_19                           (4 << 0)
+
+//PB_0
+#define PB_0_CTOUT_10                           (1 << 0)
+#define PB_0_LCD_VD23                           (2 << 0)
+#define PB_0_GPIO5_20                           (4 << 0)
+
+//PB_1
+#define PB_1_USB1_ULPI_DIR                      (1 << 0)
+#define PB_1_LCD_VD22                           (2 << 0)
+#define PB_1_GPIO5_21                           (4 << 0)
+#define PB_1_CTOUT_6                            (5 << 0)
+
+//PB_2
+#define PB_2_USB1_ULPI_D7                       (1 << 0)
+#define PB_2_LCD_VD21                           (2 << 0)
+#define PB_2_GPIO5_22                           (4 << 0)
+#define PB_2_CTOUT_7                            (5 << 0)
+
+//PB_3
+#define PB_3_USB1_ULPI_D6                       (1 << 0)
+#define PB_3_LCD_VD20                           (2 << 0)
+#define PB_3_GPIO5_23                           (4 << 0)
+#define PB_3_CTOUT_8                            (5 << 0)
+
+//PB_4
+#define PB_4_USB1_ULPI_D5                       (1 << 0)
+#define PB_4_LCD_VD15                           (2 << 0)
+#define PB_4_GPIO5_24                           (4 << 0)
+#define PB_4_CTIN_5                             (5 << 0)
+
+//PB_5
+#define PB_5_USB1_ULPI_D4                       (1 << 0)
+#define PB_5_LCD_VD14                           (2 << 0)
+#define PB_5_GPIO5_25                           (4 << 0)
+#define PB_5_CTIN_7                             (5 << 0)
+#define PB_5_LCD_PWR                            (6 << 0)
+
+//PB_6
+#define PB_6_USB1_ULPI_D3                       (1 << 0)
+#define PB_6_LCD_VD13                           (2 << 0)
+#define PB_6_GPIO5_26                           (4 << 0)
+#define PB_6_CTIN_6                             (5 << 0)
+#define PB_6_LCD_VD19                           (6 << 0)
+
+//PC_0
+#define PC_0_USB1_ULPI_CLK                      (1 << 0)
+#define PC_0_ENET_RX_CLK LCD_DCLK               (3 << 0)
+#define PC_0_SD_CLK                             (6 << 0)
+
+//PC_1
+#define PC_1_USB1_ULPI_D7                       (0 << 0)
+#define PC_1_U1_RI                              (2 << 0)
+#define PC_1_ENET_MDC                           (3 << 0)
+#define PC_1_GPIO6_0                            (4 << 0)
+#define PC_1_T3_CAP0                            (6 << 0)
+#define PC_1_SD_VOLT0                           (7 << 0)
+
+//PC_2
+#define PC_2_USB1_ULPI_D6                       (0 << 0)
+#define PC_2_U1_CTS                             (2 << 0)
+#define PC_2_ENET_TXD2                          (3 << 0)
+#define PC_2_GPIO6_1                            (4 << 0)
+#define PC_2_SD_RST                             (7 << 0)
+
+//PC_3
+#define PC_3_USB1_ULPI_D5                       (0 << 0)
+#define PC_3_U1_RTS                             (2 << 0)
+#define PC_3_ENET_TXD3                          (3 << 0)
+#define PC_3_GPIO6_2                            (4 << 0)
+#define PC_3_SD_VOLT1                           (7 << 0)
+
+//PC_4
+#define PC_4_USB1_ULPI_D4                       (1 << 0)
+#define PC_4_ENET_TX_EN                         (3 << 0)
+#define PC_4_GPIO6_3                            (4 << 0)
+#define PC_4_T3_CAP1                            (6 << 0)
+#define PC_4_SD_DAT0                            (7 << 0)
+
+//PC_5
+#define PC_5_USB1_ULPI_D3                       (1 << 0)
+#define PC_5_ENET_TX_ER                         (3 << 0)
+#define PC_5_GPIO6_4                            (4 << 0)
+#define PC_5_T3_CAP2                            (6 << 0)
+#define PC_5_SD_DAT1                            (7 << 0)
+
+//PC_6
+#define PC_6_USB1_ULPI_D2                       (1 << 0)
+#define PC_6_ENET_RXD2                          (3 << 0)
+#define PC_6_GPIO6_5                            (4 << 0)
+#define PC_6_T3_CAP3                            (6 << 0)
+#define PC_6_SD_DAT2                            (7 << 0)
+
+//PC_7
+#define PC_7_USB1_ULPI_D1                       (1 << 0)
+#define PC_7_ENET_RXD3                          (3 << 0)
+#define PC_7_GPIO6_6                            (4 << 0)
+#define PC_7_T3_MAT0                            (6 << 0)
+#define PC_7_SD_DAT3                            (7 << 0)
+
+//PC_8
+#define PC_8_USB1_ULPI_D0                       (1 << 0)
+#define PC_8_ENET_RX_DV                         (3 << 0)
+#define PC_8_GPIO6_7                            (4 << 0)
+#define PC_8_T3_MAT1                            (6 << 0)
+#define PC_8_SD_CD                              (7 << 0)
+
+//PC_9
+#define PC_9_USB1_ULPI_NXT                      (1 << 0)
+#define PC_9_ENET_RX_ER                         (3 << 0)
+#define PC_9_GPIO6_8                            (4 << 0)
+#define PC_9_T3_MAT2                            (6 << 0)
+#define PC_9_SD_POW                             (7 << 0)
+
+//PC_10
+#define PC_10_USB1_ULPI_STP                     (1 << 0)
+#define PC_10_U1_DSR                            (2 << 0)
+#define PC_10_GPIO6_9                           (4 << 0)
+#define PC_10_T3_MAT3                           (6 << 0)
+#define PC_10_SD_CMD                            (7 << 0)
+
+//PC_11
+#define PC_11_USB1_ULPI_DIR                     (1 << 0)
+#define PC_11_U1_DCD                            (2 << 0)
+#define PC_11_GPIO6_10                          (4 << 0)
+#define PC_11_SD_DAT4                           (7 << 0)
+
+//PC_12
+#define PC_12_U1_DTR                            (2 << 0)
+#define PC_12_GPIO6_11                          (4 << 0)
+#define PC_12_I2S0_TX_SDA                       (6 << 0)
+#define PC_12_SD_DAT5                           (7 << 0)
+
+//PC_13
+#define PC_13_U1_TXD                            (2 << 0)
+#define PC_13_GPIO6_12                          (4 << 0)
+#define PC_13_I2S0_TX_WS                        (6 << 0)
+#define PC_13_SD_DAT6                           (7 << 0)
+
+//PC_14
+#define PC_14_U1_RXD                            (2 << 0)
+#define PC_14_GPIO6_13                          (4 << 0)
+#define PC_14_ENET_TX_ER                        (6 << 0)
+#define PC_14_SD_DAT7                           (7 << 0)
+
+//PD_0
+#define PD_0_CTOUT_15                           (1 << 0)
+#define PD_0_EMC_DQMOUT2                        (2 << 0)
+#define PD_0_GPIO6_14                           (4 << 0)
+
+//PD_1
+#define PD_1_EMC_CKEOUT2                        (2 << 0)
+#define PD_1_GPIO6_15                           (4 << 0)
+#define PD_1_SD_POW                             (5 << 0)
+
+//PD_2
+#define PD_2_CTOUT_7                            (1 << 0)
+#define PD_2_EMC_D16                            (2 << 0)
+#define PD_2_GPIO6_16                           (4 << 0)
+
+//PD_3
+#define PD_3_CTOUT_6                            (1 << 0)
+#define PD_3_EMC_D17                            (2 << 0)
+#define PD_3_GPIO6_17                           (4 << 0)
+
+//PD_4
+#define PD_4_CTOUT_8                            (1 << 0)
+#define PD_4_EMC_D18                            (2 << 0)
+#define PD_4_GPIO6_18                           (4 << 0)
+
+//PD_5
+#define PD_5_CTOUT_9                            (1 << 0)
+#define PD_5_EMC_D19                            (2 << 0)
+#define PD_5_GPIO6_19                           (4 << 0)
+
+//PD_6
+#define PD_6_CTOUT_10                           (1 << 0)
+#define PD_6_EMC_D20                            (2 << 0)
+#define PD_6_GPIO6_20                           (4 << 0)
+
+//PD_7
+#define PD_7_CTIN_5                             (1 << 0)
+#define PD_7_EMC_D21                            (2 << 0)
+#define PD_7_GPIO6_21                           (4 << 0)
+
+//PD_8
+#define PD_8_CTIN_6                             (1 << 0)
+#define PD_8_EMC_D22                            (2 << 0)
+#define PD_8_GPIO6_22                           (4 << 0)
+
+//PD_9
+#define PD_9_CTOUT_13                           (1 << 0)
+#define PD_9_EMC_D23                            (2 << 0)
+#define PD_9_GPIO6_23                           (4 << 0)
+
+//PD_10
+#define PD_10_CTIN_1                            (1 << 0)
+#define PD_10_EMC_BLS3                          (2 << 0)
+#define PD_10_GPIO6_24                          (4 << 0)
+
+//PD_11
+#define PD_11_EMC_CS3                           (2 << 0)
+#define PD_11_GPIO6_25                          (4 << 0)
+#define PD_11_USB1_ULPI_D0                      (5 << 0)
+#define PD_11_CTOUT_14                          (6 << 0)
+
+//PD_12
+#define PD_12_EMC_CS2                           (2 << 0)
+#define PD_12_GPIO6_26                          (4 << 0)
+#define PD_12_CTOUT_10                          (6 << 0)
+
+//PD_13
+#define PD_13_CTIN_0                            (1 << 0)
+#define PD_13_EMC_BLS2                          (2 << 0)
+#define PD_13_GPIO6_27                          (4 << 0)
+#define PD_13_CTOUT_13                          (6 << 0)
+
+//PD_14
+#define PD_14_EMC_DYCS2                         (2 << 0)
+#define PD_14_GPIO6_28                          (4 << 0)
+#define PD_14_CTOUT_11                          (6 << 0)
+
+//PD_15
+#define PD_15_EMC_A17                           (2 << 0)
+#define PD_15_GPIO6_29                          (4 << 0)
+#define PD_15_SD_WP                             (5 << 0)
+#define PD_15_CTOUT_8                           (6 << 0)
+
+//PD_16
+#define PD_16_EMC_A16                           (2 << 0)
+#define PD_16_GPIO6_30                          (4 << 0)
+#define PD_16_SD_VOLT2                          (5 << 0)
+#define PD_16_CTOUT_12                          (6 << 0)
+
+//PE_0
+#define PE_0_EMC_A18                            (3 << 0)
+#define PE_0_GPIO7_0                            (4 << 0)
+#define PE_0_CAN1_TD                            (5 << 0)
+
+//PE_1
+#define PE_1_EMC_A19                            (3 << 0)
+#define PE_1_GPIO7_1                            (4 << 0)
+#define PE_1_CAN1_RD                            (5 << 0)
+
+//PE_2
+#define PE_2_ADCTRIG0                           (0 << 0)
+#define PE_2_CAN0_RD                            (1 << 0)
+#define PE_2_EMC_A20                            (3 << 0)
+#define PE_2_GPIO7_2                            (4 << 0)
+
+//PE_3
+#define PE_3_CAN0_TD                            (1 << 0)
+#define PE_3_ADCTRIG1                           (2 << 0)
+#define PE_3_EMC_A21                            (3 << 0)
+#define PE_3_GPIO7_3                            (4 << 0)
+
+//PE_4
+#define PE_4_NMI                                (1 << 0)
+#define PE_4_EMC_A22                            (3 << 0)
+#define PE_4_GPIO7_4                            (4 << 0)
+
+//PE_5
+#define PE_5_CTOUT_3                            (1 << 0)
+#define PE_5_U1_RTS                             (2 << 0)
+#define PE_5_EMC_D24                            (3 << 0)
+#define PE_5_GPIO7_5                            (4 << 0)
+
+//PE_6
+#define PE_6_CTOUT_2                            (1 << 0)
+#define PE_6_U1_RI                              (2 << 0)
+#define PE_6_EMC_D25                            (3 << 0)
+#define PE_6_GPIO7_6                            (4 << 0)
+
+//PE_7
+#define PE_7_CTOUT_5                            (1 << 0)
+#define PE_7_U1_CTS                             (2 << 0)
+#define PE_7_EMC_D26                            (3 << 0)
+#define PE_7_GPIO7_7                            (4 << 0)
+
+//PE_8
+#define PE_8_CTOUT_4                            (1 << 0)
+#define PE_8_U1_DSR                             (2 << 0)
+#define PE_8_EMC_D27                            (3 << 0)
+#define PE_8_GPIO7_8                            (4 << 0)
+
+//PE_9
+#define PE_9_CTIN_4                             (1 << 0)
+#define PE_9_U1_DCD                             (2 << 0)
+#define PE_9_EMC_D28                            (3 << 0)
+#define PE_9_GPIO7_9                            (4 << 0)
+
+//PE_10
+#define PE_10_CTIN_3                            (1 << 0)
+#define PE_10_U1_DTR                            (2 << 0)
+#define PE_10_EMC_D29                           (3 << 0)
+#define PE_10_GPIO7_10                          (4 << 0)
+
+//PE_11
+#define PE_11_CTOUT_12                          (1 << 0)
+#define PE_11_U1_TXD                            (2 << 0)
+#define PE_11_EMC_D30                           (3 << 0)
+#define PE_11_GPIO7_11                          (4 << 0)
+
+//PE_12
+#define PE_12_CTOUT_11                          (1 << 0)
+#define PE_12_U1_RXD                            (2 << 0)
+#define PE_12_EMC_D31                           (3 << 0)
+#define PE_12_GPIO7_12                          (4 << 0)
+
+//PE_13
+#define PE_13_CTOUT_14                          (1 << 0)
+#define PE_13_I2C1_SDA                          (2 << 0)
+#define PE_13_EMC_DQMOUT                        (3 << 0)
+#define PE_13_GPIO7_13                          (4 << 0)
+
+//PE_14
+#define PE_14_EMC_DYCS3                         (3 << 0)
+#define PE_14_GPIO7_14                          (4 << 0)
+
+//PE_15
+#define PE_15_CTOUT_0                           (1 << 0)
+#define PE_15_I2C1_SCL                          (2 << 0)
+#define PE_15_EMC_CKEOUT                        (3 << 0)
+#define PE_15_GPIO7_15                          (4 << 0)
+
+//PF_0
+#define PF_0_SSP0_SCK                           (0 << 0)
+#define PF_0_GP_CLKIN                           (1 << 0)
+#define PF_0_I2S1_TX_MCLK                       (7 << 0)
+
+//PF_1
+#define PF_1_SSP0_SSEL                          (2 << 0)
+#define PF_1_GPIO7_16                           (4 << 0)
+
+//PF_2
+#define PF_2_U3_TXD                             (1 << 0)
+#define PF_2_SSP0_MISO                          (2 << 0)
+#define PF_2_GPIO7_17                           (4 << 0)
+
+//PF_3
+#define PF_3_U3_RXD                             (1 << 0)
+#define PF_3_SSP0_MOSI                          (2 << 0)
+#define PF_3_GPIO7_18                           (4 << 0)
+
+//PF_4
+#define PF_4_SSP1_SCK                           (0 << 0)
+#define PF_4_GP_CLKIN                           (1 << 0)
+#define PF_4_TRACECLK                           (2 << 0)
+#define PF_4_I2S0_TX_MCLK                       (6 << 0)
+#define PF_4_I2S0_RX_SCK                        (7 << 0)
+
+//PF_5
+#define PF_5_U3_UCLK                            (1 << 0)
+#define PF_5_SSP1_SSEL                          (2 << 0)
+#define PF_5_TRACEDATA_0                        (3 << 0)
+#define PF_5_GPIO7_19                           (4 << 0)
+
+//PF_6
+#define PF_6_U3_DIR                             (1 << 0)
+#define PF_6_SSP1_MISO                          (2 << 0)
+#define PF_6_TRACEDATA_1                        (3 << 0)
+#define PF_6_GPIO7_20                           (4 << 0)
+#define PF_6_I2S1_TX_SDA                        (7 << 0)
+
+//PF_7
+#define PF_7_U3_BAUD                            (1 << 0)
+#define PF_7_SSP1_MOSI                          (2 << 0)
+#define PF_7_TRACEDATA_2                        (3 << 0)
+#define PF_7_GPIO7_21                           (4 << 0)
+#define PF_7_I2S1_TX_WS                         (7 << 0)
+
+//PF_8
+#define PF_8_U0_UCLK                            (1 << 0)
+#define PF_8_CTIN_2                             (2 << 0)
+#define PF_8_TRACEDATA_3                        (3 << 0)
+#define PF_8_GPIO7_22                           (4 << 0)
+
+//PF_9
+#define PF_9_U0_DIR                             (1 << 0)
+#define PF_9_CTOUT_1                            (2 << 0)
+#define PF_9_GPIO7_23                           (4 << 0)
+
+//PF_10
+#define PF_10_U0_TXD                            (1 << 0)
+#define PF_10_GPIO7_24                          (4 << 0)
+#define PF_10_SD_WP                             (6 << 0)
+
+//PF_11
+#define PF_11_U0_RXD                            (1 << 0)
+#define PF_11_GPIO7_25                          (4 << 0)
+#define PF_11_SD_VOLT2                          (6 << 0)
+
+//CLK_0
+#define CLK_0_EMC_CLK0                          (0 << 0)
+#define CLK_0_CLKOUT                            (1 << 0)
+#define CLK_0_SD_CLK                            (4 << 0)
+#define CLK_0_EMC_CLK01                         (5 << 0)
+#define CLK_0_SSP1_SCK                          (6 << 0)
+#define CLK_0_ENET_TX_CLK                       (7 << 0)
+#define CLK_0_ENET_REF_CLK                      (7 << 0)
+
+//CLK_1
+#define CLK_1_EMC_CLK1                          (0 << 0)
+#define CLK_1_CLKOUT                            (1 << 0)
+#define CLK_1_CGU_OUT0                          (5 << 0)
+#define CLK_1_I2S1_TX_MCLK                      (7 << 0)
+
+//CLK_2
+#define CLK_2_EMC_CLK3                          (0 << 0)
+#define CLK_2_CLKOUT                            (1 << 0)
+#define CLK_2_SD_CLK                            (4 << 0)
+#define CLK_2_EMC_CLK23                         (5 << 0)
+#define CLK_2_I2S0_TX_MCLK                      (6 << 0)
+#define CLK_2_I2S1_RX_SCK                       (7 << 0)
+
+//CLK_3
+#define CLK_3_EMC_CLK2                          (0 << 0)
+#define CLK_3_CLKOUT                            (1 << 0)
+#define CLK_3_CGU_OUT1                          (5 << 0)
+#define CLK_3_I2S1_RX_SCK                       (7 << 0)
 
 /******************************************************************************/
 /*                                                                            */
@@ -519,6 +1308,9 @@
 /*                                                                            */
 /******************************************************************************/
 
+//TODO:
+
+#if 0
 /**********  Bit definition for IER register  *********************************/
 #define USART_IER_RBRINTEN                      (1 << 0)
 #define USART_IER_THRINTEN                      (1 << 1)
@@ -789,11 +1581,17 @@
 #define USART4_INTSTAT_RXNOISEINT               (1 << 15)
 #define USART4_INTSTAT_ABERR                    (1 << 16)
 
+#endif
+
 /******************************************************************************/
 /*                                                                            */
 /*                                 I2C                                        */
 /*                                                                            */
 /******************************************************************************/
+
+//TODO:
+
+#if 0
 
 /**********  Bit definition for CONSET register  ******************************/
 #define I2C_CONSET_AA                           (1 << 2)                /* Assert acknowledge flag */
@@ -861,12 +1659,17 @@
 #define I2C_MMCTRL_ENASCL                       (1 << 1)                /* SCL output enable */
 #define I2C_MMCTRL_MATCH_ALL                    (1 << 2)                /* Select interrupt register match */
 
+#endif
 
 /******************************************************************************/
 /*                                                                            */
 /*                            Timer16/32                                      */
 /*                                                                            */
 /******************************************************************************/
+
+//TODO:
+
+#if 0
 
 /**********  Bit definition for IR register  **********************************/
 #define CT_IR_MR0INT                            (1 << 0)                /* Interrupt flag for match channel 0 */
@@ -995,11 +1798,17 @@
 #define CT_PWMC_PWMEN2                         (1 << 2)                 /*  PWM mode enable for channel2 */
 #define CT_PWMC_PWMEN3                         (1 << 3)                 /*  PWM mode enable for channel3 */
 
+#endif
+
 /******************************************************************************/
 /*                                                                            */
 /*                                USB                                         */
 /*                                                                            */
 /******************************************************************************/
+
+//TODO:
+
+#if 0
 
 /************  Bit definition for DEVCMDSTAT register  ************************/
 #define USB_DEVCMDSTAT_DEV_ADDR_POS            0                        /* USB device address. After bus reset, the address is reset to
@@ -1283,5 +2092,7 @@
                                                                            when the NBytes field transitions to zero or when software has written a
                                                                            one to the “skip” bit */
 
+
+#endif
 
 #endif // LPC11UXX_BITS_H
