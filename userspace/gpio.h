@@ -7,7 +7,6 @@
 #ifndef GPIO_H
 #define GPIO_H
 
-#include "sys.h"
 #include <stdbool.h>
 #include "lib.h"
 
@@ -34,76 +33,103 @@ typedef struct {
 } LIB_GPIO;
 
 
-__STATIC_INLINE void gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
-{
-    LIB_CHECK(LIB_ID_GPIO);
-    ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_enable_pin(pin, mode);
-}
+/** \addtogroup GPIO GPIO
+    general purpose IO
 
-__STATIC_INLINE void gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int mask)
-{
-    LIB_CHECK(LIB_ID_GPIO);
-    ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_enable_mask(port, mode, mask);
-}
+    \{
+ */
 
-__STATIC_INLINE void gpio_disable_pin(unsigned int pin)
-{
-    LIB_CHECK(LIB_ID_GPIO);
-    ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_disable_pin(pin);
-}
+/**
+    \brief enable pin in GPIO mode
+    \param pin: pin number, hardware specific
+    \param mode: pin mode
+    \retval none
+*/
+void gpio_enable_pin(unsigned int pin, GPIO_MODE mode);
 
-__STATIC_INLINE void gpio_disable_mask(unsigned int port, unsigned int mask)
-{
-    LIB_CHECK(LIB_ID_GPIO);
-    ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_disable_mask(port, mask);
-}
+/**
+    \brief enable pin mask in GPIO mode
+    \param port: port number, hardware specific
+    \param mode: pin's mode
+    \param mask: pin bit mask, assuming no more than 32 bits in port
+    \retval none
+*/
+void gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int mask);
 
-__STATIC_INLINE void gpio_set_pin(unsigned int pin)
-{
-    LIB_CHECK(LIB_ID_GPIO);
-    ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_set_pin(pin);
-}
+/**
+    \brief disable pin
+    \param pin: pin number, hardware specific
+    \retval none
+*/
+void gpio_disable_pin(unsigned int pin);
 
-__STATIC_INLINE void gpio_set_mask(unsigned int port, unsigned int mask)
-{
-    LIB_CHECK(LIB_ID_GPIO);
-    ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_set_mask(port, mask);
-}
+/**
+    \brief disable pin mask
+    \param port: port number, hardware specific
+    \param mask: pin bit mask, assuming no more than 32 bits in port
+    \retval none
+*/
+void gpio_disable_mask(unsigned int port, unsigned int mask);
 
-__STATIC_INLINE void gpio_reset_pin(unsigned int pin)
-{
-    LIB_CHECK(LIB_ID_GPIO);
-    ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_reset_pin(pin);
-}
+/**
+    \brief set out pin
+    \param pin: pin number, hardware specific
+    \retval none
+*/
+void gpio_set_pin(unsigned int pin);
 
-__STATIC_INLINE void gpio_reset_mask(unsigned int port, unsigned int mask)
-{
-    LIB_CHECK(LIB_ID_GPIO);
-    ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_reset_mask(port, mask);
-}
+/**
+    \brief set out port by mask
+    \param port: port number, hardware specific
+    \param mask: pin bit mask, assuming no more than 32 bits in port
+    \retval none
+*/
+void gpio_set_mask(unsigned int port, unsigned int mask);
 
-__STATIC_INLINE bool gpio_get_pin(unsigned int pin)
-{
-    LIB_CHECK_RET(LIB_ID_GPIO);
-    return ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_get_pin(pin);
-}
+/**
+    \brief reset out pin
+    \param pin: pin number, hardware specific
+    \retval none
+*/
+void gpio_reset_pin(unsigned int pin);
 
-__STATIC_INLINE unsigned int gpio_get_mask(unsigned int port, unsigned int mask)
-{
-    LIB_CHECK_RET(LIB_ID_GPIO);
-    return ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_get_mask(port, mask);
-}
+/**
+    \brief reset out port by mask
+    \param port: port number, hardware specific
+    \param mask: pin bit mask, assuming no more than 32 bits in port
+    \retval none
+*/
+void gpio_reset_mask(unsigned int port, unsigned int mask);
 
-__STATIC_INLINE void gpio_set_data_out(unsigned int port, unsigned int wide)
-{
-    LIB_CHECK(LIB_ID_GPIO);
-    ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_set_data_out(port, wide);
-}
+/**
+    \brief get pin value
+    \param pin: port number, hardware specific
+    \retval true if set
+*/
+bool gpio_get_pin(unsigned int pin);
 
-__STATIC_INLINE void gpio_set_data_in(unsigned int port, unsigned int wide)
-{
-    LIB_CHECK(LIB_ID_GPIO);
-    ((const LIB_GPIO*)__GLOBAL->lib[LIB_ID_GPIO])->lib_gpio_set_data_in(port, wide);
-}
+/**
+    \brief get port pins value by mask
+    \param port: port number, hardware specific
+    \param mask: pin bit mask, assuming no more than 32 bits in port
+    \retval masked value
+*/
+unsigned int gpio_get_mask(unsigned int port, unsigned int mask);
+
+/**
+    \brief set lower bits in port (data bus) out direction
+    \param port: port number, hardware specific
+    \param wide: number of lower pins, assuming no more than 32 bits in port
+    \retval none
+*/
+void gpio_set_data_out(unsigned int port, unsigned int wide);
+
+/**
+    \brief set lower bits in port (data bus) in direction
+    \param port: port number, hardware specific
+    \param wide: number of lower pins, assuming no more than 32 bits in port
+    \retval none
+*/
+void gpio_set_data_in(unsigned int port, unsigned int wide);
 
 #endif // GPIO_H
