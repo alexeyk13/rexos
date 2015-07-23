@@ -17,25 +17,25 @@
 
 void hpet_start_stub(unsigned int value, void* param)
 {
-#if (KERNEL_INFO)
+#if (KERNEL_DEBUG)
     printk("Warning: HPET start stub called\n\r");
-#endif //KERNEL_INFO
+#endif //KERNEL_DEBUG
     kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 void hpet_stop_stub(void* param)
 {
-#if (KERNEL_INFO)
+#if (KERNEL_DEBUG)
     printk("Warning: HPET stop stub called\n\r");
-#endif //KERNEL_INFO
+#endif //KERNEL_DEBUG
     kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 unsigned int hpet_elapsed_stub(void* param)
 {
-#if (KERNEL_INFO)
+#if (KERNEL_DEBUG)
     printk("Warning: HPET elapsed stub called\n\r");
-#endif //KERNEL_INFO
+#endif //KERNEL_DEBUG
     kprocess_error_current(ERROR_STUB_CALLED);
     return 0;
 }

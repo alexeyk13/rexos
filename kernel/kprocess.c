@@ -142,7 +142,7 @@ void kprocess_timeout(void* param)
 
 void kprocess_abnormal_exit()
 {
-#if (KERNEL_INFO)
+#if (KERNEL_DEBUG)
     printk("Warning: abnormal process termination: %s\n\r", kprocess_name(kprocess_get_current()));
 #endif
     kprocess_destroy_current();

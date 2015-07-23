@@ -11,7 +11,7 @@
 
 void kirq_stub(int vector, void* param)
 {
-#if (KERNEL_INFO)
+#if (KERNEL_DEBUG)
     printk("Warning: irq vector %d stub called\n\r", vector);
 #endif
     kprocess_error_current(ERROR_STUB_CALLED);

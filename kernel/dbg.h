@@ -44,14 +44,14 @@
 
 /**
     \brief halts system macro
-    \details only works, if \ref KERNEL_INFO is set
+    \details only works, if \ref KERNEL_DEBUG is set
     \retval no return
 */
 #define HALT()                                           {for (;;) {}}
 
 /**
     \brief debug assertion
-    \details only works, if \ref KERNEL_INFO is set.
+    \details only works, if \ref KERNEL_DEBUG is set.
 
     prints over debug console file name and line, caused assertion
     \param cond: assertion made if \b cond is \b false
@@ -70,7 +70,7 @@
 
 /**
     \brief check, if object mark is right (object is valid)
-    \details only works, if \ref KERNEL_INFO and \ref KERNEL_MARKS are set.
+    \details only works, if \ref KERNEL_DEBUG and \ref KERNEL_MARKS are set.
     \param obj: object to check
     \param magic_value: value to set. check \ref magic.h for details
     \param name: object text to display in case of wrong magic
@@ -83,7 +83,7 @@
 #endif
 /**
     \brief apply object magic on object creation
-    \details only works, if \ref KERNEL_INFO and \ref KERNEL_MARKS are set.
+    \details only works, if \ref KERNEL_DEBUG and \ref KERNEL_MARKS are set.
     \param obj: object to check
     \param magic_value: value to set. check \ref magic.h for details
     \retval none
