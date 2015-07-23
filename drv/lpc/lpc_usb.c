@@ -329,9 +329,9 @@ void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     int i;
     drv->usb.device = device;
 
-    ack_pin(drv, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), VBUS, PIN_MODE_VBUS, 0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), VBUS, PIO0_3_VBUS, 0);
 #if (USB_SOFT_CONNECT)
-    ack_pin(drv, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), SCONNECT, PIN_MODE_USB_CONNECT, 0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), SCONNECT, PIO0_6_USB_CONNECT, 0);
 #endif
 
     //enable clock, power up

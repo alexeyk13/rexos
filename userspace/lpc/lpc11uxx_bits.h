@@ -220,324 +220,307 @@
 /******************************************************************************/
 
 /********  Bit definition for IOCON_PIOx_x registers  ***********************/
-#define IOCON_PIO_MODE_INACTIVE                        (0 << 3)         /* Selects function mode (on-chip pull-up/pull-down resistor control). */
-                                                                        /* 0x0 Inactive (no pull-down/pull-up resistor enabled). */
-#define IOCON_PIO_MODE_PULL_DOWN                       (1 << 3)         /* 0x1 Pull-down resistor enabled. */
-#define IOCON_PIO_MODE_PULL_UP                         (2 << 3)         /* 0x2 Pull-up resistor enabled. */
-#define IOCON_PIO_MODE_REPEATER                        (3 << 3)         /* 0x3 Repeater mode */
-#define IOCON_PIO_HYS                                  (1 << 5)         /* Hysteresis.
-                                                                           0 Disable.
-                                                                           1 Enable */
-#define IOCON_PIO_INV                                  (1 << 6)         /* Invert input
-                                                                           0 Input not inverted (HIGH on pin reads as 1, LOW on pin reads as 0).
-                                                                           1 Input inverted (HIGH on pin reads as 0, LOW on pin reads as 1) */
-#define IOCON_PIO_OD                                   (1 << 10)        /* Open-drain mode.
-                                                                           0 Disable.
-                                                                           1 Open-drain mode enabled.
-                                                                           Remark: This is not a true open-drain mode */
-#define IOCON_PIO_I2CMODE_STANDART                     (0 << 8)         /* Select Standard mode (I2CMODE = 00, default) or Standard I/O functionality (I2CMODE = 01) */
-#define IOCON_PIO_I2CMODE_GPIO                         (1 << 8)         /* if the pin function is GPIO (FUNC = 000) */
-#define IOCON_PIO_I2CMODE_FAST                         (2 << 8)
-#define IOCON_PIO_ADMODE                               (1 << 7)         /* Selects Analog/Digital mode.
-                                                                           0 Analog input mode.
-                                                                           1 Digital functional mode */
-#define IOCON_PIO_FILTR                                (1 << 8)         /* Selects 10 ns input glitch filter.
-                                                                           0 Filter enabled.
-                                                                           1 Filter disabled */
-
-//common for most IO
-#define GPIO_MODE_NOPULL                        (0 << 3)
-#define GPIO_MODE_PULLDOWN                      (1 << 3)
-#define GPIO_MODE_PULLUP                        (2 << 3)
-#define GPIO_MODE_REPEATER                      (3 << 3)
-
-#define GPIO_HYS                                (1 << 5)
-#define GPIO_INV                                (1 << 6)
-#define GPIO_ANALOG                             (1 << 7)
-#define GPIO_ANALOG_FILTER                      (1 << 8)
-#define GPIO_OPEN_DRAIN                         (1 << 10)
-
-//I2C specific mode
-#define GPIO_I2C_MODE_STANDART                  (0 << 8)
-#define GPIO_I2C_MODE_STANDART_IO               (1 << 8)
-#define GPIO_I2C_MODE_FAST                      (2 << 8)
+#define IOCON_PIO_MODE_INACTIVE                     (0 << 3)         /* Selects function mode (on-chip pull-up/pull-down resistor control). */
+                                                                     /* 0x0 Inactive (no pull-down/pull-up resistor enabled). */
+#define IOCON_PIO_MODE_PULL_DOWN                    (1 << 3)         /* 0x1 Pull-down resistor enabled. */
+#define IOCON_PIO_MODE_PULL_UP                      (2 << 3)         /* 0x2 Pull-up resistor enabled. */
+#define IOCON_PIO_MODE_REPEATER                     (3 << 3)         /* 0x3 Repeater mode */
+#define IOCON_PIO_HYS                               (1 << 5)         /* Hysteresis.
+                                                                        0 Disable.
+                                                                        1 Enable */
+#define IOCON_PIO_INV                               (1 << 6)         /* Invert input
+                                                                        0 Input not inverted (HIGH on pin reads as 1, LOW on pin reads as 0).
+                                                                        1 Input inverted (HIGH on pin reads as 0, LOW on pin reads as 1) */
+#define IOCON_PIO_OD                                (1 << 10)        /* Open-drain mode.
+                                                                        0 Disable.
+                                                                        1 Open-drain mode enabled.
+                                                                        Remark: This is not a true open-drain mode */
+#define IOCON_PIO_I2CMODE_STANDART                  (0 << 8)         /* Select Standard mode (I2CMODE = 00, default) or Standard I/O functionality (I2CMODE = 01) */
+#define IOCON_PIO_I2CMODE_GPIO                      (1 << 8)         /* if the pin function is GPIO (FUNC = 000) */
+#define IOCON_PIO_I2CMODE_FAST                      (2 << 8)
+#define IOCON_PIO_ADMODE                            (1 << 7)         /* Selects Analog/Digital mode.
+                                                                         0 Analog input mode.
+                                                                         1 Digital functional mode */
+#define IOCON_PIO_FILTR                             (1 << 8)         /* Selects 10 ns input glitch filter.
+                                                                        0 Filter enabled.
+                                                                        1 Filter disabled */
 
 //PIO0_0
-#define PIN_MODE_RESET                          0
-#define PIN_MODE_PIO0_0                         1
+#define PIO0_0_RESET                                0
+#define PIO0_0_GPIO                                 1
 
 //PIO0_1
-#define PIN_MODE_PIO0_1                         0
-#define PIN_MODE_CLKOUT                         1
-#define PIN_MODE_CT32B0_MAT2                    2
-#define PIN_MODE_USB_FTOGGLE                    3
+#define PIO0_1_GPIO                                 0
+#define PIO0_1_CLKOUT                               1
+#define PIO0_1_CT32B0_MAT2                          2
+#define PIO0_1_USB_FTOGGLE                          3
 
 //PIO0_2
-#define PIN_MODE_PIO0_2                         0
-#define PIN_MODE_SSEL0                          1
-#define PIN_MODE_CT16B0_CAP0                    2
-#define PIN_MODE_IOH_0                          3
+#define PIO0_2_GPIO                                 0
+#define PIO0_2_SSEL0                                1
+#define PIO0_2_CT16B0_CAP0                          2
+#define PIO0_2_IOH_0                                3
 
 //PIO0_3
-#define PIN_MODE_PIO0_3                         0
-#define PIN_MODE_VBUS                           1
-#define PIN_MODE_IOH_1                          2
+#define PIO0_3_GPIO                                 0
+#define PIO0_3_VBUS                                 1
+#define PIO0_3_IOH_1                                2
 
 //PIO0_4
-#define PIN_MODE_PIO0_4                         0
-#define PIN_MODE_I2C_SCL                        1
-#define PIN_MODE_IOH_2                          2
+#define PIO0_4_GPIO                                 0
+#define PIO0_4_I2C_SCL                              1
+#define PIO0_4_IOH_2                                2
 
 //PIO0_5
-#define PIN_MODE_PIO0_5                         0
-#define PIN_MODE_I2C_SDA                        1
-#define PIN_MODE_IOH_3                          2
+#define PIO0_5_GPIO                                 0
+#define PIO0_6_I2C_SDA                              1
+#define PIO0_6_IOH_3                                2
 
 //PIO0_6
-#define PIN_MODE_PIO0_6                         0
-#define PIN_MODE_USB_CONNECT                    1
-#define PIN_MODE_SCK0                           2
-#define PIN_MODE_SCK0_IOH_4                     3
+#define PIO0_6_GPIO                                 0
+#define PIO0_6_USB_CONNECT                          1
+#define PIO0_6_SCK0                                 2
+#define PIO0_6_SCK0_IOH_4                           3
 
 //PIO0_7
-#define PIN_MODE_PIO0_7                         0
-#define PIN_MODE_CTS                            1
-#define PIN_MODE_IOH_5                          2
+#define PIO0_7_GPIO                                 0
+#define PIO0_7_CTS                                  1
+#define PIO0_7_IOH_5                                2
 
 //PIO0_8
-#define PIN_MODE_PIO0_8                         0
-#define PIN_MODE_MIS00                          1
-#define PIN_MODE_CT16B0_MAT0                    2
-#define PIN_MODE_IOH_6                          4
+#define PIO0_8_GPIO                                 0
+#define PIO0_8_MIS00                                1
+#define PIO0_8_CT16B0_MAT0                          2
+#define PIO0_8_IOH_6                                4
 
 //PIO0_9
-#define PIN_MODE_PIO0_9                         0
-#define PIN_MODE_MOSI0                          1
-#define PIN_MODE_CT16B0_MAT1                    2
-#define PIN_MODE_IOH_7                          4
+#define PIO0_9_GPIO                                 0
+#define PIO0_9_MOSI0                                1
+#define PIO0_9_CT16B0_MAT1                          2
+#define PIO0_9_IOH_7                                4
 
 //PIO0_10
-#define PIN_MODE_SWCLK                          0
-#define PIN_MODE_PIO0_10                        1
-#define PIN_MODE_SCK0                           2
-#define PIN_MODE_CT16B0_MAT2                    3
+#define PIO0_10_SWCLK                               0
+#define PIO0_10_GPIO                                1
+#define PIO0_10_SCK0                                2
+#define PIO0_10_CT16B0_MAT2                         3
 
 //PIO0_11
-#define PIN_MODE_TDI                            0
-#define PIN_MODE_PIO0_11                        1
-#define PIN_MODE_AD0                            2
-#define PIN_MODE_CT32B0_MAT3                    3
+#define PIO0_11_TDI                                 0
+#define PIO0_11_GPIO                                1
+#define PIO0_11_AD0                                 2
+#define PIO0_11_CT32B0_MAT3                         3
 
 //PIO0_12
-#define PIN_MODE_TMS                            0
-#define PIN_MODE_PIO0_12                        1
-#define PIN_MODE_AD1                            2
-#define PIN_MODE_CT32B1_CAP0                    3
+#define PIO0_12_TMS                                 0
+#define PIO0_12_GPIO                                1
+#define PIO0_12_AD1                                 2
+#define PIO0_12_CT32B1_CAP0                         3
 
 //PIO0_13
-#define PIN_MODE_TDO                            0
-#define PIN_MODE_PIO0_13                        1
-#define PIN_MODE_AD2                            2
-#define PIN_MODE_CT32B1_MAT0                    3
+#define PIO0_13_TDO                                 0
+#define PIO0_13_GPIO                                1
+#define PIO0_13_AD2                                 2
+#define PIO0_13_CT32B1_MAT0                         3
 
 //PIO0_14
-#define PIN_MODE_TRST                           0
-#define PIN_MODE_PIO0_14                        1
-#define PIN_MODE_AD3                            2
-#define PIN_MODE_CT32B1_MAT1                    3
+#define PIO0_14_TRST                                0
+#define PIO0_14_GPIO                                1
+#define PIO0_14_AD3                                 2
+#define PIO0_14_CT32B1_MAT1                         3
 
 //PIO0_15
-#define PIN_MODE_SDIO                           0
-#define PIN_MODE_PIO0_15                        1
-#define PIN_MODE_AD4                            2
-#define PIN_MODE_CT32B1_MAT2                    3
+#define PIO0_15_SDIO                                0
+#define PIO0_15_GPIO                                1
+#define PIO0_15_AD4                                 2
+#define PIO0_15_CT32B1_MAT2                         3
 
 //PIO0_16
-#define PIN_MODE_PIO0_16                        0
-#define PIN_MODE_AD5                            1
-#define PIN_MODE_CT32B1_MAT3                    2
-#define PIN_MODE_IOH_8                          3
+#define PIO0_16_GPIO                                0
+#define PIO0_16_AD5                                 1
+#define PIO0_16_CT32B1_MAT3                         2
+#define PIO0_16_IOH_8                               3
 
 //PIO0_17
-#define PIN_MODE_PIO0_17                        0
-#define PIN_MODE_RTS                            1
-#define PIN_MODE_CT32B0_CAP0                    2
-#define PIN_MODE_SCLK                           3
+#define PIO0_17_GPIO                                0
+#define PIO0_17_RTS                                 1
+#define PIO0_17_CT32B0_CAP0                         2
+#define PIO0_17_SCLK                                3
 
 //PIO0_18
-#define PIN_MODE_PIO0_18                        0
-#define PIN_MODE_RXD                            1
-#define PIN_MODE_CT32B0_MAT0                    2
+#define PIO0_18_GPIO                                0
+#define PIO0_18_RXD                                 1
+#define PIO0_18_CT32B0_MAT0                         2
 
 //PIO0_19
-#define PIN_MODE_PIO0_19                        0
-#define PIN_MODE_TXD                            1
-#define PIN_MODE_CT32B0_MAT1                    2
+#define PIO0_19_GPIO                                0
+#define PIO0_19_TXD                                 1
+#define PIO0_19_CT32B0_MAT1                         2
 
 //PIO0_20
-#define PIN_MODE_PIO0_20                        0
-#define PIN_MODE_CT16B1_CAP0                    1
+#define PIO0_20_GPIO                                0
+#define PIO0_20_CT16B1_CAP0                         1
 
 //PIO0_21
-#define PIN_MODE_PIO0_21                        0
-#define PIN_MODE_CT16B1_MAT0                    1
-#define PIN_MODE_MOSI1                          2
+#define PIO0_21_GPIO                                0
+#define PIO0_21_CT16B1_MAT0                         1
+#define PIO0_21_MOSI1                               2
 
 //PIO0_22
-#define PIN_MODE_PIO0_22                        0
-#define PIN_MODE_AD6                            1
-#define PIN_MODE_CT16B1_MAT1                    2
-#define PIN_MODE_MISO1                          3
+#define PIO0_22_GPIO                                0
+#define PIO0_22_AD6                                 1
+#define PIO0_22_CT16B1_MAT1                         2
+#define PIO0_22_MISO1                               3
 
 //PIO0_23
-#define PIN_MODE_PIO0_23                        0
-#define PIN_MODE_AD7                            1
-#define PIN_MODE_IOH_9                          2
+#define PIO0_23_GPIO                                0
+#define PIO0_23_AD7                                 1
+#define PIO0_23_IOH_9                               2
 
 //PIO1_0
-#define PIN_MODE_PIO1_0                         0
-#define PIN_MODE_CT32B1_MAT1_0                  1
-#define PIN_MODE_IOH_10                         2
+#define PIO1_0_GPIO                                 0
+#define PIO1_0_CT32B1_MAT1                          1
+#define PIO1_0_IOH_10                               2
 
 //PIO1_1
-#define PIN_MODE_PIO1_1                         0
-#define PIN_MODE_CT32B1_MAT1_1                  1
-#define PIN_MODE_IOH_10                         2
+#define PIO1_1_GPIO                                 0
+#define PIO1_1_CT32B1_MAT1                          1
+#define PIO1_1_IOH_10                               2
 
 //PIO1_2
-#define PIN_MODE_PIO1_2                         0
-#define PIN_MODE_CT32B1_MAT2_1                  1
-#define PIN_MODE_IOH_12                         2
+#define PIO1_2_GPIO                                 0
+#define PIO1_2_CT32B1_MAT2                          1
+#define PIO1_2_IOH_12                               2
 
 //PIO1_3
-#define PIN_MODE_PIO1_3                         0
-#define PIN_MODE_CT32B1_MAT3_1                  1
-#define PIN_MODE_IOH_13                         2
+#define PIO1_3_GPIO                                 0
+#define PIO1_3_CT32B1_MAT3                          1
+#define PIO1_3_IOH_13                               2
 
 //PIO1_4
-#define PIN_MODE_PIO1_4                         0
-#define PIN_MODE_CT32B1_CAP0_1_4                1
-#define PIN_MODE_IOH_14                         2
+#define PIO1_4_GPIO                                 0
+#define PIO1_4_CT32B1_CAP0                          1
+#define PIO1_4_IOH_14                               2
 
 //PIO1_5
-#define PIN_MODE_PIO1_5                         0
-#define PIN_MODE_CT32B1_CAP1_1_5                1
-#define PIN_MODE_IOH_15                         2
+#define PIO1_5_GPIO                                 0
+#define PIO1_5_CT32B1_CAP1                          1
+#define PIO1_5_IOH_15                               2
 
 //PIO1_6
-#define PIN_MODE_PIO1_6                         0
-#define PIN_MODE_IOH_16                         1
+#define PIO1_6_GPIO                                 0
+#define PIO1_6_IOH_16                               1
 
 //PIO1_7
-#define PIN_MODE_PIO1_7                         0
-#define PIN_MODE_IOH_17                         1
+#define PIO1_7_GPIO                                 0
+#define PIO1_7_IOH_17                               1
 
 //PIO1_8
-#define PIN_MODE_PIO1_8                         0
-#define PIN_MODE_IOH_18                         1
+#define PIO1_8_GPIO                                 0
+#define PIO1_8_IOH_18                               1
 
 //PIO1_9
-#define PIN_MODE_PIO1_9                         0
+#define PIO1_9_GPIO                                 0
 
 //PIO1_10
-#define PIN_MODE_PIO1_10                        0
+#define PIO1_10_GPIO                                0
 
 //PIO1_11
-#define PIN_MODE_PIO1_11                        0
+#define PIO1_11_GPIO                                0
 
 //PIO1_12
-#define PIN_MODE_PIO1_12                        0
+#define PIO1_12_GPIO                                0
 
 //PIO1_13
-#define PIN_MODE_PIO1_13                        0
-#define PIN_MODE_DTR                            1
-#define PIN_MODE_CT16B0_MAT0_1                  2
-#define PIN_MODE_TXD_1                          3
+#define PIO1_13_GPIO                                0
+#define PIO1_13_DTR                                 1
+#define PIO1_13_CT16B0_MAT0                         2
+#define PIO1_13_TXD                                 3
 
 //PIO1_14
-#define PIN_MODE_PIO1_14                        0
-#define PIN_MODE_DSR                            1
-#define PIN_MODE_CT16B0_MAT1_1                  2
-#define PIN_MODE_RXD_1                          3
+#define PIO1_14_GPIO                                0
+#define PIO1_14_DSR                                 1
+#define PIO1_14_CT16B0_MAT1                         2
+#define PIO1_14_RXD                                 3
 
 //PIO1_15
-#define PIN_MODE_PIO1_15                        0
-#define PIN_MODE_DCD                            1
-#define PIN_MODE_CT16B0_MAT2_1                  2
-#define PIN_MODE_SCK1                           3
+#define PIO1_15_GPIO                                0
+#define PIO1_15_DCD                                 1
+#define PIO1_15_CT16B0_MAT2                         2
+#define PIO1_15_SCK1                                3
 
 //PIO1_16
-#define PIN_MODE_PIO1_16                        0
-#define PIN_MODE_RI                             1
-#define PIN_MODE_CT16B0_CAP0_1                  2
+#define PIO1_16_GPIO                                0
+#define PIO1_16_RI                                  1
+#define PIO1_16_CT16B0_CAP0                         2
 
 //PIO1_17
-#define PIN_MODE_PIO1_17                        0
-#define PIN_MODE_CT16B0_CAP1_1                  1
-#define PIN_MODE_RXD_2                          2
+#define PIO1_17_GPIO                                0
+#define PIO1_17_CT16B0_CAP1                         1
+#define PIO1_17_RXD                                 2
 
 //PIO1_18
-#define PIN_MODE_PIO1_18                        0
-#define PIN_MODE_CT16B1_CAP1_1                  1
-#define PIN_MODE_TXD_2                          2
+#define PIO1_18_GPIO                                0
+#define PIO1_18_CT16B1_CAP1                         1
+#define PIO1_18_TXD                                 2
 
 //PIO1_19
-#define PIN_MODE_PIO1_19                        0
-#define PIN_MODE_DTR_1                          1
-#define PIN_MODE_SSEL1                          2
+#define PIO1_19_GPIO                                0
+#define PIO1_19_DTR                                 1
+#define PIO1_19_SSEL1                               2
 
 //PIO1_20
-#define PIN_MODE_PIO1_20                        0
-#define PIN_MODE_DSR_1                          1
-#define PIN_MODE_SCK1_1                         2
+#define PIO1_20_GPIO                                0
+#define PIO1_20_DSR                                 1
+#define PIO1_20_SCK1                                2
 
 //PIO1_21
-#define PIN_MODE_PIO1_21                        0
-#define PIN_MODE_DCD_1                          1
-#define PIN_MODE_MISO1_1                        2
+#define PIO1_21_GPIO                                0
+#define PIO1_21_DCD                                 1
+#define PIO1_21_MISO1                               2
 
 //PIO1_22
-#define PIN_MODE_PIO1_22                        0
-#define PIN_MODE_RI_1                           1
-#define PIN_MODE_MOSI1_1                        2
+#define PIO1_22_GPIO                                0
+#define PIO1_22_RI                                  1
+#define PIO1_22_MOSI1                               2
 
 //PIO1_23
-#define PIN_MODE_PIO1_23                        0
-#define PIN_MODE_CT16B1_MAT1_1                  1
-#define PIN_MODE_SSEL1_1                        2
+#define PIO1_23_GPIO                                0
+#define PIO1_23_CT16B1_MAT1                         1
+#define PIO1_23_SSEL1                               2
 
 //PIO1_24
-#define PIN_MODE_PIO1_24                        0
-#define PIN_MODE_CT32B0_MAT0_1                  1
+#define PIO1_24_GPIO                                0
+#define PIO1_24_CT32B0_MAT0                         1
 
 //PIO1_25
-#define PIN_MODE_PIO1_25                        0
-#define PIN_MODE_CT32B0_MAT1_1                  1
+#define PIO1_25_GPIO                                0
+#define PIO1_25_CT32B0_MAT1                         1
 
 //PIO1_26
-#define PIN_MODE_PIO1_26                        0
-#define PIN_MODE_CT32B0_MAT2_1                  1
-#define PIN_MODE_RXD_3                          2
-#define PIN_MODE_IOH_19                         3
+#define PIO1_26_GPIO                                0
+#define PIO1_26_CT32B0_MAT2                         1
+#define PIO1_26_RXD                                 2
+#define PIO1_26_IOH_19                              3
 
 //PIO1_27
-#define PIN_MODE_PIO1_27                        0
-#define PIN_MODE_CT32B0_MAT3_1                  1
-#define PIN_MODE_TXD_3                          2
-#define PIN_MODE_IOH_20                         3
+#define PIO1_27_GPIO                                0
+#define PIO1_27_CT32B0_MAT3                         1
+#define PIO1_27_TXD                                 2
+#define PIO1_27_IOH_20                              3
 
 //PIO1_28
-#define PIN_MODE_PIO1_28                        0
-#define PIN_MODE_CT32B0_CAP0_1                  1
-#define PIN_MODE_SCLK_1                         2
+#define PIO1_28_GPIO                                0
+#define PIO1_28_CT32B0_CAP0                         1
+#define PIO1_28_SCLK                                2
 
 //PIO1_29
-#define PIN_MODE_PIO1_29                        0
-#define PIN_MODE_SCK0_1                         1
-#define PIN_MODE_CT32B0_CAP1_1                  2
+#define PIO1_29_GPIO                                0
+#define PIO1_29_SCK0                                1
+#define PIO1_29_CT32B0_CAP1                         2
 
 //PIO1_31
-#define PIN_MODE_PIO1_31                        0
+#define PIO1_31_GPIO                                0
 
 
 /******************************************************************************/

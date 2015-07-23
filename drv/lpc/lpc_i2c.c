@@ -209,8 +209,8 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int sla
     i2c->addr = 0;
     core->i2c.i2cs[port] = i2c;
     //setup pins
-    ack_pin(core, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), I2C_SCL_PIN, PIN_MODE_I2C_SCL | (mode & I2C_FAST_SPEED ? IOCON_PIO_I2CMODE_FAST : IOCON_PIO_I2CMODE_STANDART), 0);
-    ack_pin(core, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), I2C_SDA_PIN, PIN_MODE_I2C_SDA | (mode & I2C_FAST_SPEED ? IOCON_PIO_I2CMODE_FAST : IOCON_PIO_I2CMODE_STANDART), 0);
+    ack_pin(core, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), I2C_SCL_PIN, PIO0_4_I2C_SCL | (mode & I2C_FAST_SPEED ? IOCON_PIO_I2CMODE_FAST : IOCON_PIO_I2CMODE_STANDART), 0);
+    ack_pin(core, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), I2C_SDA_PIN, PIO0_6_I2C_SDA | (mode & I2C_FAST_SPEED ? IOCON_PIO_I2CMODE_FAST : IOCON_PIO_I2CMODE_STANDART), 0);
     //power up
     LPC_SYSCON->SYSAHBCLKCTRL |= 1 << SYSCON_SYSAHBCLKCTRL_I2C0_POS;
     //remove reset state
