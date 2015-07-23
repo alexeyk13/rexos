@@ -3,7 +3,7 @@
 
 //----------------------------------- kernel ------------------------------------------------------------------
 //enable kernel info. Disabling this you can save some flash size, but kernel will be much less verbose, especially on critical errors. Generally doesn't affect on perfomance
-#define KERNEL_INFO                                 1
+#define KERNEL_DEBUG                                1
 //marks objects with magic in headers. Decrease perfomance on few tacts, but very useful for debug if you don't have MPU enabled
 #define KERNEL_MARKS                                0
 //check range of dynamic objects in pools0
@@ -27,7 +27,5 @@
 #define KERNEL_OBJECTS_COUNT                        5
 //block, direct are now deprecated
 #define KERNEL_BD                                   0
-//gpio bitbang library. Implementation specific
-#define KERNEL_LIB_GPIO                             1
 
 #endif // KERNEL_CONFIG_H

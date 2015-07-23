@@ -20,21 +20,4 @@ typedef enum {
     LIB_ID_MAX
 } LIB_ID;
 
-#if (LIB_CHECK_PRESENCE)
-
-#define LIB_CHECK(id)                                       if (__GLOBAL->lib[(id)] == NULL) { \
-                                                                error(ERROR_STUB_CALLED); \
-                                                                return;}
-
-#define LIB_CHECK_RET(id)                                   if (__GLOBAL->lib[(id)] == NULL) { \
-                                                                error(ERROR_STUB_CALLED); \
-                                                                return 0;}
-
-#else
-
-#define LIB_CHECK(id)                                       ;
-#define LIB_CHECK_RET(id)                                   ;
-
-#endif
-
 #endif // LIB_H

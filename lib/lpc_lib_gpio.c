@@ -12,9 +12,9 @@
 #if defined(LPC11Uxx)
 #define PIN_RAW(gpio)                   (gpio)
 
-#define GPIO_I2C_MASK                   ((1 << PIO0_4) | (1 << PIO0_5))
+#define GPIO_I2C_MASK                   ((1 << PIO0_4)  | (1 << PIO0_5))
 #define GPIO_AD_MASK                    ((1 << PIO0_11) | (1 << PIO0_12) | (1 << PIO0_16) | (1 << PIO0_22) | (1 << PIO0_23))
-#define GPIO_MODE1_MASK                 ((1 << PIO0_10) | (1 << PIO0_11) | (1 << PIO0_12) | (1 << PIO0_13) | (1 << PIO0_14) | (1 << PIO0_15))
+#define GPIO_MODE1_MASK                 ((1 << PIO0_0)  | (1 << PIO0_10) | (1 << PIO0_11) | (1 << PIO0_12) | (1 << PIO0_13) | (1 << PIO0_14) | (1 << PIO0_15))
 
 #else
 

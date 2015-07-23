@@ -11,8 +11,6 @@
     config.h - userspace config
  */
 
-//will save few bytes, but not recommended to disable
-#define LIB_CHECK_PRESENCE                                  0
 //----------------------------- objects ----------------------------------------------
 //make sure, you know what are you doing, before change
 #define SYS_OBJ_STDOUT                                      0

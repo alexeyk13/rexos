@@ -78,6 +78,15 @@ ARM7 features:
 
 History
 =======
+0.3.3
+- due to different meaning in LPC18xx of PIN and GPIO, HAL_GPIO is now HAL_PIN. GPIO is only userspace library, while PIN
+  configuration is in driver space
+- GPIO is now required library
+- LPC18xx architecture decoding
+- LPC18xx GPIO driver
+- KERNEL_INFO now called KERNEL_DEBUG
+- fix CCID EP size request halts
+
 0.3.2
 - Y2037 compatible, no POSIX time_t is used anymore. Up to 1M year date supported with BC (by design)
 - TIME is now SYSTIME, time_t now TIME

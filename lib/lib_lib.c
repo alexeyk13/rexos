@@ -11,13 +11,13 @@
 #include "lib_stdio.h"
 #include "lib_systime.h"
 #include "lib_heap.h"
-#if (KERNEL_LIB_GPIO)
 #include "lib_gpio.h"
-#endif //KERNEL_LIB_GPIO
 
 void lib_stub ()
 {
+#if (KERNEL_DEBUG)
     printk("Warning: lib stub called\n\r");
+#endif //KERNEL_DEBUG
 }
 
 const void *const __LIB[] = {
@@ -29,11 +29,8 @@ const void *const __LIB[] = {
     (const void *const)&__LIB_SYSTIME,
     //lib_heap.h
     (const void *const )&__LIB_HEAP,
-#if (KERNEL_LIB_GPIO)
+    //hardware specific
     (const void *const)&__LIB_GPIO
-#else
-    (const void *const)NULL
-#endif //KERNEL_LIB_GPIO
 };
 
 
