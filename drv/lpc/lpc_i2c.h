@@ -11,7 +11,7 @@
 #include "lpc_core.h"
 #include "../../userspace/ipc.h"
 #include "../../userspace/io.h"
-#include "../../userspace/lpc_driver.h"
+#include "../../userspace/lpc/lpc_driver.h"
 
 typedef enum {
     I2C_IO_MODE_IDLE = 0,

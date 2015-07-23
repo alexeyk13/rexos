@@ -7,7 +7,7 @@
 #include "lpc_uart.h"
 #include "lpc_gpio.h"
 #include "lpc_power.h"
-#include "../../userspace/lpc_driver.h"
+#include "../../userspace/lpc/lpc_driver.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/stream.h"
 #include "../../userspace/stdlib.h"

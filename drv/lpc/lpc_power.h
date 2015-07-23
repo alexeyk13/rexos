@@ -9,7 +9,7 @@
 
 #include "lpc_core.h"
 #include "../../userspace/ipc.h"
-#include "../../userspace/lpc_driver.h"
+#include "../../userspace/lpc/lpc_driver.h"
 
 void lpc_power_init(CORE* core);
 bool lpc_power_request(CORE* core, IPC* ipc);

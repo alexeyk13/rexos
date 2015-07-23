@@ -12,6 +12,7 @@
 static unsigned int const __FCLKANA[] =         {0000000, 0600000, 1050000, 1400000, 1750000, 2100000, 2400000, 2700000,
                                                  3000000, 3250000, 3500000, 3750000, 4000000, 4200000, 4400000, 4600000};
 
+#ifdef LPC11Uxx
 void lpc_update_clock(int m, int p)
 {
     int i;
@@ -128,11 +129,14 @@ static inline void lpc_decode_reset_reason(CORE* core)
         core->power.reset_reason = RESET_REASON_POWERON;
     LPC_SYSCON->SYSRSTSTAT = SYSCON_SYSRSTSTAT_WDT | SYSCON_SYSRSTSTAT_BOD | SYSCON_SYSRSTSTAT_SYSRST | SYSCON_SYSRSTSTAT_EXTRST | SYSCON_SYSRSTSTAT_POR;
 }
+#endif //LPC11Uxx
 
 void lpc_power_init(CORE *core)
 {
+#ifdef LPC11Uxx
     lpc_decode_reset_reason(core);
     lpc_update_clock(PLL_M, PLL_P);
+#endif //LPC11Uxx
 }
 
 bool lpc_power_request(CORE* core, IPC* ipc)
@@ -140,6 +144,7 @@ bool lpc_power_request(CORE* core, IPC* ipc)
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
+#ifdef LPC11Uxx
     case LPC_POWER_GET_SYSTEM_CLOCK:
         ipc->param2 = lpc_get_system_clock();
         need_post = true;
@@ -152,6 +157,7 @@ bool lpc_power_request(CORE* core, IPC* ipc)
         ipc->param2 = lpc_get_reset_reason(core);
         need_post = true;
         break;
+#endif //LPC11Uxx
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;

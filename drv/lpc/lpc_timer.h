@@ -8,7 +8,7 @@
 #define LPC_TIMER_H
 
 #include "lpc_core.h"
-#include "../../userspace/lpc_driver.h"
+#include "../../userspace/lpc/lpc_driver.h"
 #include "../../userspace/htimer.h"
 
 typedef struct {

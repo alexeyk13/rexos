@@ -15,6 +15,7 @@
 #define TC16PC                                      15
 #define S1_US                                       1000000
 
+#ifdef LPC11Uxx
 static const uint8_t __TIMER_POWER_PINS[] =         {SYSCON_SYSAHBCLKCTRL_CT16B0_POS, SYSCON_SYSAHBCLKCTRL_CT16B1_POS,
                                                      SYSCON_SYSAHBCLKCTRL_CT32B0_POS, SYSCON_SYSAHBCLKCTRL_CT32B1_POS};
 static const uint8_t __TIMER_VECTORS[] =            {16, 17, 18, 19};
@@ -183,9 +184,11 @@ unsigned int hpet_elapsed(void* param)
     unsigned int value = core->timer.hpet_start < tc ? tc - core->timer.hpet_start : __TIMER_REGS[SECOND_TIMER]->MR[HPET_CHANNEL] + 1 - core->timer.hpet_start + tc;
     return SECOND_TIMER >= TC32B0 ? value : value / TC16PC;
 }
+#endif //LPC11Uxx
 
 void lpc_timer_init(CORE *core)
 {
+#ifdef LPC11Uxx
     int i;
     core->timer.hpet_start = 0;
     for (i = 0; i < TIMER_MAX; ++i)
@@ -201,6 +204,7 @@ void lpc_timer_init(CORE *core)
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
     systime_hpet_setup(&cb_svc_timer, core);
+#endif //LPC11Uxx
 }
 
 bool lpc_timer_request(CORE* core, IPC* ipc)
@@ -213,6 +217,7 @@ bool lpc_timer_request(CORE* core, IPC* ipc)
     }
     switch (HAL_ITEM(ipc->cmd))
     {
+#ifdef LPC11Uxx
     case IPC_OPEN:
         lpc_timer_open(core, timer, ipc->param2);
         break;
@@ -228,6 +233,7 @@ bool lpc_timer_request(CORE* core, IPC* ipc)
     case TIMER_SETUP_CHANNEL:
         lpc_timer_setup_channel(core, timer, TIMER_CHANNEL_VALUE(ipc->param2), TIMER_CHANNEL_TYPE_VALUE(ipc->param2), ipc->param3);
         break;
+#endif //LPC11Uxx
     default:
         error(ERROR_NOT_SUPPORTED);
     }
