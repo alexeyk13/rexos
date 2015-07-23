@@ -5,27 +5,31 @@
 */
 
 #include "lpc_gpio.h"
-#include "../../userspace/lpc_driver.h"
+#include "../../userspace/lpc/lpc_driver.h"
 #include "lpc_config.h"
 #include <stdint.h>
 
+#ifdef LPC11Uxx
 #define IOCON                           ((uint32_t*)(LPC_IOCON_BASE))
+#else
+#define SCU                             ((uint32_t*)(LPC_SCU_BASE))
+#endif //LPC11Uxx
 
-void lpc_gpio_enable_pin(PIN pin, unsigned int mode)
+void lpc_pin_enable(PIN pin, unsigned int mode)
 {
     if (pin >= PIN_MAX)
     {
         error(ERROR_INVALID_PARAMS);
         return;
     }
-    IOCON[pin] = mode & LPC_GPIO_MODE_MASK;
-    if (mode & LPC_GPIO_MODE_OUT)
-        LPC_GPIO->DIR[GPIO_PORT(pin)] |= 1 << GPIO_PIN(pin);
-    else
-        LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
+#ifdef LPC11Uxx
+    IOCON[pin] = mode;
+#else //LPC18xx
+    SCU[pin] = mode;
+#endif //LPC11Uxx
 }
 
-__STATIC_INLINE void lpc_gpio_disable_pin(PIN pin)
+__STATIC_INLINE void lpc_pin_disable(PIN pin)
 {
     if (pin >= PIN_MAX)
     {
@@ -33,13 +37,19 @@ __STATIC_INLINE void lpc_gpio_disable_pin(PIN pin)
         return;
     }
     //default state, input
+#ifdef LPC11Uxx
     IOCON[pin] = 0;
-    LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
+#else //LPC18xx
+    SCU[pin] = 0;
+#endif //LPC11Uxx
 }
 
 void lpc_gpio_init()
 {
+#ifdef LPC11Uxx
     LPC_SYSCON->SYSAHBCLKCTRL |= (1 << SYSCON_SYSAHBCLKCTRL_GPIO_POS) | (1 << SYSCON_SYSAHBCLKCTRL_IOCON_POS);
+#endif
+    //all clocks on 18xx are enabled by default
 }
 
 bool lpc_gpio_request(IPC* ipc)
@@ -47,12 +57,12 @@ bool lpc_gpio_request(IPC* ipc)
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
-    case LPC_GPIO_ENABLE_PIN:
-        lpc_gpio_enable_pin((PIN)ipc->param1, ipc->param2);
+    case LPC_PIN_ENABLE:
+        lpc_pin_enable((PIN)ipc->param1, ipc->param2);
         need_post = true;
         break;
-    case LPC_GPIO_DISABLE_PIN:
-        lpc_gpio_disable_pin((PIN)ipc->param1);
+    case LPC_PIN_DISABLE:
+        lpc_pin_disable((PIN)ipc->param1);
         need_post = true;
         break;
     default:

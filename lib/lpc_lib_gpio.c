@@ -5,56 +5,110 @@
 */
 
 #include "lib_gpio.h"
-#include "../userspace/lpc_driver.h"
-#include "lpc_config.h"
+#include "../userspace/lpc/lpc_driver.h"
 
-#define GPIO_FUNC(arr, pin)             (((arr)[(pin) >> 1] >> (((pin) & 1) << 2)) & 0xf)
-#define GF(low, high)                   ((low) | ((high) << 4))
+#if defined(LPC11Uxx)
+#define PIN_RAW(gpio)                   (gpio)
 
-static const uint8_t __GPIO_DEFAULT[PIN_DEFAULT / 2] =
+#define GPIO_I2C_MASK                   ((1 << PIO0_4) | (1 << PIO0_5))
+#define GPIO_AD_MASK                    ((1 << PIO0_11) | (1 << PIO0_12) | (1 << PIO0_16) | (1 << PIO0_22) | (1 << PIO0_23))
+#define GPIO_MODE1_MASK                 ((1 << PIO0_10) | (1 << PIO0_11) | (1 << PIO0_12) | (1 << PIO0_13) | (1 << PIO0_14) | (1 << PIO0_15))
+
+#else
+
+#define LPC_GPIO                        LPC_GPIO_PORT
+
+static const uint16_t __GPIO_PIN[PIO_MAX] =
                                        {
-                                        GF(PIN_MODE_PIO0_0,  PIN_MODE_PIO0_1),  GF(PIN_MODE_PIO0_2,  PIN_MODE_PIO0_3),
-                                        GF(PIN_MODE_PIO0_4,  PIN_MODE_PIO0_5),  GF(PIN_MODE_PIO0_6,  PIN_MODE_PIO0_7),
-                                        GF(PIN_MODE_PIO0_8,  PIN_MODE_PIO0_9),  GF(PIN_MODE_PIO0_10, PIN_MODE_PIO0_11),
-                                        GF(PIN_MODE_PIO0_12, PIN_MODE_PIO0_13), GF(PIN_MODE_PIO0_14, PIN_MODE_PIO0_15),
-                                        GF(PIN_MODE_PIO0_16, PIN_MODE_PIO0_17), GF(PIN_MODE_PIO0_18, PIN_MODE_PIO0_19),
-                                        GF(PIN_MODE_PIO0_20, PIN_MODE_PIO0_21), GF(PIN_MODE_PIO0_22, PIN_MODE_PIO0_23),
-                                        GF(0,                0),                GF(0,                0),
-                                        GF(0,                0),                GF(0,                0),
-                                        GF(PIN_MODE_PIO1_0,  PIN_MODE_PIO1_1),  GF(PIN_MODE_PIO1_2,  PIN_MODE_PIO1_3),
-                                        GF(PIN_MODE_PIO1_4,  PIN_MODE_PIO1_5),  GF(PIN_MODE_PIO1_6,  PIN_MODE_PIO1_7),
-                                        GF(PIN_MODE_PIO1_8,  PIN_MODE_PIO1_9),  GF(PIN_MODE_PIO1_10, PIN_MODE_PIO1_11),
-                                        GF(PIN_MODE_PIO1_12, PIN_MODE_PIO1_13), GF(PIN_MODE_PIO1_14, PIN_MODE_PIO1_15),
-                                        GF(PIN_MODE_PIO1_16, PIN_MODE_PIO1_17), GF(PIN_MODE_PIO1_18, PIN_MODE_PIO1_19),
-                                        GF(PIN_MODE_PIO1_20, PIN_MODE_PIO1_21), GF(PIN_MODE_PIO1_22, PIN_MODE_PIO1_23),
-                                        GF(PIN_MODE_PIO1_24, PIN_MODE_PIO1_25), GF(PIN_MODE_PIO1_26, PIN_MODE_PIO1_27),
-                                        GF(PIN_MODE_PIO1_28, PIN_MODE_PIO1_29), GF(0,                PIN_MODE_PIO1_31),
+                                        //PIO0
+                                        P0_0,    P0_1,    P1_15,   P1_16,   P1_0,    P6_6,    P3_6,    P2_7,
+                                        P1_1,    P1_2,    P1_3,    P1_4,    P1_17,   P1_18,   P2_10,   P1_20,
+                                        PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        //PIO1
+                                        P1_7,    P1_8,    P1_9,    P1_10,   P1_11,   P1_12,   P1_13,   P1_14,
+                                        P1_5,    P1_6,    P1_3,    P1_4,    P2_12,   P2_13,   P3_4,    P3_5,
+                                        PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        //PIO2
+                                        P4_0,    P4_1,    P4_2,    P4_3,    P4_4,    P4_5,    P4_6,    P5_7,
+                                        P6_12,   P5_0,    P5_1,    P5_2,    P5_3,    P5_4,    P5_5,    P5_6,
+                                        PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        //PIO3
+                                        P6_1,    P6_2,    P6_3,    P6_4,    P6_5,    P6_9,    P6_10,   P6_11,
+                                        P7_0,    P7_1,    P7_2,    P7_3,    P7_4,    P7_5,    P7_6,    P7_7,
+                                        PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        //PIO4
+                                        P8_0,    P8_1,    P8_2,    P8_3,    P8_4,    P8_5,    P8_6,    P8_7,
+                                        PA_1,    PA_2,    PA_3,    P9_6,    P9_0,    P9_1,    P9_2,    P9_3,
+                                        PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        //PIO5
+                                        P2_0,    P2_1,    P2_2,    P2_3,    P2_4,    P2_5,    P2_6,    P2_8,
+                                        P3_1,    P3_2,    P3_7,    P3_8,    P4_8,    P4_9,    P4_10,   P6_7,
+                                        P6_8,    P9_4,    P9_5,    PA_4,    PB_0,    PB_1,    PB_2,    PB_3,
+                                        PB_4,    PB_5,    PB_6,    PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX,
+                                        //PIO6
+                                        PC_1,    PC_2,    PC_3,    PC_4,    PC_5,    PC_6,    PC_7,    PC_8,
+                                        PC_9,    PC_10,   PC_11,   PC_12,   PC_13,   PC_14,   PD_0,    PD_1,
+                                        PD_2,    PD_3,    PD_4,    PD_5,    PD_6,    PD_7,    PD_8,    PD_9,
+                                        PD_10,   PD_11,   PD_12,   PD_13,   PD_14,   PD_15,   PD_16,   PIO_MAX,
+                                        //PIO7
+                                        PE_0,    PE_1,    PE_2,    PE_3,    PE_4,    PE_5,    PE_6,    PE_7,
+                                        PE_8,    PE_9,    PE_10,   PE_11,   PE_12,   PE_13,   PE_14,   PE_15,
+                                        PF_1,    PF_2,    PF_3,    PF_5,    PF_6,    PF_7,    PF_8,    PF_9,
+                                        PF_10,   PF_11,   PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX, PIO_MAX
                                        };
 
+#define PIN_RAW(gpio)                   (__GPIO_PIN[(gpio)])
+#endif
 
 void lpc_lib_gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
 {
-    unsigned int func;
+    unsigned int param = 0;
+#ifdef LPC11Uxx
+    if (GPIO_PORT(pin) == 0)
+    {
+        if ((1 << pin) & GPIO_I2C_MASK)
+            param = IOCON_PIO_I2CMODE_GPIO;
+        else if ((1 << pin) & GPIO_AD_MASK)
+            param = IOCON_PIO_ADMODE;
+        if ((1 << pin) & GPIO_MODE1_MASK)
+            param |= (1 << 0);
+    }
 #if (GPIO_HYSTERESIS)
-    func = GPIO_FUNC(__GPIO_DEFAULT, pin) | GPIO_HYS;
-#else
-    func = GPIO_FUNC(__GPIO_DEFAULT, pin);
+    param |= IOCON_PIO_HYS;
 #endif
     switch (mode)
     {
-    case GPIO_MODE_OUT:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), pin, LPC_GPIO_MODE_OUT | func, 0);
-        break;
-    case GPIO_MODE_IN_FLOAT:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), pin, GPIO_MODE_NOPULL | func, 0);
-        break;
     case GPIO_MODE_IN_PULLUP:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), pin, GPIO_MODE_PULLUP | func, 0);
+        param |= IOCON_PIO_MODE_PULL_UP;
         break;
     case GPIO_MODE_IN_PULLDOWN:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), pin, GPIO_MODE_PULLDOWN | func, 0);
+        param |= IOCON_PIO_MODE_PULL_DOWN;
+        break;
+    default:
         break;
     }
+#else //LPC18xx
+    if (GPIO_PORT(pin) >= 5)
+        param = (4 << 0);
+    if (mode != GPIO_MODE_IN_PULLUP)
+        param |= SCU_SFS_EPUN;
+    if (mode == GPIO_MODE_IN_PULLDOWN)
+        param |= SCU_SFS_EPD;
+#if (GPIO_HYSTERESIS)
+    param |= SCU_SFS_ZIF;
+#endif
+#endif //LPC11Uxx
+
+    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, LPC_PIN_ENABLE), PIN_RAW(pin), param, 0);
+    if (mode == GPIO_MODE_OUT)
+        LPC_GPIO->DIR[GPIO_PORT(pin)] |= 1 << GPIO_PIN(pin);
+    else
+        LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
 }
 
 void lpc_lib_gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int mask)
@@ -71,7 +125,8 @@ void lpc_lib_gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int ma
 
 void lpc_lib_gpio_disable_pin(unsigned int pin)
 {
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, LPC_GPIO_DISABLE_PIN), pin, 0, 0);
+    LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
+    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, LPC_PIN_DISABLE), PIN_RAW(pin), 0, 0);
 }
 
 void lpc_lib_gpio_disable_mask(unsigned int port, unsigned int mask)
