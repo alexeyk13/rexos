@@ -9,7 +9,7 @@
 
 #include "lpc.h"
 #include "lpc_config.h"
-#include "process.h"
+#include "../process.h"
 
 extern const REX __LPC_CORE;
 
@@ -63,7 +63,6 @@ typedef enum {
 } GPIO;
 
 #if defined(LPC11Uxx)
-#define PIN                                     GPIO
 #define PIN_MAX                                 PIO2_0
 
 #else

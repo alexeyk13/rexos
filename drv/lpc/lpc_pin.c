@@ -15,7 +15,7 @@
 #define SCU                             ((uint32_t*)(LPC_SCU_BASE))
 #endif //LPC11Uxx
 
-void lpc_pin_enable(PIN pin, unsigned int mode)
+void lpc_pin_enable(unsigned int pin, unsigned int mode)
 {
     if (pin >= PIN_MAX)
     {
@@ -29,7 +29,7 @@ void lpc_pin_enable(PIN pin, unsigned int mode)
 #endif //LPC11Uxx
 }
 
-__STATIC_INLINE void lpc_pin_disable(PIN pin)
+static inline void lpc_pin_disable(unsigned int pin)
 {
     if (pin >= PIN_MAX)
     {
@@ -58,11 +58,11 @@ bool lpc_pin_request(IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case LPC_PIN_ENABLE:
-        lpc_pin_enable((PIN)ipc->param1, ipc->param2);
+        lpc_pin_enable(ipc->param1, ipc->param2);
         need_post = true;
         break;
     case LPC_PIN_DISABLE:
-        lpc_pin_disable((PIN)ipc->param1);
+        lpc_pin_disable(ipc->param1);
         need_post = true;
         break;
     default:
