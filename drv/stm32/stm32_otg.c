@@ -32,13 +32,13 @@ typedef enum {
 #if (MONOLITH_USB)
 
 #define get_clock               stm32_power_get_clock_inside
-#define ack_gpio                stm32_gpio_request_inside
+#define ack_pin                 stm32_pin_request_inside
 #define ack_power               stm32_power_request_inside
 
 #else
 
 #define get_clock               stm32_power_get_clock_outside
-#define ack_gpio                stm32_core_request_outside
+#define ack_pin                 stm32_core_request_outside
 #define ack_power               stm32_core_request_outside
 
 void stm32_otg();
@@ -272,8 +272,8 @@ void stm32_otg_open_device(SHARED_USB_DRV* drv, HANDLE device)
     drv->usb.device = device;
 
     //enable GPIO
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), A9, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), A10, STM32_GPIO_MODE_INPUT_PULL, true);
+    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), A9, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), A10, STM32_GPIO_MODE_INPUT_PULL, true);
 
     //enable clock, setup prescaller
     switch (get_clock(drv, STM32_CLOCK_CORE))
@@ -463,8 +463,8 @@ static inline void stm32_otg_close_device(SHARED_USB_DRV* drv)
 #endif
 
     //disable pins
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), A9, 0, 0);
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), A10, 0, 0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), A9, 0, 0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), A10, 0, 0);
 }
 
 static inline void stm32_otg_set_address(int addr)

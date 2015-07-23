@@ -19,12 +19,12 @@
 #include "stm32_core_private.h"
 
 #define get_clock               stm32_power_get_clock_inside
-#define ack_gpio                stm32_gpio_request_inside
+#define ack_pin                 stm32_pin_request_inside
 
 #else
 
 #define get_clock               stm32_power_get_clock_outside
-#define ack_gpio                stm32_core_request_outside
+#define ack_pin                 stm32_core_request_outside
 
 void stm32_uart();
 

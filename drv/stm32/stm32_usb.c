@@ -33,13 +33,13 @@ typedef enum {
 #if (MONOLITH_USB)
 
 #define get_clock               stm32_power_get_clock_inside
-#define ack_gpio                stm32_gpio_request_inside
+#define ack_pin                 stm32_pin_request_inside
 #define ack_power               stm32_power_request_inside
 
 #else
 
 #define get_clock               stm32_power_get_clock_outside
-#define ack_gpio                stm32_core_request_outside
+#define ack_pin                 stm32_core_request_outside
 #define ack_power               stm32_core_request_outside
 
 void stm32_usb();
@@ -325,8 +325,8 @@ void stm32_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     drv->usb.device = device;
 
     //enable DM/DP
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), USB_DM, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), USB_DP, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), USB_DM, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), USB_DP, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
 
     //enable clock
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;
@@ -478,8 +478,8 @@ static inline void stm32_usb_close_device(SHARED_USB_DRV* drv)
     RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
 
     //disable pins
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), USB_DM, 0, 0);
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), USB_DP, 0, 0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), USB_DM, 0, 0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), USB_DP, 0, 0);
 }
 
 static inline void stm32_usb_set_address(SHARED_USB_DRV* drv, int addr)

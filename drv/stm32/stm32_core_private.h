@@ -9,7 +9,7 @@
 
 #include "stm32_config.h"
 #include "stm32_core.h"
-#include "stm32_gpio.h"
+#include "stm32_pin.h"
 #include "stm32_timer.h"
 #include "stm32_power.h"
 #include "stm32_uart.h"

@@ -13,32 +13,32 @@ void stm32_lib_gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
     switch (mode)
     {
     case GPIO_MODE_OUT:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_OUTPUT_PUSH_PULL_50MHZ, false);
+        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_OUTPUT_PUSH_PULL_50MHZ, false);
         break;
     case GPIO_MODE_IN_FLOAT:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT_FLOAT, false);
+        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT_FLOAT, false);
         break;
     case GPIO_MODE_IN_PULLUP:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT_PULL, true);
+        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT_PULL, true);
         break;
     case GPIO_MODE_IN_PULLDOWN:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT_PULL, false);
+        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT_PULL, false);
         break;
     }
 #elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
     switch (mode)
     {
     case GPIO_MODE_OUT:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_OUTPUT | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH | GPIO_PUPD_NO_PULLUP, AF0);
+        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_OUTPUT | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH | GPIO_PUPD_NO_PULLUP, AF0);
         break;
     case GPIO_MODE_IN_FLOAT:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_NO_PULLUP, AF0);
+        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_NO_PULLUP, AF0);
         break;
     case GPIO_MODE_IN_PULLUP:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_PULLUP, AF0);
+        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_PULLUP, AF0);
         break;
     case GPIO_MODE_IN_PULLDOWN:
-        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_PULLDOWN, AF0);
+        ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_PULLDOWN, AF0);
         break;
     }
 #endif
@@ -58,7 +58,7 @@ void stm32_lib_gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int 
 
 void stm32_lib_gpio_disable_pin(unsigned int pin)
 {
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_DISABLE_PIN), pin, 0, 0);
+    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), pin, 0, 0);
 }
 
 void stm32_lib_gpio_disable_mask(unsigned int port, unsigned int mask)

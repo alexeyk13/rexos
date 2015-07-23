@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "stm32_gpio.h"
+#include "stm32_pin.h"
 #include "../../userspace/stm32_driver.h"
 #include "stm32_core_private.h"
 #include "sys_config.h"
@@ -128,12 +128,12 @@ void stm32_gpio_disable_exti(GPIO_DRV* gpio, PIN pin)
     EXTI->FTSR &= ~(1ul << GPIO_PIN(pin));
 }
 
-void stm32_gpio_init(CORE* core)
+void stm32_pin_init(CORE* core)
 {
     memset(&core->gpio, 0, sizeof (GPIO_DRV));
 }
 
-bool stm32_gpio_request(CORE* core, IPC* ipc)
+bool stm32_pin_request(CORE* core, IPC* ipc)
 {
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))

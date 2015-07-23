@@ -7,7 +7,7 @@
 #include "stm32_core.h"
 #include "stm32_core_private.h"
 #include "stm32_timer.h"
-#include "stm32_gpio.h"
+#include "stm32_pin.h"
 #include "stm32_power.h"
 #include "../../userspace/object.h"
 #include "stm32_rtc.h"
@@ -54,8 +54,8 @@ void stm32_core_loop(CORE* core)
         case HAL_POWER:
             need_post = stm32_power_request(core, &ipc);
             break;
-        case HAL_GPIO:
-            need_post = stm32_gpio_request(core, &ipc);
+        case HAL_PIN:
+            need_post = stm32_pin_request(core, &ipc);
             break;
         case HAL_TIMER:
             need_post = stm32_timer_request(core, &ipc);
@@ -115,7 +115,7 @@ void stm32_core()
 #endif //STM32_WDT_DRIVER
     stm32_power_init(&core);
     stm32_timer_init(&core);
-    stm32_gpio_init(&core);
+    stm32_pin_init(&core);
 #if (STM32_RTC_DRIVER)
     stm32_rtc_init();
 #endif //STM32_RTC_DRIVER
