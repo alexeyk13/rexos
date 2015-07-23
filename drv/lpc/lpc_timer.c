@@ -8,7 +8,6 @@
 #include "lpc_core_private.h"
 #include "lpc_power.h"
 #include "lpc_config.h"
-#include "lpc_gpio.h"
 #include "../../userspace/systime.h"
 #include "../../userspace/irq.h"
 

@@ -9,6 +9,7 @@
 
 #include "lpc.h"
 #include "lpc_config.h"
+#include "process.h"
 
 extern const REX __LPC_CORE;
 

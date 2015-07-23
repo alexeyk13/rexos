@@ -5,7 +5,7 @@
 */
 
 #include "lpc_i2c.h"
-#include "lpc_gpio.h"
+#include "lpc_pin.h"
 #include "lpc_core_private.h"
 #include "lpc_power.h"
 #include "../../userspace/stdlib.h"
@@ -13,7 +13,7 @@
 #include "../../userspace/systime.h"
 
 #define get_system_clock                            lpc_power_get_system_clock_inside
-#define ack_gpio                                    lpc_gpio_request_inside
+#define ack_pin                                     lpc_pin_request_inside
 
 #define I2C_NORMAL_CLOCK                            100000
 #define I2C_FAST_CLOCK                              400000
@@ -209,8 +209,8 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int sla
     i2c->addr = 0;
     core->i2c.i2cs[port] = i2c;
     //setup pins
-    ack_gpio(core, HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), I2C_SCL_PIN, PIN_MODE_I2C_SCL | (mode & I2C_FAST_SPEED ? GPIO_I2C_MODE_FAST : GPIO_I2C_MODE_STANDART), 0);
-    ack_gpio(core, HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), I2C_SDA_PIN, PIN_MODE_I2C_SDA | (mode & I2C_FAST_SPEED ? GPIO_I2C_MODE_FAST : GPIO_I2C_MODE_STANDART), 0);
+    ack_pin(core, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), I2C_SCL_PIN, PIN_MODE_I2C_SCL | (mode & I2C_FAST_SPEED ? IOCON_PIO_I2CMODE_FAST : IOCON_PIO_I2CMODE_STANDART), 0);
+    ack_pin(core, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), I2C_SDA_PIN, PIN_MODE_I2C_SDA | (mode & I2C_FAST_SPEED ? IOCON_PIO_I2CMODE_FAST : IOCON_PIO_I2CMODE_STANDART), 0);
     //power up
     LPC_SYSCON->SYSAHBCLKCTRL |= 1 << SYSCON_SYSAHBCLKCTRL_I2C0_POS;
     //remove reset state
@@ -242,8 +242,8 @@ void lpc_i2c_close(CORE* core, I2C_PORT port)
     //power down
     LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << SYSCON_SYSAHBCLKCTRL_I2C0_POS);
     //disable pins
-    ack_gpio(core, HAL_CMD(HAL_GPIO, LPC_GPIO_DISABLE_PIN), I2C_SCL_PIN, 0, 0);
-    ack_gpio(core, HAL_CMD(HAL_GPIO, LPC_GPIO_DISABLE_PIN), I2C_SDA_PIN, 0, 0);
+    ack_pin(core, HAL_CMD(HAL_PIN, LPC_PIN_DISABLE), I2C_SCL_PIN, 0, 0);
+    ack_pin(core, HAL_CMD(HAL_PIN, LPC_PIN_DISABLE), I2C_SDA_PIN, 0, 0);
 }
 
 static inline void lpc_i2c_read(CORE* core, IPC* ipc)

@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "lpc_gpio.h"
+#include "lpc_pin.h"
 #include "../../userspace/lpc/lpc_driver.h"
 #include "lpc_config.h"
 #include <stdint.h>
@@ -44,7 +44,7 @@ __STATIC_INLINE void lpc_pin_disable(PIN pin)
 #endif //LPC11Uxx
 }
 
-void lpc_gpio_init()
+void lpc_pin_init()
 {
 #ifdef LPC11Uxx
     LPC_SYSCON->SYSAHBCLKCTRL |= (1 << SYSCON_SYSAHBCLKCTRL_GPIO_POS) | (1 << SYSCON_SYSAHBCLKCTRL_IOCON_POS);
@@ -52,7 +52,7 @@ void lpc_gpio_init()
     //all clocks on 18xx are enabled by default
 }
 
-bool lpc_gpio_request(IPC* ipc)
+bool lpc_pin_request(IPC* ipc)
 {
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))

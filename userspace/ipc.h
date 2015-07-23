@@ -31,7 +31,7 @@ typedef enum {
     //reserved for kernel/system
     HAL_SYSTEM = 0,
     //real hardware
-    HAL_GPIO,
+    HAL_PIN,
     HAL_POWER,
     HAL_TIMER,
     HAL_RTC,

@@ -8,8 +8,8 @@
 #include "../../userspace/sys.h"
 #include "../../userspace/usb.h"
 #include "../../userspace/irq.h"
-#include "../../userspace/lpc_driver.h"
-#include "lpc_gpio.h"
+#include "../../userspace/lpc/lpc_driver.h"
+#include "lpc_pin.h"
 #include "lpc_power.h"
 #include <string.h>
 #include "../../userspace/stdlib.h"
@@ -40,12 +40,12 @@ typedef enum {
 
 #if (MONOLITH_USB)
 
-#define ack_gpio                lpc_gpio_request_inside
+#define ack_pin                 lpc_pin_request_inside
 #define ack_power               lpc_power_request_inside
 
 #else
 
-#define ack_gpio                lpc_core_request_outside
+#define ack_pin                 lpc_core_request_outside
 #define ack_power               lpc_core_request_outside
 
 void lpc_usb();
@@ -329,9 +329,9 @@ void lpc_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     int i;
     drv->usb.device = device;
 
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), VBUS, PIN_MODE_VBUS, 0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), VBUS, PIN_MODE_VBUS, 0);
 #if (USB_SOFT_CONNECT)
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, LPC_GPIO_ENABLE_PIN), SCONNECT, PIN_MODE_USB_CONNECT, 0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), SCONNECT, PIN_MODE_USB_CONNECT, 0);
 #endif
 
     //enable clock, power up
@@ -478,9 +478,9 @@ static inline void lpc_usb_close_device(SHARED_USB_DRV* drv)
 #endif
 
     //disable pins
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, LPC_GPIO_DISABLE_PIN), VBUS, 0, 0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, LPC_PIN_DISABLE), VBUS, 0, 0);
 #if (USB_SOFT_CONNECT)
-    ack_gpio(drv, HAL_CMD(HAL_GPIO, LPC_GPIO_DISABLE_PIN), SCONNECT, 0, 0);
+    ack_pin(drv, HAL_CMD(HAL_PIN, LPC_PIN_DISABLE), SCONNECT, 0, 0);
 #endif
 }
 

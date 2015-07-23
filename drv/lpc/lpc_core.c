@@ -7,7 +7,7 @@
 #include "lpc_core.h"
 #include "lpc_core_private.h"
 //#include "lpc_timer.h"
-#include "lpc_gpio.h"
+#include "lpc_pin.h"
 //#include "lpc_power.h"
 #include "../../userspace/object.h"
 
@@ -46,8 +46,8 @@ void lpc_core_loop(CORE* core)
         case HAL_POWER:
             need_post = lpc_power_request(core, &ipc);
             break;
-        case HAL_GPIO:
-            need_post = lpc_gpio_request(&ipc);
+        case HAL_PIN:
+            need_post = lpc_pin_request(&ipc);
             break;
         case HAL_TIMER:
             need_post = lpc_timer_request(core, &ipc);
@@ -88,7 +88,7 @@ void lpc_core()
     object_set_self(SYS_OBJ_CORE);
 
     lpc_power_init(&core);
-    lpc_gpio_init(&core);
+    lpc_pin_init(&core);
     lpc_timer_init(&core);
 #if (MONOLITH_UART)
     lpc_uart_init(&core);

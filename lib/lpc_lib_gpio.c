@@ -6,6 +6,8 @@
 
 #include "lib_gpio.h"
 #include "../userspace/lpc/lpc_driver.h"
+#include "../userspace/object.h"
+#include "sys_config.h"
 
 #if defined(LPC11Uxx)
 #define PIN_RAW(gpio)                   (gpio)
@@ -104,7 +106,7 @@ void lpc_lib_gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
 #endif
 #endif //LPC11Uxx
 
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, LPC_PIN_ENABLE), PIN_RAW(pin), param, 0);
+    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), PIN_RAW(pin), param, 0);
     if (mode == GPIO_MODE_OUT)
         LPC_GPIO->DIR[GPIO_PORT(pin)] |= 1 << GPIO_PIN(pin);
     else
@@ -126,7 +128,7 @@ void lpc_lib_gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int ma
 void lpc_lib_gpio_disable_pin(unsigned int pin)
 {
     LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, LPC_PIN_DISABLE), PIN_RAW(pin), 0, 0);
+    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, LPC_PIN_DISABLE), PIN_RAW(pin), 0, 0);
 }
 
 void lpc_lib_gpio_disable_mask(unsigned int port, unsigned int mask)
