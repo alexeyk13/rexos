@@ -63,7 +63,7 @@ static inline void stat()
 static inline void app_setup_dbg()
 {
     BAUD baudrate;
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_GPIO, STM32_GPIO_ENABLE_PIN), DBG_CONSOLE_TX_PIN, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, DBG_CONSOLE_TX_PIN_AF);
+    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), DBG_CONSOLE_TX_PIN, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, DBG_CONSOLE_TX_PIN_AF);
     ack(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_OPEN), DBG_CONSOLE, FILE_MODE_WRITE, 0);
     baudrate.baud = DBG_CONSOLE_BAUD;
     baudrate.data_bits = 8;
