@@ -166,11 +166,8 @@ typedef enum {
 
 //------------------------------------------------ Power ---------------------------------------------------------------------
 typedef enum {
-    LPC_POWER_GET_SYSTEM_CLOCK = IPC_USER,
-    LPC_POWER_UPDATE_CLOCK,
-    LPC_POWER_GET_RESET_REASON,
-    LPC_POWER_USB_ON,
-    LPC_POWER_USB_OFF
+    LPC_POWER_GET_CORE_CLOCK = IPC_USER,
+    LPC_POWER_GET_RESET_REASON
 } LPC_POWER_IPCS;
 
 typedef enum {

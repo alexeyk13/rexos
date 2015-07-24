@@ -28,7 +28,7 @@ static inline void lpc_eep_read(CORE* core, IPC* ipc)
     req[1] = core->eep.addr;
     req[2] = (unsigned int)io_data(io);
     req[3] = ipc->param3;
-    req[4] = lpc_power_get_system_clock_inside(core) / 1000;
+    req[4] = lpc_power_get_core_clock_inside(core) / 1000;
     iap(req, resp);
     if (resp[0] != 0)
     {
@@ -48,7 +48,7 @@ static inline void lpc_eep_write(CORE* core, IPC* ipc)
     req[1] = core->eep.addr;
     req[2] = (unsigned int)io_data(io);
     req[3] = io->data_size;
-    req[4] = lpc_power_get_system_clock_inside(core) / 1000;
+    req[4] = lpc_power_get_core_clock_inside(core) / 1000;
     iap(req, resp);
     if (resp[0] != 0)
     {

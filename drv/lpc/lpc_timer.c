@@ -85,7 +85,7 @@ static void lpc_timer_start_master_clk(CORE* core, TIMER timer, unsigned int psc
 static void lpc_timer_start_master_us(CORE* core, TIMER timer, unsigned int us)
 {
     unsigned int psc, cnt, clk;
-    unsigned int clock = lpc_power_get_system_clock_inside(core);
+    unsigned int clock = lpc_power_get_core_clock_inside(core);
     //for 32 bit timers routine is different and much more easy
     if (timer >= TC32B0)
         //psc is always 1us

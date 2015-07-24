@@ -347,6 +347,7 @@
 #include "LPC11Uxx.h"
 #endif //defined(LPC11U6x)
 #elif defined(LPC18xx)
+#define CMSIS_BITPOSITIONS
 #include "LPC18xx.h"
 #include "lpc18xx_bits.h"
 #endif //defined(LPC11Uxx)

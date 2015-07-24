@@ -13,7 +13,7 @@ static unsigned int const __FCLKANA[] =         {0000000, 0600000, 1050000, 1400
                                                  3000000, 3250000, 3500000, 3750000, 4000000, 4200000, 4400000, 4600000};
 
 #ifdef LPC11Uxx
-void lpc_update_clock(int m, int p)
+static inline void lpc_setup_clock()
 {
     int i;
     //power up IRC, HSE, SYS PLL
@@ -35,7 +35,7 @@ void lpc_update_clock(int m, int p)
     LPC_SYSCON->SYSOSCCTRL |= SYSCON_SYSOSCCTRL_FREQRANGE;
 #endif
     //enable and lock PLL
-    LPC_SYSCON->SYSPLLCTRL = ((m - 1) << SYSCON_SYSPLLCTRL_MSEL_POS) | ((32 - __builtin_clz(p)) << SYSCON_SYSPLLCTRL_PSEL_POS);
+    LPC_SYSCON->SYSPLLCTRL = ((PPL_M - 1) << SYSCON_SYSPLLCTRL_MSEL_POS) | ((32 - __builtin_clz(PLL_P)) << SYSCON_SYSPLLCTRL_PSEL_POS);
 #if (HSE_VALUE)
     LPC_SYSCON->SYSPLLCLKSEL = SYSCON_SYSPLLCLKSEL_SYSOSC;
 #else
@@ -73,7 +73,7 @@ void lpc_update_clock(int m, int p)
     }
 }
 
-unsigned int lpc_get_system_clock()
+unsigned int lpc_get_core_clock()
 {
     unsigned int pllsrc = 0;
     switch (LPC_SYSCON->MAINCLKSEL & 3)
@@ -109,11 +109,7 @@ unsigned int lpc_get_system_clock()
     return 0;
 }
 
-RESET_REASON lpc_get_reset_reason(CORE* core)
-{
-    return core->power.reset_reason;
-}
-
+#if (LPC_DECODE_RESET)
 static inline void lpc_decode_reset_reason(CORE* core)
 {
     core->power.reset_reason = RESET_REASON_UNKNOWN;
@@ -129,14 +125,117 @@ static inline void lpc_decode_reset_reason(CORE* core)
         core->power.reset_reason = RESET_REASON_POWERON;
     LPC_SYSCON->SYSRSTSTAT = SYSCON_SYSRSTSTAT_WDT | SYSCON_SYSRSTSTAT_BOD | SYSCON_SYSRSTSTAT_SYSRST | SYSCON_SYSRSTSTAT_EXTRST | SYSCON_SYSRSTSTAT_POR;
 }
+#endif //LPC_DECODE_RESET
+#else //LPC18xx
+
+//timer is not yet active on power on
+static void delay_clks(unsigned int clks)
+{
+    int i;
+    for (i = 0; i < clks; ++i)
+        __NOP();
+}
+
+static inline void lpc_setup_clock()
+{
+    int i;
+    //1. Switch to internal source
+    LPC_CGU->BASE_M3_CLK = CGU_CLK_IRC;
+    __NOP();
+    __NOP();
+    __NOP();
+
+    //2. Turn HSE on if enabled
+    LPC_CGU->XTAL_OSC_CTRL = CGU_XTAL_OSC_CTRL_ENABLE_Msk;
+#if (HSE_VALUE)
+#if (HSE_VALUE) > 15000000
+    LPC_CGU->XTAL_OSC_CTRL = CGU_XTAL_OSC_CTRL_HF_Msk;
+#endif
+    LPC_CGU->XTAL_OSC_CTRL &= ~CGU_XTAL_OSC_CTRL_ENABLE_Msk;
+    delay_clks(500);
+#endif //HSE_VALUE
+
+    //3. Turn PLL1 on
+    LPC_CGU->PLL1_CTRL = CGU_PLL1_CTRL_PD_Msk;
+    __NOP();
+    __NOP();
+    __NOP();
+
+    LPC_CGU->PLL1_CTRL |= (0 << CGU_PLL1_CTRL_PSEL_Pos) | ((PLL_N - 1) << CGU_PLL1_CTRL_NSEL_Pos) | ((PLL_M - 1) << CGU_PLL1_CTRL_MSEL_Pos);
+#if (HSE_VALUE)
+    LPC_CGU->PLL1_CTRL |= CGU_CLK_HSE;
+#else
+    LPC_CGU->PLL1_CTRL |= CGU_CLK_IRC;
+#endif
+    LPC_CGU->PLL1_CTRL &= ~CGU_PLL1_CTRL_PD_Msk;
+
+    //wait for PLL lock
+    for (i = 0; i < PLL_LOCK_TIMEOUT; ++i)
+        if (LPC_CGU->PLL1_STAT & CGU_PLL1_STAT_LOCK_Msk)
+            break;
+    //HSE failure? switch to IRC
+    if ((LPC_CGU->PLL1_STAT & CGU_PLL1_STAT_LOCK_Msk) == 0)
+    {
+        LPC_CGU->PLL1_CTRL |= CGU_PLL1_CTRL_PD_Msk;
+        __NOP();
+        __NOP();
+        __NOP();
+        LPC_CGU->PLL1_CTRL &= ~CGU_PLL1_CTRL_CLK_SEL_Msk;
+        LPC_CGU->PLL1_CTRL |= CGU_CLK_IRC;
+        LPC_CGU->PLL1_CTRL &= ~CGU_PLL1_CTRL_PD_Msk;
+        while ((LPC_CGU->PLL1_STAT & CGU_PLL1_STAT_LOCK_Msk) == 0) {}
+    }
+    //4. Switch to PLL
+    LPC_CGU->BASE_M3_CLK = CGU_CLK_PLL1;
+    delay_clks(100);
+    delay_clks(1000000);
+    //5. PLL direct mode
+    LPC_CGU->PLL1_CTRL |= CGU_PLL1_CTRL_DIRECT_Msk;
+    __NOP();
+    __NOP();
+    __NOP();
+}
+
+unsigned int lpc_get_core_clock()
+{
+    //TODO:
+    return 180000000;
+}
+
+#if (LPC_DECODE_RESET)
+static inline void lpc_decode_reset_reason(CORE* core)
+{
+    /* According to errata:
+     * The CORE_RST bits in the RGU's status register do not properly indicate the cause of the core reset. When the core is reset the RGU
+     * is also reset and as a result the state of these bits will always read with their default values. As a result, these status bits cannot
+     * be used to determine the cause of the core reset */
+
+    core->power.reset_reason = RESET_REASON_UNKNOWN;
+    if (LPC_EVENTROUTER->HILO == 0 && LPC_EVENTROUTER->EDGE == 0)
+        core->power.reset_reason = RESET_REASON_POWERON;
+    else if ((LPC_EVENTROUTER->EDGE & EVENTROUTER_EDGE_RESET_E_Msk) && (LPC_EVENTROUTER->STATUS & EVENTROUTER_STATUS_RESET_ST_Msk))
+        core->power.reset_reason = RESET_REASON_EXTERNAL;
+
+    LPC_EVENTROUTER->HILO &= ~EVENTROUTER_HILO_RESET_L_Msk;
+    LPC_EVENTROUTER->EDGE |= EVENTROUTER_EDGE_RESET_E_Msk;
+    LPC_EVENTROUTER->CLR_STAT = EVENTROUTER_CLR_STAT_RESET_CLRST_Msk;
+}
+#endif //LPC_DECODE_RESET
 #endif //LPC11Uxx
+
+#if (LPC_DECODE_RESET)
+RESET_REASON lpc_get_reset_reason(CORE* core)
+{
+    return core->power.reset_reason;
+}
+#endif //LPC_DECODE_RESET
 
 void lpc_power_init(CORE *core)
 {
-#ifdef LPC11Uxx
+#if (LPC_DECODE_RESET)
     lpc_decode_reset_reason(core);
-    lpc_update_clock(PLL_M, PLL_P);
-#endif //LPC11Uxx
+#endif //LPC_DECODE_RESET
+    lpc_setup_clock();
 }
 
 bool lpc_power_request(CORE* core, IPC* ipc)
@@ -144,20 +243,16 @@ bool lpc_power_request(CORE* core, IPC* ipc)
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
-#ifdef LPC11Uxx
-    case LPC_POWER_GET_SYSTEM_CLOCK:
-        ipc->param2 = lpc_get_system_clock();
+    case LPC_POWER_GET_CORE_CLOCK:
+        ipc->param2 = lpc_get_core_clock();
         need_post = true;
         break;
-    case LPC_POWER_UPDATE_CLOCK:
-        lpc_update_clock(ipc->param1, ipc->param2);
-        need_post = true;
-        break;
+#if (LPC_DECODE_RESET)
     case LPC_POWER_GET_RESET_REASON:
         ipc->param2 = lpc_get_reset_reason(core);
         need_post = true;
         break;
-#endif //LPC11Uxx
+#endif //LPC_DECODE_RESET
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;

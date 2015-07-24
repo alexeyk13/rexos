@@ -14,11 +14,11 @@
 #if (MONOLITH_UART)
 #include "lpc_core_private.h"
 
-#define get_system_clock        lpc_power_get_system_clock_inside
+#define get_core_clock        lpc_power_get_core_clock_inside
 
 #else
 
-#define get_system_clock        lpc_power_get_system_clock_outside
+#define get_core_clock        lpc_power_get_core_clock_outside
 
 void lpc_uart();
 
@@ -185,7 +185,7 @@ static inline void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, I
         return;
     }
     uart_decode_baudrate(ipc, &baudrate);
-    unsigned int divider = get_system_clock(drv) / 16 / baudrate.baud;
+    unsigned int divider = get_core_clock(drv) / 16 / baudrate.baud;
 #ifdef LPC11U6x
     if (port > UART_0)
     {

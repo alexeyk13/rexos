@@ -12,7 +12,7 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/systime.h"
 
-#define get_system_clock                            lpc_power_get_system_clock_inside
+#define get_core_clock                            lpc_power_get_core_clock_inside
 #define ack_pin                                     lpc_pin_request_inside
 
 #define I2C_NORMAL_CLOCK                            100000
@@ -216,7 +216,7 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int sla
     //remove reset state
     LPC_SYSCON->PRESETCTRL |= 1 << SYSCON_PRESETCTRL_I2C0_RST_N_POS;
     //setup clock
-    LPC_I2C->SCLL = LPC_I2C->SCLH = get_system_clock(core) / (mode & I2C_FAST_SPEED ? I2C_FAST_CLOCK : I2C_NORMAL_CLOCK) / 2;
+    LPC_I2C->SCLL = LPC_I2C->SCLH = get_core_clock(core) / (mode & I2C_FAST_SPEED ? I2C_FAST_CLOCK : I2C_NORMAL_CLOCK) / 2;
     //reset state machine
     LPC_I2C->CONCLR = I2C_CLEAR;
     //enable interrupt

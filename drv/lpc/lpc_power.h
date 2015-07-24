@@ -29,15 +29,15 @@ __STATIC_INLINE unsigned int lpc_power_request_inside(CORE* core, unsigned int c
     return ipc.param2;
 }
 
-__STATIC_INLINE unsigned int lpc_power_get_system_clock_outside(void* unused)
+__STATIC_INLINE unsigned int lpc_power_get_core_clock_outside(void* unused)
 {
-    return lpc_core_request_outside(unused, HAL_CMD(HAL_POWER, LPC_POWER_GET_SYSTEM_CLOCK), 0, 0, 0);
+    return lpc_core_request_outside(unused, HAL_CMD(HAL_POWER, LPC_POWER_GET_CORE_CLOCK), 0, 0, 0);
 }
 
-__STATIC_INLINE unsigned int lpc_power_get_system_clock_inside(CORE* core)
+__STATIC_INLINE unsigned int lpc_power_get_core_clock_inside(CORE* core)
 {
     IPC ipc;
-    ipc.cmd = HAL_CMD(HAL_POWER, LPC_POWER_GET_SYSTEM_CLOCK);
+    ipc.cmd = HAL_CMD(HAL_POWER, LPC_POWER_GET_CORE_CLOCK);
     lpc_power_request(core, &ipc);
     return ipc.param2;
 }
