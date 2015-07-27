@@ -1247,4 +1247,25 @@
 #define CLK_3_CGU_OUT1                          (5 << 0)
 #define CLK_3_I2S1_RX_SCK                       (7 << 0)
 
+
+/******************************************************************************/
+/*                                                                            */
+/*                            USART                                           */
+/*                                                                            */
+/******************************************************************************/
+
+/**********  Bit definition for LCR register  *********************************/
+#define USART0_LCR_WLS_5                        (0 << 0)
+#define USART0_LCR_WLS_6                        (1 << 0)
+#define USART0_LCR_WLS_7                        (2 << 0)
+#define USART0_LCR_WLS_8                        (3 << 0)
+
+#define USART0_LCR_SBS_1                        (0 << 2)
+#define USART0_LCR_SBS_2                        (1 << 2)
+
+#define USART0_LCR_PS_ODD                       (0 << 4)
+#define USART0_LCR_PS_EVEN                      (1 << 4)
+#define USART0_LCR_PS_FORCE_1                   (2 << 4)
+#define USART0_LCR_PS_FORCE_0                   (3 << 4)
+
 #endif // LPC11UXX_BITS_H
