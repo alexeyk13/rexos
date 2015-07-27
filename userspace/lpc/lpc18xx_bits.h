@@ -1268,4 +1268,11 @@
 #define USART0_LCR_PS_FORCE_1                   (2 << 4)
 #define USART0_LCR_PS_FORCE_0                   (3 << 4)
 
+/**********  Bit definition for IIR register  *********************************/
+#define USART0_IIR_INTID_MODEM_STATUS              (0 << 1)
+#define USART0_IIR_INTID_THRE                      (1 << 1)
+#define USART0_IIR_INTID_RDA                       (2 << 1)
+#define USART0_IIR_INTID_RLS                       (3 << 1)
+#define USART0_IIR_INTID_CTI                       (6 << 1)
+
 #endif // LPC11UXX_BITS_H
