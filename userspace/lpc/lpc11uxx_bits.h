@@ -530,159 +530,159 @@
 /******************************************************************************/
 
 /**********  Bit definition for IER register  *********************************/
-#define USART_IER_RBRINTEN                      (1 << 0)
-#define USART_IER_THRINTEN                      (1 << 1)
-#define USART_IER_RLSINTEN                      (1 << 2)
-#define USART_IER_MSIINTEN                      (1 << 3)
-#define USART_IER_ABEOINTEN                     (1 << 8)
-#define USART_IER_ABTOINTEN                     (1 << 9)
+#define USART0_IER_RBRIE_Msk                        (1 << 0)
+#define USART0_IER_THREIE_Msk                       (1 << 1)
+#define USART0_IER_RLSINTEN_Msk                     (1 << 2)
+#define USART0_IER_MSIINTEN_Msk                     (1 << 3)
+#define USART0_IER_ABEOINTEN_Msk                    (1 << 8)
+#define USART0_IER_ABTOINTEN_Msk                    (1 << 9)
 
 /**********  Bit definition for IIR register  *********************************/
-#define USART_IIR_INTSTATUS                     (1 << 0)
+#define USART0_IIR_INTSTATUS_Msk                   (1 << 0)
 
-#define USART_IIR_INTID_MASK                    (7 << 1)
-#define USART_IIR_INTID_MODEM_STATUS            (0 << 1)
-#define USART_IIR_INTID_THRE                    (1 << 1)
-#define USART_IIR_INTID_RDA                     (2 << 1)
-#define USART_IIR_INTID_RLS                     (3 << 1)
-#define USART_IIR_INTID_CTI                     (6 << 1)
+#define USART0_IIR_INTID_Msk                       (7 << 1)
+#define USART0_IIR_INTID_MODEM_STATUS              (0 << 1)
+#define USART0_IIR_INTID_THRE                      (1 << 1)
+#define USART0_IIR_INTID_RDA                       (2 << 1)
+#define USART0_IIR_INTID_RLS                       (3 << 1)
+#define USART0_IIR_INTID_CTI                       (6 << 1)
 
-#define USART_IIR_FIFOEN_MASK                   (3 << 6)
+#define USART0_IIR_FIFOEN_Msk                      (3 << 6)
 
-#define USART_IIR_ABEOINT                       (1 << 8)
-#define USART_IIR_ABTOINT                       (1 << 9)
+#define USART0_IIR_ABEOINT_Msk                     (1 << 8)
+#define USART0_IIR_ABTOINT_Msk                     (1 << 9)
 
 /**********  Bit definition for FCR register  *********************************/
-#define USART_FCR_FIFOEN                        (1 << 0)
-#define USART_FCR_RXFIFORES                     (1 << 1)
-#define USART_FCR_TXFIFORES                     (1 << 2)
+#define USART0_FCR_FIFOEN_Msk                      (1 << 0)
+#define USART0_FCR_RXFIFORES_Msk                   (1 << 1)
+#define USART0_FCR_TXFIFORES_Msk                   (1 << 2)
 
-#define USART_FCR_RXTL_1                        (0 << 6)
-#define USART_FCR_RXTL_4                        (1 << 6)
-#define USART_FCR_RXTL_8                        (2 << 6)
-#define USART_FCR_RXTL_14                       (3 << 6)
+#define USART0_FCR_RXTL_1                          (0 << 6)
+#define USART0_FCR_RXTL_4                          (1 << 6)
+#define USART0_FCR_RXTL_8                          (2 << 6)
+#define USART0_FCR_RXTL_14                         (3 << 6)
 
 /**********  Bit definition for LCR register  *********************************/
-#define USART_LCR_WLS_POS                       0
-#define USART_LCR_WLS_MASK                      (3 << 0)
-#define USART_LCR_WLS_5                         (0 << 0)
-#define USART_LCR_WLS_6                         (1 << 0)
-#define USART_LCR_WLS_7                         (2 << 0)
-#define USART_LCR_WLS_8                         (3 << 0)
+#define USART0_LCR_WLS_Pos                         0
+#define USART0_LCR_WLS_Msk                         (3 << 0)
+#define USART0_LCR_WLS_5                           (0 << 0)
+#define USART0_LCR_WLS_6                           (1 << 0)
+#define USART0_LCR_WLS_7                           (2 << 0)
+#define USART0_LCR_WLS_8                           (3 << 0)
 
-#define USART_LCR_SBS_POS                       2
-#define USART_LCR_SBS_1                         (0 << 2)
-#define USART_LCR_SBS_2                         (1 << 2)
+#define USART0_LCR_SBS_Pos                         2
+#define USART0_LCR_SBS_1                           (0 << 2)
+#define USART0_LCR_SBS_2                           (1 << 2)
 
-#define USART_LCR_PE                            (1 << 3)
+#define USART0_LCR_PE_Msk                          (1 << 3)
 
-#define USART_LCR_PS_MASK                       (3 << 4)
-#define USART_LCR_PS_ODD                        (0 << 4)
-#define USART_LCR_PS_EVEN                       (1 << 4)
-#define USART_LCR_PS_FORCE_1                    (2 << 4)
-#define USART_LCR_PS_FORCE_0                    (3 << 4)
+#define USART0_LCR_PS_Msk                          (3 << 4)
+#define USART0_LCR_PS_ODD                          (0 << 4)
+#define USART0_LCR_PS_EVEN                         (1 << 4)
+#define USART0_LCR_PS_FORCE_1                      (2 << 4)
+#define USART0_LCR_PS_FORCE_0                      (3 << 4)
 
-#define USART_LCR_BC                            (1 << 6)
-#define USART_LCR_DLAB                          (1 << 7)
+#define USART0_LCR_BC_Msk                          (1 << 6)
+#define USART0_LCR_DLAB_Msk                        (1 << 7)
 
 /**********  Bit definition for MCR register  *********************************/
-#define USART_MCR_DTRCTRL                       (1 << 0)
-#define USART_MCR_RTSCTRL                       (1 << 1)
-#define USART_MCR_LMS                           (1 << 4)
-#define USART_MCR_RTSEN                         (1 << 6)
-#define USART_MCR_CTSEN                         (1 << 7)
+#define USART0_MCR_DTRCTRL_Msk                     (1 << 0)
+#define USART0_MCR_RTSCTRL_Msk                     (1 << 1)
+#define USART0_MCR_LMS_Msk                         (1 << 4)
+#define USART0_MCR_RTSEN_Msk                       (1 << 6)
+#define USART0_MCR_CTSEN_Msk                       (1 << 7)
 
 /**********  Bit definition for LSR register  *********************************/
-#define USART_LSR_RDR                           (1 << 0)
-#define USART_LSR_OE                            (1 << 1)
-#define USART_LSR_PE                            (1 << 2)
-#define USART_LSR_FE                            (1 << 3)
-#define USART_LSR_BI                            (1 << 4)
-#define USART_LSR_THRE                          (1 << 5)
-#define USART_LSR_TEMT                          (1 << 6)
-#define USART_LSR_RXFE                          (1 << 7)
-#define USART_LSR_TXERR                         (1 << 8)
+#define USART0_LSR_RDR_Msk                         (1 << 0)
+#define USART0_LSR_OE_Msk                          (1 << 1)
+#define USART0_LSR_PE_Msk                          (1 << 2)
+#define USART0_LSR_FE_Msk                          (1 << 3)
+#define USART0_LSR_BI_Msk                          (1 << 4)
+#define USART0_LSR_THRE_Msk                        (1 << 5)
+#define USART0_LSR_TEMT_Msk                        (1 << 6)
+#define USART0_LSR_RXFE_Msk                        (1 << 7)
+#define USART0_LSR_TXERR_Msk                       (1 << 8)
 
 /**********  Bit definition for MSR register  *********************************/
-#define USART_MSR_DCTS                          (1 << 0)
-#define USART_MSR_DDSR                          (1 << 1)
-#define USART_MSR_TERI                          (1 << 2)
-#define USART_MSR_DDCR                          (1 << 3)
-#define USART_MSR_CTS                           (1 << 4)
-#define USART_MSR_DSR                           (1 << 5)
-#define USART_MSR_RI                            (1 << 6)
-#define USART_MSR_DCD                           (1 << 7)
+#define USART0_MSR_DCTS_Msk                        (1 << 0)
+#define USART0_MSR_DDSR_Msk                        (1 << 1)
+#define USART0_MSR_TERI_Msk                        (1 << 2)
+#define USART0_MSR_DDCR_Msk                        (1 << 3)
+#define USART0_MSR_CTS_Msk                         (1 << 4)
+#define USART0_MSR_DSR_Msk                         (1 << 5)
+#define USART0_MSR_RI_Msk                          (1 << 6)
+#define USART0_MSR_DCD_Msk                         (1 << 7)
 
 /**********  Bit definition for ACR register  *********************************/
-#define USART_ACR_START                         (1 << 0)
-#define USART_ACR_MODE                          (1 << 1)
-#define USART_ACR_AUTORESTART                   (1 << 2)
-#define USART_ACR_ABEOINTCLR                    (1 << 8)
-#define USART_ACR_ABTOINTCLR                    (1 << 9)
+#define USART0_ACR_START_Msk                       (1 << 0)
+#define USART0_ACR_MODE_Msk                        (1 << 1)
+#define USART0_ACR_AUTORESTART_Msk                 (1 << 2)
+#define USART0_ACR_ABEOINTCLR_Msk                  (1 << 8)
+#define USART0_ACR_ABTOINTCLR_Msk                  (1 << 9)
 
 /**********  Bit definition for ICR register  *********************************/
-#define USART_ICR_IRDAEN                        (1 << 0)
-#define USART_ICR_IRDAINV                       (1 << 1)
-#define USART_ICR_FIXPULSEEN                    (1 << 2)
+#define USART0_ICR_IRDAEN_Msk                      (1 << 0)
+#define USART0_ICR_IRDAINV_Msk                     (1 << 1)
+#define USART0_ICR_FIXPULSEEN_Msk                  (1 << 2)
 
-#define USART_ICR_PULSEDIV_MASK                 (7 << 3)
-#define USART_ICR_PULSEDIV_3_16                 (0 << 3)
-#define USART_ICR_PULSEDIV_2TPCLK               (1 << 3)
-#define USART_ICR_PULSEDIV_4TPCLK               (2 << 3)
-#define USART_ICR_PULSEDIV_8TPCLK               (3 << 3)
-#define USART_ICR_PULSEDIV_16TPCL               (4 << 3)
-#define USART_ICR_PULSEDIV_32TPCL               (5 << 3)
-#define USART_ICR_PULSEDIV_64TPCL               (6 << 3)
-#define USART_ICR_PULSEDIV_128TPC               (7 << 3)
+#define USART0_ICR_PULSEDIV_Msk                    (7 << 3)
+#define USART0_ICR_PULSEDIV_3_16                   (0 << 3)
+#define USART0_ICR_PULSEDIV_2TPCLK                 (1 << 3)
+#define USART0_ICR_PULSEDIV_4TPCLK                 (2 << 3)
+#define USART0_ICR_PULSEDIV_8TPCLK                 (3 << 3)
+#define USART0_ICR_PULSEDIV_16TPCL                 (4 << 3)
+#define USART0_ICR_PULSEDIV_32TPCL                 (5 << 3)
+#define USART0_ICR_PULSEDIV_64TPCL                 (6 << 3)
+#define USART0_ICR_PULSEDIV_128TPC                 (7 << 3)
 
 /**********  Bit definition for FDR register  *********************************/
-#define USART_FDR_DIVADDVAL_MASK                (0xf << 0)
-#define USART_FDR_DIVADDVAL_POS                 0
-#define USART_FDR_MULVAL_MASK                   (0xf << 4)
-#define USART_FDR_MULVAL_POS                    4
+#define USART0_FDR_DIVADDVAL_Msk                   (0xf << 0)
+#define USART0_FDR_DIVADDVAL_Pos                   0
+#define USART0_FDR_MULVAL_Msk                      (0xf << 4)
+#define USART0_FDR_MULVAL_Pos                      4
 
 /**********  Bit definition for OSR register  *********************************/
-#define USART_OSR_OSFRAC_MASK                   (7 << 1)
-#define USART_OSR_OSFRAC_POS                    1
-#define USART_OSR_OSINT_MASK                    (0xf << 4)
-#define USART_OSR_OSINT_POS                     4
+#define USART0_OSR_OSFRAC_Msk                      (7 << 1)
+#define USART0_OSR_OSFRAC_Pos                      1
+#define USART0_OSR_OSINT_Msk                       (0xf << 4)
+#define USART0_OSR_OSINT_Pos                       4
 
-#define USART_OSR_FDINT_MASK                    (0x7f << 8)
-#define USART_OSR_FDINT_POS                     8
+#define USART0_OSR_FDINT_Msk                       (0x7f << 8)
+#define USART0_OSR_FDINT_Pos                       8
 
 /**********  Bit definition for TER register  *********************************/
-#define USART_TER_TXEN                          (1 << 0)
+#define USART0_TER_TXEN_Msk                        (1 << 0)
 
 /**********  Bit definition for HDEN register  ********************************/
-#define USART_HDEN_HDEN                         (1 << 0)
+#define USART0_HDEN_HDEN_Msk                       (1 << 0)
 
 /**********  Bit definition for SCICTRL register  *****************************/
-#define USART_SCICTRL_SCIEN                     (1 << 0)
-#define USART_SCICTRL_NACKDIS                   (1 << 1)
-#define USART_SCICTRL_PROTSEL                   (1 << 2)
+#define USART0_SCICTRL_SCIEN_Msk                   (1 << 0)
+#define USART0_SCICTRL_NACKDIS_Msk                 (1 << 1)
+#define USART0_SCICTRL_PROTSEL_Msk                 (1 << 2)
 
-#define USART_SCICTRL_TXRETRY_MASK              (7 << 5)
-#define USART_SCICTRL_TXRETRY_POS               5
+#define USART0_SCICTRL_TXRETRY_Msk                 (7 << 5)
+#define USART0_SCICTRL_TXRETRY_Pos                 5
 
-#define USART_SCICTRL_XTRAGUARD_MASK            (0xff << 8)
-#define USART_SCICTRL_XTRAGUARD_POS             8
+#define USART0_SCICTRL_XTRAGUARD_Msk               (0xff << 8)
+#define USART0_SCICTRL_XTRAGUARD_Pos               8
 
 /**********  Bit definition for RS485CTRL register  ***************************/
-#define USART_RS485CTRL_NMMEN                   (1 << 0)
-#define USART_RS485CTRL_RXDIS                   (1 << 1)
-#define USART_RS485CTRL_AADEN                   (1 << 2)
-#define USART_RS485CTRL_SEL                     (1 << 3)
-#define USART_RS485CTRL_DCTRL                   (1 << 4)
-#define USART_RS485CTRL_OINV                    (1 << 5)
+#define USART0_RS485CTRL_NMMEN_Msk                 (1 << 0)
+#define USART0_RS485CTRL_RXDIS_Msk                 (1 << 1)
+#define USART0_RS485CTRL_AADEN_Msk                 (1 << 2)
+#define USART0_RS485CTRL_SEL_Msk                   (1 << 3)
+#define USART0_RS485CTRL_DCTRL_Msk                 (1 << 4)
+#define USART0_RS485CTRL_OINV_Msk                  (1 << 5)
 
 /**********  Bit definition for SYNCCTRL register  ****************************/
-#define USART_SYNCCTRL_SYNC                     (1 << 0)
-#define USART_SYNCCTRL_CSRC                     (1 << 1)
-#define USART_SYNCCTRL_FES                      (1 << 2)
-#define USART_SYNCCTRL_TSBYPASS                 (1 << 3)
-#define USART_SYNCCTRL_CSCEN                    (1 << 4)
-#define USART_SYNCCTRL_SSDIS                    (1 << 5)
-#define USART_SYNCCTRL_CCCLR                    (1 << 6)
+#define USART0_SYNCCTRL_SYNC_Msk                   (1 << 0)
+#define USART0_SYNCCTRL_CSRC_Msk                   (1 << 1)
+#define USART0_SYNCCTRL_FES_Msk                    (1 << 2)
+#define USART0_SYNCCTRL_TSBYPASS_Msk               (1 << 3)
+#define USART0_SYNCCTRL_CSCEN_Msk                  (1 << 4)
+#define USART0_SYNCCTRL_SSDIS_Msk                  (1 << 5)
+#define USART0_SYNCCTRL_CCCLR_Msk                    (1 << 6)
 
 /******************************************************************************/
 /*                                                                            */
