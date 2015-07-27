@@ -44,56 +44,78 @@ typedef enum {
     IPC_UART_ISR_RX
 } LPC_UART_IPCS;
 
-#ifdef LPC11U6x
-static const uint8_t __UART_RESET_PINS[] =          {SYSCON_PRESETCTRL_USART1_RST_N_POS, SYSCON_PRESETCTRL_USART2_RST_N_POS, SYSCON_PRESETCTRL_USART3_RST_N_POS,
-                                                     SYSCON_PRESETCTRL_USART4_RST_N_POS};
-static const uint8_t __UART_POWER_PINS[] =          {SYSCON_SYSAHBCLKCTRL_USART0_POS, SYSCON_SYSAHBCLKCTRL_USART1_POS, SYSCON_SYSAHBCLKCTRL_USART2_POS,
-                                                     SYSCON_SYSAHBCLKCTRL_USART3_4_POS, SYSCON_SYSAHBCLKCTRL_USART3_4_POS};
-static const uint8_t __UART_VECTORS[] =             {21, 11, 12, 12, 11};
-#define LPC_USART                                   LPC_USART0
+#if defined(LPC11U6x)
+static const uint8_t __UART_RESET_PINS[] =                      {SYSCON_PRESETCTRL_USART1_RST_N_POS, SYSCON_PRESETCTRL_USART2_RST_N_POS, SYSCON_PRESETCTRL_USART3_RST_N_POS,
+                                                                 SYSCON_PRESETCTRL_USART4_RST_N_POS};
+static const uint8_t __UART_POWER_PINS[] =                      {SYSCON_SYSAHBCLKCTRL_USART0_POS, SYSCON_SYSAHBCLKCTRL_USART1_POS, SYSCON_SYSAHBCLKCTRL_USART2_POS,
+                                                                 SYSCON_SYSAHBCLKCTRL_USART3_4_POS, SYSCON_SYSAHBCLKCTRL_USART3_4_POS};
+static const uint8_t __UART_VECTORS[] =                         {21, 11, 12, 12, 11};
+#define LPC_USART                                               LPC_USART0
 
 typedef LPC_USART4_Type* LPC_USART4_Type_P;
 
-static const LPC_USART4_Type_P __USART_REGS[] =     {LPC_USART1, LPC_USART2, LPC_USART3, LPC_USART4};
-#else
-static const uint8_t __UART_POWER_PINS[] =          {SYSCON_SYSAHBCLKCTRL_USART0_POS};
-static const uint8_t __UART_VECTORS[] =             {21};
+static const LPC_USART4_Type_P __USART1_REGS[] =                {LPC_USART1, LPC_USART2, LPC_USART3, LPC_USART4};
+typedef LPC_USART_Type* LPC_USART_Type_P
+static const LPC_USART_Type_P __USART_REGS[UARTS_COUNT] =       {LPC_USART};
+#elif defined(LPC11Uxx)
+static const uint8_t __UART_POWER_PINS[] =                      {SYSCON_SYSAHBCLKCTRL_USART0_POS};
+static const uint8_t __UART_VECTORS[] =                         {21};
+
+typedef LPC_USART_Type* LPC_USART_Type_P
+static const LPC_USART_Type_P __USART_REGS[UARTS_COUNT] =       {LPC_USART};
+#else //LPC18xx
+static const uint8_t __UART_VECTORS[UARTS_COUNT] =              {24, 25, 26, 27};
+
+typedef LPC_USARTn_Type* LPC_USARTn_Type_P;
+static const LPC_USARTn_Type_P __USART_REGS[UARTS_COUNT] =      {LPC_USART0, (LPC_USARTn_Type_P)LPC_UART1, LPC_USART2, LPC_USART3};
+
+#define LPC_CGU_UART0_CLOCK_BASE                                0x4005009c
+
 #endif
 
 void lpc_uart_on_isr(int vector, void* param)
 {
     IPC ipc;
     unsigned int lsr;
+    int i;
+    UART_PORT port = UART_0;
     SHARED_UART_DRV* drv = (SHARED_UART_DRV*)param;
+    if (vector != __UART_VECTORS[UART_0])
+        for (i = 0; i < UARTS_COUNT; ++i)
+            if (vector == __UART_VECTORS[UARTS_COUNT])
+            {
+                port = i;
+                break;
+            }
 
-    switch (LPC_USART->IIR & USART_IIR_INTID_MASK)
+    switch (__USART_REGS[port]->IIR & USART0_IIR_INTID_Msk)
     {
-    case USART_IIR_INTID_RLS:
+    case USART0_IIR_INTID_RLS:
         //decode error, if any
-        lsr = LPC_USART->LSR;
-        if (lsr & USART_LSR_OE)
+        lsr = __USART_REGS[port]->LSR;
+        if (lsr & USART0_LSR_OE_Msk)
             drv->uart.uarts[UART_0]->error = ERROR_OVERFLOW;
-        if (lsr & USART_LSR_PE)
+        if (lsr & USART0_LSR_PE_Msk)
             drv->uart.uarts[UART_0]->error = ERROR_UART_PARITY;
-        if (lsr & USART_LSR_FE)
+        if (lsr & USART0_LSR_FE_Msk)
             drv->uart.uarts[UART_0]->error = ERROR_UART_FRAME;
-        if (lsr & USART_LSR_BI)
+        if (lsr & USART0_LSR_BI_Msk)
             drv->uart.uarts[UART_0]->error = ERROR_UART_BREAK;
         break;
-    case USART_IIR_INTID_RDA:
+    case USART0_IIR_INTID_RDA:
         //receive data
-        ipc.param3 = LPC_USART->RBR;
+        ipc.param3 = __USART_REGS[port]->RBR;
         ipc.process = process_iget_current();
         ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_RX);
         ipc.param1 = UART_0;
         ipc_ipost(&ipc);
         break;
-    case USART_IIR_INTID_THRE:
+    case USART0_IIR_INTID_THRE:
         //transmit more
-        if ((LPC_USART->IER & USART_IER_THRINTEN) && drv->uart.uarts[UART_0]->tx_chunk_size)
+        if ((__USART_REGS[port]->IER & USART0_IER_THREIE_Msk) && drv->uart.uarts[UART_0]->tx_chunk_size)
         {
-            while ((LPC_USART->LSR & USART_LSR_THRE) && drv->uart.uarts[UART_0]->tx_chunk_pos < drv->uart.uarts[UART_0]->tx_chunk_size)
-                LPC_USART->THR = drv->uart.uarts[UART_0]->tx_buf[drv->uart.uarts[UART_0]->tx_chunk_pos++];
+            while ((__USART_REGS[port]->LSR & USART0_LSR_THRE_Msk) && drv->uart.uarts[UART_0]->tx_chunk_pos < drv->uart.uarts[UART_0]->tx_chunk_size)
+                __USART_REGS[port]->THR = drv->uart.uarts[UART_0]->tx_buf[drv->uart.uarts[UART_0]->tx_chunk_pos++];
             //no more
             if (drv->uart.uarts[UART_0]->tx_chunk_pos >= drv->uart.uarts[UART_0]->tx_chunk_size)
             {
@@ -103,12 +125,12 @@ void lpc_uart_on_isr(int vector, void* param)
                 ipc.param1 = UART_0;
                 ipc.param3 = 0;
                 ipc_ipost(&ipc);
-                LPC_USART->IER &= ~USART_IER_THRINTEN;
+                __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
             }
         }
         //transmission completed and no more data. Mask interrupt
         else
-            LPC_USART->IER &= ~USART_IER_THRINTEN;
+            __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
         break;
     }
 }
@@ -132,34 +154,34 @@ void lpc_uart4_on_isr(int vector, void* param)
             continue;
 
         //error condition
-        if (__USART_REGS[port]->STAT & (USART4_STAT_OVERRUNINT | USART4_STAT_FRAMERRINT | USART4_STAT_PARITTERRINT | USART4_STAT_RXNOISEINT | USART4_STAT_DELTARXBRKINT))
+        if (__USART1_REGS[port - 1]->STAT & (USART4_STAT_OVERRUNINT | USART4_STAT_FRAMERRINT | USART4_STAT_PARITTERRINT | USART4_STAT_RXNOISEINT | USART4_STAT_DELTARXBRKINT))
         {
-            if (__USART_REGS[port]->STAT & USART4_STAT_OVERRUNINT)
-                drv->uart.uarts[port]->error = ERROR_OVERFLOW;
-            if (__USART_REGS[port]->STAT & USART4_STAT_FRAMERRINT)
-                drv->uart.uarts[port]->error = ERROR_UART_FRAME;
-            if (__USART_REGS[port]->STAT & USART4_STAT_PARITTERRINT)
-                drv->uart.uarts[port]->error = ERROR_UART_PARITY;
-            if (__USART_REGS[port]->STAT & USART4_STAT_RXNOISEINT)
-                drv->uart.uarts[port]->error = ERROR_UART_NOISE;
-            if (__USART_REGS[port]->STAT & USART4_STAT_DELTARXBRKINT)
-                drv->uart.uarts[port]->error = ERROR_UART_BREAK;
-            __USART_REGS[port]->STAT = USART4_STAT_OVERRUNINT | USART4_STAT_FRAMERRINT | USART4_STAT_PARITTERRINT | USART4_STAT_RXNOISEINT | USART4_STAT_DELTARXBRKINT;
+            if (__USART1_REGS[port - 1]->STAT & USART4_STAT_OVERRUNINT)
+                drv->uart.uarts[port - 1]->error = ERROR_OVERFLOW;
+            if (__USART1_REGS[port - 1]->STAT & USART4_STAT_FRAMERRINT)
+                drv->uart.uarts[port - 1]->error = ERROR_UART_FRAME;
+            if (__USART1_REGS[port - 1]->STAT & USART4_STAT_PARITTERRINT)
+                drv->uart.uarts[port - 1]->error = ERROR_UART_PARITY;
+            if (__USART1_REGS[port - 1]->STAT & USART4_STAT_RXNOISEINT)
+                drv->uart.uarts[port - 1]->error = ERROR_UART_NOISE;
+            if (__USART1_REGS[port - 1]->STAT & USART4_STAT_DELTARXBRKINT)
+                drv->uart.uarts[port - 1]->error = ERROR_UART_BREAK;
+            __USART1_REGS[port - 1]->STAT = USART4_STAT_OVERRUNINT | USART4_STAT_FRAMERRINT | USART4_STAT_PARITTERRINT | USART4_STAT_RXNOISEINT | USART4_STAT_DELTARXBRKINT;
         }
         //ready to rx
-        if (__USART_REGS[port]->STAT & USART4_STAT_RXRDY)
+        if (__USART1_REGS[port - 1]->STAT & USART4_STAT_RXRDY)
         {
-            ipc.param3 = __USART_REGS[port]->RXDAT;
+            ipc.param3 = __USART1_REGS[port - 1]->RXDAT;
             ipc.process = process_iget_current();
             ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_RX);
             ipc.param1 = UART_0;
             ipc_ipost(&ipc);
         }
         //tx
-        if (__USART_REGS[port]->STAT & USART4_STAT_TXRDY && drv->uart.uarts[port]->tx_chunk_size)
+        if (__USART1_REGS[port - 1]->STAT & USART4_STAT_TXRDY && drv->uart.uarts[port]->tx_chunk_size)
         {
-            while ((__USART_REGS[port]->STAT & USART4_STAT_TXRDY) && drv->uart.uarts[port]->tx_chunk_pos < drv->uart.uarts[port]->tx_chunk_size)
-                __USART_REGS[port]->TXDAT = drv->uart.uarts[port]->tx_buf[drv->uart.uarts[port]->tx_chunk_pos++];
+            while ((__USART1_REGS[port - 1]->STAT & USART4_STAT_TXRDY) && drv->uart.uarts[port]->tx_chunk_pos < drv->uart.uarts[port]->tx_chunk_size)
+                __USART1_REGS[port - 1]->TXDAT = drv->uart.uarts[port]->tx_buf[drv->uart.uarts[port]->tx_chunk_pos++];
             //no more
             if (drv->uart.uarts[port]->tx_chunk_pos >= drv->uart.uarts[port]->tx_chunk_size)
             {
@@ -169,7 +191,7 @@ void lpc_uart4_on_isr(int vector, void* param)
                 ipc.param1 = UART_0;
                 ipc.param3 = 0;
                 ipc_ipost(&ipc);
-                LPC_USART->IER &= ~USART_IER_THRINTEN;
+                LPC_USART->IER &= ~USART0_IER_THRINTEN_Msk;
             }
         }
     }
@@ -189,35 +211,35 @@ static inline void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, I
 #ifdef LPC11U6x
     if (port > UART_0)
     {
-        __USART_REGS[port - 1]->CFG = ((baudrate.data_bits - 7) << USART4_CFG_DATALEN_POS) | ((baudrate.stop_bits - 1) << USART4_CFG_STOPLEN_POS);
+        __USART1_REGS[port - 1]->CFG = ((baudrate.data_bits - 7) << USART4_CFG_DATALEN_POS) | ((baudrate.stop_bits - 1) << USART4_CFG_STOPLEN_POS);
         switch (baudrate.parity)
         {
         case 'O':
-            __USART_REGS[port - 1]->CFG |= USART4_CFG_PARITYSEL_ODD;
+            __USART1_REGS[port - 1]->CFG |= USART4_CFG_PARITYSEL_ODD;
             break;
         case 'E':
-            __USART_REGS[port - 1]->CFG |= USART4_CFG_PARITYSEL_EVEN;
+            __USART1_REGS[port - 1]->CFG |= USART4_CFG_PARITYSEL_EVEN;
             break;
         }
-        __USART_REGS[port - 1]->BRG = divider & 0xffff;
-        __USART_REGS[port - 1]->CFG |= USART4_CFG_ENABLE
+        __USART1_REGS[port - 1]->BRG = divider & 0xffff;
+        __USART1_REGS[port - 1]->CFG |= USART4_CFG_ENABLE
     }
     else
 #endif
     {
-        LPC_USART->LCR = ((baudrate.data_bits - 5) << USART_LCR_WLS_POS) | ((baudrate.stop_bits - 1) << USART_LCR_SBS_POS) | USART_LCR_DLAB;
+        __USART_REGS[port]->LCR = ((baudrate.data_bits - 5) << USART0_LCR_WLS_Pos) | ((baudrate.stop_bits - 1) << USART0_LCR_SBS_Pos) | USART0_LCR_DLAB_Msk;
         switch (baudrate.parity)
         {
         case 'O':
-            LPC_USART->LCR |= USART_LCR_PE | USART_LCR_PS_ODD;
+            __USART_REGS[port]->LCR |= USART0_LCR_PE_Msk | USART0_LCR_PS_ODD;
             break;
         case 'E':
-            LPC_USART->LCR |= USART_LCR_PE | USART_LCR_PS_EVEN;
+            __USART_REGS[port]->LCR |= USART0_LCR_PE_Msk | USART0_LCR_PS_EVEN;
             break;
         }
-        LPC_USART->DLM = (divider >> 8) & 0xff;
-        LPC_USART->DLL = divider & 0xff;
-        LPC_USART->LCR &= ~USART_LCR_DLAB;
+        __USART_REGS[port]->DLM = (divider >> 8) & 0xff;
+        __USART_REGS[port]->DLL = divider & 0xff;
+        __USART_REGS[port]->LCR &= ~USART0_LCR_DLAB_Msk;
     }
 }
 
@@ -285,21 +307,26 @@ void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
     }
 
     //power up
+#ifdef LPC11Uxx
     LPC_SYSCON->SYSAHBCLKCTRL |= 1 << __UART_POWER_PINS[port];
+#else //LPC18xx
+    //map PLL1 output to UART clock
+    ((uint32_t*)LPC_CGU_UART0_CLOCK_BASE)[port] = CGU_CLK_PLL1;
+#endif //LPC11Uxx
     //remove reset state. Only for LPC11U6x
 #ifdef LPC11U6x
     if (port > UART_0)
     {
         LPC_SYSCON->PRESETCTRL |= 1 << __UART_RESET_PINS[port - 1];
         if (mode & FILE_MODE_READ)
-            __USART_REGS[port]->INTENCSET = USART4_INTENSET_RXRDYEN | USART4_INTENSET_OVERRUNEN | USART4_INTENSET_FRAMERREN
+            __USART1_REGS[port - 1]->INTENCSET = USART4_INTENSET_RXRDYEN | USART4_INTENSET_OVERRUNEN | USART4_INTENSET_FRAMERREN
                                           | USART4_INTENSET_PARITTERREN | USART4_INTENSET_RXNOISEEN | USART4_INTENSET_DELTARXBRKEN;
     }
     else
 #endif
     {
          //enable FIFO
-         LPC_USART->FCR |= USART_FCR_FIFOEN | USART_FCR_TXFIFORES | USART_FCR_RXFIFORES;
+        __USART_REGS[port]->FCR |= USART0_FCR_FIFOEN_Msk | USART0_FCR_TXFIFORES_Msk | USART0_FCR_RXFIFORES_Msk;
     }
 
     //enable interrupts
@@ -319,7 +346,6 @@ void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
     {
         irq_register(__UART_VECTORS[port], lpc_uart_on_isr, (void*)drv);
     }
-    irq_register(__UART_VECTORS[port], lpc_uart_on_isr, (void*)drv);
     NVIC_EnableIRQ(__UART_VECTORS[port]);
     NVIC_SetPriority(__UART_VECTORS[port], 2);
 }
@@ -359,9 +385,11 @@ static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
 #endif
     {
          //disable FIFO
-         LPC_USART->FCR &= ~USART_FCR_FIFOEN;
+         __USART_REGS[port]->FCR &= ~USART0_FCR_FIFOEN_Msk;
     }
+#ifdef LPC11Uxx
     LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << __UART_POWER_PINS[port]);
+#endif //LPC11Uxx
 
     free(drv->uart.uarts[port]);
     drv->uart.uarts[port] = NULL;
@@ -377,13 +405,13 @@ static inline void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
 #ifdef LPC11U6x
     if (port > UART_0)
     {
-        __USART_REGS[port]->INTENCLR = USART4_INTENSET_TXRDYEN;
+        __USART1_REGS[port - 1]->INTENCLR = USART4_INTENSET_TXRDYEN;
     }
     else
 #endif
     {
-        LPC_USART->IER &= ~USART_IER_THRINTEN;
-        LPC_USART->FCR |= USART_FCR_TXFIFORES | USART_FCR_RXFIFORES;
+        __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
+        __USART_REGS[port]->FCR |= USART0_FCR_TXFIFORES_Msk | USART0_FCR_RXFIFORES_Msk;
     }
     if (drv->uart.uarts[port]->tx_stream != INVALID_HANDLE)
     {
@@ -459,12 +487,12 @@ static inline void lpc_uart_write(SHARED_UART_DRV* drv, UART_PORT port, unsigned
 #ifdef LPC11U6x
             if (port > UART_0)
             {
-                __USART_REGS[port]->INTENSET = USART4_INTENSET_TXRDYEN;
+                __USART1_REGS[port - 1]->INTENSET = USART4_INTENSET_TXRDYEN;
             }
             else
 #endif
             {
-                LPC_USART->IER |= USART_IER_THRINTEN;
+                __USART_REGS[port]->IER |= USART0_IER_THREIE_Msk;
             }
         }
     }
@@ -496,14 +524,14 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
 #ifdef LPC11U6x
         if (port > UART_0)
         {
-            while ((__USART_REGS[port - 1]->STAT & USART4_STAT_TXRDY) == 0) {}
-            __USART_REGS[port - 1]->TXDAT = buf[i];
+            while ((__USART1_REGS[port - 1]->STAT & USART4_STAT_TXRDY) == 0) {}
+            __USART1_REGS[port - 1]->TXDAT = buf[i];
         }
         else
 #endif
         {
-            while ((LPC_USART->LSR & USART_LSR_THRE) == 0) {}
-            LPC_USART->THR = buf[i];
+            while ((__USART_REGS[port]->LSR & USART0_LSR_THRE_Msk) == 0) {}
+                __USART_REGS[port]->THR = buf[i];
         }
     }
     NVIC_EnableIRQ(__UART_VECTORS[port]);
@@ -518,11 +546,11 @@ static inline void lpc_uart_setup_printk(SHARED_UART_DRV* drv, UART_PORT port)
 void lpc_uart_init(SHARED_UART_DRV* drv)
 {
     int i;
-#ifdef LPC11U6x
+#if defined(LPC11U6x)
     LPC_SYSCON->USART0CLKDIV = 1;
     LPC_SYSCON->FRGCLKDIV = 1;
     drv->uart.uart13 = drv->uart.uart24 = 0;
-#else
+#elif defined(LPC11Uxx)
     LPC_SYSCON->UARTCLKDIV = 1;
 #endif
     for (i = 0; i < UARTS_COUNT; ++i)
