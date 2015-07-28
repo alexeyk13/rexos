@@ -153,6 +153,7 @@ typedef enum {
     TIMER1,
     TIMER2,
     TIMER3,
+    SCT,
     PWM0,
     PWM1,
     PWM2,
@@ -160,19 +161,29 @@ typedef enum {
     TIMER_MAX
 } TIMER;
 
-#define TIMER_CHANNEL0                               0
-#define TIMER_CHANNEL1                               1
-#define TIMER_CHANNEL2                               2
-#define TIMER_CHANNEL3                               3
+typedef enum {
+    TIMER_CHANNEL0 = 0,
+    TIMER_CHANNEL1,
+    TIMER_CHANNEL2,
+    TIMER_CHANNEL3,
+    TIMER_CHANNEL4,
+    TIMER_CHANNEL5,
+    TIMER_CHANNEL6,
+    TIMER_CHANNEL7,
+    TIMER_CHANNEL8,
+    TIMER_CHANNEL9,
+    TIMER_CHANNEL10,
+    TIMER_CHANNEL11,
+    TIMER_CHANNEL12,
+    TIMER_CHANNEL13,
+    TIMER_CHANNEL14,
+    TIMER_CHANNEL15,
+} TIMER_CHANNEL;
+
 #define TIMER_CHANNEL_INVALID                        0xff
 
 #define TIMER_MODE_CHANNEL_POS                       16
-#define TIMER_MODE_CHANNEL_MASK                      (3 << TIMER_MODE_CHANNEL_POS)
-
-#define TIMER_MODE_CHANNEL0                          (TIMER_CHANNEL0 << TIMER_CHANNEL_POS)
-#define TIMER_MODE_CHANNEL1                          (TIMER_CHANNEL1 << TIMER_CHANNEL_POS)
-#define TIMER_MODE_CHANNEL2                          (TIMER_CHANNEL2 << TIMER_CHANNEL_POS)
-#define TIMER_MODE_CHANNEL3                          (TIMER_CHANNEL3 << TIMER_CHANNEL_POS)
+#define TIMER_MODE_CHANNEL_MASK                      (0xf << TIMER_MODE_CHANNEL_POS)
 
 //------------------------------------------------ Power ---------------------------------------------------------------------
 typedef enum {
@@ -188,8 +199,6 @@ typedef enum {
     RESET_REASON_SOFTWARE,
     RESET_REASON_UNKNOWN
 } RESET_REASON;
-
-#define PLL_LOCK_TIMEOUT                            10000
 
 //------------------------------------------------- UART ---------------------------------------------------------------------
 
