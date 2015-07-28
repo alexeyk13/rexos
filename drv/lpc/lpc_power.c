@@ -73,7 +73,7 @@ static inline void lpc_setup_clock()
     }
 }
 
-unsigned int lpc_get_core_clock()
+static inline unsigned int lpc_get_core_clock()
 {
     unsigned int pllsrc = 0;
     switch (LPC_SYSCON->MAINCLKSEL & 3)
@@ -97,7 +97,7 @@ unsigned int lpc_get_core_clock()
             break;
 #ifdef LPC11U6x
         case SYSCON_SYSPLLCLKSEL_RTCOSC:
-            pllsrc = RTC_VALUE;
+            pllsrc = LSE_VALUE;
             break;
 #endif
         }
@@ -196,10 +196,39 @@ static inline void lpc_setup_clock()
     __NOP();
 }
 
-unsigned int lpc_get_core_clock()
+static unsigned int lpc_get_source_clock(unsigned int source);
+
+static inline unsigned int lpc_get_pll1_clock()
 {
-    //TODO:
-    return 180000000;
+    unsigned int pll1_out;
+    unsigned int pll1_in = lpc_get_source_clock(LPC_CGU->PLL1_CTRL & CGU_PLL1_CTRL_CLK_SEL_Msk);
+    pll1_out = pll1_in / (((LPC_CGU->PLL1_CTRL & CGU_PLL1_CTRL_NSEL_Msk) >> CGU_PLL1_CTRL_NSEL_Pos) + 1)
+                       *  (((LPC_CGU->PLL1_CTRL & CGU_PLL1_CTRL_MSEL_Msk) >> CGU_PLL1_CTRL_MSEL_Pos) + 1);
+    if ((LPC_CGU->PLL1_CTRL & CGU_PLL1_CTRL_DIRECT_Msk) == 0)
+        pll1_out /= 2 * (1 << ((LPC_CGU->PLL1_CTRL & CGU_PLL1_CTRL_PSEL_Msk) >> CGU_PLL1_CTRL_PSEL_Pos));
+    return pll1_out;
+}
+
+static unsigned int lpc_get_source_clock(unsigned int source)
+{
+    switch (source)
+    {
+    case CGU_CLK_LSE:
+        return LSE_VALUE;
+    case CGU_CLK_HSE:
+        return HSE_VALUE;
+    case CGU_CLK_PLL1:
+        return lpc_get_pll1_clock();
+    default:
+        //assume IRC, all rest values are not used for configuration
+        return IRC_VALUE;
+
+    }
+}
+
+static inline unsigned int lpc_get_core_clock()
+{
+    return lpc_get_source_clock(LPC_CGU->BASE_M3_CLK & CGU_BASE_M3_CLK_CLK_SEL_Msk);
 }
 
 #if (LPC_DECODE_RESET)
