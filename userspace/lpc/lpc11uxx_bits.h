@@ -879,131 +879,131 @@
 /******************************************************************************/
 
 /**********  Bit definition for IR register  **********************************/
-#define CT_IR_MR0INT                            (1 << 0)                /* Interrupt flag for match channel 0 */
-#define CT_IR_MR1INT                            (1 << 1)                /* Interrupt flag for match channel 0 */
-#define CT_IR_MR2INT                            (1 << 2)                /* Interrupt flag for match channel 0 */
-#define CT_IR_MR3INT                            (1 << 3)                /* Interrupt flag for match channel 0 */
-#define CT_IR_CR0INT                            (1 << 4)                /* Interrupt flag for capture channel 0 event */
+#define TIMER0_IR_MR0INT_Msk                    (1 << 0)                /* Interrupt flag for match channel 0 */
+#define TIMER0_IR_MR1INT_Msk                    (1 << 1)                /* Interrupt flag for match channel 0 */
+#define TIMER0_IR_MR2INT_Msk                    (1 << 2)                /* Interrupt flag for match channel 0 */
+#define TIMER0_IR_MR3INT_Msk                    (1 << 3)                /* Interrupt flag for match channel 0 */
+#define TIMER0_IR_CR0INT_Msk                    (1 << 4)                /* Interrupt flag for capture channel 0 event */
 
-#define CT1_IR_CR1INT                           (1 << 5)                /* Interrupt flag for capture channel 1 event CTxxB1 */
-#define CT0_IR_CR1INT                           (1 << 6)                /* Interrupt flag for capture channel 1 event CTxxB0 */
+#define TIMER1_IR_CR1INT_Msk                    (1 << 5)                /* Interrupt flag for capture channel 1 event CTxxB1 */
+#define TIMER0_IR_CR1INT_Msk                    (1 << 6)                /* Interrupt flag for capture channel 1 event CTxxB0 */
 
 /**********  Bit definition for TCR register  *********************************/
-#define CT_TCR_CEN                              (1 << 0)                /* Counter enable */
-#define CT_TCR_CRST                             (1 << 1)                /* Counter reset */
+#define TIMER0_TCR_CEN_Msk                      (1 << 0)                /* Counter enable */
+#define TIMER0_TCR_CRST_Msk                     (1 << 1)                /* Counter reset */
 
 /**********  Bit definition for MCR register  *********************************/
-#define CT_MCR_MR0I                             (1 << 0)                /* Interrupt on MR0: an interrupt is generated when MR0 matches the value in the TC */
-#define CT_MCR_MR0R                             (1 << 1)                /* Reset on MR0: the TC will be reset if MR0 matches it */
-#define CT_MCR_MR0S                             (1 << 2)                /* Stop on MR0: the TC and PC will be stopped and TCR[0] will be set to 0 if MR0 matches the TC */
-#define CT_MCR_MR1I                             (1 << 3)                /* Interrupt on MR1: an interrupt is generated when MR1 matches the value in the TC */
-#define CT_MCR_MR1R                             (1 << 4)                /* Reset on MR1: the TC will be reset if MR1 matches it */
-#define CT_MCR_MR1S                             (1 << 5)                /* Stop on MR1: the TC and PC will be stopped and TCR[1] will be set to 0 if MR1 matches the TC */
-#define CT_MCR_MR2I                             (1 << 6)                /* Interrupt on MR2: an interrupt is generated when MR2 matches the value in the TC */
-#define CT_MCR_MR2R                             (1 << 7)                /* Reset on MR2: the TC will be reset if MR2 matches it */
-#define CT_MCR_MR2S                             (1 << 8)                /* Stop on MR2: the TC and PC will be stopped and TCR[2] will be set to 0 if MR2 matches the TC */
-#define CT_MCR_MR3I                             (1 << 9)                /* Interrupt on MR3: an interrupt is generated when MR3 matches the value in the TC */
-#define CT_MCR_MR3R                             (1 << 10)               /* Reset on MR3: the TC will be reset if MR3 matches it */
-#define CT_MCR_MR3S                             (1 << 11)               /* Stop on MR3: the TC and PC will be stopped and TCR[3] will be set to 0 if MR3 matches the TC */
+#define TIMER0_MCR_MR0I_Msk                     (1 << 0)                /* Interrupt on MR0: an interrupt is generated when MR0 matches the value in the TC */
+#define TIMER0_MCR_MR0R_Msk                     (1 << 1)                /* Reset on MR0: the TC will be reset if MR0 matches it */
+#define TIMER0_MCR_MR0S_Msk                     (1 << 2)                /* Stop on MR0: the TC and PC will be stopped and TCR[0] will be set to 0 if MR0 matches the TC */
+#define TIMER0_MCR_MR1I_Msk                     (1 << 3)                /* Interrupt on MR1: an interrupt is generated when MR1 matches the value in the TC */
+#define TIMER0_MCR_MR1R_Msk                     (1 << 4)                /* Reset on MR1: the TC will be reset if MR1 matches it */
+#define TIMER0_MCR_MR1S_Msk                     (1 << 5)                /* Stop on MR1: the TC and PC will be stopped and TCR[1] will be set to 0 if MR1 matches the TC */
+#define TIMER0_MCR_MR2I_Msk                     (1 << 6)                /* Interrupt on MR2: an interrupt is generated when MR2 matches the value in the TC */
+#define TIMER0_MCR_MR2R_Msk                     (1 << 7)                /* Reset on MR2: the TC will be reset if MR2 matches it */
+#define TIMER0_MCR_MR2S_Msk                     (1 << 8)                /* Stop on MR2: the TC and PC will be stopped and TCR[2] will be set to 0 if MR2 matches the TC */
+#define TIMER0_MCR_MR3I_Msk                     (1 << 9)                /* Interrupt on MR3: an interrupt is generated when MR3 matches the value in the TC */
+#define TIMER0_MCR_MR3R_Msk                     (1 << 10)               /* Reset on MR3: the TC will be reset if MR3 matches it */
+#define TIMER0_MCR_MR3S_Msk                     (1 << 11)               /* Stop on MR3: the TC and PC will be stopped and TCR[3] will be set to 0 if MR3 matches the TC */
 
 /**********  Bit definition for CCR register  *********************************/
-#define CT_CCR_CAP0RE                           (1 << 0)                /* Capture on CTxxBx_CAP0 rising edge: a sequence of 0 then 1 on CTxxBx_CAP0 will
+#define TIMER0_CCR_CAP0RE_Msk                   (1 << 0)                /* Capture on CTxxBx_CAP0 rising edge: a sequence of 0 then 1 on CTxxBx_CAP0 will
                                                                            cause CR0 to be loaded with the contents of TC */
-#define CT_CCR_CAP0FE                           (1 << 1)                /* Capture on CTxxBx_CAP0 falling edge: a sequence of 1 then 0 on CTxxBx_CAP0 will
+#define TIMER0_CCR_CAP0FE_Msk                   (1 << 1)                /* Capture on CTxxBx_CAP0 falling edge: a sequence of 1 then 0 on CTxxBx_CAP0 will
                                                                            cause CR0 to be loaded with the contents of TC */
-#define CT_CCR_CAP0I                            (1 << 2)                /* Interrupt on CTxxBx_CAP0 event: a CR0 load due to a CTxxBx_CAP0 event will
+#define TIMER0_CCR_CAP0I_Msk                    (1 << 2)                /* Interrupt on CTxxBx_CAP0 event: a CR0 load due to a CTxxBx_CAP0 event will
                                                                            generate an interrupt */
 
-#define CT1_CCR_CAP1RE                          (1 << 3)                /* Capture on CTxxB1_CAP1 rising edge: a sequence of 0 then 1 on CTxxB1_CAP1 will
+#define TIMER1_CCR_CAP1RE_Msk                   (1 << 3)                /* Capture on CTxxB1_CAP1 rising edge: a sequence of 0 then 1 on CTxxB1_CAP1 will
                                                                            cause CR1 to be loaded with the contents of TC */
-#define CT1_CCR_CAP1FE                          (1 << 4)                /* Capture on CTxxB1_CAP0 falling edge: a sequence of 1 then 0 on CTxxB1_CAP1 will
+#define TIMER1_CCR_CAP1FE_Msk                   (1 << 4)                /* Capture on CTxxB1_CAP0 falling edge: a sequence of 1 then 0 on CTxxB1_CAP1 will
                                                                            cause CR1 to be loaded with the contents of TC */
-#define CT1_CCR_CAP1I                           (1 << 5)                /* Interrupt on CTxxB1_CAP1 event: a CR1 load due to a CTxxB1_CAP1 event will
+#define TIMER1_CCR_CAP1I_Msk                    (1 << 5)                /* Interrupt on CTxxB1_CAP1 event: a CR1 load due to a CTxxB1_CAP1 event will
                                                                            generate an interrupt */
 
-#define CT0_CCR_CAP1RE                          (1 << 6)                /* Capture on CTxxB0_CAP1 rising edge: a sequence of 0 then 1 on CTxxB0_CAP1 will
+#define TIMER0_CCR_CAP1RE_Msk                   (1 << 6)                /* Capture on CTxxB0_CAP1 rising edge: a sequence of 0 then 1 on CTxxB0_CAP1 will
                                                                            cause CR1 to be loaded with the contents of TC */
-#define CT0_CCR_CAP1FE                          (1 << 7)                /* Capture on CTxxB0_CAP0 falling edge: a sequence of 1 then 0 on CTxxB0_CAP1 will
+#define TIMER0_CCR_CAP1FE_Msk                   (1 << 7)                /* Capture on CTxxB0_CAP0 falling edge: a sequence of 1 then 0 on CTxxB0_CAP1 will
                                                                            cause CR1 to be loaded with the contents of TC */
-#define CT0_CCR_CAP1I                           (1 << 8)                /* Interrupt on CTxxB0_CAP1 event: a CR1 load due to a CTxxB0_CAP1 event will
+#define TIMER0_CCR_CAP1I_Msk                    (1 << 8)                /* Interrupt on CTxxB0_CAP1 event: a CR1 load due to a CTxxB0_CAP1 event will
                                                                            generate an interrupt */
 /**********  Bit definition for EMR register  *********************************/
-#define CT_EMR_EM0                              (1 << 0)                /* External Match 0. This bit reflects the state of output CTxxBx_MAT0,
+#define TIMER0_EMR_EM0_Msk                      (1 << 0)                /* External Match 0. This bit reflects the state of output CTxxBx_MAT0,
                                                                            whether or not this output is connected to its pin. When a match occurs between the TC
                                                                            and MR0, this bit can either toggle, go LOW, go HIGH, or do nothing. Bits EMR[5:4]
                                                                            control the functionality of this output. This bit is driven to the
                                                                            CTxxBx_MAT0 pins if the match function is selected in the IOCON
                                                                            registers (0 = LOW, 1 = HIGH) */
-#define CT_EMR_EM1                              (1 << 1)                /* External Match 1. This bit reflects the state of output CTxxBx_MAT1,
+#define TIMER0_EMR_EM1_Msk                      (1 << 1)                /* External Match 1. This bit reflects the state of output CTxxBx_MAT1,
                                                                            whether or not this output is connected to its pin. When a match occurs between the TC
                                                                            and MR1, this bit can either toggle, go LOW, go HIGH, or do nothing. Bits EMR[7:6]
                                                                            control the functionality of this output. This bit is driven to the
                                                                            CTxxBx_MAT1 pins if the match function is selected in the IOCON
                                                                            registers (0 = LOW, 1 = HIGH) */
-#define CT_EMR_EM2                              (1 << 2)                /* External Match 2. This bit reflects the state of output CTxxBx_MAT2,
+#define TIMER0_EMR_EM2_Msk                      (1 << 2)                /* External Match 2. This bit reflects the state of output CTxxBx_MAT2,
                                                                            whether or not this output is connected to its pin. When a match occurs between the TC
                                                                            and MR2, this bit can either toggle, go LOW, go HIGH, or do nothing. Bits EMR[9:8]
                                                                            control the functionality of this output. This bit is driven to the
                                                                            CTxxBx_MAT2 pins if the match function is selected in the IOCON
                                                                            registers (0 = LOW, 1 = HIGH) */
-#define CT_EMR_EM3                              (1 << 3)                /* External Match 3. This bit reflects the state of output CTxxBx_MAT3,
+#define TIMER0_EMR_EM3_Msk                      (1 << 3)                /* External Match 3. This bit reflects the state of output CTxxBx_MAT3,
                                                                            whether or not this output is connected to its pin. When a match occurs between the TC
                                                                            and MR3, this bit can either toggle, go LOW, go HIGH, or do nothing. Bits EMR[11:10]
                                                                            control the functionality of this output. This bit is driven to the
                                                                            CTxxBx_MAT3 pins if the match function is selected in the IOCON
                                                                            registers (0 = LOW, 1 = HIGH) */
-#define CT_EMR_EMC0_POS                         4                       /* External Match Control 0. Determines the functionality of External Match 0 */
-#define CT_EMR_EMC0_MASK                        (3 << 4)
+#define TIMER0_EMR_EMC0_Pos                     4                       /* External Match Control 0. Determines the functionality of External Match 0 */
+#define TIMER0_EMR_EMC0_Msk                     (3 << 4)
 
-#define CT_EMR_EMC1_POS                         6                       /* External Match Control 1. Determines the functionality of External Match 1 */
-#define CT_EMR_EMC1_MASK                        (3 << 6)
+#define TIMER0_EMR_EMC1_Pos                     6                       /* External Match Control 1. Determines the functionality of External Match 1 */
+#define TIMER0_EMR_EMC1_Msk                     (3 << 6)
 
-#define CT_EMR_EMC2_POS                         8                       /* External Match Control 2. Determines the functionality of External Match 2 */
-#define CT_EMR_EMC2_MASK                        (3 << 8)
+#define TIMER0_EMR_EMC2_Pos                     8                       /* External Match Control 2. Determines the functionality of External Match 2 */
+#define TIMER0_EMR_EMC2_Msk                     (3 << 8)
 
-#define CT_EMR_EMC3_POS                         10                      /* External Match Control 10. Determines the functionality of External Match 3 */
-#define CT_EMR_EMC3_MASK                        (3 << 10)
+#define TIMER0_EMR_EMC3_Pos                     10                      /* External Match Control 10. Determines the functionality of External Match 3 */
+#define TIMER0_EMR_EMC3_Msk                     (3 << 10)
 
-#define CT_EMR_EMC_DO_NOTHING                   0                       /* Do Nothing */
-#define CT_EMR_EMC_CLEAR                        1                       /* Clear the corresponding External Match bit/output to 0 (CTxxBx_MATx pin is LOW if
+#define TIMER0_EMR_EMC_DO_NOTHING               0                       /* Do Nothing */
+#define TIMER0_EMR_EMC_CLEAR                    1                       /* Clear the corresponding External Match bit/output to 0 (CTxxBx_MATx pin is LOW if
                                                                            pinned out) */
-#define CT_EMR_EMC_SET                          2                       /* Set the corresponding External Match bit/output to 1 (CTxxBx_MATx pin is HIGH if
+#define TIMER0_EMR_EMC_SET                      2                       /* Set the corresponding External Match bit/output to 1 (CTxxBx_MATx pin is HIGH if
                                                                            pinned out). */
-#define CT_EMR_EMC_TOGGLE                       3                       /* Toggle the corresponding External Match bit/output */
+#define TIMER0_EMR_EMC_TOGGLE                   3                       /* Toggle the corresponding External Match bit/output */
 
 /**********  Bit definition for CTCR register  ********************************/
-#define CT_CTCR_CTM_POS                         0                       /* Counter/Timer Mode. This field selects which rising PCLK
+#define TIMER0_CTCR_CTM_Pos                     0                       /* Counter/Timer Mode. This field selects which rising PCLK
                                                                            edges can increment Timer’s Prescale Counter (PC), or
                                                                            clear PC and increment Timer Counter (TC) */
-#define CT_CTCR_CTM_TIMER                       (0 << 0)                /* Timer Mode: every rising PCLK edge */
-#define CT_CTCR_CTM_COUNTER_RE                  (1 << 0)                /* Counter Mode: TC is incremented on rising edges on the CAP input selected by bits 3:2 */
-#define CT_CTCR_CTM_COUNTER_FE                  (2 << 0)                /* Counter Mode: TC is incremented on falling edges on the CAP input selected by bits 3:2 */
-#define CT_CTCR_CTM_COUNTER_BE                  (3 << 0)                /* Counter Mode: TC is incremented on both edges on the CAP input selected by bits 3:2 */
+#define TIMER0_CTCR_CTM_TIMER                   (0 << 0)                /* Timer Mode: every rising PCLK edge */
+#define TIMER0_CTCR_CTM_COUNTER_RE              (1 << 0)                /* Counter Mode: TC is incremented on rising edges on the CAP input selected by bits 3:2 */
+#define TIMER0_CTCR_CTM_COUNTER_FE              (2 << 0)                /* Counter Mode: TC is incremented on falling edges on the CAP input selected by bits 3:2 */
+#define TIMER0_CTCR_CTM_COUNTER_BE              (3 << 0)                /* Counter Mode: TC is incremented on both edges on the CAP input selected by bits 3:2 */
 
-#define CT_CTCR_CIS_POS                         2                       /* Count Input Select. In counter mode (when bits 1:0 in this
+#define TIMER0_CTCR_CIS_Pos                     2                       /* Count Input Select. In counter mode (when bits 1:0 in this
                                                                            register are not 00), these bits select which CAP pin is
                                                                            sampled for clocking. */
-#define CT_CTCR_CIS_CAP0                       (0 << 2)                 /* CTxxBx_CAP0 */
-#define CT1_CTCR_CIS_CAP1                      (1 << 2)                 /* CTxxB1_CAP1 */
-#define CT0_CTCR_CIS_CAP1                      (2 << 2)                 /* CTxxB0_CAP1 */
+#define TIMER0_CTCR_CIS_CAP0                   (0 << 2)                 /* CTxxBx_CAP0 */
+#define TIMER1_CTCR_CIS_CAP1                   (1 << 2)                 /* CTxxB1_CAP1 */
+#define TIMER0_CTCR_CIS_CAP1                   (2 << 2)                 /* CTxxB0_CAP1 */
 
-#define CT_CTCR_ENCC                           (1 << 4)                 /* Setting this bit to 1 enables clearing of the timer and the
+#define TIMER0_CTCR_ENCC_Msk                   (1 << 4)                 /* Setting this bit to 1 enables clearing of the timer and the
                                                                            prescaler when the capture-edge event specified in bits 7:5
                                                                            occurs. */
-#define CT_CTCR_SELCC_POS                      5                        /* Edge select. When bit 4 is 1, these bits select which capture input edge will cause the timer
+#define TIMER0_CTCR_SELCC_Pos                  5                        /* Edge select. When bit 4 is 1, these bits select which capture input edge will cause the timer
                                                                            and prescaler to be cleared. These bits have no effect when bit 4 is low. */
-#define CT_CTCR_SELCC_CAP0_RE                  (0 << 5)                 /* Rising Edge of CTxxBx_CAP0 clears the timer */
-#define CT_CTCR_SELCC_CAP0_FE                  (1 << 5)                 /* Falling Edge of CTxxBx_CAP0 clears the timer */
-#define CT1_CTCR_SELCC_CAP1_RE                 (2 << 5)                 /* Rising Edge of CTxxB1_CAP1 clears the timer */
-#define CT1_CTCR_SELCC_CAP1_FE                 (3 << 5)                 /* Falling Edge of CTxxB1_CAP1 clears the timer */
-#define CT0_CTCR_SELCC_CAP1_RE                 (4 << 5)                 /* Rising Edge of CTxxB0_CAP1 clears the timer */
-#define CT0_CTCR_SELCC_CAP1_FE                 (5 << 5)                 /* Falling Edge of CTxxB0_CAP1 clears the timer */
+#define TIMER0_CTCR_SELCC_CAP0_RE              (0 << 5)                 /* Rising Edge of CTxxBx_CAP0 clears the timer */
+#define TIMER0_CTCR_SELCC_CAP0_FE              (1 << 5)                 /* Falling Edge of CTxxBx_CAP0 clears the timer */
+#define TIMER1_CTCR_SELCC_CAP1_RE              (2 << 5)                 /* Rising Edge of CTxxB1_CAP1 clears the timer */
+#define TIMER1_CTCR_SELCC_CAP1_FE              (3 << 5)                 /* Falling Edge of CTxxB1_CAP1 clears the timer */
+#define TIMER0_CTCR_SELCC_CAP1_RE              (4 << 5)                 /* Rising Edge of CTxxB0_CAP1 clears the timer */
+#define TIMER0_CTCR_SELCC_CAP1_FE              (5 << 5)                 /* Falling Edge of CTxxB0_CAP1 clears the timer */
 
 /**********  Bit definition for PWMC register  ********************************/
-#define CT_PWMC_PWMEN0                         (1 << 0)                 /*  PWM mode enable for channel0 */
-#define CT_PWMC_PWMEN1                         (1 << 1)                 /*  PWM mode enable for channel1 */
-#define CT_PWMC_PWMEN2                         (1 << 2)                 /*  PWM mode enable for channel2 */
-#define CT_PWMC_PWMEN3                         (1 << 3)                 /*  PWM mode enable for channel3 */
+#define TIMER0_PWMC_PWMEN0_Msk                 (1 << 0)                 /*  PWM mode enable for channel0 */
+#define TIMER0_PWMC_PWMEN1_Msk                 (1 << 1)                 /*  PWM mode enable for channel1 */
+#define TIMER0_PWMC_PWMEN2_Msk                 (1 << 2)                 /*  PWM mode enable for channel2 */
+#define TIMER0_PWMC_PWMEN3_Msk                 (1 << 3)                 /*  PWM mode enable for channel3 */
 
 /******************************************************************************/
 /*                                                                            */
