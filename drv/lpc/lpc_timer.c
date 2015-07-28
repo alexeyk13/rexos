@@ -43,13 +43,24 @@ void lpc_timer_isr(int vector, void* param)
 
 void lpc_timer_open(CORE* core, TIMER timer, unsigned int flags)
 {
+    unsigned int channel = (flags & TIMER_MODE_CHANNEL_MASK) >> TIMER_MODE_CHANNEL_POS;
+    core->timer.main_channel[timer] = channel;
 #ifdef LPC18xx
     if (timer >= PWM0)
         //no special setup is required
         return;
+    if (timer >= SCT)
+    {
+        //unified
+        LPC_SCT->CONFIG = SCT_CONFIG_UNIFY_Msk;
+        //channel used as limit
+        LPC_SCT->LIMIT_L = 1 << channel;
+        //enabled in all states
+        LPC_SCT->EVENT[channel].STATE = 0xffff;
+        LPC_SCT->EVENT[channel].CTRL = (channel << SCT_EVCTRL0_MATCHSEL_Pos) | (1 << SCT_EVCTRL0_COMBMODE_Pos);
+        return;
+    }
 #endif //LPC18xx
-
-    core->timer.main_channel[timer] = (flags & TIMER_MODE_CHANNEL_MASK) >> TIMER_MODE_CHANNEL_POS;
 
     //enable clock
 #ifdef LPC11Uxx
@@ -74,12 +85,12 @@ void lpc_timer_open(CORE* core, TIMER timer, unsigned int flags)
 
 void lpc_timer_close(CORE* core, TIMER timer)
 {
+    core->timer.main_channel[timer] = TIMER_CHANNEL_INVALID;
 #ifdef LPC18xx
-    if (timer >= PWM0)
+    if (timer >= SCT)
         //no special setup is required
         return;
 #endif //LPC18xx
-    core->timer.main_channel[timer] = TIMER_CHANNEL_INVALID;
     //disable interrupts
     NVIC_DisableIRQ(__TIMER_VECTORS[timer]);
 #ifdef LPC11Uxx
@@ -87,7 +98,6 @@ void lpc_timer_close(CORE* core, TIMER timer)
     LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << __TIMER_POWER_PINS[timer]);
 #endif //LPC11Uxx
 }
-
 
 static void lpc_timer_start_master_clk(CORE* core, TIMER timer, unsigned int psc, unsigned int mr)
 {
@@ -128,16 +138,26 @@ static void lpc_timer_start_master_us(CORE* core, TIMER timer, unsigned int us)
 void lpc_timer_start(CORE* core, TIMER timer, TIMER_VALUE_TYPE value_type, unsigned int value)
 {
 #ifdef LPC18xx
-    if (timer >= PWM0)
+    if (timer >= SCT)
     {
         if (value_type != TIMER_VALUE_CLK)
         {
             error(ERROR_NOT_SUPPORTED);
             return;
         }
-        LPC_MCPWM->TC[timer - PWM0] = 0;
-        LPC_MCPWM->LIM[timer - PWM0] = value - 1;
-        LPC_MCPWM->CON_SET = MCPWM_CON_RUN0_Msk << (8 * (timer - PWM0));
+        //set value for channel
+
+        if (timer >= PWM0)
+        {
+            LPC_MCPWM->TC[timer - PWM0] = 0;
+            LPC_MCPWM->LIM[timer - PWM0] = value - 1;
+            LPC_MCPWM->CON_SET = MCPWM_CON_RUN0_Msk << (8 * (timer - PWM0));
+            return;
+        }
+        //SCT
+        LPC_SCT->MATCHREL[core->timer.main_channel[timer]].L = value - 1;
+        //unhalt
+        LPC_SCT->CTRL_L &= ~SCT_CTRL_HALT_L_Msk;
         return;
     }
 #endif //LPC18xx
@@ -161,21 +181,30 @@ static inline void lpc_timer_setup_channel(CORE* core, TIMER timer, int channel,
 {
     unsigned int match;
 #ifdef LPC18xx
-    if (timer >= PWM0)
+    if (timer >= SCT)
     {
-        switch (type)
+        if (type != TIMER_CHANNEL_PWM)
         {
-        case TIMER_CHANNEL_OUTPUT_PWM_RISE:
+            error(ERROR_NOT_SUPPORTED);
+            return;
+        }
+
+        if (timer >= PWM0)
+        {
             LPC_MCPWM->MAT[timer - PWM0] = value;
             LPC_MCPWM->CON_CLR = MCPWM_CON_POLA0_Msk << (8 * (timer - PWM0));
-            break;
-        case TIMER_CHANNEL_OUTPUT_PWM_FALL:
-            LPC_MCPWM->MAT[timer - PWM0] = value;
-            LPC_MCPWM->CON_SET = MCPWM_CON_POLA0_Msk << (8 * (timer - PWM0));
-            break;
-        default:
-            error(ERROR_NOT_SUPPORTED);
+            return;
         }
+        //SCT
+        //enable channel
+        LPC_SCT->EVENT[channel].STATE = 0xffff;
+        LPC_SCT->EVENT[channel].CTRL = (channel << SCT_EVCTRL0_MATCHSEL_Pos) | (1 << SCT_EVCTRL0_COMBMODE_Pos);
+        //set match value
+        LPC_SCT->MATCHREL[channel].L = value;
+        //set on channel output
+        LPC_SCT->OUT[channel].SET = (1 << channel);
+        //master channel will reset pin
+        LPC_SCT->OUT[channel].CLR = (1 << core->timer.main_channel[timer]);
         return;
     }
 #endif //LPC18xx
@@ -196,7 +225,7 @@ static inline void lpc_timer_setup_channel(CORE* core, TIMER timer, int channel,
         __TIMER_REGS[timer]->IR = 1 << channel;
         break;
 #ifdef LPC11Uxx
-    case TIMER_CHANNEL_OUTPUT_PWM_FALL:
+    case TIMER_CHANNEL_PWM:
         //enable PWM on channel
         __TIMER_REGS[timer]->PWMC |= 1 << channel;
         //update value
@@ -215,6 +244,11 @@ void lpc_timer_stop(CORE* core, TIMER timer)
     {
         LPC_MCPWM->CON_CLR = MCPWM_CON_RUN0_Msk << (8 * (timer - PWM0));
         return;
+    }
+    if (timer >= SCT)
+    {
+        //halt
+        LPC_SCT->CTRL_L |= SCT_CTRL_HALT_L_Msk;
     }
 #endif //LPC18xx
     __TIMER_REGS[timer]->TCR &= ~TIMER0_TCR_CEN_Msk;
