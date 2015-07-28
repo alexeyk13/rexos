@@ -16,10 +16,14 @@
 #define MONOLITH_UART                       1
 #define MONOLITH_USB                        1
 //------------------------------------- power ---------------------------------------------
+//save few bytes here
+#define LPC_DECODE_RESET                    0
+
 #define HSE_VALUE                           12000000
-#define RTC_VALUE                           0
+#define LSE_VALUE                           0
 #define HSE_BYPASS                          0
-#define PLL_M                               4
+#define PLL_M                               15
+#define PLL_N                               1
 #define PLL_P                               2
 
 //Use main or dedicated usb pll for USBCLK

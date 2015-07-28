@@ -54,7 +54,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * cortex-m4
   * ARM7
 - Drivers:
-  * core (GPIO, UART, TIMER, POWER): STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx
+  * core (PIN/GPIO, UART, TIMER, POWER): STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx, LPC18xx
   * rtc: STM32F1, STM32F2, STM32F4, STM32L0
   * wdt: STM32F1, STM32F2, STM32F4, STM32L0
   * EEPROM: LPC11Uxx, STM32L0
@@ -63,7 +63,6 @@ unavailable, another HPET timer can be used for RTC emulation
   * DAC: STM32F1, STM32L0
   * USB: STM32F1_CL, STM32L0, LPC11Uxx
   * ETH: STM32F1
-  * bitbang: STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx
   * МЭЛТ mt12864j LCD display
 
 Cortex-M3 features:
@@ -78,6 +77,9 @@ ARM7 features:
 
 History
 =======
+0.3.4
+- LPC18xx basic support: PIN/GPIO, UART, TIMER, POWER
+
 0.3.3
 - due to different meaning in LPC18xx of PIN and GPIO, HAL_GPIO is now HAL_PIN. GPIO is only userspace library, while PIN
   configuration is in driver space
