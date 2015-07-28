@@ -143,10 +143,20 @@ typedef enum {
 //------------------------------------------------ Timer ---------------------------------------------------------------------
 
 typedef enum {
+#ifdef LPC11Uxx
     TC16B0 = 0,
     TC16B1,
     TC32B0,
     TC32B1,
+#else //LPC18xx
+    TIMER0,
+    TIMER1,
+    TIMER2,
+    TIMER3,
+    PWM0,
+    PWM1,
+    PWM2,
+#endif //LPC11uxx
     TIMER_MAX
 } TIMER;
 
