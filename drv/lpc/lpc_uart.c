@@ -61,7 +61,7 @@ static const LPC_USART_Type_P __USART_REGS[UARTS_COUNT] =       {LPC_USART};
 static const uint8_t __UART_POWER_PINS[] =                      {SYSCON_SYSAHBCLKCTRL_USART0_POS};
 static const uint8_t __UART_VECTORS[] =                         {21};
 
-typedef LPC_USART_Type* LPC_USART_Type_P
+typedef LPC_USART_Type* LPC_USART_Type_P;
 static const LPC_USART_Type_P __USART_REGS[UARTS_COUNT] =       {LPC_USART};
 #else //LPC18xx
 static const uint8_t __UART_VECTORS[UARTS_COUNT] =              {24, 25, 26, 27};
