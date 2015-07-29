@@ -10,6 +10,7 @@
 #include "../../userspace/process.h"
 #include "../../userspace/ipc.h"
 #include "../../userspace/io.h"
+#include "../../userspace/usb.h"
 #include "lpc_config.h"
 #if (MONOLITH_USB)
 #include "lpc_core.h"
@@ -28,6 +29,8 @@ typedef struct {
   EP* out[USB_EP_COUNT_MAX];
   EP* in[USB_EP_COUNT_MAX];
   uint8_t addr;
+  bool suspended;
+  USB_SPEED speed;
 } OTG_DRV;
 
 #if (MONOLITH_USB)

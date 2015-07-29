@@ -255,6 +255,11 @@
 #define LPC18xx
 #define UARTS_COUNT                     4
 #define I2C_COUNT                       2
+#define IRQ_VECTORS_COUNT               52
+#define SRAM1_BASE                      0x10080000
+//40k
+#define SRAM1_SIZE                      0xa000
+
 #endif
 
 //SRAM0 only, SRAM1 and any external memory is not used in system configuration
@@ -293,10 +298,6 @@
 #if defined(LPC1810) || defined(LPC1820) || defined(LPC1830) || defined(LPC1850)
 //compatibility mode
 #define FLASH_SIZE                      SRAM_SIZE
-#endif
-
-#if defined(LPC18xx)
-#define IRQ_VECTORS_COUNT               52
 #endif
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------

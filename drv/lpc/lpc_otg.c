@@ -8,7 +8,6 @@
 #if (MONOLITH_USB)
 #include "lpc_core_private.h"
 #endif
-#include "../../userspace/usb.h"
 #include "../../userspace/irq.h"
 
 #if (MONOLITH_USB)
@@ -40,6 +39,40 @@ const REX __LPC_OTG = {
 
 #endif //MONOLITH_USB
 
+static inline void lpc_otg_reset(SHARED_OTG_DRV* drv)
+{
+    iprintd("OTG reset: %s\n\r", drv->otg.speed == USB_HIGH_SPEED ? "HIGH SPEED" : "FULL SPEED");
+    //enable device
+///    LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DEV_EN;
+/*    IPC ipc;
+    ipc.process = drv->usb.device;
+    ipc.cmd = HAL_CMD(HAL_USB, USB_RESET);
+    ipc.param1 = USB_HANDLE_DEVICE;
+    ipc.param2 = drv->otg.speed;
+    ipc_ipost(&ipc);
+*/
+}
+
+static inline void lpc_otg_suspend(SHARED_OTG_DRV* drv)
+{
+    iprintd("OTG suspend\n\r");
+/*    IPC ipc;
+    ipc.process = drv->usb.device;
+    ipc.cmd = HAL_CMD(HAL_USB, USB_SUSPEND);
+    ipc.param1 = USB_HANDLE_DEVICE;
+    ipc_ipost(&ipc);*/
+}
+
+static inline void lpc_otg_wakeup(SHARED_OTG_DRV* drv)
+{
+    iprintd("OTG wakeup\n\r");
+/*    IPC ipc;
+    ipc.process = drv->usb.device;
+    ipc.cmd = HAL_CMD(HAL_USB, USB_WAKEUP);
+    ipc.param1 = USB_HANDLE_DEVICE;
+    ipc_ipost(&ipc);*/
+}
+
 void lpc_otg_on_isr(int vector, void* param)
 {
 //    int i;
@@ -47,8 +80,32 @@ void lpc_otg_on_isr(int vector, void* param)
 //    uint32_t sta = LPC_USB->INTSTAT;
 //    EP* ep;
 
-    iprintd("OTG ISR!!!\n\r");
+    if (LPC_USB0->USBSTS_D & USB0_USBSTS_D_URI_Msk)
+    {
+        drv->otg.suspended = false;
+        LPC_USB0->USBSTS_D = USB0_USBSTS_D_URI_Msk;
+    }
+    if (LPC_USB0->USBSTS_D & USB0_USBSTS_D_SLI_Msk)
+    {
+        lpc_otg_suspend(drv);
+        drv->otg.suspended = true;
+        LPC_USB0->USBSTS_D = USB0_USBSTS_D_SLI_Msk;
+    }
+    if (LPC_USB0->USBSTS_D & USB0_USBSTS_D_PCI_Msk)
+    {
+        drv->otg.speed = LPC_USB0->PORTSC1_D & USB0_PORTSC1_D_HSP_Msk ? USB_HIGH_SPEED : USB_FULL_SPEED;
+        LPC_USB0->USBSTS_D = USB0_USBSTS_D_PCI_Msk;
+        if (drv->otg.suspended)
+        {
+            drv->otg.suspended = false;
+            lpc_otg_wakeup(drv);
+        }
+        else
+            lpc_otg_reset(drv);
+    }
+
 /*
+
 #if (USB_DEBUG_ERRORS)
     IPC ipc;
     switch (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK)
@@ -133,6 +190,8 @@ void lpc_otg_open_device(SHARED_OTG_DRV* drv, HANDLE device)
 {
     int i;
     drv->otg.device = device;
+    drv->otg.suspended = false;
+    drv->otg.speed = USB_FULL_SPEED;
 
     //power on. Turn USB0 PLL 0n
     LPC_CGU->PLL0USB_CTRL = CGU_PLL0USB_CTRL_PD_Msk;
@@ -154,8 +213,16 @@ void lpc_otg_open_device(SHARED_OTG_DRV* drv, HANDLE device)
     //enable PLL clock
     LPC_CGU->PLL0USB_CTRL |= CGU_PLL0USB_CTRL_CLKEN_Msk;
 
+    //turn on USB0 PHY
+    LPC_CREG->CREG0 &= ~CREG_CREG0_USB0PHY_Msk;
+
+    //USB must be reset before mode change
+    LPC_USB0->USBCMD_D = USB0_USBCMD_D_RST_Msk;
+    while (LPC_USB0->USBCMD_D & USB0_USBCMD_D_RST_Msk) {}
     //set device mode
     LPC_USB0->USBMODE_D = USB0_USBMODE_CM_DEVICE;
+
+    LPC_USB0->ENDPOINTLISTADDR = SRAM1_BASE;
 
     //clear any spurious pending interrupts
     //TODO: endpoints

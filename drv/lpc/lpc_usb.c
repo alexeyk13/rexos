@@ -202,7 +202,6 @@ static inline void lpc_usb_wakeup(SHARED_USB_DRV* drv)
     ipc_ipost(&ipc);
 }
 
-
 static inline void lpc_usb_setup(SHARED_USB_DRV* drv)
 {
     IPC ipc;
