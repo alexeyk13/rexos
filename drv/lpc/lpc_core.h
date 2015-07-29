@@ -13,6 +13,8 @@
 #include "lpc_config.h"
 #include "sys_config.h"
 
+#define PLL_LOCK_TIMEOUT                        10000
+
 typedef struct _CORE CORE;
 
 __STATIC_INLINE unsigned int lpc_core_request_outside(void* unused, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)

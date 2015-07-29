@@ -14,7 +14,11 @@
 
 #include "lpc_uart.h"
 #include "lpc_i2c.h"
+#ifdef LPC11Uxx
 #include "lpc_usb.h"
+#else //LPC18xx
+#include "lpc_otg.h"
+#endif //LPC11Uxx
 #include "lpc_eep.h"
 
 
@@ -28,7 +32,11 @@ typedef struct _CORE {
     I2C_DRV i2c;
 #endif
 #if (MONOLITH_USB)
+#ifdef LPC11Uxx
     USB_DRV usb;
+#else //LPC18xx
+    OTG_DRV otg;
+#endif //LPC11Uxx
 #endif
 #if (LPC_EEPROM_DRIVER)
     EEP eep;

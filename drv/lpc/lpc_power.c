@@ -7,7 +7,6 @@
 #include "lpc_power.h"
 #include "lpc_core_private.h"
 
-#define PLL_LOCK_TIMEOUT                            10000
 #define IRC_VALUE                               12000000
 
 static unsigned int const __FCLKANA[] =         {0000000, 0600000, 1050000, 1400000, 1750000, 2100000, 2400000, 2700000,

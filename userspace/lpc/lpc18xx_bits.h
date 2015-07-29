@@ -1269,10 +1269,27 @@
 #define USART0_LCR_PS_FORCE_0                   (3 << 4)
 
 /**********  Bit definition for IIR register  *********************************/
-#define USART0_IIR_INTID_MODEM_STATUS              (0 << 1)
-#define USART0_IIR_INTID_THRE                      (1 << 1)
-#define USART0_IIR_INTID_RDA                       (2 << 1)
-#define USART0_IIR_INTID_RLS                       (3 << 1)
-#define USART0_IIR_INTID_CTI                       (6 << 1)
+#define USART0_IIR_INTID_MODEM_STATUS           (0 << 1)
+#define USART0_IIR_INTID_THRE                   (1 << 1)
+#define USART0_IIR_INTID_RDA                    (2 << 1)
+#define USART0_IIR_INTID_RLS                    (3 << 1)
+#define USART0_IIR_INTID_CTI                    (6 << 1)
+
+/******************************************************************************/
+/*                                                                            */
+/*                               USB0                                         */
+/*                                                                            */
+/******************************************************************************/
+
+/******  Bit definition for USB0_USBSTS_D register  ***************************/
+#define USB0_USBSTS_D_SEI_Msk                   (1 << 4)                        //forgotten in vendor shipped LPC18xx.h
+
+/*****  Bit definition for USB0_USBINTR_D register  ***************************/
+#define USB0_USBINTR_D_SEE_Msk                  (1 << 4)                        //forgotten in vendor shipped LPC18xx.h
+
+/*******  Bit definition for USB0_USBMODE register  ***************************/
+#define USB0_USBMODE_CM_RESERVED                (0 << 0)
+#define USB0_USBMODE_CM_DEVICE                  (2 << 0)
+#define USB0_USBMODE_CM_HOST                    (3 << 0)
 
 #endif // LPC11UXX_BITS_H
