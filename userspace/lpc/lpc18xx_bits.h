@@ -1305,6 +1305,19 @@
 /*********  Bit definition for USB0_DQH_NEXT **********************************/
 #define USB0_DQH_NEXT_T_Msk                     (1 << 0)
 
+/****  Bit definition for USB0_DTD_SIZE_FLAGS *********************************/
+#define USB0_DTD_SIZE_FLAGS_SIZE_Pos            16
+#define USB0_DTD_SIZE_FLAGS_SIZE_Msk            (0x7fff << 16)
+#define USB0_DTD_SIZE_FLAGS_IOC_Msk             (1 << 15)
+#define USB0_DTD_SIZE_FLAGS_MULT_ONE            (1 << 10)
+#define USB0_DTD_SIZE_FLAGS_MULT_TWO            (2 << 10)
+#define USB0_DTD_SIZE_FLAGS_MULT_THREE          (3 << 10)
+#define USB0_DTD_SIZE_FLAGS_STATUS_Msk          (0xff << 0)
+#define USB0_DTD_SIZE_FLAGS_ACTIVE_Msk          (1 << 7)
+#define USB0_DTD_SIZE_FLAGS_HALTED_Msk          (1 << 6)
+#define USB0_DTD_SIZE_FLAGS_BUFFER_ERR_Msk      (1 << 5)
+#define USB0_DTD_SIZE_FLAGS_TRANSACTION_ERR_Msk (1 << 3)
+
 /******  Bit definition for USB0_ENDPTCTRL register ***************************/
 #define USB0_ENDPTCTRL_S_Msk                    (1 << 0)
 #define USB0_ENDPTCTRL_T_Pos                    2

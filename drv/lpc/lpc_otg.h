@@ -18,16 +18,13 @@
 
 typedef struct {
     IO* io;
-    unsigned int size;
     uint16_t mps;
-    uint8_t io_active;
 } EP;
 
 typedef struct {
   HANDLE device;
   EP* out[USB_EP_COUNT_MAX];
   EP* in[USB_EP_COUNT_MAX];
-  uint8_t addr;
   bool suspended;
   USB_SPEED speed;
 } OTG_DRV;

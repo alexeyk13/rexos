@@ -46,20 +46,22 @@ const REX __LPC_OTG = {
 #pragma pack(push, 1)
 typedef struct
 {
-    struct DTD* next;
+    uint32_t next;
     uint32_t size_flags;
     void* buf[5];
-    uint32_t align;
+    uint32_t align[9];
 } DTD;
 
 typedef struct
 {
-  uint32_t capa;
-  struct DTD* cur;
-  struct DTD* next;
-  DTD shadow;
-  SETUP setup;
-  uint32_t align[4];
+    uint32_t capa;
+    DTD* cur;
+    DTD* next;
+    uint32_t shadow_size_flags;
+    void* shadow_buf[5];
+    uint32_t reserved;
+    uint32_t stp[2];
+    uint32_t align[4];
 } DQH;
 #pragma pack(pop)
 
@@ -68,10 +70,14 @@ static inline EP* ep_data(SHARED_OTG_DRV* drv, unsigned int num)
     return (num & USB_EP_IN) ? (drv->otg.in[USB_EP_NUM(num)]) : (drv->otg.out[USB_EP_NUM(num)]);
 }
 
-
 static inline DQH* ep_dqh(unsigned int num)
 {
     return &(((DQH*)LPC_USB0->ENDPOINTLISTADDR)[USB_EP_NUM(num) * 2 + (num & USB_EP_IN) ? 1 : 0]);
+}
+
+static inline DTD* ep_dtd(unsigned int num)
+{
+    return &(((DTD*)(LPC_USB0->ENDPOINTLISTADDR + sizeof(DQH) * USB_EP_COUNT_MAX * 2))[USB_EP_NUM(num) * 2 + (num & USB_EP_IN) ? 1 : 0]);
 }
 
 static inline void lpc_otg_bus_reset(SHARED_OTG_DRV* drv)
@@ -87,6 +93,11 @@ static inline void lpc_otg_bus_reset(SHARED_OTG_DRV* drv)
     //And flush all endpoints
     LPC_USB0->ENDPTFLUSH = 0xffffffff;
     while (LPC_USB0->ENDPTFLUSH) {}
+    //Disable all EP (except EP0)
+    for (i = 1; i < USB_EP_COUNT_MAX; ++i)
+        EP_CTRL[i] = 0x0;
+    //NAK all endpoints
+    LPC_USB0->ENDPTNAKEN = 0xffffffff;
 
     dqh = (DQH*)LPC_USB0->ENDPOINTLISTADDR;
     for (i = 0; i < USB_EP_COUNT_MAX * 2; ++i)
@@ -125,12 +136,37 @@ static inline void lpc_otg_wakeup(SHARED_OTG_DRV* drv)
     ipc_ipost(&ipc);
 }
 
+static inline void lpc_otg_setup(SHARED_OTG_DRV* drv)
+{
+    IPC ipc;
+    ipc.process = drv->otg.device;
+    ipc.cmd = HAL_CMD(HAL_USB, USB_SETUP);
+    ipc.param1 = 0;
+    ipc.param2 = ep_dqh(0)->stp[0];
+    ipc.param3 = ep_dqh(0)->stp[1];
+    ipc_ipost(&ipc);
+}
+
+static inline void lpc_otg_out(SHARED_OTG_DRV* drv, int ep_num)
+{
+    EP* ep = drv->otg.out[ep_num];
+    ep->io->data_size = ((ep_dtd(ep_num)->size_flags & USB0_DTD_SIZE_FLAGS_SIZE_Msk) >> USB0_DTD_SIZE_FLAGS_SIZE_Pos) -
+                        ((ep_dqh(ep_num)->shadow_size_flags & USB0_DTD_SIZE_FLAGS_SIZE_Msk) >> USB0_DTD_SIZE_FLAGS_SIZE_Pos);
+    iio_complete(drv->otg.device, HAL_CMD(HAL_USB, IPC_READ), ep_num, ep->io);
+    ep->io = NULL;
+}
+
+static inline void lpc_otg_in(SHARED_OTG_DRV* drv, int ep_num)
+{
+    EP* ep = drv->otg.in[ep_num];
+    iio_complete(drv->otg.device, HAL_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | ep_num, ep->io);
+    ep->io = NULL;
+}
+
 void lpc_otg_on_isr(int vector, void* param)
 {
-//    int i;
+    int i;
     SHARED_OTG_DRV* drv = (SHARED_OTG_DRV*)param;
-//    uint32_t sta = LPC_USB->INTSTAT;
-//    EP* ep;
 
     if (LPC_USB0->USBSTS_D & USB0_USBSTS_D_URI_Msk)
     {
@@ -160,7 +196,26 @@ void lpc_otg_on_isr(int vector, void* param)
 
     if (LPC_USB0->USBSTS_D & USB0_USBSTS_D_UI_Msk)
     {
-        iprintd("OTG DATA!!!!\n");
+        for (i = 0; LPC_USB0->ENDPTCOMPLETE && (i < USB_EP_COUNT_MAX); ++i )
+        {
+            if (LPC_USB0->ENDPTCOMPLETE & (1 << i))
+            {
+                lpc_otg_out(drv, i);
+                LPC_USB0->ENDPTCOMPLETE = 1 << i;
+            }
+            if (LPC_USB0->ENDPTCOMPLETE & (1 << (i + 16)))
+            {
+                lpc_otg_in(drv, i);
+                LPC_USB0->ENDPTCOMPLETE = 1 << (i + 16);
+            }
+        }
+        //Only for EP0
+        if (LPC_USB0->ENDPTSETUPSTAT & (1 << 0))
+        {
+            lpc_otg_setup(drv);
+            LPC_USB0->ENDPTSETUPSTAT = (1 << 0);
+        }
+        LPC_USB0->USBSTS_D = USB0_USBSTS_D_UI_Msk;
     }
 /*
 
@@ -181,32 +236,6 @@ void lpc_otg_on_isr(int vector, void* param)
         LPC_USB->INFO &= ~USB_INFO_ERR_CODE_MASK;
     }
 #endif
-
-    if ((sta & USB_INTSTAT_EP0OUT) && (LPC_USB->DEVCMDSTAT & USB_DEVCMDSTAT_SETUP))
-    {
-        lpc_usb_setup(drv);
-        LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_SETUP;
-        LPC_USB->INTSTAT = USB_INTSTAT_EP0OUT;
-        return;
-    }
-
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
-    {
-        if (sta & USB_EP_INT_BIT(i))
-        {
-            ep = drv->usb.out[i];
-            if (ep && ep->io_active)
-                lpc_usb_out(drv, i);
-            LPC_USB->INTSTAT = USB_EP_INT_BIT(i);
-        }
-        if (sta & USB_EP_INT_BIT(USB_EP_IN | i))
-        {
-            ep = drv->usb.in[i];
-            if (ep && ep->io_active)
-                lpc_usb_in(drv, i | USB_EP_IN);
-            LPC_USB->INTSTAT = USB_EP_INT_BIT(USB_EP_IN | i);
-        }
-    }
     */
 }
 
@@ -214,7 +243,6 @@ void lpc_otg_init(SHARED_OTG_DRV* drv)
 {
     int i;
     drv->otg.device = INVALID_HANDLE;
-    drv->otg.addr = 0;
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
     {
         drv->otg.out[i] = NULL;
@@ -233,7 +261,6 @@ void lpc_otg_open_device(SHARED_OTG_DRV* drv, HANDLE device)
     LPC_CGU->PLL0USB_CTRL = CGU_PLL0USB_CTRL_PD_Msk;
     LPC_CGU->PLL0USB_CTRL |= CGU_PLL0USB_CTRL_DIRECTI_Msk | CGU_CLK_HSE | CGU_PLL0USB_CTRL_DIRECTO_Msk;
     LPC_CGU->PLL0USB_MDIV = USBPLL_M;
-//    LPC_CGU->PLL0USB_NP_DIV = USBPLL_P;
     LPC_CGU->PLL0USB_CTRL &= ~CGU_PLL0USB_CTRL_PD_Msk;
 
     //power on. USBPLL must be turned on even in case of SYS PLL used. Why?
@@ -254,6 +281,8 @@ void lpc_otg_open_device(SHARED_OTG_DRV* drv, HANDLE device)
 
     //USB must be reset before mode change
     LPC_USB0->USBCMD_D = USB0_USBCMD_D_RST_Msk;
+    //lowest interrupt latency
+    LPC_USB0->USBCMD_D &= ~USB0_USBCMD_D_ITC_Msk;
     while (LPC_USB0->USBCMD_D & USB0_USBCMD_D_RST_Msk) {}
     //set device mode
     LPC_USB0->USBMODE_D = USB0_USBMODE_CM_DEVICE;
@@ -280,37 +309,10 @@ void lpc_otg_open_device(SHARED_OTG_DRV* drv, HANDLE device)
     LPC_USB0->USBCMD_D |= USB0_USBCMD_D_RS_Msk;
 }
 
-static inline void lpc_otg_open_ep(SHARED_OTG_DRV* drv, int num, USB_EP_TYPE type, unsigned int size)
+static inline void lpc_otg_set_address(SHARED_OTG_DRV* drv, int addr)
 {
-    unsigned int reg;
-    DQH* dqh;
-    if (ep_data(drv, num) != NULL)
-    {
-        error(ERROR_ALREADY_CONFIGURED);
-        return;
-    }
-
-    EP* ep = malloc(sizeof(EP));
-    if (ep == NULL)
-        return;
-    ep->io = NULL;
-    ep->io_active = false;
-    ep->mps = size;
-
-    dqh = ep_dqh(num);
-    dqh->capa = (size << USB0_DQH_CAPA_MAX_PACKET_LENGTH_Pos) | USB0_DQH_CAPA_ZLT_Msk;
-    if (USB_EP_NUM(num) == 0)
-        dqh->capa |= USB0_DQH_CAPA_IOS_Msk;
-    dqh->next = (void*)USB0_DQH_NEXT_T_Msk;
-
-    reg = USB0_ENDPTCTRL_E_Msk;
-    if (USB_EP_NUM(num))
-        reg |= (type << USB0_ENDPTCTRL_T_Pos) | USB0_ENDPTCTRL_R_Msk;
-
-    if (num & USB_EP_IN)
-        EP_CTRL[USB_EP_NUM(num)] = (EP_CTRL[USB_EP_NUM(num)] & 0xffff) | (reg << 16);
-    else
-        EP_CTRL[USB_EP_NUM(num)] = (EP_CTRL[USB_EP_NUM(num)] & (0xffff << 16)) | reg;
+    //according to datasheet, no special action is required if status will go in 2 ms
+    LPC_USB0->DEVICEADDR = (addr << USB0_DEVICEADDR_USBADR_Pos) | USB0_DEVICEADDR_USBADRA_Msk;
 }
 
 static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
@@ -331,7 +333,7 @@ static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
         need_post = true;
         break;
     case USB_SET_ADDRESS:
-//TODO:        lpc_otg_set_address(drv, ipc->param2);
+        lpc_otg_set_address(drv, ipc->param2);
         need_post = true;
         break;
     //TODO: test mode
@@ -348,6 +350,110 @@ static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
         break;
     }
     return need_post;
+}
+
+static inline void lpc_otg_open_ep(SHARED_OTG_DRV* drv, int num, USB_EP_TYPE type, unsigned int size)
+{
+    unsigned int reg;
+    DQH* dqh;
+    if (ep_data(drv, num) != NULL)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+
+    EP* ep = malloc(sizeof(EP));
+    if (ep == NULL)
+        return;
+    ep->io = NULL;
+    ep->mps = size;
+    num & USB_EP_IN ? (drv->otg.in[USB_EP_NUM(num)] = ep) : (drv->otg.out[USB_EP_NUM(num)] = ep);
+
+    dqh = ep_dqh(num);
+    dqh->capa = (size << USB0_DQH_CAPA_MAX_PACKET_LENGTH_Pos) | USB0_DQH_CAPA_ZLT_Msk;
+    if (USB_EP_NUM(num) == 0)
+        dqh->capa |= USB0_DQH_CAPA_IOS_Msk;
+    dqh->next = (void*)USB0_DQH_NEXT_T_Msk;
+
+    reg = USB0_ENDPTCTRL_E_Msk;
+    if (USB_EP_NUM(num))
+        reg |= (type << USB0_ENDPTCTRL_T_Pos) | USB0_ENDPTCTRL_R_Msk;
+
+    if (num & USB_EP_IN)
+        EP_CTRL[USB_EP_NUM(num)] = (EP_CTRL[USB_EP_NUM(num)] & 0xffff) | (reg << 16);
+    else
+        EP_CTRL[USB_EP_NUM(num)] = (EP_CTRL[USB_EP_NUM(num)] & (0xffff << 16)) | reg;
+}
+
+static inline void lpc_otg_close_ep(SHARED_OTG_DRV* drv, int num)
+{
+    //TODO: flush
+//    if (!lpc_usb_ep_flush(drv, num))
+//        return;
+
+    EP* ep = ep_data(drv, num);
+    free(ep);
+    num & USB_EP_IN ? (drv->otg.in[USB_EP_NUM(num)] = NULL) : (drv->otg.out[USB_EP_NUM(num)] = NULL);
+}
+
+static bool lpc_otg_io_prepare(SHARED_OTG_DRV* drv, IPC* ipc)
+{
+    unsigned int num = ipc->param1;
+    DTD* dtd;
+    DQH* dqh;
+    EP* ep = ep_data(drv, num);
+    if (ep == NULL)
+    {
+        io_send_error(ipc, ERROR_NOT_CONFIGURED);
+        return false;
+    }
+    if (ep->io != NULL)
+    {
+        io_send_error(ipc, ERROR_IN_PROGRESS);
+        return false;
+    }
+    ep->io = (IO*)ipc->param2;
+    //prepare DTD
+    dtd = ep_dtd(num);
+    dtd->next = USB0_DQH_NEXT_T_Msk;
+    dtd->size_flags = USB0_DTD_SIZE_FLAGS_IOC_Msk | USB0_DTD_SIZE_FLAGS_ACTIVE_Msk;
+
+    dtd->buf[0] = io_data(ep->io);
+    dtd->buf[1] = (void*)(((unsigned int)(dtd->buf[0]) + 0x1000) & 0xfffff000);
+    dtd->buf[2] = dtd->buf[1] + 0x1000;
+    dtd->buf[3] = dtd->buf[1] + 0x2000;
+    dtd->buf[4] = dtd->buf[1] + 0x3000;
+    //insert in EQH
+    dqh = ep_dqh(num);
+    dqh->next = dtd;
+    dqh->shadow_size_flags &= ~USB0_DTD_SIZE_FLAGS_STATUS_Msk;
+    if (USB_EP_NUM(num) == 0)
+        //required before EP0 transfers
+        while (LPC_USB0->ENDPTSETUPSTAT & (1 << 0)) {}
+    return true;
+}
+
+static inline void lpc_otg_read(SHARED_OTG_DRV* drv, IPC* ipc)
+{
+    unsigned int num = ipc->param1;
+    EP* ep = drv->otg.out[USB_EP_NUM(num)];
+    if (lpc_otg_io_prepare(drv, ipc))
+    {
+        ep->io->data_size = 0;
+        ep_dtd(num)->size_flags |= ipc->param3 << USB0_DTD_SIZE_FLAGS_SIZE_Pos;
+        LPC_USB0->ENDPTPRIME |= 1 << USB_EP_NUM(num);
+    }
+}
+
+static inline void lpc_otg_write(SHARED_OTG_DRV* drv, IPC* ipc)
+{
+    unsigned int num = ipc->param1;
+    EP* ep = drv->otg.in[USB_EP_NUM(num)];
+    if (lpc_otg_io_prepare(drv, ipc))
+    {
+        ep_dtd(num)->size_flags |= ep->io->data_size << USB0_DTD_SIZE_FLAGS_SIZE_Pos;
+        LPC_USB0->ENDPTPRIME |= 1 << (USB_EP_NUM(num) + 16);
+    }
 }
 
 static inline bool lpc_otg_ep_request(SHARED_OTG_DRV* drv, IPC* ipc)
@@ -374,7 +480,7 @@ static inline bool lpc_otg_ep_request(SHARED_OTG_DRV* drv, IPC* ipc)
             need_post = true;
             break;
         case IPC_CLOSE:
-//TODO:            lpc_otg_close_ep(drv, ipc->param1);
+            lpc_otg_close_ep(drv, ipc->param1);
             need_post = true;
             break;
         case IPC_FLUSH:
@@ -394,11 +500,11 @@ static inline bool lpc_otg_ep_request(SHARED_OTG_DRV* drv, IPC* ipc)
             need_post = true;
             break;
         case IPC_READ:
-//TODO:            lpc_otg_read(drv, ipc);
+            lpc_otg_read(drv, ipc);
             //posted with io, no return IPC
             break;
         case IPC_WRITE:
-//TODO:            lpc_otg_write(drv, ipc);
+            lpc_otg_write(drv, ipc);
             //posted with io, no return IPC
             break;
         default:
