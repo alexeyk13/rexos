@@ -144,7 +144,7 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
 #endif //SCSI_VERIFY_SUPPORTED
         default:
 #if (SCSI_DEBUG_ERRORS)
-            printf("SCSI: unknown cmd 0x7f action: %02xh\n\r", be2short(req + 2));
+            printf("SCSI: unknown cmd 0x7f action: %02xh\n", be2short(req + 2));
 #endif //SCSI_DEBUG_ERRORS
             scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_COMMAND_OPERATION_CODE);
         }
@@ -161,7 +161,7 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
 #endif //SCSI_SAT
     default:
 #if (SCSI_DEBUG_ERRORS)
-        printf("SCSI: unknown cmd opcode: %02xh\n\r", req[0]);
+        printf("SCSI: unknown cmd opcode: %02xh\n", req[0]);
 #endif //SCSI_DEBUG_ERRORS
         scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_COMMAND_OPERATION_CODE);
         break;
@@ -180,7 +180,7 @@ void scsis_request(SCSIS* scsis, uint8_t* req)
     default:
         //io in progress
 #if (SCSI_DEBUG_ERRORS)
-        printf("SCSI invalid state on request: %d\n\r", scsis->state);
+        printf("SCSI invalid state on request: %d\n", scsis->state);
 #endif //SCSI_DEBUG_ERRORS
         scsis_fatal(scsis);
     }
@@ -200,7 +200,7 @@ void scsis_host_io_complete(SCSIS* scsis)
         break;
     default:
 #if (SCSI_DEBUG_ERRORS)
-        printf("SCSI invalid state on host io complete: %d\n\r", scsis->state);
+        printf("SCSI invalid state on host io complete: %d\n", scsis->state);
 #endif //SCSI_DEBUG_ERRORS
         scsis_fatal(scsis);
     }
@@ -227,7 +227,7 @@ void scsis_storage_io_complete(SCSIS* scsis)
         break;
     default:
 #if (SCSI_DEBUG_ERRORS)
-        printf("SCSI invalid state on storage io complete: %d\n\r", scsis->state);
+        printf("SCSI invalid state on storage io complete: %d\n", scsis->state);
 #endif //SCSI_DEBUG_ERRORS
         scsis_fatal(scsis);
     }

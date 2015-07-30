@@ -18,7 +18,6 @@
 
 typedef struct {
     IO* io;
-    void* fifo;
     unsigned int size;
     uint16_t mps;
     uint8_t io_active;

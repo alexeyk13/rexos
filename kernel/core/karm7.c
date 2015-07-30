@@ -10,7 +10,7 @@
 void prefetch_abort_entry_arm7(unsigned int address)
 {
 #if (KERNEL_DEBUG)
-    printk("PREFETCH ABORT AT: %#X\n\r", address);
+    printk("PREFETCH ABORT AT: %#X\n", address);
 #endif
     panic();
 }
@@ -18,7 +18,7 @@ void prefetch_abort_entry_arm7(unsigned int address)
 void data_abort_entry_arm7(unsigned int address)
 {
 #if (KERNEL_DEBUG)
-    printk("DATA ABORT AT: %#X\n\r", address);
+    printk("DATA ABORT AT: %#X\n", address);
 #endif
     panic();
 }

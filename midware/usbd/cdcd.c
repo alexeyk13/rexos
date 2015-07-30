@@ -126,9 +126,9 @@ void cdcd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     cdcd->notify_ready = true;
 
 #if (USBD_CDC_DEBUG_REQUESTS)
-    printf("Found USB CDCD ACM class, EP%d, size: %d, iface: %d\n\r", cdcd->data_ep, cdcd->data_ep_size, cdcd->data_iface);
+    printf("Found USB CDCD ACM class, EP%d, size: %d, iface: %d\n", cdcd->data_ep, cdcd->data_ep_size, cdcd->data_iface);
     if (cdcd->control_ep)
-        printf("Has control EP%d, size: %d, iface: %d\n\r", cdcd->control_ep, cdcd->control_ep_size, cdcd->control_iface);
+        printf("Has control EP%d, size: %d, iface: %d\n", cdcd->control_ep, cdcd->control_ep_size, cdcd->control_iface);
 #endif //USBD_CDC_DEBUG_REQUESTS
 
 #if (USBD_CDC_TX_STREAM_SIZE)
@@ -260,7 +260,7 @@ static inline void cdcd_read_complete(USBD* usbd, CDCD* cdcd)
             printf("%c", ((char*)io_data(cdcd->rx))[i]);
         else
             printf("\\x%d", ((uint8_t*)io_data(cdcd->rx))[i]);
-    printf("\n\r");
+    printf("\n");
 #endif //USBD_CDC_DEBUG_IO
     if (to_read && stream_write(cdcd->rx_stream_handle, io_data(cdcd->rx), to_read))
         cdcd->rx_free -= to_read;
@@ -309,7 +309,7 @@ static inline int set_line_coding(CDCD* cdcd, IO* io)
     cdcd->baud.data_bits = lc->bDataBits;
 
 #if (USBD_CDC_DEBUG_REQUESTS)
-    printf("CDCD set line coding: %d %d%c%d\n\r", cdcd->baud.baud, cdcd->baud.data_bits, cdcd->baud.parity, cdcd->baud.stop_bits);
+    printf("CDCD set line coding: %d %d%c%d\n", cdcd->baud.baud, cdcd->baud.data_bits, cdcd->baud.parity, cdcd->baud.stop_bits);
 #endif
     return 0;
 }
@@ -351,7 +351,7 @@ static inline int get_line_coding(CDCD* cdcd, IO* io)
     lc->bDataBits = cdcd->baud.data_bits;
 
 #if (USBD_CDC_DEBUG_REQUESTS)
-    printf("CDCD get line coding: %d %d%c%d\n\r", cdcd->baud.baud, cdcd->baud.data_bits, cdcd->baud.parity, cdcd->baud.stop_bits);
+    printf("CDCD get line coding: %d %d%c%d\n", cdcd->baud.baud, cdcd->baud.data_bits, cdcd->baud.parity, cdcd->baud.stop_bits);
 #endif
     return sizeof(LINE_CODING_STRUCT);
 }
@@ -361,7 +361,7 @@ static inline int set_control_line_state(USBD* usbd, CDCD* cdcd, SETUP* setup)
     cdcd->DTR = (setup->wValue >> 0) & 1;
     cdcd->RTS = (setup->wValue >> 0) & 1;
 #if (USBD_CDC_DEBUG_REQUESTS)
-    printf("CDCD set control line state: DTR %s, RTS %s\n\r", ON_OFF[1 * cdcd->DTR], ON_OFF[1 * cdcd->RTS]);
+    printf("CDCD set control line state: DTR %s, RTS %s\n", ON_OFF[1 * cdcd->DTR], ON_OFF[1 * cdcd->RTS]);
 #endif
 
     //resume write if DTR is set

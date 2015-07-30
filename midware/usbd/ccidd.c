@@ -185,9 +185,9 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
             ccidd->aborting = false;
 
 #if (USBD_CCID_DEBUG_REQUESTS)
-            printf("Found USB CCID device class, data: EP%d, iface: %d\n\r", ccidd->data_ep, ccidd->iface);
+            printf("Found USB CCID device class, data: EP%d, iface: %d\n", ccidd->data_ep, ccidd->iface);
             if (ccidd->status_ep)
-                printf("Status: EP%d\n\r", ccidd->status_ep);
+                printf("Status: EP%d\n", ccidd->status_ep);
 #endif //USBD_CCID_DEBUG_REQUESTS
 
             usbd_register_interface(usbd, ccidd->iface, &__CCIDD_CLASS, ccidd);
@@ -259,7 +259,7 @@ int ccidd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
         ccidd->seq = setup->wValue >> 8;
         res = 0;
 #if (USBD_CCID_DEBUG_REQUESTS)
-        printf("CCIDD Abort request\n\r");
+        printf("CCIDD Abort request\n");
 #endif //USBD_CCID_DEBUG_REQUESTS
         break;
     default:
@@ -272,7 +272,7 @@ static inline void ccidd_power_on(USBD* usbd, CCIDD* ccidd)
 {
     CCID_MESSAGE* msg = io_data(ccidd->io);
 #if (USBD_CCID_DEBUG_REQUESTS)
-    printf("CCIDD: ICC slot%d power on\n\r", msg->bSlot);
+    printf("CCIDD: ICC slot%d power on\n", msg->bSlot);
 #endif //USBD_CCID_DEBUG_REQUESTS
     ccidd_user_request(usbd, ccidd, USB_CCID_POWER_ON, msg->msg_specific[0]);
 }
@@ -281,7 +281,7 @@ static inline void ccidd_power_off(USBD* usbd, CCIDD* ccidd)
 {
 #if (USBD_CCID_DEBUG_REQUESTS)
     CCID_MESSAGE* msg = io_data(ccidd->io);
-    printf("CCIDD: ICC slot%d power off\n\r", msg->bSlot);
+    printf("CCIDD: ICC slot%d power off\n", msg->bSlot);
 #endif //USBD_CCID_DEBUG_REQUESTS
     if (ccidd->slot_status == CCID_SLOT_STATUS_ICC_PRESENT_AND_ACTIVE)
         ccidd->slot_status = CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE;
@@ -293,7 +293,7 @@ static inline void ccidd_get_slot_status(USBD* usbd, CCIDD* ccidd)
 {
 #if (USBD_CCID_DEBUG_REQUESTS)
     CCID_MESSAGE* msg = io_data(ccidd->io);
-    printf("CCIDD: get slot%d status\n\r", msg->bSlot);
+    printf("CCIDD: get slot%d status\n", msg->bSlot);
 #endif //USBD_CCID_DEBUG_REQUESTS
     ccidd_send_slot_status(usbd, ccidd, ccidd->seq, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR);
 }
@@ -302,7 +302,7 @@ static inline void ccidd_xfer_block(USBD* usbd, CCIDD* ccidd)
 {
     CCID_MESSAGE* msg = io_data(ccidd->io);
 #if (USBD_CCID_DEBUG_REQUESTS)
-    printf("CCIDD: Xfer block to slot%d, size: %d\n\r", msg->bSlot, msg->dwLength);
+    printf("CCIDD: Xfer block to slot%d, size: %d\n", msg->bSlot, msg->dwLength);
 #endif //USBD_CCID_DEBUG_REQUESTS
 #if (USBD_CCID_DEBUG_IO)
     usbd_dump(io_data(ccidd->io) + sizeof(CCID_MESSAGE), msg->dwLength, "CCIDD C-APDU");
@@ -313,7 +313,7 @@ static inline void ccidd_xfer_block(USBD* usbd, CCIDD* ccidd)
 static inline void ccidd_get_params(USBD* usbd, CCIDD* ccidd)
 {
 #if (USBD_CCID_DEBUG_REQUESTS)
-        printf("CCIDD: get params\n\r");
+        printf("CCIDD: get params\n");
 #endif //USBD_CCID_DEBUG_REQUESTS
     ccidd_user_request(usbd, ccidd, USB_CCID_GET_PARAMS, 0);
 }
@@ -322,7 +322,7 @@ static inline void ccidd_set_params(USBD* usbd, CCIDD* ccidd)
 {
     CCID_MESSAGE* msg = io_data(ccidd->io);
 #if (USBD_CCID_DEBUG_REQUESTS)
-    printf("CCIDD: set params - T%d\n\r", msg->msg_specific[0]);
+    printf("CCIDD: set params - T%d\n", msg->msg_specific[0]);
 #endif //USBD_CCID_DEBUG_REQUESTS
     ccidd_user_request(usbd, ccidd, USB_CCID_SET_PARAMS, msg->msg_specific[0]);
 }
@@ -330,7 +330,7 @@ static inline void ccidd_set_params(USBD* usbd, CCIDD* ccidd)
 static inline void ccidd_reset_params(USBD* usbd, CCIDD* ccidd)
 {
 #if (USBD_CCID_DEBUG_REQUESTS)
-        printf("CCIDD: reset params\n\r");
+        printf("CCIDD: reset params\n");
 #endif //USBD_CCID_DEBUG_REQUESTS
     ccidd_user_request(usbd, ccidd, USB_CCID_RESET_PARAMS, 0);
 }
@@ -365,7 +365,7 @@ static inline void ccidd_msg_process(USBD* usbd, CCIDD* ccidd)
     default:
         ccidd_send_slot_status(usbd, ccidd, msg->bSeq, CCID_SLOT_ERROR_CMD_NOT_SUPPORTED, CCID_SLOT_STATUS_COMMAND_FAIL);
 #if (USBD_CCID_DEBUG_ERRORS)
-        printf("CCIDD: unsupported CMD: %#X\n\r", msg->bMessageType);
+        printf("CCIDD: unsupported CMD: %#X\n", msg->bMessageType);
 #endif //USBD_DEBUG_CLASS_REQUESTS
     }
 }
@@ -410,7 +410,7 @@ static inline void ccidd_rx_complete(USBD* usbd, CCIDD* ccidd)
         ccidd->state = CCIDD_STATE_IDLE;
         ccidd_rx(usbd, ccidd);
 #if (USBD_CCID_DEBUG_ERRORS)
-        printf("CCIDD: invalid state on rx: %d\n\r", ccidd->state);
+        printf("CCIDD: invalid state on rx: %d\n", ccidd->state);
 #endif //USBD_DEBUG_CLASS_REQUESTS
     }
 }
@@ -434,7 +434,7 @@ static void ccidd_tx_complete(USBD* usbd, CCIDD* ccidd)
     default:
         ccidd->state = CCIDD_STATE_IDLE;
 #if (USBD_CCID_DEBUG_ERRORS)
-        printf("CCIDD: invalid state on tx: %d\n\r", ccidd->state);
+        printf("CCIDD: invalid state on tx: %d\n", ccidd->state);
 #endif //USBD_DEBUG_CLASS_REQUESTS
     }
     ccidd_rx(usbd, ccidd);

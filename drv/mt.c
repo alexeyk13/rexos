@@ -190,7 +190,7 @@ void mt_clks_test()
     TIME uptime;
     get_uptime(&uptime);
     delay_clks(CLKS_TEST_ROUNDS);
-    printf("clks average time: %dns\n\r", systime_elapsed_us(&uptime) * 1000 / CLKS_TEST_ROUNDS);
+    printf("clks average time: %dns\n", systime_elapsed_us(&uptime) * 1000 / CLKS_TEST_ROUNDS);
 }
 
 static inline void mt_set_pixel(unsigned int x, unsigned int y, bool set)

@@ -19,7 +19,7 @@ static inline void scsis_pc_standart_inquiry(SCSIS* scsis)
     uint8_t* data = io_data(scsis->io);
 
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI standart INQUIRY\n\r");
+    printf("SCSI standart INQUIRY\n");
 #endif //SCSI_DEBUG_REQUESTS
     scsis->io->data_size = 36;
     memset(data, 0, scsis->io->data_size);
@@ -51,7 +51,7 @@ static inline void scsis_pc_vpd_00(SCSIS* scsis)
     uint8_t* page = data + 4;
 
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI inquiry VPD supported pages\n\r");
+    printf("SCSI inquiry VPD supported pages\n");
 #endif //SCSI_DEBUG_REQUESTS
     scsis->io->data_size = 6;
 
@@ -69,7 +69,7 @@ static inline void scsis_pc_vpd_83(SCSIS* scsis)
     uint8_t* page = data + 4;
 
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI inquiry VPD device info\n\r");
+    printf("SCSI inquiry VPD device info\n");
 #endif //SCSI_DEBUG_REQUESTS
     scsis->io->data_size = 4 + 2 + ((strlen((*scsis->storage)->product) + 4) & ~3);
     memset(data, 0, scsis->io->data_size);
@@ -102,7 +102,7 @@ void scsis_pc_inquiry(SCSIS* scsis, uint8_t* req)
             break;
         default:
 #if (SCSI_DEBUG_REQUESTS)
-            printf("SCSI VPD INQUIRY, page: %02xh not supported\n\r", req[2]);
+            printf("SCSI VPD INQUIRY, page: %02xh not supported\n", req[2]);
 #endif //SCSI_DEBUG_REQUESTS
             scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
             return;
@@ -121,7 +121,7 @@ void scsis_pc_test_unit_ready(SCSIS* scsis, uint8_t* req)
     if (!scsis_get_media_descriptor(scsis))
         return;
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI test unit ready: %d\n\r", scsis->media ? 1 : 0);
+    printf("SCSI test unit ready: %d\n", scsis->media ? 1 : 0);
 #endif //SCSI_DEBUG_REQUESTS
     if (scsis->media)
         scsis_pass(scsis);
@@ -149,7 +149,7 @@ void scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req)
     dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
     len = req[4];
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI mode sense (6) page, subpage: %#04X, dbd: %d\n\r", psp, dbd);
+    printf("SCSI mode sense (6) page, subpage: %#04X, dbd: %d\n", psp, dbd);
 #endif //SCSI_DEBUG_REQUESTS
     scsis->io->data_size = 4;
     switch ((*scsis->storage)->scsi_device_type)
@@ -201,7 +201,7 @@ void scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req)
     llbaa = (req[1] & SCSI_MODE_SENSE_LLBAA) ? true : false;
     len = be2short(req + 7);
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI mode sense (10) page, subpage: %#04X, dbd: %d, llbaa: %d\n\r", psp, dbd, llbaa);
+    printf("SCSI mode sense (10) page, subpage: %#04X, dbd: %d, llbaa: %d\n", psp, dbd, llbaa);
 #endif //SCSI_DEBUG_REQUESTS
     scsis->io->data_size = 4;
     switch ((*scsis->storage)->scsi_device_type)
@@ -231,7 +231,7 @@ void scsis_pc_mode_select6(SCSIS* scsis, uint8_t* req)
     if (!scsis_get_media_descriptor(scsis))
         return;
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI mode select (6)\n\r");
+    printf("SCSI mode select (6)\n");
 #endif //SCSI_DEBUG_REQUESTS
     //generally for compatibility only
     scsis_pass(scsis);
@@ -243,7 +243,7 @@ void scsis_pc_mode_select10(SCSIS* scsis, uint8_t* req)
     if (!scsis_get_media_descriptor(scsis))
         return;
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI mode select (10)\n\r");
+    printf("SCSI mode select (10)\n");
 #endif //SCSI_DEBUG_REQUESTS
     //generally for compatibility only
     scsis_pass(scsis);
@@ -254,7 +254,7 @@ void scsis_pc_request_sense(SCSIS* scsis, uint8_t* req)
 {
     SCSIS_ERROR err;
 #if (SCSI_DEBUG_REQUESTS)
-    printf("SCSI request sense\n\r");
+    printf("SCSI request sense\n");
 #endif //SCSI_DEBUG_REQUESTS
     if (req[1] & SCSI_REQUEST_SENSE_DESC)
     {

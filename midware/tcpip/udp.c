@@ -10,7 +10,7 @@
 
 void udp_rx(TCPIP* tcpip, IO* io, IP* src)
 {
-    printf("UDP!\n\r");
+    printf("UDP!\n");
     dump(io_data(io), io->data_size);
     ip_release_io(tcpip, io);
 }

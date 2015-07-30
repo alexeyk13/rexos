@@ -60,7 +60,7 @@ static void print_conn_status(TCPIP* tcpip, const char* head)
         printf("remote fault");
         break;
     }
-    printf("\n\r");
+    printf("\n");
 }
 #endif
 
@@ -87,7 +87,7 @@ IO* tcpip_allocate_io(TCPIP* tcpip)
                 ++tcpip->io_allocated;
 #if (TCPIP_DEBUG_ERRORS)
             else
-                printf("TCPIP: out of memory\n\r");
+                printf("TCPIP: out of memory\n");
 #endif
         }
         //try to drop first in queue, waiting for resolve
@@ -95,7 +95,7 @@ IO* tcpip_allocate_io(TCPIP* tcpip)
         {
             io = tcpip_allocate_io_internal(tcpip);
 #if (TCPIP_DEBUG)
-            printf("TCPIP warning: block dropped from route queue\n\r");
+            printf("TCPIP warning: block dropped from route queue\n");
 #endif
         }
         else if (array_size(tcpip->tx_queue))
@@ -104,13 +104,13 @@ IO* tcpip_allocate_io(TCPIP* tcpip)
             --tcpip->tx_count;
             io = tcpip_allocate_io_internal(tcpip);
 #if (TCPIP_DEBUG)
-            printf("TCPIP warning: block dropped from tx queue\n\r");
+            printf("TCPIP warning: block dropped from tx queue\n");
 #endif
         }
         else
         {
 #if (TCPIP_DEBUG_ERRORS)
-            printf("TCPIP: too many blocks\n\r");
+            printf("TCPIP: too many blocks\n");
 #endif
         }
     }

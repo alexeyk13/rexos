@@ -28,7 +28,7 @@ static inline void comm_usb_start(APP* app)
 
     stream_listen(app->comm.rx_stream, 0, HAL_APP);
 
-    printf("USB start\n\r");
+    printf("USB start\n");
 }
 
 static void comm_usb_stop(APP* app)
@@ -40,7 +40,7 @@ static void comm_usb_stop(APP* app)
         stream_close(app->comm.rx);
         app->comm.rx = app->comm.tx = app->comm.rx_stream = INVALID_HANDLE;
         app->comm.active = false;
-        printf("USB stop\n\r");
+        printf("USB stop\n");
     }
 }
 
@@ -76,7 +76,7 @@ void comm_usbd_stream_rx(APP* app, unsigned int size)
         else
             printf("\\x%u", (uint8_t)c);
     }
-    printf("\n\r");
+    printf("\n");
     stream_listen(app->comm.rx_stream, 0, HAL_APP);
 }
 
@@ -102,5 +102,5 @@ void comm_init(APP *app)
 
     ack(usbd, HAL_CMD(HAL_USBD, IPC_OPEN), 0, 0, 0);
 
-    printf("Comm init\n\r");
+    printf("Comm init\n");
 }

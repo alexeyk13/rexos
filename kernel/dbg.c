@@ -19,7 +19,7 @@ void printk(const char *const fmt, ...)
 
 void dump(unsigned int addr, unsigned int size)
 {
-    printk("memory dump 0x%08x-0x%08x\n\r", addr, addr + size);
+    printk("memory dump 0x%08x-0x%08x\n", addr, addr + size);
     unsigned int i = 0;
     for (i = 0; i < size; ++i)
     {
@@ -27,9 +27,9 @@ void dump(unsigned int addr, unsigned int size)
             printk("0x%08x: ", addr + i);
         printk("%02X ", ((unsigned char*)addr)[i]);
         if ((i % 0x10) == 0xf)
-            printk("\n\r");
+            printk("\n");
     }
     if (size % 0x10)
-        printk("\n\r");
+        printk("\n");
 }
 

@@ -9,6 +9,8 @@
 #include "lpc_core_private.h"
 #endif
 #include "../../userspace/irq.h"
+#include "../../userspace/stdlib.h"
+#include <string.h>
 
 #if (MONOLITH_USB)
 
@@ -39,38 +41,88 @@ const REX __LPC_OTG = {
 
 #endif //MONOLITH_USB
 
+#define EP_CTRL                             ((uint32_t*)(&(LPC_USB0->ENDPTCTRL0)))
+
+#pragma pack(push, 1)
+typedef struct
+{
+    struct DTD* next;
+    uint32_t size_flags;
+    void* buf[5];
+    uint32_t align;
+} DTD;
+
+typedef struct
+{
+  uint32_t capa;
+  struct DTD* cur;
+  struct DTD* next;
+  DTD shadow;
+  SETUP setup;
+  uint32_t align[4];
+} DQH;
+#pragma pack(pop)
+
+static inline EP* ep_data(SHARED_OTG_DRV* drv, unsigned int num)
+{
+    return (num & USB_EP_IN) ? (drv->otg.in[USB_EP_NUM(num)]) : (drv->otg.out[USB_EP_NUM(num)]);
+}
+
+
+static inline DQH* ep_dqh(unsigned int num)
+{
+    return &(((DQH*)LPC_USB0->ENDPOINTLISTADDR)[USB_EP_NUM(num) * 2 + (num & USB_EP_IN) ? 1 : 0]);
+}
+
+static inline void lpc_otg_bus_reset(SHARED_OTG_DRV* drv)
+{
+    int i;
+    DQH* dqh;
+    //clear all SETUP token semaphores
+    LPC_USB0->ENDPTSETUPSTAT = LPC_USB0->ENDPTSETUPSTAT;
+    //Clear all the endpoint complete status bits
+    LPC_USB0->ENDPTCOMPLETE = LPC_USB0->ENDPTCOMPLETE;
+    //Cancel all primed status
+    while (LPC_USB0->ENDPTPRIME) {}
+    //And flush all endpoints
+    LPC_USB0->ENDPTFLUSH = 0xffffffff;
+    while (LPC_USB0->ENDPTFLUSH) {}
+
+    dqh = (DQH*)LPC_USB0->ENDPOINTLISTADDR;
+    for (i = 0; i < USB_EP_COUNT_MAX * 2; ++i)
+    {
+        dqh[i].capa = 0x0;
+        dqh[i].next = (void*)USB0_DQH_NEXT_T_Msk;
+    }
+    LPC_USB0->DEVICEADDR = 0;
+}
+
 static inline void lpc_otg_reset(SHARED_OTG_DRV* drv)
 {
-    iprintd("OTG reset: %s\n\r", drv->otg.speed == USB_HIGH_SPEED ? "HIGH SPEED" : "FULL SPEED");
-    //enable device
-///    LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DEV_EN;
-/*    IPC ipc;
-    ipc.process = drv->usb.device;
+    IPC ipc;
+    ipc.process = drv->otg.device;
     ipc.cmd = HAL_CMD(HAL_USB, USB_RESET);
     ipc.param1 = USB_HANDLE_DEVICE;
     ipc.param2 = drv->otg.speed;
     ipc_ipost(&ipc);
-*/
 }
 
 static inline void lpc_otg_suspend(SHARED_OTG_DRV* drv)
 {
-    iprintd("OTG suspend\n\r");
-/*    IPC ipc;
-    ipc.process = drv->usb.device;
+    IPC ipc;
+    ipc.process = drv->otg.device;
     ipc.cmd = HAL_CMD(HAL_USB, USB_SUSPEND);
     ipc.param1 = USB_HANDLE_DEVICE;
-    ipc_ipost(&ipc);*/
+    ipc_ipost(&ipc);
 }
 
 static inline void lpc_otg_wakeup(SHARED_OTG_DRV* drv)
 {
-    iprintd("OTG wakeup\n\r");
-/*    IPC ipc;
-    ipc.process = drv->usb.device;
+    IPC ipc;
+    ipc.process = drv->otg.device;
     ipc.cmd = HAL_CMD(HAL_USB, USB_WAKEUP);
     ipc.param1 = USB_HANDLE_DEVICE;
-    ipc_ipost(&ipc);*/
+    ipc_ipost(&ipc);
 }
 
 void lpc_otg_on_isr(int vector, void* param)
@@ -82,6 +134,8 @@ void lpc_otg_on_isr(int vector, void* param)
 
     if (LPC_USB0->USBSTS_D & USB0_USBSTS_D_URI_Msk)
     {
+        lpc_otg_bus_reset(drv);
+
         drv->otg.suspended = false;
         LPC_USB0->USBSTS_D = USB0_USBSTS_D_URI_Msk;
     }
@@ -104,6 +158,10 @@ void lpc_otg_on_isr(int vector, void* param)
             lpc_otg_reset(drv);
     }
 
+    if (LPC_USB0->USBSTS_D & USB0_USBSTS_D_UI_Msk)
+    {
+        iprintd("OTG DATA!!!!\n");
+    }
 /*
 
 #if (USB_DEBUG_ERRORS)
@@ -124,28 +182,6 @@ void lpc_otg_on_isr(int vector, void* param)
     }
 #endif
 
-    if (sta & USB_INTSTAT_DEV_INT)
-    {
-        sta = LPC_USB->DEVCMDSTAT;
-        //Don't care on connection change, just clear pending bit
-        if (sta & USB_DEVCMDSTAT_DCON_C)
-            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DCON_C;
-        if (sta & USB_DEVCMDSTAT_DSUS_C)
-        {
-            if (sta & USB_DEVCMDSTAT_DSUS)
-                lpc_usb_suspend(drv);
-            else
-                lpc_usb_wakeup(drv);
-            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DSUS_C;
-        }
-        if (sta & USB_DEVCMDSTAT_DRES_C)
-        {
-            lpc_usb_reset(drv);
-            LPC_USB->DEVCMDSTAT |= USB_DEVCMDSTAT_DRES_C;
-        }
-        LPC_USB->INTSTAT = USB_INTSTAT_DEV_INT;
-        return;
-    }
     if ((sta & USB_INTSTAT_EP0OUT) && (LPC_USB->DEVCMDSTAT & USB_DEVCMDSTAT_SETUP))
     {
         lpc_usb_setup(drv);
@@ -195,9 +231,9 @@ void lpc_otg_open_device(SHARED_OTG_DRV* drv, HANDLE device)
 
     //power on. Turn USB0 PLL 0n
     LPC_CGU->PLL0USB_CTRL = CGU_PLL0USB_CTRL_PD_Msk;
-    LPC_CGU->PLL0USB_CTRL |= CGU_PLL0USB_CTRL_DIRECTI_Msk | CGU_CLK_HSE;
+    LPC_CGU->PLL0USB_CTRL |= CGU_PLL0USB_CTRL_DIRECTI_Msk | CGU_CLK_HSE | CGU_PLL0USB_CTRL_DIRECTO_Msk;
     LPC_CGU->PLL0USB_MDIV = USBPLL_M;
-    LPC_CGU->PLL0USB_NP_DIV = USBPLL_P;
+//    LPC_CGU->PLL0USB_NP_DIV = USBPLL_P;
     LPC_CGU->PLL0USB_CTRL &= ~CGU_PLL0USB_CTRL_PD_Msk;
 
     //power on. USBPLL must be turned on even in case of SYS PLL used. Why?
@@ -223,9 +259,9 @@ void lpc_otg_open_device(SHARED_OTG_DRV* drv, HANDLE device)
     LPC_USB0->USBMODE_D = USB0_USBMODE_CM_DEVICE;
 
     LPC_USB0->ENDPOINTLISTADDR = SRAM1_BASE;
+    memset((void*)LPC_USB0->ENDPOINTLISTADDR, 0, (sizeof(DQH) * USB_EP_COUNT_MAX + sizeof(DTD)) * 2);
 
     //clear any spurious pending interrupts
-    //TODO: endpoints
     LPC_USB0->USBSTS_D = USB0_USBSTS_D_UI_Msk | USB0_USBSTS_D_UEI_Msk | USB0_USBSTS_D_PCI_Msk | USB0_USBSTS_D_SEI_Msk | USB0_USBSTS_D_URI_Msk |
                          USB0_USBSTS_D_SLI_Msk | USB0_USBSTS_D_NAKI_Msk;
 
@@ -244,13 +280,46 @@ void lpc_otg_open_device(SHARED_OTG_DRV* drv, HANDLE device)
     LPC_USB0->USBCMD_D |= USB0_USBCMD_D_RS_Msk;
 }
 
+static inline void lpc_otg_open_ep(SHARED_OTG_DRV* drv, int num, USB_EP_TYPE type, unsigned int size)
+{
+    unsigned int reg;
+    DQH* dqh;
+    if (ep_data(drv, num) != NULL)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+
+    EP* ep = malloc(sizeof(EP));
+    if (ep == NULL)
+        return;
+    ep->io = NULL;
+    ep->io_active = false;
+    ep->mps = size;
+
+    dqh = ep_dqh(num);
+    dqh->capa = (size << USB0_DQH_CAPA_MAX_PACKET_LENGTH_Pos) | USB0_DQH_CAPA_ZLT_Msk;
+    if (USB_EP_NUM(num) == 0)
+        dqh->capa |= USB0_DQH_CAPA_IOS_Msk;
+    dqh->next = (void*)USB0_DQH_NEXT_T_Msk;
+
+    reg = USB0_ENDPTCTRL_E_Msk;
+    if (USB_EP_NUM(num))
+        reg |= (type << USB0_ENDPTCTRL_T_Pos) | USB0_ENDPTCTRL_R_Msk;
+
+    if (num & USB_EP_IN)
+        EP_CTRL[USB_EP_NUM(num)] = (EP_CTRL[USB_EP_NUM(num)] & 0xffff) | (reg << 16);
+    else
+        EP_CTRL[USB_EP_NUM(num)] = (EP_CTRL[USB_EP_NUM(num)] & (0xffff << 16)) | reg;
+}
+
 static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case USB_GET_SPEED:
-//TODO:        ipc->param2 = lpc_otg_get_speed(drv);
+        ipc->param2 = drv->otg.speed;
         need_post = true;
         break;
     case IPC_OPEN:
@@ -269,7 +338,7 @@ static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
     //TODO:
 /*#if (USB_DEBUG_ERRORS)
     case LPC_USB_ERROR:
-        printd("USB driver error: %#x\n\r", ipc->param2);
+        printd("USB driver error: %#x\n", ipc->param2);
         //posted from isr
         break;
 #endif*/
@@ -301,7 +370,7 @@ static inline bool lpc_otg_ep_request(SHARED_OTG_DRV* drv, IPC* ipc)
         switch (HAL_ITEM(ipc->cmd))
         {
         case IPC_OPEN:
-//TODO:            lpc_otg_open_ep(drv, ipc->param1, ipc->param2, ipc->param3);
+            lpc_otg_open_ep(drv, ipc->param1, ipc->param2, ipc->param3);
             need_post = true;
             break;
         case IPC_CLOSE:

@@ -1292,4 +1292,24 @@
 #define USB0_USBMODE_CM_DEVICE                  (2 << 0)
 #define USB0_USBMODE_CM_HOST                    (3 << 0)
 
+/*********  Bit definition for USB0_DQH_CAPA **********************************/
+#define USB0_DQH_CAPA_IOS_Msk                   (1 << 15)
+#define USB0_DQH_CAPA_MAX_PACKET_LENGTH_Pos     16
+#define USB0_DQH_CAPA_MAX_PACKET_LENGTH_Msk     (0x7ff << 16)
+#define USB0_DQH_CAPA_ZLT_Msk                   (1 << 29)
+#define USB0_DQH_CAPA_MULT_NONE                 (0 << 30)
+#define USB0_DQH_CAPA_MULT_ONE                  (1 << 30)
+#define USB0_DQH_CAPA_MULT_TWO                  (2 << 30)
+#define USB0_DQH_CAPA_MULT_THREE                (3 << 30)
+
+/*********  Bit definition for USB0_DQH_NEXT **********************************/
+#define USB0_DQH_NEXT_T_Msk                     (1 << 0)
+
+/******  Bit definition for USB0_ENDPTCTRL register ***************************/
+#define USB0_ENDPTCTRL_S_Msk                    (1 << 0)
+#define USB0_ENDPTCTRL_T_Pos                    2
+#define USB0_ENDPTCTRL_I_Msk                    (1 << 5)
+#define USB0_ENDPTCTRL_R_Msk                    (1 << 6)
+#define USB0_ENDPTCTRL_E_Msk                    (1 << 7)
+
 #endif // LPC11UXX_BITS_H

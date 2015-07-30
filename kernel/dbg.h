@@ -57,7 +57,7 @@
     \param cond: assertion made if \b cond is \b false
     \retval no return if not \b cond, else none
 */
-#define ASSERT(cond)                                    if (!(cond))    {printk("ASSERT at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+#define ASSERT(cond)                                    if (!(cond))    {printk("ASSERT at %s, line %d\n", __FILE__, __LINE__);    HALT();}
 
 #else
 
@@ -77,7 +77,7 @@
     \retval no return if wrong magic, else none
 */
 #if (KERNEL_DEVELOPER_MODE)
-#define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {printk("INVALID MAGIC at %s, line %d\n\r", __FILE__, __LINE__);    HALT();}
+#define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {printk("INVALID MAGIC at %s, line %d\n", __FILE__, __LINE__);    HALT();}
 #else
 #define CHECK_MAGIC(obj, magic_value)    if ((obj)->magic != (magic_value)) {kprocess_error_current(ERROR_INVALID_MAGIC); return;}
 #endif
@@ -111,7 +111,7 @@
 #define CHECK_HANDLE(handle, size)     if ((HANDLE)(handle) == INVALID_HANDLE || (HANDLE)(handle) == ANY_HANDLE || (HANDLE)(handle) == KERNEL_HANDLE || \
                                           ((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
                                           || ((unsigned int)(handle) + (size) >= (SRAM_BASE) + (SRAM_SIZE))) \
-                                            {printk("INVALID HANDLE at %s, line %d, caller process: %s\n\r", __FILE__, __LINE__, kprocess_name(kprocess_get_current()));    HALT();}
+                                            {printk("INVALID HANDLE at %s, line %d, caller process: %s\n", __FILE__, __LINE__, kprocess_name(kprocess_get_current()));    HALT();}
 #else
 #define CHECK_HANDLE(handle, size)     if ((HANDLE)(handle) == INVALID_HANDLE || (HANDLE)(handle) == ANY_HANDLE || (HANDLE)(handle) == KERNEL_HANDLE || \
                                           ((unsigned int)(handle) < (SRAM_BASE) + (KERNEL_GLOBAL_SIZE)) \
@@ -125,9 +125,9 @@
 #if (KERNEL_ADDRESS_CHECKING)
 #if (KERNEL_DEVELOPER_MODE)
 #define CHECK_ADDRESS(process, address, sz)     if (!kprocess_check_address((PROCESS*)(process), (address), (sz))) \
-                                                    {printk("INVALID ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, kprocess_name((PROCESS*)(process)));    HALT();}
+                                                    {printk("INVALID ADDRESS at %s, line %d, process: %s\n", __FILE__, __LINE__, kprocess_name((PROCESS*)(process)));    HALT();}
 #define CHECK_ADDRESS_READ(process, address, sz)     if (!kprocess_check_address_read((PROCESS*)(process), (address), (sz))) \
-                                                          {printk("INVALID READ ADDRESS at %s, line %d, process: %s\n\r", __FILE__, __LINE__, kprocess_name((PROCESS*)(process)));    HALT();}
+                                                          {printk("INVALID READ ADDRESS at %s, line %d, process: %s\n", __FILE__, __LINE__, kprocess_name((PROCESS*)(process)));    HALT();}
 #else
 #define CHECK_ADDRESS(process, address, sz)     if (!kprocess_check_address((PROCESS*)(process), (address), (sz))) \
                                                      {kprocess_error_current(ERROR_ACCESS_DENIED); return;}

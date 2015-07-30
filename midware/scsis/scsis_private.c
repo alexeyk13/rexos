@@ -24,7 +24,7 @@ void scsis_error(SCSIS* scsis, uint8_t key_sense, uint16_t ascq)
     scsis->errors[idx].key_sense = key_sense;
     scsis->errors[idx].ascq = ascq;
 #if (SCSI_DEBUG_ERRORS)
-    printf("SCSI error: sense key: %02xh, ASC: %02xh, ASQ: %02xh\n\r", key_sense, ascq >> 8, ascq & 0xff);
+    printf("SCSI error: sense key: %02xh, ASC: %02xh, ASQ: %02xh\n", key_sense, ascq >> 8, ascq & 0xff);
 #endif //SCSI_DEBUG_ERRORS
 }
 
@@ -84,7 +84,7 @@ bool scsis_get_storage_descriptor(SCSIS* scsis)
         if (scsis->io->data_size < sizeof(void*))
         {
 #if (SCSI_DEBUG_ERRORS)
-            printf("SCSI: invalid storage descriptor response\n\r");
+            printf("SCSI: invalid storage descriptor response\n");
 #endif //SCSI_DEBUG_ERRORS
             scsis_fatal(scsis);
             return false;
@@ -93,7 +93,7 @@ bool scsis_get_storage_descriptor(SCSIS* scsis)
         if (scsis->storage == NULL)
         {
 #if (SCSI_DEBUG_ERRORS)
-            printf("SCSI: out of memory\n\r");
+            printf("SCSI: out of memory\n");
 #endif //SCSI_DEBUG_ERRORS
             scsis_fatal(scsis);
             return false;
@@ -109,7 +109,7 @@ bool scsis_get_storage_descriptor(SCSIS* scsis)
         return false;
     default:
 #if (SCSI_DEBUG_ERRORS)
-        printf("SCSI: invalid state on descriptor request: %d\n\r", scsis->state);
+        printf("SCSI: invalid state on descriptor request: %d\n", scsis->state);
 #endif //SCSI_DEBUG_ERRORS
         scsis_fatal(scsis);
         return false;
@@ -128,7 +128,7 @@ bool scsis_get_media_descriptor(SCSIS* scsis)
         if (scsis->io->data_size < sizeof(void*))
         {
 #if (SCSI_DEBUG_ERRORS)
-            printf("SCSI: invalid media descriptor response\n\r");
+            printf("SCSI: invalid media descriptor response\n");
 #endif //SCSI_DEBUG_ERRORS
             scsis_fatal(scsis);
             return false;
@@ -137,7 +137,7 @@ bool scsis_get_media_descriptor(SCSIS* scsis)
         if (scsis->media == NULL)
         {
 #if (SCSI_DEBUG_ERRORS)
-            printf("SCSI: out of memory\n\r");
+            printf("SCSI: out of memory\n");
 #endif //SCSI_DEBUG_ERRORS
             scsis_fatal(scsis);
             return false;
@@ -153,7 +153,7 @@ bool scsis_get_media_descriptor(SCSIS* scsis)
         return false;
     default:
 #if (SCSI_DEBUG_ERRORS)
-        printf("SCSI: invalid state on descriptor request: %d\n\r", scsis->state);
+        printf("SCSI: invalid state on descriptor request: %d\n", scsis->state);
 #endif //SCSI_DEBUG_ERRORS
         scsis_fatal(scsis);
         return false;

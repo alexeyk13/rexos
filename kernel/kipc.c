@@ -37,7 +37,7 @@ void kipc_read_process(PROCESS *process, IPC* ipc, SYSTIME* time, HANDLE wait_pr
     CHECK_ADDRESS(process, time, sizeof(SYSTIME));
 #if (KERNEL_IPC_DEBUG)
     if (wait_process == (HANDLE)process)
-        printk("Warning: calling wait IPC with receiver same as caller can cause deadlock! process: %s\n\r", kprocess_name(process));
+        printk("Warning: calling wait IPC with receiver same as caller can cause deadlock! process: %s\n", kprocess_name(process));
 #endif
     process->kipc.ipc = ipc;
     kprocess_sleep(process, time, PROCESS_SYNC_IPC, process);
@@ -106,12 +106,12 @@ void kipc_post_process(IPC* ipc, HANDLE sender)
     {
         kprocess_error(receiver, ERROR_OVERFLOW);
 #if (KERNEL_IPC_DEBUG)
-        printk("Error: receiver %s IPC overflow!\n\r", kprocess_name(receiver));
+        printk("Error: receiver %s IPC overflow!\n", kprocess_name(receiver));
         if (sender == KERNEL_HANDLE)
-            printk("Sender: kernel\n\r");
+            printk("Sender: kernel\n");
         else
-            printk("Sender: %s\n\r", kprocess_name((PROCESS*)sender));
-        printk("cmd: %#X, p1: %#X, p2: %#X, p3: %#X\n\r", ipc->cmd, ipc->param1, ipc->param2, ipc->param3);
+            printk("Sender: %s\n", kprocess_name((PROCESS*)sender));
+        printk("cmd: %#X, p1: %#X, p2: %#X, p3: %#X\n", ipc->cmd, ipc->param1, ipc->param2, ipc->param3);
 #if (KERNEL_DEVELOPER_MODE)
         HALT();
 #endif

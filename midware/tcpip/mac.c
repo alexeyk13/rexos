@@ -105,7 +105,7 @@ void mac_rx(TCPIP* tcpip, IO* io)
     mac_print(MAC_SRC(io_data(io)));
     printf(" -> ");
     mac_print(MAC_DST(io_data(io)));
-    printf(", len/type: %04X, size: %d\n\r", lentype, io->data_size - MAC_HEADER_SIZE);
+    printf(", len/type: %04X, size: %d\n", lentype, io->data_size - MAC_HEADER_SIZE);
 #endif
     io->data_offset += MAC_HEADER_SIZE;
     io->data_size -= MAC_HEADER_SIZE;
@@ -119,7 +119,7 @@ void mac_rx(TCPIP* tcpip, IO* io)
         break;
     default:
 #if (MAC_DEBUG)
-        printf("MAC: dropped lentype: %04X\n\r", lentype);
+        printf("MAC: dropped lentype: %04X\n", lentype);
 #endif
         tcpip_release_io(tcpip, io);
         break;

@@ -153,7 +153,7 @@ static void ip_process(TCPIP* tcpip, IO* io, IP* src)
 #if (IP_DEBUG_FLOW)
     printf("IP: from ");
     ip_print(src);
-    printf(", proto: %d, len: %d\n\r", ip_stack->proto, io->data_size);
+    printf(", proto: %d, len: %d\n", ip_stack->proto, io->data_size);
 #endif
     switch (ip_stack->proto)
     {
@@ -171,7 +171,7 @@ static void ip_process(TCPIP* tcpip, IO* io, IP* src)
 #if (IP_DEBUG)
         printf("IP: unhandled proto %d from", ip_stack->proto);
         ip_print(src);
-        printf("\n\r");
+        printf("\n");
 #endif
 #if (ICMP_FLOW_CONTROL)
         icmp_destination_unreachable(tcpip, ICMP_PROTOCOL_UNREACHABLE, io, src);

@@ -45,7 +45,7 @@ static void arp_cmd_request(TCPIP* tcpip, const IP* ip)
 #if (ARP_DEBUG_FLOW)
     printf("ARP: request to ");
     ip_print(ip);
-    printf("\n\r");
+    printf("\n");
 #endif
 
     const MAC* own_mac;
@@ -88,7 +88,7 @@ static inline void arp_cmd_reply(TCPIP* tcpip, MAC* mac, IP* ip)
     mac_print(mac);
     printf("(");
     ip_print(ip);
-    printf(")\n\r");
+    printf(")\n");
 #endif
 
     const MAC* own_mac;
@@ -146,7 +146,7 @@ static void arp_remove(TCPIP* tcpip, int idx)
     {
         printf("ARP: route to ");
         ip_print(&ARP_CACHE_ITEM(tcpip, idx)->ip);
-        printf(" removed\n\r");
+        printf(" removed\n");
     }
 #endif
     array_remove(&tcpip->arp.cache, idx);
@@ -198,7 +198,7 @@ static void arp_insert(TCPIP* tcpip, const IP* ip, const MAC* mac, unsigned int 
         ip_print(ip);
         printf(" -> ");
         mac_print(mac);
-        printf("\n\r");
+        printf("\n");
     }
 #endif
 }
@@ -216,7 +216,7 @@ static void arp_update(TCPIP* tcpip, const IP* ip, const MAC* mac)
     ip_print(ip);
     printf(" -> ");
     mac_print(mac);
-    printf("\n\r");
+    printf("\n");
 #endif
 }
 
@@ -311,7 +311,7 @@ void arp_rx(TCPIP* tcpip, IO *io)
             ip_print(ARP_SPA(((uint8_t*)io_data(io))));
             printf(" is ");
             mac_print(ARP_SHA(((uint8_t*)io_data(io))));
-            printf("\n\r");
+            printf("\n");
 #endif
         }
         break;

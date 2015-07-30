@@ -266,7 +266,7 @@ void usbd_stub_class_state_change(USBD* usbd, void* param)
 int usbd_stub_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
 {
 #if (USBD_DEBUG_ERRORS)
-    printf("USBD class SETUP stub!\n\r");
+    printf("USBD class SETUP stub!\n");
 #endif
     return -1;
 }
@@ -274,7 +274,7 @@ int usbd_stub_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
 bool usbd_stub_class_request(USBD* usbd, void* param, IPC* ipc)
 {
 #if (USBD_DEBUG_ERRORS)
-    printf("USBD class request stub!\n\r");
+    printf("USBD class request stub!\n");
 #endif
     //less chance to halt app
     return true;
@@ -326,7 +326,7 @@ void usbd_fatal(USBD* usbd)
 void usbd_fatal_stub(USBD* usbd)
 {
 #if (USB_DEBUG_ERRORS)
-    printf("USBD fatal: stub called\n\r");
+    printf("USBD fatal: stub called\n");
 #endif
     usbd_fatal(usbd);
 }
@@ -363,7 +363,7 @@ static inline void usbd_class_configured(USBD* usbd)
     if (cfg == NULL)
     {
 #if (USBD_DEBUG_ERRORS)
-        printf("USBD fatal: No selected configuration (%d) found\n\r", usbd->configuration);
+        printf("USBD fatal: No selected configuration (%d) found\n", usbd->configuration);
 #endif
         usbd_fatal(usbd);
         return;
@@ -377,7 +377,7 @@ static inline void usbd_class_configured(USBD* usbd)
     if (usbd->ifaces == NULL)
     {
 #if (USBD_DEBUG_ERRORS)
-        printf("USBD fatal: Out of memory\n\r");
+        printf("USBD fatal: Out of memory\n");
 #endif
         process_exit();
         return;
@@ -472,7 +472,7 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
     if (usbd->state != USBD_STATE_CONFIGURED)
     {
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB device reset\n\r");
+        printf("USB device reset\n");
 #endif
         usbd->state = USBD_STATE_DEFAULT;
         if (usbd->ep0_size)
@@ -496,7 +496,7 @@ static inline void usbd_suspend(USBD* usbd)
     if (usbd->state == USBD_STATE_CONFIGURED)
     {
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB device suspend\n\r");
+        printf("USB device suspend\n");
 #endif
         usbd_class_suspend(usbd);
         if (usbd->ep0_size)
@@ -514,7 +514,7 @@ static inline void usbd_wakeup(USBD* usbd)
     if (usbd->state == USBD_STATE_CONFIGURED)
     {
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB device wakeup\n\r");
+        printf("USB device wakeup\n");
 #endif
         usbd_class_resume(usbd);
         usbd->suspended = false;
@@ -524,7 +524,7 @@ static inline void usbd_wakeup(USBD* usbd)
 static inline int usbd_device_get_status(USBD* usbd)
 {
 #if (USBD_DEBUG_REQUESTS)
-    printf("USB: get device status\n\r");
+    printf("USB: get device status\n");
 #endif
     uint16_t status = 0;
     if (usbd->self_powered)
@@ -544,7 +544,7 @@ static inline int usbd_device_set_feature(USBD* usbd)
     {
     case USBD_FEATURE_DEVICE_REMOTE_WAKEUP:
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB: device set feature REMOTE WAKEUP\n\r");
+        printf("USB: device set feature REMOTE WAKEUP\n");
 #endif
         usbd->remote_wakeup = true;
         res = 0;
@@ -552,7 +552,7 @@ static inline int usbd_device_set_feature(USBD* usbd)
 #if (USB_TEST_MODE_SUPPORT)
     case USBD_FEATURE_TEST_MODE:
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB: device set feature TEST_MODE\n\r");
+        printf("USB: device set feature TEST_MODE\n");
 #endif
         usbd->test_mode = usbd->setup.wIndex >> 16;
         ack(usbd->usb, HAL_CMD(HAL_USB, USB_SET_TEST_MODE), USB_HANDLE_DEVICE, usbd->test_mode, 0);
@@ -569,7 +569,7 @@ static inline int usbd_device_clear_feature(USBD* usbd)
 {
     unsigned int res = -1;
 #if (USBD_DEBUG_REQUESTS)
-    printf("USB: device clear feature\n\r");
+    printf("USB: device clear feature\n");
 #endif
     switch (usbd->setup.wValue)
     {
@@ -586,7 +586,7 @@ static inline int usbd_device_clear_feature(USBD* usbd)
 static inline int usbd_set_address(USBD* usbd)
 {
 #if (USBD_DEBUG_REQUESTS)
-    printf("USB set ADDRESS %#X\n\r", usbd->setup.wValue);
+    printf("USB set ADDRESS %#X\n", usbd->setup.wValue);
 #endif
     ack(usbd->usb, HAL_CMD(HAL_USB, USB_SET_ADDRESS), USB_HANDLE_DEVICE, usbd->setup.wValue, 0);
     switch (usbd->state)
@@ -645,7 +645,7 @@ static inline int usbd_get_descriptor(USBD* usbd)
         else
             res = send_descriptor(usbd, USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX, 0, 0, USB_DEVICE_DESCRIPTOR_INDEX);
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB get DEVICE descriptor\n\r");
+        printf("USB get DEVICE descriptor\n");
 #endif
         break;
     case USB_CONFIGURATION_DESCRIPTOR_INDEX:
@@ -654,13 +654,13 @@ static inline int usbd_get_descriptor(USBD* usbd)
         else
             res = send_descriptor(usbd, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX, index, 0, USB_CONFIGURATION_DESCRIPTOR_INDEX);
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB get CONFIGURATION %d descriptor\n\r", index);
+        printf("USB get CONFIGURATION %d descriptor\n", index);
 #endif
         break;
     case USB_STRING_DESCRIPTOR_INDEX:
         res = send_descriptor(usbd, USB_STRING_DESCRIPTOR_INDEX, index, lang, USB_STRING_DESCRIPTOR_INDEX);
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB get STRING %d descriptor, lang: %#X\n\r", index, lang);
+        printf("USB get STRING %d descriptor, lang: %#X\n", index, lang);
 #endif
         break;
     case USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX:
@@ -669,7 +669,7 @@ static inline int usbd_get_descriptor(USBD* usbd)
         if (res < 0)
             res = send_descriptor(usbd, USB_DEVICE_DESCRIPTOR_INDEX, 0, 0, USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX);
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB get DEVICE qualifier descriptor\n\r");
+        printf("USB get DEVICE qualifier descriptor\n");
 #endif
         break;
     case USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX:
@@ -678,13 +678,13 @@ static inline int usbd_get_descriptor(USBD* usbd)
         if (res < 0)
             res = send_descriptor(usbd, USB_CONFIGURATION_DESCRIPTOR_INDEX, index, 0, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX);
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB get other speed CONFIGURATION %d descriptor\n\r", index);
+        printf("USB get other speed CONFIGURATION %d descriptor\n", index);
 #endif
     }
 
 #if (USBD_DEBUG_ERRORS)
     if (res < 0)
-        printf("USB: descriptor type %d, index: %d, lang: %#X not present\n\r", type, index, lang);
+        printf("USB: descriptor type %d, index: %d, lang: %#X not present\n", type, index, lang);
 #endif
 
     return res;
@@ -693,7 +693,7 @@ static inline int usbd_get_descriptor(USBD* usbd)
 static inline int usbd_get_configuration(USBD* usbd)
 {
 #if (USBD_DEBUG_REQUESTS)
-    printf("USB: get configuration\n\r");
+    printf("USB: get configuration\n");
 #endif
     char configuration = (char)usbd->configuration;
     return io_data_write(usbd->io, &configuration, 1);
@@ -702,7 +702,7 @@ static inline int usbd_get_configuration(USBD* usbd)
 static inline int usbd_set_configuration(USBD* usbd)
 {
 #if (USBD_DEBUG_REQUESTS)
-    printf("USB: set configuration %d\n\r", usbd->setup.wValue);
+    printf("USB: set configuration %d\n", usbd->setup.wValue);
 #endif
     if (usbd->state == USBD_STATE_CONFIGURED)
     {
@@ -758,7 +758,7 @@ static inline int usbd_standart_device_request(USBD* usbd)
 static inline int usbd_endpoint_get_status(USBD* usbd)
 {
 #if (USBD_DEBUG_REQUESTS)
-    printf("USB: get endpoint status\n\r");
+    printf("USB: get endpoint status\n");
 #endif
     uint16_t status = 0;
     if (get(usbd->usb, HAL_CMD(HAL_USB, USB_EP_IS_STALL), usbd->setup.wIndex, 0, 0))
@@ -770,7 +770,7 @@ static inline int usbd_endpoint_set_feature(USBD* usbd)
 {
     unsigned int res = -1;
 #if (USBD_DEBUG_REQUESTS)
-    printf("USB: endpoint set feature\n\r");
+    printf("USB: endpoint set feature\n");
 #endif
     switch (usbd->setup.wValue)
     {
@@ -788,7 +788,7 @@ static inline int usbd_endpoint_clear_feature(USBD* usbd)
 {
     unsigned int res = -1;
 #if (USBD_DEBUG_REQUESTS)
-    printf("USB: endpoint clear feature\n\r");
+    printf("USB: endpoint clear feature\n");
 #endif
     switch (usbd->setup.wValue)
     {
@@ -809,7 +809,7 @@ static inline int usbd_interface_request(USBD* usbd, int iface)
         res = IFACE(usbd, iface)->usbd_class->usbd_class_setup(usbd, IFACE(usbd, iface)->param, &usbd->setup, usbd->io);
 #if (USBD_DEBUG_ERRORS)
     else
-        printf("USBD: Interface %d is not configured\n\r");
+        printf("USBD: Interface %d is not configured\n");
 #endif
     return res;
 }
@@ -889,13 +889,13 @@ static void usbd_setup_response(USBD* usbd, int res)
             printf("ENDPOINT");
             break;
         }
-        printf(" request\n\r");
+        printf(" request\n");
 
-        printf("bmRequestType: %X\n\r", usbd->setup.bmRequestType);
-        printf("bRequest: %X\n\r", usbd->setup.bRequest);
-        printf("wValue: %X\n\r", usbd->setup.wValue);
-        printf("wIndex: %X\n\r", usbd->setup.wIndex);
-        printf("wLength: %X\n\r", usbd->setup.wLength);
+        printf("bmRequestType: %X\n", usbd->setup.bmRequestType);
+        printf("bRequest: %X\n", usbd->setup.bRequest);
+        printf("wValue: %X\n", usbd->setup.wValue);
+        printf("wIndex: %X\n", usbd->setup.wIndex);
+        printf("wLength: %X\n", usbd->setup.wLength);
 #endif
     }
 }
@@ -956,7 +956,7 @@ static inline void usbd_setup_received(USBD* usbd)
     if (usbd->setup_state != USB_SETUP_STATE_REQUEST)
     {
 #if (USBD_DEBUG_REQUESTS)
-        printf("USB B2B SETUP received, state: %d\n\r", usbd->setup_state);
+        printf("USB B2B SETUP received, state: %d\n", usbd->setup_state);
 #endif
         //reset control EP if transaction in progress
         switch (usbd->setup_state)
@@ -1005,7 +1005,7 @@ static inline void usbd_read_complete(USBD* usbd)
         break;
     default:
 #if (USBD_DEBUG_ERRORS)
-        printf("USBD invalid setup state on read: %d\n\r", usbd->setup_state);
+        printf("USBD invalid setup state on read: %d\n", usbd->setup_state);
 #endif
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
         break;
@@ -1031,7 +1031,7 @@ static inline void usbd_write_complete(USBD* usbd)
         break;
     default:
 #if (USBD_DEBUG_ERRORS)
-        printf("USBD invalid state on write: %d\n\r", usbd->setup_state);
+        printf("USBD invalid state on write: %d\n", usbd->setup_state);
 #endif
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
         break;
@@ -1241,6 +1241,6 @@ void usbd_dump(const uint8_t* buf, unsigned int size, const char* header)
     printf("%s: ", header);
     for (i = 0; i < size; ++i)
         printf("%02X ", buf[i]);
-    printf("\n\r");
+    printf("\n");
 }
 #endif

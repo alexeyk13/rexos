@@ -48,15 +48,15 @@ static inline void stat()
     for (i = 0; i < TEST_ROUNDS; ++i)
         svc_test();
     diff = systime_elapsed_us(&uptime);
-    printf("average kernel call time: %d.%dus\n\r", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
+    printf("average kernel call time: %d.%dus\n", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
     get_uptime(&uptime);
     for (i = 0; i < TEST_ROUNDS; ++i)
         process_switch_test();
     diff = systime_elapsed_us(&uptime);
-    printf("average switch time: %d.%dus\n\r", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
+    printf("average switch time: %d.%dus\n", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
-    printf("core clock: %d\n\r", get(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_POWER, STM32_POWER_GET_CLOCK), STM32_CLOCK_CORE, 0, 0));
+    printf("core clock: %d\n", get(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_POWER, STM32_POWER_GET_CLOCK), STM32_CLOCK_CORE, 0, 0));
     process_info();
 }
 
@@ -89,13 +89,13 @@ static inline void app_init(APP* app)
     timer_start_ms(app->timer, 1000, 0);
 
     stat();
-    printf("App init\n\r");
+    printf("App init\n");
 }
 
 static inline void app_timeout(APP* app)
 {
-    printf("app timer timeout test\n\r");
-    printf("vlcd: %d\n\r", adc_get(STM32_ADC_VREF));
+    printf("app timer timeout test\n");
+    printf("vlcd: %d\n", adc_get(STM32_ADC_VREF));
     timer_start_ms(app->timer, 1000, 0);
 }
 
@@ -130,9 +130,9 @@ void app()
             app_timeout(&app);
             break;
         default:
-            printf("Unhandled cmd: %#X\n\r", ipc.cmd);
-            printf("sender: %#X\n\r", ipc.process);
-            printf("p1: %#X\n\r", ipc.param1);
+            printf("Unhandled cmd: %#X\n", ipc.cmd);
+            printf("sender: %#X\n", ipc.process);
+            printf("p1: %#X\n", ipc.param1);
             error(ERROR_NOT_SUPPORTED);
             need_post = true;
             break;

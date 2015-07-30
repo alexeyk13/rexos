@@ -21,9 +21,9 @@
 
 #if (KERNEL_PROFILING)
 #if (KERNEL_PROCESS_STAT)
-const char *const STAT_LINE="-------------------------------------------------------------------------\n\r";
+const char *const STAT_LINE="-------------------------------------------------------------------------\n";
 #else
-const char *const STAT_LINE="---------------------------------------------------------------\n\r";
+const char *const STAT_LINE="---------------------------------------------------------------\n";
 #endif
 const char *const DAMAGED="     !!!DAMAGED!!!     ";
 #endif //(KERNEL_PROFILING)
@@ -143,7 +143,7 @@ void kprocess_timeout(void* param)
 void kprocess_abnormal_exit()
 {
 #if (KERNEL_DEBUG)
-    printk("Warning: abnormal process termination: %s\n\r", kprocess_name(kprocess_get_current()));
+    printk("Warning: abnormal process termination: %s\n", kprocess_name(kprocess_get_current()));
 #endif
     kprocess_destroy_current();
 }
@@ -485,7 +485,7 @@ void process_stat(PROCESS* process)
 #if (KERNEL_PROCESS_STAT)
     printk("%3d:%02d.%03d", process->uptime.sec / 60, process->uptime.sec % 60, process->uptime.usec / 1000);
 #endif
-    printk("\n\r");
+    printk("\n");
 }
 
 static inline void kernel_stat()
@@ -518,7 +518,7 @@ static inline void kernel_stat()
     ksystime_get_uptime_internal(&uptime);
     printk("%3d:%02d.%03d", uptime.sec / 60, uptime.sec % 60, uptime.usec / 1000);
 #endif
-    printk("\n\r");
+    printk("\n");
 }
 
 void kprocess_info()
@@ -527,9 +527,9 @@ void kprocess_info()
     DLIST_ENUM de;
     PROCESS* cur;
 #if (KERNEL_PROCESS_STAT)
-    printk("\n\r    name           priority  stack  size   used       free        uptime\n\r");
+    printk("\n    name           priority  stack  size   used       free        uptime\n");
 #else
-    printk("\n\r    name           priority  stack  size   used       free\n\r");
+    printk("\n    name           priority  stack  size   used       free\n");
 #endif
     printk(STAT_LINE);
     disable_interrupts();
@@ -546,9 +546,9 @@ void kprocess_info()
         process_stat(cur);
         ++cnt;
     }
-    printk("total %d processess\n\r", cnt);
+    printk("total %d processess\n", cnt);
 #else
-    printk("total %d active processess\n\r", cnt);
+    printk("total %d active processess\n", cnt);
 #endif
     printk(STAT_LINE);
 

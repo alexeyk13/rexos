@@ -33,7 +33,7 @@ void stdout_stub(const char *const buf, unsigned int size, void* param)
 void panic()
 {
 #if (KERNEL_DEBUG)
-    printk("Kernel panic\n\r");
+    printk("Kernel panic\n");
     dump(SRAM_BASE, 0x200);
 #endif
 #if (KERNEL_DEVELOPER_MODE)
@@ -217,7 +217,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
             __KERNEL->stdout = (STDOUT)param1;
             __KERNEL->stdout_param = (void*)param2;
 #if KERNEL_DEBUG
-            printk("%s\n\r", __KERNEL_NAME);
+            printk("%s\n", __KERNEL_NAME);
 #endif
         }
         break;

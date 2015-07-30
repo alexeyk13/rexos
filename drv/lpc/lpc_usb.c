@@ -570,7 +570,7 @@ static inline bool lpc_usb_device_request(SHARED_USB_DRV* drv, IPC* ipc)
         break;
 #if (USB_DEBUG_ERRORS)
     case LPC_USB_ERROR:
-        printd("USB driver error: %#x\n\r", ipc->param2);
+        printd("USB driver error: %#x\n", ipc->param2);
         //posted from isr
         break;
 #endif

@@ -16,7 +16,7 @@
 void lib_stub ()
 {
 #if (KERNEL_DEBUG)
-    printk("Warning: lib stub called\n\r");
+    printk("Warning: lib stub called\n");
 #endif //KERNEL_DEBUG
 }
 

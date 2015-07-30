@@ -44,7 +44,7 @@ static inline void icmp_cmd_echo(TCPIP* tcpip, IO* io, IP* src)
 #if (ICMP_DEBUG)
     printf("ICMP: ECHO from ");
     ip_print(src);
-    printf("\n\r");
+    printf("\n");
 #endif
     ((uint8_t*)io_data(io))[0] = ICMP_CMD_ECHO_REPLY;
     icmp_tx(tcpip, io, src);
@@ -114,7 +114,7 @@ static inline void icmp_cmd_echo_reply(TCPIP* tcpip, IO* io, IP* src)
 #if (ICMP_DEBUG)
     printf("ICMP: ECHO REPLY from ");
     ip_print(src);
-    printf("\n\r");
+    printf("\n");
 #endif
     //compare src, sequence, id and data
     if (tcpip->icmp.dst.u32.ip != src->u32.ip)
@@ -144,7 +144,7 @@ static inline void icmp_cmd_destination_unreachable(TCPIP* tcpip, IO* io)
 #if (ICMP_DEBUG)
     printf("ICMP: DESTINATION UNREACHABLE(%d) ", ICMP_CODE(((uint8_t*)io_data(io))));
     ip_print(&dst);
-    printf("\n\r");
+    printf("\n");
 #endif
     switch (ICMP_CODE(((uint8_t*)io_data(io))))
     {
@@ -225,7 +225,7 @@ void icmp_rx(TCPIP* tcpip, IO *io, IP* src)
 #if (ICMP_DEBUG)
         printf("ICMP: unhandled type %d from ", ICMP_TYPE(((uint8_t*)io_data(io))));
         ip_print(src);
-        printf("\n\r");
+        printf("\n");
 #endif
         ip_release_io(tcpip, io);
         break;
@@ -254,7 +254,7 @@ void icmp_destination_unreachable(TCPIP* tcpip, uint8_t code, IO* original, cons
 #if (ICMP_DEBUG)
     printf("ICMP: Destination unreachable(%d) to ", code);
     ip_print(dst);
-    printf("\n\r");
+    printf("\n");
 #endif
     icmp_control_prepare(tcpip, ICMP_CMD_DESTINATION_UNREACHABLE, code, original);
     icmp_tx(tcpip, original, dst);
@@ -265,7 +265,7 @@ void icmp_time_exceeded(TCPIP* tcpip, uint8_t code, IO* original, const IP* dst)
 #if (ICMP_DEBUG)
     printf("ICMP: Time exceeded(%d) to ", code);
     ip_print(dst);
-    printf("\n\r");
+    printf("\n");
 #endif
     icmp_control_prepare(tcpip, ICMP_CMD_TIME_EXCEEDED, code, original);
     icmp_tx(tcpip, original, dst);
@@ -276,7 +276,7 @@ void icmp_parameter_problem(TCPIP* tcpip, uint8_t offset, IO* original, const IP
 #if (ICMP_DEBUG)
     printf("ICMP: Parameter problem(%d) to ", offset);
     ip_print(dst);
-    printf("\n\r");
+    printf("\n");
 #endif
     icmp_control_prepare(tcpip, ICMP_CMD_PARAMETER_PROBLEM, 0, original);
     ((uint8_t*)io_data(original))[4] = offset;

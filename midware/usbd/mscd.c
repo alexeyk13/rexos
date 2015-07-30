@@ -78,9 +78,9 @@ static void mscd_write_csw(USBD* usbd, MSCD* mscd)
     usbd_usb_ep_write(usbd, mscd->ep_num, mscd->control);
     mscd->state = MSCD_STATE_CSW;
 #if (USBD_MSC_DEBUG_IO)
-    printf("USB_MSC: dCSWTag: %d\n\r", csw->dCSWTag);
-    printf("USB_MSC: dCSWDataResidue: %d\n\r", csw->dCSWDataResidue);
-    printf("USB_MSC: bCSWStatus: %d\n\r", csw->bCSWStatus);
+    printf("USB_MSC: dCSWTag: %d\n", csw->dCSWTag);
+    printf("USB_MSC: dCSWDataResidue: %d\n", csw->dCSWDataResidue);
+    printf("USB_MSC: bCSWStatus: %d\n", csw->bCSWStatus);
 #endif //USBD_MSC_DEBUG_IO
 }
 
@@ -154,7 +154,7 @@ void mscd_host_cb(void* param, IO* io, SCSIS_REQUEST request)
             break;
         default:
     #if (USBD_MSC_DEBUG_ERRORS)
-            printf("USB MSC: phase error %d\n\r", request);
+            printf("USB MSC: phase error %d\n", request);
     #endif //USBD_MSC_DEBUG_ERRORS
             mscd_phase_error(mscd->usbd, mscd);
         }
@@ -195,7 +195,7 @@ void mscd_storage_cb(void* param, IO* io, SCSIS_REQUEST request)
         break;
     default:
 #if (USBD_MSC_DEBUG_ERRORS)
-        printf("USB MSC: invalid scsis storage request %d\n\r", request);
+        printf("USB MSC: invalid scsis storage request %d\n", request);
 #endif //USBD_MSC_DEBUG_ERRORS
         mscd_phase_error(mscd->usbd, mscd);
     }
@@ -242,7 +242,7 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
     }
 
 #if (USBD_MSC_DEBUG_REQUESTS)
-    printf("Found USB MSCD class, EP%d, size: %d, iface: %d\n\r", ep_num, ep_size, iface_num);
+    printf("Found USB MSCD class, EP%d, size: %d, iface: %d\n", ep_num, ep_size, iface_num);
 #endif //USBD_CDC_DEBUG_REQUESTS
 
     usbd_register_interface(usbd, iface_num, &__MSCD_CLASS, mscd);
@@ -283,7 +283,7 @@ static inline int mscd_get_max_lun(USBD* usbd, MSCD* mscd, IO* io)
     *((uint8_t*)io_data(io)) = USBD_MSC_LUN_COUNT - 1;
     io->data_size = sizeof(uint8_t);
 #if (USBD_MSC_DEBUG_REQUESTS)
-    printf("MSCD: Get Max Lun - %d\n\r", USBD_MSC_LUN_COUNT - 1);
+    printf("MSCD: Get Max Lun - %d\n", USBD_MSC_LUN_COUNT - 1);
 #endif //USBD_CDC_DEBUG_REQUESTS
     return sizeof(uint8_t);
 }
@@ -293,7 +293,7 @@ static int mscd_mass_storage_reset(USBD* usbd, MSCD* mscd)
     mscd_flush(usbd, mscd);
     usbd_usb_ep_read(usbd, mscd->ep_num, mscd->control, mscd->ep_size);
 #if (USBD_MSC_DEBUG_REQUESTS)
-    printf("MSCD: Mass Storage Reset\n\r");
+    printf("MSCD: Mass Storage Reset\n");
 #endif //USBD_CDC_DEBUG_REQUESTS
     return 0;
 }
@@ -320,15 +320,15 @@ static inline void mscd_cbw(USBD* usbd, MSCD* mscd)
     if (mscd->control->data_size < sizeof(CBW) || cbw->dCBWSignature != MSC_CBW_SIGNATURE)
     {
 #if (USBD_MSC_DEBUG_ERRORS)
-        printf("MSCD: Fatal - invalid CBW\n\r");
+        printf("MSCD: Fatal - invalid CBW\n");
 #endif //USBD_CDC_DEBUG_ERRORS
         mscd_fatal(usbd, mscd);
     }
 #if (USBD_MSC_DEBUG_IO)
-    printf("USB_MSC: dCBWTag: %d\n\r", cbw->dCBWTag);
-    printf("USB_MSC: dCBWDataTransferLength: %d\n\r", cbw->dCBWDataTransferLength);
-    printf("USB_MSC: dCBWDataFlags: %02x\n\r", cbw->bmCBWFlags);
-    printf("USB_MSC: dCBWLUN: %d\n\r", cbw->bCBWLUN);
+    printf("USB_MSC: dCBWTag: %d\n", cbw->dCBWTag);
+    printf("USB_MSC: dCBWDataTransferLength: %d\n", cbw->dCBWDataTransferLength);
+    printf("USB_MSC: dCBWDataFlags: %02x\n", cbw->bmCBWFlags);
+    printf("USB_MSC: dCBWLUN: %d\n", cbw->bCBWLUN);
 #endif //USBD_MSC_DEBUG_IO
     mscd->residue = cbw->dCBWDataTransferLength;
     mscd->tag = cbw->dCBWTag;
@@ -358,7 +358,7 @@ static inline void mscd_usb_io_complete(USBD* usbd, MSCD* mscd)
         break;
     default:
 #if (USBD_MSC_DEBUG_ERRORS)
-        printf("MSCD: invalid stage on io complete - %d\n\r", mscd->state);
+        printf("MSCD: invalid stage on io complete - %d\n", mscd->state);
 #endif //USBD_CDC_DEBUG_ERRORS
         mscd_phase_error(usbd, mscd);
     }
@@ -377,7 +377,7 @@ static inline bool mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
             usbd_io_user(mscd->usbd, mscd->iface_num, 0, HAL_CMD(HAL_USBD_IFACE, USB_MSC_DIRECT_WRITE), (IO*)ipc->param2, ipc->param3);
             mscd->state = MSCD_STATE_PROCESSING;
 #if (USBD_MSC_DEBUG_IO)
-            printf("MSC: direct write complete\n\r");
+            printf("MSC: direct write complete\n");
 #endif //USBD_MSC_DEBUG_IO
             return false;
         }
@@ -397,7 +397,7 @@ static inline void mscd_storage_response(USBD* usbd, MSCD* mscd, int param3)
     if (param3 < 0)
     {
 #if (USBD_MSC_DEBUG_ERRORS)
-        printf("MSCD: storage request failed, phase error\n\r");
+        printf("MSCD: storage request failed, phase error\n");
 #endif //USBD_MSC_DEBUG_ERRORS
         mscd_phase_error(usbd, mscd);
         return;
@@ -411,7 +411,7 @@ static inline void mscd_direct_write(USBD* usbd, MSCD* mscd, IO* io)
     unsigned int size = io->data_size;
     usbd_usb_ep_write(usbd, mscd->ep_num, io);
 #if (USBD_MSC_DEBUG_IO)
-    printf("MSC: direct write: %d\n\r", size);
+    printf("MSC: direct write: %d\n", size);
 #endif //USBD_MSC_DEBUG_IO
     if (size > mscd->residue)
         size = mscd->residue;

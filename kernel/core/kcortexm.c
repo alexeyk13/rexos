@@ -32,12 +32,12 @@ void on_hard_fault(unsigned int ret_value, unsigned int* stack_value)
 #if (KERNEL_DEBUG)
         printk("HARD FAULT: ");
         if (SCB_HFSR & HFSR_VECTTBL)
-            printk("Vector table read fault at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
+            printk("Vector table read fault at %#.08x\n", stack_value[CALLER_ADDRESS]);
         //wrong sys call
         else if (*(uint16_t*)(stack_value[CALLER_ADDRESS] - 2) == SVC_12)
-            printk("SYS call while disabled interrupts at %#.08x\n\r", stack_value[5] & 0xfffffffe);
+            printk("SYS call while disabled interrupts at %#.08x\n", stack_value[5] & 0xfffffffe);
         else
-            printk("General hard fault at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
+            printk("General hard fault at %#.08x\n", stack_value[CALLER_ADDRESS]);
 #endif
     if (ret_value == PSP_IN_LR && (*(uint16_t*)(stack_value[CALLER_ADDRESS] - 2) == SVC_12))
         __ASM volatile ("cpsie i");
@@ -54,7 +54,7 @@ void on_mem_manage(unsigned int ret_value, unsigned int* stack_value)
             printk("Stacking failed");
         else if (SCB_CFSR & CFSR_MUNSTKERR)
             printk("Unstacking failed");
-        printk(" at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
+        printk(" at %#.08x\n", stack_value[CALLER_ADDRESS]);
 #endif
         panic();
     }
@@ -66,7 +66,7 @@ void on_mem_manage(unsigned int ret_value, unsigned int* stack_value)
             printk("Data access violation");
         else if (SCB_CFSR & CFSR_IACCVIOL)
             printk("Instruction access violation");
-        printk(" at %#.08x\n\r, caller %#.08x", SCB_MMAR, stack_value[CALLER_ADDRESS]);
+        printk(" at %#.08x\n, caller %#.08x", SCB_MMAR, stack_value[CALLER_ADDRESS]);
 #endif
         process_fault(ret_value);
     }
@@ -81,13 +81,13 @@ void on_bus_fault(unsigned int ret_value, unsigned int* stack_value)
 #if (KERNEL_DEBUG)
         printk("BUS FAULT: ");
         if (SCB_CFSR & CFSR_BSTKERR)
-            printk("Stacking failed at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
+            printk("Stacking failed at %#.08x\n", stack_value[CALLER_ADDRESS]);
         else if (SCB_CFSR & CFSR_BUNSTKERR)
-            printk("Unstacking failed at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
+            printk("Unstacking failed at %#.08x\n", stack_value[CALLER_ADDRESS]);
         else if (SCB_CFSR & (CFSR_IMPRECISERR | CFSR_PRECISERR))
-            printk("Data bus error at %#.08x, caller %#.08x\n\r", SCB_BFAR, stack_value[CALLER_ADDRESS]);
+            printk("Data bus error at %#.08x, caller %#.08x\n", SCB_BFAR, stack_value[CALLER_ADDRESS]);
         else if (SCB_CFSR & CFSR_IBUSERR)
-            printk("Instruction bus error at %#.08x, caller %#.08x\n\r", SCB_BFAR, stack_value[CALLER_ADDRESS]);
+            printk("Instruction bus error at %#.08x, caller %#.08x\n", SCB_BFAR, stack_value[CALLER_ADDRESS]);
 #endif
         panic();
     }
@@ -109,7 +109,7 @@ void on_usage_fault(unsigned int ret_value, unsigned int* stack_value)
         printk("Undefined instruction");
     else if (SCB_CFSR & CFSR_INVSTATE)
         printk("Invalid state");
-    printk(" at %#.08x\n\r", stack_value[CALLER_ADDRESS]);
+    printk(" at %#.08x\n", stack_value[CALLER_ADDRESS]);
 #endif
 
     process_fault(ret_value);
