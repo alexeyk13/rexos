@@ -80,7 +80,8 @@ void cdcd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 
     USB_INTERFACE_DESCRIPTOR_TYPE* iface;
     USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
-    uint8_t data_ep, control_ep, data_ep_size, control_ep_size, control_iface, data_iface;
+    uint8_t data_ep, control_ep, control_ep_size, control_iface, data_iface;
+    uint16_t data_ep_size;
     data_ep = control_ep = data_ep_size = control_ep_size = data_iface = control_iface = 0;
 
     //check control/data ep here
