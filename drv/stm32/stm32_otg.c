@@ -515,13 +515,13 @@ static inline void stm32_otg_write(SHARED_USB_DRV* drv, IPC* ipc)
     }
 }
 
-#if (USB_TEST_MODE)
+#if (USB_TEST_MODE_SUPPORT)
 static inline void stm32_otg_set_test_mode(SHARED_USB_DRV* drv, USB_TEST_MODES test_mode)
 {
     OTG_FS_DEVICE->CTL &= ~OTG_FS_DEVICE_CTL_TCTL;
     OTG_FS_DEVICE->CTL |= test_mode << OTG_FS_DEVICE_CTL_TCTL_POS;
 }
-#endif //USB_TEST_MODE
+#endif //USB_TEST_MODE_SUPPORT
 
 void stm32_otg_init(SHARED_USB_DRV* drv)
 {
@@ -559,12 +559,12 @@ static inline bool stm32_otg_device_request(SHARED_USB_DRV* drv, IPC* ipc)
         stm32_otg_rx(drv);
         //message from isr, no response
         break;
-#if (USB_TEST_MODE)
+#if (USB_TEST_MODE_SUPPORT)
     case USB_SET_TEST_MODE:
         stm32_otg_set_test_mode(drv, ipc->param2);
         need_post = true;
         break;
-#endif //USB_TEST_MODE
+#endif //USB_TEST_MODE_SUPPORT
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;
