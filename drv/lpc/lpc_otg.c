@@ -82,10 +82,9 @@ static inline DTD* ep_dtd(unsigned int num)
     return &(((DTD*)(LPC_USB0->ENDPOINTLISTADDR + sizeof(DQH) * USB_EP_COUNT_MAX * 2))[USB_EP_NUM(num) * 2 + ((num & USB_EP_IN) ? 1 : 0)]);
 }
 
-static inline void lpc_otg_bus_reset(SHARED_OTG_DRV* drv)
+static void lpc_otg_bus_reset(SHARED_OTG_DRV* drv)
 {
     int i;
-    DQH* dqh;
     //clear all SETUP token semaphores
     LPC_USB0->ENDPTSETUPSTAT = LPC_USB0->ENDPTSETUPSTAT;
     //Clear all the endpoint complete status bits
@@ -98,16 +97,14 @@ static inline void lpc_otg_bus_reset(SHARED_OTG_DRV* drv)
     //Disable all EP (except EP0)
     for (i = 1; i < USB_EP_COUNT_MAX; ++i)
         EP_CTRL[i] = 0x0;
-    //NAK all endpoints
-    //TODO:
-//    LPC_USB0->ENDPTNAKEN = 0xffffffff;
-    LPC_USB0->ENDPTNAKEN = 0x0;
 
-    dqh = (DQH*)LPC_USB0->ENDPOINTLISTADDR;
-    for (i = 0; i < USB_EP_COUNT_MAX * 2; ++i)
+    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
     {
-        dqh[i].capa = 0x0;
-        dqh[i].next = (void*)USB0_DQH_NEXT_T_Msk;
+        ep_dqh(i)->capa = 0x0;
+        ep_dqh(i)->next = (void*)USB0_DQH_NEXT_T_Msk;
+
+        ep_dqh(USB_EP_IN | i)->capa = 0x0;
+        ep_dqh(USB_EP_IN | i)->next = (void*)USB0_DQH_NEXT_T_Msk;
     }
     LPC_USB0->DEVICEADDR = 0;
 }
@@ -166,7 +163,7 @@ static inline void lpc_otg_in(SHARED_OTG_DRV* drv, int ep_num)
     ep->io = NULL;
 }
 
-void lpc_otg_on_isr(int vector, void* param)
+static void lpc_otg_on_isr(int vector, void* param)
 {
     int i;
     SHARED_OTG_DRV* drv = (SHARED_OTG_DRV*)param;
@@ -253,107 +250,47 @@ void lpc_otg_init(SHARED_OTG_DRV* drv)
     }
 }
 
-void lpc_otg_open_device(SHARED_OTG_DRV* drv, HANDLE device)
+static bool lpc_otg_ep_flush(SHARED_OTG_DRV* drv, int num)
 {
-    int i;
-    drv->otg.device = device;
-    drv->otg.suspended = false;
-    drv->otg.speed = USB_FULL_SPEED;
-
-    //power on. Turn USB0 PLL 0n
-    LPC_CGU->PLL0USB_CTRL = CGU_PLL0USB_CTRL_PD_Msk;
-    LPC_CGU->PLL0USB_CTRL |= CGU_PLL0USB_CTRL_DIRECTI_Msk | CGU_CLK_HSE | CGU_PLL0USB_CTRL_DIRECTO_Msk;
-    LPC_CGU->PLL0USB_MDIV = USBPLL_M;
-    LPC_CGU->PLL0USB_CTRL &= ~CGU_PLL0USB_CTRL_PD_Msk;
-
-    //power on. USBPLL must be turned on even in case of SYS PLL used. Why?
-    //wait for PLL lock
-    for (i = 0; i < PLL_LOCK_TIMEOUT; ++i)
-        if (LPC_CGU->PLL0USB_STAT & CGU_PLL0USB_STAT_LOCK_Msk)
-            break;
-    if ((LPC_CGU->PLL0USB_STAT & CGU_PLL0USB_STAT_LOCK_Msk) == 0)
+    EP* ep = ep_data(drv, num);
+    if (ep == NULL)
     {
-        error(ERROR_HARDWARE);
+        error(ERROR_NOT_CONFIGURED);
+        return false;
+    }
+
+    //flush
+    LPC_USB0->ENDPTFLUSH = EP_BIT(num);
+    while (LPC_USB0->ENDPTFLUSH & EP_BIT(num)) {}
+    //reset sequence
+    EP_CTRL[USB_EP_NUM(num)] |= USB0_ENDPTCTRL_R_Msk << ((num & USB_EP_IN) ? 16 : 0);
+    if (ep->io != NULL)
+    {
+        io_complete_ex(drv->otg.device, HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
+        ep->io = NULL;
+    }
+    return true;
+}
+
+static inline void lpc_otg_ep_set_stall(SHARED_OTG_DRV* drv, int num)
+{
+    if (!lpc_otg_ep_flush(drv, num))
         return;
-    }
-    //enable PLL clock
-    LPC_CGU->PLL0USB_CTRL |= CGU_PLL0USB_CTRL_CLKEN_Msk;
-
-    //turn on USB0 PHY
-    LPC_CREG->CREG0 &= ~CREG_CREG0_USB0PHY_Msk;
-
-    //USB must be reset before mode change
-    LPC_USB0->USBCMD_D = USB0_USBCMD_D_RST_Msk;
-    //lowest interrupt latency
-    LPC_USB0->USBCMD_D &= ~USB0_USBCMD_D_ITC_Msk;
-    while (LPC_USB0->USBCMD_D & USB0_USBCMD_D_RST_Msk) {}
-    //set device mode
-    LPC_USB0->USBMODE_D = USB0_USBMODE_CM_DEVICE;
-
-    LPC_USB0->ENDPOINTLISTADDR = SRAM1_BASE;
-
-    memset((void*)LPC_USB0->ENDPOINTLISTADDR, 0, (sizeof(DQH) + sizeof(DTD)) * USB_EP_COUNT_MAX * 2);
-
-    //clear any spurious pending interrupts
-    LPC_USB0->USBSTS_D = USB0_USBSTS_D_UI_Msk | USB0_USBSTS_D_UEI_Msk | USB0_USBSTS_D_PCI_Msk | USB0_USBSTS_D_SEI_Msk | USB0_USBSTS_D_URI_Msk |
-                         USB0_USBSTS_D_SLI_Msk | USB0_USBSTS_D_NAKI_Msk;
-
-    //enable interrupts
-    irq_register(USB0_IRQn, lpc_otg_on_isr, drv);
-    NVIC_EnableIRQ(USB0_IRQn);
-    NVIC_SetPriority(USB0_IRQn, 1);
-
-    //Unmask common interrupts
-    LPC_USB0->USBINTR_D = USB0_USBINTR_D_UE_Msk | USB0_USBINTR_D_PCE_Msk | USB0_USBINTR_D_URE_Msk | USB0_USBINTR_D_SLE_Msk;
-#if (USB_DEBUG_ERRORS)
-    LPC_USB0->USBINTR_D |= USB0_USBINTR_D_UEE_Msk | USB0_USBINTR_D_SEE_Msk;
-#endif
-
-    //start
-    LPC_USB0->USBCMD_D |= USB0_USBCMD_D_RS_Msk;
+    EP_CTRL[USB_EP_NUM(num)] |= USB0_ENDPTCTRL_S_Msk << ((num & USB_EP_IN) ? 16 : 0);
 }
 
-static inline void lpc_otg_set_address(SHARED_OTG_DRV* drv, int addr)
+static inline void lpc_otg_ep_clear_stall(SHARED_OTG_DRV* drv, int num)
 {
-    //according to datasheet, no special action is required if status will go in 2 ms
-    LPC_USB0->DEVICEADDR = (addr << USB0_DEVICEADDR_USBADR_Pos) | USB0_DEVICEADDR_USBADRA_Msk;
+    if (!lpc_otg_ep_flush(drv, num))
+        return;
+    EP_CTRL[USB_EP_NUM(num)] &= ~(USB0_ENDPTCTRL_S_Msk << ((num & USB_EP_IN) ? 16 : 0));
+    EP_CTRL[USB_EP_NUM(num)] |= USB0_ENDPTCTRL_R_Msk << ((num & USB_EP_IN) ? 16 : 0);
 }
 
-static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
+
+static inline bool lpc_otg_ep_is_stall(int num)
 {
-    bool need_post = false;
-    switch (HAL_ITEM(ipc->cmd))
-    {
-    case USB_GET_SPEED:
-        ipc->param2 = drv->otg.speed;
-        need_post = true;
-        break;
-    case IPC_OPEN:
-        lpc_otg_open_device(drv, ipc->process);
-        need_post = true;
-        break;
-    case IPC_CLOSE:
-//TODO:        lpc_otg_close_device(drv);
-        need_post = true;
-        break;
-    case USB_SET_ADDRESS:
-        lpc_otg_set_address(drv, ipc->param2);
-        need_post = true;
-        break;
-    //TODO: test mode
-    //TODO:
-/*#if (USB_DEBUG_ERRORS)
-    case LPC_USB_ERROR:
-        printd("USB driver error: %#x\n", ipc->param2);
-        //posted from isr
-        break;
-#endif*/
-    default:
-        error(ERROR_NOT_SUPPORTED);
-        need_post = true;
-        break;
-    }
-    return need_post;
+    return (EP_CTRL[USB_EP_NUM(num)] & (USB0_ENDPTCTRL_S_Msk << ((num & USB_EP_IN) ? 16 : 0))) ? true : false;
 }
 
 static inline void lpc_otg_open_ep(SHARED_OTG_DRV* drv, int num, USB_EP_TYPE type, unsigned int size)
@@ -389,11 +326,10 @@ static inline void lpc_otg_open_ep(SHARED_OTG_DRV* drv, int num, USB_EP_TYPE typ
         EP_CTRL[USB_EP_NUM(num)] = (EP_CTRL[USB_EP_NUM(num)] & (0xffff << 16)) | reg;
 }
 
-static inline void lpc_otg_close_ep(SHARED_OTG_DRV* drv, int num)
+static void lpc_otg_close_ep(SHARED_OTG_DRV* drv, int num)
 {
-    //TODO: flush
-//    if (!lpc_usb_ep_flush(drv, num))
-//        return;
+    if (!lpc_otg_ep_flush(drv, num))
+        return;
 
     EP* ep = ep_data(drv, num);
     free(ep);
@@ -447,6 +383,135 @@ static void lpc_otg_io(SHARED_OTG_DRV* drv, IPC* ipc, bool read)
     LPC_USB0->ENDPTPRIME = EP_BIT(num);
 }
 
+static inline void lpc_otg_open_device(SHARED_OTG_DRV* drv, HANDLE device)
+{
+    int i;
+    drv->otg.device = device;
+    drv->otg.suspended = false;
+    drv->otg.speed = USB_FULL_SPEED;
+
+    //power on. Turn USB0 PLL 0n
+    LPC_CGU->PLL0USB_CTRL = CGU_PLL0USB_CTRL_PD_Msk;
+    LPC_CGU->PLL0USB_CTRL |= CGU_PLL0USB_CTRL_DIRECTI_Msk | CGU_CLK_HSE | CGU_PLL0USB_CTRL_DIRECTO_Msk;
+    LPC_CGU->PLL0USB_MDIV = USBPLL_M;
+    LPC_CGU->PLL0USB_CTRL &= ~CGU_PLL0USB_CTRL_PD_Msk;
+
+    //power on. USBPLL must be turned on even in case of SYS PLL used. Why?
+    //wait for PLL lock
+    for (i = 0; i < PLL_LOCK_TIMEOUT; ++i)
+        if (LPC_CGU->PLL0USB_STAT & CGU_PLL0USB_STAT_LOCK_Msk)
+            break;
+    if ((LPC_CGU->PLL0USB_STAT & CGU_PLL0USB_STAT_LOCK_Msk) == 0)
+    {
+        error(ERROR_HARDWARE);
+        return;
+    }
+    //enable PLL clock
+    LPC_CGU->PLL0USB_CTRL |= CGU_PLL0USB_CTRL_CLKEN_Msk;
+
+    //turn on USB0 PHY
+    LPC_CREG->CREG0 &= ~CREG_CREG0_USB0PHY_Msk;
+
+    //USB must be reset before mode change
+    LPC_USB0->USBCMD_D = USB0_USBCMD_D_RST_Msk;
+    //lowest interrupt latency
+    LPC_USB0->USBCMD_D &= ~USB0_USBCMD_D_ITC_Msk;
+    while (LPC_USB0->USBCMD_D & USB0_USBCMD_D_RST_Msk) {}
+    //set device mode
+    LPC_USB0->USBMODE_D = USB0_USBMODE_CM_DEVICE;
+
+    LPC_USB0->ENDPOINTLISTADDR = SRAM1_BASE;
+
+    memset((void*)LPC_USB0->ENDPOINTLISTADDR, 0, (sizeof(DQH) + sizeof(DTD)) * USB_EP_COUNT_MAX * 2);
+
+    //clear any spurious pending interrupts
+    LPC_USB0->USBSTS_D = USB0_USBSTS_D_UI_Msk | USB0_USBSTS_D_UEI_Msk | USB0_USBSTS_D_PCI_Msk | USB0_USBSTS_D_SEI_Msk | USB0_USBSTS_D_URI_Msk |
+                         USB0_USBSTS_D_SLI_Msk;
+
+    //enable interrupts
+    irq_register(USB0_IRQn, lpc_otg_on_isr, drv);
+    NVIC_EnableIRQ(USB0_IRQn);
+    NVIC_SetPriority(USB0_IRQn, 1);
+
+    //Unmask common interrupts
+    LPC_USB0->USBINTR_D = USB0_USBINTR_D_UE_Msk | USB0_USBINTR_D_PCE_Msk | USB0_USBINTR_D_URE_Msk | USB0_USBINTR_D_SLE_Msk;
+#if (USB_DEBUG_ERRORS)
+    LPC_USB0->USBINTR_D |= USB0_USBINTR_D_UEE_Msk | USB0_USBINTR_D_SEE_Msk;
+#endif
+
+    //start
+    LPC_USB0->USBCMD_D |= USB0_USBCMD_D_RS_Msk;
+}
+
+static inline void lpc_otg_close_device(SHARED_OTG_DRV* drv)
+{
+    int i;
+    //disable interrupts
+    NVIC_DisableIRQ(USB0_IRQn);
+    irq_unregister(USB0_IRQn);
+    //stop
+    LPC_USB0->USBCMD_D &= ~USB0_USBCMD_D_RS_Msk;
+
+    //close all endpoints
+    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
+    {
+        if (drv->otg.out[i] != NULL)
+            lpc_otg_close_ep(drv, i);
+        if (drv->otg.in[i] != NULL)
+            lpc_otg_close_ep(drv, USB_EP_IN | i);
+    }
+    //Mask all interrupts
+    LPC_USB0->USBINTR_D = 0;
+
+    //turn off USB0 PHY
+    LPC_CREG->CREG0 |= CREG_CREG0_USB0PHY_Msk;
+    //disable USB0PLL
+    LPC_CGU->PLL0USB_CTRL = CGU_PLL0USB_CTRL_PD_Msk;
+}
+
+static inline void lpc_otg_set_address(SHARED_OTG_DRV* drv, int addr)
+{
+    //according to datasheet, no special action is required if status will go in 2 ms
+    LPC_USB0->DEVICEADDR = (addr << USB0_DEVICEADDR_USBADR_Pos) | USB0_DEVICEADDR_USBADRA_Msk;
+}
+
+static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
+{
+    bool need_post = false;
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    case USB_GET_SPEED:
+        ipc->param2 = drv->otg.speed;
+        need_post = true;
+        break;
+    case IPC_OPEN:
+        lpc_otg_open_device(drv, ipc->process);
+        need_post = true;
+        break;
+    case IPC_CLOSE:
+        lpc_otg_close_device(drv);
+        need_post = true;
+        break;
+    case USB_SET_ADDRESS:
+        lpc_otg_set_address(drv, ipc->param2);
+        need_post = true;
+        break;
+    //TODO: test mode
+    //TODO:
+/*#if (USB_DEBUG_ERRORS)
+    case LPC_USB_ERROR:
+        printd("USB driver error: %#x\n", ipc->param2);
+        //posted from isr
+        break;
+#endif*/
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        need_post = true;
+        break;
+    }
+    return need_post;
+}
+
 static inline bool lpc_otg_ep_request(SHARED_OTG_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
@@ -475,19 +540,19 @@ static inline bool lpc_otg_ep_request(SHARED_OTG_DRV* drv, IPC* ipc)
             need_post = true;
             break;
         case IPC_FLUSH:
-//TODO:            lpc_otg_ep_flush(drv, ipc->param1);
+            lpc_otg_ep_flush(drv, ipc->param1);
             need_post = true;
             break;
         case USB_EP_SET_STALL:
-//TODO:            lpc_otg_ep_set_stall(drv, ipc->param1);
+            lpc_otg_ep_set_stall(drv, ipc->param1);
             need_post = true;
             break;
         case USB_EP_CLEAR_STALL:
-//TODO:            lpc_otg_ep_clear_stall(drv, ipc->param1);
+            lpc_otg_ep_clear_stall(drv, ipc->param1);
             need_post = true;
             break;
         case USB_EP_IS_STALL:
-//TODO:            ipc->param2 = lpc_otg_ep_is_stall(ipc->param1);
+            ipc->param2 = lpc_otg_ep_is_stall(ipc->param1);
             need_post = true;
             break;
         case IPC_READ:
@@ -515,7 +580,7 @@ bool lpc_otg_request(SHARED_OTG_DRV* drv, IPC* ipc)
 }
 
 #if !(MONOLITH_USB)
-void lpc_usb()
+void lpc_otg()
 {
     IPC ipc;
     SHARED_OTG_DRV drv;
