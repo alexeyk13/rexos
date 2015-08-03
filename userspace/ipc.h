@@ -117,22 +117,6 @@ void ipc_ipost(IPC* ipc);
 */
 void ipc_read(IPC* ipc);
 
-/**
-    \brief read IPC in ms units
-    \param ipc: ipc
-    \param ms: timeout in ms
-    \param wait_process: process, from where receive IPC. If set, returns only IPC from desired process
-    \retval true on success, false on timeout
-*/
-bool ipc_read_ms(IPC* ipc, unsigned int ms, HANDLE wait_process);
-
-/**
-    \brief post IPC, wait for IPC, peek IPC
-    \param ipc: IPC structure to send and receive
-    \param timeout: pointer to SYSTIME structure
-    \retval none
-*/
-void ipc_call(IPC* ipc, SYSTIME* timeout);
 
 bool call(IPC* ipc);
 

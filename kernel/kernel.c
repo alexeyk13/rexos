@@ -113,10 +113,10 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kipc_post((IPC*)param1);
         break;
     case SVC_IPC_READ:
-        kipc_read((IPC*)param1, (SYSTIME*)param2, param3);
+        kipc_read((IPC*)param1, param3);
         break;
     case SVC_IPC_CALL:
-        kipc_call((IPC*)param1, (SYSTIME*)param2);
+        kipc_call((IPC*)param1);
         break;
     //stream related
     case SVC_STREAM_CREATE:
@@ -159,7 +159,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kio_send((KIO*)param1, (IPC*)param2);
         break;
     case SVC_IO_CALL:
-        kio_call((KIO*)param1, (IPC*)param2, (SYSTIME*)param3);
+        kio_call((KIO*)param1, (IPC*)param2);
         break;
     case SVC_IO_DESTROY:
         kio_destroy((KIO*)param1);

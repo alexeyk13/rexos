@@ -631,7 +631,7 @@ void lpc_uart()
     {
         error(ERROR_OK);
         need_post = false;
-        ipc_read_ms(&ipc, 0, ANY_HANDLE);
+        ipc_read(&ipc);
         if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             need_post = true;
         else

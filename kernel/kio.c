@@ -67,7 +67,7 @@ void kio_send(KIO* kio, IPC* ipc)
     kio_send_internal(process, kio, ipc);
 }
 
-void kio_call(KIO* kio, IPC* ipc, SYSTIME* time)
+void kio_call(KIO* kio, IPC* ipc)
 {
     KPROCESS* process = kprocess_get_current();
     CHECK_HANDLE(kio, sizeof(KIO));
@@ -75,7 +75,7 @@ void kio_call(KIO* kio, IPC* ipc, SYSTIME* time)
     CHECK_ADDRESS(process, ipc, sizeof(IPC));
     HANDLE wait_process = (HANDLE)(ipc->process);
     if (kio_send_internal(process, kio, ipc))
-        kipc_read_process(process, ipc, time, wait_process, ipc->cmd);
+        kipc_read_process(process, ipc, wait_process, ipc->cmd);
 }
 
 void kio_destroy(KIO *kio)

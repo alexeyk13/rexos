@@ -30,25 +30,24 @@ static inline int kipc_index(KPROCESS* kprocess, HANDLE wait_process, unsigned i
     return -1;
 }
 
-void kipc_read_process(KPROCESS *kprocess, IPC* ipc, SYSTIME* time, HANDLE wait_process, unsigned int cmd)
+void kipc_read_process(KPROCESS *kprocess, IPC* ipc, HANDLE wait_process, unsigned int cmd)
 {
     int i;
     IPC tmp;
-    CHECK_ADDRESS(kprocess, time, sizeof(SYSTIME));
 #if (KERNEL_IPC_DEBUG)
     if (wait_process == (HANDLE)kprocess)
         printk("Warning: calling wait IPC with receiver same as caller can cause deadlock! process: %s\n", kprocess_name(kprocess));
 #endif
     kprocess->kipc.ipc = ipc;
-    kprocess_sleep(kprocess, time, PROCESS_SYNC_IPC, kprocess);
+    kprocess_sleep(kprocess, NULL, PROCESS_SYNC_IPC, kprocess);
 
-    disable_interrupts();
     if ((i = kipc_index(kprocess, wait_process, cmd)) < 0)
     {
+        disable_interrupts();
         kprocess->kipc.wait_process = wait_process;
         kprocess->kipc.cmd = cmd;
+        enable_interrupts();
     }
-    enable_interrupts();
 
     //maybe already on queue? Peek.
     if (i >= 0)
@@ -61,9 +60,7 @@ void kipc_read_process(KPROCESS *kprocess, IPC* ipc, SYSTIME* time, HANDLE wait_
             memcpy(IPC_ITEM(kprocess, RB_ROUND_BACK(&kprocess->kipc.rb, i - 1)), &tmp, sizeof(IPC));
         }
         memcpy(ipc, IPC_ITEM(kprocess, kprocess->kipc.rb.tail), sizeof(IPC));
-        disable_interrupts();
         rb_get(&kprocess->kipc.rb);
-        enable_interrupts();
         kprocess_wakeup(kprocess);
     }
 }
@@ -134,18 +131,18 @@ void kipc_post(IPC* ipc)
     kipc_post_process(ipc, (HANDLE)kprocess);
 }
 
-void kipc_read(IPC* ipc, SYSTIME* time, HANDLE wait_process)
+void kipc_read(IPC* ipc, HANDLE wait_process)
 {
     KPROCESS* kprocess = kprocess_get_current();
     CHECK_ADDRESS(kprocess, ipc, sizeof(IPC));
-    kipc_read_process(kprocess, ipc, time, wait_process, ANY_CMD);
+    kipc_read_process(kprocess, ipc, wait_process, ANY_CMD);
 }
 
-void kipc_call(IPC* ipc, SYSTIME* time)
+void kipc_call(IPC* ipc)
 {
     KPROCESS* kprocess = kprocess_get_current();
     CHECK_ADDRESS(kprocess, ipc, sizeof(IPC));
     HANDLE wait_process = (HANDLE)(ipc->process);
     kipc_post_process(ipc, (HANDLE)kprocess);
-    kipc_read_process(kprocess, ipc, time, wait_process, ipc->cmd);
+    kipc_read_process(kprocess, ipc, wait_process, ipc->cmd);
 }
