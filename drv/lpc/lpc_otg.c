@@ -10,6 +10,7 @@
 #endif
 #include "../../userspace/irq.h"
 #include "../../userspace/stdlib.h"
+#include "../../userspace/stdio.h"
 #include <string.h>
 
 #if (MONOLITH_USB)
@@ -40,6 +41,11 @@ const REX __LPC_OTG = {
 };
 
 #endif //MONOLITH_USB
+
+typedef enum {
+    LPC_OTG_SYSTEM_ERROR = USB_HAL_MAX,
+    LPC_OTG_TRANSACTION_ERROR
+}LPC_OTG_IPCS;
 
 #define EP_CTRL                             ((uint32_t*)(&(LPC_USB0->ENDPTCTRL0)))
 
@@ -217,26 +223,26 @@ static void lpc_otg_on_isr(int vector, void* param)
         }
         LPC_USB0->USBSTS_D = USB0_USBSTS_D_UI_Msk;
     }
-/*
 
 #if (USB_DEBUG_ERRORS)
     IPC ipc;
-    switch (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK)
+    if (LPC_USB0->USBSTS_D & USB0_USBSTS_D_UEI_Msk)
     {
-    case USB_INFO_ERR_CODE_NO_ERROR:
-    case USB_INFO_ERR_CODE_IONAK:
-        //no error
-        break;
-    default:
         ipc.process = process_iget_current();
-        ipc.cmd = HAL_CMD(HAL_USB, LPC_USB_ERROR);
+        ipc.cmd = HAL_CMD(HAL_USB, LPC_OTG_TRANSACTION_ERROR);
         ipc.param1 = USB_HANDLE_DEVICE;
-        ipc.param2 = (LPC_USB->INFO & USB_INFO_ERR_CODE_MASK) >> USB_INFO_ERR_CODE_POS;
         ipc_ipost(&ipc);
-        LPC_USB->INFO &= ~USB_INFO_ERR_CODE_MASK;
+        LPC_USB0->USBSTS_D = USB0_USBSTS_D_UEI_Msk;
+    }
+    if (LPC_USB0->USBSTS_D & USB0_USBSTS_D_SEI_Msk)
+    {
+        ipc.process = process_iget_current();
+        ipc.cmd = HAL_CMD(HAL_USB, LPC_OTG_SYSTEM_ERROR);
+        ipc.param1 = USB_HANDLE_DEVICE;
+        ipc_ipost(&ipc);
+        LPC_USB0->USBSTS_D = USB0_USBSTS_D_SEI_Msk;
     }
 #endif
-    */
 }
 
 void lpc_otg_init(SHARED_OTG_DRV* drv)
@@ -510,12 +516,16 @@ static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
         need_post = true;
         break;
 #endif //USB_TEST_MODE_SUPPORT
-/*#if (USB_DEBUG_ERRORS)
-    case LPC_USB_ERROR:
-        printd("USB driver error: %#x\n", ipc->param2);
+#if (USB_DEBUG_ERRORS)
+    case LPC_OTG_SYSTEM_ERROR:
+        printd("OTG driver system error\n");
         //posted from isr
         break;
-#endif*/
+    case LPC_OTG_TRANSACTION_ERROR:
+        printd("OTG driver transaction error\n");
+        //posted from isr
+        break;
+#endif
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;
