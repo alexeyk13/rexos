@@ -475,6 +475,14 @@ static inline void lpc_otg_set_address(SHARED_OTG_DRV* drv, int addr)
     LPC_USB0->DEVICEADDR = (addr << USB0_DEVICEADDR_USBADR_Pos) | USB0_DEVICEADDR_USBADRA_Msk;
 }
 
+#if (USB_TEST_MODE_SUPPORT)
+static inline void lpc_otg_set_test_mode(SHARED_OTG_DRV* drv, USB_TEST_MODES test_mode)
+{
+    LPC_USB0->PORTSC1_D &= ~USB1_PORTSC1_H_PTC3_0_Msk;
+    LPC_USB0->PORTSC1_D |= test_mode << USB1_PORTSC1_H_PTC3_0_Pos;
+}
+#endif //USB_TEST_MODE_SUPPORT
+
 static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
@@ -496,8 +504,12 @@ static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
         lpc_otg_set_address(drv, ipc->param2);
         need_post = true;
         break;
-    //TODO: test mode
-    //TODO:
+#if (USB_TEST_MODE_SUPPORT)
+    case USB_SET_TEST_MODE:
+        lpc_otg_set_test_mode(drv, ipc->param2);
+        need_post = true;
+        break;
+#endif //USB_TEST_MODE_SUPPORT
 /*#if (USB_DEBUG_ERRORS)
     case LPC_USB_ERROR:
         printd("USB driver error: %#x\n", ipc->param2);
