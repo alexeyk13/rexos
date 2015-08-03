@@ -31,8 +31,6 @@ const REX __LPC_CORE = {
     90,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
-    //ipc size
-    LPC_DRIVERS_IPC_COUNT,
     //function
     lpc_core
 };

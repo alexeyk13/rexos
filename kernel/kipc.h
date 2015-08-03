@@ -22,7 +22,7 @@ typedef struct {
 }KIPC;
 
 //called from kernel directly
-void kipc_init(HANDLE handle, int size);
+void kipc_init(HANDLE handle);
 void kipc_post_process(IPC* ipc, HANDLE sender);
 void kipc_read_process(PROCESS* process, IPC* ipc, SYSTIME* time, HANDLE wait_process, unsigned int cmd);
 

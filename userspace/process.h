@@ -62,7 +62,6 @@ typedef struct {
     unsigned int size;
     unsigned int priority;
     unsigned int flags;
-    unsigned int ipc_size;
     void (*fn) (void);
 }REX;
 

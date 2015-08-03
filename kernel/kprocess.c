@@ -150,8 +150,8 @@ void kprocess_abnormal_exit()
 
 void kprocess_create(const REX* rex, PROCESS** process)
 {
-    *process = kmalloc(sizeof(PROCESS) + rex->ipc_size * sizeof(IPC));
-    memset((*process), 0, sizeof(PROCESS) + rex->ipc_size * sizeof(IPC));
+    *process = kmalloc(sizeof(PROCESS) + KERNEL_IPC_SIZE * sizeof(IPC));
+    memset((*process), 0, sizeof(PROCESS) + KERNEL_IPC_SIZE * sizeof(IPC));
     //allocate process object
     if (*process != NULL)
     {
@@ -167,7 +167,7 @@ void kprocess_create(const REX* rex, PROCESS** process)
             (*process)->sp = (void*)((unsigned int)(*process)->heap + rex->size);
             ksystime_timer_init_internal(&(*process)->timer, kprocess_timeout, (*process));
             (*process)->size = rex->size;
-            kipc_init((HANDLE)*process, rex->ipc_size);
+            kipc_init((HANDLE)*process);
 #if (KERNEL_BD)
             dlist_clear((DLIST**)&((*process)->blocks));
             kdirect_init(*process);

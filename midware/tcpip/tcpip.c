@@ -29,8 +29,6 @@ const REX __TCPIP = {
     TCPIP_PROCESS_PRIORITY,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
-    //ipc size
-    TCPIP_PROCESS_IPC_COUNT,
     //function
     tcpip_main
 };

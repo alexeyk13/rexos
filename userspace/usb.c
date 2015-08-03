@@ -54,19 +54,19 @@ USB_DESCRIPTOR_TYPE* usb_interface_get_next_descriptor(const USB_CONFIGURATION_D
     return NULL;
 }
 
-static bool usbd_register_descriptor_internal(IO* io, unsigned int index, unsigned int lang)
+static bool usbd_register_descriptor_internal(HANDLE usbd, IO* io, unsigned int index, unsigned int lang)
 {
     USBD_DESCRIPTOR_REGISTER_STRUCT* udrs = io_push(io, sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT));
 
     udrs->index = index;
     udrs->lang = lang;
 
-    io_write_sync(object_get(SYS_OBJ_USBD), HAL_CMD(HAL_USBD, USBD_REGISTER_DESCRIPTOR), 0, io);
+    io_write_sync(usbd, HAL_CMD(HAL_USBD, USBD_REGISTER_DESCRIPTOR), 0, io);
     io_destroy(io);
     return get_last_error() == ERROR_OK;
 }
 
-bool usbd_register_descriptor(const void* d, unsigned int index, unsigned int lang)
+bool usbd_register_descriptor(HANDLE usbd, const void* d, unsigned int index, unsigned int lang)
 {
     unsigned int size;
     const USB_DESCRIPTOR_TYPE* descriptor = (USB_DESCRIPTOR_TYPE*)d;
@@ -82,10 +82,10 @@ bool usbd_register_descriptor(const void* d, unsigned int index, unsigned int la
     io->data_size = sizeof(void*);
 
     io_data_append(io, d, size);
-    return usbd_register_descriptor_internal(io, index, lang);
+    return usbd_register_descriptor_internal(usbd, io, index, lang);
 }
 
-bool usbd_register_const_descriptor(const void* d, unsigned int index, unsigned int lang)
+bool usbd_register_const_descriptor(HANDLE usbd, const void* d, unsigned int index, unsigned int lang)
 {
     IO* io = io_create(sizeof(USBD_DESCRIPTOR_REGISTER_STRUCT) + sizeof(void*));
     if (io == NULL)
@@ -93,10 +93,10 @@ bool usbd_register_const_descriptor(const void* d, unsigned int index, unsigned 
     *((const void**)io_data(io)) = d;
     io->data_size = sizeof(void*);
 
-    return usbd_register_descriptor_internal(io, index, lang);
+    return usbd_register_descriptor_internal(usbd, io, index, lang);
 }
 
-bool usbd_register_ascii_string(unsigned int index, unsigned int lang, const char* str)
+bool usbd_register_ascii_string(HANDLE usbd, unsigned int index, unsigned int lang, const char* str)
 {
     unsigned int i, len;
     len = strlen(str);
@@ -117,6 +117,6 @@ bool usbd_register_ascii_string(unsigned int index, unsigned int lang, const cha
     }
     io->data_size += len * 2 + 2;
 
-    return usbd_register_descriptor_internal(io, index, lang);
+    return usbd_register_descriptor_internal(usbd, io, index, lang);
 }
 

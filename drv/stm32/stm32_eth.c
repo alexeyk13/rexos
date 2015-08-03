@@ -63,8 +63,6 @@ const REX __STM32_ETH = {
     91,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
-    //ipc size
-    STM32_ETH_IPC_COUNT,
     //function
     stm32_eth
 };

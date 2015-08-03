@@ -35,8 +35,6 @@ const REX __STM32_CORE = {
     90,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
-    //ipc size
-    STM32_DRIVERS_IPC_COUNT,
     //function
     stm32_core
 };

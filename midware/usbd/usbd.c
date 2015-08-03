@@ -115,8 +115,6 @@ const REX __USBD = {
     150,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
-    //ipc size
-    USBD_IPC_COUNT,
     //function
     usbd
 };
@@ -1201,7 +1199,6 @@ void usbd()
 #if (USBD_DEBUG)
     open_stdout();
 #endif
-    object_set_self(SYS_OBJ_USBD);
 
     usbd_init(&usbd);
     for (;;)

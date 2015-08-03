@@ -77,6 +77,10 @@ ARM7 features:
 
 History
 =======
+0.3.5
+- LPC18xx USB0 support
+- IPC size is now fixed by KERNEL_IPC_COUNT
+
 0.3.4
 - LPC18xx basic support: PIN/GPIO, UART, TIMER, POWER
 

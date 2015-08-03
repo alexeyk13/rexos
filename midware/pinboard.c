@@ -32,8 +32,6 @@ const REX __PINBOARD = {
     151,
     //flags
     PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
-    //ipc size
-    3,
     //function
     pinboard
 };

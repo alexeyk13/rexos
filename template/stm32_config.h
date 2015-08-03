@@ -11,7 +11,6 @@
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
 #define STM32_CORE_PROCESS_SIZE                 1024
 
-#define STM32_DRIVERS_IPC_COUNT                 5
 //UART driver is monolith. Enable for size, disable for perfomance
 #define MONOLITH_UART                           1
 #define MONOLITH_USB                            1
@@ -105,7 +104,6 @@
 #define STM32_EEPROM_BUF_SIZE                   20
 //------------------------------- ETH ------------------------------------------------
 #define STM32_ETH_PROCESS_SIZE                  512
-#define STM32_ETH_IPC_COUNT                     5
 
 //enable Pulse per second signal
 #define STM32_ETH_PPS_OUT_ENABLE                0

@@ -17,7 +17,6 @@
 //make sure, you know what are you doing, before change
 #define SYS_OBJ_STDOUT                                      0
 #define SYS_OBJ_CORE                                        1
-#define SYS_OBJ_USBD                                        2
 #define SYS_OBJ_PINBOARD                                    3
 #define SYS_OBJ_APP                                         4
 
@@ -49,7 +48,6 @@
 #define USBD_VSR                                            0
 
 #define USBD_PROCESS_SIZE                                   800
-#define USBD_IPC_COUNT                                      10
 #define USBD_BLOCK_SIZE                                     128
 
 #define USBD_CDC_CLASS                                      1
@@ -120,7 +118,6 @@
 //------------------------------- TCP/IP ---------------------------------------------
 #define TCPIP_PROCESS_SIZE                                  700
 #define TCPIP_PROCESS_PRIORITY                              150
-#define TCPIP_PROCESS_IPC_COUNT                             5
 
 #define TCPIP_DEBUG                                         1
 #define TCPIP_DEBUG_ERRORS                                  1

@@ -57,6 +57,11 @@ typedef enum {
     USB_TEST_MODE_FORCE_ENABLE_FS
 } USB_TEST_MODES;
 
+typedef enum {
+    USB_0 = 0,
+    USB_1
+} USB;
+
 #define USB_HANDLE_DEVICE                                       0xff
 
 #define USB_MAX_EP0_SIZE                                        64
@@ -245,8 +250,9 @@ typedef struct {
 #define USBD_IFACE_NUM(iface)                           ((iface) >> 16)
 #define USBD_IFACE_ITEM(iface)                          ((iface) & 0xffff)
 
-bool usbd_register_descriptor(const void* d, unsigned int index, unsigned int lang);
-bool usbd_register_const_descriptor(const void* d, unsigned int index, unsigned int lang);
-bool usbd_register_ascii_string(unsigned int index, unsigned int lang, const char* str);
+bool usbd_register_descriptor(HANDLE usbd, const void* d, unsigned int index, unsigned int lang);
+bool usbd_register_const_descriptor(HANDLE usbd, const void* d, unsigned int index, unsigned int lang);
+bool usbd_register_ascii_string(HANDLE usbd, unsigned int index, unsigned int lang, const char* str);
+///HANDLE usbd_create(USB usb, )
 
 #endif // USB_H

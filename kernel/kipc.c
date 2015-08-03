@@ -119,13 +119,10 @@ void kipc_post_process(IPC* ipc, HANDLE sender)
     }
 }
 
-void kipc_init(HANDLE handle, int size)
+void kipc_init(HANDLE handle)
 {
     PROCESS* process = (PROCESS*)handle;
-    //stub
-    if (size == 0)
-        size = 1;
-    rb_init(&(process->kipc.rb), size);
+    rb_init(&(process->kipc.rb), KERNEL_IPC_SIZE);
     process->kipc.wait_process = INVALID_HANDLE;
     process->kipc.cmd = ANY_CMD;
 }
