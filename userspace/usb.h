@@ -53,7 +53,8 @@ typedef enum {
     USB_TEST_MODE_K,
     USB_TEST_MODE_SE0_NAK,
     USB_TEST_MODE_PACKET,
-    USB_TEST_MODE_FORCE_ENABLE
+    USB_TEST_MODE_FORCE_ENABLE_HS,
+    USB_TEST_MODE_FORCE_ENABLE_FS
 } USB_TEST_MODES;
 
 #define USB_HANDLE_DEVICE                                       0xff
