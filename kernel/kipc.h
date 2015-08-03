@@ -11,7 +11,7 @@
 #include "../userspace/rb.h"
 #include "../userspace/time.h"
 
-typedef struct _PROCESS PROCESS;
+typedef struct _PROCESS KPROCESS;
 
 typedef struct {
     RB rb;
@@ -24,7 +24,7 @@ typedef struct {
 //called from kernel directly
 void kipc_init(HANDLE handle);
 void kipc_post_process(IPC* ipc, HANDLE sender);
-void kipc_read_process(PROCESS* process, IPC* ipc, SYSTIME* time, HANDLE wait_process, unsigned int cmd);
+void kipc_read_process(KPROCESS* process, IPC* ipc, SYSTIME* time, HANDLE wait_process, unsigned int cmd);
 
 //called from svc
 void kipc_post(IPC* ipc);

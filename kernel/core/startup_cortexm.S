@@ -266,13 +266,13 @@ PendSV_Handler:
 #else
 	stmdb  r0!, {r4-r11}                           @save other context on stack
 #endif
-	str   r0, [r3, offsetof_PROCESS_sp]            @save sp on process->sp
+        str   r0, [r3, offsetof_KPROCESS_sp]           @save sp on process->sp
 
 load_context:
 	ldr   r2, [r1, offsetof_KERNEL_next_process]
 	cmp	r2, #0
 	beq	halt_core										  @halt core if no tasks
-	ldr   r0, [r2, offsetof_PROCESS_sp]            @load sp from process->sp
+        ldr   r0, [r2, offsetof_KPROCESS_sp]           @load sp from process->sp
 #if defined(CORTEX_M0)
 	ldmia r0!, {r4-r7}                             @load other context from stack
 	mov	r8, r4
@@ -336,11 +336,11 @@ pend_switch_context:
 	bx    lr
 
 /*
-	void process_setup_context(PROCESS* process, PROCESS_FUNCTION fn);
+	void process_setup_context(KPROCESS* process, PROCESS_FUNCTION fn);
 */
 	.thumb_func
 process_setup_context:
-	ldr   r2, [r0, offsetof_PROCESS_sp]
+        ldr   r2, [r0, offsetof_KPROCESS_sp]
 	lsrs  r2, r2, #3									    @8 byte stack align
 	lsls  r2, r2, #3
 	subs  r2, r2, #CONTEXT_SIZE
@@ -353,7 +353,7 @@ process_setup_context:
 	ldr   r3, =INITIAL_PSP_VALUE					    @T-Bit only
 #endif
 	str   r3, [r2, #PSR_OFFSET_IN_CONTEXT]        @run in system context, interrupts are enabled
-	str   r2, [r0, offsetof_PROCESS_sp]
+        str   r2, [r0, offsetof_KPROCESS_sp]
 
 	bx    lr
 

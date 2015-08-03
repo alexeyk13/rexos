@@ -16,7 +16,7 @@ void kobject_init()
 
 void kobject_set(int idx, HANDLE handle)
 {
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     if (idx < KERNEL_OBJECTS_COUNT)
     {
         if (__KERNEL->objects[idx] == INVALID_HANDLE || (__KERNEL->objects[idx] == (HANDLE)process && handle == INVALID_HANDLE))
@@ -30,7 +30,7 @@ void kobject_set(int idx, HANDLE handle)
 
 void kobject_get(int idx, HANDLE* handle)
 {
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, handle, sizeof(HANDLE));
     if (idx < KERNEL_OBJECTS_COUNT)
         *handle = __KERNEL->objects[idx];

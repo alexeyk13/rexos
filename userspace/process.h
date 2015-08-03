@@ -25,7 +25,6 @@
     \{
  */
 
-#include "svc.h"
 #include "systime.h"
 #include "heap.h"
 
@@ -42,17 +41,9 @@
 
 typedef enum {
     PROCESS_SYNC_TIMER_ONLY =    (0x0 << 4),
-    PROCESS_SYNC_MUTEX =         (0x1 << 4),
-    PROCESS_SYNC_EVENT =         (0x2 << 4),
-    PROCESS_SYNC_SEM =           (0x3 << 4),
     PROCESS_SYNC_IPC =           (0x4 << 4),
     PROCESS_SYNC_STREAM =        (0x5 << 4)
 }PROCESS_SYNC_TYPE;
-
-#define DIRECT_NONE              0
-#define DIRECT_READ              (1 << 0)
-#define DIRECT_WRITE             (1 << 1)
-#define DIRECT_READ_WRITE        (DIRECT_READ | DIRECT_WRITE)
 
 #define REX_HEAP_FLAGS_OFFSET   24
 #define REX_HEAP_FLAGS(flags)   ((flags) << REX_HEAP_FLAGS_OFFSET)
@@ -70,48 +61,28 @@ typedef struct {
     \param rex: pointer to process header
     \retval process HANDLE on success, or INVALID_HANDLE on failure
 */
-__STATIC_INLINE HANDLE process_create(const REX* rex)
-{
-    HANDLE handle;
-    svc_call(SVC_PROCESS_CREATE, (unsigned int)rex, (unsigned int)&handle, 0);
-    return handle;
-}
+HANDLE process_create(const REX* rex);
 
 /**
     \brief get current process
     \param rex: pointer to process header
     \retval process HANDLE on success, or INVALID_HANDLE on failure
 */
-__STATIC_INLINE HANDLE process_get_current()
-{
-    HANDLE handle;
-    svc_call(SVC_PROCESS_GET_CURRENT, (unsigned int)&handle, 0, 0);
-    return handle;
-}
+HANDLE process_get_current();
 
 /**
     \brief get current process. Isr version
     \param rex: pointer to process header
     \retval process HANDLE on success, or INVALID_HANDLE on failure
 */
-__STATIC_INLINE HANDLE process_iget_current()
-{
-    HANDLE handle;
-    __GLOBAL->svc_irq(SVC_PROCESS_GET_CURRENT, (unsigned int)&handle, 0, 0);
-    return handle;
-}
+HANDLE process_iget_current();
 
 /**
     \brief get process flags
     \param process: handle of created process
     \retval process flags
 */
-__STATIC_INLINE unsigned int process_get_flags(HANDLE process)
-{
-    unsigned int flags;
-    svc_call(SVC_PROCESS_GET_FLAGS, (unsigned int)process, (unsigned int)&flags, 0);
-    return flags;
-}
+unsigned int process_get_flags(HANDLE process);
 
 /**
     \brief set process flags
@@ -119,52 +90,35 @@ __STATIC_INLINE unsigned int process_get_flags(HANDLE process)
     \param flags: set of flags. Only PROCESS_FLAGS_ACTIVE is supported
     \retval process flags
 */
-__STATIC_INLINE void process_set_flags(HANDLE process, unsigned int flags)
-{
-    svc_call(SVC_PROCESS_SET_FLAGS, (unsigned int)process, flags, 0);
-}
+void process_set_flags(HANDLE process, unsigned int flags);
 
 /**
     \brief unfreeze process
     \param process: handle of created process
     \retval none
 */
-__STATIC_INLINE void process_unfreeze(HANDLE process)
-{
-    process_set_flags(process, PROCESS_FLAGS_ACTIVE);
-}
+void process_unfreeze(HANDLE process);
 
 /**
     \brief freeze process
     \param process: handle of created process
     \retval none
 */
-__STATIC_INLINE void process_freeze(HANDLE process)
-{
-    process_set_flags(process, 0);
-}
+void process_freeze(HANDLE process);
 
 /**
     \brief get priority
     \param process: handle of created process
     \retval process base priority
 */
-__STATIC_INLINE unsigned int process_get_priority(HANDLE process)
-{
-    unsigned int priority;
-    svc_call(SVC_PROCESS_GET_PRIORITY, (unsigned int)process, (unsigned int)&priority, 0);
-    return priority;
-}
+unsigned int process_get_priority(HANDLE process);
 
 /**
     \brief get current process priority
     \param process: handle of created process
     \retval process base priority
 */
-__STATIC_INLINE unsigned int process_get_current_priority()
-{
-    return process_get_priority(process_get_current());
-}
+unsigned int process_get_current_priority();
 
 /**
     \brief set priority
@@ -172,93 +126,62 @@ __STATIC_INLINE unsigned int process_get_current_priority()
     \param priority: new priority. 0 - highest, init -1 - lowest. Cannot be called for init process.
     \retval none
 */
-__STATIC_INLINE void process_set_priority(HANDLE process, unsigned int priority)
-{
-    svc_call(SVC_PROCESS_SET_PRIORITY, (unsigned int)process, priority, 0);
-}
+void process_set_priority(HANDLE process, unsigned int priority);
 
 /**
     \brief set currently running process priority
     \param priority: new priority. 0 - highest, init -1 - lowest. Cannot be called for init process.
     \retval none
 */
-__STATIC_INLINE void process_set_current_priority(unsigned int priority)
-{
-    process_set_priority(process_get_current(), priority);
-}
+void process_set_current_priority(unsigned int priority);
 
 /**
     \brief destroys process
     \param process: previously created process
     \retval none
 */
-__STATIC_INLINE void process_destroy(HANDLE process)
-{
-    svc_call(SVC_PROCESS_DESTROY, (unsigned int)process, 0, 0);
-}
+void process_destroy(HANDLE process);
 
 /**
     \brief destroys current process
     \details this function should be called instead of leaving process function
     \retval none
 */
-__STATIC_INLINE void process_exit()
-{
-    process_destroy(process_get_current());
-}
+void process_exit();
 
 /**
     \brief put current process in waiting state
     \param time: pointer to SYSTIME structure
     \retval none
 */
-__STATIC_INLINE void sleep(SYSTIME* time)
-{
-    svc_call(SVC_PROCESS_SLEEP, (unsigned int)time, 0, 0);
-}
+void sleep(SYSTIME* time);
 
 /**
     \brief put current process in waiting state
     \param ms: time to sleep in milliseconds
     \retval none
 */
-__STATIC_INLINE void sleep_ms(unsigned int ms)
-{
-    SYSTIME time;
-    ms_to_systime(ms, &time);
-    sleep(&time);
-}
+void sleep_ms(unsigned int ms);
 
 /**
     \brief put current process in waiting state
     \param us: time to sleep in microseconds
     \retval none
 */
-__STATIC_INLINE void sleep_us(unsigned int us)
-{
-    SYSTIME time;
-    us_to_systime(us, &time);
-    sleep(&time);
-}
+void sleep_us(unsigned int us);
 
 /**
     \brief process switch test. Only for kernel debug/perfomance testing reasons
     \param us: time to sleep in microseconds
     \retval none
 */
-__STATIC_INLINE void process_switch_test()
-{
-    svc_call(SVC_PROCESS_SWITCH_TEST, 0, 0, 0);
-}
+void process_switch_test();
 
 /**
     \brief process info for all processes. Only for kernel debug/perfomance testing reasons
     \retval none
 */
-__STATIC_INLINE void process_info()
-{
-    svc_call(SVC_PROCESS_INFO, 0, 0, 0);
-}
+void process_info();
 
 /** \} */ // end of process group
 

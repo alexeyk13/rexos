@@ -36,14 +36,14 @@ typedef struct _STREAM_HANDLE{
     DLIST list;
     MAGIC;
     STREAM* stream;
-    PROCESS* process;
+    KPROCESS* process;
     STREAM_MODE mode;
     char* buf;
     unsigned int size;
 }STREAM_HANDLE;
 
 //called from kprocess
-void kstream_lock_release(STREAM_HANDLE* handle, PROCESS* process);
+void kstream_lock_release(STREAM_HANDLE* handle, KPROCESS* process);
 
 //called from svc
 void kstream_create(STREAM** stream, unsigned int size);

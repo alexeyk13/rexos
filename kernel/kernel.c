@@ -45,25 +45,25 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     {
     //process related
     case SVC_PROCESS_CREATE:
-        kprocess_create((REX*)param1, (PROCESS**)param2);
+        kprocess_create((REX*)param1, (KPROCESS**)param2);
         break;
     case SVC_PROCESS_GET_CURRENT:
-        kprocess_get_current_svc((PROCESS**)param1);
+        kprocess_get_current_svc((KPROCESS**)param1);
         break;
     case SVC_PROCESS_GET_FLAGS:
-        kprocess_get_flags((PROCESS*)param1, (unsigned int*)param2);
+        kprocess_get_flags((KPROCESS*)param1, (unsigned int*)param2);
         break;
     case SVC_PROCESS_SET_FLAGS:
-        kprocess_set_flags((PROCESS*)param1, (unsigned int)param2);
+        kprocess_set_flags((KPROCESS*)param1, (unsigned int)param2);
         break;
     case SVC_PROCESS_GET_PRIORITY:
-        kprocess_get_priority((PROCESS*)param1, (unsigned int*)param2);
+        kprocess_get_priority((KPROCESS*)param1, (unsigned int*)param2);
         break;
     case SVC_PROCESS_SET_PRIORITY:
-        kprocess_set_priority((PROCESS*)param1, (unsigned int)param2);
+        kprocess_set_priority((KPROCESS*)param1, (unsigned int)param2);
         break;
     case SVC_PROCESS_DESTROY:
-        kprocess_destroy((PROCESS*)param1);
+        kprocess_destroy((KPROCESS*)param1);
         break;
     case SVC_PROCESS_SLEEP:
         kprocess_sleep(kprocess_get_current(), (SYSTIME*)param1, PROCESS_SYNC_TIMER_ONLY, NULL);

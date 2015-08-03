@@ -29,41 +29,41 @@ typedef struct _PROCESS {
 #endif //KERNEL_PROCESS_STAT
     KIPC kipc;
     //IPC is following
-}PROCESS;
+}KPROCESS;
 
 //called from svc, IRQ disabled
-void kprocess_create(const REX* rex, PROCESS** process);
-void kprocess_set_flags(PROCESS* process, unsigned int flags);
-void kprocess_unfreeze(PROCESS* process);
-void kprocess_freeze(PROCESS* process);
-void kprocess_set_priority(PROCESS* process, unsigned int priority);
-void kprocess_destroy(PROCESS* process);
+void kprocess_create(const REX* rex, KPROCESS** process);
+void kprocess_set_flags(KPROCESS* process, unsigned int flags);
+void kprocess_unfreeze(KPROCESS* process);
+void kprocess_freeze(KPROCESS* process);
+void kprocess_set_priority(KPROCESS* process, unsigned int priority);
+void kprocess_destroy(KPROCESS* process);
 
 //called from svc, IRQ enabled
-void kprocess_get_flags(PROCESS* process, unsigned int* flags);
-void kprocess_get_priority(PROCESS* process, unsigned int* priority);
-void kprocess_get_current_svc(PROCESS** var);
+void kprocess_get_flags(KPROCESS* process, unsigned int* flags);
+void kprocess_get_priority(KPROCESS* process, unsigned int* priority);
+void kprocess_get_current_svc(KPROCESS** var);
 
 //called from other places in kernel, IRQ disabled
-void kprocess_sleep(PROCESS* process, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
-void kprocess_wakeup(PROCESS* process);
-void kprocess_set_current_priority(PROCESS* process, unsigned int priority);
+void kprocess_sleep(KPROCESS* process, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
+void kprocess_wakeup(KPROCESS* process);
+void kprocess_set_current_priority(KPROCESS* process, unsigned int priority);
 
 void kprocess_destroy_current();
 
 //called from other places in kernel, IRQ enabled
-bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size);
-bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size);
-void kprocess_error(PROCESS* process, int error);
+bool kprocess_check_address(KPROCESS* process, void* addr, unsigned int size);
+bool kprocess_check_address_read(KPROCESS* process, void* addr, unsigned int size);
+void kprocess_error(KPROCESS* process, int error);
 void kprocess_error_current(int error);
-PROCESS* kprocess_get_current();
+KPROCESS* kprocess_get_current();
 
-__STATIC_INLINE void* kprocess_struct_ptr(PROCESS* process, HEAP_STRUCT_TYPE struct_type)
+__STATIC_INLINE void* kprocess_struct_ptr(KPROCESS* process, HEAP_STRUCT_TYPE struct_type)
 {
     return ((const LIB_HEAP*)__GLOBAL->lib[LIB_ID_HEAP])->__heap_struct_ptr(process->heap, struct_type);
 }
 
-__STATIC_INLINE char* kprocess_name(PROCESS* process)
+__STATIC_INLINE char* kprocess_name(KPROCESS* process)
 {
     return ((const LIB_HEAP*)__GLOBAL->lib[LIB_ID_HEAP])->__process_name(process->heap);
 }

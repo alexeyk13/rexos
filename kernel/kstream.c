@@ -50,7 +50,7 @@ static unsigned int kstream_get_size_internal(STREAM* stream)
     return size;
 }
 
-void kstream_lock_release(STREAM_HANDLE* handle, PROCESS* process)
+void kstream_lock_release(STREAM_HANDLE* handle, KPROCESS* process)
 {
     CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
@@ -70,7 +70,7 @@ void kstream_lock_release(STREAM_HANDLE* handle, PROCESS* process)
 
 void kstream_create(STREAM** stream, unsigned int size)
 {
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, stream, sizeof(void*));
     *stream = kmalloc(sizeof(STREAM));
     if ((*stream) == NULL)
@@ -95,7 +95,7 @@ void kstream_create(STREAM** stream, unsigned int size)
 
 void kstream_open(STREAM* stream, STREAM_HANDLE** handle)
 {
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     if ((HANDLE)stream == INVALID_HANDLE)
     {
         *handle = (STREAM_HANDLE*)INVALID_HANDLE;
@@ -172,7 +172,7 @@ void kstream_listen(STREAM* stream, unsigned int param, HAL hal)
     IPC ipc;
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     size = kstream_get_size_internal(stream);
     if (stream->listener == INVALID_HANDLE)
     {
@@ -201,7 +201,7 @@ void kstream_stop_listen(STREAM* stream)
 {
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     if (stream->listener == (HANDLE)process)
         stream->listener = INVALID_HANDLE;
     else
@@ -212,7 +212,7 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
 {
     IPC ipc;
     register STREAM_HANDLE* reader;
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     int written = 0;
     CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
@@ -278,7 +278,7 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
 void kstream_read(STREAM_HANDLE* handle, char* buf, unsigned int size)
 {
     register STREAM_HANDLE* writer;
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
     CHECK_ADDRESS(process, buf, size);

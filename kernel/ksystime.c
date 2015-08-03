@@ -192,7 +192,7 @@ void ksystime_soft_timer_timeout(void* param)
 
 void ksystime_soft_timer_create(SOFT_TIMER** timer, unsigned int param, HAL hal)
 {
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, timer, sizeof(void*));
     *timer = kmalloc(sizeof(SOFT_TIMER));
     if ((*timer) == NULL)
@@ -220,7 +220,7 @@ void ksystime_soft_timer_destroy(SOFT_TIMER *timer)
 void ksystime_soft_timer_start(SOFT_TIMER* timer, SYSTIME* time, unsigned int mode)
 {
     bool active;
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     CHECK_HANDLE(timer, sizeof(SOFT_TIMER));
     CHECK_MAGIC(timer, MAGIC_TIMER);
     CHECK_ADDRESS(process, time, sizeof(SYSTIME));

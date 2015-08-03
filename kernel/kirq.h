@@ -15,7 +15,7 @@
 typedef struct {
     IRQ handler;
     void* param;
-    PROCESS* process;
+    KPROCESS* process;
 #ifdef SOFT_NVIC
     bool pending;
 #endif

@@ -28,7 +28,7 @@ const char *const STAT_LINE="---------------------------------------------------
 const char *const DAMAGED="     !!!DAMAGED!!!     ";
 #endif //(KERNEL_PROFILING)
 
-static inline void switch_to_process(PROCESS* process)
+static inline void switch_to_process(KPROCESS* process)
 {
     __KERNEL->next_process = process;
     if (process != NULL)
@@ -36,12 +36,12 @@ static inline void switch_to_process(PROCESS* process)
     pend_switch_context();
 }
 
-void kprocess_add_to_active_list(PROCESS* process)
+void kprocess_add_to_active_list(KPROCESS* process)
 {
     bool found = false;
-    PROCESS* process_to_save = process;
+    KPROCESS* process_to_save = process;
     DLIST_ENUM de;
-    PROCESS* cur;
+    KPROCESS* cur;
 #if (KERNEL_PROCESS_STAT)
     ksystime_get_uptime_internal(&process->uptime_start);
     dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
@@ -74,7 +74,7 @@ void kprocess_add_to_active_list(PROCESS* process)
         dlist_add_tail((DLIST**)&__KERNEL->processes, (DLIST*)process_to_save);
 }
 
-void kprocess_remove_from_active_list(PROCESS* process)
+void kprocess_remove_from_active_list(KPROCESS* process)
 {
     //freeze active task
     if (process == __KERNEL->processes)
@@ -93,7 +93,7 @@ void kprocess_remove_from_active_list(PROCESS* process)
 #endif
 }
 
-void kprocess_wakeup_internal(PROCESS* process)
+void kprocess_wakeup_internal(KPROCESS* process)
 {
     if  (process->flags & PROCESS_FLAGS_WAITING)
     {
@@ -114,7 +114,7 @@ void kprocess_wakeup_internal(PROCESS* process)
 
 void kprocess_timeout(void* param)
 {
-    PROCESS* process = param;
+    KPROCESS* process = param;
     disable_interrupts();
     //because timeout is not atomic anymore
     if (process->flags & PROCESS_FLAGS_WAITING)
@@ -148,10 +148,10 @@ void kprocess_abnormal_exit()
     kprocess_destroy_current();
 }
 
-void kprocess_create(const REX* rex, PROCESS** process)
+void kprocess_create(const REX* rex, KPROCESS** process)
 {
-    *process = kmalloc(sizeof(PROCESS) + KERNEL_IPC_SIZE * sizeof(IPC));
-    memset((*process), 0, sizeof(PROCESS) + KERNEL_IPC_SIZE * sizeof(IPC));
+    *process = kmalloc(sizeof(KPROCESS) + KERNEL_IPC_SIZE * sizeof(IPC));
+    memset((*process), 0, sizeof(KPROCESS) + KERNEL_IPC_SIZE * sizeof(IPC));
     //allocate process object
     if (*process != NULL)
     {
@@ -209,17 +209,17 @@ void kprocess_create(const REX* rex, PROCESS** process)
         error(ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
-void kprocess_get_flags(PROCESS* process, unsigned int* flags)
+void kprocess_get_flags(KPROCESS* process, unsigned int* flags)
 {
-    CHECK_HANDLE(process, sizeof(PROCESS));
+    CHECK_HANDLE(process, sizeof(KPROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     CHECK_ADDRESS(process, flags, sizeof(unsigned int));
     (*flags) = process->flags;
 }
 
-void kprocess_set_flags(PROCESS* process, unsigned int flags)
+void kprocess_set_flags(KPROCESS* process, unsigned int flags)
 {
-    CHECK_HANDLE(process, sizeof(PROCESS));
+    CHECK_HANDLE(process, sizeof(KPROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
     if ((flags & 1) == PROCESS_FLAGS_ACTIVE)
@@ -247,9 +247,9 @@ void kprocess_set_flags(PROCESS* process, unsigned int flags)
     enable_interrupts();
 }
 
-void kprocess_set_priority(PROCESS* process, unsigned int priority)
+void kprocess_set_priority(KPROCESS* process, unsigned int priority)
 {
-    CHECK_HANDLE(process, sizeof(PROCESS));
+    CHECK_HANDLE(process, sizeof(KPROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
     if (process->base_priority != priority)
@@ -264,26 +264,26 @@ void kprocess_set_priority(PROCESS* process, unsigned int priority)
     enable_interrupts();
 }
 
-void kprocess_get_priority(PROCESS* process, unsigned int* priority)
+void kprocess_get_priority(KPROCESS* process, unsigned int* priority)
 {
-    CHECK_HANDLE(process, sizeof(PROCESS));
+    CHECK_HANDLE(process, sizeof(KPROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     CHECK_ADDRESS(process, priority, sizeof(unsigned int));
     *priority = process->base_priority;
 }
 
-void kprocess_get_current_svc(PROCESS** var)
+void kprocess_get_current_svc(KPROCESS** var)
 {
-    PROCESS* process = kprocess_get_current();
-    CHECK_ADDRESS(process, var, sizeof(PROCESS*));
+    KPROCESS* process = kprocess_get_current();
+    CHECK_ADDRESS(process, var, sizeof(KPROCESS*));
     *var = process;
 }
 
-void kprocess_destroy(PROCESS* process)
+void kprocess_destroy(KPROCESS* process)
 {
     if ((HANDLE)process == INVALID_HANDLE)
         return;
-    CHECK_HANDLE(process, sizeof(PROCESS));
+    CHECK_HANDLE(process, sizeof(KPROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
     CLEAR_MAGIC(process);
@@ -324,9 +324,9 @@ void kprocess_destroy(PROCESS* process)
     kfree(process);
 }
 
-void kprocess_sleep(PROCESS* process, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
+void kprocess_sleep(KPROCESS* process, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
 {
-    CHECK_HANDLE(process, sizeof(PROCESS));
+    CHECK_HANDLE(process, sizeof(KPROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
     ASSERT ((process->flags & PROCESS_FLAGS_WAITING) == 0);
@@ -340,42 +340,42 @@ void kprocess_sleep(PROCESS* process, SYSTIME* time, PROCESS_SYNC_TYPE sync_type
         ksystime_timer_start_internal(&process->timer, time);
 }
 
-void kprocess_wakeup(PROCESS* process)
+void kprocess_wakeup(KPROCESS* process)
 {
-    CHECK_HANDLE(process, sizeof(PROCESS));
+    CHECK_HANDLE(process, sizeof(KPROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
     kprocess_wakeup_internal(process);
     enable_interrupts();
 }
 
-void kprocess_error(PROCESS* process, int error)
+void kprocess_error(KPROCESS* process, int error)
 {
-    CHECK_HANDLE(process, sizeof(PROCESS));
+    CHECK_HANDLE(process, sizeof(KPROCESS));
     CHECK_MAGIC(process, MAGIC_PROCESS);
     process->heap->error = error;
 }
 
 void kprocess_error_current(int error)
 {
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     if (process != NULL)
         kprocess_error(process, error);
 }
 
 void kprocess_destroy_current()
 {
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     if (process != NULL)
         kprocess_destroy(process);
 }
 
-PROCESS* kprocess_get_current()
+KPROCESS* kprocess_get_current()
 {
     return (__KERNEL->context >= 0) ?  __KERNEL->irqs[__KERNEL->context]->process : __KERNEL->active_process;
 }
 
-bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size)
+bool kprocess_check_address(KPROCESS* process, void* addr, unsigned int size)
 {
     //don't check on IRQ or kernel post
     if ((HANDLE)process == KERNEL_HANDLE || __KERNEL->context >= 0)
@@ -387,7 +387,7 @@ bool kprocess_check_address(PROCESS* process, void* addr, unsigned int size)
     return false;
 }
 
-bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size)
+bool kprocess_check_address_read(KPROCESS* process, void* addr, unsigned int size)
 {
     //don't check on IRQ or kernel post
     if ((HANDLE)process == KERNEL_HANDLE || __KERNEL->context >= 0)
@@ -403,7 +403,7 @@ bool kprocess_check_address_read(PROCESS* process, void* addr, unsigned int size
 
 void kprocess_init(const REX* rex)
 {
-    PROCESS* init;
+    KPROCESS* init;
     __KERNEL->next_process = NULL;
     __KERNEL->active_process = NULL;
     dlist_clear((DLIST**)&__KERNEL->processes);
@@ -417,7 +417,7 @@ void kprocess_init(const REX* rex)
 #if (KERNEL_PROFILING)
 void kprocess_switch_test()
 {
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     disable_interrupts();
     kprocess_remove_from_active_list(process);
     kprocess_add_to_active_list(process);
@@ -432,7 +432,7 @@ static unsigned int stack_used(unsigned int top, unsigned int end)
     return end - cur;
 }
 
-void process_stat(PROCESS* process)
+void process_stat(KPROCESS* process)
 {
     POOL_STAT stat;
     LIB_ENTER;
@@ -499,7 +499,7 @@ void kprocess_info()
 {
     int cnt = 0;
     DLIST_ENUM de;
-    PROCESS* cur;
+    KPROCESS* cur;
 #if (KERNEL_PROCESS_STAT)
     printk("\n    name           priority  stack  size   used       free        uptime\n");
 #else

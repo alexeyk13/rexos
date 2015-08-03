@@ -68,14 +68,14 @@ typedef struct {
     //for context-switching
     //This values are used in asm context switching. Don't place them more than 128 bytes from start of KERNEL
     //now running process. (Active context).
-    PROCESS* active_process;
+    KPROCESS* active_process;
     //next process to run, after leave. For context switch. If NULL - no context switch is required
-    PROCESS* next_process;
+    KPROCESS* next_process;
 
     //active processes
-    PROCESS* processes;
+    KPROCESS* processes;
 #if (KERNEL_PROCESS_STAT)
-    PROCESS* wait_processes;
+    KPROCESS* wait_processes;
 #endif //(KERNEL_PROCESS_STAT)
     //----------------------- IRQ related ------------------------------
     int context;
@@ -136,7 +136,7 @@ extern void pend_switch_context(void);
     \param fn: process start point
     \retval none
 */
-extern void process_setup_context(PROCESS* process, void (*fn)(void));
+extern void process_setup_context(KPROCESS* process, void (*fn)(void));
 
 /**
     \brief fatal error handler - generally reset

@@ -13,14 +13,14 @@
 #include "dbg.h"
 #include <stdbool.h>
 
-typedef struct _PROCESS PROCESS;
+typedef struct _PROCESS KPROCESS;
 
 typedef struct {
     DLIST list;
     MAGIC;
     IO* io;
-    PROCESS* owner;
-    PROCESS* granted;
+    KPROCESS* owner;
+    KPROCESS* granted;
     bool kill_flag;
 }KIO;
 

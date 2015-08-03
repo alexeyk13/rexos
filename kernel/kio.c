@@ -12,7 +12,7 @@
 void kio_create(IO** io, unsigned int size)
 {
     KIO* kio;
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, io, sizeof(void*));
     kio = (KIO*)kmalloc(sizeof(KIO));
     if (kio != NULL)
@@ -40,7 +40,7 @@ static void kio_destroy_internal(KIO* kio)
     kfree(kio);
 }
 
-static bool kio_send_internal(PROCESS* process, KIO* kio, IPC* ipc)
+static bool kio_send_internal(KPROCESS* process, KIO* kio, IPC* ipc)
 {
     if (process != kio->granted)
     {
@@ -53,14 +53,14 @@ static bool kio_send_internal(PROCESS* process, KIO* kio, IPC* ipc)
         kio_destroy_internal(kio);
         return false;
     }
-    kio->granted = (PROCESS*)ipc->process;
+    kio->granted = (KPROCESS*)ipc->process;
     kipc_post_process(ipc, (HANDLE)process);
     return true;
 }
 
 void kio_send(KIO* kio, IPC* ipc)
 {
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     CHECK_HANDLE(kio, sizeof(KIO));
     CHECK_MAGIC(kio, MAGIC_KIO);
     CHECK_ADDRESS(process, ipc, sizeof(IPC));
@@ -69,7 +69,7 @@ void kio_send(KIO* kio, IPC* ipc)
 
 void kio_call(KIO* kio, IPC* ipc, SYSTIME* time)
 {
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     CHECK_HANDLE(kio, sizeof(KIO));
     CHECK_MAGIC(kio, MAGIC_KIO);
     CHECK_ADDRESS(process, ipc, sizeof(IPC));
@@ -83,7 +83,7 @@ void kio_destroy(KIO *kio)
     bool kill = true;
     if ((HANDLE)kio == INVALID_HANDLE)
         return;
-    PROCESS* process = kprocess_get_current();
+    KPROCESS* process = kprocess_get_current();
     CHECK_HANDLE(kio, sizeof(KIO));
     CHECK_MAGIC(kio, MAGIC_KIO);
 
