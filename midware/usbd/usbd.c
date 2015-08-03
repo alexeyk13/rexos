@@ -470,23 +470,22 @@ static inline void usbd_reset(USBD* usbd, USB_SPEED speed)
 {
     //don't reset on configured state to be functional in virtualbox environment
     if (usbd->state != USBD_STATE_CONFIGURED)
-    {
-#if (USBD_DEBUG_REQUESTS)
-        printf("USB device reset\n");
-#endif
         usbd->state = USBD_STATE_DEFAULT;
-        if (usbd->ep0_size)
-        {
-            usbd_usb_ep_close(usbd, 0);
-            usbd_usb_ep_close(usbd, USB_EP_IN | 0);
-        }
-
-        usbd->speed = speed;
-        usbd->ep0_size = usbd->speed == USB_LOW_SPEED ? 8 : 64;
-
-        usbd_usb_ep_open(usbd, 0, USB_EP_CONTROL, usbd->ep0_size);
-        usbd_usb_ep_open(usbd, USB_EP_IN | 0, USB_EP_CONTROL, usbd->ep0_size);
+#if (USBD_DEBUG_REQUESTS)
+    printf("USB device reset\n");
+#endif
+    if (usbd->ep0_size)
+    {
+        usbd_usb_ep_close(usbd, 0);
+        usbd_usb_ep_close(usbd, USB_EP_IN | 0);
     }
+
+    usbd->speed = speed;
+    usbd->ep0_size = usbd->speed == USB_LOW_SPEED ? 8 : 64;
+
+    usbd_usb_ep_open(usbd, 0, USB_EP_CONTROL, usbd->ep0_size);
+    usbd_usb_ep_open(usbd, USB_EP_IN | 0, USB_EP_CONTROL, usbd->ep0_size);
+
     usbd->setup_state = USB_SETUP_STATE_REQUEST;
     usbd->suspended = false;
 }
@@ -501,8 +500,8 @@ static inline void usbd_suspend(USBD* usbd)
         usbd_class_suspend(usbd);
         if (usbd->ep0_size)
         {
-            usbd_usb_ep_flush(usbd, 0);
-            usbd_usb_ep_flush(usbd, USB_EP_IN | 0);
+            usbd_usb_ep_close(usbd, 0);
+            usbd_usb_ep_close(usbd, USB_EP_IN | 0);
         }
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
         usbd->suspended = true;
@@ -516,6 +515,9 @@ static inline void usbd_wakeup(USBD* usbd)
 #if (USBD_DEBUG_REQUESTS)
         printf("USB device wakeup\n");
 #endif
+        usbd_usb_ep_open(usbd, 0, USB_EP_CONTROL, usbd->ep0_size);
+        usbd_usb_ep_open(usbd, USB_EP_IN | 0, USB_EP_CONTROL, usbd->ep0_size);
+
         usbd_class_resume(usbd);
         usbd->suspended = false;
     }
