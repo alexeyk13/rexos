@@ -45,8 +45,7 @@ typedef enum {
     PROCESS_SYNC_STREAM =        (0x5 << 4)
 }PROCESS_SYNC_TYPE;
 
-#define REX_HEAP_FLAGS_OFFSET   24
-#define REX_HEAP_FLAGS(flags)   ((flags) << REX_HEAP_FLAGS_OFFSET)
+#define REX_FLAG_PERSISTENT_NAME                                 (1 << 24)
 
 typedef struct {
     const char* name;
@@ -69,6 +68,12 @@ HANDLE process_create(const REX* rex);
     \retval process HANDLE on success, or INVALID_HANDLE on failure
 */
 HANDLE process_get_current();
+
+/**
+    \brief get name of current process
+    \retval process name
+*/
+const char* process_name();
 
 /**
     \brief get current process. Isr version

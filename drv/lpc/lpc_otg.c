@@ -33,7 +33,7 @@ const REX __LPC_OTG = {
     //priority - driver priority
     92,
     //flags
-    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    PROCESS_FLAGS_ACTIVE | REX_FLAG_PERSISTENT_NAME,
     //function
     lpc_otg
 };

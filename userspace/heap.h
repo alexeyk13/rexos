@@ -8,52 +8,18 @@
 #define HEAP_H
 
 #include "types.h"
-#include "lib.h"
 #include "svc.h"
 #include "cc_macro.h"
 
-typedef enum {
-    HEAP_STRUCT_NAME,
-    HEAP_STRUCT_FREE
-} HEAP_STRUCT_TYPE;
-
-/*
-    int error
-    self handle - optional
-    system - remove
-    stdout - optional
-    stdin - optional
-    direct - optional
-    POOL optional
-
- */
-
-#define HEAP_PERSISTENT_NAME                                (1 << 0)
-
 typedef struct {
     int error;
-    char flags;
     POOL pool;
     //stdout/stdin handle. System specific
     HANDLE stdout, stdin;
-} HEAP;
+    const char* name;
+} PROCESS;
 
-typedef struct {
-    void* (*__heap_struct_ptr)(HEAP*, HEAP_STRUCT_TYPE);
-    char* (*__process_name)(HEAP*);
-} LIB_HEAP;
-
-#define __HEAP                                              ((HEAP*)(((GLOBAL*)(SRAM_BASE))->heap))
-
-__STATIC_INLINE void* heap_struct_ptr(HEAP_STRUCT_TYPE struct_type)
-{
-    return ((const LIB_HEAP*)__GLOBAL->lib[LIB_ID_HEAP])->__heap_struct_ptr(__HEAP, struct_type);
-}
-
-__STATIC_INLINE char* process_name()
-{
-    return ((const LIB_HEAP*)__GLOBAL->lib[LIB_ID_HEAP])->__process_name(__HEAP);
-}
+#define __HEAP                                              ((PROCESS*)(((GLOBAL*)(SRAM_BASE))->heap))
 
 __STATIC_INLINE int get_last_error()
 {

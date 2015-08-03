@@ -114,7 +114,7 @@ const REX __USBD = {
     //priority - midware priority
     150,
     //flags
-    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    PROCESS_FLAGS_ACTIVE | REX_FLAG_PERSISTENT_NAME,
     //function
     usbd
 };

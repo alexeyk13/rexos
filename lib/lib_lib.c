@@ -10,7 +10,6 @@
 #include "lib_std.h"
 #include "lib_stdio.h"
 #include "lib_systime.h"
-#include "lib_heap.h"
 #include "lib_gpio.h"
 
 void lib_stub ()
@@ -27,8 +26,6 @@ const void *const __LIB[] = {
     (const void *const )&__LIB_STDIO,
     //lib_systime.h
     (const void *const)&__LIB_SYSTIME,
-    //lib_heap.h
-    (const void *const )&__LIB_HEAP,
     //hardware specific
     (const void *const)&__LIB_GPIO
 };

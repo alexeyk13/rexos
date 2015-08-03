@@ -34,7 +34,7 @@ const REX __STM32_CORE = {
     //priority - driver priority
     90,
     //flags
-    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    PROCESS_FLAGS_ACTIVE | REX_FLAG_PERSISTENT_NAME,
     //function
     stm32_core
 };

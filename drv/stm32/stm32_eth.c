@@ -62,7 +62,7 @@ const REX __STM32_ETH = {
     //priority - driver priority
     91,
     //flags
-    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    PROCESS_FLAGS_ACTIVE | REX_FLAG_PERSISTENT_NAME,
     //function
     stm32_eth
 };

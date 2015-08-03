@@ -52,7 +52,7 @@ const REX __STM32_USB = {
     //priority - driver priority
     92,
     //flags
-    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    PROCESS_FLAGS_ACTIVE | REX_FLAG_PERSISTENT_NAME,
     //function
     stm32_usb
 };

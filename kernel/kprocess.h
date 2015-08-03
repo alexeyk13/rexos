@@ -15,7 +15,7 @@
 
 typedef struct _PROCESS {
     DLIST list;                                                        //list of processes - active, frozen, or owned by sync object
-    HEAP* heap;                                                        //process heap pointer
+    PROCESS* heap;                                                     //process userspace data pointer
     unsigned int* sp;                                                  //current sp(if saved)
     MAGIC;
     unsigned int size;
@@ -32,43 +32,32 @@ typedef struct _PROCESS {
 }KPROCESS;
 
 //called from svc, IRQ disabled
-void kprocess_create(const REX* rex, KPROCESS** process);
-void kprocess_set_flags(KPROCESS* process, unsigned int flags);
-void kprocess_unfreeze(KPROCESS* process);
-void kprocess_freeze(KPROCESS* process);
-void kprocess_set_priority(KPROCESS* process, unsigned int priority);
-void kprocess_destroy(KPROCESS* process);
+void kprocess_create(const REX* rex, KPROCESS** kprocess);
+void kprocess_set_flags(KPROCESS* kprocess, unsigned int flags);
+void kprocess_unfreeze(KPROCESS* kprocess);
+void kprocess_freeze(KPROCESS* kprocess);
+void kprocess_set_priority(KPROCESS* kprocess, unsigned int priority);
+void kprocess_destroy(KPROCESS* kprocess);
 
 //called from svc, IRQ enabled
-void kprocess_get_flags(KPROCESS* process, unsigned int* flags);
-void kprocess_get_priority(KPROCESS* process, unsigned int* priority);
+void kprocess_get_flags(KPROCESS* kprocess, unsigned int* flags);
+void kprocess_get_priority(KPROCESS* kprocess, unsigned int* priority);
 void kprocess_get_current_svc(KPROCESS** var);
 
 //called from other places in kernel, IRQ disabled
-void kprocess_sleep(KPROCESS* process, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
-void kprocess_wakeup(KPROCESS* process);
-void kprocess_set_current_priority(KPROCESS* process, unsigned int priority);
+void kprocess_sleep(KPROCESS* kprocess, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
+void kprocess_wakeup(KPROCESS* kprocess);
+void kprocess_set_current_priority(KPROCESS* kprocess, unsigned int priority);
 
 void kprocess_destroy_current();
 
 //called from other places in kernel, IRQ enabled
-bool kprocess_check_address(KPROCESS* process, void* addr, unsigned int size);
-bool kprocess_check_address_read(KPROCESS* process, void* addr, unsigned int size);
-void kprocess_error(KPROCESS* process, int error);
+bool kprocess_check_address(KPROCESS* kprocess, void* addr, unsigned int size);
+bool kprocess_check_address_read(KPROCESS* kprocess, void* addr, unsigned int size);
+void kprocess_error(KPROCESS* kprocess, int error);
 void kprocess_error_current(int error);
 KPROCESS* kprocess_get_current();
-
-__STATIC_INLINE void* kprocess_struct_ptr(KPROCESS* process, HEAP_STRUCT_TYPE struct_type)
-{
-    return ((const LIB_HEAP*)__GLOBAL->lib[LIB_ID_HEAP])->__heap_struct_ptr(process->heap, struct_type);
-}
-
-__STATIC_INLINE char* kprocess_name(KPROCESS* process)
-{
-    return ((const LIB_HEAP*)__GLOBAL->lib[LIB_ID_HEAP])->__process_name(process->heap);
-}
-
-
+const char* kprocess_name(KPROCESS* kprocess);
 
 //called from startup
 void kprocess_init(const REX *rex);

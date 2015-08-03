@@ -30,7 +30,7 @@ const REX __LPC_UART = {
     //priority - driver priority.
     89,
     //flags
-    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
+    PROCESS_FLAGS_ACTIVE | REX_FLAG_PERSISTENT_NAME,
     //function
     lpc_uart
 };

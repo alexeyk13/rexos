@@ -21,6 +21,11 @@ HANDLE process_get_current()
     return handle;
 }
 
+const char* process_name()
+{
+    return __HEAP->name;
+}
+
 HANDLE process_iget_current()
 {
     HANDLE handle;
