@@ -21,6 +21,11 @@ typedef struct {
     bool pressed, long_press;
 } KEY;
 
+typedef struct {
+    ARRAY* pins;
+    HANDLE timer;
+} PINBOARD;
+
 void pinboard();
 
 const REX __PINBOARD = {
@@ -77,21 +82,22 @@ void poll_key(KEY* key)
     }
 }
 
-static inline void pinboard_poll(ARRAY** pins)
+static inline void pinboard_poll(PINBOARD* pinboard)
 {
     int i;
-    for (i = 0; i < array_size(*pins); ++i)
-        poll_key(KEY_GET(*pins, i));
+    for (i = 0; i < array_size(pinboard->pins); ++i)
+        poll_key(KEY_GET(pinboard->pins, i));
+    timer_start_ms(pinboard->timer, PINBOARD_POLL_TIME_MS, 0);
 }
 
-static inline void pinboard_open(ARRAY** pins, unsigned int pin, unsigned int mode, unsigned int long_ms, HANDLE process)
+static inline void pinboard_open(PINBOARD* pinboard, unsigned int pin, unsigned int mode, unsigned int long_ms, HANDLE process)
 {
     int i;
     KEY* key;
-    for (i = 0; i < array_size(*pins); ++i)
-        if (KEY_GET(*pins, i)->pin == pin)
+    for (i = 0; i < array_size(pinboard->pins); ++i)
+        if (KEY_GET(pinboard->pins, i)->pin == pin)
             error(ERROR_ALREADY_CONFIGURED);
-    if (array_append(pins) == NULL)
+    if (array_append(&pinboard->pins) == NULL)
         return;
     if (mode & PINBOARD_FLAG_PULL)
     {
@@ -102,7 +108,7 @@ static inline void pinboard_open(ARRAY** pins, unsigned int pin, unsigned int mo
     }
     else
         gpio_enable_pin(pin, GPIO_MODE_IN_FLOAT);
-    key = KEY_GET(*pins, array_size(*pins) - 1);
+    key = KEY_GET(pinboard->pins, array_size(pinboard->pins) - 1);
     key->pin = pin;
     key->mode = mode;
     key->long_ms = long_ms;
@@ -111,14 +117,14 @@ static inline void pinboard_open(ARRAY** pins, unsigned int pin, unsigned int mo
     poll_key(key);
 }
 
-static inline void pinboard_close(ARRAY** pins, unsigned int pin, HANDLE process)
+static inline void pinboard_close(PINBOARD* pinboard, unsigned int pin, HANDLE process)
 {
     int i;
-    for (i = 0; i < array_size(*pins); ++i)
-        if (KEY_GET(*pins, i)->pin == pin)
+    for (i = 0; i < array_size(pinboard->pins); ++i)
+        if (KEY_GET(pinboard->pins, i)->pin == pin)
         {
-            if (KEY_GET(*pins, i)->process == process)
-                array_remove(pins, i);
+            if (KEY_GET(pinboard->pins, i)->process == process)
+                array_remove(&pinboard->pins, i);
             else
                 error(ERROR_ACCESS_DENIED);
             return;
@@ -126,37 +132,42 @@ static inline void pinboard_close(ARRAY** pins, unsigned int pin, HANDLE process
     error(ERROR_NOT_CONFIGURED);
 }
 
-static inline bool pinboard_get_key_state(ARRAY** pins, unsigned int pin)
+static inline bool pinboard_get_key_state(PINBOARD* pinboard, unsigned int pin)
 {
     int i;
-    for (i = 0; i < array_size(*pins); ++i)
-        if (KEY_GET(*pins, i)->pin == pin)
-            return KEY_GET(*pins, i)->pressed;
+    for (i = 0; i < array_size(pinboard->pins); ++i)
+        if (KEY_GET(pinboard->pins, i)->pin == pin)
+            return KEY_GET(pinboard->pins, i)->pressed;
     error(ERROR_NOT_CONFIGURED);
     return false;
 }
 
-static inline void pinboard_init(ARRAY** pins)
+static inline void pinboard_init(PINBOARD* pinboard)
 {
-    array_create(pins, sizeof(KEY), 1);
+    array_create(&pinboard->pins, sizeof(KEY), 1);
+    pinboard->timer = timer_create(0, HAL_PINBOARD);
+    timer_start_ms(pinboard->timer, PINBOARD_POLL_TIME_MS, 0);
 }
 
-static inline bool pinboard_request(ARRAY** pins, IPC* ipc)
+static inline bool pinboard_request(PINBOARD* pinboard, IPC* ipc)
 {
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        pinboard_open(pins, ipc->param1, ipc->param2, ipc->param3, ipc->process);
+        pinboard_open(pinboard, ipc->param1, ipc->param2, ipc->param3, ipc->process);
         need_post = true;
         break;
     case IPC_CLOSE:
-        pinboard_close(pins, ipc->param1, ipc->process);
+        pinboard_close(pinboard, ipc->param1, ipc->process);
         need_post = true;
         break;
     case PINBOARD_GET_KEY_STATE:
-        ipc->param2 = pinboard_get_key_state(pins, ipc->param1);
+        ipc->param2 = pinboard_get_key_state(pinboard, ipc->param1);
         need_post = true;
+        break;
+    case IPC_TIMEOUT:
+        pinboard_poll(pinboard);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -168,34 +179,15 @@ static inline bool pinboard_request(ARRAY** pins, IPC* ipc)
 
 void pinboard()
 {
-    ARRAY* pins;
     IPC ipc;
-    pinboard_init(&pins);
+    PINBOARD pinboard;
+    pinboard_init(&pinboard);
 
     object_set_self(SYS_OBJ_PINBOARD);
-    bool need_post;
     for (;;)
     {
-        error(ERROR_OK);
-        need_post = false;
-        if (ipc_read_ms(&ipc, PINBOARD_POLL_TIME_MS, ANY_HANDLE))
-        {
-            if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
-                need_post = true;
-            else
-                switch (HAL_GROUP(ipc.cmd))
-                {
-                case HAL_PINBOARD:
-                    need_post = pinboard_request(&pins, &ipc);
-                    break;
-                default:
-                    error(ERROR_NOT_SUPPORTED);
-                    need_post = true;
-                }
-            if (need_post)
-                ipc_post_or_error(&ipc);
-        }
-        else
-            pinboard_poll(&pins);
+        ipc_read(&ipc);
+        if (pinboard_request(&pinboard, &ipc))
+            ipc_post_or_error(&ipc);
     }
 }
