@@ -9,7 +9,7 @@
 
 #include "lib.h"
 #include "svc.h"
-#include "heap.h"
+#include "process.h"
 
 typedef struct {
     unsigned long (*atou)(const char *const, int);
@@ -32,7 +32,7 @@ typedef struct {
 */
 __STATIC_INLINE void* malloc(int size)
 {
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&__HEAP->pool, size);
+    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&__PROCESS->pool, size);
 }
 
 /**
@@ -42,7 +42,7 @@ __STATIC_INLINE void* malloc(int size)
 */
 __STATIC_INLINE void* realloc(void* ptr, int size)
 {
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_realloc(&__HEAP->pool, ptr, size);
+    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_realloc(&__PROCESS->pool, ptr, size);
 }
 
 /**
@@ -53,7 +53,7 @@ __STATIC_INLINE void* realloc(void* ptr, int size)
 */
 __STATIC_INLINE void free(void* ptr)
 {
-    ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_free(&__HEAP->pool, ptr);
+    ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_free(&__PROCESS->pool, ptr);
 }
 
 /** \addtogroup lib_printf embedded stdio

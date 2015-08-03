@@ -6,7 +6,7 @@
 
 #include "array.h"
 #include "stdlib.h"
-#include "heap.h"
+#include "process.h"
 #include "svc.h"
 #include <string.h>
 

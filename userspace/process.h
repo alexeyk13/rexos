@@ -26,7 +26,6 @@
  */
 
 #include "systime.h"
-#include "heap.h"
 
 #define PROCESS_FLAGS_ACTIVE                                     (1 << 0)
 #define PROCESS_FLAGS_WAITING                                    (1 << 1)
@@ -55,6 +54,16 @@ typedef struct {
     void (*fn) (void);
 }REX;
 
+typedef struct {
+    int error;
+    POOL pool;
+    //stdout/stdin handle. System specific
+    HANDLE stdout, stdin;
+    const char* name;
+} PROCESS;
+
+#define __PROCESS                                                ((PROCESS*)(((GLOBAL*)(SRAM_BASE))->heap))
+
 /**
     \brief creates process object. By default, process is frozen after creation
     \param rex: pointer to process header
@@ -74,6 +83,19 @@ HANDLE process_get_current();
     \retval process name
 */
 const char* process_name();
+
+/**
+    \brief get process last error
+    \retval error code
+*/
+int get_last_error();
+
+/**
+    \brief set error code for current process
+    \param error: error code to set
+    \retval none
+*/
+void error(int error);
 
 /**
     \brief get current process. Isr version

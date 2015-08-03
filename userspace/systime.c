@@ -7,7 +7,7 @@
 #include "systime.h"
 #include "lib.h"
 #include "svc.h"
-#include "heap.h"
+#include "process.h"
 
 int systime_compare(SYSTIME* from, SYSTIME* to)
 {

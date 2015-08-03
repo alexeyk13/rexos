@@ -23,7 +23,17 @@ HANDLE process_get_current()
 
 const char* process_name()
 {
-    return __HEAP->name;
+    return __PROCESS->name;
+}
+
+int get_last_error()
+{
+    return __PROCESS->error;
+}
+
+void error(int error)
+{
+    __PROCESS->error = error;
 }
 
 HANDLE process_iget_current()

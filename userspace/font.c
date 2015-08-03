@@ -7,7 +7,7 @@
 #include "font.h"
 #include "utf8.h"
 #include "error.h"
-#include "heap.h"
+#include "process.h"
 #include "font.h"
 
 #define FACE_OFFSET(face, num)              (*((uint16_t*)((unsigned int)(face) + sizeof(FACE) + ((num) << 1))))

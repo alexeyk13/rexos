@@ -15,7 +15,7 @@ unsigned int srand()
     seed = 0x30d02149;
     int i;
     for (i = 0; i < 0x80; ++i)
-        seed ^=  *((unsigned int *)(__HEAP + i));
+        seed ^=  *((unsigned int *)(__PROCESS + i));
 
     get_uptime(&uptime);
     seed ^= uptime.usec;

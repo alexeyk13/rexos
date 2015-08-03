@@ -12,7 +12,7 @@
 
 static void printf_handler(const char *const buf, unsigned int size, void* param)
 {
-    stream_write(__HEAP->stdout, buf, size);
+    stream_write(__PROCESS->stdout, buf, size);
 }
 
 static void pformat(const char *const fmt, va_list va)
@@ -22,18 +22,18 @@ static void pformat(const char *const fmt, va_list va)
 
 static void __puts(const char* s)
 {
-    stream_write(__HEAP->stdout, s, strlen(s));
+    stream_write(__PROCESS->stdout, s, strlen(s));
 }
 
 static void __putc(const char c)
 {
-    stream_write(__HEAP->stdout, &c, 1);
+    stream_write(__PROCESS->stdout, &c, 1);
 }
 
 static char __getc()
 {
     char c;
-    stream_read(__HEAP->stdin, &c, 1);
+    stream_read(__PROCESS->stdin, &c, 1);
     return c;
 }
 

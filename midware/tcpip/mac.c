@@ -100,7 +100,7 @@ void mac_rx(TCPIP* tcpip, IO* io)
 #endif //MAC_FILTER
 
     lentype = MAC_LENTYPE((uint8_t*)io_data(io));
-#if (MAC_DEBUG)
+#if (TCPIP_MAC_DEBUG)
     printf("MAC RX: ");
     mac_print(MAC_SRC(io_data(io)));
     printf(" -> ");
@@ -118,7 +118,7 @@ void mac_rx(TCPIP* tcpip, IO* io)
         arp_rx(tcpip, io);
         break;
     default:
-#if (MAC_DEBUG)
+#if (TCPIP_MAC_DEBUG)
         printf("MAC: dropped lentype: %04X\n", lentype);
 #endif
         tcpip_release_io(tcpip, io);

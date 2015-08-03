@@ -80,6 +80,11 @@ History
 0.3.5
 - LPC18xx USB0 support
 - IPC size is now fixed by KERNEL_IPC_COUNT
+- simplified process name store mechanism
+- lib_heap removed
+- REX_HEAP_FLAGS is now just REX_FLAG_PERSISTENT_NAME
+- PROCESS -> KPROCESS, HEAP -> PROCESS
+- __HEAP -> __PROCESS
 
 0.3.4
 - LPC18xx basic support: PIN/GPIO, UART, TIMER, POWER

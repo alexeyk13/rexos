@@ -5,7 +5,7 @@
 */
 
 #include "ipc.h"
-#include "heap.h"
+#include "process.h"
 #include "svc.h"
 #include "error.h"
 #include "systime.h"

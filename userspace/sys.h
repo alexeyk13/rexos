@@ -20,8 +20,8 @@ __STATIC_INLINE bool open_stdout()
 {
     HANDLE stream = object_get(SYS_OBJ_STDOUT);
     if (stream != INVALID_HANDLE)
-        __HEAP->stdout = stream_open(stream);
-    return __HEAP->stdout != INVALID_HANDLE;
+        __PROCESS->stdout = stream_open(stream);
+    return __PROCESS->stdout != INVALID_HANDLE;
 }
 
 /**
@@ -33,8 +33,8 @@ __STATIC_INLINE bool open_stdin()
 {
     HANDLE stream = object_get(SYS_OBJ_STDIN);
     if (stream != INVALID_HANDLE)
-        __HEAP->stdin = stream_open(stream);
-    return __HEAP->stdin != INVALID_HANDLE;
+        __PROCESS->stdin = stream_open(stream);
+    return __PROCESS->stdin != INVALID_HANDLE;
 }
 
 /**
@@ -44,8 +44,8 @@ __STATIC_INLINE bool open_stdin()
 
 __STATIC_INLINE void close_stdout()
 {
-    if (__HEAP->stdout != INVALID_HANDLE)
-        stream_close(__HEAP->stdout);
+    if (__PROCESS->stdout != INVALID_HANDLE)
+        stream_close(__PROCESS->stdout);
 }
 
 /**
@@ -55,8 +55,8 @@ __STATIC_INLINE void close_stdout()
 
 __STATIC_INLINE void close_stdin()
 {
-    if (__HEAP->stdin != INVALID_HANDLE)
-        stream_close(__HEAP->stdin);
+    if (__PROCESS->stdin != INVALID_HANDLE)
+        stream_close(__PROCESS->stdin);
 }
 
 /** \} */ // end of sys group

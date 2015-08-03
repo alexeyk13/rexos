@@ -8,7 +8,7 @@
 #define STREAM_H
 
 #include "types.h"
-#include "heap.h"
+#include "process.h"
 #include "svc.h"
 #include "error.h"
 #include "ipc.h"

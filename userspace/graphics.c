@@ -5,7 +5,7 @@
 */
 
 #include "graphics.h"
-#include "heap.h"
+#include "process.h"
 #include "error.h"
 
 static void graphics_write(uint8_t* pix, unsigned short pix_width, unsigned short bpp, const POINT* point, unsigned int data, unsigned int data_width)
