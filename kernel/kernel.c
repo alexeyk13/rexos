@@ -11,10 +11,6 @@
 #include "kipc.h"
 #include "kstream.h"
 #include "kprocess.h"
-#if (KERNEL_BD)
-#include "kdirect.h"
-#include "kblock.h"
-#endif //KERNEL_BD
 #include "kio.h"
 #include "kobject.h"
 
@@ -156,40 +152,6 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_STREAM_DESTROY:
         kstream_destroy((STREAM*)param1);
         break;
-#if (KERNEL_BD)
-    //direct io
-    case SVC_DIRECT_READ:
-        kdirect_read((PROCESS*)param1, (void*)param2, param3);
-        break;
-    case SVC_DIRECT_WRITE:
-        kdirect_write((PROCESS*)param1, (void*)param2, param3);
-        break;
-    //block
-    case SVC_BLOCK_CREATE:
-        kblock_create((BLOCK**)param1, param2);
-        break;
-    case SVC_BLOCK_OPEN:
-        kblock_open((BLOCK*)param1, (void**)param2);
-        break;
-    case SVC_BLOCK_CLOSE:
-        kblock_close((BLOCK*)param1);
-        break;
-    case SVC_BLOCK_GET_SIZE:
-        kblock_get_size((BLOCK*)param1, (unsigned int*)param2);
-        break;
-    case SVC_BLOCK_SEND:
-        kblock_send((BLOCK*)param1, (PROCESS*)param2);
-        break;
-    case SVC_BLOCK_SEND_IPC:
-        kblock_send_ipc((BLOCK*)param1, (PROCESS*)param2, (IPC*)param3);
-        break;
-    case SVC_BLOCK_RETURN:
-        kblock_return((BLOCK*)param1);
-        break;
-    case SVC_BLOCK_DESTROY:
-        kblock_destroy((BLOCK*)param1);
-        break;
-#endif //KERNEL_BD
     case SVC_IO_CREATE:
         kio_create((IO**)param1, (unsigned int)param2);
         break;

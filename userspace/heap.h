@@ -36,10 +36,6 @@ typedef struct {
     POOL pool;
     //stdout/stdin handle. System specific
     HANDLE stdout, stdin;
-    int direct_mode;
-    HANDLE direct_process;
-    void* direct_addr;
-    unsigned int direct_size;
 } HEAP;
 
 typedef struct {

@@ -93,7 +93,7 @@ IO* tcpip_allocate_io(TCPIP* tcpip)
         {
             io = tcpip_allocate_io_internal(tcpip);
 #if (TCPIP_DEBUG)
-            printf("TCPIP warning: block dropped from route queue\n");
+            printf("TCPIP warning: io dropped from route queue\n");
 #endif
         }
         else if (array_size(tcpip->tx_queue))
@@ -102,13 +102,13 @@ IO* tcpip_allocate_io(TCPIP* tcpip)
             --tcpip->tx_count;
             io = tcpip_allocate_io_internal(tcpip);
 #if (TCPIP_DEBUG)
-            printf("TCPIP warning: block dropped from tx queue\n");
+            printf("TCPIP warning: io dropped from tx queue\n");
 #endif
         }
         else
         {
 #if (TCPIP_DEBUG_ERRORS)
-            printf("TCPIP: too many blocks\n");
+            printf("TCPIP: too many ios\n");
 #endif
         }
     }

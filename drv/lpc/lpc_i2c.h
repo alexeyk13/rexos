@@ -21,7 +21,7 @@ typedef enum {
 
 typedef struct  {
     IO* io;
-    HANDLE block, process;
+    HANDLE process;
 #if (LPC_I2C_TIMEOUT_MS)
     HANDLE timer;
 #endif

@@ -226,7 +226,7 @@ bool ip_request(TCPIP* tcpip, IPC* ipc);
 
 //allocate IP io. If more than (MTU - MAC header - IP header) and fragmentation enabled, will be allocated long frame
 IO* ip_allocate_io(TCPIP* tcpip, unsigned int size, uint8_t proto);
-//release previously allocated io. IO is not actually freed, just put in queue of free blocks
+//release previously allocated io. IO is not actually freed, just put in queue of free ios
 void ip_release_io(TCPIP* tcpip, IO* io);
 void ip_tx(TCPIP* tcpip, IO* io, const IP* dst);
 

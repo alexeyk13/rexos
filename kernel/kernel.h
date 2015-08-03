@@ -19,18 +19,11 @@
     - \ref gettingstarted
     - kernel
         - \ref process
-        - \ref mutex
-        - \ref event
-        - \ref sem
         - \ref ipc
         - \ref stream
     - library
         - \ref lib_stdlib
         - \ref lib_stdio
-        - \ref lib_slist
-        - \ref lib_dlist
-        - \ref lib_rb
-        - \ref lib_rb_block
     - userspace
         - \ref error
 */

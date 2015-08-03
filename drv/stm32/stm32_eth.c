@@ -128,7 +128,7 @@ static void stm32_eth_flush(ETH_DRV* drv)
     io = drv->tx;
     drv->tx = NULL;
     __enable_irq();
-    if (block != NULL)
+    if (io != NULL)
         io_complete_ex(drv->tcpip, HAL_CMD(HAL_ETH, IPC_WRITE), 0, io, ERROR_IO_CANCELLED);
 #endif
 }
@@ -529,11 +529,11 @@ bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
         break;
     case IPC_READ:
         stm32_eth_read(drv, ipc);
-        //generally posted with block, no return IPC
+        //generally posted with io, no return IPC
         break;
     case IPC_WRITE:
         stm32_eth_write(drv, ipc);
-        //generally posted with block, no return IPC
+        //generally posted with io, no return IPC
         break;
     case IPC_TIMEOUT:
         stm32_eth_conn_check(drv);
