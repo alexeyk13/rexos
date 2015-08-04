@@ -14,6 +14,7 @@
 typedef struct _APP {
     COMM comm;
     HANDLE timer;
+    HANDLE usbd;
 } APP;
 
 #endif // APP_PRIVATE_H

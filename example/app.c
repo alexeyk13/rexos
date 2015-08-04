@@ -4,11 +4,12 @@
     All rights reserved.
 */
 
+#include "../../rexos/userspace/stdio.h"
+#include "../../rexos/userspace/stdlib.h"
+#include "../../rexos/userspace/process.h"
 #include "../userspace/sys.h"
 #include "../userspace/gpio.h"
 #include "../userspace/stm32_driver.h"
-#include "../userspace/stdio.h"
-#include "../userspace/stdlib.h"
 #include "../userspace/ipc.h"
 #include "../userspace/systime.h"
 #include "../userspace/wdt.h"
@@ -31,12 +32,11 @@ const REX __APP = {
     //priority
     200,
     //flags
-    PROCESS_FLAGS_ACTIVE | REX_HEAP_FLAGS(HEAP_PERSISTENT_NAME),
-    //ipc size
-    5,
+    PROCESS_FLAGS_ACTIVE | REX_FLAG_PERSISTENT_NAME,
     //function
     app
 };
+
 
 static inline void stat()
 {
@@ -77,7 +77,7 @@ static inline void app_setup_dbg()
 
 static inline void app_init(APP* app)
 {
-//    process_create(&__STM32_CORE);
+    process_create(&__STM32_CORE);
 
     gpio_enable_pin(B14, GPIO_MODE_OUT);
     gpio_reset_pin(B14);
