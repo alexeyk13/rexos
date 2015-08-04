@@ -185,7 +185,7 @@ void ksystime_soft_timer_timeout(void* param)
     ipc.cmd = HAL_CMD(timer->hal, IPC_TIMEOUT);
     ipc.param1 = timer->param;
     ipc.param2 = (unsigned int)timer;
-    kipc_post_process(&ipc, KERNEL_HANDLE);
+    kipc_post_process(&ipc, (KPROCESS*)KERNEL_HANDLE);
     if (timer->mode & TIMER_MODE_PERIODIC)
         ksystime_timer_start_internal(&timer->timer, &timer->time);
 }

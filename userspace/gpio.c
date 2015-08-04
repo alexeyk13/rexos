@@ -5,6 +5,7 @@
 */
 
 #include "gpio.h"
+#include "process.h"
 
 void gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
 {

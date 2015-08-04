@@ -13,9 +13,9 @@
 #include "dbg.h"
 #include "kipc.h"
 
-typedef struct _PROCESS {
+typedef struct _KPROCESS {
     DLIST list;                                                        //list of processes - active, frozen, or owned by sync object
-    PROCESS* heap;                                                     //process userspace data pointer
+    PROCESS* process;                                                  //process userspace data pointer
     unsigned int* sp;                                                  //current sp(if saved)
     MAGIC;
     unsigned int size;
@@ -28,7 +28,6 @@ typedef struct _PROCESS {
     SYSTIME uptime_start;
 #endif //KERNEL_PROCESS_STAT
     KIPC kipc;
-    //IPC is following
 }KPROCESS;
 
 //called from svc, IRQ disabled

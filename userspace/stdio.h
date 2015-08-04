@@ -32,10 +32,7 @@ typedef struct {
     \param c: char
     \retval none
 */
-__STATIC_INLINE void format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param)
-{
-    return ((const LIB_STDIO*)__GLOBAL->lib[LIB_ID_STDIO])->__format(fmt, va, write_handler, write_param);
-}
+void format(const char *const fmt, va_list va, STDOUT write_handler, void* write_param);
 
 /**
     \brief format string, using \ref stdout as handler
@@ -84,30 +81,21 @@ void sprintf(char* str, const char *const fmt, ...);
     \param s: null-terminated string
     \retval none
 */
-__STATIC_INLINE void puts(const char* s)
-{
-    ((const LIB_STDIO*)__GLOBAL->lib[LIB_ID_STDIO])->puts(s);
-}
+void puts(const char* s);
 
 /**
     \brief put char to stdout
     \param c: char
     \retval none
 */
-__STATIC_INLINE void putc(const char c)
-{
-    ((const LIB_STDIO*)__GLOBAL->lib[LIB_ID_STDIO])->putc(c);
-}
+void putc(const char c);
 
 /**
     \brief get char from stdin
     \param c: char
     \retval none
 */
-__STATIC_INLINE char getc()
-{
-    return ((const LIB_STDIO*)__GLOBAL->lib[LIB_ID_STDIO])->getc();
-}
+char getc();
 
 /**
     \brief get string from stdin
@@ -115,10 +103,7 @@ __STATIC_INLINE char getc()
     \param max_size: max string size, including null-terminator
     \retval null-terminated string
 */
-__STATIC_INLINE char* gets(char* s, int max_size)
-{
-    return ((const LIB_STDIO*)__GLOBAL->lib[LIB_ID_STDIO])->gets(s, max_size);
-}
+char* gets(char* s, int max_size);
 
 /** \} */ // end of stdio group
 

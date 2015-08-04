@@ -59,9 +59,12 @@ typedef enum {
     HAL_APP
 } HAL;
 
-#define HAL_CMD(group, item)                                ((group) << 16 | (item))
-#define HAL_ITEM(cmd)                                       ((cmd) & 0xffff)
+#define HAL_CMD(group, item)                                ((group & 0xffff) << 16 | (item & 0x7fff))
+#define HAL_ITEM(cmd)                                       ((cmd) & 0x7fff)
 #define HAL_GROUP(cmd)                                      ((cmd) >> 16)
+
+//ipc contains IO in param2
+#define HAL_IO_FLAG                                         (1 << 15)
 
 typedef struct {
     HANDLE process;

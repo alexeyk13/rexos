@@ -32,6 +32,7 @@
 #define ERROR_NAK                                       (ERROR_GENERAL - 17)
 #define ERROR_INVALID_STATE                             (ERROR_GENERAL - 18)
 #define ERROR_INVALID_ALIGN                             (ERROR_GENERAL - 19)
+#define ERROR_DEADLOCK                                  (ERROR_GENERAL - 20)
 
 #define ERROR_IO                                        -100
 #define ERROR_FILE_SHARING_VIOLATION                    (ERROR_IO - 1)

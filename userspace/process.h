@@ -26,6 +26,7 @@
  */
 
 #include "systime.h"
+#include "rb.h"
 
 #define PROCESS_FLAGS_ACTIVE                                     (1 << 0)
 #define PROCESS_FLAGS_WAITING                                    (1 << 1)
@@ -60,9 +61,22 @@ typedef struct {
     //stdout/stdin handle. System specific
     HANDLE stdout, stdin;
     const char* name;
+    RB ipcs;
+    //follow:
+    //IPC queue
+    //name holder (if not persistent)
 } PROCESS;
 
-#define __PROCESS                                                ((PROCESS*)(((GLOBAL*)(SRAM_BASE))->heap))
+// will be aligned to pass MPU requirements
+typedef struct {
+    PROCESS* process;
+    void (*svc_irq)(unsigned int, unsigned int, unsigned int, unsigned int);
+    const void** lib;
+} GLOBAL;
+
+#define __GLOBAL                                                 ((GLOBAL*)(SRAM_BASE))
+
+#define __PROCESS                                                ((PROCESS*)(((GLOBAL*)(SRAM_BASE))->process))
 
 /**
     \brief creates process object. By default, process is frozen after creation

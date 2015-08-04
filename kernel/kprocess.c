@@ -30,7 +30,7 @@ static inline void switch_to_process(KPROCESS* kprocess)
 {
     __KERNEL->next_process = kprocess;
     if (kprocess != NULL)
-        __GLOBAL->heap = kprocess->heap;
+        __GLOBAL->process = kprocess->process;
     pend_switch_context();
 }
 
@@ -123,7 +123,7 @@ void kprocess_timeout(void* param)
         case PROCESS_SYNC_TIMER_ONLY:
             break;
         case PROCESS_SYNC_IPC:
-            kipc_lock_release((HANDLE)kprocess);
+            kipc_lock_release(kprocess);
             break;
         case PROCESS_SYNC_STREAM:
             kstream_lock_release((STREAM_HANDLE*)kprocess->sync_object, kprocess);
@@ -132,7 +132,7 @@ void kprocess_timeout(void* param)
             ASSERT(false);
         }
         if ((kprocess->flags & PROCESS_SYNC_MASK) != PROCESS_SYNC_TIMER_ONLY)
-            kprocess->heap->error =  ERROR_TIMEOUT;
+            kprocess->process->error =  ERROR_TIMEOUT;
         kprocess_wakeup_internal(kprocess);
     }
     enable_interrupts();
@@ -149,38 +149,38 @@ void kprocess_abnormal_exit()
 void kprocess_create(const REX* rex, KPROCESS** kprocess)
 {
     unsigned int sys_size;
-    *kprocess = kmalloc(sizeof(KPROCESS) + KERNEL_IPC_SIZE * sizeof(IPC));
-    memset((*kprocess), 0, sizeof(KPROCESS) + KERNEL_IPC_SIZE * sizeof(IPC));
+    *kprocess = kmalloc(sizeof(KPROCESS));
+    memset((*kprocess), 0, sizeof(KPROCESS));
     //allocate kprocess object
     if (*kprocess != NULL)
     {
-        sys_size = sizeof(PROCESS);
+        sys_size = sizeof(PROCESS) + KERNEL_IPC_COUNT * sizeof(IPC);
         if ((rex->flags & REX_FLAG_PERSISTENT_NAME) == 0)
             sys_size += strlen(rex->name) + 1;
         sys_size = (sys_size + 3) & ~3;
-        (*kprocess)->heap = kmalloc(rex->size + sys_size);
-        if ((*kprocess)->heap)
+        (*kprocess)->process = kmalloc(rex->size + sys_size);
+        if ((*kprocess)->process)
         {
 #if (KERNEL_PROFILING)
-            memset((*kprocess)->heap, MAGIC_UNINITIALIZED_BYTE, rex->size);
+            memset((*kprocess)->process, MAGIC_UNINITIALIZED_BYTE, rex->size);
 #endif
             DO_MAGIC((*kprocess), MAGIC_PROCESS);
             (*kprocess)->flags = 0;
             (*kprocess)->base_priority = rex->priority;
-            (*kprocess)->sp = (void*)((unsigned int)(*kprocess)->heap + rex->size + sys_size);
+            (*kprocess)->sp = (void*)((unsigned int)(*kprocess)->process + rex->size + sys_size);
             ksystime_timer_init_internal(&(*kprocess)->timer, kprocess_timeout, (*kprocess));
             (*kprocess)->size = rex->size + sys_size;
-            kipc_init((HANDLE)*kprocess);
-            (*kprocess)->heap->stdout = (*kprocess)->heap->stdin = INVALID_HANDLE;
+            kipc_init(*kprocess);
+            (*kprocess)->process->stdout = (*kprocess)->process->stdin = INVALID_HANDLE;
 
             if (rex->flags & REX_FLAG_PERSISTENT_NAME)
-                (*kprocess)->heap->name = rex->name;
+                (*kprocess)->process->name = rex->name;
             else
             {
-                strcpy(((char*)((*kprocess)->heap)) + sizeof(PROCESS), rex->name);
-                (*kprocess)->heap->name = (((const char*)((*kprocess)->heap)) + sizeof(PROCESS));
+                strcpy(((char*)((*kprocess)->process)) + sizeof(PROCESS) + KERNEL_IPC_COUNT * sizeof(IPC), rex->name);
+                (*kprocess)->process->name = (((const char*)((*kprocess)->process)) + sizeof(PROCESS)) + KERNEL_IPC_COUNT * sizeof(IPC);
             }
-            pool_init(&(*kprocess)->heap->pool, (void*)((*kprocess)->heap) + sys_size);
+            pool_init(&(*kprocess)->process->pool, (void*)((*kprocess)->process) + sys_size);
 
             process_setup_context((*kprocess), rex->fn);
 
@@ -278,7 +278,7 @@ void kprocess_get_current_svc(KPROCESS** var)
 
 const char* kprocess_name(KPROCESS* kprocess)
 {
-    return kprocess->heap->name;
+    return kprocess->process->name;
 }
 
 void kprocess_destroy(KPROCESS* kprocess)
@@ -308,7 +308,7 @@ void kprocess_destroy(KPROCESS* kprocess)
         case PROCESS_SYNC_TIMER_ONLY:
             break;
         case PROCESS_SYNC_IPC:
-            kipc_lock_release((HANDLE)kprocess);
+            kipc_lock_release(kprocess);
             break;
         case PROCESS_SYNC_STREAM:
             kstream_lock_release((STREAM_HANDLE*)kprocess->sync_object, kprocess);
@@ -322,7 +322,7 @@ void kprocess_destroy(KPROCESS* kprocess)
 #endif
     enable_interrupts();
     //release memory, occupied by kprocess
-    kfree(kprocess->heap);
+    kfree(kprocess->process);
     kfree(kprocess);
 }
 
@@ -355,7 +355,7 @@ void kprocess_error(KPROCESS* kprocess, int error)
 {
     CHECK_HANDLE(kprocess, sizeof(KPROCESS));
     CHECK_MAGIC(kprocess, MAGIC_PROCESS);
-    kprocess->heap->error = error;
+    kprocess->process->error = error;
 }
 
 void kprocess_error_current(int error)
@@ -383,7 +383,7 @@ bool kprocess_check_address(KPROCESS* kprocess, void* addr, unsigned int size)
     if ((HANDLE)kprocess == KERNEL_HANDLE || __KERNEL->context >= 0)
         return true;
     //check PROCESS
-    if ((unsigned int)addr >= (unsigned int)kprocess->heap && (unsigned int)addr + size < (unsigned int)kprocess->heap + kprocess->size)
+    if ((unsigned int)addr >= (unsigned int)kprocess->process && (unsigned int)addr + size < (unsigned int)kprocess->process + kprocess->size)
         return true;
 
     return false;
@@ -395,7 +395,7 @@ bool kprocess_check_address_read(KPROCESS* kprocess, void* addr, unsigned int si
     if ((HANDLE)kprocess == KERNEL_HANDLE || __KERNEL->context >= 0)
         return true;
     //check PROCESS
-    if ((unsigned int)addr >= (unsigned int)kprocess->heap && (unsigned int)addr + size < (unsigned int)kprocess->heap + kprocess->size)
+    if ((unsigned int)addr >= (unsigned int)kprocess->process && (unsigned int)addr + size < (unsigned int)kprocess->process + kprocess->size)
         return true;
     //check FLASH
     if ((unsigned int)addr >= FLASH_BASE && (unsigned int)addr + size < FLASH_BASE + FLASH_SIZE)
@@ -438,13 +438,13 @@ void process_stat(KPROCESS* kprocess)
 {
     POOL_STAT stat;
     LIB_ENTER;
-    ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_stat(&kprocess->heap->pool, &stat, kprocess->sp);
+    ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_stat(&kprocess->process->pool, &stat, kprocess->sp);
     LIB_EXIT;
 
     printk("%-20.20s ", kprocess_name(kprocess));
 
     printk("%03d     ", kprocess->base_priority);
-    printk("%4b  ", stack_used((unsigned int)pool_free_ptr(&kprocess->heap->pool), (unsigned int)kprocess->heap + kprocess->size));
+    printk("%4b  ", stack_used((unsigned int)pool_free_ptr(&kprocess->process->pool), (unsigned int)kprocess->process + kprocess->size));
     printk("%4b ", kprocess->size);
 
     if (__KERNEL->error != ERROR_OK)

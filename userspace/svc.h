@@ -87,14 +87,6 @@ typedef enum {
     SVC_TEST
 }SVC;
 
-// will be aligned to pass MPU requirements
-typedef struct {
-    void* heap;
-    void (*svc_irq)(unsigned int, unsigned int, unsigned int, unsigned int);
-    const void** lib;
-} GLOBAL;
-
-#define __GLOBAL                                            ((GLOBAL*)(SRAM_BASE))
 
 typedef void (*STDOUT)(const char *const buf, unsigned int size, void* param);
 

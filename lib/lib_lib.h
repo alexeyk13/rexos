@@ -9,11 +9,11 @@
 
 #include "../kernel/kernel.h"
 
-#define LIB_ENTER                                           void* __saved_heap = __GLOBAL->heap;\
-                                                            __GLOBAL->heap = __KERNEL; \
+#define LIB_ENTER                                           void* __saved_process = __GLOBAL->process;\
+                                                            __GLOBAL->process = (PROCESS*)__KERNEL; \
                                                             __KERNEL->error = ERROR_OK;
 
-#define LIB_EXIT                                            __GLOBAL->heap = __saved_heap;
+#define LIB_EXIT                                            __GLOBAL->process = __saved_process;
 
 extern const void *const __LIB[];
 

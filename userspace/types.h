@@ -12,9 +12,9 @@
 #endif
 
 #define HANDLE								unsigned int
-#define INVALID_HANDLE                      (unsigned int)-1
-#define ANY_HANDLE                          (unsigned int)-2
-#define KERNEL_HANDLE                       (unsigned int)-3
+#define INVALID_HANDLE                      ((unsigned int)-1)
+#define ANY_HANDLE                          ((unsigned int)-2)
+#define KERNEL_HANDLE                       ((unsigned int)-3)
 
 #define INFINITE							0x0
 

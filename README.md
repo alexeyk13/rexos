@@ -85,6 +85,9 @@ History
 - REX_HEAP_FLAGS is now just REX_FLAG_PERSISTENT_NAME
 - PROCESS -> KPROCESS, HEAP -> PROCESS
 - __HEAP -> __PROCESS
+- size of created processes not includes process system header
+- pinboard soft timer interface
+- removed ipc/io calls timeouts requests. Use soft timers instead
 
 0.3.4
 - LPC18xx basic support: PIN/GPIO, UART, TIMER, POWER

@@ -8,12 +8,11 @@
 #define KIO_H
 
 #include "kipc.h"
+#include "kprocess.h"
 #include "../userspace/dlist.h"
 #include "../userspace/io.h"
 #include "dbg.h"
 #include <stdbool.h>
-
-typedef struct _PROCESS KPROCESS;
 
 typedef struct {
     DLIST list;

@@ -49,7 +49,7 @@ __STATIC_INLINE void close_stdout()
 }
 
 /**
-    \brief close stdid
+    \brief close stdin
     \retval none
 */
 

@@ -6,9 +6,9 @@
 
 #include "io.h"
 #include "svc.h"
+#include "process.h"
 #include "error.h"
 #include <string.h>
-#include "systime.h"
 
 void* io_data(IO* io)
 {
@@ -83,13 +83,14 @@ IO* io_create(unsigned int size)
 
 void io_send(IPC* ipc)
 {
+    ipc->cmd |= HAL_IO_FLAG;
     svc_call(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
 }
 
 void io_write(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 {
     IPC ipc;
-    ipc.cmd = cmd;
+    ipc.cmd = cmd | HAL_IO_FLAG;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
@@ -100,7 +101,7 @@ void io_write(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 void io_read(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = cmd;
+    ipc.cmd = cmd | HAL_IO_FLAG;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
@@ -111,7 +112,7 @@ void io_read(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsi
 void io_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 {
     IPC ipc;
-    ipc.cmd = cmd;
+    ipc.cmd = cmd | HAL_IO_FLAG;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
@@ -122,7 +123,7 @@ void io_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 void io_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3)
 {
     IPC ipc;
-    ipc.cmd = cmd;
+    ipc.cmd = cmd | HAL_IO_FLAG;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
@@ -132,19 +133,21 @@ void io_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* i
 
 void io_send_error(IPC* ipc, unsigned int error)
 {
+    ipc->cmd |= HAL_IO_FLAG;
     ipc->param3 = error;
     svc_call(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
 }
 
 void iio_send(IPC* ipc)
 {
+    ipc->cmd |= HAL_IO_FLAG;
     __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
 }
 
 void iio_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 {
     IPC ipc;
-    ipc.cmd = cmd;
+    ipc.cmd = cmd | HAL_IO_FLAG;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
@@ -155,7 +158,7 @@ void iio_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 void iio_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3)
 {
     IPC ipc;
-    ipc.cmd = cmd;
+    ipc.cmd = cmd | HAL_IO_FLAG;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
@@ -165,15 +168,14 @@ void iio_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* 
 
 void io_call(IPC* ipc)
 {
-    SYSTIME time;
-    time.sec = time.usec = 0;
-    svc_call(SVC_IO_CALL, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, (unsigned int)&time);
+    ipc->cmd |= HAL_IO_FLAG;
+    svc_call(SVC_IO_CALL, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
 }
 
 int io_write_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 {
     IPC ipc;
-    ipc.cmd = cmd;
+    ipc.cmd = cmd | HAL_IO_FLAG;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
@@ -185,7 +187,7 @@ int io_write_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 int io_read_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = cmd;
+    ipc.cmd = cmd | HAL_IO_FLAG;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
