@@ -224,10 +224,7 @@ static inline void stm32_timer_setup_channel(int num, int channel, TIMER_CHANNEL
             ccmr = (1 << 0);
             ccer = (1 << 1) | (1 << 3);
             break;
-        case TIMER_CHANNEL_OUTPUT_PWM_RISE:
-            ccmr = (7 << 4) | (1 << 3);
-            break;
-        case TIMER_CHANNEL_OUTPUT_PWM_FALL:
+        case TIMER_CHANNEL_PWM:
             ccmr = (6 << 4) | (1 << 3);
             break;
         default:
