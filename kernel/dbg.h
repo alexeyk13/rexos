@@ -126,17 +126,12 @@
 #if (KERNEL_DEVELOPER_MODE)
 #define CHECK_ADDRESS(process, address, sz)     if (!kprocess_check_address((KPROCESS*)(process), (address), (sz))) \
                                                     {printk("INVALID ADDRESS at %s, line %d, process: %s\n", __FILE__, __LINE__, kprocess_name((KPROCESS*)(process)));    HALT();}
-#define CHECK_ADDRESS_READ(process, address, sz)     if (!kprocess_check_address_read((KPROCESS*)(process), (address), (sz))) \
-                                                          {printk("INVALID READ ADDRESS at %s, line %d, process: %s\n", __FILE__, __LINE__, kprocess_name((KPROCESS*)(process)));    HALT();}
 #else
 #define CHECK_ADDRESS(process, address, sz)     if (!kprocess_check_address((KPROCESS*)(process), (address), (sz))) \
                                                      {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
-#define CHECK_ADDRESS_READ(process, address, sz)     if (!kprocess_check_address_read((KPROCESS*)(process), (address), (sz))) \
-                                                          {kprocess_error_current(ERROR_ACCESS_DENIED); return;}
 #endif //KERNEL_DEVELOPER_MODE
 #else
 #define CHECK_ADDRESS(process, address, size)
-#define CHECK_ADDRESS_READ(process, address, size)
 #endif //KERNEL_ADDRESS_CHECKING
 
 /**

@@ -32,11 +32,11 @@ static inline void lpc_eep_read(CORE* core, IPC* ipc)
     iap(req, resp);
     if (resp[0] != 0)
     {
-        io_send_error(ipc, ERROR_INVALID_PARAMS);
+        ipc_post_ex(ipc, ERROR_INVALID_PARAMS);
         return;
     }
     io->data_size = ipc->param1;
-    io_send(ipc);
+    ipc_post_ex(ipc, io->data_size);
 }
 
 static inline void lpc_eep_write(CORE* core, IPC* ipc)
@@ -52,10 +52,10 @@ static inline void lpc_eep_write(CORE* core, IPC* ipc)
     iap(req, resp);
     if (resp[0] != 0)
     {
-        io_send_error(ipc, ERROR_INVALID_PARAMS);
+        ipc_post_ex(ipc, ERROR_INVALID_PARAMS);
         return;
     }
-    io_send(ipc);
+    ipc_post_ex(ipc, io->data_size);
 }
 
 bool lpc_eep_request(CORE* core, IPC* ipc)

@@ -124,13 +124,6 @@ void io_reset(IO* io);
 IO* io_create(unsigned int size);
 
 /**
-    \brief send IO to another process
-    \param ipc: IPC with IO as param
-    \retval none.
-*/
-void io_send(IPC* ipc);
-
-/**
     \brief send IO write request to another process
     \param process: receiver process
     \param cmd: command to send
@@ -138,7 +131,7 @@ void io_send(IPC* ipc);
     \param io: pointer to IO structure
     \retval none.
 */
-void io_write(HANDLE process, unsigned int cmd, unsigned int handle, IO* io);
+#define io_write(process, cmd, handle, io)                              ipc_post_inline((process), (cmd), (handle), (unsigned int)(io), (io)->data_size)
 
 /**
     \brief send IO read request to another process
@@ -149,7 +142,7 @@ void io_write(HANDLE process, unsigned int cmd, unsigned int handle, IO* io);
     \param size: IO data size
     \retval none.
 */
-void io_read(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsigned int size);
+#define io_read(process, cmd, handle, io, size)                         ipc_post_inline((process), (cmd), (handle), (unsigned int)(io), (size))
 
 /**
     \brief send IO complete to another process
@@ -159,7 +152,7 @@ void io_read(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsi
     \param io: pointer to IO structure
     \retval none.
 */
-void io_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io);
+#define io_complete(process, cmd, handle, io)                           ipc_post_inline((process), (cmd), (handle), (unsigned int)(io), (io)->data_size)
 
 /**
     \brief send IO complete to another process with error code
@@ -170,22 +163,7 @@ void io_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io);
     \param param3: ext param or error
     \retval none.
 */
-void io_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3);
-
-/**
-    \brief send IO to another process with error set
-    \param ipc: IPC with IO as param
-    \param error: error code
-    \retval none.
-*/
-void io_send_error(IPC* ipc, unsigned int error);
-
-/**
-    \brief send IO to another process. isr version
-    \param ipc: IPC with IO as param
-    \retval none.
-*/
-void iio_send(IPC* ipc);
+#define io_complete_ex(process, cmd, handle, io, param3)                ipc_post_inline((process), (cmd), (handle), (unsigned int)(io), (param3))
 
 /**
     \brief send IO complete to another process. isr version
@@ -195,7 +173,7 @@ void iio_send(IPC* ipc);
     \param io: pointer to IO structure
     \retval none.
 */
-void iio_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io);
+#define iio_complete(process, cmd, handle, io)                          ipc_ipost_inline((process), (cmd), (handle), (unsigned int)(io), (io)->data_size)
 
 /**
     \brief send IO complete to another process with error code. isr version
@@ -206,14 +184,7 @@ void iio_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
     \param param3: ext param or error
     \retval none.
 */
-void iio_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3);
-
-/**
-    \brief send IO to another process. Wait for response.
-    \param ipc: IPC with IO as param
-    \retval none.
-*/
-void io_call(IPC* ipc);
+#define iio_complete_ex(process, cmd, handle, io, param3)               ipc_ipost_inline((process), (cmd), (handle), (unsigned int)(io), (param3))
 
 /**
     \brief send IO write request to another process. Wait for response

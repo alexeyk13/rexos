@@ -127,7 +127,7 @@ static void tcpip_rx_next(TCPIP* tcpip)
     IO* io = tcpip_allocate_io(tcpip);
     if (io == NULL)
         return;
-    io_read(tcpip->eth, HAL_CMD(HAL_ETH, IPC_READ), 0, io, FRAME_MAX_SIZE);
+    io_read(tcpip->eth, HAL_IO_CMD(HAL_ETH, IPC_READ), 0, io, FRAME_MAX_SIZE);
 }
 
 void tcpip_tx(TCPIP* tcpip, IO *io)
@@ -143,7 +143,7 @@ void tcpip_tx(TCPIP* tcpip, IO *io)
         *((IO**)array_at(tcpip->tx_queue, array_size(tcpip->tx_queue) - 1)) = io;
     }
     else
-        io_write(tcpip->eth, HAL_CMD(HAL_ETH, IPC_WRITE), 0, io);
+        io_write(tcpip->eth, HAL_IO_CMD(HAL_ETH, IPC_WRITE), 0, io);
 }
 
 unsigned int tcpip_seconds(TCPIP* tcpip)
@@ -193,7 +193,7 @@ static inline void tcpip_eth_tx_complete(TCPIP* tcpip, IO* io, int param3)
         //send next in queue
         queue_io = *((IO**)array_at(tcpip->tx_queue, 0));
         array_remove(&tcpip->tx_queue, 0);
-        io_write(tcpip->eth, HAL_CMD(HAL_ETH, IPC_WRITE), 0, queue_io);
+        io_write(tcpip->eth, HAL_IO_CMD(HAL_ETH, IPC_WRITE), 0, queue_io);
     }
 }
 

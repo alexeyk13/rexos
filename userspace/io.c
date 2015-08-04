@@ -81,123 +81,32 @@ IO* io_create(unsigned int size)
     return io;
 }
 
-void io_send(IPC* ipc)
-{
-    ipc->cmd |= HAL_IO_FLAG;
-    svc_call(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
-}
-
-void io_write(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
-{
-    IPC ipc;
-    ipc.cmd = cmd | HAL_IO_FLAG;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = io->data_size;
-    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
-
-void io_read(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsigned int size)
-{
-    IPC ipc;
-    ipc.cmd = cmd | HAL_IO_FLAG;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = size;
-    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
-
-void io_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
-{
-    IPC ipc;
-    ipc.cmd = cmd | HAL_IO_FLAG;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = io->data_size;
-    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
-
-void io_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3)
-{
-    IPC ipc;
-    ipc.cmd = cmd | HAL_IO_FLAG;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = (unsigned int)param3;
-    svc_call(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
-
-void io_send_error(IPC* ipc, unsigned int error)
-{
-    ipc->cmd |= HAL_IO_FLAG;
-    ipc->param3 = error;
-    svc_call(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
-}
-
-void iio_send(IPC* ipc)
-{
-    ipc->cmd |= HAL_IO_FLAG;
-    __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
-}
-
-void iio_complete(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
-{
-    IPC ipc;
-    ipc.cmd = cmd | HAL_IO_FLAG;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = io->data_size;
-    __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
-
-void iio_complete_ex(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, int param3)
-{
-    IPC ipc;
-    ipc.cmd = cmd | HAL_IO_FLAG;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = (unsigned int)param3;
-    __GLOBAL->svc_irq(SVC_IO_SEND, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
-}
-
-void io_call(IPC* ipc)
-{
-    ipc->cmd |= HAL_IO_FLAG;
-    svc_call(SVC_IO_CALL, (unsigned int)(((IO*)(ipc->param2))->kio), (unsigned int)ipc, 0);
-}
-
 int io_write_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
 {
     IPC ipc;
-    ipc.cmd = cmd | HAL_IO_FLAG;
+    ipc.cmd = cmd;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
     ipc.param3 = io->data_size;
-    svc_call(SVC_IO_CALL, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
+    call(&ipc);
     return ipc.param3;
 }
 
 int io_read_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsigned int size)
 {
     IPC ipc;
-    ipc.cmd = cmd | HAL_IO_FLAG;
+    ipc.cmd = cmd;
     ipc.process = process;
     ipc.param1 = handle;
     ipc.param2 = (unsigned int)io;
     ipc.param3 = size;
-    svc_call(SVC_IO_CALL, (unsigned int)(io->kio), (unsigned int)&ipc, 0);
+    call(&ipc);
     return ipc.param3;
 }
 
 void io_destroy(IO* io)
 {
     if (io != NULL)
-        svc_call(SVC_IO_DESTROY, (unsigned int)(io->kio), 0, 0);
+        svc_call(SVC_IO_DESTROY, (unsigned int)io, 0, 0);
 }

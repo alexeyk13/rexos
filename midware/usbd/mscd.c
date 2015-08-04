@@ -179,19 +179,19 @@ void mscd_storage_cb(void* param, IO* io, SCSIS_REQUEST request)
     switch (request)
     {
     case SCSIS_REQUEST_READ:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_CMD(HAL_USBD_IFACE, USB_MSC_READ), io, size);
+        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_READ), io, size);
         break;
     case SCSIS_REQUEST_WRITE:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_CMD(HAL_USBD_IFACE, USB_MSC_WRITE), io, size);
+        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_WRITE), io, size);
         break;
     case SCSIS_REQUEST_VERIFY:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_CMD(HAL_USBD_IFACE, USB_MSC_VERIFY), io, size);
+        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_VERIFY), io, size);
         break;
     case SCSIS_REQUEST_GET_STORAGE_DESCRIPTOR:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_CMD(HAL_USBD_IFACE, USB_MSC_GET_STORAGE_DESCRIPTOR), io, 0);
+        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_GET_STORAGE_DESCRIPTOR), io, 0);
         break;
     case SCSIS_REQUEST_GET_MEDIA_DESCRIPTOR:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_CMD(HAL_USBD_IFACE, USB_MSC_GET_MEDIA_DESCRIPTOR), io, 0);
+        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_GET_MEDIA_DESCRIPTOR), io, 0);
         break;
     default:
 #if (USBD_MSC_DEBUG_ERRORS)
@@ -374,7 +374,7 @@ static inline bool mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
         if (mscd->state == MSCD_STATE_DIRECT_WRITE)
         {
             //return IO to user
-            usbd_io_user(mscd->usbd, mscd->iface_num, 0, HAL_CMD(HAL_USBD_IFACE, USB_MSC_DIRECT_WRITE), (IO*)ipc->param2, ipc->param3);
+            usbd_io_user(mscd->usbd, mscd->iface_num, 0, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_DIRECT_WRITE), (IO*)ipc->param2, ipc->param3);
             mscd->state = MSCD_STATE_PROCESSING;
 #if (USBD_MSC_DEBUG_IO)
             printf("MSC: direct write complete\n");

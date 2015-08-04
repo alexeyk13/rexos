@@ -52,7 +52,6 @@ void kprocess_destroy_current();
 
 //called from other places in kernel, IRQ enabled
 bool kprocess_check_address(KPROCESS* kprocess, void* addr, unsigned int size);
-bool kprocess_check_address_read(KPROCESS* kprocess, void* addr, unsigned int size);
 void kprocess_error(KPROCESS* kprocess, int error);
 void kprocess_error_current(int error);
 KPROCESS* kprocess_get_current();

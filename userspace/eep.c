@@ -22,7 +22,7 @@ int eep_read(void *buf, unsigned int size)
     IO* io = io_create(size);
     if (io == NULL)
         return (get_last_error());
-    res = io_read_sync(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_EEPROM, IPC_READ), 0, io, size);
+    res = io_read_sync(object_get(SYS_OBJ_CORE), HAL_IO_CMD(HAL_EEPROM, IPC_READ), 0, io, size);
     if (res > 0)
         memcpy(buf, io_data(io), res);
     io_destroy(io);
@@ -36,7 +36,7 @@ int eep_write(const void* buf, unsigned int size)
     if (io == NULL)
         return (get_last_error());
     io_data_write(io, buf, size);
-    res = io_write_sync(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_EEPROM, IPC_WRITE), 0, io);
+    res = io_write_sync(object_get(SYS_OBJ_CORE), HAL_IO_CMD(HAL_EEPROM, IPC_WRITE), 0, io);
     io_destroy(io);
     return res;
 }

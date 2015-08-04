@@ -32,11 +32,11 @@ static inline void stm32_eep_read(CORE* core, IPC* ipc)
 {
     if (core->eep.addr + ipc->param3 > EEP_BASE + EEP_SIZE)
     {
-        io_send_error(ipc, ERROR_OUT_OF_RANGE);
+        ipc_post_ex(ipc, ERROR_OUT_OF_RANGE);
         return;
     }
     io_data_write((IO*)ipc->param2, (void*)core->eep.addr, ipc->param3);
-    io_send(ipc);
+    ipc_post(ipc);
 }
 
 static inline void stm32_eep_write(CORE* core, IPC* ipc)
@@ -45,7 +45,7 @@ static inline void stm32_eep_write(CORE* core, IPC* ipc)
     IO* io = (IO*)ipc->param2;
     if (core->eep.addr + io->data_size > EEP_BASE + EEP_SIZE)
     {
-        io_send_error(ipc, ERROR_OUT_OF_RANGE);
+        ipc_post_ex(ipc, ERROR_OUT_OF_RANGE);
         return;
     }
     FLASH->PECR &= ~(FLASH_PECR_FPRG | FLASH_PECR_ERASE | FLASH_PECR_FTDW | FLASH_PECR_PROG);
@@ -59,12 +59,12 @@ static inline void stm32_eep_write(CORE* core, IPC* ipc)
         if (FLASH->SR & (FLASH_SR_FWWERR | FLASH_SR_NOTZEROERR | FLASH_SR_SIZERR | FLASH_SR_PGAERR))
         {
             FLASH->SR |= FLASH_SR_FWWERR | FLASH_SR_NOTZEROERR | FLASH_SR_SIZERR | FLASH_SR_PGAERR;
-            io_send_error(ipc, ERROR_HARDWARE);
+            ipc_post_ex(ipc, ERROR_HARDWARE);
             return;
         }
     }
     ipc->param3 = io->data_size;
-    io_send(ipc);
+    ipc_post(ipc);
 }
 
 bool stm32_eep_request(CORE* core, IPC* ipc)

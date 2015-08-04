@@ -25,8 +25,9 @@ typedef struct {
 
 //called from svc
 void kio_create(IO** io, unsigned int size);
-void kio_send(KIO* kio, IPC* ipc);
-void kio_call(KIO* kio, IPC* ipc);
-void kio_destroy(KIO* io);
+void kio_destroy(IO* io);
+
+//called from kipc
+bool kio_send(IO* io, KPROCESS* receiver);
 
 #endif // KIO_H

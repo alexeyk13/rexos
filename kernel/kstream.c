@@ -216,7 +216,6 @@ void kstream_write(STREAM_HANDLE *handle, char* buf, unsigned int size)
     int written = 0;
     CHECK_HANDLE(handle, sizeof(STREAM_HANDLE));
     CHECK_MAGIC(handle, MAGIC_STREAM_HANDLE);
-    CHECK_ADDRESS_READ(process, buf, size);
     ASSERT(handle->mode == STREAM_MODE_IDLE);
     if ((HANDLE)handle->stream == INVALID_HANDLE)
     {

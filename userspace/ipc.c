@@ -14,6 +14,12 @@ void ipc_post(IPC* ipc)
     svc_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
 }
 
+void ipc_post_ex(IPC* ipc, int param3)
+{
+    ipc->param3 = param3;
+    ipc_post(ipc);
+}
+
 void ipc_post_inline(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     IPC ipc;
@@ -34,6 +40,17 @@ void ipc_post_or_error(IPC* ipc)
 void ipc_ipost(IPC* ipc)
 {
     __GLOBAL->svc_irq(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
+}
+
+void ipc_ipost_inline(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+{
+    IPC ipc;
+    ipc.process = process;
+    ipc.cmd = cmd;
+    ipc.param1 = param1;
+    ipc.param2 = param2;
+    ipc.param3 = param3;
+    ipc_ipost(&ipc);
 }
 
 void ipc_read(IPC* ipc)

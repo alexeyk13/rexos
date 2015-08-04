@@ -65,6 +65,7 @@ typedef enum {
 
 //ipc contains IO in param2
 #define HAL_IO_FLAG                                         (1 << 15)
+#define HAL_IO_CMD(group, item)                             ((group & 0xffff) << 16 | (item & 0x7fff) | HAL_IO_FLAG)
 
 typedef struct {
     HANDLE process;
@@ -86,6 +87,14 @@ typedef struct {
     \retval none
 */
 void ipc_post(IPC* ipc);
+
+/**
+    \brief post IPC with extra parameter in param3
+    \param ipc: IPC structure
+    \param param3: extra parameter to set, generally error or size
+    \retval none
+*/
+void ipc_post_ex(IPC* ipc, int param3);
 
 /**
     \brief post IPC, inline version
@@ -112,6 +121,17 @@ void ipc_post_or_error(IPC* ipc);
     \retval none
 */
 void ipc_ipost(IPC* ipc);
+
+/**
+    \brief post IPC, ISR inline version
+    \param process: receiver process
+    \param cmd: command
+    \param param1: cmd-specific param1
+    \param param2: cmd-specific param2
+    \param param3: cmd-specific param3
+    \retval none
+*/
+void ipc_ipost_inline(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
     \brief read IPC. Ping is processed internally

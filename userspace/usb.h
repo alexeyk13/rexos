@@ -253,6 +253,5 @@ typedef struct {
 bool usbd_register_descriptor(HANDLE usbd, const void* d, unsigned int index, unsigned int lang);
 bool usbd_register_const_descriptor(HANDLE usbd, const void* d, unsigned int index, unsigned int lang);
 bool usbd_register_ascii_string(HANDLE usbd, unsigned int index, unsigned int lang, const char* str);
-///HANDLE usbd_create(USB usb, )
 
 #endif // USB_H

@@ -155,14 +155,8 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_IO_CREATE:
         kio_create((IO**)param1, (unsigned int)param2);
         break;
-    case SVC_IO_SEND:
-        kio_send((KIO*)param1, (IPC*)param2);
-        break;
-    case SVC_IO_CALL:
-        kio_call((KIO*)param1, (IPC*)param2);
-        break;
     case SVC_IO_DESTROY:
-        kio_destroy((KIO*)param1);
+        kio_destroy((IO*)param1);
         break;
     case SVC_OBJECT_SET:
         kobject_set(param1, (HANDLE)param2);

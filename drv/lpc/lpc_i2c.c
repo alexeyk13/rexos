@@ -38,7 +38,7 @@ void lpc_i2c_isr_error(CORE* core, I2C_PORT port, int error)
 #if (LPC_I2C_TIMEOUT_MS)
     timer_istop(i2c->timer);
 #endif
-    iio_complete_ex(i2c->process, HAL_CMD(HAL_I2C, (i2c->io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, error);
+    iio_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (i2c->io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, error);
     i2c->io_mode = I2C_IO_MODE_IDLE;
 }
 
@@ -76,7 +76,7 @@ static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
 #if (LPC_I2C_TIMEOUT_MS)
             timer_istop(i2c->timer);
 #endif
-            iio_complete(i2c->process, HAL_CMD(HAL_I2C, IPC_WRITE), port, i2c->io);
+            iio_complete(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_WRITE), port, i2c->io);
             i2c->io_mode = I2C_IO_MODE_IDLE;
         }
         break;
@@ -153,7 +153,7 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
 #if (LPC_I2C_TIMEOUT_MS)
         timer_istop(i2c->timer);
 #endif
-        iio_complete(i2c->process, HAL_CMD(HAL_I2C, IPC_READ), port, i2c->io);
+        iio_complete(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_READ), port, i2c->io);
         i2c->io_mode = I2C_IO_MODE_IDLE;
         break;
     default:
@@ -252,12 +252,12 @@ static inline void lpc_i2c_read(CORE* core, IPC* ipc)
     I2C* i2c = core->i2c.i2cs[port];
     if (i2c == NULL)
     {
-        io_send_error(ipc, ERROR_NOT_CONFIGURED);
+        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
         return;
     }
     if (i2c->io_mode != I2C_IO_MODE_IDLE)
     {
-        io_send_error(ipc, ERROR_IN_PROGRESS);
+        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
         return;
     }
     i2c->process = ipc->process;
@@ -286,12 +286,12 @@ static inline void lpc_i2c_write(CORE* core, IPC* ipc)
     I2C* i2c = core->i2c.i2cs[port];
     if (i2c == NULL)
     {
-        io_send_error(ipc, ERROR_NOT_CONFIGURED);
+        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
         return;
     }
     if (i2c->io_mode != I2C_IO_MODE_IDLE)
     {
-        io_send_error(ipc, ERROR_IN_PROGRESS);
+        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
         return;
     }
     i2c->process = ipc->process;
@@ -330,7 +330,7 @@ static inline void lpc_i2c_timeout(CORE* core, I2C_PORT port)
     if (io_mode == I2C_IO_MODE_IDLE)
         return;
     LPC_I2C->CONSET = I2C_CONSET_STO;
-    io_complete_ex(i2c->process, HAL_CMD(HAL_I2C, (io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, ERROR_TIMEOUT);
+    io_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, ERROR_TIMEOUT);
 }
 #endif
 

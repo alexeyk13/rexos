@@ -389,20 +389,6 @@ bool kprocess_check_address(KPROCESS* kprocess, void* addr, unsigned int size)
     return false;
 }
 
-bool kprocess_check_address_read(KPROCESS* kprocess, void* addr, unsigned int size)
-{
-    //don't check on IRQ or kernel post
-    if ((HANDLE)kprocess == KERNEL_HANDLE || __KERNEL->context >= 0)
-        return true;
-    //check PROCESS
-    if ((unsigned int)addr >= (unsigned int)kprocess->process && (unsigned int)addr + size < (unsigned int)kprocess->process + kprocess->size)
-        return true;
-    //check FLASH
-    if ((unsigned int)addr >= FLASH_BASE && (unsigned int)addr + size < FLASH_BASE + FLASH_SIZE)
-        return true;
-    return false;
-}
-
 void kprocess_init(const REX* rex)
 {
     KPROCESS* init;

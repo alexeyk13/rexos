@@ -86,7 +86,7 @@ void stm32_dac_dma_isr(int vector, void* param)
         }
         else
         {
-            iio_complete(core->dac.channels[num].process, HAL_CMD(HAL_DAC, IPC_WRITE), num, core->dac.channels[num].io);
+            iio_complete(core->dac.channels[num].process, HAL_IO_CMD(HAL_DAC, IPC_WRITE), num, core->dac.channels[num].io);
             core->dac.channels[num].io = NULL;
         }
     }
@@ -205,7 +205,7 @@ static void stm32_dac_flush(CORE* core, int num)
     core->dac.channels[num].io = NULL;
     __enable_irq();
     if (io != NULL)
-        io_complete_ex(core->dac.channels[num].process, HAL_CMD(HAL_DAC, IPC_WRITE), num, io, ERROR_IO_CANCELLED);
+        io_complete_ex(core->dac.channels[num].process, HAL_IO_CMD(HAL_DAC, IPC_WRITE), num, io, ERROR_IO_CANCELLED);
 }
 #endif //DAC_STREAM
 
@@ -265,17 +265,17 @@ static inline void stm32_dac_write(CORE* core, IPC*ipc)
     bool need_start = true;
     if (num >= DAC_CHANNELS_COUNT_USER)
     {
-        io_send_error(ipc, ERROR_INVALID_PARAMS);
+        ipc_post_ex(ipc, ERROR_INVALID_PARAMS);
         return;
     }
     if (!core->dac.channels[num].active)
     {
-        io_send_error(ipc, ERROR_NOT_CONFIGURED);
+        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
         return;
     }
     if (core->dac.channels[num].cnt > 2)
     {
-        io_send_error(ipc, ERROR_IN_PROGRESS);
+        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
         return;
     }
     core->dac.channels[num].io = (IO*)ipc->param2;
@@ -301,7 +301,7 @@ static inline void stm32_dac_write(CORE* core, IPC*ipc)
     if (!cnt_left)
     {
         //ready for next
-        io_send(ipc);
+        ipc_post(ipc);
     }
 
     __disable_irq();

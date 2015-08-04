@@ -78,7 +78,7 @@ bool stm32_otg_ep_flush(SHARED_USB_DRV* drv, int num)
     }
     if (ep->io != NULL)
     {
-        io_complete_ex(drv->usb.device, HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
+        io_complete_ex(drv->usb.device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
         ep_reg_data(num)->CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_SNAK;
     }
@@ -165,7 +165,7 @@ static inline void stm32_otg_rx(SHARED_USB_DRV* drv)
 
         if (ep->io->data_size >= ep->size)
         {
-            iio_complete(drv->usb.device, HAL_CMD(HAL_USB, IPC_READ), ep_num, ep->io);
+            iio_complete(drv->usb.device, HAL_IO_CMD(HAL_USB, IPC_READ), ep_num, ep->io);
             ep->io_active = false;
             ep->io = NULL;
         }
@@ -232,7 +232,7 @@ void usb_on_isr(int vector, void* param)
             if (drv->usb.in[i]->size >= drv->usb.in[i]->io->data_size)
             {
                 drv->usb.in[i]->io_active = false;
-                iio_complete(drv->usb.device, HAL_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | i, drv->usb.in[i]->io);
+                iio_complete(drv->usb.device, HAL_IO_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | i, drv->usb.in[i]->io);
                 drv->usb.in[i]->io = NULL;
             }
             else
@@ -476,12 +476,12 @@ static bool stm32_usb_io_prepare(SHARED_USB_DRV* drv, IPC* ipc)
     EP* ep = ep_data(drv, ipc->param1);
     if (ep == NULL)
     {
-        io_send_error(ipc, ERROR_NOT_CONFIGURED);
+        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
         return false;
     }
     if (ep->io_active)
     {
-        io_send_error(ipc, ERROR_IN_PROGRESS);
+        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
         return false;
     }
     ep->io = (IO*)ipc->param2;
@@ -581,7 +581,7 @@ bool stm32_otg_ep_request(SHARED_USB_DRV* drv, IPC* ipc)
         {
         case IPC_READ:
         case IPC_WRITE:
-            io_send_error(ipc, ERROR_INVALID_PARAMS);
+            ipc_post_ex(ipc, ERROR_INVALID_PARAMS);
             break;
         default:
             error(ERROR_INVALID_PARAMS);

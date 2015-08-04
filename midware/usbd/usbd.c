@@ -146,13 +146,7 @@ void usbd_io_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned int
 {
     if (usbd->user == INVALID_HANDLE)
         return;
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = usbd->user;
-    ipc.param1 = USBD_IFACE(iface, num);
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = param3;
-    io_send(&ipc);
+    ipc_post_inline(usbd->user, cmd, USBD_IFACE(iface, num), (unsigned int)io, param3);
 }
 
 bool usbd_register_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* usbd_class, void* param)
@@ -227,12 +221,12 @@ void usbd_usb_ep_clear_stall(USBD* usbd, unsigned int num)
 
 void usbd_usb_ep_write(USBD* usbd, unsigned int ep_num, IO* io)
 {
-    io_write(usbd->usb, HAL_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | ep_num, io);
+    io_write(usbd->usb, HAL_IO_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | ep_num, io);
 }
 
 void usbd_usb_ep_read(USBD* usbd, unsigned int ep_num, IO* io, unsigned int size)
 {
-    io_read(usbd->usb, HAL_CMD(HAL_USB, IPC_READ), ep_num, io, size);
+    io_read(usbd->usb, HAL_IO_CMD(HAL_USB, IPC_READ), ep_num, io, size);
 }
 
 static int usbd_get_descriptor_index(USBD* usbd, unsigned int type, unsigned int index, unsigned int lang)
@@ -915,11 +909,7 @@ static inline bool usbd_vendor_request(USBD* usbd)
     if ((usbd->setup.bmRequestType & BM_REQUEST_DIRECTION) == BM_REQUEST_DIRECTION_HOST_TO_DEVICE)
         io_data_write(io, io_data(usbd->io), usbd->io->data_size);
 
-    ipc.cmd = HAL_CMD(HAL_USBD, USBD_VENDOR_REQUEST);
-    ipc.process = usbd->user;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = usbd->setup.wLength;
-    io_send(&ipc);
+    io_read(usbd->user, HAL_IO_CMD(HAL_USBD, USBD_VENDOR_REQUEST), 0, io, usbd->setup.wLength);
     return true;
 }
 #endif //USBD_VSR
@@ -1091,7 +1081,7 @@ static inline bool usbd_device_request(USBD* usbd, IPC* ipc)
     {
     case USBD_REGISTER_DESCRIPTOR:
         ipc->param3 = usbd_request_register_descriptor(usbd, (IO*)ipc->param2);
-        io_send(ipc);
+        need_post = true;
         break;
     case USBD_UNREGISTER_DESCRIPTOR:
         usbd_request_unregister_descriptor(usbd, ipc->param1);

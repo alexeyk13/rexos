@@ -119,7 +119,7 @@ static void ccidd_user_request(USBD* usbd, CCIDD* ccidd, unsigned int req, uint8
     ccidd->io->data_offset += sizeof(CCID_MESSAGE);
     ccidd->io->data_size -= sizeof(CCID_MESSAGE);
     ccidd->request = req;
-    usbd_io_user(usbd, ccidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, req), ccidd->io, param);
+    usbd_io_user(usbd, ccidd->iface, 0, HAL_IO_CMD(HAL_USBD_IFACE, req), ccidd->io, param);
     ccidd->state = CCIDD_STATE_CARD_REQUEST;
 }
 

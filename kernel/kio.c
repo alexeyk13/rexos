@@ -40,8 +40,12 @@ static void kio_destroy_internal(KIO* kio)
     kfree(kio);
 }
 
-static bool kio_send_internal(KPROCESS* kprocess, KIO* kio, IPC* ipc)
+bool kio_send(IO* io, KPROCESS* receiver)
 {
+    KPROCESS* kprocess = kprocess_get_current();
+    KIO* kio = (KIO*)io->kio;
+    CHECK_HANDLE(kio, sizeof(KIO));
+    CHECK_MAGIC(kio, MAGIC_KIO);
     if (kprocess != kio->granted)
     {
         kprocess_error(kprocess, ERROR_ACCESS_DENIED);
@@ -51,38 +55,19 @@ static bool kio_send_internal(KPROCESS* kprocess, KIO* kio, IPC* ipc)
     if (kio->kill_flag)
     {
         kio_destroy_internal(kio);
+        kprocess_error(kprocess, ERROR_SYNC_OBJECT_DESTROYED);
         return false;
     }
-    kio->granted = (KPROCESS*)ipc->process;
-    kipc_post_process(ipc, kprocess);
+    kio->granted = receiver;
     return true;
 }
 
-void kio_send(KIO* kio, IPC* ipc)
-{
-    KPROCESS* kprocess = kprocess_get_current();
-    CHECK_HANDLE(kio, sizeof(KIO));
-    CHECK_MAGIC(kio, MAGIC_KIO);
-    CHECK_ADDRESS(kprocess, ipc, sizeof(IPC));
-    kio_send_internal(kprocess, kio, ipc);
-}
-
-void kio_call(KIO* kio, IPC* ipc)
-{
-    KPROCESS* kprocess = kprocess_get_current();
-    CHECK_HANDLE(kio, sizeof(KIO));
-    CHECK_MAGIC(kio, MAGIC_KIO);
-    CHECK_ADDRESS(kprocess, ipc, sizeof(IPC));
-    KPROCESS* wait_process = (KPROCESS*)(ipc->process);
-    if (kio_send_internal(kprocess, kio, ipc))
-        kipc_read_process(kprocess, ipc, wait_process, ipc->cmd);
-}
-
-void kio_destroy(KIO *kio)
+void kio_destroy(IO *io)
 {
     bool kill = true;
-    if ((HANDLE)kio == INVALID_HANDLE)
+    if (io == NULL)
         return;
+    KIO* kio = (KIO*)io->kio;
     KPROCESS* kprocess = kprocess_get_current();
     CHECK_HANDLE(kio, sizeof(KIO));
     CHECK_MAGIC(kio, MAGIC_KIO);

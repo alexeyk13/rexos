@@ -156,14 +156,14 @@ static inline void lpc_otg_out(SHARED_OTG_DRV* drv, int ep_num)
 {
     EP* ep = drv->otg.out[ep_num];
     ep->io->data_size = drv->otg.read_size[ep_num] - ((ep_dtd(ep_num)->size_flags & USB0_DTD_SIZE_FLAGS_SIZE_Msk) >> USB0_DTD_SIZE_FLAGS_SIZE_Pos);
-    iio_complete(drv->otg.device, HAL_CMD(HAL_USB, IPC_READ), ep_num, ep->io);
+    iio_complete(drv->otg.device, HAL_IO_CMD(HAL_USB, IPC_READ), ep_num, ep->io);
     ep->io = NULL;
 }
 
 static inline void lpc_otg_in(SHARED_OTG_DRV* drv, int ep_num)
 {
     EP* ep = drv->otg.in[ep_num];
-    iio_complete(drv->otg.device, HAL_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | ep_num, ep->io);
+    iio_complete(drv->otg.device, HAL_IO_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | ep_num, ep->io);
     ep->io = NULL;
 }
 
@@ -270,7 +270,7 @@ static bool lpc_otg_ep_flush(SHARED_OTG_DRV* drv, int num)
     EP_CTRL[USB_EP_NUM(num)] |= USB0_ENDPTCTRL_R_Msk << ((num & USB_EP_IN) ? 16 : 0);
     if (ep->io != NULL)
     {
-        io_complete_ex(drv->otg.device, HAL_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
+        io_complete_ex(drv->otg.device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
     }
     return true;
@@ -348,12 +348,12 @@ static void lpc_otg_io(SHARED_OTG_DRV* drv, IPC* ipc, bool read)
     EP* ep = ep_data(drv, num);
     if (ep == NULL)
     {
-        io_send_error(ipc, ERROR_NOT_CONFIGURED);
+        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
         return;
     }
     if (ep->io != NULL)
     {
-        io_send_error(ipc, ERROR_IN_PROGRESS);
+        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
         return;
     }
     ep->io = (IO*)ipc->param2;
@@ -541,7 +541,7 @@ static inline bool lpc_otg_ep_request(SHARED_OTG_DRV* drv, IPC* ipc)
         {
         case IPC_READ:
         case IPC_WRITE:
-            io_send_error(ipc, ERROR_INVALID_PARAMS);
+            ipc_post_ex(ipc, ERROR_INVALID_PARAMS);
             break;
         default:
             error(ERROR_INVALID_PARAMS);

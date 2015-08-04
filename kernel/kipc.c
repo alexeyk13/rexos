@@ -6,6 +6,7 @@
 
 #include "dbg.h"
 #include "kipc.h"
+#include "kio.h"
 #include "kprocess.h"
 #include "../userspace/error.h"
 #include "../userspace/rb.h"
@@ -83,6 +84,11 @@ void kipc_post_process(IPC* ipc, KPROCESS* sender)
     IPC* cur;
     CHECK_HANDLE(receiver, sizeof(KPROCESS));
     CHECK_MAGIC(receiver, MAGIC_PROCESS);
+    if (ipc->cmd & HAL_IO_FLAG)
+    {
+        if (!kio_send((IO*)ipc->param2, receiver))
+            return;
+    }
     disable_interrupts();
     if ((wake = ((receiver->kipc.wait_process == sender || receiver->kipc.wait_process == (KPROCESS*)ANY_HANDLE) &&
                  (receiver->kipc.cmd == ipc->cmd || receiver->kipc.cmd == ANY_CMD))))
