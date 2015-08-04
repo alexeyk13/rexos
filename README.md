@@ -61,7 +61,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * I2C: LPC1Uxx
   * ADC: STM32F1, STM32L0
   * DAC: STM32F1, STM32L0
-  * USB: STM32F1_CL, STM32L0, LPC11Uxx
+  * USB: STM32F1_CL, STM32L0, LPC11Uxx, LPC18xx(USB0)
   * ETH: STM32F1
   * МЭЛТ mt12864j LCD display
 
@@ -88,6 +88,12 @@ History
 - size of created processes not includes process system header
 - pinboard soft timer interface
 - removed ipc/io calls timeouts requests. Use soft timers instead
+- IO is now integrated part of IPC. HAL_IO_CMD added to work as helper
+- SYS_OBJ_PINBOARD, SYS_OBJ_USBD objects not created by process, only hardware drivers and STD
+- IPC queue in userspace
+- IPC message peek in userspace
+- EEP HAL interface updated: no more seek. handle is offset from base
+- LPC, STM32 EEP HAL update
 
 0.3.4
 - LPC18xx basic support: PIN/GPIO, UART, TIMER, POWER
