@@ -60,7 +60,7 @@ typedef enum {
 typedef enum {
     USB_0 = 0,
     USB_1
-} USB;
+} USB_PORT;
 
 #define USB_HANDLE_DEVICE                                       0xff
 

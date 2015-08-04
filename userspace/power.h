@@ -7,7 +7,6 @@
 #ifndef POWER_H
 #define POWER_H
 
-#include "sys.h"
 #include "ipc.h"
 #include "cc_macro.h"
 #include "sys_config.h"

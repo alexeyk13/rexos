@@ -7,12 +7,14 @@
 #ifndef STM32_DRIVER_H
 #define STM32_DRIVER_H
 
-#include "core/core.h"
-#include "sys.h"
+#include "core/stm32.h"
 #include "stm32_config.h"
 #include "adc.h"
 #include "power.h"
 #include "process.h"
+#include "sys_config.h"
+#include "object.h"
+#include "ipc.h"
 
 extern const REX __STM32_CORE;
 
