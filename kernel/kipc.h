@@ -15,17 +15,15 @@ typedef struct {
     //process, we are waiting for. Can be INVALID_HANDLE, then waiting from any process
     KPROCESS* wait_process;
     unsigned int cmd;
-    IPC* ipc;
 }KIPC;
 
 //called from kernel directly
 void kipc_init(KPROCESS* kprocess);
 void kipc_post_process(IPC* ipc, KPROCESS* sender);
-void kipc_read_process(KPROCESS* kprocess, IPC* ipc, KPROCESS* wait_process, unsigned int cmd);
 
 //called from svc
 void kipc_post(IPC* ipc);
-void kipc_read(IPC* ipc, KPROCESS* wait_process);
+void kipc_wait(KPROCESS* wait_process, unsigned int cmd);
 void kipc_call(IPC* ipc);
 
 void kipc_lock_release(KPROCESS* kprocess);

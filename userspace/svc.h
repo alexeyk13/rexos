@@ -47,7 +47,7 @@ typedef enum {
     SVC_SYSTIME_SOFT_TIMER_DESTROY,
 
     SVC_IPC_POST,
-    SVC_IPC_READ,
+    SVC_IPC_WAIT,
     SVC_IPC_CALL,
 
     SVC_STREAM_CREATE,

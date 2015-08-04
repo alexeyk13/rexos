@@ -5,9 +5,40 @@
 */
 
 #include "ipc.h"
+#include "rb.h"
 #include "process.h"
 #include "svc.h"
 #include "error.h"
+#include <string.h>
+
+#define IPC_ITEM(num)                           ((IPC*)((unsigned int)(__GLOBAL->process) + sizeof(PROCESS) + (num) * sizeof(IPC)))
+
+static inline int ipc_index(HANDLE wait_process, unsigned int cmd, unsigned int param1)
+{
+    int i;
+    unsigned int head = __GLOBAL->process->ipcs.head;
+    for (i = __GLOBAL->process->ipcs.tail; i != head; i = RB_ROUND(&__GLOBAL->process->ipcs, i + 1))
+        if (((IPC_ITEM(i)->process == wait_process) || (wait_process == ANY_HANDLE)) && ((IPC_ITEM(i)->cmd == cmd) || (cmd == ANY_CMD)) &&
+             ((IPC_ITEM(i)->param1 == param1) || (param1 == ANY_HANDLE)))
+            return i;
+    return -1;
+}
+
+IPC* ipc_peek(int index, IPC* ipc)
+{
+    //cmd, process, handle
+    IPC tmp;
+    for(; index != __GLOBAL->process->ipcs.tail; index = RB_ROUND_BACK(&__GLOBAL->process->ipcs, index - 1))
+    {
+        //swap
+        memcpy(&tmp, IPC_ITEM(index), sizeof(IPC));
+        memcpy(IPC_ITEM(index), IPC_ITEM(RB_ROUND_BACK(&__GLOBAL->process->ipcs, index - 1)), sizeof(IPC));
+        memcpy(IPC_ITEM(RB_ROUND_BACK(&__GLOBAL->process->ipcs, index - 1)), &tmp, sizeof(IPC));
+    }
+    memcpy(ipc, IPC_ITEM(__GLOBAL->process->ipcs.tail), sizeof(IPC));
+    rb_get(&__GLOBAL->process->ipcs);
+    return ipc;
+}
 
 void ipc_post(IPC* ipc)
 {
@@ -58,7 +89,8 @@ void ipc_read(IPC* ipc)
     for (;;)
     {
         error(ERROR_OK);
-        svc_call(SVC_IPC_READ, (unsigned int)ipc, 0, ANY_HANDLE);
+        svc_call(SVC_IPC_WAIT, ANY_HANDLE, ANY_CMD, 0);
+        ipc_peek(__GLOBAL->process->ipcs.tail, ipc);
         if (ipc->cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             ipc_post_or_error(ipc);
         else
@@ -69,6 +101,8 @@ void ipc_read(IPC* ipc)
 bool call(IPC* ipc)
 {
     svc_call(SVC_IPC_CALL, (unsigned int)ipc, 0, 0);
+    ipc_peek(ipc_index(ipc->process, ipc->cmd, ipc->param1), ipc);
+
     if (ipc->param3 >= 0)
         return true;
     error(ipc->param3);

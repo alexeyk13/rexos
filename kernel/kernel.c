@@ -112,8 +112,8 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
     case SVC_IPC_POST:
         kipc_post((IPC*)param1);
         break;
-    case SVC_IPC_READ:
-        kipc_read((IPC*)param1, (KPROCESS*)param3);
+    case SVC_IPC_WAIT:
+        kipc_wait((KPROCESS*)param1, param2);
         break;
     case SVC_IPC_CALL:
         kipc_call((IPC*)param1);

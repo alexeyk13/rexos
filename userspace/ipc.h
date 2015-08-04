@@ -67,6 +67,8 @@ typedef enum {
 #define HAL_IO_FLAG                                         (1 << 15)
 #define HAL_IO_CMD(group, item)                             ((group & 0xffff) << 16 | (item & 0x7fff) | HAL_IO_FLAG)
 
+#define ANY_CMD                                             0xffffffff
+
 typedef struct {
     HANDLE process;
     unsigned int cmd;

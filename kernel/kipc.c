@@ -10,12 +10,9 @@
 #include "kprocess.h"
 #include "../userspace/error.h"
 #include "../userspace/rb.h"
-#include <string.h>
 #include "kernel.h"
 
-#define IPC_ITEM(kprocess, num)              ((IPC*)((unsigned int)(kprocess->process) + sizeof(PROCESS) + (num) * sizeof(IPC)))
-
-#define ANY_CMD                             0xffffffff
+#define KIPC_ITEM(kprocess, num)              ((IPC*)((unsigned int)(kprocess->process) + sizeof(PROCESS) + (num) * sizeof(IPC)))
 
 void kipc_lock_release(KPROCESS* kprocess)
 {
@@ -27,26 +24,12 @@ static inline int kipc_index(KPROCESS* kprocess, HANDLE wait_process, unsigned i
     int i;
     unsigned int head = kprocess->process->ipcs.head;
     for (i = kprocess->process->ipcs.tail; i != head; i = RB_ROUND(&kprocess->process->ipcs, i + 1))
-        if (((IPC_ITEM(kprocess, i)->process == wait_process) || (wait_process == ANY_HANDLE)) && ((IPC_ITEM(kprocess, i)->cmd == cmd) || (cmd == ANY_CMD)))
+        if (((KIPC_ITEM(kprocess, i)->process == wait_process) || (wait_process == ANY_HANDLE)) && ((KIPC_ITEM(kprocess, i)->cmd == cmd) || (cmd == ANY_CMD)))
             return i;
     return -1;
 }
 
-void kipc_peek(KPROCESS *kprocess, int index, IPC* ipc)
-{
-    IPC tmp;
-    for(; index != kprocess->process->ipcs.tail; index = RB_ROUND_BACK(&kprocess->process->ipcs, index - 1))
-    {
-        //swap
-        memcpy(&tmp, IPC_ITEM(kprocess, index), sizeof(IPC));
-        memcpy(IPC_ITEM(kprocess, index), IPC_ITEM(kprocess, RB_ROUND_BACK(&kprocess->process->ipcs, index - 1)), sizeof(IPC));
-        memcpy(IPC_ITEM(kprocess, RB_ROUND_BACK(&kprocess->process->ipcs, index - 1)), &tmp, sizeof(IPC));
-    }
-    memcpy(ipc, IPC_ITEM(kprocess, kprocess->process->ipcs.tail), sizeof(IPC));
-    rb_get(&kprocess->process->ipcs);
-}
-
-void kipc_read_process(KPROCESS *kprocess, IPC* ipc, KPROCESS* wait_process, unsigned int cmd)
+static void kipc_wait_process(KPROCESS *kprocess, KPROCESS* wait_process, unsigned int cmd)
 {
     int index;
     if (wait_process == kprocess)
@@ -57,7 +40,6 @@ void kipc_read_process(KPROCESS *kprocess, IPC* ipc, KPROCESS* wait_process, uns
 #endif //KERNEL_IPC_DEBUG
         return;
     }
-    kprocess->kipc.ipc = ipc;
     kprocess_sleep(kprocess, NULL, PROCESS_SYNC_IPC, kprocess);
 
     disable_interrupts();
@@ -68,12 +50,9 @@ void kipc_read_process(KPROCESS *kprocess, IPC* ipc, KPROCESS* wait_process, uns
     }
     enable_interrupts();
 
-    //maybe already on queue? Peek.
+    //maybe already on queue? Wakeup process
     if (index >= 0)
-    {
         kprocess_wakeup(kprocess);
-        kipc_peek(kprocess, index, ipc);
-    }
 }
 
 void kipc_post_process(IPC* ipc, KPROCESS* sender)
@@ -101,18 +80,15 @@ void kipc_post_process(IPC* ipc, KPROCESS* sender)
     enable_interrupts();
     if (index >= 0)
     {
-        cur = IPC_ITEM(receiver, index);
+        cur = KIPC_ITEM(receiver, index);
         cur->cmd = ipc->cmd;
         cur->param1 = ipc->param1;
         cur->param2 = ipc->param2;
         cur->param3 = ipc->param3;
         cur->process = (HANDLE)sender;
-        //already waiting?
+        //already waiting? Wakeup him
         if (wake)
-        {
             kprocess_wakeup(receiver);
-            kipc_peek(receiver, index, receiver->kipc.ipc);
-        }
     }
     else
     {
@@ -145,18 +121,16 @@ void kipc_post(IPC* ipc)
     kipc_post_process(ipc, kprocess);
 }
 
-void kipc_read(IPC* ipc, KPROCESS* wait_process)
+void kipc_wait(KPROCESS* wait_process, unsigned int cmd)
 {
     KPROCESS* kprocess = kprocess_get_current();
-    CHECK_ADDRESS(kprocess, ipc, sizeof(IPC));
-    kipc_read_process(kprocess, ipc, wait_process, ANY_CMD);
+    kipc_wait_process(kprocess, wait_process, cmd);
 }
 
 void kipc_call(IPC* ipc)
 {
     KPROCESS* kprocess = kprocess_get_current();
     CHECK_ADDRESS(kprocess, ipc, sizeof(IPC));
-    KPROCESS* wait_process = (KPROCESS*)(ipc->process);
     kipc_post_process(ipc, kprocess);
-    kipc_read_process(kprocess, ipc, wait_process, ipc->cmd);
+    kipc_wait_process(kprocess, (KPROCESS*)(ipc->process), ipc->cmd);
 }
