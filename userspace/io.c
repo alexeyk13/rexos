@@ -81,30 +81,6 @@ IO* io_create(unsigned int size)
     return io;
 }
 
-int io_write_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = io->data_size;
-    call(&ipc);
-    return ipc.param3;
-}
-
-int io_read_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsigned int size)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.process = process;
-    ipc.param1 = handle;
-    ipc.param2 = (unsigned int)io;
-    ipc.param3 = size;
-    call(&ipc);
-    return ipc.param3;
-}
-
 void io_destroy(IO* io)
 {
     if (io != NULL)

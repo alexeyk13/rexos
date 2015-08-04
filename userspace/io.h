@@ -194,7 +194,7 @@ IO* io_create(unsigned int size);
     \param io: pointer to IO structure
     \retval write result.
 */
-int io_write_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io);
+#define io_write_sync(process, cmd, handle, io)                         get_size((process), (cmd), (handle), (unsigned int)(io), (io)->data_size)
 
 /**
     \brief send IO read request to another process. Wait for response
@@ -205,7 +205,7 @@ int io_write_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io)
     \param size: IO data size
     \retval read result.
 */
-int io_read_sync(HANDLE process, unsigned int cmd, unsigned int handle, IO* io, unsigned int size);
+#define io_read_sync(process, cmd, handle, io, size)                    get_size((process), (cmd), (handle), (unsigned int)(io), (size))
 
 /**
     \brief destroy IO

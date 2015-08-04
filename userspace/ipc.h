@@ -167,6 +167,18 @@ bool ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int par
 
 unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
+/**
+    \brief get size value from process
+    \param cmd: command to post
+    \param process: IPC receiver
+    \param param1: cmd specific
+    \param param2: cmd specific
+    \param param3: cmd specific
+    \retval param1
+*/
+
+int get_size(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
+
 /** \} */ // end of sem group
 
 #endif // IPC_H

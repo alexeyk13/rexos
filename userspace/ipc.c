@@ -98,3 +98,15 @@ unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned
         return ipc.param2;
     return INVALID_HANDLE;
 }
+
+int get_size(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.process = process;
+    ipc.param1 = param1;
+    ipc.param2 = param2;
+    ipc.param3 = param3;
+    call(&ipc);
+    return (int)ipc.param3;
+}
