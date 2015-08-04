@@ -38,9 +38,6 @@ typedef struct _CORE {
     OTG_DRV otg;
 #endif //LPC11Uxx
 #endif
-#if (LPC_EEPROM_DRIVER)
-    EEP eep;
-#endif
 }CORE;
 
 

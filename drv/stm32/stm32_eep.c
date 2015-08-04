@@ -17,33 +17,22 @@
 #define EEP_BASE                        0x08080000
 #define EEP_SIZE                        0x800
 
-static inline void stm32_eep_seek(CORE* core, unsigned int addr)
-{
-    addr += EEP_BASE;
-    if (addr < EEP_BASE || addr >= EEP_BASE + EEP_SIZE)
-    {
-        error(ERROR_OUT_OF_RANGE);
-        return;
-    }
-    core->eep.addr = addr;
-}
-
 static inline void stm32_eep_read(CORE* core, IPC* ipc)
 {
-    if (core->eep.addr + ipc->param3 > EEP_BASE + EEP_SIZE)
+    if (ipc->param1 + ipc->param3 > EEP_SIZE)
     {
         ipc_post_ex(ipc, ERROR_OUT_OF_RANGE);
         return;
     }
-    io_data_write((IO*)ipc->param2, (void*)core->eep.addr, ipc->param3);
-    ipc_post(ipc);
+    io_data_write((IO*)ipc->param2, (void*)(ipc->param1 + EEP_BASE), ipc->param3);
+    ipc_post_ex(ipc, io->data_size);
 }
 
 static inline void stm32_eep_write(CORE* core, IPC* ipc)
 {
     unsigned int i;
     IO* io = (IO*)ipc->param2;
-    if (core->eep.addr + io->data_size > EEP_BASE + EEP_SIZE)
+    if (ipc->param1 + io->data_size > EEP_SIZE)
     {
         ipc_post_ex(ipc, ERROR_OUT_OF_RANGE);
         return;
@@ -54,7 +43,7 @@ static inline void stm32_eep_write(CORE* core, IPC* ipc)
     {
         while (FLASH->SR & FLASH_SR_BSY) {}
 
-        *(uint32_t*)(core->eep.addr + i) = *((uint32_t*)(io_data(io) + i));
+        *(uint32_t*)(EEP_BASE + ipc->param1 + i) = *((uint32_t*)(io_data(io) + i));
 
         if (FLASH->SR & (FLASH_SR_FWWERR | FLASH_SR_NOTZEROERR | FLASH_SR_SIZERR | FLASH_SR_PGAERR))
         {
@@ -63,8 +52,7 @@ static inline void stm32_eep_write(CORE* core, IPC* ipc)
             return;
         }
     }
-    ipc->param3 = io->data_size;
-    ipc_post(ipc);
+    ipc_post_ex(ipc, io->data_size);
 }
 
 bool stm32_eep_request(CORE* core, IPC* ipc)
@@ -72,10 +60,6 @@ bool stm32_eep_request(CORE* core, IPC* ipc)
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
-    case IPC_SEEK:
-        stm32_eep_seek(core, ipc->param2);
-        need_post = true;
-        break;
     case IPC_READ:
         stm32_eep_read(core, ipc);
         break;
@@ -96,5 +80,4 @@ void stm32_eep_init(CORE* core)
         FLASH->PEKEYR = PEKEY2;
         __enable_irq();
     }
-    core->eep.addr = EEP_BASE;
 }

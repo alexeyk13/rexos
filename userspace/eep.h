@@ -13,8 +13,7 @@
         EEPROM HAL interface
  */
 
-bool eep_seek(unsigned int addr);
-int eep_read(void* buf, unsigned int size);
-int eep_write(const void* buf, unsigned int size);
+int eep_read(unsigned int offset, void* buf, unsigned int size);
+int eep_write(unsigned int offset, const void* buf, unsigned int size);
 
 #endif // EEP_H

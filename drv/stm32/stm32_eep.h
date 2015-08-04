@@ -9,10 +9,6 @@
 
 #include "stm32_core.h"
 
-typedef struct {
-    unsigned int addr;
-} EEP;
-
 void stm32_eep_init(CORE* core);
 bool stm32_eep_request(CORE* core, IPC* ipc);
 
