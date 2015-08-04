@@ -65,7 +65,10 @@ void kipc_post_process(IPC* ipc, KPROCESS* sender)
     CHECK_MAGIC(receiver, MAGIC_PROCESS);
     if (ipc->cmd & HAL_IO_FLAG)
     {
-        if (!kio_send((IO*)ipc->param2, receiver))
+        KIO* kio = (KIO*)(((IO*)ipc->param2)->kio);
+        CHECK_HANDLE(kio, sizeof(KIO));
+        CHECK_MAGIC(kio, MAGIC_KIO);
+        if (!kio_send(kio, receiver))
             return;
     }
     disable_interrupts();

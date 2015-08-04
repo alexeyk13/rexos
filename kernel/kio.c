@@ -40,12 +40,9 @@ static void kio_destroy_internal(KIO* kio)
     kfree(kio);
 }
 
-bool kio_send(IO* io, KPROCESS* receiver)
+bool kio_send(KIO* kio, KPROCESS* receiver)
 {
     KPROCESS* kprocess = kprocess_get_current();
-    KIO* kio = (KIO*)io->kio;
-    CHECK_HANDLE(kio, sizeof(KIO));
-    CHECK_MAGIC(kio, MAGIC_KIO);
     if (kprocess != kio->granted)
     {
         kprocess_error(kprocess, ERROR_ACCESS_DENIED);
