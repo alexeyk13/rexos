@@ -60,9 +60,15 @@ typedef enum {
 typedef enum {
     USB_0 = 0,
     USB_1
-} USB_PORT;
+} USB_PORT_TYPE;
 
 #define USB_HANDLE_DEVICE                                       0xff
+#define USB_HANDLE_HOST                                         0xfe
+#define USB_HANDLE_OTG                                          0xfd
+
+#define USB_HANDLE(port, num)                                   (((port) << 8) | num)
+#define USB_PORT(handle)                                        ((handle) >> 8)
+#define USB_NUM(handle)                                         ((handle) & 0xff)
 
 #define USB_MAX_EP0_SIZE                                        64
 
@@ -212,8 +218,6 @@ USB_DESCRIPTOR_TYPE* usb_interface_get_next_descriptor(const USB_CONFIGURATION_D
 
 //--------------------------------------------------- USB device ---------------------------------------------------------------
 
-extern const REX __USBD;
-
 typedef enum {
     USBD_ALERT = IPC_USER,
     USBD_REGISTER_DESCRIPTOR,                                    /* register USB device descriptor of type USBD_DESCRIPTOR_TYPE */
@@ -253,5 +257,6 @@ typedef struct {
 bool usbd_register_descriptor(HANDLE usbd, const void* d, unsigned int index, unsigned int lang);
 bool usbd_register_const_descriptor(HANDLE usbd, const void* d, unsigned int index, unsigned int lang);
 bool usbd_register_ascii_string(HANDLE usbd, unsigned int index, unsigned int lang, const char* str);
+HANDLE usbd_create(USB_PORT_TYPE port, unsigned int process_size, unsigned int priority);
 
 #endif // USB_H

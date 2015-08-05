@@ -10,9 +10,12 @@
 #include "object.h"
 #include "sys_config.h"
 #include <string.h>
+#include "stdio.h"
 
 #define D_OFFSET(d, cfg)                            (((unsigned int)(d)) - ((unsigned int)(cfg)))
 #define D_NEXT(d, cfg)                              ((USB_DESCRIPTOR_TYPE*)(((unsigned int)(d)) + (d)->bLength))
+
+extern void usbd();
 
 USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_first_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 {
@@ -120,3 +123,15 @@ bool usbd_register_ascii_string(HANDLE usbd, unsigned int index, unsigned int la
     return usbd_register_descriptor_internal(usbd, io, index, lang);
 }
 
+HANDLE usbd_create(USB_PORT_TYPE port, unsigned int process_size, unsigned int priority)
+{
+    char name[19];
+    REX rex;
+    sprintf(name, "USB_%d device stack", port);
+    rex.name = name;
+    rex.size = process_size;
+    rex.priority = priority;
+    rex.flags = PROCESS_FLAGS_ACTIVE;
+    rex.fn = usbd;
+    return process_create(&rex);
+}
