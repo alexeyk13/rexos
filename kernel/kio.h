@@ -28,6 +28,6 @@ void kio_create(IO** io, unsigned int size);
 void kio_destroy(IO* io);
 
 //called from kipc
-bool kio_send(IO* io, KPROCESS* receiver);
+bool kio_send(KIO* kio, KPROCESS* receiver);
 
 #endif // KIO_H
