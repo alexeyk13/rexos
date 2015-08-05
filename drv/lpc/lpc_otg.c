@@ -472,8 +472,13 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, 
     while (__USB_REGS[port]->USBCMD_D & USB0_USBCMD_D_RST_Msk) {}
     //set device mode
     __USB_REGS[port]->USBMODE_D = USB0_USBMODE_CM_DEVICE;
-    //TODO: different base for both use USB_0, USB_1
-    __USB_REGS[port]->ENDPOINTLISTADDR = SRAM1_BASE;
+
+#if (LPC_USB_USE_BOTH)
+    if (port == USB_1)
+        __USB_REGS[port]->ENDPOINTLISTADDR = SRAM1_BASE + (sizeof(DQH) + sizeof(DTD)) * USB_EP_COUNT_MAX * 2;
+    else
+#endif //LPC_USB_USE_BOTH
+        __USB_REGS[port]->ENDPOINTLISTADDR = SRAM1_BASE;
 
     memset((void*)__USB_REGS[port]->ENDPOINTLISTADDR, 0, (sizeof(DQH) + sizeof(DTD)) * USB_EP_COUNT_MAX * 2);
 
