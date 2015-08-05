@@ -897,7 +897,6 @@ static void usbd_setup_response(USBD* usbd, int res)
 #if (USBD_VSR)
 static inline bool usbd_vendor_request(USBD* usbd)
 {
-    IPC ipc;
     if (usbd->user == INVALID_HANDLE)
         return false;
     IO* io = io_create(usbd->setup.wLength + sizeof(SETUP));
@@ -1199,7 +1198,7 @@ void usbd()
         {
         case HAL_USB:
             //ignore flush/cancel events
-            if (((ipc.cmd == HAL_CMD(HAL_USB, IPC_READ)) || (ipc.cmd == HAL_CMD(HAL_USB, IPC_WRITE))) && ((int)ipc.param3 < 0))
+            if (((ipc.cmd == HAL_IO_CMD(HAL_USB, IPC_READ)) || (ipc.cmd == HAL_IO_CMD(HAL_USB, IPC_WRITE))) && ((int)ipc.param3 < 0))
                 break;
 
             if ((USB_EP_NUM(ipc.param1) == 0) || (ipc.param1 == USB_HANDLE_DEVICE))

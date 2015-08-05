@@ -89,7 +89,8 @@ void ipc_read(IPC* ipc)
     for (;;)
     {
         error(ERROR_OK);
-        svc_call(SVC_IPC_WAIT, ANY_HANDLE, ANY_CMD, 0);
+        if (rb_is_empty(&__GLOBAL->process->ipcs))
+            svc_call(SVC_IPC_WAIT, ANY_HANDLE, ANY_CMD, 0);
         ipc_peek(__GLOBAL->process->ipcs.tail, ipc);
         if (ipc->cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             ipc_post_or_error(ipc);

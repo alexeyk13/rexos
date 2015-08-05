@@ -52,8 +52,9 @@ bool kio_send(KIO* kio, KPROCESS* receiver)
     if (kio->kill_flag)
     {
         kio_destroy_internal(kio);
-        kprocess_error(kprocess, ERROR_SYNC_OBJECT_DESTROYED);
-        return false;
+        kprocess_error(receiver, ERROR_SYNC_OBJECT_DESTROYED);
+        //always deliver IPC, even if IO is destroyed
+        return true;
     }
     kio->granted = receiver;
     return true;
