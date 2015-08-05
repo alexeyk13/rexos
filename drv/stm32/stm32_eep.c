@@ -32,7 +32,7 @@ static inline void stm32_eep_write(CORE* core, IPC* ipc)
 {
     unsigned int i;
     IO* io = (IO*)ipc->param2;
-    if (ipc->param1 + io->data_size > EEP_SIZE)
+    if (ipc->param1 + io->data_size > EEP_BASE + EEP_SIZE)
     {
         ipc_post_ex(ipc, ERROR_OUT_OF_RANGE);
         return;

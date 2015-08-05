@@ -109,6 +109,11 @@ void lpc_core()
     lpc_otg_init(&core);
 #endif //LPC11Uxx
 #endif //MONOLITH_USB
+#if (LPC_EEPROM_DRIVER)
+#ifdef LPC18xx
+    lpc_eep_init(&core);
+#endif //LPC18xx
+#endif //LPC_EEPROM_DRIVER
 
     lpc_core_loop(&core);
 }

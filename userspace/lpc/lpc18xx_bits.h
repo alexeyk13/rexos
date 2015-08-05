@@ -1325,6 +1325,77 @@
 #define USB0_ENDPTCTRL_R_Msk                    (1 << 6)
 #define USB0_ENDPTCTRL_E_Msk                    (1 << 7)
 
+/******************************************************************************/
+/*                                                                            */
+/*                              EEPROM                                        */
+/*                                                                            */
+/******************************************************************************/
 
+typedef struct {                                /*!< (@ 0x4000e000) EEPROM Structure                */
+  uint32_t CMD;                                 /*!< (@ 0x4000e000) command register                */
+  uint32_t reserved1;
+  uint32_t RWSTATE;                             /*!< (@ 0x4000e008) read wait state register        */
+  uint32_t AUTOPROG;                            /*!< (@ 0x4000e00c) auto programming register       */
+  uint32_t WSTATE;                              /*!< (@ 0x4000e010) wait state register             */
+  uint32_t CLKDIV;                              /*!< (@ 0x4000e014) clock divider register          */
+  uint32_t PWRDWN;                              /*!< (@ 0x4000e018) power-down register             */
+  uint32_t reserved2[1007];
+  uint32_t INTENCLR;                            /*!< (@ 0x4000efd8) interrupt enable clear register */
+  uint32_t INTENSET;                            /*!< (@ 0x4000efdc) interrupt enable set register   */
+  uint32_t INTSTAT;                             /*!< (@ 0x4000efe0) interrupt status register       */
+  uint32_t INTEN;                               /*!< (@ 0x4000efe4) interrupt enable register       */
+  uint32_t INTSTATCLR;                          /*!< (@ 0x4000efe8) interrupt status clear register */
+  uint32_t INTSTATSET;                          /*!< (@ 0x4000efec) interrupt status set register   */
+} LPC_EEPROM_Type;
+
+#define LPC_EEPROM_BASE                         0x4000e000
+#define LPC_EEPROM                              ((LPC_EEPROM_Type*) LPC_EEPROM_BASE)
+
+/**********  Bit definition for LPC_EEPROM_CMD ***************************/
+#define LPC_EEPROM_CMD_ERASE_PROGRAM            6
+
+/******  Bit definition for LPC_EEPROM_RWSTATE ***************************/
+#define LPC_EEPROM_RWSTATE_RPHASE2_Pos          0
+#define LPC_EEPROM_RWSTATE_RPHASE2_Msk          (0xff << 0)
+#define LPC_EEPROM_RWSTATE_RPHASE1_Pos          8
+#define LPC_EEPROM_RWSTATE_RPHASE1_Msk          (0xff << 8)
+
+/*****  Bit definition for LPC_EEPROM_AUTOPROG ***************************/
+#define LPC_EEPROM_AUTOPROG_OFF                 (0 << 0)
+#define LPC_EEPROM_AUTOPROG_SINGLE_WORD         (1 << 0)
+#define LPC_EEPROM_AUTOPROG_LAST_WORD           (2 << 0)
+
+/*******  Bit definition for LPC_EEPROM_WSTATE ***************************/
+#define LPC_EEPROM_WSTATE_RPHASE3_Pos           0
+#define LPC_EEPROM_WSTATE_RPHASE3_Msk           (0xff << 0)
+#define LPC_EEPROM_WSTATE_RPHASE2_Pos           8
+#define LPC_EEPROM_WSTATE_RPHASE2_Msk           (0xff << 8)
+#define LPC_EEPROM_WSTATE_RPHASE1_Pos           16
+#define LPC_EEPROM_WSTATE_RPHASE1_Msk           (0xff << 16)
+#define LPC_EEPROM_WSTATE_LCK_PARWEP_Msk        (1 << 31)
+
+/*******  Bit definition for LPC_EEPROM_CLKDIV ***************************/
+#define LPC_EEPROM_CLKDIV_Msk                   (0xffff << 0)
+
+/*******  Bit definition for LPC_EEPROM_PWRDWN ***************************/
+#define LPC_EEPROM_PWRDWN_Msk                   (1 << 0)
+
+/******  Bit definition for LPC_EEPROM_INTENCLR ***************************/
+#define LPC_EEPROM_INTENCLR_PROG_CLR_EN_Msk     (1 << 2)
+
+/******  Bit definition for LPC_EEPROM_INTENSET ***************************/
+#define LPC_EEPROM_INTENSET_PROG_SET_EN_Msk     (1 << 2)
+
+/*******  Bit definition for LPC_EEPROM_INTSTAT ***************************/
+#define LPC_EEPROM_INTSTAT_END_OF_PROG_Msk      (1 << 2)
+
+/*********  Bit definition for LPC_EEPROM_INTEN ***************************/
+#define LPC_EEPROM_INTEN_EE_PROG_DONE_Msk       (1 << 2)
+
+/******  Bit definition for LPC_EEPROM_INTSTATCLR *************************/
+#define LPC_EEPROM_INTSTATCLR_PROG_CLR_ST_Msk   (1 << 2)
+
+/******  Bit definition for LPC_EEPROM_INTSTATSET *************************/
+#define LPC_EEPROM_INTSTATSET_PROG_SET_ST_Msk   (1 << 2)
 
 #endif // LPC11UXX_BITS_H
