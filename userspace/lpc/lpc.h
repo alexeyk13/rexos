@@ -182,6 +182,7 @@
 
 #if defined(LPC11Uxx)
 #define IRQ_VECTORS_COUNT             31
+#define USB_COUNT                     1
 #endif
 
 //--------------------------------------------------------------------- LPC18xx -----------------------------------------------------------------------------------------
@@ -249,9 +250,23 @@
 #define LPC1857
 #endif
 
-#if defined(LPC1810) || defined(LPC1812) || defined(LPC1813) || defined(LPC1815) || defined(LPC1817) || defined(LPC1820) || defined(LPC1822) ||\
-    defined(LPC1823) || defined(LPC1825) || defined(LPC1827) || defined(LPC1830) || defined(LPC1833) || defined(LPC1837) || defined(LPC1850) ||\
-    defined(LPC1853) || defined(LPC1857)
+#if defined(LPC1810) || defined(LPC1812) || defined(LPC1813) || defined(LPC1815) || defined(LPC1817)
+#define LPC181x
+#endif
+
+#if defined(LPC1820) || defined(LPC1822) || defined(LPC1823) || defined(LPC1825) || defined(LPC1827)
+#define LPC182x
+#endif
+
+#if defined(LPC1830) || defined(LPC1833) || defined(LPC1837)
+#define LPC183x
+#endif
+
+#if defined(LPC1850) || defined(LPC1853) || defined(LPC1857)
+#define LPC185x
+#endif
+
+#if defined(LPC181x) || defined(LPC182x) || defined(LPC183x) || defined(LPC185x)
 #define LPC18xx
 #define UARTS_COUNT                     4
 #define I2C_COUNT                       2
@@ -298,6 +313,14 @@
 #if defined(LPC1810) || defined(LPC1820) || defined(LPC1830) || defined(LPC1850)
 //compatibility mode
 #define FLASH_SIZE                      SRAM_SIZE
+#endif
+
+#if defined(LPC181x) || defined(LPC182x)
+#define USB_COUNT                       1
+#endif
+
+#if defined(LPC183x) || defined(LPC185x)
+#define USB_COUNT                       2
 #endif
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -62,19 +62,19 @@
 #define SCU_SFS_EHD_ULTRA_HIGH                  (3 << 8)                /* 0x3 Ultra high-drive: 20 mA drive strength */
 
 /******  Bit definition for SCU_SFSUSB registers  ***************************/
-#define SCU_SFSUSB_AIM                          (1 << 0)                /* Differential data input AIP/AIM.
+#define SCU_SFSUSB_AIM_Msk                      (1 << 0)                /* Differential data input AIP/AIM.
                                                                            0 Going LOW with full speed edge rate
                                                                            1 Going HIGH with full speed edge rate */
-#define SCU_SFSUSB_ESEA                         (1 << 1)                /* Control signal for differential input or single input.
+#define SCU_SFSUSB_ESEA_Msk                     (1 << 1)                /* Control signal for differential input or single input.
                                                                            0 Reserved. Do not use.
                                                                            1 Single input. Enables USB1. Use with the on-chip full-speed PHY */
-#define SCU_SFSUSB_EPD                          (1 << 2)                /* Enable pull-down connect.
+#define SCU_SFSUSB_EPD_Msk                      (1 << 2)                /* Enable pull-down connect.
                                                                            0 Pull-down disconnected
                                                                            1 Pull-down connected */
-#define SCU_SFSUSB_EPWR                         (1 << 4)                /* Power mode.
+#define SCU_SFSUSB_EPWR_Msk                     (1 << 4)                /* Power mode.
                                                                            0 Power saving mode (Suspend mode)
                                                                            1 Normal mode */
-#define SCU_SFSUSB_VBUS                         (1 << 5)                /* Enable the vbus_valid signal. This signal is monitored by the USB1 block. Use this bit
+#define SCU_SFSUSB_VBUS_Msk                     (1 << 5)                /* Enable the vbus_valid signal. This signal is monitored by the USB1 block. Use this bit
                                                                            for software de-bouncing of the VBUS sense signal or to indicate the VBUS state to the
                                                                            USB1 controller when the VBUS signal is present but the USB1_VBUS function is not
                                                                            connected in the SFSP2_5 register.
@@ -1324,5 +1324,7 @@
 #define USB0_ENDPTCTRL_I_Msk                    (1 << 5)
 #define USB0_ENDPTCTRL_R_Msk                    (1 << 6)
 #define USB0_ENDPTCTRL_E_Msk                    (1 << 7)
+
+
 
 #endif // LPC11UXX_BITS_H

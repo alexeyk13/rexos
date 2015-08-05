@@ -27,6 +27,10 @@ typedef struct {
   unsigned int read_size[USB_EP_COUNT_MAX];
   bool suspended;
   USB_SPEED speed;
+} OTG_TYPE;
+
+typedef struct {
+  OTG_TYPE* otg[USB_COUNT];
 } OTG_DRV;
 
 #if (MONOLITH_USB)

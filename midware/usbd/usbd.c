@@ -1188,17 +1188,17 @@ void usbd()
             if (((ipc.cmd == HAL_IO_CMD(HAL_USB, IPC_READ)) || (ipc.cmd == HAL_IO_CMD(HAL_USB, IPC_WRITE))) && ((int)ipc.param3 < 0))
                 break;
 
-            if ((USB_EP_NUM(ipc.param1) == 0) || (ipc.param1 == USB_HANDLE_DEVICE))
+            if ((USB_EP_NUM(USB_NUM(ipc.param1)) == 0) || (USB_NUM(ipc.param1) == USB_HANDLE_DEVICE))
                 need_post = usbd_driver_event(&usbd, &ipc);
             //decode endpoint interface
             else
-                need_post = usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(ipc.param1));
+                need_post = usbd_class_endpoint_request(&usbd, &ipc, USB_EP_NUM(USB_NUM(ipc.param1)));
             break;
         case HAL_USBD:
             need_post = usbd_device_request(&usbd, &ipc);
             break;
         case HAL_USBD_IFACE:
-            need_post = usbd_class_interface_request(&usbd, &ipc, USBD_IFACE_NUM(ipc.param1));
+            need_post = usbd_class_interface_request(&usbd, &ipc, USBD_IFACE_NUM(USB_NUM(ipc.param1)));
             break;
         default:
             error(ERROR_NOT_SUPPORTED);
