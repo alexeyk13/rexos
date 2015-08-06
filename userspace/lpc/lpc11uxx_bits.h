@@ -273,8 +273,8 @@
 
 //PIO0_5
 #define PIO0_5_GPIO                                 0
-#define PIO0_6_I2C_SDA                              1
-#define PIO0_6_IOH_3                                2
+#define PIO0_5_I2C_SDA                              1
+#define PIO0_5_IOH_3                                2
 
 //PIO0_6
 #define PIO0_6_GPIO                                 0
@@ -806,70 +806,70 @@
 /******************************************************************************/
 
 /**********  Bit definition for CONSET register  ******************************/
-#define I2C_CONSET_AA                           (1 << 2)                /* Assert acknowledge flag */
-#define I2C_CONSET_SI                           (1 << 3)                /* I2C interrupt flag */
-#define I2C_CONSET_STO                          (1 << 4)                /* STOP flag */
-#define I2C_CONSET_STA                          (1 << 5)                /* START flag */
-#define I2C_CONSET_I2EN                         (1 << 6)                /* I2C interface enable */
+#define I2C0_CONSET_AA_Msk                      (1 << 2)                /* Assert acknowledge flag */
+#define I2C0_CONSET_SI_Msk                      (1 << 3)                /* I2C interrupt flag */
+#define I2C0_CONSET_STO_Msk                     (1 << 4)                /* STOP flag */
+#define I2C0_CONSET_STA_Msk                     (1 << 5)                /* START flag */
+#define I2C0_CONSET_I2EN_Msk                    (1 << 6)                /* I2C interface enable */
 
 /***********  Bit definition for STAT register  *******************************/
-#define I2C_STAT_STATUS_MASK                    (0x1f << 3)
+#define I2C0_STAT_STATUS_Msk                    (0x1f << 3)
 
-#define I2C_STAT_START                          0x08                    /* A START condition has been transmitted */
-#define I2C_STAT_REPEATED_START                 0x10                    /* A Repeated START condition has been transmitted */
-#define I2C_STAT_SLAW_ACK                       0x18                    /* SLA+W has been transmitted; ACK has been received */
-#define I2C_STAT_SLAW_NACK                      0x20                    /* SLA+W has been transmitted; NOT ACK has been received */
-#define I2C_STAT_DATW_ACK                       0x28                    /* Data byte in DAT has been transmitted; ACK has been received */
-#define I2C_STAT_DATW_NACK                      0x30                    /* Data byte in DAT has been transmitted; NOT ACK has been received */
-#define I2C_STAT_ARBITRATION_LOST               0x38                    /* Arbitration lost in SLA+R/W or Data bytes */
-#define I2C_STAT_SLAR_ACK                       0x40                    /* SLA+R has been transmitted; ACK has been received */
-#define I2C_STAT_SLAR_NACK                      0x48                    /* SLA+R has been transmitted; NOT ACK has been received */
-#define I2C_STAT_DATR_ACK                       0x50                    /* Data byte has been received; ACK has been returned */
-#define I2C_STAT_DATR_NACK                      0x58                    /* Data byte has been received; NOT ACK has been returned */
-#define I2C_STAT_SLAVE_SLAW_ACK                 0x60                    /* Own SLA+W has been received; ACK has been returned */
-#define I2C_STAT_SLAVE_SLAW_NACK                0x68                    /* Arbitration lost in SLA+R/W as master;
+#define I2C0_STAT_START                         0x08                    /* A START condition has been transmitted */
+#define I2C0_STAT_REPEATED_START                0x10                    /* A Repeated START condition has been transmitted */
+#define I2C0_STAT_SLAW_ACK                      0x18                    /* SLA+W has been transmitted; ACK has been received */
+#define I2C0_STAT_SLAW_NACK                     0x20                    /* SLA+W has been transmitted; NOT ACK has been received */
+#define I2C0_STAT_DATW_ACK                      0x28                    /* Data byte in DAT has been transmitted; ACK has been received */
+#define I2C0_STAT_DATW_NACK                     0x30                    /* Data byte in DAT has been transmitted; NOT ACK has been received */
+#define I2C0_STAT_ARBITRATION_LOST              0x38                    /* Arbitration lost in SLA+R/W or Data bytes */
+#define I2C0_STAT_SLAR_ACK                      0x40                    /* SLA+R has been transmitted; ACK has been received */
+#define I2C0_STAT_SLAR_NACK                     0x48                    /* SLA+R has been transmitted; NOT ACK has been received */
+#define I2C0_STAT_DATR_ACK                      0x50                    /* Data byte has been received; ACK has been returned */
+#define I2C0_STAT_DATR_NACK                     0x58                    /* Data byte has been received; NOT ACK has been returned */
+#define I2C0_STAT_SLAVE_SLAW_ACK                0x60                    /* Own SLA+W has been received; ACK has been returned */
+#define I2C0_STAT_SLAVE_SLAW_NACK               0x68                    /* Arbitration lost in SLA+R/W as master;
                                                                            Own SLA+W has been received, ACK returned */
-#define I2C_STAT_SLAVE_GCA_ACK                  0x70                    /* General call address (0x00) has been received; ACK has been returned*/
-#define I2C_STAT_SLAVE_GCA_NACK                 0x78                    /* Arbitration lost in SLA+R/W as master;
+#define I2C0_STAT_SLAVE_GCA_ACK                 0x70                    /* General call address (0x00) has been received; ACK has been returned*/
+#define I2C0_STAT_SLAVE_GCA_NACK                0x78                    /* Arbitration lost in SLA+R/W as master;
                                                                            General call address has been received, ACK has been returned */
-#define I2C_STAT_SLAVE_DATW_ACK                 0x80                    /* Previously addressed with own SLV address;
+#define I2C0_STAT_SLAVE_DATW_ACK                0x80                    /* Previously addressed with own SLV address;
                                                                            DATA has been received; ACK has been returned */
-#define I2C_STAT_SLAVE_DATW_NACK                0x88                    /* Previously addressed with own SLV address;
+#define I2C0_STAT_SLAVE_DATW_NACK               0x88                    /* Previously addressed with own SLV address;
                                                                            DATA has been received; NOT ACK has been returned */
-#define I2C_STAT_SLAVE_GCA_DATW_ACK             0x90                    /* Previously addressed with General Call;
+#define I2C0_STAT_SLAVE_GCA_DATW_ACK            0x90                    /* Previously addressed with General Call;
                                                                            DATA byte has been received; ACK has been returned */
-#define I2C_STAT_SLAVE_GCA_DATW_NACK            0x98                    /* Previously addressed with General Call;
+#define I2C0_STAT_SLAVE_GCA_DATW_NACK           0x98                    /* Previously addressed with General Call;
                                                                            DATA byte has been received; NOT ACK has been returned */
-#define I2C_STAT_SLAVE_STOP                     0xA0                    /* A STOP condition or Repeated START condition has been
+#define I2C0_STAT_SLAVE_STOP                    0xA0                    /* A STOP condition or Repeated START condition has been
                                                                            received while still addressed as SLV/REC or SLV/TRX */
-#define I2C_STAT_SLAVE_SLAR_ACK                 0xA8                    /* Own SLA+R has been received; ACK has been returned */
-#define I2C_STAT_SLAVE_SLAR_NACK                0xB0                    /* Arbitration lost in SLA+R/W as master;
+#define I2C0_STAT_SLAVE_SLAR_ACK                0xA8                    /* Own SLA+R has been received; ACK has been returned */
+#define I2C0_STAT_SLAVE_SLAR_NACK               0xB0                    /* Arbitration lost in SLA+R/W as master;
                                                                            Own SLA+R has beenreceived, ACK has been returned */
-#define I2C_STAT_SLAVE_DATR_ACK                 0xB8                    /* Data byte in DAT has been transmitted; ACK has been received */
-#define I2C_STAT_SLAVE_DATR_NACK                0xC0                    /* Data byte in DAT has been transmitted; NOT ACK has been received */
-#define I2C_STAT_SLAVE_DATR_LAST                0xC8                    /* Last data byte in DAT has been transmitted (AA = 0); ACK has been received */
+#define I2C0_STAT_SLAVE_DATR_ACK                0xB8                    /* Data byte in DAT has been transmitted; ACK has been received */
+#define I2C0_STAT_SLAVE_DATR_NACK               0xC0                    /* Data byte in DAT has been transmitted; NOT ACK has been received */
+#define I2C0_STAT_SLAVE_DATR_LAST               0xC8                    /* Last data byte in DAT has been transmitted (AA = 0); ACK has been received */
 
-#define I2C_STAT_NO_INFO                        0xF8                    /* No relevant state information available; SI = 0 */
-#define I2C_STAT_ERROR                          0x00                    /* Bus error during MSTor selected slave modes, due to an illegal START or
+#define I2C0_STAT_NO_INFO                       0xF8                    /* No relevant state information available; SI = 0 */
+#define I2C0_STAT_ERROR                         0x00                    /* Bus error during MSTor selected slave modes, due to an illegal START or
                                                                            STOP condition. State 0x00 can also occur when interference causes the I2C block
                                                                            to enter an undefined state */
 
 
 /***********  Bit definition for ADR0 register  *******************************/
-#define I2C_ADR0_GC                             (1 << 0)                /* General Call enable bit */
+#define I2C0_ADR0_GC_Msk                        (1 << 0)                /* General Call enable bit */
 
 
 /**********  Bit definition for CONCLR register  ******************************/
-#define I2C_CONCLR_AAC                          (1 << 2)                /* Assert acknowledge flag */
-#define I2C_CONCLR_SIC                          (1 << 3)                /* I2C interrupt flag */
-#define I2C_CONCLR_STOC                         (1 << 4)                /* STOP flag */
-#define I2C_CONCLR_STAC                         (1 << 5)                /* START flag */
-#define I2C_CONCLR_I2ENC                        (1 << 6)                /* I2C interface enable */
+#define I2C0_CONCLR_AAC_Msk                     (1 << 2)                /* Assert acknowledge flag */
+#define I2C0_CONCLR_SIC_Msk                     (1 << 3)                /* I2C interrupt flag */
+#define I2C0_CONCLR_STOC_Msk                    (1 << 4)                /* STOP flag */
+#define I2C0_CONCLR_STAC_Msk                    (1 << 5)                /* START flag */
+#define I2C0_CONCLR_I2ENC_Msk                   (1 << 6)                /* I2C interface enable */
 
 /**********  Bit definition for MMCTRL register  ******************************/
-#define I2C_MMCTRL_MMENA                        (1 << 0)                /* Monitor mode enable */
-#define I2C_MMCTRL_ENASCL                       (1 << 1)                /* SCL output enable */
-#define I2C_MMCTRL_MATCH_ALL                    (1 << 2)                /* Select interrupt register match */
+#define I2C0_MMCTRL_MMENA _Msk                  (1 << 0)                /* Monitor mode enable */
+#define I2C0_MMCTRL_ENASCL_Msk                  (1 << 1)                /* SCL output enable */
+#define I2C0_MMCTRL_MATCH_ALL_Msk                    (1 << 2)                /* Select interrupt register match */
 
 
 /******************************************************************************/

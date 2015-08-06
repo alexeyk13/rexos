@@ -1398,4 +1398,51 @@ typedef struct {                                /*!< (@ 0x4000e000) EEPROM Struc
 /******  Bit definition for LPC_EEPROM_INTSTATSET *************************/
 #define LPC_EEPROM_INTSTATSET_PROG_SET_ST_Msk   (1 << 2)
 
+/******************************************************************************/
+/*                                                                            */
+/*                                 I2C                                        */
+/*                                                                            */
+/******************************************************************************/
+
+/***********  Bit definition for STAT register  *******************************/
+#define I2C0_STAT_STATUS_Msk                    (0x1f << 3)
+
+#define I2C0_STAT_START                         0x08                    /* A START condition has been transmitted */
+#define I2C0_STAT_REPEATED_START                0x10                    /* A Repeated START condition has been transmitted */
+#define I2C0_STAT_SLAW_ACK                      0x18                    /* SLA+W has been transmitted; ACK has been received */
+#define I2C0_STAT_SLAW_NACK                     0x20                    /* SLA+W has been transmitted; NOT ACK has been received */
+#define I2C0_STAT_DATW_ACK                      0x28                    /* Data byte in DAT has been transmitted; ACK has been received */
+#define I2C0_STAT_DATW_NACK                     0x30                    /* Data byte in DAT has been transmitted; NOT ACK has been received */
+#define I2C0_STAT_ARBITRATION_LOST              0x38                    /* Arbitration lost in SLA+R/W or Data bytes */
+#define I2C0_STAT_SLAR_ACK                      0x40                    /* SLA+R has been transmitted; ACK has been received */
+#define I2C0_STAT_SLAR_NACK                     0x48                    /* SLA+R has been transmitted; NOT ACK has been received */
+#define I2C0_STAT_DATR_ACK                      0x50                    /* Data byte has been received; ACK has been returned */
+#define I2C0_STAT_DATR_NACK                     0x58                    /* Data byte has been received; NOT ACK has been returned */
+#define I2C0_STAT_SLAVE_SLAW_ACK                0x60                    /* Own SLA+W has been received; ACK has been returned */
+#define I2C0_STAT_SLAVE_SLAW_NACK               0x68                    /* Arbitration lost in SLA+R/W as master;
+                                                                           Own SLA+W has been received, ACK returned */
+#define I2C0_STAT_SLAVE_GCA_ACK                 0x70                    /* General call address (0x00) has been received; ACK has been returned*/
+#define I2C0_STAT_SLAVE_GCA_NACK                0x78                    /* Arbitration lost in SLA+R/W as master;
+                                                                           General call address has been received, ACK has been returned */
+#define I2C0_STAT_SLAVE_DATW_ACK                0x80                    /* Previously addressed with own SLV address;
+                                                                           DATA has been received; ACK has been returned */
+#define I2C0_STAT_SLAVE_DATW_NACK               0x88                    /* Previously addressed with own SLV address;
+                                                                           DATA has been received; NOT ACK has been returned */
+#define I2C0_STAT_SLAVE_GCA_DATW_ACK            0x90                    /* Previously addressed with General Call;
+                                                                           DATA byte has been received; ACK has been returned */
+#define I2C0_STAT_SLAVE_GCA_DATW_NACK           0x98                    /* Previously addressed with General Call;
+                                                                           DATA byte has been received; NOT ACK has been returned */
+#define I2C0_STAT_SLAVE_STOP                    0xA0                    /* A STOP condition or Repeated START condition has been
+                                                                           received while still addressed as SLV/REC or SLV/TRX */
+#define I2C0_STAT_SLAVE_SLAR_ACK                0xA8                    /* Own SLA+R has been received; ACK has been returned */
+#define I2C0_STAT_SLAVE_SLAR_NACK               0xB0                    /* Arbitration lost in SLA+R/W as master;
+                                                                           Own SLA+R has beenreceived, ACK has been returned */
+#define I2C0_STAT_SLAVE_DATR_ACK                0xB8                    /* Data byte in DAT has been transmitted; ACK has been received */
+#define I2C0_STAT_SLAVE_DATR_NACK               0xC0                    /* Data byte in DAT has been transmitted; NOT ACK has been received */
+#define I2C0_STAT_SLAVE_DATR_LAST               0xC8                    /* Last data byte in DAT has been transmitted (AA = 0); ACK has been received */
+
+#define I2C0_STAT_NO_INFO                       0xF8                    /* No relevant state information available; SI = 0 */
+#define I2C0_STAT_ERROR                         0x00                    /* Bus error during MSTor selected slave modes, due to an illegal START or
+                                                                           STOP condition. State 0x00 can also occur when interference causes the I2C block
+                                                                           to enter an undefined state */
 #endif // LPC11UXX_BITS_H
