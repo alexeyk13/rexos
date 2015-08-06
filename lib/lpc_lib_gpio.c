@@ -80,30 +80,39 @@ void lpc_lib_gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
         if ((1 << pin) & GPIO_MODE1_MASK)
             param |= (1 << 0);
     }
-#if (GPIO_HYSTERESIS)
-    param |= IOCON_PIO_HYS;
-#endif
     switch (mode)
     {
     case GPIO_MODE_IN_PULLUP:
-        param |= IOCON_PIO_MODE_PULL_UP;
+        param |= IOCON_PIO_MODE_PULL_UP | IOCON_PIO_HYS;
         break;
     case GPIO_MODE_IN_PULLDOWN:
-        param |= IOCON_PIO_MODE_PULL_DOWN;
+        param |= IOCON_PIO_MODE_PULL_DOWN | IOCON_PIO_HYS;
+        break;
+    case GPIO_MODE_IN_FLOAT:
+        param |= IOCON_PIO_HYS;
         break;
     default:
         break;
     }
 #else //LPC18xx
+
     if (GPIO_PORT(pin) >= 5)
         param = (4 << 0);
-    if (mode != GPIO_MODE_IN_PULLUP)
-        param |= SCU_SFS_EPUN;
-    if (mode == GPIO_MODE_IN_PULLDOWN)
-        param |= SCU_SFS_EPD;
-#if (GPIO_HYSTERESIS)
-    param |= SCU_SFS_ZIF;
-#endif
+
+    switch (mode)
+    {
+    case GPIO_MODE_IN_PULLUP:
+        param |= SCU_SFS_EZI | SCU_SFS_ZIF;
+        break;
+    case GPIO_MODE_IN_PULLDOWN:
+        param |= SCU_SFS_EPUN | SCU_SFS_EPD | SCU_SFS_EZI | SCU_SFS_ZIF;
+        break;
+    case GPIO_MODE_IN_FLOAT:
+        param |= SCU_SFS_EPUN | SCU_SFS_EZI | SCU_SFS_ZIF;
+        break;
+    default:
+        break;
+    }
 #endif //LPC11Uxx
 
     ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), PIN_RAW(pin), param, 0);
