@@ -347,6 +347,8 @@ void stm32_dac_wave(CORE* core, int num, DAC_WAVE_TYPE wave_type, int amplitude)
         wave_gen(core->dac.channels[num].fifo, DAC_DMA_FIFO_SIZE, wave_type, amplitude);
         stm32_timer_request_inside(core, HAL_CMD(HAL_TIMER, TIMER_START), DAC_TRIGGERS[num], TIMER_VALUE_HZ, core->dac.channels[num].samplerate * DAC_DMA_FIFO_SIZE);
     }
+    else
+        *(unsigned int*)(DAC_DATA_REG[num]) = 0;
 }
 
 bool stm32_dac_request(CORE* core, IPC* ipc)
