@@ -12,6 +12,7 @@
 #include "../../userspace/ipc.h"
 #include "../../userspace/io.h"
 #include "../../userspace/lpc/lpc_driver.h"
+#include "../../userspace/i2c.h"
 
 typedef enum {
     I2C_IO_MODE_IDLE = 0,
@@ -19,17 +20,22 @@ typedef enum {
     I2C_IO_MODE_RX
 } I2C_IO_MODE;
 
+typedef enum {
+    I2C_STATE_ADDR = 0,
+    I2C_STATE_LEN,
+    I2C_STATE_DATA
+} I2C_STATE;
+
 typedef struct  {
     IO* io;
+    I2C_STACK* stack;
     HANDLE process;
 #if (LPC_I2C_TIMEOUT_MS)
     HANDLE timer;
 #endif
     I2C_IO_MODE io_mode;
-    unsigned int addr, rx_len;
-    uint16_t mode;
-    uint16_t size;
-    uint8_t sla, addr_processed, rx_len_processed;
+    I2C_STATE state;
+    unsigned int size, processed;
 } I2C;
 
 typedef struct  {

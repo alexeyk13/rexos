@@ -18,13 +18,6 @@
 #define I2C_NORMAL_CLOCK                            100000
 #define I2C_FAST_CLOCK                              400000
 
-#define ADDR_SIZE(core, port)                       (((core)->i2c.i2cs[(port)]->mode & I2C_ADDR_SIZE_MASK) >> I2C_ADDR_SIZE_POS)
-#define ADDR_BYTE(core, port)                       (((core)->i2c.i2cs[(port)]->addr >> ((((core)->i2c.i2cs[(port)]->mode & I2C_ADDR_SIZE_MASK) - \
-                                                    ++(core)->i2c.i2cs[(port)]->addr_processed) << 3)) & 0xff)
-
-#define RX_LEN_SIZE(core, port)                     (((core)->i2c.i2cs[(port)]->mode & I2C_LEN_SIZE_MASK) >> I2C_LEN_SIZE_POS)
-#define RX_LEN_SET_BYTE(core, port, byte)           ((core)->i2c.i2cs[(port)]->rx_len = (((core)->i2c.i2cs[(port)]->rx_len) << 8) | ((byte) & 0xff))
-
 #if defined(LPC11U6x)
 static const uint8_t __I2C_VECTORS[] =              {15, 10};
 typedef LPC_I2C_Type* LPC_I2C_Type_P;
@@ -42,9 +35,6 @@ typedef LPC_I2Cn_Type* LPC_I2C_Type_P;
 static const LPC_I2C_Type_P __I2C_REGS[] =          {LPC_I2C0, LPC_I2C1};
 static const uint8_t __I2C_VECTORS[] =              {18, 19};
 #endif //LPC11U6x
-
-#define I2C_SCL_PIN                                 PIO0_4
-#define I2C_SDA_PIN                                 PIO0_5
 
 #define I2C_CLEAR (I2C0_CONCLR_AAC_Msk | I2C0_CONCLR_SIC_Msk | I2C0_CONCLR_STAC_Msk)
 
@@ -65,8 +55,8 @@ static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
     switch(__I2C_REGS[port]->STAT)
     {
     case I2C0_STAT_START:
-        //transmit address
-        __I2C_REGS[port]->DAT = (i2c->sla << 1) | 0;
+        //transmit sla
+        __I2C_REGS[port]->DAT = (i2c->stack->sla << 1) | 0;
         __I2C_REGS[port]->CONCLR = I2C0_CONCLR_STAC_Msk;
         break;
     case I2C0_STAT_SLAW_NACK:
@@ -74,7 +64,7 @@ static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
         break;
     case I2C0_STAT_DATW_NACK:
         //only acceptable for last byte
-        if ((i2c->size < i2c->io->data_size) || i2c->addr_processed < ADDR_SIZE(core, port))
+        if ((i2c->processed < i2c->size) || (i2c->state != I2C_STATE_DATA))
         {
             lpc_i2c_isr_error(core, port, ERROR_NAK);
             break;
@@ -82,19 +72,30 @@ static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
         //follow down
     case I2C0_STAT_SLAW_ACK:
     case I2C0_STAT_DATW_ACK:
-        if (i2c->addr_processed < ADDR_SIZE(core, port))
-            __I2C_REGS[port]->DAT = ADDR_BYTE(core, port);
-        else if (i2c->size < i2c->io->data_size)
-            __I2C_REGS[port]->DAT = ((uint8_t*)io_data(i2c->io))[i2c->size++];
-        //last byte
-        else
+        switch (i2c->state)
         {
-            __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
+        case I2C_STATE_ADDR:
+            __I2C_REGS[port]->DAT = i2c->stack->addr;
+            i2c->state = (i2c->stack->flags & I2C_FLAG_LEN) ? I2C_STATE_LEN : I2C_STATE_DATA;
+            break;
+        case I2C_STATE_LEN:
+            __I2C_REGS[port]->DAT = (uint8_t)i2c->io->data_size;
+            i2c->state = I2C_STATE_DATA;
+            break;
+            break;
+        default:
+            if (i2c->processed < i2c->size)
+                __I2C_REGS[port]->DAT = ((uint8_t*)io_data(i2c->io))[i2c->processed++];
+            //last byte
+            else
+            {
+                __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
 #if (LPC_I2C_TIMEOUT_MS)
-            timer_istop(i2c->timer);
+                timer_istop(i2c->timer);
 #endif
-            iio_complete(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_WRITE), port, i2c->io);
-            i2c->io_mode = I2C_IO_MODE_IDLE;
+                iio_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_WRITE), port, i2c->io, i2c->processed);
+                i2c->io_mode = I2C_IO_MODE_IDLE;
+            }
         }
         break;
     default:
@@ -110,66 +111,70 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
     {
     case I2C0_STAT_START:
         //transmit address W
-        if (ADDR_SIZE(core, port))
+        if (i2c->state == I2C_STATE_ADDR)
         {
-            __I2C_REGS[port]->DAT = (i2c->sla << 1) | 0;
+            __I2C_REGS[port]->DAT = (i2c->stack->sla << 1) | 0;
             __I2C_REGS[port]->CONCLR = I2C0_CONCLR_STAC_Msk;
+            i2c->state = (i2c->stack->flags & I2C_FLAG_LEN) ? I2C_STATE_LEN : I2C_STATE_DATA;
             break;
         }
     case I2C0_STAT_REPEATED_START:
         //transmit address R
         __I2C_REGS[port]->CONCLR = I2C0_CONCLR_STAC_Msk;
-        __I2C_REGS[port]->DAT = (i2c->sla << 1) | 1;
+        __I2C_REGS[port]->DAT = (i2c->stack->sla << 1) | 1;
         break;
     case I2C0_STAT_SLAR_NACK:
     case I2C0_STAT_SLAW_NACK:
         lpc_i2c_isr_error(core, port, ERROR_NAK);
         break;
-    case I2C0_STAT_DATW_NACK:
-        //only acceptable for last W byte
-        if (i2c->addr_processed < ADDR_SIZE(core, port))
-        {
-            lpc_i2c_isr_error(core, port, ERROR_NAK);
-            break;
-        }
     case I2C0_STAT_SLAW_ACK:
+        //transmit address
+        __I2C_REGS[port]->DAT = i2c->stack->addr;
+        break;
+    case I2C0_STAT_DATW_NACK:
     case I2C0_STAT_DATW_ACK:
-        if (i2c->addr_processed < ADDR_SIZE(core, port))
-            __I2C_REGS[port]->DAT = ADDR_BYTE(core, port);
-        //last addr byte, rS
-        else
-            __I2C_REGS[port]->CONSET = I2C0_CONSET_STA_Msk;
+        //adress transmitted (NACK also acceptable), rS
+        __I2C_REGS[port]->CONSET = I2C0_CONSET_STA_Msk;
         break;
     case I2C0_STAT_SLAR_ACK:
-        __I2C_REGS[port]->CONSET = I2C0_CONSET_AA_Msk;
+        //more than 1 byte
+        if (i2c->size || (i2c->stack->flags & I2C_FLAG_LEN))
+            __I2C_REGS[port]->CONSET = I2C0_CONSET_AA_Msk;
+        else
+            __I2C_REGS[port]->CONCLR = I2C0_CONCLR_AAC_Msk;
         break;
     case I2C0_STAT_DATR_ACK:
-        if (i2c->rx_len_processed < RX_LEN_SIZE(core, port))
+        switch (i2c->state)
         {
-            RX_LEN_SET_BYTE(core, port, __I2C_REGS[port]->DAT);
-            if (++(i2c->rx_len_processed) >= RX_LEN_SIZE(core, port))
-            {
-                if (i2c->size > i2c->rx_len)
-                    i2c->size = i2c->rx_len;
-            }
+        case I2C_STATE_LEN:
+            if (__I2C_REGS[port]->DAT < i2c->size)
+                i2c->size = __I2C_REGS[port]->DAT;
+            i2c->state = I2C_STATE_DATA;
+            break;
+        case I2C_STATE_DATA:
+            ((uint8_t*)io_data(i2c->io))[i2c->processed++] = __I2C_REGS[port]->DAT;
+            break;
+        //data state
+        default:
+            lpc_i2c_isr_error(core, port, ERROR_INVALID_STATE);
         }
-        else
-            ((uint8_t*)io_data(i2c->io))[i2c->io->data_size++] = __I2C_REGS[port]->DAT;
         //need more? send ACK
-        if (i2c->io->data_size + 1 < i2c->size)
+        if (i2c->processed + 1 < i2c->size)
             __I2C_REGS[port]->CONSET = I2C0_CONSET_AA_Msk;
         //received all - send NAK
         else
             __I2C_REGS[port]->CONCLR = I2C0_CONCLR_AAC_Msk;
         break;
     case I2C0_STAT_DATR_NACK:
-        //last byte
-        ((uint8_t*)io_data(i2c->io))[i2c->io->data_size++] = __I2C_REGS[port]->DAT;
+        //last byte, if required
+        if (i2c->processed < i2c->size)
+            ((uint8_t*)io_data(i2c->io))[i2c->processed++] = __I2C_REGS[port]->DAT;
         //stop transmission
         __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
 #if (LPC_I2C_TIMEOUT_MS)
         timer_istop(i2c->timer);
 #endif
+        i2c->io->data_size = i2c->processed;
         iio_complete(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_READ), port, i2c->io);
         i2c->io_mode = I2C_IO_MODE_IDLE;
         break;
@@ -182,7 +187,6 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
 void lpc_i2c_on_isr(int vector, void* param)
 {
     CORE* core = (CORE*)param;
-    //TODO: decode port
     I2C_PORT port = I2C_0;
 #if defined(LPC11U6x) || defined(LPC18xx)
     if (vector != __I2C_VECTORS[0])
@@ -202,7 +206,7 @@ void lpc_i2c_on_isr(int vector, void* param)
     __I2C_REGS[port]->CONCLR = I2C0_CONCLR_SIC_Msk;
 }
 
-void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int sla)
+void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int speed)
 {
     I2C* i2c = core->i2c.i2cs[port];
     if (i2c)
@@ -211,6 +215,7 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int sla
         return;
     }
     i2c = malloc(sizeof(I2C));
+    core->i2c.i2cs[port] = i2c;
     if (i2c == NULL)
     {
         error(ERROR_OUT_OF_MEMORY);
@@ -225,12 +230,8 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int sla
         return;
     }
 #endif
-    i2c->sla = sla & 0x7f;
-    i2c->mode = mode;
     i2c->io = NULL;
     i2c->io_mode = I2C_IO_MODE_IDLE;
-    i2c->addr = 0;
-    core->i2c.i2cs[port] = i2c;
 
 #if defined(LPC11Uxx)
     //power up
@@ -257,7 +258,7 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int sla
 
 #endif //LPC11Uxx
     //setup clock
-    __I2C_REGS[port]->SCLL = __I2C_REGS[port]->SCLH = get_core_clock(core) / (mode & I2C_FAST_SPEED ? I2C_FAST_CLOCK : I2C_NORMAL_CLOCK) / 2;
+    __I2C_REGS[port]->SCLL = __I2C_REGS[port]->SCLH = get_core_clock(core) / (speed) / 2;
     //reset state machine
     __I2C_REGS[port]->CONCLR = I2C_CLEAR;
     //enable interrupt
@@ -289,7 +290,7 @@ void lpc_i2c_close(CORE* core, I2C_PORT port)
 #endif //LPC11Uxx
 }
 
-static inline void lpc_i2c_read(CORE* core, IPC* ipc)
+static void lpc_i2c_io(CORE* core, IPC* ipc, bool read)
 {
     I2C_PORT port = (I2C_PORT)ipc->param1;
     I2C* i2c = core->i2c.i2cs[port];
@@ -305,12 +306,26 @@ static inline void lpc_i2c_read(CORE* core, IPC* ipc)
     }
     i2c->process = ipc->process;
     i2c->io = (IO*)ipc->param2;
-    i2c->io->data_size = 0;
-    i2c->size = ipc->param3;
-    i2c->addr_processed = 0;
-    i2c->rx_len_processed = 0;
-    i2c->rx_len = 0;
-    i2c->io_mode = I2C_IO_MODE_RX;
+    i2c->processed = 0;
+    i2c->stack = io_stack(i2c->io);
+    if (i2c->stack->flags & I2C_FLAG_ADDR)
+        i2c->state = I2C_STATE_ADDR;
+    else if (i2c->stack->flags & I2C_FLAG_LEN)
+        i2c->state = I2C_STATE_LEN;
+    else
+        i2c->state = I2C_STATE_DATA;
+
+    if (read)
+    {
+        i2c->io->data_size = 0;
+        i2c->size = ipc->param3;
+        i2c->io_mode = I2C_IO_MODE_RX;
+    }
+    else
+    {
+        i2c->size = i2c->io->data_size;
+        i2c->io_mode = I2C_IO_MODE_TX;
+    }
 
     //reset
     __I2C_REGS[port]->CONCLR = I2C_CLEAR;
@@ -321,43 +336,6 @@ static inline void lpc_i2c_read(CORE* core, IPC* ipc)
     //set START
     __I2C_REGS[port]->CONSET = I2C0_CONSET_I2EN_Msk | I2C0_CONSET_STA_Msk;
     //all rest in isr
-}
-
-static inline void lpc_i2c_write(CORE* core, IPC* ipc)
-{
-    I2C_PORT port = (I2C_PORT)ipc->param1;
-    I2C* i2c = core->i2c.i2cs[port];
-    if (i2c == NULL)
-    {
-        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
-        return;
-    }
-    if (i2c->io_mode != I2C_IO_MODE_IDLE)
-    {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
-        return;
-    }
-    i2c->process = ipc->process;
-    i2c->io = (IO*)ipc->param2;
-    i2c->size = 0;
-    i2c->addr_processed = 0;
-    i2c->rx_len_processed = 0;
-    i2c->rx_len = 0;
-    i2c->io_mode = I2C_IO_MODE_TX;
-
-    //reset
-    __I2C_REGS[port]->CONCLR = I2C_CLEAR;
-#if (LPC_I2C_TIMEOUT_MS)
-    timer_start_ms(i2c->timer, LPC_I2C_TIMEOUT_MS, 0);
-#endif
-    //set START
-    __I2C_REGS[port]->CONSET = I2C0_CONSET_I2EN_Msk | I2C0_CONSET_STA_Msk;
-    //all rest in isr
-}
-
-static inline void lpc_i2c_seek(CORE* core, I2C_PORT port, unsigned int pos)
-{
-    core->i2c.i2cs[port]->addr = pos;
 }
 
 #if (LPC_I2C_TIMEOUT_MS)
@@ -404,16 +382,12 @@ bool lpc_i2c_request(CORE* core, IPC* ipc)
         need_post = true;
         break;
     case IPC_WRITE:
-        lpc_i2c_write(core, ipc);
+        lpc_i2c_io(core, ipc, false);
         //async message, no write
         break;
     case IPC_READ:
-        lpc_i2c_read(core, ipc);
+        lpc_i2c_io(core, ipc, true);
         //async message, no write
-        break;
-    case IPC_SEEK:
-        lpc_i2c_seek(core, port, ipc->param2);
-        need_post = true;
         break;
 #if (LPC_I2C_TIMEOUT_MS)
     case IPC_TIMEOUT:
