@@ -15,6 +15,7 @@
 #include "sys_config.h"
 #include "stm32_config.h"
 #include "app_private.h"
+#include "config.h"
 
 static inline void comm_usb_start(APP* app)
 {
@@ -88,7 +89,7 @@ void comm_init(APP *app)
     app->comm.rx = app->comm.tx = app->comm.rx_stream = INVALID_HANDLE;
 
     //setup >usbd
-    app->usbd = process_create(&__USBD);
+    app->usbd = usbd_create(USB_PORT_NUM, USBD_PROCESS_SIZE, USBD_PROCESS_PRIORITY);
     ack(app->usbd, HAL_CMD(HAL_USBD, USBD_REGISTER_HANDLER), 0, 0, 0);
 
     usbd_register_const_descriptor(app->usbd, &__DEVICE_DESCRIPTOR, 0, 0);
@@ -99,7 +100,7 @@ void comm_init(APP *app)
     usbd_register_const_descriptor(app->usbd, &__STRING_SERIAL, 3, 0x0409);
     usbd_register_const_descriptor(app->usbd, &__STRING_DEFAULT, 4, 0x0409);
 
-    ack(app->usbd, HAL_CMD(HAL_USBD, IPC_OPEN), 0, 0, 0);
+    ack(app->usbd, HAL_CMD(HAL_USBD, IPC_OPEN), USB_PORT_NUM, 0, 0);
 
     printf("Comm init\n");
 }

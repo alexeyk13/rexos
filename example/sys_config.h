@@ -19,11 +19,8 @@
 #define SYS_OBJ_UART                                        SYS_OBJ_CORE
 #define SYS_OBJ_USB                                         SYS_OBJ_CORE
 #define SYS_OBJ_ADC                                         SYS_OBJ_CORE
-#define SYS_OBJ_I2C                                         INVALID_HANDLE
 #define SYS_OBJ_DAC                                         INVALID_HANDLE
 #define SYS_OBJ_STDIN                                       INVALID_HANDLE
-#define SYS_OBJ_PINBOARD                                    INVALID_HANDLE
-#define SYS_OBJ_APP                                         INVALID_HANDLE
 #define SYS_OBJ_ETH                                         INVALID_HANDLE
 //------------------------------ POWER -----------------------------------------------
 //depends on hardware implementation
@@ -44,7 +41,6 @@
 //vendor-specific requests support
 #define USBD_VSR                                            0
 
-#define USBD_PROCESS_SIZE                                   800
 #define USBD_IO_SIZE                                        128
 
 #define USBD_CDC_CLASS                                      1
@@ -125,7 +121,7 @@
 //----------------------------- TCP/IP MAC --------------------------------------------
 //software MAC filter. Turn on in case of hardware is not supporting
 #define MAC_FILTER                                          1
-#define MAC_DEBUG                                           0
+#define TCPIP_MAC_DEBUG                                     0
 
 //----------------------------- TCP/IP ARP --------------------------------------------
 #define ARP_DEBUG                                           1
