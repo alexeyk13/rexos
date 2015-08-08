@@ -79,8 +79,8 @@ void lpc_uart_on_isr(int vector, void* param)
     UART_PORT port = UART_0;
     SHARED_UART_DRV* drv = (SHARED_UART_DRV*)param;
     if (vector != __UART_VECTORS[UART_0])
-        for (i = 0; i < UARTS_COUNT; ++i)
-            if (vector == __UART_VECTORS[UARTS_COUNT])
+        for (i = 1; i < UARTS_COUNT; ++i)
+            if (vector == __UART_VECTORS[i])
             {
                 port = i;
                 break;
@@ -92,35 +92,35 @@ void lpc_uart_on_isr(int vector, void* param)
         //decode error, if any
         lsr = __USART_REGS[port]->LSR;
         if (lsr & USART0_LSR_OE_Msk)
-            drv->uart.uarts[UART_0]->error = ERROR_OVERFLOW;
+            drv->uart.uarts[port]->error = ERROR_OVERFLOW;
         if (lsr & USART0_LSR_PE_Msk)
-            drv->uart.uarts[UART_0]->error = ERROR_UART_PARITY;
+            drv->uart.uarts[port]->error = ERROR_UART_PARITY;
         if (lsr & USART0_LSR_FE_Msk)
-            drv->uart.uarts[UART_0]->error = ERROR_UART_FRAME;
+            drv->uart.uarts[port]->error = ERROR_UART_FRAME;
         if (lsr & USART0_LSR_BI_Msk)
-            drv->uart.uarts[UART_0]->error = ERROR_UART_BREAK;
+            drv->uart.uarts[port]->error = ERROR_UART_BREAK;
         break;
     case USART0_IIR_INTID_RDA:
         //receive data
         ipc.param3 = __USART_REGS[port]->RBR;
         ipc.process = process_iget_current();
         ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_RX);
-        ipc.param1 = UART_0;
+        ipc.param1 = port;
         ipc_ipost(&ipc);
         break;
     case USART0_IIR_INTID_THRE:
         //transmit more
-        if ((__USART_REGS[port]->IER & USART0_IER_THREIE_Msk) && drv->uart.uarts[UART_0]->tx_chunk_size)
+        if ((__USART_REGS[port]->IER & USART0_IER_THREIE_Msk) && drv->uart.uarts[port]->tx_chunk_size)
         {
-            while ((__USART_REGS[port]->LSR & USART0_LSR_THRE_Msk) && drv->uart.uarts[UART_0]->tx_chunk_pos < drv->uart.uarts[UART_0]->tx_chunk_size)
-                __USART_REGS[port]->THR = drv->uart.uarts[UART_0]->tx_buf[drv->uart.uarts[UART_0]->tx_chunk_pos++];
+            while ((__USART_REGS[port]->LSR & USART0_LSR_THRE_Msk) && drv->uart.uarts[port]->tx_chunk_pos < drv->uart.uarts[port]->tx_chunk_size)
+                __USART_REGS[port]->THR = drv->uart.uarts[port]->tx_buf[drv->uart.uarts[port]->tx_chunk_pos++];
             //no more
-            if (drv->uart.uarts[UART_0]->tx_chunk_pos >= drv->uart.uarts[UART_0]->tx_chunk_size)
+            if (drv->uart.uarts[port]->tx_chunk_pos >= drv->uart.uarts[port]->tx_chunk_size)
             {
-                drv->uart.uarts[UART_0]->tx_chunk_pos = drv->uart.uarts[UART_0]->tx_chunk_size = 0;
+                drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
                 ipc.process = process_iget_current();
                 ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
-                ipc.param1 = UART_0;
+                ipc.param1 = port;
                 ipc.param3 = 0;
                 ipc_ipost(&ipc);
                 __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
@@ -172,7 +172,7 @@ void lpc_uart4_on_isr(int vector, void* param)
             ipc.param3 = __USART1_REGS[port - 1]->RXDAT;
             ipc.process = process_iget_current();
             ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_RX);
-            ipc.param1 = UART_0;
+            ipc.param1 = port;
             ipc_ipost(&ipc);
         }
         //tx
@@ -186,7 +186,7 @@ void lpc_uart4_on_isr(int vector, void* param)
                 drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
                 ipc.process = process_iget_current();
                 ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
-                ipc.param1 = UART_0;
+                ipc.param1 = port;
                 ipc.param3 = 0;
                 ipc_ipost(&ipc);
                 LPC_USART->IER &= ~USART0_IER_THRINTEN_Msk;
@@ -464,6 +464,8 @@ static inline void lpc_uart_clear_error(SHARED_UART_DRV* drv, UART_PORT port)
     }
     drv->uart.uarts[port]->error = ERROR_OK;
 }
+
+void uart_write_kernel(const char *const buf, unsigned int size, void* param);
 
 static inline void lpc_uart_write(SHARED_UART_DRV* drv, UART_PORT port, unsigned int total)
 {
