@@ -58,10 +58,10 @@ unavailable, another HPET timer can be used for RTC emulation
   * rtc: STM32F1, STM32F2, STM32F4, STM32L0
   * wdt: STM32F1, STM32F2, STM32F4, STM32L0
   * EEPROM: LPC11Uxx, STM32L0
-  * I2C: LPC1Uxx
+  * I2C: LPC1Uxx, LPC18xx
   * ADC: STM32F1, STM32L0
   * DAC: STM32F1, STM32L0
-  * USB: STM32F1_CL, STM32L0, LPC11Uxx, LPC18xx(USB0)
+  * USB: STM32F1_CL, STM32L0, LPC11Uxx, LPC18xx
   * ETH: STM32F1
   * МЭЛТ mt12864j LCD display
 
@@ -77,6 +77,11 @@ ARM7 features:
 
 History
 =======
+0.3.6
+- LPC18xx USB1 & both usb support
+- LPC18xx, LPC11U6x I2C support
+- I2C HAL interface
+
 0.3.5
 - LPC18xx USB0 support
 - IPC size is now fixed by KERNEL_IPC_COUNT
