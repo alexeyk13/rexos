@@ -17,10 +17,7 @@
 //make sure, you know what are you doing, before change
 #define SYS_OBJ_STDOUT                                      0
 #define SYS_OBJ_CORE                                        1
-#define SYS_OBJ_PINBOARD                                    3
-#define SYS_OBJ_APP                                         4
 
-#define SYS_OBJ_I2C                                         SYS_OBJ_CORE
 #define SYS_OBJ_UART                                        SYS_OBJ_CORE
 #define SYS_OBJ_USB                                         SYS_OBJ_CORE
 #define SYS_OBJ_ADC                                         SYS_OBJ_CORE
@@ -128,7 +125,7 @@
 //----------------------------- TCP/IP MAC --------------------------------------------
 //software MAC filter. Turn on in case of hardware is not supporting
 #define MAC_FILTER                                          1
-#define MAC_DEBUG                                           0
+#define TCPIP_MAC_DEBUG                                     0
 
 //----------------------------- TCP/IP ARP --------------------------------------------
 #define ARP_DEBUG                                           1
