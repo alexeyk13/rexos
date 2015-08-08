@@ -475,7 +475,7 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, 
 
 #if (LPC_USB_USE_BOTH)
     if (port == USB_1)
-        __USB_REGS[port]->ENDPOINTLISTADDR = SRAM1_BASE + (sizeof(DQH) + sizeof(DTD)) * USB_EP_COUNT_MAX * 2;
+        __USB_REGS[port]->ENDPOINTLISTADDR = SRAM1_BASE + 2048;
     else
 #endif //LPC_USB_USE_BOTH
         __USB_REGS[port]->ENDPOINTLISTADDR = SRAM1_BASE;
