@@ -32,6 +32,7 @@ typedef struct  {
     HANDLE process;
 #if (LPC_I2C_TIMEOUT_MS)
     HANDLE timer;
+    bool timer_need_stop;
 #endif
     I2C_IO_MODE io_mode;
     I2C_STATE state;

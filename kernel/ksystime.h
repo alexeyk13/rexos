@@ -26,10 +26,8 @@ typedef struct {
     MAGIC;
     KTIMER timer;
     HANDLE owner;
-    unsigned int mode;
     unsigned int param;
     HAL hal;
-    SYSTIME time;
 } SOFT_TIMER;
 
 //called from process handler
@@ -46,7 +44,7 @@ void ksystime_hpet_setup(const CB_SVC_TIMER* cb_ktimer, void* cb_ktimer_param);
 
 void ksystime_soft_timer_create(SOFT_TIMER **timer, HANDLE param, HAL hal);
 void ksystime_soft_timer_destroy(SOFT_TIMER* timer);
-void ksystime_soft_timer_start(SOFT_TIMER* timer, SYSTIME* time, unsigned int mode);
+void ksystime_soft_timer_start(SOFT_TIMER* timer, SYSTIME* time);
 void ksystime_soft_timer_stop(SOFT_TIMER* timer);
 
 //called from startup

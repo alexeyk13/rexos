@@ -175,7 +175,7 @@ static void stm32_eth_conn_check(ETH_DRV* drv)
             ETH->DMAOMR &= ~(ETH_DMAOMR_SR | ETH_DMAOMR_ST);
         }
     }
-    timer_start_ms(drv->timer, 1000, 0);
+    timer_start_ms(drv->timer, 1000);
 }
 
 void stm32_eth_isr(int vector, void* param)

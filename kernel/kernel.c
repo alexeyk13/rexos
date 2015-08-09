@@ -100,7 +100,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         ksystime_soft_timer_create((SOFT_TIMER**)param1, param2, (HAL)param3);
         break;
     case SVC_SYSTIME_SOFT_TIMER_START:
-        ksystime_soft_timer_start((SOFT_TIMER*)param1, (SYSTIME*)param2, param3);
+        ksystime_soft_timer_start((SOFT_TIMER*)param1, (SYSTIME*)param2);
         break;
     case SVC_SYSTIME_SOFT_TIMER_STOP:
         ksystime_soft_timer_stop((SOFT_TIMER*)param1);

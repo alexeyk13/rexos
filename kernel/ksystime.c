@@ -186,8 +186,6 @@ void ksystime_soft_timer_timeout(void* param)
     ipc.param1 = timer->param;
     ipc.param2 = (unsigned int)timer;
     kipc_post_process(&ipc, (KPROCESS*)KERNEL_HANDLE);
-    if (timer->mode & TIMER_MODE_PERIODIC)
-        ksystime_timer_start_internal(&timer->timer, &timer->time);
 }
 
 void ksystime_soft_timer_create(SOFT_TIMER** timer, unsigned int param, HAL hal)
@@ -217,7 +215,7 @@ void ksystime_soft_timer_destroy(SOFT_TIMER *timer)
     kfree(timer);
 }
 
-void ksystime_soft_timer_start(SOFT_TIMER* timer, SYSTIME* time, unsigned int mode)
+void ksystime_soft_timer_start(SOFT_TIMER* timer, SYSTIME* time)
 {
     bool active;
     KPROCESS* process = kprocess_get_current();
@@ -232,12 +230,6 @@ void ksystime_soft_timer_start(SOFT_TIMER* timer, SYSTIME* time, unsigned int mo
         kprocess_error(process, ERROR_ALREADY_CONFIGURED);
         return;
     }
-    timer->mode = mode;
-    if (timer->mode & TIMER_MODE_PERIODIC)
-    {
-        timer->time.sec = time->sec;
-        timer->time.usec = time->usec;
-    }
     ksystime_timer_start_internal(&timer->timer, time);
 }
 
@@ -247,7 +239,6 @@ void ksystime_soft_timer_stop(SOFT_TIMER* timer)
     CHECK_MAGIC(timer, MAGIC_TIMER);
     //in case it shouting right now
     disable_interrupts();
-    timer->mode &= ~TIMER_MODE_PERIODIC;
     ksystime_timer_stop_internal(&timer->timer);
     enable_interrupts();
 }

@@ -47,8 +47,6 @@ typedef struct {
     unsigned int (*lib_systime_elapsed_us)(SYSTIME*);
 } LIB_SYSTIME;
 
-#define TIMER_MODE_PERIODIC                                                (1 << 0)
-
 /**
     \brief compare time.
     \param from: time from
@@ -169,42 +167,34 @@ HANDLE timer_create(unsigned int param, HAL hal);
     \brief start soft timer
     \param timer soft timer handle
     \param time pointer to SYSTIME structure
-    \param mode soft timer. Mode TIMER_MODE_PERIODIC is only supported for now.
     \retval none.
 */
-void timer_start(HANDLE timer, SYSTIME* time, unsigned int mode);
+void timer_start(HANDLE timer, SYSTIME* time);
 
 /**
     \brief start soft timer in ms units
     \param timer soft timer handle
     \param time_ms time in ms units
-    \param mode soft timer. Mode TIMER_MODE_PERIODIC is only supported for now.
     \retval none.
 */
-void timer_start_ms(HANDLE timer, unsigned int time_ms, unsigned int mode);
+void timer_start_ms(HANDLE timer, unsigned int time_ms);
 
 /**
     \brief start soft timer in us units
     \param timer soft timer handle
     \param time_ms time in ms units
-    \param mode soft timer. Mode TIMER_MODE_PERIODIC is only supported for now.
     \retval none.
 */
-void timer_start_us(HANDLE timer, unsigned int time_us, unsigned int mode);
+void timer_start_us(HANDLE timer, unsigned int time_us);
 
 /**
     \brief stop soft timer
     \param timer soft timer handle
+    \param param: application provided param
+    \param hal: HAL group
     \retval none.
 */
-void timer_stop(HANDLE timer);
-
-/**
-    \brief stop soft timer, isr version
-    \param timer soft timer handle
-    \retval none.
-*/
-void timer_istop(HANDLE timer);
+void timer_stop(HANDLE timer, unsigned int param, HAL hal);
 
 /**
     \brief destroy soft timer

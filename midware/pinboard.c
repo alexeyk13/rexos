@@ -87,7 +87,7 @@ static inline void pinboard_poll(PINBOARD* pinboard)
     int i;
     for (i = 0; i < array_size(pinboard->pins); ++i)
         poll_key(KEY_GET(pinboard->pins, i));
-    timer_start_ms(pinboard->timer, PINBOARD_POLL_TIME_MS, 0);
+    timer_start_ms(pinboard->timer, PINBOARD_POLL_TIME_MS);
 }
 
 static inline void pinboard_open(PINBOARD* pinboard, unsigned int pin, unsigned int mode, unsigned int long_ms, HANDLE process)
@@ -146,7 +146,7 @@ static inline void pinboard_init(PINBOARD* pinboard)
 {
     array_create(&pinboard->pins, sizeof(KEY), 1);
     pinboard->timer = timer_create(0, HAL_PINBOARD);
-    timer_start_ms(pinboard->timer, PINBOARD_POLL_TIME_MS, 0);
+    timer_start_ms(pinboard->timer, PINBOARD_POLL_TIME_MS);
 }
 
 static inline bool pinboard_request(PINBOARD* pinboard, IPC* ipc)

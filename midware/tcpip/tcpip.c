@@ -164,7 +164,7 @@ static inline void tcpip_open(TCPIP* tcpip, ETH_CONN_TYPE conn)
     ack(tcpip->eth, HAL_CMD(HAL_ETH, IPC_OPEN), 0, conn, 0);
     tcpip->active = true;
     tcpip->seconds = 0;
-    timer_start_ms(tcpip->timer, 1000, 0);
+    timer_start_ms(tcpip->timer, 1000);
 }
 
 static inline void tcpip_eth_rx(TCPIP* tcpip, IO* io, int param3)
@@ -247,7 +247,7 @@ static inline void tcpip_timer(TCPIP* tcpip)
     //forward to others
     arp_timer(tcpip, tcpip->seconds);
     icmp_timer(tcpip, tcpip->seconds);
-    timer_start_ms(tcpip->timer, 1000, 0);
+    timer_start_ms(tcpip->timer, 1000);
 }
 
 static inline bool tcpip_request(TCPIP* tcpip, IPC* ipc)

@@ -84,6 +84,15 @@ typedef struct {
  */
 
 /**
+    \brief remove IPCs from queue
+    \param process: process or ANY_HANDLE wildcard
+    \param cmd: command or ANY_CMD wildcard
+    \param param1: extra param, generally object handle or ANY_HANDLE wildcard
+    \retval number of removed IPCs
+*/
+unsigned int ipc_remove(HANDLE process, unsigned int cmd, unsigned int param1);
+
+/**
     \brief post IPC
     \param ipc: IPC structure
     \retval none

@@ -13,7 +13,7 @@
 
 #define IPC_ITEM(num)                           ((IPC*)((unsigned int)(__GLOBAL->process) + sizeof(PROCESS) + (num) * sizeof(IPC)))
 
-static inline int ipc_index(HANDLE wait_process, unsigned int cmd, unsigned int param1)
+static int ipc_index(HANDLE wait_process, unsigned int cmd, unsigned int param1)
 {
     int i;
     unsigned int head = __GLOBAL->process->ipcs.head;
@@ -24,7 +24,7 @@ static inline int ipc_index(HANDLE wait_process, unsigned int cmd, unsigned int 
     return -1;
 }
 
-IPC* ipc_peek(int index, IPC* ipc)
+static IPC* ipc_peek(int index, IPC* ipc)
 {
     //cmd, process, handle
     IPC tmp;
@@ -38,6 +38,16 @@ IPC* ipc_peek(int index, IPC* ipc)
     memcpy(ipc, IPC_ITEM(__GLOBAL->process->ipcs.tail), sizeof(IPC));
     rb_get(&__GLOBAL->process->ipcs);
     return ipc;
+}
+
+unsigned int ipc_remove(HANDLE process, unsigned int cmd, unsigned int param1)
+{
+    unsigned int count;
+    int index;
+    IPC tmp;
+    for(count = 0; (index = ipc_index(process, cmd, param1)) >= 0; ++count)
+        ipc_peek(index, &tmp);
+    return count;
 }
 
 void ipc_post(IPC* ipc)

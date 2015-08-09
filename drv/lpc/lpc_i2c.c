@@ -38,12 +38,20 @@ static const uint8_t __I2C_VECTORS[] =              {18, 19};
 
 #define I2C_CLEAR (I2C0_CONCLR_AAC_Msk | I2C0_CONCLR_SIC_Msk | I2C0_CONCLR_STAC_Msk)
 
-void lpc_i2c_isr_error(CORE* core, I2C_PORT port, int error)
+#if (LPC_I2C_TIMEOUT_MS)
+static void lpc_i2c_timer_istop(CORE* core, I2C_PORT port)
+{
+    ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_I2C, IPC_TIMEOUT), port, 0, 0);
+    core->i2c.i2cs[port]->timer_need_stop = true;
+}
+#endif //LPC_I2C_TIMEOUT_MS
+
+static void lpc_i2c_isr_error(CORE* core, I2C_PORT port, int error)
 {
     I2C* i2c = core->i2c.i2cs[port];
     __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
 #if (LPC_I2C_TIMEOUT_MS)
-    timer_istop(i2c->timer);
+    lpc_i2c_timer_istop(core, port);
 #endif
     iio_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (i2c->io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, error);
     i2c->io_mode = I2C_IO_MODE_IDLE;
@@ -91,7 +99,7 @@ static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
             {
                 __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
 #if (LPC_I2C_TIMEOUT_MS)
-                timer_istop(i2c->timer);
+                lpc_i2c_timer_istop(core, port);
 #endif
                 iio_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_WRITE), port, i2c->io, i2c->processed);
                 i2c->io_mode = I2C_IO_MODE_IDLE;
@@ -172,7 +180,7 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
         //stop transmission
         __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
 #if (LPC_I2C_TIMEOUT_MS)
-        timer_istop(i2c->timer);
+        lpc_i2c_timer_istop(core, port);
 #endif
         i2c->io->data_size = i2c->processed;
         iio_complete(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_READ), port, i2c->io);
@@ -229,6 +237,7 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int spe
         i2c = NULL;
         return;
     }
+    i2c->timer_need_stop = false;
 #endif
     i2c->io = NULL;
     i2c->io_mode = I2C_IO_MODE_IDLE;
@@ -330,7 +339,7 @@ static void lpc_i2c_io(CORE* core, IPC* ipc, bool read)
     //reset
     __I2C_REGS[port]->CONCLR = I2C_CLEAR;
 #if (LPC_I2C_TIMEOUT_MS)
-    timer_start_ms(i2c->timer, LPC_I2C_TIMEOUT_MS, 0);
+    timer_start_ms(i2c->timer, LPC_I2C_TIMEOUT_MS);
 #endif
 
     //set START
@@ -343,13 +352,16 @@ static inline void lpc_i2c_timeout(CORE* core, I2C_PORT port)
 {
     I2C_IO_MODE io_mode;
     I2C* i2c = core->i2c.i2cs[port];
+    if (i2c->timer_need_stop)
+    {
+        timer_stop(i2c->timer, port, HAL_I2C);
+        i2c->timer_need_stop = false;
+        return;
+    }
     __disable_irq();
     io_mode = i2c->io_mode;
     i2c->io_mode = I2C_IO_MODE_IDLE;
     __enable_irq();
-    //handled right now in isr
-    if (io_mode == I2C_IO_MODE_IDLE)
-        return;
     __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
     io_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, ERROR_TIMEOUT);
 }
