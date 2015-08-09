@@ -10,18 +10,33 @@
 #include <stdint.h>
 #include "../../userspace/sys.h"
 #include "../../userspace/uart.h"
+#include "../../userspace/io.h"
 #include "lpc_config.h"
 #if (MONOLITH_UART)
 #include "lpc_core.h"
 #endif
 
 typedef struct {
-    uint16_t error;
-    HANDLE tx_stream, tx_handle;
-    uint16_t tx_total, tx_chunk_pos, tx_chunk_size;
+    HANDLE tx_stream, tx_handle, rx_stream, rx_handle;
+    uint16_t tx_total, tx_chunk_pos, tx_chunk_size, rx_free;
     char tx_buf[UART_TX_BUF_SIZE];
-    HANDLE rx_stream, rx_handle;
-    uint16_t rx_free;
+} UART_STREAM;
+
+typedef struct {
+    IO* tx_io;
+    IO* rx_io;
+    unsigned int rx_max, tx_processed;
+    HANDLE rx_timer;
+    unsigned int rx_start_timeout, rx_interleaved_timeout;
+} UART_IO;
+
+typedef struct {
+    uint16_t error;
+    bool io_mode;
+    union {
+        UART_STREAM s;
+        UART_IO i;
+    };
 } UART;
 
 typedef struct {

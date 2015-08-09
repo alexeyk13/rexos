@@ -110,14 +110,14 @@ void lpc_uart_on_isr(int vector, void* param)
         break;
     case USART0_IIR_INTID_THRE:
         //transmit more
-        if ((__USART_REGS[port]->IER & USART0_IER_THREIE_Msk) && drv->uart.uarts[port]->tx_chunk_size)
+        if ((__USART_REGS[port]->IER & USART0_IER_THREIE_Msk) && drv->uart.uarts[port]->s.tx_chunk_size)
         {
-            while ((__USART_REGS[port]->LSR & USART0_LSR_THRE_Msk) && drv->uart.uarts[port]->tx_chunk_pos < drv->uart.uarts[port]->tx_chunk_size)
-                __USART_REGS[port]->THR = drv->uart.uarts[port]->tx_buf[drv->uart.uarts[port]->tx_chunk_pos++];
+            while ((__USART_REGS[port]->LSR & USART0_LSR_THRE_Msk) && drv->uart.uarts[port]->s.tx_chunk_pos < drv->uart.uarts[port]->s.tx_chunk_size)
+                __USART_REGS[port]->THR = drv->uart.uarts[port]->s.tx_buf[drv->uart.uarts[port]->s.tx_chunk_pos++];
             //no more
-            if (drv->uart.uarts[port]->tx_chunk_pos >= drv->uart.uarts[port]->tx_chunk_size)
+            if (drv->uart.uarts[port]->s.tx_chunk_pos >= drv->uart.uarts[port]->s.tx_chunk_size)
             {
-                drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
+                drv->uart.uarts[port]->s.tx_chunk_pos = drv->uart.uarts[port]->s.tx_chunk_size = 0;
                 ipc.process = process_iget_current();
                 ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
                 ipc.param1 = port;
@@ -176,14 +176,14 @@ void lpc_uart4_on_isr(int vector, void* param)
             ipc_ipost(&ipc);
         }
         //tx
-        if (__USART1_REGS[port - 1]->STAT & USART4_STAT_TXRDY && drv->uart.uarts[port]->tx_chunk_size)
+        if (__USART1_REGS[port - 1]->STAT & USART4_STAT_TXRDY && drv->uart.uarts[port]->s.tx_chunk_size)
         {
-            while ((__USART1_REGS[port - 1]->STAT & USART4_STAT_TXRDY) && drv->uart.uarts[port]->tx_chunk_pos < drv->uart.uarts[port]->tx_chunk_size)
-                __USART1_REGS[port - 1]->TXDAT = drv->uart.uarts[port]->tx_buf[drv->uart.uarts[port]->tx_chunk_pos++];
+            while ((__USART1_REGS[port - 1]->STAT & USART4_STAT_TXRDY) && drv->uart.uarts[port]->s.tx_chunk_pos < drv->uart.uarts[port]->s.tx_chunk_size)
+                __USART1_REGS[port - 1]->TXDAT = drv->uart.uarts[port]->s.tx_buf[drv->uart.uarts[port]->s.tx_chunk_pos++];
             //no more
-            if (drv->uart.uarts[port]->tx_chunk_pos >= drv->uart.uarts[port]->tx_chunk_size)
+            if (drv->uart.uarts[port]->s.tx_chunk_pos >= drv->uart.uarts[port]->s.tx_chunk_size)
             {
-                drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
+                drv->uart.uarts[port]->s.tx_chunk_pos = drv->uart.uarts[port]->s.tx_chunk_size = 0;
                 ipc.process = process_iget_current();
                 ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
                 ipc.param1 = port;
@@ -241,8 +241,52 @@ static inline void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, I
     }
 }
 
-void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
+static void lpc_uart_destroy(SHARED_UART_DRV* drv, UART_PORT port)
 {
+    if (drv->uart.uarts[port]->io_mode)
+    {
+        //TODO:
+    }
+    else
+    {
+        stream_close(drv->uart.uarts[port]->s.tx_handle);
+        stream_close(drv->uart.uarts[port]->s.rx_handle);
+        stream_destroy(drv->uart.uarts[port]->s.tx_stream);
+        stream_destroy(drv->uart.uarts[port]->s.rx_stream);
+    }
+    free(drv->uart.uarts[port]);
+    drv->uart.uarts[port] = NULL;
+}
+
+static inline bool lpc_uart_open_stream(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
+{
+    drv->uart.uarts[port]->s.tx_stream = INVALID_HANDLE;
+    drv->uart.uarts[port]->s.tx_handle = INVALID_HANDLE;
+    drv->uart.uarts[port]->s.rx_stream = INVALID_HANDLE;
+    drv->uart.uarts[port]->s.rx_handle = INVALID_HANDLE;
+    drv->uart.uarts[port]->s.tx_total = 0;
+    drv->uart.uarts[port]->s.tx_chunk_pos = drv->uart.uarts[port]->s.tx_chunk_size = 0;
+    if (mode & UART_TX_STREAM)
+    {
+        drv->uart.uarts[port]->s.tx_stream = stream_create(UART_STREAM_SIZE);
+        drv->uart.uarts[port]->s.tx_handle = stream_open(drv->uart.uarts[port]->s.tx_stream);
+        stream_listen(drv->uart.uarts[port]->s.tx_stream, port, HAL_UART);
+    }
+    if (mode & UART_RX_STREAM)
+    {
+        drv->uart.uarts[port]->s.rx_stream = stream_create(UART_STREAM_SIZE);
+        drv->uart.uarts[port]->s.rx_handle = stream_open(drv->uart.uarts[port]->s.rx_stream);
+        drv->uart.uarts[port]->s.rx_free = stream_get_free(drv->uart.uarts[port]->s.rx_stream);
+    }
+    if (((mode & UART_TX_STREAM) && (drv->uart.uarts[port]->s.tx_handle == INVALID_HANDLE)) ||
+        ((mode & UART_RX_STREAM) && (drv->uart.uarts[port]->s.rx_handle == INVALID_HANDLE)))
+        return false;
+    return true;
+}
+
+static inline void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
+{
+    bool ok;
     if (drv->uart.uarts[port] != NULL)
     {
         error(ERROR_ALREADY_CONFIGURED);
@@ -255,53 +299,19 @@ void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
         return;
     }
     drv->uart.uarts[port]->error = ERROR_OK;
-    drv->uart.uarts[port]->tx_stream = INVALID_HANDLE;
-    drv->uart.uarts[port]->tx_handle = INVALID_HANDLE;
-    drv->uart.uarts[port]->rx_stream = INVALID_HANDLE;
-    drv->uart.uarts[port]->rx_handle = INVALID_HANDLE;
-    drv->uart.uarts[port]->tx_total = 0;
-    drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
-    if (mode & FILE_MODE_WRITE)
+    drv->uart.uarts[port]->io_mode = ((mode & UART_MODE) == UART_MODE_IO);
+
+    if (drv->uart.uarts[port]->io_mode)
     {
-        drv->uart.uarts[port]->tx_stream = stream_create(UART_STREAM_SIZE);
-        if (drv->uart.uarts[port]->tx_stream == INVALID_HANDLE)
-        {
-            free(drv->uart.uarts[port]);
-            drv->uart.uarts[port] = NULL;
-            return;
-        }
-        drv->uart.uarts[port]->tx_handle = stream_open(drv->uart.uarts[port]->tx_stream);
-        if (drv->uart.uarts[port]->tx_handle == INVALID_HANDLE)
-        {
-            stream_destroy(drv->uart.uarts[port]->tx_stream);
-            free(drv->uart.uarts[port]);
-            drv->uart.uarts[port] = NULL;
-            return;
-        }
-        stream_listen(drv->uart.uarts[port]->tx_stream, port, HAL_UART);
+        //TODO:
+        ok = true;
     }
-    if (mode & FILE_MODE_READ)
+    else
+        ok = lpc_uart_open_stream(drv, port, mode);
+    if (!ok)
     {
-        drv->uart.uarts[port]->rx_stream = stream_create(UART_STREAM_SIZE);
-        if (drv->uart.uarts[port]->rx_stream == INVALID_HANDLE)
-        {
-            stream_close(drv->uart.uarts[port]->tx_handle);
-            stream_destroy(drv->uart.uarts[port]->tx_stream);
-            free(drv->uart.uarts[port]);
-            drv->uart.uarts[port] = NULL;
-            return;
-        }
-        drv->uart.uarts[port]->rx_handle = stream_open(drv->uart.uarts[port]->rx_stream);
-        if (drv->uart.uarts[port]->rx_handle == INVALID_HANDLE)
-        {
-            stream_destroy(drv->uart.uarts[port]->rx_stream);
-            stream_close(drv->uart.uarts[port]->tx_handle);
-            stream_destroy(drv->uart.uarts[port]->tx_stream);
-            free(drv->uart.uarts[port]);
-            drv->uart.uarts[port] = NULL;
-            return;
-        }
-        drv->uart.uarts[port]->rx_free = stream_get_free(drv->uart.uarts[port]->rx_stream);
+        lpc_uart_destroy(drv, port);
+        return;
     }
 
     //power up
@@ -316,7 +326,7 @@ void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
     if (port > UART_0)
     {
         LPC_SYSCON->PRESETCTRL |= 1 << __UART_RESET_PINS[port - 1];
-        if (mode & FILE_MODE_READ)
+        if (mode & UART_RX_STREAM)
             __USART1_REGS[port - 1]->INTENCSET = USART4_INTENSET_RXRDYEN | USART4_INTENSET_OVERRUNEN | USART4_INTENSET_FRAMERREN
                                           | USART4_INTENSET_PARITTERREN | USART4_INTENSET_RXNOISEEN | USART4_INTENSET_DELTARXBRKEN;
     }
@@ -395,8 +405,7 @@ static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
     LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << __UART_POWER_PINS[port]);
 #endif //LPC11Uxx
 
-    free(drv->uart.uarts[port]);
-    drv->uart.uarts[port] = NULL;
+    lpc_uart_destroy(drv, port);
 }
 
 static inline void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
@@ -417,17 +426,17 @@ static inline void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
         __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
         __USART_REGS[port]->FCR |= USART0_FCR_TXFIFORES_Msk | USART0_FCR_RXFIFORES_Msk;
     }
-    if (drv->uart.uarts[port]->tx_stream != INVALID_HANDLE)
+    if (drv->uart.uarts[port]->s.tx_stream != INVALID_HANDLE)
     {
-        stream_flush(drv->uart.uarts[port]->tx_stream);
-        stream_listen(drv->uart.uarts[port]->tx_stream, port, HAL_UART);
-        drv->uart.uarts[port]->tx_total = 0;
+        stream_flush(drv->uart.uarts[port]->s.tx_stream);
+        stream_listen(drv->uart.uarts[port]->s.tx_stream, port, HAL_UART);
+        drv->uart.uarts[port]->s.tx_total = 0;
         __disable_irq();
-        drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
+        drv->uart.uarts[port]->s.tx_chunk_pos = drv->uart.uarts[port]->s.tx_chunk_size = 0;
         __enable_irq();
     }
-    if (drv->uart.uarts[port]->rx_stream != INVALID_HANDLE)
-        stream_flush(drv->uart.uarts[port]->rx_stream);
+    if (drv->uart.uarts[port]->s.rx_stream != INVALID_HANDLE)
+        stream_flush(drv->uart.uarts[port]->s.rx_stream);
     drv->uart.uarts[port]->error = ERROR_OK;
 }
 
@@ -438,7 +447,7 @@ static inline HANDLE lpc_uart_get_tx_stream(SHARED_UART_DRV* drv, UART_PORT port
         error(ERROR_NOT_ACTIVE);
         return INVALID_HANDLE;
     }
-    return drv->uart.uarts[port]->tx_stream;
+    return drv->uart.uarts[port]->s.tx_stream;
 }
 
 static inline HANDLE lpc_uart_get_rx_stream(SHARED_UART_DRV* drv, UART_PORT port)
@@ -448,7 +457,7 @@ static inline HANDLE lpc_uart_get_rx_stream(SHARED_UART_DRV* drv, UART_PORT port
         error(ERROR_NOT_ACTIVE);
         return INVALID_HANDLE;
     }
-    return drv->uart.uarts[port]->rx_stream;
+    return drv->uart.uarts[port]->s.rx_stream;
 }
 
 static inline uint16_t lpc_uart_get_last_error(SHARED_UART_DRV* drv, UART_PORT port)
@@ -476,19 +485,19 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param);
 static inline void lpc_uart_write(SHARED_UART_DRV* drv, UART_PORT port, unsigned int total)
 {
     if (total)
-        drv->uart.uarts[port]->tx_total = total;
-    if (drv->uart.uarts[port]->tx_total == 0)
-        drv->uart.uarts[port]->tx_total = stream_get_size(drv->uart.uarts[port]->tx_stream);
-    if (drv->uart.uarts[port]->tx_total)
+        drv->uart.uarts[port]->s.tx_total = total;
+    if (drv->uart.uarts[port]->s.tx_total == 0)
+        drv->uart.uarts[port]->s.tx_total = stream_get_size(drv->uart.uarts[port]->s.tx_stream);
+    if (drv->uart.uarts[port]->s.tx_total)
     {
-        unsigned int to_read = drv->uart.uarts[port]->tx_total;
-        if (drv->uart.uarts[port]->tx_total > UART_TX_BUF_SIZE)
+        unsigned int to_read = drv->uart.uarts[port]->s.tx_total;
+        if (drv->uart.uarts[port]->s.tx_total > UART_TX_BUF_SIZE)
             to_read = UART_TX_BUF_SIZE;
-        if (stream_read(drv->uart.uarts[port]->tx_handle, drv->uart.uarts[port]->tx_buf, to_read))
+        if (stream_read(drv->uart.uarts[port]->s.tx_handle, drv->uart.uarts[port]->s.tx_buf, to_read))
         {
-            drv->uart.uarts[port]->tx_chunk_pos = 0;
-            drv->uart.uarts[port]->tx_chunk_size = to_read;
-            drv->uart.uarts[port]->tx_total -= to_read;
+            drv->uart.uarts[port]->s.tx_chunk_pos = 0;
+            drv->uart.uarts[port]->s.tx_chunk_size = to_read;
+            drv->uart.uarts[port]->s.tx_total -= to_read;
             //start transaction
 #ifdef LPC11U6x
             if (port > UART_0)
@@ -503,20 +512,20 @@ static inline void lpc_uart_write(SHARED_UART_DRV* drv, UART_PORT port, unsigned
         }
     }
     else
-        stream_listen(drv->uart.uarts[port]->tx_stream, port, HAL_UART);
+        stream_listen(drv->uart.uarts[port]->s.tx_stream, port, HAL_UART);
 
 }
 
 static inline void lpc_uart_read(SHARED_UART_DRV* drv, UART_PORT port, char c)
 {
     //caching calls to svc
-    if (drv->uart.uarts[port]->rx_free == 0)
-        (drv->uart.uarts[port]->rx_free = stream_get_free(drv->uart.uarts[port]->rx_stream));
+    if (drv->uart.uarts[port]->s.rx_free == 0)
+        (drv->uart.uarts[port]->s.rx_free = stream_get_free(drv->uart.uarts[port]->s.rx_stream));
     //if stream is full, char will be discarded
-    if (drv->uart.uarts[port]->rx_free)
+    if (drv->uart.uarts[port]->s.rx_free)
     {
-        stream_write(drv->uart.uarts[port]->rx_handle, &c, 1);
-        drv->uart.uarts[port]->rx_free--;
+        stream_write(drv->uart.uarts[port]->s.rx_handle, &c, 1);
+        drv->uart.uarts[port]->s.rx_free--;
     }
 }
 

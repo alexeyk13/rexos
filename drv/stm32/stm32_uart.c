@@ -255,7 +255,7 @@ void stm32_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
     drv->uart.uarts[port]->tx_total = 0;
     drv->uart.uarts[port]->tx_chunk_pos = drv->uart.uarts[port]->tx_chunk_size = 0;
 
-    if (mode & FILE_MODE_WRITE)
+    if (mode & UART_TX_STREAM)
     {
         drv->uart.uarts[port]->tx_stream = stream_create(UART_STREAM_SIZE);
         if (drv->uart.uarts[port]->tx_stream == INVALID_HANDLE)
@@ -274,7 +274,7 @@ void stm32_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
         }
         stream_listen(drv->uart.uarts[port]->tx_stream, port, HAL_UART);
     }
-    if (mode & FILE_MODE_READ)
+    if (mode & UART_RX_STREAM)
     {
         drv->uart.uarts[port]->rx_stream = stream_create(UART_STREAM_SIZE);
         if (drv->uart.uarts[port]->rx_stream == INVALID_HANDLE)
@@ -306,7 +306,7 @@ void stm32_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
     //enable core
     UART_REGS[port]->CR1 |= USART_CR1_UE;
     //enable receiver
-    if (mode & FILE_MODE_READ)
+    if (mode & UART_RX_STREAM)
         UART_REGS[port]->CR1 |= USART_CR1_RE | USART_CR1_RXNEIE;
 
     //enable interrupts

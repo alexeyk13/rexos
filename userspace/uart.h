@@ -8,10 +8,7 @@
 #define UART_H
 
 #include <stdint.h>
-#include "sys.h"
-#include "cc_macro.h"
 #include "ipc.h"
-#include "sys_config.h"
 
 typedef struct {
     //baudrate
@@ -33,46 +30,22 @@ typedef enum {
     IPC_UART_MAX,
 } UART_IPCS;
 
-//used internally
-__STATIC_INLINE void uart_encode_baudrate(BAUD* baudrate, IPC* ipc)
-{
-    ipc->param2 = baudrate->baud;
-    ipc->param3 = (baudrate->data_bits << 16) | (baudrate->parity << 8) | baudrate->stop_bits;
-}
+#define UART_RX_STREAM                          (1 << 0)
+#define UART_TX_STREAM                          (1 << 1)
+#define UART_MODE                               (1 << 2)
+#define UART_MODE_STREAM                        (0 << 2)
+#define UART_MODE_IO                            (1 << 2)
 
-__STATIC_INLINE void uart_decode_baudrate(IPC* ipc, BAUD* baudrate)
-{
-    baudrate->baud = ipc->param2;
-    baudrate->data_bits = (ipc->param3 >> 16) & 0xff;
-    baudrate->parity = (ipc->param3 >> 8) & 0xff;
-    baudrate->stop_bits = (ipc->param3) & 0xff;
-}
+//used internally by driver
+void uart_encode_baudrate(BAUD* baudrate, IPC* ipc);
+void uart_decode_baudrate(IPC* ipc, BAUD* baudrate);
+//dbg related
+void uart_setup_printk(int num);
+void uart_setup_stdout(int num);
+void uart_setup_stdin(int num);
 
-__STATIC_INLINE void uart_setup_printk(int num)
-{
-    ack(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_UART_SETUP_PRINTK), num, 0, 0);
-}
-
-__STATIC_INLINE void uart_setup_stdout(int num)
-{
-    object_set(SYS_OBJ_STDOUT, get(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_GET_TX_STREAM), num, 0, 0));
-}
-
-__STATIC_INLINE void uart_setup_stdin(int num)
-{
-    object_set(SYS_OBJ_STDIN, get(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_GET_RX_STREAM), num, 0, 0));
-}
-
-__STATIC_INLINE void uart_set_baudrate(int num, BAUD* baudrate)
-{
-    IPC ipc;
-    uart_encode_baudrate(baudrate, &ipc);
-    ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_SET_BAUDRATE);
-    ipc.param1 = num;
-    ipc.process = object_get(SYS_OBJ_UART);
-    call(&ipc);
-}
-
-
+void uart_open(int num, unsigned int mode);
+void uart_close(int num);
+void uart_set_baudrate(int num, BAUD* baudrate);
 
 #endif // UART_H
