@@ -205,7 +205,7 @@ static inline void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, I
         return;
     }
     uart_decode_baudrate(ipc, &baudrate);
-    unsigned int divider = get_core_clock(drv) / 16 / baudrate.baud;
+    unsigned int divider = get_core_clock(drv) / (((__USART_REGS[port]->OSR >> 4) & 0x7ff) + 1 ) / baudrate.baud;
 #ifdef LPC11U6x
     if (port > UART_0)
     {
@@ -342,10 +342,16 @@ void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
     else
 #endif
     {
-        irq_register(__UART_VECTORS[port], lpc_uart_on_isr, (void*)drv);
+        //TODO: for smartcard
+        if (port > UART_0)
+            irq_register(__UART_VECTORS[port], lpc_uart_on_isr, (void*)drv);
     }
-    NVIC_EnableIRQ(__UART_VECTORS[port]);
-    NVIC_SetPriority(__UART_VECTORS[port], 2);
+    //TODO: for smartcard
+    if (port > UART_0)
+        NVIC_EnableIRQ(__UART_VECTORS[port]);
+    //TODO: for smartcard
+    if (port > UART_0)
+        NVIC_SetPriority(__UART_VECTORS[port], 2);
 }
 
 static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
