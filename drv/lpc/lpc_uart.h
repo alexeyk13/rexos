@@ -26,8 +26,9 @@ typedef struct {
     IO* tx_io;
     IO* rx_io;
     unsigned int rx_max, tx_processed;
-    HANDLE rx_timer;
-    unsigned int rx_start_timeout, rx_interleaved_timeout;
+    HANDLE tx_process, rx_process, rx_timer;
+    unsigned int rx_char_timeout, rx_interleaved_timeout;
+    bool rx_isr;
 } UART_IO;
 
 typedef struct {

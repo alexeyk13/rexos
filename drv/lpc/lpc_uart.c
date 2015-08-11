@@ -71,11 +71,90 @@ static const LPC_USARTn_Type_P __USART_REGS[UARTS_COUNT] =      {LPC_USART0, (LP
 
 #endif
 
-void lpc_uart_on_isr(int vector, void* param)
+static bool lpc_uart_rx_isr(SHARED_UART_DRV* drv, UART_PORT port, uint8_t c)
+{
+    bool res = true;
+    UART* uart = drv->uart.uarts[port];
+#if (UART_IO_MODE_SUPPORT)
+    if (drv->uart.uarts[port]->io_mode)
+    {
+        if (uart->i.rx_io)
+        {
+            if (uart->i.rx_io->data_size < uart->i.rx_max)
+                ((uint8_t*)io_data(uart->i.rx_io))[uart->i.rx_io->data_size++] = c;
+            //max size limit
+            if (uart->i.rx_io->data_size >= uart->i.rx_max)
+            {
+                iio_complete(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, uart->i.rx_io);
+                uart->i.rx_io = NULL;
+                res = false;
+            }
+        }
+        uart->i.rx_isr = true;
+        //first char? force to set interleaved timeout
+        if (uart->i.rx_io->data_size == 1)
+            ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_UART, IPC_TIMEOUT), port, 0, 0);
+    }
+    else
+#endif //UART_IO_MODE_SUPPORT
+        ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_UART, IPC_UART_ISR_RX), port, 0, c);
+    return res;
+}
+
+static bool lpc_uart_tx_isr(SHARED_UART_DRV* drv, UART_PORT port, uint8_t* c)
 {
     IPC ipc;
+    bool res = false;
+    UART* uart = drv->uart.uarts[port];
+#if (UART_IO_MODE_SUPPORT)
+    if (uart->io_mode)
+    {
+        if (uart->i.tx_io)
+        {
+            if (uart->i.tx_processed < uart->i.tx_io->data_size)
+            {
+                *c = ((uint8_t*)io_data(uart->i.tx_io))[uart->i.tx_processed++];
+                res = true;
+            }
+            //no more
+            if (uart->i.tx_processed >= uart->i.tx_io->data_size)
+            {
+                iio_complete(uart->i.tx_process, HAL_IO_CMD(HAL_UART, IPC_WRITE), port, uart->i.tx_io);
+                uart->i.tx_io = NULL;
+            }
+        }
+    }
+    else
+#endif //UART_IO_MODE_SUPPORT
+    {
+        if (uart->s.tx_chunk_size)
+        {
+            if (uart->s.tx_chunk_pos < uart->s.tx_chunk_size)
+            {
+                *c = uart->s.tx_buf[uart->s.tx_chunk_pos++];
+                res = true;
+            }
+            //no more
+            if (uart->s.tx_chunk_pos >= uart->s.tx_chunk_size)
+            {
+                uart->s.tx_chunk_size = 0;
+                ipc.process = process_iget_current();
+                ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
+                ipc.param1 = port;
+                ipc.param3 = 0;
+                ipc_ipost(&ipc);
+            }
+        }
+    }
+    return res;
+}
+
+void lpc_uart_on_isr(int vector, void* param)
+{
     unsigned int lsr;
     int i;
+    uint8_t c;
+    bool more;
     UART_PORT port = UART_0;
     SHARED_UART_DRV* drv = (SHARED_UART_DRV*)param;
     if (vector != __UART_VECTORS[UART_0])
@@ -85,6 +164,7 @@ void lpc_uart_on_isr(int vector, void* param)
                 port = i;
                 break;
             }
+    UART* uart = drv->uart.uarts[port];
 
     switch (__USART_REGS[port]->IIR & USART0_IIR_INTID_Msk)
     {
@@ -92,42 +172,26 @@ void lpc_uart_on_isr(int vector, void* param)
         //decode error, if any
         lsr = __USART_REGS[port]->LSR;
         if (lsr & USART0_LSR_OE_Msk)
-            drv->uart.uarts[port]->error = ERROR_OVERFLOW;
+            uart->error = ERROR_OVERFLOW;
         if (lsr & USART0_LSR_PE_Msk)
-            drv->uart.uarts[port]->error = ERROR_UART_PARITY;
+            uart->error = ERROR_UART_PARITY;
         if (lsr & USART0_LSR_FE_Msk)
-            drv->uart.uarts[port]->error = ERROR_UART_FRAME;
+            uart->error = ERROR_UART_FRAME;
         if (lsr & USART0_LSR_BI_Msk)
-            drv->uart.uarts[port]->error = ERROR_UART_BREAK;
+            uart->error = ERROR_UART_BREAK;
         break;
     case USART0_IIR_INTID_RDA:
-        //receive data
-        ipc.param3 = __USART_REGS[port]->RBR;
-        ipc.process = process_iget_current();
-        ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_RX);
-        ipc.param1 = port;
-        ipc_ipost(&ipc);
+        //need more data?
+        if (!lpc_uart_rx_isr(drv, port, __USART_REGS[port]->RBR))
+            __USART_REGS[port]->IER &= ~USART0_IER_RBRIE_Msk;
         break;
     case USART0_IIR_INTID_THRE:
         //transmit more
-        if ((__USART_REGS[port]->IER & USART0_IER_THREIE_Msk) && drv->uart.uarts[port]->s.tx_chunk_size)
-        {
-            while ((__USART_REGS[port]->LSR & USART0_LSR_THRE_Msk) && drv->uart.uarts[port]->s.tx_chunk_pos < drv->uart.uarts[port]->s.tx_chunk_size)
-                __USART_REGS[port]->THR = drv->uart.uarts[port]->s.tx_buf[drv->uart.uarts[port]->s.tx_chunk_pos++];
-            //no more
-            if (drv->uart.uarts[port]->s.tx_chunk_pos >= drv->uart.uarts[port]->s.tx_chunk_size)
-            {
-                drv->uart.uarts[port]->s.tx_chunk_pos = drv->uart.uarts[port]->s.tx_chunk_size = 0;
-                ipc.process = process_iget_current();
-                ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
-                ipc.param1 = port;
-                ipc.param3 = 0;
-                ipc_ipost(&ipc);
-                __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
-            }
-        }
-        //transmission completed and no more data. Mask interrupt
-        else
+        more = true;
+        while ((__USART_REGS[port]->LSR & USART0_LSR_THRE_Msk) && (more = lpc_uart_tx_isr(drv, port, &c)))
+                __USART_REGS[port]->THR = c;
+        //no more? mask interrupt
+        if (!more)
             __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
         break;
     }
@@ -136,8 +200,9 @@ void lpc_uart_on_isr(int vector, void* param)
 #ifdef LPC11U6x
 void lpc_uart4_on_isr(int vector, void* param)
 {
-    IPC ipc;
     unsigned int lsr;
+    uint8_t c;
+    bool more;
     //find port by vector
     UART_PORT port;
     SHARED_UART_DRV* drv = (SHARED_UART_DRV*)param;
@@ -145,10 +210,11 @@ void lpc_uart4_on_isr(int vector, void* param)
         port = UART_1;
     else
         port = UART_3;
+    UART* uart = drv->uart.uarts[port];
     for (i = 0; i < 2; ++i)
     {
         port = (vector == __UART_VECTORS[1] ? UART_1 : UART_2) + i * 2;
-        if (drv->uart.uarts[port] == NULL)
+        if (uart == NULL)
             continue;
 
         //error condition
@@ -168,29 +234,16 @@ void lpc_uart4_on_isr(int vector, void* param)
         }
         //ready to rx
         if (__USART1_REGS[port - 1]->STAT & USART4_STAT_RXRDY)
-        {
-            ipc.param3 = __USART1_REGS[port - 1]->RXDAT;
-            ipc.process = process_iget_current();
-            ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_RX);
-            ipc.param1 = port;
-            ipc_ipost(&ipc);
-        }
+            lpc_uart_rx_isr(drv, port, __USART1_REGS[port - 1]->RXDAT);
         //tx
-        if (__USART1_REGS[port - 1]->STAT & USART4_STAT_TXRDY && drv->uart.uarts[port]->s.tx_chunk_size)
+        if (__USART1_REGS[port - 1]->INTEN & USART4_INTENSET_TXRDYEN)
         {
-            while ((__USART1_REGS[port - 1]->STAT & USART4_STAT_TXRDY) && drv->uart.uarts[port]->s.tx_chunk_pos < drv->uart.uarts[port]->s.tx_chunk_size)
-                __USART1_REGS[port - 1]->TXDAT = drv->uart.uarts[port]->s.tx_buf[drv->uart.uarts[port]->s.tx_chunk_pos++];
-            //no more
-            if (drv->uart.uarts[port]->s.tx_chunk_pos >= drv->uart.uarts[port]->s.tx_chunk_size)
-            {
-                drv->uart.uarts[port]->s.tx_chunk_pos = drv->uart.uarts[port]->s.tx_chunk_size = 0;
-                ipc.process = process_iget_current();
-                ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
-                ipc.param1 = port;
-                ipc.param3 = 0;
-                ipc_ipost(&ipc);
-                LPC_USART->IER &= ~USART0_IER_THRINTEN_Msk;
-            }
+            more = true;
+            while ((__USART1_REGS[port - 1]->STAT & USART4_STAT_TXRDY) &&  (more = lpc_uart_tx_isr(drv, port, &c)))
+                __USART1_REGS[port - 1]->TXDAT = c;
+            //no more? mask interrupt
+            if (!more)
+                __USART1_REGS[port - 1]->INTENCLR = USART4_INTENSET_TXRDYEN;
         }
     }
 }
@@ -243,11 +296,13 @@ static inline void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, I
 
 static void lpc_uart_destroy(SHARED_UART_DRV* drv, UART_PORT port)
 {
+#if (UART_IO_MODE_SUPPORT)
     if (drv->uart.uarts[port]->io_mode)
     {
-        //TODO:
+        timer_destroy(drv->uart.uarts[port]->i.rx_timer);
     }
     else
+#endif //UART_IO_MODE_SUPPORT
     {
         stream_close(drv->uart.uarts[port]->s.tx_handle);
         stream_close(drv->uart.uarts[port]->s.rx_handle);
@@ -281,8 +336,21 @@ static inline bool lpc_uart_open_stream(SHARED_UART_DRV* drv, UART_PORT port, un
     if (((mode & UART_TX_STREAM) && (drv->uart.uarts[port]->s.tx_handle == INVALID_HANDLE)) ||
         ((mode & UART_RX_STREAM) && (drv->uart.uarts[port]->s.rx_handle == INVALID_HANDLE)))
         return false;
+    if (mode & UART_RX_STREAM)
+        __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
     return true;
 }
+
+#if (UART_IO_MODE_SUPPORT)
+static inline bool lpc_uart_open_io(SHARED_UART_DRV* drv, UART_PORT port)
+{
+    drv->uart.uarts[port]->i.tx_io = drv->uart.uarts[port]->i.rx_io = NULL;
+    drv->uart.uarts[port]->i.rx_timer = timer_create(port, HAL_UART);
+    drv->uart.uarts[port]->i.rx_char_timeout = UART_CHAR_TIMEOUT_MS;
+    drv->uart.uarts[port]->i.rx_interleaved_timeout = UART_INTERLEAVED_TIMEOUT_MS;
+    return drv->uart.uarts[port]->i.rx_timer != INVALID_HANDLE;
+}
+#endif //UART_IO_MODE_SUPPORT
 
 static inline void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
 {
@@ -303,8 +371,11 @@ static inline void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned 
 
     if (drv->uart.uarts[port]->io_mode)
     {
-        //TODO:
-        ok = true;
+#if (UART_IO_MODE_SUPPORT)
+        ok = lpc_uart_open_io(drv, port);
+#else
+        ok = false;
+#endif //UART_IO_MODE_SUPPORT
     }
     else
         ok = lpc_uart_open_stream(drv, port, mode);
@@ -352,16 +423,64 @@ static inline void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned 
     else
 #endif
     {
-        //TODO: for smartcard
-        if (port > UART_0)
             irq_register(__UART_VECTORS[port], lpc_uart_on_isr, (void*)drv);
     }
-    //TODO: for smartcard
+    NVIC_EnableIRQ(__UART_VECTORS[port]);
+    NVIC_SetPriority(__UART_VECTORS[port], 2);
+}
+
+static void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
+{
+    if (drv->uart.uarts[port] == NULL)
+    {
+        error(ERROR_NOT_ACTIVE);
+        return;
+    }
+#ifdef LPC11U6x
     if (port > UART_0)
-        NVIC_EnableIRQ(__UART_VECTORS[port]);
-    //TODO: for smartcard
-    if (port > UART_0)
-        NVIC_SetPriority(__UART_VECTORS[port], 2);
+    {
+        __USART1_REGS[port - 1]->INTENCLR = USART4_INTENSET_TXRDYEN;
+    }
+    else
+#endif
+    {
+        __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
+        __USART_REGS[port]->FCR |= USART0_FCR_TXFIFORES_Msk | USART0_FCR_RXFIFORES_Msk;
+    }
+#if (UART_IO_MODE_SUPPORT)
+    if (drv->uart.uarts[port]->io_mode)
+    {
+        IO* rx_io;
+        IO* tx_io;
+        __disable_irq();
+        rx_io = drv->uart.uarts[port]->i.rx_io;
+        drv->uart.uarts[port]->i.rx_io = NULL;
+        tx_io = drv->uart.uarts[port]->i.tx_io;
+        drv->uart.uarts[port]->i.tx_io = NULL;
+        __enable_irq();
+        if (rx_io)
+            io_complete_ex(drv->uart.uarts[port]->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, rx_io, ERROR_IO_CANCELLED);
+        if (tx_io)
+            io_complete_ex(drv->uart.uarts[port]->i.tx_process, HAL_IO_CMD(HAL_UART, IPC_WRITE), port, tx_io, ERROR_IO_CANCELLED);
+        timer_stop(drv->uart.uarts[port]->i.rx_timer, port, HAL_UART);
+        __USART_REGS[port]->IER &= ~USART0_IER_RBRIE_Msk;
+    }
+    else
+#endif //UART_IO_MODE_SUPPORT
+    {
+        if (drv->uart.uarts[port]->s.tx_stream != INVALID_HANDLE)
+        {
+            stream_flush(drv->uart.uarts[port]->s.tx_stream);
+            stream_listen(drv->uart.uarts[port]->s.tx_stream, port, HAL_UART);
+            drv->uart.uarts[port]->s.tx_total = 0;
+            __disable_irq();
+            drv->uart.uarts[port]->s.tx_chunk_pos = drv->uart.uarts[port]->s.tx_chunk_size = 0;
+            __enable_irq();
+        }
+        if (drv->uart.uarts[port]->s.rx_stream != INVALID_HANDLE)
+            stream_flush(drv->uart.uarts[port]->s.rx_stream);
+    }
+    drv->uart.uarts[port]->error = ERROR_OK;
 }
 
 static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
@@ -405,39 +524,8 @@ static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
     LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << __UART_POWER_PINS[port]);
 #endif //LPC11Uxx
 
+    lpc_uart_flush(drv, port);
     lpc_uart_destroy(drv, port);
-}
-
-static inline void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
-{
-    if (drv->uart.uarts[port] == NULL)
-    {
-        error(ERROR_NOT_ACTIVE);
-        return;
-    }
-#ifdef LPC11U6x
-    if (port > UART_0)
-    {
-        __USART1_REGS[port - 1]->INTENCLR = USART4_INTENSET_TXRDYEN;
-    }
-    else
-#endif
-    {
-        __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
-        __USART_REGS[port]->FCR |= USART0_FCR_TXFIFORES_Msk | USART0_FCR_RXFIFORES_Msk;
-    }
-    if (drv->uart.uarts[port]->s.tx_stream != INVALID_HANDLE)
-    {
-        stream_flush(drv->uart.uarts[port]->s.tx_stream);
-        stream_listen(drv->uart.uarts[port]->s.tx_stream, port, HAL_UART);
-        drv->uart.uarts[port]->s.tx_total = 0;
-        __disable_irq();
-        drv->uart.uarts[port]->s.tx_chunk_pos = drv->uart.uarts[port]->s.tx_chunk_size = 0;
-        __enable_irq();
-    }
-    if (drv->uart.uarts[port]->s.rx_stream != INVALID_HANDLE)
-        stream_flush(drv->uart.uarts[port]->s.rx_stream);
-    drv->uart.uarts[port]->error = ERROR_OK;
 }
 
 static inline HANDLE lpc_uart_get_tx_stream(SHARED_UART_DRV* drv, UART_PORT port)
@@ -447,6 +535,13 @@ static inline HANDLE lpc_uart_get_tx_stream(SHARED_UART_DRV* drv, UART_PORT port
         error(ERROR_NOT_ACTIVE);
         return INVALID_HANDLE;
     }
+#if (UART_IO_MODE_SUPPORT)
+    if (drv->uart.uarts[port]->io_mode)
+    {
+        error(ERROR_INVALID_MODE);
+        return INVALID_HANDLE;
+    }
+#endif //UART_IO_MODE_SUPPORT
     return drv->uart.uarts[port]->s.tx_stream;
 }
 
@@ -457,6 +552,13 @@ static inline HANDLE lpc_uart_get_rx_stream(SHARED_UART_DRV* drv, UART_PORT port
         error(ERROR_NOT_ACTIVE);
         return INVALID_HANDLE;
     }
+#if (UART_IO_MODE_SUPPORT)
+    if (drv->uart.uarts[port]->io_mode)
+    {
+        error(ERROR_INVALID_MODE);
+        return INVALID_HANDLE;
+    }
+#endif //UART_IO_MODE_SUPPORT
     return drv->uart.uarts[port]->s.rx_stream;
 }
 
@@ -495,20 +597,24 @@ static inline void lpc_uart_write(SHARED_UART_DRV* drv, UART_PORT port, unsigned
             to_read = UART_TX_BUF_SIZE;
         if (stream_read(drv->uart.uarts[port]->s.tx_handle, drv->uart.uarts[port]->s.tx_buf, to_read))
         {
-            drv->uart.uarts[port]->s.tx_chunk_pos = 0;
-            drv->uart.uarts[port]->s.tx_chunk_size = to_read;
+            drv->uart.uarts[port]->s.tx_chunk_pos = 1;
             drv->uart.uarts[port]->s.tx_total -= to_read;
-            //start transaction
+            //prepare
 #ifdef LPC11U6x
             if (port > UART_0)
-            {
-                __USART1_REGS[port - 1]->INTENSET = USART4_INTENSET_TXRDYEN;
-            }
+                __USART1_REGS[port - 1]->TXDAT = drv->uart.uarts[port]->s.tx_buf[0];
             else
 #endif
-            {
+                __USART_REGS[port]->THR = drv->uart.uarts[port]->s.tx_buf[0];
+            //this will enable isr processing, if printd/printk was called during setup
+            drv->uart.uarts[port]->s.tx_chunk_size = to_read;
+            //start
+#ifdef LPC11U6x
+            if (port > UART_0)
+                __USART1_REGS[port - 1]->INTENSET = USART4_INTENSET_TXRDYEN;
+            else
+#endif
                 __USART_REGS[port]->IER |= USART0_IER_THREIE_Msk;
-            }
         }
     }
     else
@@ -528,6 +634,113 @@ static inline void lpc_uart_read(SHARED_UART_DRV* drv, UART_PORT port, char c)
         drv->uart.uarts[port]->s.rx_free--;
     }
 }
+
+#if (UART_IO_MODE_SUPPORT)
+static inline void lpc_uart_io_read(SHARED_UART_DRV* drv, UART_PORT port, IPC* ipc)
+{
+    UART* uart = drv->uart.uarts[port];
+    IO* io;
+    if (uart == NULL)
+    {
+        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (!uart->io_mode)
+    {
+        ipc_post_ex(ipc, ERROR_INVALID_STATE);
+        return;
+    }
+    if (uart->i.rx_io)
+    {
+        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        return;
+    }
+    timer_stop(uart->i.rx_timer, port, HAL_UART);
+    uart->i.rx_isr = false;
+    io = (IO*)ipc->param2;
+    uart->i.rx_process = ipc->process;
+    uart->i.rx_max = ipc->param3;
+    io->data_size = 0;
+    uart->i.rx_io = io;
+    __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
+    timer_start_ms(uart->i.rx_timer, uart->i.rx_char_timeout);
+}
+
+static inline void lpc_uart_io_write(SHARED_UART_DRV* drv, UART_PORT port, IPC* ipc)
+{
+    UART* uart = drv->uart.uarts[port];
+    IO* io;
+    if (uart == NULL)
+    {
+        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (!uart->io_mode)
+    {
+        ipc_post_ex(ipc, ERROR_INVALID_STATE);
+        return;
+    }
+    if (uart->i.tx_io)
+    {
+        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        return;
+    }
+    io = (IO*)ipc->param2;
+    uart->i.tx_process = ipc->process;
+    uart->i.tx_processed = 1;
+    //prepare
+#ifdef LPC11U6x
+    if (port > UART_0)
+        __USART1_REGS[port - 1]->TXDAT = ((uint8_t*)io_data(uart->i.tx_io))[0];
+    else
+#endif
+        __USART_REGS[port]->THR = ((uint8_t*)io_data(uart->i.tx_io))[0];
+    //this will enable isr processing, if printd/printk was called during setup
+    uart->i.tx_io = io;
+    //start
+#ifdef LPC11U6x
+    if (port > UART_0)
+        __USART1_REGS[port - 1]->INTENSET = USART4_INTENSET_TXRDYEN;
+    else
+#endif
+        __USART_REGS[port]->IER |= USART0_IER_THREIE_Msk;
+}
+
+static inline void lpc_uart_io_read_timeout(SHARED_UART_DRV* drv, UART_PORT port)
+{
+    IO* io = NULL;
+    bool restart = false;
+    UART* uart = drv->uart.uarts[port];
+    timer_stop(uart->i.rx_timer, port, HAL_UART);
+    __disable_irq();
+    if (uart->i.rx_io)
+    {
+        //valid, just restart interleaved
+        if (uart->i.rx_isr)
+        {
+            restart = true;
+            uart->i.rx_isr = false;
+        }
+        else
+        {
+            io = uart->i.rx_io;
+            uart->i.rx_io = NULL;
+        }
+    }
+    __enable_irq();
+    if (restart)
+        timer_start_ms(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
+    else if (io)
+    {
+        //no data? timeout
+        if (io->data_size)
+            iio_complete(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io);
+        else
+            //no data? timeout
+            iio_complete_ex(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io, ERROR_TIMEOUT);
+    }
+}
+#endif //UART_IO_MODE_SUPPORT
 
 void uart_write_kernel(const char *const buf, unsigned int size, void* param)
 {
@@ -628,6 +841,17 @@ bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
         lpc_uart_read(drv, port, ipc->param3);
         //message from ISR, no response
         break;
+#if (UART_IO_MODE_SUPPORT)
+    case IPC_READ:
+        lpc_uart_io_read(drv, port, ipc);
+        break;
+    case IPC_WRITE:
+        lpc_uart_io_write(drv, port, ipc);
+        break;
+    case IPC_TIMEOUT:
+        lpc_uart_io_read_timeout(drv, port);
+        break;
+#endif //UART_IO_MODE_SUPPORT
     default:
         error(ERROR_NOT_SUPPORTED);
         need_post = true;
