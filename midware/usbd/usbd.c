@@ -1198,7 +1198,7 @@ void usbd()
             need_post = usbd_device_request(&usbd, &ipc);
             break;
         case HAL_USBD_IFACE:
-            need_post = usbd_class_interface_request(&usbd, &ipc, USBD_IFACE_NUM(USB_NUM(ipc.param1)));
+            need_post = usbd_class_interface_request(&usbd, &ipc, USBD_IFACE_NUM(ipc.param1));
             break;
         default:
             error(ERROR_NOT_SUPPORTED);

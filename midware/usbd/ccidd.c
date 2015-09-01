@@ -492,6 +492,9 @@ static inline void ccidd_data_block_response(USBD* usbd, CCIDD* ccidd, int param
         }
         return;
     }
+#if (USBD_CCID_DEBUG_IO)
+    usbd_dump(io_data(ccidd->io) + sizeof(CCID_MESSAGE), ccidd->io->data_size - sizeof(CCID_MESSAGE), "CCIDD R-APDU");
+#endif
     ccidd_send_data_block(usbd, ccidd, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR);
 }
 

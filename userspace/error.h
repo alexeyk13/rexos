@@ -65,5 +65,6 @@
 #define ERROR_HARDWARE                                  -400
 #define ERROR_NO_DEVICE                                 (ERROR_HARDWARE - 1)
 #define ERROR_CRC                                       (ERROR_HARDWARE - 2)
+#define ERROR_INVALID_FRAME                             (ERROR_HARDWARE - 3)
 
 #endif // ERROR_H
