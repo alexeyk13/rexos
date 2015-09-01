@@ -52,6 +52,7 @@ static const LPC_USB_Type_P __USB_REGS[] =                      {LPC_USB0};
 
 typedef enum {
     LPC_OTG_SYSTEM_ERROR = USB_HAL_MAX,
+    LPC_OTG_BUFFER_ERROR,
     LPC_OTG_TRANSACTION_ERROR
 }LPC_OTG_IPCS;
 
@@ -165,20 +166,43 @@ static inline void lpc_otg_setup(USB_PORT_TYPE port, SHARED_OTG_DRV* drv)
 static inline void lpc_otg_out(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, int ep_num)
 {
     EP* ep = drv->otg.otg[port]->out[ep_num];
-    ep->io->data_size = drv->otg.otg[port]->read_size[ep_num] - ((ep_dtd(port, ep_num)->size_flags & USB0_DTD_SIZE_FLAGS_SIZE_Msk) >> USB0_DTD_SIZE_FLAGS_SIZE_Pos);
-    iio_complete(drv->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, IPC_READ), USB_HANDLE(port, ep_num), ep->io);
-    ep->io = NULL;
+    if (ep->io)
+    {
+        ep->io->data_size = drv->otg.otg[port]->read_size[ep_num] - ((ep_dtd(port, ep_num)->size_flags & USB0_DTD_SIZE_FLAGS_SIZE_Msk) >> USB0_DTD_SIZE_FLAGS_SIZE_Pos);
+        iio_complete(drv->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, IPC_READ), USB_HANDLE(port, ep_num), ep->io);
+        ep->io = NULL;
+    }
 }
 
-static inline void lpc_otg_in(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, int ep_num)
+static void lpc_otg_in(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, int ep_num)
 {
     EP* ep = drv->otg.otg[port]->in[ep_num];
-    iio_complete(drv->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, IPC_WRITE), USB_HANDLE(port, USB_EP_IN | ep_num), ep->io);
-    ep->io = NULL;
+    if (ep->io)
+    {
+        iio_complete(drv->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, IPC_WRITE), USB_HANDLE(port, USB_EP_IN | ep_num), ep->io);
+        ep->io = NULL;
+    }
 }
+
+#if (USB_DEBUG_ERRORS)
+static void lpc_otg_err(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, int num)
+{
+    DTD* dtd = ep_dtd(port, num);
+    if (dtd->size_flags & USB0_DTD_SIZE_FLAGS_HALTED_Msk)
+    {
+        if (dtd->size_flags & USB0_DTD_SIZE_FLAGS_BUFFER_ERR_Msk)
+            ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_USB, LPC_OTG_BUFFER_ERROR), USB_HANDLE(port, num), 0, 0);
+        if (dtd->size_flags & USB0_DTD_SIZE_FLAGS_TRANSACTION_ERR_Msk)
+            ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_USB, LPC_OTG_TRANSACTION_ERROR), USB_HANDLE(port, num), 0, 0);
+    }
+}
+#endif //USB_DEBUG_ERRORS
 
 static void lpc_otg_on_isr(int vector, void* param)
 {
+#if (USB_DEBUG_ERRORS)
+    IPC ipc;
+#endif //USB_DEBUG_ERRORS
     int i;
     SHARED_OTG_DRV* drv = (SHARED_OTG_DRV*)param;
     USB_PORT_TYPE port = USB_0;
@@ -213,6 +237,17 @@ static void lpc_otg_on_isr(int vector, void* param)
 
     if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_UI_Msk)
     {
+#if (USB_DEBUG_ERRORS)
+        if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_UEI_Msk)
+        {
+            for (i = 0; i < USB_EP_COUNT_MAX; ++i )
+            {
+                lpc_otg_err(port, drv, i);
+                lpc_otg_err(port, drv, USB_EP_IN | i);
+            }
+            __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_UEI_Msk;
+        }
+#endif //USB_DEBUG_ERRORS
         for (i = 0; __USB_REGS[port]->ENDPTCOMPLETE && (i < USB_EP_COUNT_MAX); ++i )
         {
             if (__USB_REGS[port]->ENDPTCOMPLETE & EP_BIT(i))
@@ -236,15 +271,6 @@ static void lpc_otg_on_isr(int vector, void* param)
     }
 
 #if (USB_DEBUG_ERRORS)
-    IPC ipc;
-    if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_UEI_Msk)
-    {
-        ipc.process = process_iget_current();
-        ipc.cmd = HAL_CMD(HAL_USB, LPC_OTG_TRANSACTION_ERROR);
-        ipc.param1 = USB_HANDLE(port, USB_HANDLE_DEVICE);
-        ipc_ipost(&ipc);
-        __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_UEI_Msk;
-    }
     if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_SEI_Msk)
     {
         ipc.process = process_iget_current();
@@ -378,7 +404,6 @@ static void lpc_otg_io(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, IPC* ipc, bool r
     else
         dtd->size_flags = ep->io->data_size << USB0_DTD_SIZE_FLAGS_SIZE_Pos;
     dtd->size_flags |= USB0_DTD_SIZE_FLAGS_IOC_Msk | USB0_DTD_SIZE_FLAGS_ACTIVE_Msk;
-
     dtd->buf[0] = io_data(ep->io);
     dtd->buf[1] = (void*)(((unsigned int)(dtd->buf[0]) + 0x1000) & 0xfffff000);
     dtd->buf[2] = dtd->buf[1] + 0x1000;
@@ -388,8 +413,6 @@ static void lpc_otg_io(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, IPC* ipc, bool r
     dqh = ep_dqh(port, num);
     dqh->next = dtd;
     dqh->shadow_size_flags &= ~USB0_DTD_SIZE_FLAGS_STATUS_Msk;
-
-    dqh->shadow_size_flags &= ~0xc0;
     if (USB_EP_NUM(num) == 0)
         //required before EP0 transfers
         while (__USB_REGS[port]->ENDPTSETUPSTAT & (1 << 0)) {}
@@ -592,10 +615,6 @@ static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
         printd("OTG_%d driver system error\n", USB_PORT(ipc->param1));
         //posted from isr
         break;
-    case LPC_OTG_TRANSACTION_ERROR:
-        printd("OTG_%d driver transaction error\n", USB_PORT(ipc->param1));
-        //posted from isr
-        break;
 #endif
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -654,6 +673,16 @@ static inline bool lpc_otg_ep_request(SHARED_OTG_DRV* drv, IPC* ipc)
         case IPC_WRITE:
             lpc_otg_io(USB_PORT(ipc->param1), drv, ipc, false);
             break;
+#if (USB_DEBUG_ERRORS)
+        case LPC_OTG_BUFFER_ERROR:
+            printd("OTG_%d EP%x buffer error\n", USB_PORT(ipc->param1), USB_NUM(ipc->param1));
+            //posted from isr
+            break;
+        case LPC_OTG_TRANSACTION_ERROR:
+            printd("OTG_%d EP%x transaction error\n", USB_PORT(ipc->param1), USB_NUM(ipc->param1));
+            //posted from isr
+            break;
+#endif
         default:
             error(ERROR_NOT_SUPPORTED);
             need_post = true;
