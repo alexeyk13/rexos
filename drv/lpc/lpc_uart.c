@@ -691,10 +691,10 @@ static inline void lpc_uart_io_write(SHARED_UART_DRV* drv, UART_PORT port, IPC* 
     //prepare
 #ifdef LPC11U6x
     if (port > UART_0)
-        __USART1_REGS[port - 1]->TXDAT = ((uint8_t*)io_data(uart->i.tx_io))[0];
+        __USART1_REGS[port - 1]->TXDAT = ((uint8_t*)io_data(io))[0];
     else
 #endif
-        __USART_REGS[port]->THR = ((uint8_t*)io_data(uart->i.tx_io))[0];
+        __USART_REGS[port]->THR = ((uint8_t*)io_data(io))[0];
     //this will enable isr processing, if printd/printk was called during setup
     uart->i.tx_io = io;
     //start
