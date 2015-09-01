@@ -144,6 +144,8 @@ void scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req)
     bool dbd, res;
     if (!scsis_get_media_descriptor(scsis))
         return;
+    if (!scsis_get_storage_descriptor(scsis))
+        return;
     res = false;
     psp = ((req[2] & 0x3f) << 8) | req[3];
     dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
@@ -194,6 +196,8 @@ void scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req)
     unsigned int psp, len;
     bool dbd, llbaa, res;
     if (!scsis_get_media_descriptor(scsis))
+        return;
+    if (!scsis_get_storage_descriptor(scsis))
         return;
     res = false;
     psp = ((req[2] & 0x3f) << 8) | req[3];
