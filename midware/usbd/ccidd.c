@@ -22,7 +22,8 @@ typedef struct {
     IO* status_io;
     CCIDD_STATE state;
     unsigned int request;
-    uint8_t data_ep, data_ep_size, status_ep, iface, seq, status_busy, slot_status, aborting;
+    uint16_t data_ep_size;
+    uint8_t data_ep, status_ep, iface, seq, status_busy, slot_status, aborting;
 } CCIDD;
 
 static void ccidd_destroy(CCIDD* ccidd)
@@ -389,17 +390,23 @@ static inline void ccidd_rx_complete(USBD* usbd, CCIDD* ccidd)
     switch (ccidd->state)
     {
     case CCIDD_STATE_IDLE:
-        len = ((CCID_MESSAGE*)io_data(ccidd->io))->dwLength;
-        //more than one frame
-        if (len  + sizeof(CCID_MESSAGE) > ccidd->data_ep_size)
+        if (ccidd->io->data_size >= sizeof(CCID_MESSAGE))
         {
-            ccidd->io->data_size -= ccidd->data_ep_size;
-            ccidd->io->data_offset += ccidd->data_ep_size;
-            ccidd->state = CCIDD_STATE_RX;
-            usbd_usb_ep_read(usbd, ccidd->data_ep, ccidd->io, len  + sizeof(CCID_MESSAGE) - ccidd->data_ep_size);
+            len = ((CCID_MESSAGE*)io_data(ccidd->io))->dwLength;
+            //more than one frame
+            if (len  + sizeof(CCID_MESSAGE) > ccidd->data_ep_size)
+            {
+                ccidd->io->data_size -= ccidd->data_ep_size;
+                ccidd->io->data_offset += ccidd->data_ep_size;
+                ccidd->state = CCIDD_STATE_RX;
+                //some hardware required to be multiple of MPS
+                usbd_usb_ep_read(usbd, ccidd->data_ep, ccidd->io, (len  + sizeof(CCID_MESSAGE) - 1) & ~(ccidd->data_ep_size - 1));
+            }
+            else
+                ccidd_msg_process(usbd, ccidd);
         }
         else
-            ccidd_msg_process(usbd, ccidd);
+            ccidd_rx(usbd, ccidd);
         break;
     case CCIDD_STATE_RX:
         ccidd->io->data_size += ccidd->data_ep_size;
