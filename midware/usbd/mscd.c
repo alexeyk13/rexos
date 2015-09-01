@@ -94,7 +94,10 @@ static void mscd_request_processed(USBD* usbd, MSCD* mscd)
         if (MSC_CBW_FLAG_DATA_IN(cbw->bmCBWFlags))
             usbd_usb_ep_write(usbd, mscd->ep_num, mscd->control);
         else
-            usbd_usb_ep_read(usbd, mscd->ep_num, mscd->control, 0);
+        {
+            //some hardware required to be multiple of MPS
+            usbd_usb_ep_read(usbd, mscd->ep_num, mscd->control, mscd->ep_size);
+        }
         mscd->state = MSCD_STATE_ZLP;
     }
     else
@@ -136,7 +139,8 @@ void mscd_host_cb(void* param, IO* io, SCSIS_REQUEST request)
             if (size > mscd->residue)
                 size = mscd->residue;
             mscd->residue -= size;
-            usbd_usb_ep_read(mscd->usbd, mscd->ep_num, io, size);
+            //some hardware required to be multiple of MPS
+            usbd_usb_ep_read(mscd->usbd, mscd->ep_num, io, (size + mscd->ep_size - 1) & ~(mscd->ep_size - 1));
             break;
         case SCSIS_REQUEST_WRITE:
             if (io->data_size > mscd->residue)
