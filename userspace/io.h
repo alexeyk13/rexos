@@ -166,6 +166,15 @@ IO* io_create(unsigned int size);
 #define io_complete_ex(process, cmd, handle, io, param3)                ipc_post_inline((process), (cmd), (handle), (unsigned int)(io), (param3))
 
 /**
+    \brief wait for async IO completion
+    \param process: target process
+    \param cmd: command for wait
+    \param handle: user handle
+    \retval IO size or error.
+*/
+int io_async_wait(HANDLE process, unsigned int cmd, unsigned int handle);
+
+/**
     \brief send IO complete to another process. isr version
     \param process: receiver process
     \param cmd: command to send

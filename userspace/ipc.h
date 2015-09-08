@@ -151,11 +151,26 @@ void ipc_ipost_inline(HANDLE process, unsigned int cmd, unsigned int param1, uns
 */
 void ipc_read(IPC* ipc);
 
+/**
+    \brief read message fro process
+    \param ipc: ipc to read
+    \param process: target process. ANY_HANDLE - ignore
+    \param cmd: cmd to waid, ANY_CMD - ignore
+    \param param1: param1, generally handle, ANY_HANDLE - ignore
+    \retval none
+*/
+void ipc_read_ex(IPC* ipc, HANDLE process, unsigned int cmd, unsigned int param1);
+
+/**
+    \brief call to process
+    \param IPC: ipc to call
+    \retval true on success
+*/
 
 bool call(IPC* ipc);
 
 /**
-    \brief call to process with no return value
+    \brief call to process, inline version
     \param cmd: command to post
     \param process: IPC receiver
     \param param1: cmd specific

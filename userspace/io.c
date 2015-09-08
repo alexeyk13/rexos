@@ -81,6 +81,13 @@ IO* io_create(unsigned int size)
     return io;
 }
 
+int io_async_wait(HANDLE process, unsigned int cmd, unsigned int handle)
+{
+    IPC ipc;
+    ipc_read_ex(&ipc, process, cmd, handle);
+    return (int)ipc.param3;
+}
+
 void io_destroy(IO* io)
 {
     if (io != NULL)

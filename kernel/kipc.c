@@ -19,17 +19,18 @@ void kipc_lock_release(KPROCESS* kprocess)
     kprocess->kipc.wait_process = (KPROCESS*)INVALID_HANDLE;
 }
 
-static inline int kipc_index(KPROCESS* kprocess, HANDLE wait_process, unsigned int cmd)
+static inline int kipc_index(KPROCESS* kprocess, HANDLE wait_process, unsigned int cmd, unsigned int param1)
 {
     int i;
     unsigned int head = kprocess->process->ipcs.head;
     for (i = kprocess->process->ipcs.tail; i != head; i = RB_ROUND(&kprocess->process->ipcs, i + 1))
-        if (((KIPC_ITEM(kprocess, i)->process == wait_process) || (wait_process == ANY_HANDLE)) && ((KIPC_ITEM(kprocess, i)->cmd == cmd) || (cmd == ANY_CMD)))
+        if (((KIPC_ITEM(kprocess, i)->process == wait_process) || (wait_process == ANY_HANDLE)) && ((KIPC_ITEM(kprocess, i)->cmd == cmd) || (cmd == ANY_CMD)) &&
+                ((KIPC_ITEM(kprocess, i)->param1 == param1) || (param1 == ANY_HANDLE)))
             return i;
     return -1;
 }
 
-static void kipc_wait_process(KPROCESS *kprocess, KPROCESS* wait_process, unsigned int cmd)
+static void kipc_wait_process(KPROCESS *kprocess, KPROCESS* wait_process, unsigned int cmd, unsigned int param1)
 {
     int index;
     if (wait_process == kprocess)
@@ -43,10 +44,11 @@ static void kipc_wait_process(KPROCESS *kprocess, KPROCESS* wait_process, unsign
     kprocess_sleep(kprocess, NULL, PROCESS_SYNC_IPC, kprocess);
 
     disable_interrupts();
-    if ((index = kipc_index(kprocess, (HANDLE)wait_process, cmd)) < 0)
+    if ((index = kipc_index(kprocess, (HANDLE)wait_process, cmd, param1)) < 0)
     {
         kprocess->kipc.wait_process = wait_process;
         kprocess->kipc.cmd = cmd;
+        kprocess->kipc.param1 = param1;
     }
     enable_interrupts();
 
@@ -124,10 +126,10 @@ void kipc_post(IPC* ipc)
     kipc_post_process(ipc, kprocess);
 }
 
-void kipc_wait(KPROCESS* wait_process, unsigned int cmd)
+void kipc_wait(KPROCESS* wait_process, unsigned int cmd, unsigned int param1)
 {
     KPROCESS* kprocess = kprocess_get_current();
-    kipc_wait_process(kprocess, wait_process, cmd);
+    kipc_wait_process(kprocess, wait_process, cmd, param1);
 }
 
 void kipc_call(IPC* ipc)
@@ -135,5 +137,5 @@ void kipc_call(IPC* ipc)
     KPROCESS* kprocess = kprocess_get_current();
     CHECK_ADDRESS(kprocess, ipc, sizeof(IPC));
     kipc_post_process(ipc, kprocess);
-    kipc_wait_process(kprocess, (KPROCESS*)(ipc->process), ipc->cmd);
+    kipc_wait_process(kprocess, (KPROCESS*)(ipc->process), ipc->cmd, ANY_HANDLE);
 }

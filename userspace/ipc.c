@@ -100,13 +100,20 @@ void ipc_read(IPC* ipc)
     {
         error(ERROR_OK);
         if (rb_is_empty(&__GLOBAL->process->ipcs))
-            svc_call(SVC_IPC_WAIT, ANY_HANDLE, ANY_CMD, 0);
+            svc_call(SVC_IPC_WAIT, ANY_HANDLE, ANY_CMD, ANY_HANDLE);
         ipc_peek(__GLOBAL->process->ipcs.tail, ipc);
         if (ipc->cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
             ipc_post_or_error(ipc);
         else
             break;
     }
+}
+
+void ipc_read_ex(IPC* ipc, HANDLE process, unsigned int cmd, unsigned int param1)
+{
+    if (ipc_index(process, cmd, param1) < 0)
+        svc_call(SVC_IPC_WAIT, process, cmd, param1);
+    ipc_peek(ipc_index(process, cmd, param1), ipc);
 }
 
 bool call(IPC* ipc)
