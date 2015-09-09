@@ -89,11 +89,11 @@ static bool lpc_uart_rx_isr(SHARED_UART_DRV* drv, UART_PORT port, uint8_t c)
                 uart->i.rx_io = NULL;
                 res = false;
             }
+            uart->i.rx_isr = true;
+            //first char? force to set interleaved timeout
+            if (uart->i.rx_io->data_size == 1)
+                ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_UART, IPC_TIMEOUT), port, 0, 0);
         }
-        uart->i.rx_isr = true;
-        //first char? force to set interleaved timeout
-        if (uart->i.rx_io->data_size == 1)
-            ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_UART, IPC_TIMEOUT), port, 0, 0);
     }
     else
 #endif //UART_IO_MODE_SUPPORT
@@ -405,7 +405,7 @@ static inline void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned 
 #endif
     {
          //enable FIFO
-        __USART_REGS[port]->FCR |= USART0_FCR_FIFOEN_Msk | USART0_FCR_TXFIFORES_Msk | USART0_FCR_RXFIFORES_Msk;
+        __USART_REGS[port]->FCR = USART0_FCR_FIFOEN_Msk | USART0_FCR_TXFIFORES_Msk | USART0_FCR_RXFIFORES_Msk;
     }
 
     //enable interrupts
@@ -445,7 +445,7 @@ static void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
 #endif
     {
         __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
-        __USART_REGS[port]->FCR |= USART0_FCR_TXFIFORES_Msk | USART0_FCR_RXFIFORES_Msk;
+        __USART_REGS[port]->FCR = USART0_FCR_TXFIFORES_Msk | USART0_FCR_RXFIFORES_Msk;
     }
 #if (UART_IO_MODE_SUPPORT)
     if (drv->uart.uarts[port]->io_mode)

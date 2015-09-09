@@ -47,5 +47,6 @@ void uart_setup_stdin(int num);
 void uart_open(int num, unsigned int mode);
 void uart_close(int num);
 void uart_set_baudrate(int num, BAUD* baudrate);
+void uart_flush(int num);
 
 #endif // UART_H

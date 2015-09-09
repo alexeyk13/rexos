@@ -56,3 +56,8 @@ void uart_set_baudrate(int num, BAUD* baudrate)
     ipc.process = object_get(SYS_OBJ_UART);
     call(&ipc);
 }
+
+void uart_flush(int num)
+{
+    ack(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_FLUSH), num, 0, 0);
+}
