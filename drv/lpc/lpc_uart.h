@@ -11,6 +11,7 @@
 #include "../../userspace/sys.h"
 #include "../../userspace/uart.h"
 #include "../../userspace/io.h"
+#include "../../userspace/rb.h"
 #include "lpc_config.h"
 #if (MONOLITH_UART)
 #include "lpc_core.h"
@@ -19,7 +20,7 @@
 typedef struct {
     HANDLE tx_stream, tx_handle, rx_stream, rx_handle;
     uint16_t tx_total, tx_chunk_pos, tx_chunk_size, rx_free;
-    char tx_buf[UART_TX_BUF_SIZE];
+    char tx_buf[UART_BUF_SIZE];
 } UART_STREAM;
 
 typedef struct {
@@ -28,7 +29,10 @@ typedef struct {
     unsigned int rx_max, tx_processed;
     HANDLE tx_process, rx_process, rx_timer;
     unsigned int rx_char_timeout, rx_interleaved_timeout;
-    bool rx_isr;
+#if (UART_IO_PREBUFFER)
+    char rx_buf[UART_BUF_SIZE];
+    RB rx_rb;
+#endif //UART_IO_PREBUFFER
 } UART_IO;
 
 typedef struct {

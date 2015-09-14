@@ -78,10 +78,10 @@ static bool lpc_uart_rx_isr(SHARED_UART_DRV* drv, UART_PORT port, uint8_t c)
 #if (UART_IO_MODE_SUPPORT)
     if (drv->uart.uarts[port]->io_mode)
     {
+        timer_istop(uart->i.rx_timer);
         if (uart->i.rx_io)
         {
-            if (uart->i.rx_io->data_size < uart->i.rx_max)
-                ((uint8_t*)io_data(uart->i.rx_io))[uart->i.rx_io->data_size++] = c;
+            ((uint8_t*)io_data(uart->i.rx_io))[uart->i.rx_io->data_size++] = c;
             //max size limit
             if (uart->i.rx_io->data_size >= uart->i.rx_max)
             {
@@ -89,11 +89,17 @@ static bool lpc_uart_rx_isr(SHARED_UART_DRV* drv, UART_PORT port, uint8_t c)
                 uart->i.rx_io = NULL;
                 res = false;
             }
-            uart->i.rx_isr = true;
-            //first char? force to set interleaved timeout
-            if (uart->i.rx_io->data_size == 1)
-                ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_UART, IPC_TIMEOUT), port, 0, 0);
+            else
+                timer_istart_ms(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
         }
+#if (UART_IO_PREBUFFER)
+        else
+        {
+            if (rb_is_full(&uart->i.rx_rb))
+                rb_get(&uart->i.rx_rb);
+            uart->i.rx_buf[rb_put(&uart->i.rx_rb)] = c;
+        }
+#endif //UART_IO_PREBUFFER
     }
     else
 #endif //UART_IO_MODE_SUPPORT
@@ -344,11 +350,15 @@ static inline bool lpc_uart_open_stream(SHARED_UART_DRV* drv, UART_PORT port, un
 #if (UART_IO_MODE_SUPPORT)
 static inline bool lpc_uart_open_io(SHARED_UART_DRV* drv, UART_PORT port)
 {
-    drv->uart.uarts[port]->i.tx_io = drv->uart.uarts[port]->i.rx_io = NULL;
-    drv->uart.uarts[port]->i.rx_timer = timer_create(port, HAL_UART);
-    drv->uart.uarts[port]->i.rx_char_timeout = UART_CHAR_TIMEOUT_MS;
-    drv->uart.uarts[port]->i.rx_interleaved_timeout = UART_INTERLEAVED_TIMEOUT_MS;
-    return drv->uart.uarts[port]->i.rx_timer != INVALID_HANDLE;
+    UART_IO* i = &(drv->uart.uarts[port]->i);
+    i->tx_io = i->rx_io = NULL;
+    i->rx_timer = timer_create(port, HAL_UART);
+    i->rx_char_timeout = UART_CHAR_TIMEOUT_MS;
+    i->rx_interleaved_timeout = UART_INTERLEAVED_TIMEOUT_MS;
+#if (UART_IO_PREBUFFER)
+    rb_init(&i->rx_rb, UART_BUF_SIZE);
+#endif //UART_IO_PREBUFFER
+    return i->rx_timer != INVALID_HANDLE;
 }
 #endif //UART_IO_MODE_SUPPORT
 
@@ -457,6 +467,9 @@ static void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
         drv->uart.uarts[port]->i.rx_io = NULL;
         tx_io = drv->uart.uarts[port]->i.tx_io;
         drv->uart.uarts[port]->i.tx_io = NULL;
+#if (UART_IO_PREBUFFER)
+        rb_clear(&drv->uart.uarts[port]->i.rx_rb);
+#endif //UART_IO_PREBUFFER
         __enable_irq();
         if (rx_io)
             io_complete_ex(drv->uart.uarts[port]->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, rx_io, ERROR_IO_CANCELLED);
@@ -593,8 +606,8 @@ static inline void lpc_uart_write(SHARED_UART_DRV* drv, UART_PORT port, unsigned
     if (drv->uart.uarts[port]->s.tx_total)
     {
         unsigned int to_read = drv->uart.uarts[port]->s.tx_total;
-        if (drv->uart.uarts[port]->s.tx_total > UART_TX_BUF_SIZE)
-            to_read = UART_TX_BUF_SIZE;
+        if (drv->uart.uarts[port]->s.tx_total > UART_BUF_SIZE)
+            to_read = UART_BUF_SIZE;
         if (stream_read(drv->uart.uarts[port]->s.tx_handle, drv->uart.uarts[port]->s.tx_buf, to_read))
         {
             drv->uart.uarts[port]->s.tx_chunk_pos = 1;
@@ -655,15 +668,23 @@ static inline void lpc_uart_io_read(SHARED_UART_DRV* drv, UART_PORT port, IPC* i
         ipc_post_ex(ipc, ERROR_IN_PROGRESS);
         return;
     }
-    timer_stop(uart->i.rx_timer, port, HAL_UART);
-    uart->i.rx_isr = false;
     io = (IO*)ipc->param2;
     uart->i.rx_process = ipc->process;
     uart->i.rx_max = ipc->param3;
     io->data_size = 0;
+#if (UART_IO_PREBUFFER)
+    __disable_irq();
+    while (!rb_is_empty(&uart->i.rx_rb) && (io->data_size < uart->i.rx_max))
+        ((uint8_t*)io_data(io))[io->data_size++] = uart->i.rx_buf[rb_get(&uart->i.rx_rb)];
+    __enable_irq();
+#endif //UART_IO_PREBUFFER
     uart->i.rx_io = io;
     __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
+#if (UART_IO_PREBUFFER)
+    timer_start_ms(uart->i.rx_timer, io->data_size ? uart->i.rx_interleaved_timeout : uart->i.rx_char_timeout);
+#else
     timer_start_ms(uart->i.rx_timer, uart->i.rx_char_timeout);
+#endif //UART_IO_PREBUFFER
 }
 
 static inline void lpc_uart_io_write(SHARED_UART_DRV* drv, UART_PORT port, IPC* ipc)
@@ -709,35 +730,22 @@ static inline void lpc_uart_io_write(SHARED_UART_DRV* drv, UART_PORT port, IPC* 
 static inline void lpc_uart_io_read_timeout(SHARED_UART_DRV* drv, UART_PORT port)
 {
     IO* io = NULL;
-    bool restart = false;
     UART* uart = drv->uart.uarts[port];
     timer_stop(uart->i.rx_timer, port, HAL_UART);
     __disable_irq();
     if (uart->i.rx_io)
     {
-        //valid, just restart interleaved
-        if (uart->i.rx_isr)
-        {
-            restart = true;
-            uart->i.rx_isr = false;
-        }
-        else
-        {
-            io = uart->i.rx_io;
-            uart->i.rx_io = NULL;
-        }
+        io = uart->i.rx_io;
+        uart->i.rx_io = NULL;
     }
     __enable_irq();
-    if (restart)
-        timer_start_ms(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
-    else if (io)
+    if (io)
     {
-        //no data? timeout
         if (io->data_size)
-            iio_complete(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io);
+            io_complete(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io);
         else
             //no data? timeout
-            iio_complete_ex(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io, ERROR_TIMEOUT);
+            io_complete_ex(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io, ERROR_TIMEOUT);
     }
 }
 #endif //UART_IO_MODE_SUPPORT

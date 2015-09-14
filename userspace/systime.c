@@ -91,11 +91,23 @@ void timer_start(HANDLE timer, SYSTIME* time)
     svc_call(SVC_SYSTIME_SOFT_TIMER_START, (unsigned int)timer, (unsigned int)time, 0);
 }
 
+void timer_istart(HANDLE timer, SYSTIME* time)
+{
+    __GLOBAL->svc_irq(SVC_SYSTIME_SOFT_TIMER_START, (unsigned int)timer, (unsigned int)time, 0);
+}
+
 void timer_start_ms(HANDLE timer, unsigned int time_ms)
 {
     SYSTIME time;
     ms_to_systime(time_ms, &time);
     timer_start(timer, &time);
+}
+
+void timer_istart_ms(HANDLE timer, unsigned int time_ms)
+{
+    SYSTIME time;
+    ms_to_systime(time_ms, &time);
+    timer_istart(timer, &time);
 }
 
 void timer_start_us(HANDLE timer, unsigned int time_us)
@@ -105,11 +117,23 @@ void timer_start_us(HANDLE timer, unsigned int time_us)
     timer_start(timer, &time);
 }
 
+void timer_istart_us(HANDLE timer, unsigned int time_us)
+{
+    SYSTIME time;
+    us_to_systime(time_us, &time);
+    timer_istart(timer, &time);
+}
+
 void timer_stop(HANDLE timer, unsigned int param, HAL hal)
 {
     svc_call(SVC_SYSTIME_SOFT_TIMER_STOP, (unsigned int)timer, 0, 0);
     //remove IPC if timer elapsed during timer stop
     ipc_remove(KERNEL_HANDLE, HAL_CMD(hal, IPC_TIMEOUT), param);
+}
+
+void timer_istop(HANDLE timer)
+{
+    __GLOBAL->svc_irq(SVC_SYSTIME_SOFT_TIMER_STOP, (unsigned int)timer, 0, 0);
 }
 
 void timer_destroy(HANDLE timer)

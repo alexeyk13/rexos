@@ -172,12 +172,28 @@ HANDLE timer_create(unsigned int param, HAL hal);
 void timer_start(HANDLE timer, SYSTIME* time);
 
 /**
+    \brief start soft timer. ISR version
+    \param timer soft timer handle
+    \param time pointer to SYSTIME structure
+    \retval none.
+*/
+void timer_istart(HANDLE timer, SYSTIME* time);
+
+/**
     \brief start soft timer in ms units
     \param timer soft timer handle
     \param time_ms time in ms units
     \retval none.
 */
 void timer_start_ms(HANDLE timer, unsigned int time_ms);
+
+/**
+    \brief start soft timer in ms units. ISR version
+    \param timer soft timer handle
+    \param time_ms time in ms units
+    \retval none.
+*/
+void timer_istart_ms(HANDLE timer, unsigned int time_ms);
 
 /**
     \brief start soft timer in us units
@@ -188,6 +204,14 @@ void timer_start_ms(HANDLE timer, unsigned int time_ms);
 void timer_start_us(HANDLE timer, unsigned int time_us);
 
 /**
+    \brief start soft timer in us units. ISR version
+    \param timer soft timer handle
+    \param time_ms time in ms units
+    \retval none.
+*/
+void timer_istart_us(HANDLE timer, unsigned int time_us);
+
+/**
     \brief stop soft timer
     \param timer soft timer handle
     \param param: application provided param
@@ -195,6 +219,14 @@ void timer_start_us(HANDLE timer, unsigned int time_us);
     \retval none.
 */
 void timer_stop(HANDLE timer, unsigned int param, HAL hal);
+
+/**
+    \brief stop soft timer. ISR version
+    \details Remember, IPC_TIMEOUT can happened before stop
+    \param timer soft timer handle
+    \retval none.
+*/
+void timer_istop(HANDLE timer);
 
 /**
     \brief destroy soft timer
