@@ -26,6 +26,10 @@
 //depends on hardware implementation
 #define POWER_MANAGEMENT_SUPPORT                            1
 #define LOW_POWER_ON_STARTUP                                0
+//------------------------------- UART -----------------------------------------------
+//default values
+#define UART_CHAR_TIMEOUT_MS                                10000
+#define UART_INTERLEAVED_TIMEOUT_MS                         4
 //-------------------------------- USB -----------------------------------------------
 #define USB_EP_COUNT_MAX                                    4
 //low-level USB debug. Turn on only in case of IO problems

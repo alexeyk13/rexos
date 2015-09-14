@@ -77,6 +77,13 @@ ARM7 features:
 
 History
 =======
+0.3.7
+- UART flush HAL
+- UART IO interface for block transfers
+- LPC uart IO interface
+- soft timers start/stop in ISR. 
+- USB device high-speed fix
+
 0.3.6
 - LPC18xx USB1 & both usb support
 - LPC18xx, LPC11U6x I2C support

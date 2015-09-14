@@ -53,7 +53,7 @@ SRC_C                      += kernel.c dbg.c kirq.c kio.c kprocess.c ksystime.c 
 #lib
 SRC_C                      += lib_lib.c lib_systime.c pool.c printf.c lib_std.c lib_stdio.c stm32_lib_gpio.c usb.c
 #userspace
-SRC_C                      += array.c gpio.c ipc.c io.c process.c stdio.c stdlib.c systime.c app.c comm.c time.c
+SRC_C                      += array.c gpio.c ipc.c io.c process.c stdio.c stdlib.c systime.c app.c comm.c time.c uart.c
 #drv
 SRC_C                      += stm32_pin.c stm32_power.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_usb.c stm32_adc.c
 #midware

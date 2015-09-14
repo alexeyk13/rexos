@@ -64,7 +64,7 @@ static inline void app_setup_dbg()
 {
     BAUD baudrate;
     ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), DBG_CONSOLE_TX_PIN, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, DBG_CONSOLE_TX_PIN_AF);
-    ack(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_OPEN), DBG_CONSOLE, FILE_MODE_WRITE, 0);
+    uart_open(DBG_CONSOLE, UART_MODE_STREAM | UART_TX_STREAM);
     baudrate.baud = DBG_CONSOLE_BAUD;
     baudrate.data_bits = 8;
     baudrate.parity = 'N';
@@ -86,7 +86,7 @@ static inline void app_init(APP* app)
     app_setup_dbg();
 
     app->timer = timer_create(0, HAL_APP);
-    timer_start_ms(app->timer, 1000, 0);
+    timer_start_ms(app->timer, 1000);
 
     stat();
     printf("App init\n");
@@ -96,7 +96,7 @@ static inline void app_timeout(APP* app)
 {
     printf("app timer timeout test\n");
     printf("vlcd: %d\n", adc_get(STM32_ADC_VREF));
-    timer_start_ms(app->timer, 1000, 0);
+    timer_start_ms(app->timer, 1000);
 }
 
 void app()
