@@ -123,7 +123,7 @@ bool stm32_usb_ep_flush(SHARED_USB_DRV* drv, unsigned int num)
         ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_NAK);
     if (ep->io != NULL)
     {
-        io_complete_ex(drv->usb.device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
+        io_complete_ex(drv->usb.device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), USB_HANDLE(USB_0, num), ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
     }
     ep->io_active = false;
@@ -174,9 +174,9 @@ static inline void stm32_usb_reset(SHARED_USB_DRV* drv)
 
     IPC ipc;
     ipc.process = drv->usb.device;
-    ipc.param1 = USB_HANDLE_DEVICE;
-    ipc.param2 = stm32_usb_get_speed(drv);
     ipc.cmd = HAL_CMD(HAL_USB, USB_RESET);
+    ipc.param1 = USB_HANDLE(USB_0, USB_HANDLE_DEVICE);
+    ipc.param2 = stm32_usb_get_speed(drv);
     ipc_ipost(&ipc);
 }
 
@@ -185,7 +185,7 @@ static inline void stm32_usb_suspend(SHARED_USB_DRV* drv)
     IPC ipc;
     USB->CNTR &= ~USB_CNTR_SUSPM;
     ipc.process = drv->usb.device;
-    ipc.param1 = USB_HANDLE_DEVICE;
+    ipc.param1 = USB_HANDLE(USB_0, USB_HANDLE_DEVICE);
     ipc.cmd = HAL_CMD(HAL_USB, USB_SUSPEND);
     ipc_ipost(&ipc);
 }
@@ -195,7 +195,7 @@ static inline void stm32_usb_wakeup(SHARED_USB_DRV* drv)
     IPC ipc;
     USB->CNTR |= USB_CNTR_SUSPM;
     ipc.process = drv->usb.device;
-    ipc.param1 = USB_HANDLE_DEVICE;
+    ipc.param1 = USB_HANDLE(USB_0, USB_HANDLE_DEVICE);
     ipc.cmd = HAL_CMD(HAL_USB, USB_WAKEUP);
     ipc_ipost(&ipc);
 }
@@ -215,7 +215,7 @@ static inline void stm32_usb_tx_isr(SHARED_USB_DRV* drv, unsigned int ep_num)
         stm32_usb_tx(drv, ep_num);
         if (ep->size >= ep->io->data_size)
         {
-            iio_complete(drv->usb.device, HAL_IO_CMD(HAL_USB, IPC_WRITE), USB_EP_IN | ep_num, ep->io);
+            iio_complete(drv->usb.device, HAL_IO_CMD(HAL_USB, IPC_WRITE), USB_HANDLE(USB_0, USB_EP_IN | ep_num), ep->io);
             ep->io = NULL;
             ep->io_active = false;
         }
@@ -234,7 +234,7 @@ static inline void stm32_usb_rx_isr(SHARED_USB_DRV* drv, unsigned int ep_num)
 
     if (ep->io->data_size >= ep->size || size < ep->mps)
     {
-        iio_complete(drv->usb.device, HAL_IO_CMD(HAL_USB, IPC_READ), ep_num, ep->io);
+        iio_complete(drv->usb.device, HAL_IO_CMD(HAL_USB, IPC_READ), USB_HANDLE(USB_0, ep_num), ep->io);
         ep->io = NULL;
         ep->io_active = false;
     }

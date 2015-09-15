@@ -153,7 +153,7 @@ static inline void stm32_otg_rx(SHARED_USB_DRV* drv)
         //ignore all data on setup packet
         ipc.process = drv->usb.device;
         ipc.cmd = HAL_CMD(HAL_USB, USB_SETUP);
-        ipc.param1 = 0;
+        ipc.param1 = USB_HANDLE(USB_0, 0);
         ipc.param2 = ((uint32_t*)(OTG_FS_FIFO_BASE + ep_num * 0x1000))[0];
         ipc.param3 = ((uint32_t*)(OTG_FS_FIFO_BASE + ep_num * 0x1000))[1];
         ipc_post(&ipc);
@@ -163,7 +163,7 @@ static inline void stm32_otg_rx(SHARED_USB_DRV* drv)
         memcpy(io_data(ep->io) + ep->io->data_size, (void*)(OTG_FS_FIFO_BASE + ep_num * 0x1000), ALIGN(bcnt));
         ep->io->data_size += bcnt;
 
-        if (ep->io->data_size >= ep->size)
+        if (ep->io->data_size >= ep->size || bcnt < ep->size)
         {
             iio_complete(drv->usb.device, HAL_IO_CMD(HAL_USB, IPC_READ), ep_num, ep->io);
             ep->io_active = false;
