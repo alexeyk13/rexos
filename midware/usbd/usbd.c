@@ -825,6 +825,9 @@ static void usbd_setup_response(USBD* usbd, int res)
         {
             //data already received, sending status
             usbd->setup_state = USB_SETUP_STATE_STATUS_IN;
+#if (USBD_DEBUG_FLOW)
+            printf("STATUS IN\n");
+#endif //USBD_DEBUG_FLOW
             usbd_usb_ep_write(usbd, 0, usbd->io);
         }
         else
@@ -835,18 +838,29 @@ static void usbd_setup_response(USBD* usbd, int res)
                 if (res)
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN_ZLP;
                 else
+                {
                     usbd->setup_state = USB_SETUP_STATE_DATA_IN;
+                }
+#if (USBD_DEBUG_FLOW)
+                printf("DATA IN: %d\n", res);
+#endif //USBD_DEBUG_FLOW
                 usbd_usb_ep_write(usbd, 0, usbd->io);
             }
             else if (res)
             {
                 usbd->setup_state = USB_SETUP_STATE_DATA_IN;
+#if (USBD_DEBUG_FLOW)
+                printf("DATA IN: %d\n", res);
+#endif //USBD_DEBUG_FLOW
                 usbd_usb_ep_write(usbd, 0, usbd->io);
             }
             //data stage is optional
             else
             {
                 usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
+#if (USBD_DEBUG_FLOW)
+                printf("STATUS OUT\n");
+#endif //USBD_DEBUG_FLOW
                 usbd_usb_ep_read(usbd, 0, usbd->io, 0);
             }
         }
@@ -959,6 +973,9 @@ static inline void usbd_setup_received(USBD* usbd)
         if (usbd->setup.wLength)
         {
             usbd->setup_state = USB_SETUP_STATE_DATA_OUT;
+#if (USBD_DEBUG_FLOW)
+            printf("DATA OUT: %d\n", usbd->setup.wLength);
+#endif //USBD_DEBUG_FLOW
             usbd_usb_ep_read(usbd, 0, usbd->io, usbd->setup.wLength);
         }
         //data stage is optional
@@ -978,6 +995,9 @@ static inline void usbd_read_complete(USBD* usbd)
         break;
     case USB_SETUP_STATE_STATUS_OUT:
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
+#if (USBD_DEBUG_FLOW)
+        printf("USBD OK\n");
+#endif //USBD_DEBUG_FLOW
         break;
     default:
 #if (USBD_DEBUG_ERRORS)
@@ -996,14 +1016,23 @@ static inline void usbd_write_complete(USBD* usbd)
         //TX ZLP and switch to normal state
         usbd->setup_state = USB_SETUP_STATE_DATA_IN;
         usbd->io->data_size = 0;
+#if (USBD_DEBUG_FLOW)
+        printf("DATA IN ZLP\n");
+#endif //USBD_DEBUG_FLOW
         usbd_usb_ep_write(usbd, 0, usbd->io);
         break;
     case USB_SETUP_STATE_DATA_IN:
         usbd->setup_state = USB_SETUP_STATE_STATUS_OUT;
+#if (USBD_DEBUG_FLOW)
+        printf("STATUS OUT\n");
+#endif //USBD_DEBUG_FLOW
         usbd_usb_ep_read(usbd, 0, usbd->io, 0);
         break;
     case USB_SETUP_STATE_STATUS_IN:
         usbd->setup_state = USB_SETUP_STATE_REQUEST;
+#if (USBD_DEBUG_FLOW)
+        printf("USBD OK\n");
+#endif //USBD_DEBUG_FLOW
         break;
     default:
 #if (USBD_DEBUG_ERRORS)
