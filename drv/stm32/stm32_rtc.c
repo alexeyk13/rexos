@@ -186,6 +186,7 @@ TIME* stm32_rtc_get(TIME* time)
     unsigned long value = (unsigned long)(((RTC->CNTH) << 16ul) | (RTC->CNTL));
     time->ms = (value % SEC_IN_DAY) * 1000;
     time->day = value / SEC_IN_DAY + EPOCH_DATE;
+    return time;
 #else
     //fucking shit
     struct tm ts;

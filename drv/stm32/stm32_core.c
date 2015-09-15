@@ -17,11 +17,11 @@
 #include "stm32_dac.h"
 #include "stm32_eep.h"
 #if (MONOLITH_USB)
-#ifdef STM32L0
-#include "stm32_usb.h"
-#else
+#ifdef STM32F10X_CL
 #include "stm32_otg.h"
-#endif
+#else
+#include "stm32_usb.h"
+#endif //STM32F10X_CL
 #endif
 
 void stm32_core();
@@ -90,7 +90,11 @@ void stm32_core_loop(CORE* core)
 #endif //STM32_EEP_DRIVER
 #if (MONOLITH_USB)
         case HAL_USB:
+#ifdef STM32F10X_CL
+            need_post = stm32_otg_request(core, &ipc);
+#else
             need_post = stm32_usb_request(core, &ipc);
+#endif //STM32F10X_CL
             break;
 #endif //MONOLITH_USB
         default:
@@ -133,8 +137,12 @@ void stm32_core()
     stm32_eep_init(&core);
 #endif //STM32_EEP_DRIVER
 #if (MONOLITH_USB)
+#ifdef STM32F10X_CL
+    stm32_otg_init(&core);
+#else
     stm32_usb_init(&core);
-#endif
+#endif //STM32F10X_CL
+#endif //MONOLITH_USB
 
     stm32_core_loop(&core);
 }
