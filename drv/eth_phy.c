@@ -5,7 +5,7 @@
 */
 
 #include "eth_phy.h"
-#include "../userspace/timer.h"
+#include "../userspace/systime.h"
 #include "../userspace/process.h"
 #include "sys_config.h"
 
@@ -54,7 +54,7 @@ void eth_phy_power_off(uint8_t phy_addr)
 
 ETH_CONN_TYPE eth_phy_get_conn_status(uint8_t phy_addr)
 {
-    TIME uptime;
+    SYSTIME uptime;
     uint16_t sta, con, anlpar;
     sta = eth_phy_read(phy_addr, ETH_PHY_REG_STATUS);
     if ((sta & ETH_STATUS_LINK_STATUS) == 0)
@@ -76,7 +76,7 @@ ETH_CONN_TYPE eth_phy_get_conn_status(uint8_t phy_addr)
     }
     //wait for auto-negotiation complete
     get_uptime(&uptime);
-    while (((sta & ETH_STATUS_AUTO_NEGOTIATION_COMPLETE) == 0) && (time_elapsed_ms(&uptime) < ETH_AUTO_NEGOTIATION_TIME))
+    while (((sta & ETH_STATUS_AUTO_NEGOTIATION_COMPLETE) == 0) && (systime_elapsed_ms(&uptime) < ETH_AUTO_NEGOTIATION_TIME))
     {
         sta = eth_phy_read(phy_addr, ETH_PHY_REG_STATUS);
         sleep_ms(1);
