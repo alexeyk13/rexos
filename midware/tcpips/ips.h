@@ -4,10 +4,10 @@
     All rights reserved.
 */
 
-#ifndef IP_H
-#define IP_H
+#ifndef IPS_H
+#define IPS_H
 
-#include "tcpip.h"
+#include "tcpips.h"
 #include "../../userspace/inet.h"
 #include "../../userspace/ipc.h"
 #include "sys_config.h"
@@ -206,7 +206,7 @@
 typedef struct {
     IP ip;
     uint16_t id;
-} TCPIP_IP;
+} IPS;
 
 typedef struct {
     uint16_t hdr_size;
@@ -214,23 +214,23 @@ typedef struct {
 } IP_STACK;
 
 //tools
-#if (SYS_INFO) || (TCPIP_DEBUG)
-void ip_print(const IP *ip);
-#endif //(SYS_INFO) || (TCPIP_DEBUG)
-uint16_t ip_checksum(uint8_t* buf, unsigned int size);
-const IP* tcpip_ip(TCPIP* tcpip);
+#if (TCPIP_DEBUG)
+void ips_print_ip(const IP *ip);
+#endif //TCPIP_DEBUG
+uint16_t ips_checksum(uint8_t* buf, unsigned int size);
+const IP* tcpip_ip(TCPIPS* tcpips);
 
 //from tcpip
-void ip_init(TCPIP* tcpip);
-bool ip_request(TCPIP* tcpip, IPC* ipc);
+void ips_init(TCPIPS* tcpips);
+bool ips_request(TCPIPS* tcpips, IPC* ipc);
 
 //allocate IP io. If more than (MTU - MAC header - IP header) and fragmentation enabled, will be allocated long frame
-IO* ip_allocate_io(TCPIP* tcpip, unsigned int size, uint8_t proto);
+IO* ips_allocate_io(TCPIPS* tcpips, unsigned int size, uint8_t proto);
 //release previously allocated io. IO is not actually freed, just put in queue of free ios
-void ip_release_io(TCPIP* tcpip, IO* io);
-void ip_tx(TCPIP* tcpip, IO* io, const IP* dst);
+void ips_release_io(TCPIPS* tcpips, IO* io);
+void ips_tx(TCPIPS* tcpips, IO* io, const IP* dst);
 
 //from mac
-void ip_rx(TCPIP* tcpip, IO* io);
+void ips_rx(TCPIPS* tcpips, IO* io);
 
-#endif // IP_H
+#endif // IPS_H

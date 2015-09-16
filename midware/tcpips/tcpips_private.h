@@ -4,19 +4,19 @@
     All rights reserved.
 */
 
-#ifndef TCPIP_PRIVATE_H
-#define TCPIP_PRIVATE_H
+#ifndef TCPIPS_PRIVATE_H
+#define TCPIPS_PRIVATE_H
 
 #include "../../userspace/array.h"
 #include "../../userspace/eth.h"
 #include "mac.h"
 #include "arp.h"
 #include "route.h"
-#include "ip.h"
+#include "ips.h"
 #include "icmp.h"
 #include "sys_config.h"
 
-typedef struct _TCPIP {
+typedef struct _TCPIPS {
     //stack itself - public use
     HANDLE eth, timer;
     unsigned seconds;
@@ -29,10 +29,10 @@ typedef struct _TCPIP {
     TCPIP_MAC mac;
     TCPIP_ARP arp;
     TCPIP_ROUTE route;
-    TCPIP_IP ip;
+    IPS ips;
 #if (ICMP)
     TCPIP_ICMP icmp;
 #endif
-} TCPIP;
+} TCPIPS;
 
-#endif // TCPIP_PRIVATE_H
+#endif // TCPIPS_PRIVATE_H

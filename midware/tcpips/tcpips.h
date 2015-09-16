@@ -4,25 +4,23 @@
     All rights reserved.
 */
 
-#ifndef TCPIP_H
-#define TCPIP_H
+#ifndef TCPIPS_H
+#define TCPIPS_H
 
 #include "../../userspace/process.h"
 #include "../../userspace/types.h"
 #include "../../userspace/io.h"
 
-typedef struct _TCPIP TCPIP;
-
-extern const REX __TCPIP;
+typedef struct _TCPIPS TCPIPS;
 
 //allocate io. Find in queue of free io, or allocate new. Handle must be checked on return
-IO* tcpip_allocate_io(TCPIP* tcpip);
+IO* tcpips_allocate_io(TCPIPS* tcpips);
 //release previously allocated io. Io is not actually freed, just put in queue of free ios
-void tcpip_release_io(TCPIP* tcpip, IO* io);
+void tcpips_release_io(TCPIPS* tcpips, IO* io);
 //transmit. If tx operation is in place (2 tx for double buffering), io will be putted in queue for later processing
-void tcpip_tx(TCPIP* tcpip, IO* io);
+void tcpips_tx(TCPIPS* tcpips, IO* io);
 //get seconds from start
-unsigned int tcpip_seconds(TCPIP* tcpip);
+unsigned int tcpips_seconds(TCPIPS* tcpips);
 
 
-#endif // TCPIP_H
+#endif // TCPIPS_H

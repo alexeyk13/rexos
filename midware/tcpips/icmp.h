@@ -7,8 +7,8 @@
 #ifndef ICMP_H
 #define ICMP_H
 
-#include "tcpip.h"
-#include "ip.h"
+#include "tcpips.h"
+#include "ips.h"
 #include "sys_config.h"
 #include "../../userspace/inet.h"
 
@@ -58,18 +58,18 @@ typedef struct {
 } TCPIP_ICMP;
 
 //from tcpip
-void icmp_init(TCPIP* tcpip);
-bool icmp_request(TCPIP* tcpip, IPC* ipc);
-void icmp_timer(TCPIP* tcpip, unsigned int seconds);
+void icmp_init(TCPIPS* tcpips);
+bool icmp_request(TCPIPS* tcpips, IPC* ipc);
+void icmp_timer(TCPIPS* tcpips, unsigned int seconds);
 
 //from ip
-void icmp_rx(TCPIP* tcpip, IO* io, IP* src);
+void icmp_rx(TCPIPS* tcpips, IO* io, IP* src);
 
 //tools
 #if (ICMP_FLOW_CONTROL)
-void icmp_destination_unreachable(TCPIP* tcpip, uint8_t code, IO* original, const IP* dst);
-void icmp_time_exceeded(TCPIP* tcpip, uint8_t code, IO* original, const IP* dst);
-void icmp_parameter_problem(TCPIP* tcpip, uint8_t offset, IO *original, const IP* dst);
+void icmp_destination_unreachable(TCPIPS* tcpips, uint8_t code, IO* original, const IP* dst);
+void icmp_time_exceeded(TCPIPS* tcpips, uint8_t code, IO* original, const IP* dst);
+void icmp_parameter_problem(TCPIPS* tcpips, uint8_t offset, IO *original, const IP* dst);
 #endif //ICMP_FLOW_CONTROL
 
 #endif // ICMP_H

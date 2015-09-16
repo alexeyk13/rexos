@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#include "ip.h"
-#include "tcpip_private.h"
+#include "ips.h"
+#include "tcpips_private.h"
 #include "../../userspace/stdio.h"
 #include "icmp.h"
 #include <string.h>
@@ -28,7 +28,7 @@
 
 
 #if (TCPIP_DEBUG)
-void ip_print(const IP* ip)
+void ips_print_ip(const IP* ip)
 {
     int i;
     for (i = 0; i < IP_SIZE; ++i)
@@ -40,38 +40,38 @@ void ip_print(const IP* ip)
 }
 #endif // (TCPIP_DEBUG)
 
-const IP* tcpip_ip(TCPIP* tcpip)
+const IP* tcpip_ip(TCPIPS* tcpips)
 {
-    return &tcpip->ip.ip;
+    return &tcpips->ips.ip;
 }
 
-void ip_init(TCPIP* tcpip)
+void ips_init(TCPIPS* tcpips)
 {
-    tcpip->ip.ip.u32.ip = IP_MAKE(0, 0, 0, 0);
-    tcpip->ip.id = 0;
+    tcpips->ips.ip.u32.ip = IP_MAKE(0, 0, 0, 0);
+    tcpips->ips.id = 0;
 }
 
-static inline void ip_set_request(TCPIP* tcpip, uint32_t ip)
+static inline void ips_set(TCPIPS* tcpips, uint32_t ip)
 {
-    tcpip->ip.ip.u32.ip = ip;
+    tcpips->ips.ip.u32.ip = ip;
 }
 
-static inline void ip_get_request(TCPIP* tcpip, HANDLE process)
+static inline void ips_get(TCPIPS* tcpips, HANDLE process)
 {
-    ipc_post_inline(process, HAL_CMD(HAL_IP, IP_GET), 0, tcpip->ip.ip.u32.ip, 0);
+    ipc_post_inline(process, HAL_CMD(HAL_IP, IP_GET), 0, tcpips->ips.ip.u32.ip, 0);
 }
 
-bool ip_request(TCPIP* tcpip, IPC* ipc)
+bool ips_request(TCPIPS* tcpips, IPC* ipc)
 {
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IP_SET:
-        ip_set_request(tcpip, ipc->param1);
+        ips_set(tcpips, ipc->param1);
         need_post = true;
         break;
     case IP_GET:
-        ip_get_request(tcpip, ipc->process);
+        ips_get(tcpips, ipc->process);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -81,10 +81,10 @@ bool ip_request(TCPIP* tcpip, IPC* ipc)
     return need_post;
 }
 
-IO *ip_allocate_io(TCPIP* tcpip, unsigned int size, uint8_t proto)
+IO *ips_allocate_io(TCPIPS* tcpips, unsigned int size, uint8_t proto)
 {
     IP_STACK* ip_stack;
-    IO* io = mac_allocate_io(tcpip);
+    IO* io = mac_allocate_io(tcpips);
     //TODO: fragmented frames
     if (io == NULL)
         return NULL;
@@ -99,13 +99,13 @@ IO *ip_allocate_io(TCPIP* tcpip, unsigned int size, uint8_t proto)
     return io;
 }
 
-void ip_release_io(TCPIP* tcpip, IO* io)
+void ips_release_io(TCPIPS* tcpips, IO* io)
 {
     //TODO: fragmented frames
-    tcpip_release_io(tcpip, io);
+    tcpips_release_io(tcpips, io);
 }
 
-void ip_tx(TCPIP* tcpip, IO* io, const IP* dst)
+void ips_tx(TCPIPS* tcpips, IO* io, const IP* dst)
 {
     IP_STACK* ip_stack;
     ip_stack = io_stack(io);
@@ -123,9 +123,9 @@ void ip_tx(TCPIP* tcpip, IO* io, const IP* dst)
     ((uint8_t*)io_data(io))[2] = (size >> 8) & 0xff;
     ((uint8_t*)io_data(io))[3] = size & 0xff;
     //id
-    ((uint8_t*)io_data(io))[4] = (tcpip->ip.id >> 8) & 0xff;
-    ((uint8_t*)io_data(io))[5] = tcpip->ip.id & 0xff;
-    ++tcpip->ip.id;
+    ((uint8_t*)io_data(io))[4] = (tcpips->ips.id >> 8) & 0xff;
+    ((uint8_t*)io_data(io))[5] = tcpips->ips.id & 0xff;
+    ++tcpips->ips.id;
     //flags, offset
     ((uint8_t*)io_data(io))[6] = ((uint8_t*)io_data(io))[7] = 0;
     //ttl
@@ -133,20 +133,20 @@ void ip_tx(TCPIP* tcpip, IO* io, const IP* dst)
     //proto
     ((uint8_t*)io_data(io))[9] = ip_stack->proto;
     //src
-    *(uint32_t*)(((uint8_t*)io_data(io)) + 12) = tcpip_ip(tcpip)->u32.ip;
+    *(uint32_t*)(((uint8_t*)io_data(io)) + 12) = tcpip_ip(tcpips)->u32.ip;
     //dst
     *(uint32_t*)(((uint8_t*)io_data(io)) + 16) = dst->u32.ip;
     //update checksum
     ((uint8_t*)io_data(io))[10] = ((uint8_t*)io_data(io))[11] = 0;
-    cs = ip_checksum(((uint8_t*)io_data(io)), ip_stack->hdr_size);
+    cs = ips_checksum(((uint8_t*)io_data(io)), ip_stack->hdr_size);
     ((uint8_t*)io_data(io))[10] = (cs >> 8) & 0xff;
     ((uint8_t*)io_data(io))[11] = cs & 0xff;
 
     io_pop(io, sizeof(IP_STACK));
-    route_tx(tcpip, io, dst);
+    route_tx(tcpips, io, dst);
 }
 
-static void ip_process(TCPIP* tcpip, IO* io, IP* src)
+static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
 {
     IP_STACK* ip_stack;
     ip_stack = io_stack(io);
@@ -159,30 +159,30 @@ static void ip_process(TCPIP* tcpip, IO* io, IP* src)
     {
 #if (ICMP)
     case PROTO_ICMP:
-        icmp_rx(tcpip, io, src);
+        icmp_rx(tcpips, io, src);
         break;
 #endif //ICMP
 #if (UDP)
     case PROTO_UDP:
-        udp_rx(tcpip, io, src);
+        udp_rx(tcpips, io, src);
         break;
     default:
 #endif //UDP
 #if (IP_DEBUG)
         printf("IP: unhandled proto %d from", ip_stack->proto);
-        ip_print(src);
+        ips_print_ip(src);
         printf("\n");
 #endif
 #if (ICMP_FLOW_CONTROL)
-        icmp_destination_unreachable(tcpip, ICMP_PROTOCOL_UNREACHABLE, io, src);
+        icmp_destination_unreachable(tcpips, ICMP_PROTOCOL_UNREACHABLE, io, src);
 #else
-        ip_release_io(tcpip, io);
+        ips_release_io(tcpips, io);
 #endif
     }
 }
 
 #if (IP_CHECKSUM)
-uint16_t ip_checksum(uint8_t* buf, unsigned int size)
+uint16_t ips_checksum(uint8_t* buf, unsigned int size)
 {
     unsigned int i;
     uint32_t sum = 0;
@@ -193,14 +193,14 @@ uint16_t ip_checksum(uint8_t* buf, unsigned int size)
 }
 #endif
 
-void ip_rx(TCPIP* tcpip, IO* io)
+void ips_rx(TCPIPS* tcpips, IO* io)
 {
     IP src;
     IP_STACK* ip_stack;
     uint8_t* ip_header = io_data(io);
     if (io->data_size < IP_HEADER_SIZE)
     {
-        tcpip_release_io(tcpip, io);
+        tcpips_release_io(tcpips, io);
         return;
     }
     io_push(io, sizeof(IP_STACK));
@@ -209,9 +209,9 @@ void ip_rx(TCPIP* tcpip, IO* io)
     ip_stack->hdr_size = IP_HEADER_IHL(ip_header) << 2;
 #if (IP_CHECKSUM)
     //drop if checksum is invalid
-    if (ip_checksum(ip_header, ip_stack->hdr_size))
+    if (ips_checksum(ip_header, ip_stack->hdr_size))
     {
-        tcpip_release_io(tcpip, io);
+        tcpips_release_io(tcpips, io);
         return;
     }
 #endif
@@ -222,9 +222,9 @@ void ip_rx(TCPIP* tcpip, IO* io)
     if (IP_HEADER_TOTAL_LENGTH(ip_header) > io->data_size)
     {
 #if (ICMP_FLOW_CONTROL)
-        icmp_parameter_problem(tcpip, 2, io, &src);
+        icmp_parameter_problem(tcpips, 2, io, &src);
 #else
-        tcpip_release_io(tcpip, io);
+        tcpips_release_io(tcpips, io);
 #endif
         return;
     }
@@ -235,16 +235,16 @@ void ip_rx(TCPIP* tcpip, IO* io)
     if ((IP_HEADER_VERSION(ip_header) != 4) || (ip_stack->hdr_size < IP_HEADER_SIZE))
     {
 #if (ICMP_FLOW_CONTROL)
-        icmp_parameter_problem(tcpip, 0, io, &src);
+        icmp_parameter_problem(tcpips, 0, io, &src);
 #else
-        tcpip_release_io(tcpip, io);
+        tcpips_release_io(tcpips, io);
 #endif
         return;
     }
     //unicast-only filter
-    if (tcpip_ip(tcpip)->u32.ip != IP_HEADER_DST_IP(ip_header)->u32.ip)
+    if (tcpip_ip(tcpips)->u32.ip != IP_HEADER_DST_IP(ip_header)->u32.ip)
     {
-        tcpip_release_io(tcpip, io);
+        tcpips_release_io(tcpips, io);
         return;
     }
 
@@ -252,9 +252,9 @@ void ip_rx(TCPIP* tcpip, IO* io)
     if (IP_HEADER_TTL(ip_header) == 0)
     {
 #if (ICMP_FLOW_CONTROL)
-        icmp_time_exceeded(tcpip, ICMP_TTL_EXCEED_IN_TRANSIT, io, &src);
+        icmp_time_exceeded(tcpips, ICMP_TTL_EXCEED_IN_TRANSIT, io, &src);
 #else
-        tcpip_release_io(tcpip, io);
+        tcpips_release_io(tcpips, io);
 #endif
         return;
     }
@@ -267,13 +267,13 @@ void ip_rx(TCPIP* tcpip, IO* io)
     if ((IP_HEADER_FLAGS(ip_header) & IP_MF) || (IP_HEADER_FRAME_OFFSET(ip_header)))
     {
 #if (ICMP_FLOW_CONTROL)
-        icmp_parameter_problem(tcpip, 6, io, &src);
+        icmp_parameter_problem(tcpips, 6, io, &src);
 #else
-        tcpip_release_io(tcpip, io);
+        tcpips_release_io(tcpips, io);
 #endif
         return;
     }
 #endif
 
-    ip_process(tcpip, io, &src);
+    ips_process(tcpips, io, &src);
 }

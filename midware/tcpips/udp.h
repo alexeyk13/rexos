@@ -7,14 +7,14 @@
 #ifndef UDP_H
 #define UDP_H
 
-#include "tcpip.h"
-#include "ip.h"
+#include "tcpips.h"
+#include "ips.h"
 #include "../../userspace/inet.h"
 #include "../../userspace/io.h"
 
 //TODO: udp_init
 
-void udp_rx(TCPIP* tcpip, IO* ip, IP* src);
+void udp_rx(TCPIPS* tcpips, IO* ip, IP* src);
 
 
 #endif // UDP_H

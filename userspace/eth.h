@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -8,11 +8,7 @@
 #define ETH_H
 
 #include <stdint.h>
-#include "sys.h"
 #include "ipc.h"
-#include "object.h"
-#include "sys_config.h"
-#include "cc_macro.h"
 
 typedef enum {
     ETH_10_HALF = 0,
@@ -48,19 +44,7 @@ typedef union {
 
 #pragma pack(pop)
 
-__STATIC_INLINE void eth_set_mac(const MAC* mac)
-{
-    ack(object_get(SYS_OBJ_ETH), HAL_CMD(HAL_ETH, ETH_SET_MAC), mac->u32.hi, mac->u32.lo, 0);
-}
-
-__STATIC_INLINE void eth_get_mac(MAC* mac)
-{
-    IPC ipc;
-    ipc.process = object_get(SYS_OBJ_ETH);
-    ipc.cmd = HAL_CMD(HAL_ETH, ETH_GET_MAC);
-    call(&ipc);
-    mac->u32.hi = ipc.param1;
-    mac->u32.lo = ipc.param2;
-}
+void eth_set_mac(const MAC* mac);
+void eth_get_mac(MAC* mac);
 
 #endif // ETH_H

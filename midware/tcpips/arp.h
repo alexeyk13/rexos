@@ -7,7 +7,7 @@
 #ifndef ARP_H
 #define ARP_H
 
-#include "tcpip.h"
+#include "tcpips.h"
 #include "../../userspace/eth.h"
 #include "../../userspace/inet.h"
 #include "../../userspace/array.h"
@@ -42,18 +42,18 @@ typedef struct {
 } TCPIP_ARP;
 
 //from tcpip
-void arp_init(TCPIP* tcpip);
-void arp_link_event(TCPIP* tcpip, bool link);
-void arp_timer(TCPIP* tcpip, unsigned int seconds);
-bool arp_request(TCPIP* tcpip, IPC* ipc);
+void arp_init(TCPIPS* tcpips);
+void arp_link_event(TCPIPS* tcpips, bool link);
+void arp_timer(TCPIPS* tcpips, unsigned int seconds);
+bool arp_request(TCPIPS* tcpips, IPC* ipc);
 
 //from mac
-void arp_rx(TCPIP* tcpip, IO* io);
+void arp_rx(TCPIPS* tcpips, IO* io);
 
 //from route. If false returned, sender must queue request for asynchronous answer
-bool arp_resolve(TCPIP* tcpip, const IP* ip, MAC* mac);
+bool arp_resolve(TCPIPS* tcpips, const IP* ip, MAC* mac);
 
 //from icmp or application
-void arp_remove_route(TCPIP* tcpip, const IP* ip);
+void arp_remove_route(TCPIPS* tcpips, const IP* ip);
 
 #endif // TCPIP_ARP_H

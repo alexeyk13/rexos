@@ -5,7 +5,7 @@
 */
 
 #include "mac.h"
-#include "tcpip_private.h"
+#include "tcpips_private.h"
 #include "../../userspace/stdio.h"
 #include "arp.h"
 
@@ -42,17 +42,17 @@ bool mac_compare(const MAC* src, const MAC* dst)
     return (src->u32.hi == dst->u32.hi) && (src->u32.lo == dst->u32.lo);
 }
 
-void mac_init(TCPIP* tcpip)
+void mac_init(TCPIPS* tcpips)
 {
-    eth_get_mac(&tcpip->mac.mac);
+    eth_get_mac(&tcpips->mac.mac);
 }
 
-const MAC* tcpip_mac(TCPIP* tcpip)
+const MAC* tcpip_mac(TCPIPS* tcpips)
 {
-    return &tcpip->mac.mac;
+    return &tcpips->mac.mac;
 }
 
-bool mac_request(TCPIP* tcpip, IPC* ipc)
+bool mac_request(TCPIPS* tcpips, IPC* ipc)
 {
     bool need_post;
     switch (HAL_ITEM(ipc->cmd))
@@ -65,12 +65,12 @@ bool mac_request(TCPIP* tcpip, IPC* ipc)
     return need_post;
 }
 
-void mac_rx(TCPIP* tcpip, IO* io)
+void mac_rx(TCPIPS* tcpips, IO* io)
 {
     uint16_t lentype;
     if (io->data_size < MAC_HEADER_SIZE)
     {
-        tcpip_release_io(tcpip, io);
+        tcpips_release_io(tcpips, io);
         return;
     }
 #if (MAC_FILTER)
@@ -80,19 +80,19 @@ void mac_rx(TCPIP* tcpip, IO* io)
         //enable broadcast only for ARP
         if (MAC_LENTYPE((uint8_t*)io_data(io)) != ETHERTYPE_ARP)
         {
-            tcpip_release_io(tcpip, io);
+            tcpips_release_io(tcpips, io);
             return;
         }
         break;
     case MAC_MULTICAST_ADDRESS:
         //drop all multicast
-        tcpip_release_io(tcpip, io);
+        tcpips_release_io(tcpips, io);
         return;
     default:
         //enable unicast only on address compare
-        if (!mac_compare(&tcpip->mac.mac, MAC_DST(io_data(io))))
+        if (!mac_compare(&tcpips->mac.mac, MAC_DST(io_data(io))))
         {
-            tcpip_release_io(tcpip, io);
+            tcpips_release_io(tcpips, io);
             return;
         }
         break;
@@ -112,41 +112,41 @@ void mac_rx(TCPIP* tcpip, IO* io)
     switch (lentype)
     {
     case ETHERTYPE_IP:
-        ip_rx(tcpip, io);
+        ips_rx(tcpips, io);
         break;
     case ETHERTYPE_ARP:
-        arp_rx(tcpip, io);
+        arp_rx(tcpips, io);
         break;
     default:
 #if (TCPIP_MAC_DEBUG)
         printf("MAC: dropped lentype: %04X\n", lentype);
 #endif
-        tcpip_release_io(tcpip, io);
+        tcpips_release_io(tcpips, io);
         break;
     }
 }
 
-IO* mac_allocate_io(TCPIP* tcpip)
+IO* mac_allocate_io(TCPIPS* tcpips)
 {
-    IO* io = tcpip_allocate_io(tcpip);
+    IO* io = tcpips_allocate_io(tcpips);
     if (io == NULL)
         return NULL;
     io->data_offset += MAC_HEADER_SIZE;
     return io;
 }
 
-void mac_tx(TCPIP* tcpip, IO* io, const MAC* dst, uint16_t lentype)
+void mac_tx(TCPIPS* tcpips, IO* io, const MAC* dst, uint16_t lentype)
 {
     io->data_offset -= MAC_HEADER_SIZE;
     io->data_size += MAC_HEADER_SIZE;
 
     MAC_DST(io_data(io))->u32.hi = dst->u32.hi;
     MAC_DST(io_data(io))->u32.lo = dst->u32.lo;
-    MAC_SRC(io_data(io))->u32.hi = tcpip->mac.mac.u32.hi;
-    MAC_SRC(io_data(io))->u32.lo = tcpip->mac.mac.u32.lo;
+    MAC_SRC(io_data(io))->u32.hi = tcpips->mac.mac.u32.hi;
+    MAC_SRC(io_data(io))->u32.lo = tcpips->mac.mac.u32.lo;
 
     ((uint8_t*)io_data(io))[2 * MAC_SIZE] = (lentype >> 8) & 0xff;
     ((uint8_t*)io_data(io))[2 * MAC_SIZE +  1] = lentype & 0xff;
 
-    tcpip_tx(tcpip, io);
+    tcpips_tx(tcpips, io);
 }

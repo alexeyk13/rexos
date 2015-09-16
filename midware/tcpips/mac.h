@@ -7,7 +7,7 @@
 #ifndef MAC_H
 #define MAC_H
 
-#include "tcpip.h"
+#include "tcpips.h"
 #include "../../userspace/eth.h"
 #include "sys_config.h"
 #include <stdint.h>
@@ -37,18 +37,18 @@ typedef struct {
 #define ETHERTYPE_IPV6                              0x86dd
 
 //tools
-#if (SYS_INFO) || (TCPIP_DEBUG)
+#if (TCPIP_DEBUG)
 void mac_print(const MAC *mac);
-#endif //(SYS_INFO) || (TCPIP_DEBUG)
+#endif //TCPIP_DEBUG
 bool mac_compare(const MAC* src, const MAC* dst);
-const MAC* tcpip_mac(TCPIP* tcpip);
+const MAC* tcpip_mac(TCPIPS* tcpips);
 
 //from tcpip process
-void mac_init(TCPIP* tcpip);
-bool mac_request(TCPIP* tcpip, IPC* ipc);
-void mac_rx(TCPIP* tcpip, IO* io);
+void mac_init(TCPIPS* tcpips);
+bool mac_request(TCPIPS* tcpips, IPC* ipc);
+void mac_rx(TCPIPS* tcpips, IO* io);
 
-IO* mac_allocate_io(TCPIP* tcpip);
-void mac_tx(TCPIP* tcpip, IO* io, const MAC* dst, uint16_t lentype);
+IO* mac_allocate_io(TCPIPS* tcpips);
+void mac_tx(TCPIPS* tcpips, IO* io, const MAC* dst, uint16_t lentype);
 
 #endif // MAC_H
