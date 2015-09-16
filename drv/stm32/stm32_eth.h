@@ -123,7 +123,4 @@ typedef struct {
 #endif
 } ETH_DRV;
 
-extern const REX __STM32_ETH;
-
-
 #endif // STM32_ETH_H

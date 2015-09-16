@@ -10,7 +10,7 @@
 #include "../../userspace/ipc.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/sys.h"
-#include "../../userspace/timer.h"
+#include "../../userspace/systime.h"
 #include "../../userspace/stm32_driver.h"
 #include "../eth_phy.h"
 #include "stm32_pin.h"
@@ -397,7 +397,7 @@ static inline void stm32_eth_read(ETH_DRV* drv, IPC* ipc)
     IO* io = (IO*)ipc->param2;
     if (!drv->connected)
     {
-        ipc_post_ex(ipc, ERROR_ERROR_NOT_ACTIVE);
+        ipc_post_ex(ipc, ERROR_NOT_ACTIVE);
         return;
     }
 #if (ETH_DOUBLE_BUFFERING)
