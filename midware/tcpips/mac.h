@@ -44,7 +44,8 @@ bool mac_compare(const MAC* src, const MAC* dst);
 const MAC* tcpip_mac(TCPIPS* tcpips);
 
 //from tcpip process
-void mac_init(TCPIPS* tcpips);
+void macs_init(TCPIPS* tcpips);
+void macs_open(TCPIPS* tcpips);
 bool mac_request(TCPIPS* tcpips, IPC* ipc);
 void mac_rx(TCPIPS* tcpips, IO* io);
 

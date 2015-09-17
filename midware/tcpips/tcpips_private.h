@@ -22,10 +22,10 @@ typedef struct _TCPIPS {
     unsigned seconds;
     ETH_CONN_TYPE conn;
     //stack itself - private use
-    unsigned int io_allocated, tx_count;
+    unsigned int io_allocated, tx_count, eth_handle;
     ARRAY* free_io;
     ARRAY* tx_queue;
-    bool active, connected;
+    bool connected;
     TCPIP_MAC mac;
     TCPIP_ARP arp;
     TCPIP_ROUTE route;

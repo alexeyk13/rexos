@@ -9,7 +9,6 @@
 
 #include <stdint.h>
 #include "ipc.h"
-#include "cc_macro.h"
 
 #define IP_SIZE                                     4
 
@@ -33,14 +32,7 @@ typedef enum {
     IP_HAL_MAX
 }IP_IPCS;
 
-__STATIC_INLINE void ip_set(HANDLE tcpip, const IP* ip)
-{
-    ack(tcpip, HAL_CMD(HAL_IP, IP_SET), ip->u32.ip, 0, 0);
-}
-
-__STATIC_INLINE void ip_get(HANDLE tcpip, IP* ip)
-{
-    ip->u32.ip = get(tcpip, HAL_CMD(HAL_IP, IP_GET), 0, 0, 0);
-}
+void ip_set(HANDLE tcpip, const IP* ip);
+void ip_get(HANDLE tcpip, IP* ip);
 
 #endif // IP_H

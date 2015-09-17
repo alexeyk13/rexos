@@ -10,10 +10,7 @@
 #include "ip.h"
 #include "ipc.h"
 #include "cc_macro.h"
-#include "object.h"
 #include "sys_config.h"
-
-extern const REX __TCPIP;
 
 typedef enum {
     ICMP_PING = IPC_USER,

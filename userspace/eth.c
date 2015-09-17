@@ -5,20 +5,19 @@
 */
 
 #include "eth.h"
-#include "object.h"
-#include "sys_config.h"
 
-void eth_set_mac(const MAC* mac)
+void eth_set_mac(HANDLE eth, unsigned int eth_handle, const MAC* mac)
 {
-    ack(object_get(SYS_OBJ_ETH), HAL_CMD(HAL_ETH, ETH_SET_MAC), mac->u32.hi, mac->u32.lo, 0);
+    ack(eth, HAL_CMD(HAL_ETH, ETH_SET_MAC), eth_handle, mac->u32.hi, mac->u32.lo);
 }
 
-void eth_get_mac(MAC* mac)
+void eth_get_mac(HANDLE eth, unsigned int eth_handle, MAC* mac)
 {
     IPC ipc;
-    ipc.process = object_get(SYS_OBJ_ETH);
     ipc.cmd = HAL_CMD(HAL_ETH, ETH_GET_MAC);
+    ipc.process = eth;
+    ipc.param1 = eth_handle;
     call(&ipc);
-    mac->u32.hi = ipc.param1;
-    mac->u32.lo = ipc.param2;
+    mac->u32.hi = ipc.param2;
+    mac->u32.lo = ipc.param3;
 }

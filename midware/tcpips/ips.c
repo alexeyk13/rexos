@@ -67,7 +67,7 @@ bool ips_request(TCPIPS* tcpips, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IP_SET:
-        ips_set(tcpips, ipc->param1);
+        ips_set(tcpips, ipc->param2);
         need_post = true;
         break;
     case IP_GET:

@@ -8,6 +8,7 @@
 #include "tcpips_private.h"
 #include "../../userspace/stdio.h"
 #include "arp.h"
+#include <string.h>
 
 #define MAC_DST(buf)                                        ((MAC*)(buf))
 #define MAC_SRC(buf)                                        ((MAC*)((buf) + MAC_SIZE))
@@ -42,9 +43,14 @@ bool mac_compare(const MAC* src, const MAC* dst)
     return (src->u32.hi == dst->u32.hi) && (src->u32.lo == dst->u32.lo);
 }
 
-void mac_init(TCPIPS* tcpips)
+void macs_init(TCPIPS* tcpips)
 {
-    eth_get_mac(&tcpips->mac.mac);
+    memset(&tcpips->mac.mac, sizeof(MAC));
+}
+
+void macs_open(TCPIPS* tcpips)
+{
+    eth_get_mac(tcpips->eth, tcpips->eth_handle, &tcpips->mac.mac);
 }
 
 const MAC* tcpip_mac(TCPIPS* tcpips)

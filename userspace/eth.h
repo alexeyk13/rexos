@@ -44,7 +44,7 @@ typedef union {
 
 #pragma pack(pop)
 
-void eth_set_mac(const MAC* mac);
-void eth_get_mac(MAC* mac);
+void eth_set_mac(HANDLE eth, unsigned int eth_handle, const MAC* mac);
+void eth_get_mac(HANDLE eth, unsigned int eth_handle, MAC* mac);
 
 #endif // ETH_H

@@ -484,16 +484,16 @@ static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
     ETH->DMATPDR = 0;
 }
 
-static inline void stm32_eth_set_mac(ETH_DRV* drv, unsigned int param1, unsigned int param2)
+static inline void stm32_eth_set_mac(ETH_DRV* drv, unsigned int param2, unsigned int param3)
 {
-    drv->mac.u32.hi = param1;
-    drv->mac.u32.lo = (uint16_t)param2;
+    drv->mac.u32.hi = param2;
+    drv->mac.u32.lo = (uint16_t)param3;
 }
 
 static inline void stm32_eth_get_mac(ETH_DRV* drv, IPC* ipc)
 {
-    ipc->param1 = drv->mac.u32.hi;
-    ipc->param2 = drv->mac.u32.lo;
+    ipc->param2 = drv->mac.u32.hi;
+    ipc->param3 = drv->mac.u32.lo;
 }
 
 void stm32_eth_init(ETH_DRV* drv)
@@ -539,7 +539,7 @@ bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
         stm32_eth_conn_check(drv);
         break;
     case ETH_SET_MAC:
-        stm32_eth_set_mac(drv, ipc->param1, ipc->param2);
+        stm32_eth_set_mac(drv, ipc->param2, ipc->param3);
         need_post = true;
         break;
     case ETH_GET_MAC:

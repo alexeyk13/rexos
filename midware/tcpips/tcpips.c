@@ -19,21 +19,6 @@
 
 #define FRAME_MAX_SIZE                          (TCPIP_MTU + MAC_HEADER_SIZE)
 
-void tcpips_main();
-
-const REX __TCPIP = {
-    //name
-    "TCP/IP stack",
-    //size
-    TCPIP_PROCESS_SIZE,
-    //priority - midware priority
-    TCPIP_PROCESS_PRIORITY,
-    //flags
-    PROCESS_FLAGS_ACTIVE | REX_FLAG_PERSISTENT_NAME,
-    //function
-    tcpips_main
-};
-
 #if (TCPIP_DEBUG)
 static void print_conn_status(TCPIPS* tcpips, const char* head)
 {
@@ -128,7 +113,7 @@ static void tcpips_rx_next(TCPIPS* tcpips)
     IO* io = tcpips_allocate_io(tcpips);
     if (io == NULL)
         return;
-    io_read(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_READ), 0, io, FRAME_MAX_SIZE);
+    io_read(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_READ), tcpips->eth_handle, io, FRAME_MAX_SIZE);
 }
 
 void tcpips_tx(TCPIPS* tcpips, IO *io)
@@ -144,7 +129,7 @@ void tcpips_tx(TCPIPS* tcpips, IO *io)
         *((IO**)array_at(tcpips->tx_queue, array_size(tcpips->tx_queue) - 1)) = io;
     }
     else
-        io_write(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_WRITE), 0, io);
+        io_write(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_WRITE), tcpips->eth_handle, io);
 }
 
 unsigned int tcpips_seconds(TCPIPS* tcpips)
@@ -152,18 +137,20 @@ unsigned int tcpips_seconds(TCPIPS* tcpips)
     return tcpips->seconds;
 }
 
-static inline void tcpips_open(TCPIPS* tcpips, ETH_CONN_TYPE conn)
+static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE eth, ETH_CONN_TYPE conn)
 {
-    if (tcpips->active)
+    if (tcpips->eth != INVALID_HANDLE)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
+    tcpips->eth = eth;
+    tcpips->eth_handle = eth_handle;
     tcpips->timer = timer_create(0, HAL_TCPIP);
     if (tcpips->timer == INVALID_HANDLE)
         return;
-    ack(tcpips->eth, HAL_CMD(HAL_ETH, IPC_OPEN), 0, conn, 0);
-    tcpips->active = true;
+    ack(tcpips->eth, HAL_CMD(HAL_ETH, IPC_OPEN), tcpips->eth_handle, conn, 0);
+    macs_open(tcpips);
     tcpips->seconds = 0;
     timer_start_ms(tcpips->timer, 1000);
 }
@@ -194,7 +181,7 @@ static inline void tcpips_eth_tx_complete(TCPIPS* tcpips, IO* io, int param3)
         //send next in queue
         queue_io = *((IO**)array_at(tcpips->tx_queue, 0));
         array_remove(&tcpips->tx_queue, 0);
-        io_write(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_WRITE), 0, queue_io);
+        io_write(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_WRITE), tcpips->eth_handle, queue_io);
     }
 }
 
@@ -219,10 +206,9 @@ static inline void tcpips_link_changed(TCPIPS* tcpips, ETH_CONN_TYPE conn)
 
 void tcpips_init(TCPIPS* tcpips)
 {
-    tcpips->eth = object_get(SYS_OBJ_ETH);
+    tcpips->eth = INVALID_HANDLE;
     tcpips->timer = INVALID_HANDLE;
     tcpips->conn = ETH_NO_LINK;
-    tcpips->connected = tcpips->active = false;
     tcpips->io_allocated = 0;
 #if (ETH_DOUBLE_BUFFERING)
     //2 rx + 2 tx + 1 for processing
@@ -233,7 +219,7 @@ void tcpips_init(TCPIPS* tcpips)
 #endif
     array_create(&tcpips->tx_queue, sizeof(IO*), 1);
     tcpips->tx_count = 0;
-    mac_init(tcpips);
+    macs_init(tcpips);
     arp_init(tcpips);
     route_init(tcpips);
     ips_init(tcpips);
@@ -257,7 +243,7 @@ static inline bool tcpips_request(TCPIPS* tcpips, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        tcpips_open(tcpips, ipc->param2);
+        tcpips_open(tcpips, ipc->param1, ipc->param2, ipc->param3);
         need_post = true;
         break;
     case IPC_CLOSE:
