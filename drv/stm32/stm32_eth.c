@@ -19,38 +19,7 @@
 #include <string.h>
 
 #define get_clock               stm32_power_get_clock_outside
-#define ack_pin                stm32_core_request_outside
 #define ack_power               stm32_core_request_outside
-
-#define STM32_ETH_MDC           C1
-#define STM32_ETH_MDIO          A2
-#define STM32_ETH_TX_CLK        C3
-#define STM32_ETH_TX_EN         B11
-#define STM32_ETH_TX_D0         B12
-#define STM32_ETH_TX_D1         B13
-#define STM32_ETH_TX_D2         C2
-#define STM32_ETH_TX_D3         B8
-
-#define STM32_ETH_RX_CLK        A1
-#define STM32_ETH_RX_ER         B10
-
-#if (STM32_ETH_REMAP)
-#define STM32_ETH_RX_DV         D8
-#define STM32_ETH_RX_D0         D9
-#define STM32_ETH_RX_D1         D10
-#define STM32_ETH_RX_D2         D11
-#define STM32_ETH_RX_D3         D12
-#else
-#define STM32_ETH_RX_DV         A7
-#define STM32_ETH_RX_D0         C4
-#define STM32_ETH_RX_D1         C5
-#define STM32_ETH_RX_D2         B0
-#define STM32_ETH_RX_D3         B1
-#endif
-
-#define STM32_ETH_PPS_OUT       B5
-#define STM32_ETH_COL           A3
-#define STM32_ETH_CRS_WKUP      A0
 
 void stm32_eth();
 
@@ -136,7 +105,7 @@ static void stm32_eth_flush(ETH_DRV* drv)
 static void stm32_eth_conn_check(ETH_DRV* drv)
 {
     ETH_CONN_TYPE new_conn;
-    new_conn = eth_phy_get_conn_status(ETH_PHY_ADDRESS);
+    new_conn = eth_phy_get_conn_status(drv->phy_addr);
     if (new_conn != drv->conn)
     {
         drv->conn = new_conn;
@@ -245,36 +214,10 @@ static void stm32_eth_close(ETH_DRV* drv)
     stm32_eth_flush(drv);
 
     //turn phy off
-    eth_phy_power_off(ETH_PHY_ADDRESS);
+    eth_phy_power_off(drv->phy_addr);
 
     //disable clocks
     RCC->AHBENR &= ~(RCC_AHBENR_ETHMACEN | RCC_AHBENR_ETHMACTXEN | RCC_AHBENR_ETHMACRXEN);
-
-    //disable pins
-#if (STM32_ETH_REMAP)
-    AFIO->MAPR &= ~AFIO_MAPR_ETH_REMAP;
-#endif
-#if (STM32_ETH_PPS_OUT_ENABLE)
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_PPS_OUT, 0, 0);
-#endif
-
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_MDC, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_MDIO, 0, 0);
-
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_CLK, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_EN, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_D0, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_D1, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_D2, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_TX_D3, 0, 0);
-
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_CLK, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_DV, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_ER, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_D0, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_D1, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_D2, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), STM32_ETH_RX_D3, 0, 0);
 
     //destroy timer
     timer_destroy(drv->timer);
@@ -286,41 +229,15 @@ static void stm32_eth_close(ETH_DRV* drv)
     drv->conn = ETH_NO_LINK;
 }
 
-static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE tcpip)
+static inline void stm32_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TYPE conn, HANDLE tcpip)
 {
     unsigned int clock;
 
+    drv->phy_addr = phy_addr;
     drv->timer = timer_create(0, HAL_ETH);
     if (drv->timer == INVALID_HANDLE)
         return;
     drv->tcpip = tcpip;
-    //enable pins
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_MDC, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_MDIO, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_CLK, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_EN, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_D0, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_D1, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_D2, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_TX_D3, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_CLK, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_DV, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_ER, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_D0, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_D1, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_D2, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_RX_D3, STM32_GPIO_MODE_INPUT_FLOAT, false);
-
-#if (STM32_ETH_REMAP)
-    AFIO->MAPR |= AFIO_MAPR_ETH_REMAP;
-#endif
-#if (STM32_ETH_PPS_OUT_ENABLE)
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_PPS_OUT, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-#endif
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_COL, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), STM32_ETH_CRS_WKUP, STM32_GPIO_MODE_INPUT_FLOAT, false);
 
     //enable clocks
     RCC->AHBENR |= RCC_AHBENR_ETHMACEN | RCC_AHBENR_ETHMACTXEN | RCC_AHBENR_ETHMACRXEN;
@@ -382,7 +299,7 @@ static inline void stm32_eth_open(ETH_DRV* drv, ETH_CONN_TYPE conn, HANDLE tcpip
     ETH->DMAIER = ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE;
 
     //turn phy on
-    if (!eth_phy_power_on(ETH_PHY_ADDRESS, conn))
+    if (!eth_phy_power_on(drv->phy_addr, conn))
     {
         error(ERROR_NOT_FOUND);
         stm32_eth_close(drv);
@@ -516,7 +433,7 @@ bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        stm32_eth_open(drv, ipc->param2, ipc->process);
+        stm32_eth_open(drv, ipc->param1, ipc->param2, ipc->process);
         need_post = true;
         break;
     case IPC_CLOSE:

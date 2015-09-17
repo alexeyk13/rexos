@@ -45,7 +45,7 @@ bool mac_compare(const MAC* src, const MAC* dst)
 
 void macs_init(TCPIPS* tcpips)
 {
-    memset(&tcpips->mac.mac, sizeof(MAC));
+    memset(&tcpips->mac.mac, 0, sizeof(MAC));
 }
 
 void macs_open(TCPIPS* tcpips)

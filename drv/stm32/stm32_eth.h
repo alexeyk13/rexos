@@ -118,6 +118,7 @@ typedef struct {
     HANDLE tcpip, timer;
     bool connected;
     MAC mac;
+    uint8_t phy_addr;
 #if (ETH_DOUBLE_BUFFERING)
     uint8_t cur_rx, cur_tx;
 #endif

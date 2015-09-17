@@ -647,6 +647,7 @@ void stm32_power_init(CORE* core)
 #if (SYSCFG_ENABLED)
 #if defined(STM32F1)
     RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+    AFIO->MAPR = STM32F1_MAPR;
 #else
     RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 #endif
