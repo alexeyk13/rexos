@@ -10,7 +10,7 @@
 
 bool i2c_open(I2C_PORT port, unsigned int mode, unsigned int speed)
 {
-    return ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_I2C, IPC_OPEN), port, mode, speed);
+    return get(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_I2C, IPC_OPEN), port, mode, speed) != INVALID_HANDLE;
 }
 
 void i2c_close(I2C_PORT port)

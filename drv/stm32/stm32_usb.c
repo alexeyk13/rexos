@@ -671,7 +671,7 @@ void stm32_usb()
         ipc_read(&ipc);
         need_post = stm32_usb_request(&drv, &ipc);
         if (need_post)
-            ipc_post_or_error(&ipc);
+            ipc_write(&ipc);
     }
 }
 #endif

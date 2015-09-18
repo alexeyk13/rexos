@@ -719,7 +719,7 @@ void lpc_otg()
         ipc_read(&ipc);
         need_post = lpc_otg_request(&drv, &ipc);
         if (need_post)
-            ipc_post_or_error(&ipc);
+            ipc_write(&ipc);
     }
 }
 #endif //!MONOLITH_USB

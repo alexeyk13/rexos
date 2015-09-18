@@ -57,9 +57,9 @@ typedef enum {
 #define TIMER_CHANNEL_TYPE_VALUE(raw)           (((raw) >> 8) & 0xff)
 //bits 16..31 user specific
 
-__STATIC_INLINE void htimer_open(int num, unsigned int flags)
+__STATIC_INLINE bool htimer_open(int num, unsigned int flags)
 {
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_TIMER, IPC_OPEN), num, flags, 0);
+    return get(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_TIMER, IPC_OPEN), num, flags, 0) != INVALID_HANDLE;
 }
 
 __STATIC_INLINE void htimer_close(int num)

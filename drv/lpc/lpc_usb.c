@@ -662,7 +662,7 @@ void lpc_usb()
         ipc_read(&ipc);
         need_post = lpc_usb_request(&drv, &ipc);
         if (need_post)
-            ipc_post_or_error(&ipc);
+            ipc_write(&ipc);
     }
 }
 #endif

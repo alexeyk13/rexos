@@ -119,13 +119,6 @@ void ipc_post_ex(IPC* ipc, int param3);
 void ipc_post_inline(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
-    \brief post IPC or error if any
-    \param ipc: IPC structure
-    \retval none
-*/
-void ipc_post_or_error(IPC* ipc);
-
-/**
     \brief post IPC
     \details This version must be called for IRQ context
     \param ipc: IPC structure
@@ -162,12 +155,19 @@ void ipc_read(IPC* ipc);
 void ipc_read_ex(IPC* ipc, HANDLE process, unsigned int cmd, unsigned int param1);
 
 /**
-    \brief call to process
+    \brief write IPC or error if any
+    \param ipc: IPC structure
+    \retval none
+*/
+void ipc_write(IPC* ipc);
+
+/**
+    \brief call to process, wait for response
     \param IPC: ipc to call
-    \retval true on success
+    \retval none
 */
 
-bool call(IPC* ipc);
+void call(IPC* ipc);
 
 /**
     \brief call to process, inline version
@@ -176,10 +176,10 @@ bool call(IPC* ipc);
     \param param1: cmd specific
     \param param2: cmd specific
     \param param3: cmd specific
-    \retval true on success
+    \retval none
 */
 
-bool ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
+void ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
     \brief get value from process

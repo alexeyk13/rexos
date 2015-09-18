@@ -541,7 +541,7 @@ void stm32_uart()
         ipc_read(&ipc);
         need_post = stm32_uart_request(&drv, &ipc);
         if (need_post)
-            ipc_post_or_error(&ipc);
+            ipc_write(&ipc);
     }
 }
 #endif

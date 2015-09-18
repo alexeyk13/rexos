@@ -137,5 +137,5 @@ void kipc_call(IPC* ipc)
     KPROCESS* kprocess = kprocess_get_current();
     CHECK_ADDRESS(kprocess, ipc, sizeof(IPC));
     kipc_post_process(ipc, kprocess);
-    kipc_wait_process(kprocess, (KPROCESS*)(ipc->process), ipc->cmd, ANY_HANDLE);
+    kipc_wait_process(kprocess, (KPROCESS*)(ipc->process), ipc->cmd, ipc->param1);
 }

@@ -23,7 +23,7 @@ HANDLE tcpip_create(unsigned int process_size, unsigned int priority, unsigned i
     return process_create(&rex);
 }
 
-void tcpip_open(HANDLE tcpip, HANDLE eth, unsigned int eth_handle, ETH_CONN_TYPE conn_type)
+bool tcpip_open(HANDLE tcpip, HANDLE eth, unsigned int eth_handle, ETH_CONN_TYPE conn_type)
 {
-    ack(tcpip, HAL_CMD(HAL_TCPIP, IPC_OPEN), eth_handle, eth, conn_type);
+    return get(tcpip, HAL_CMD(HAL_TCPIP, IPC_OPEN), eth_handle, eth, conn_type) != INVALID_HANDLE;
 }

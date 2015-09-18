@@ -1234,7 +1234,7 @@ void usbd()
             need_post = true;
         }
         if (need_post)
-            ipc_post_or_error(&ipc);
+            ipc_write(&ipc);
     }
 }
 

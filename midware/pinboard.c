@@ -188,6 +188,6 @@ void pinboard()
     {
         ipc_read(&ipc);
         if (pinboard_request(&pinboard, &ipc))
-            ipc_post_or_error(&ipc);
+            ipc_write(&ipc);
     }
 }

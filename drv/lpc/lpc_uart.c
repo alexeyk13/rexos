@@ -886,7 +886,7 @@ void lpc_uart()
         else
             need_post = lpc_uart_request(&drv, &ipc);
         if (need_post)
-            ipc_post_or_error(&ipc);
+            ipc_write(&ipc);
     }
 }
 #endif

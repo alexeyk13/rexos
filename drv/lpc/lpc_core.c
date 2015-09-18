@@ -84,7 +84,7 @@ void lpc_core_loop(CORE* core)
             break;
         }
         if (need_post)
-            ipc_post_or_error(&ipc);
+            ipc_write(&ipc);
     }
 }
 

@@ -37,9 +37,9 @@ void uart_setup_stdin(int num)
     object_set(SYS_OBJ_STDIN, get(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_GET_RX_STREAM), num, 0, 0));
 }
 
-void uart_open(int num, unsigned int mode)
+bool uart_open(int num, unsigned int mode)
 {
-    ack(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_OPEN), num, mode, 0);
+    return get(object_get(SYS_OBJ_UART), HAL_CMD(HAL_UART, IPC_OPEN), num, mode, 0) != INVALID_HANDLE;
 }
 
 void uart_close(int num)

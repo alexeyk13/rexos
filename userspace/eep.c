@@ -13,7 +13,7 @@
 
 bool eep_seek(unsigned int addr)
 {
-    return ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_EEPROM, IPC_SEEK), 0, addr, 0);
+    return get(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_EEPROM, IPC_SEEK), 0, addr, 0) != INVALID_HANDLE;
 }
 
 int eep_read(unsigned int offset, void* buf, unsigned int size)

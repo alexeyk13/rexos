@@ -34,7 +34,7 @@ typedef enum {
 
 __STATIC_INLINE bool dac_open(int channel, DAC_MODE mode, unsigned int samplerate)
 {
-    return ack(object_get(SYS_OBJ_DAC), HAL_CMD(HAL_DAC, IPC_OPEN), channel, mode, samplerate);
+    return get(object_get(SYS_OBJ_DAC), HAL_CMD(HAL_DAC, IPC_OPEN), channel, mode, samplerate) != INVALID_HANDLE;
 }
 
 __STATIC_INLINE void dac_set(int channel, SAMPLE value)
