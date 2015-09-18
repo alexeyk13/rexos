@@ -7,8 +7,9 @@
 #include "icmp.h"
 #include "tcpips_private.h"
 #include "../../userspace/stdio.h"
+#include "../../userspace/ip.h"
 #include <string.h>
-#include "arp.h"
+#include "arps.h"
 
 #define ICMP_HEADER_SIZE                                            8
 #define ICMP_TYPE(buf)                                              ((buf)[0])
@@ -31,7 +32,7 @@ void icmp_init(TCPIPS* tcpips)
 static void icmp_tx(TCPIPS* tcpips, IO* io, const IP* dst)
 {
     ((uint8_t*)io_data(io))[2] = ((uint8_t*)io_data(io))[3] = 0;
-    uint16_t cs = ips_checksum(((uint8_t*)io_data(io)), io->data_size);
+    uint16_t cs = ip_checksum(((uint8_t*)io_data(io)), io->data_size);
     ((uint8_t*)io_data(io))[2] = (cs >> 8) & 0xff;
     ((uint8_t*)io_data(io))[3] = cs & 0xff;
     ips_tx(tcpips, io, dst);
@@ -42,7 +43,7 @@ static inline void icmp_cmd_echo(TCPIPS* tcpips, IO* io, IP* src)
 {
 #if (ICMP_DEBUG)
     printf("ICMP: ECHO from ");
-    ips_print_ip(src);
+    ip_print(src);
     printf("\n");
 #endif
     ((uint8_t*)io_data(io))[0] = ICMP_CMD_ECHO_REPLY;
@@ -112,7 +113,7 @@ static inline void icmp_cmd_echo_reply(TCPIPS* tcpips, IO* io, IP* src)
     bool success = true;
 #if (ICMP_DEBUG)
     printf("ICMP: ECHO REPLY from ");
-    ips_print_ip(src);
+    ip_print(src);
     printf("\n");
 #endif
     //compare src, sequence, id and data
@@ -134,9 +135,9 @@ static inline void icmp_cmd_destination_unreachable(TCPIPS* tcpips, IO* io)
 {
     IP dst;
     //useless if no original header provided
-    if (io->data_size < ICMP_HEADER_SIZE + IP_HEADER_SIZE)
+    if (io->data_size < ICMP_HEADER_SIZE + sizeof(IP_HEADER))
     {
-        ip_release_io(tcpips, io);
+        ips_release_io(tcpips, io);
         return;
     }
     dst.u32.ip = *((uint32_t*)(((uint8_t*)io_data(io)) + ICMP_HEADER_SIZE + 16));
@@ -150,7 +151,7 @@ static inline void icmp_cmd_destination_unreachable(TCPIPS* tcpips, IO* io)
     case ICMP_NET_UNREACHABLE:
     case ICMP_HOST_UNREACHABLE:
     case ICMP_SOURCE_ROUTE_FAILED:
-        arp_remove_route(tcpips, &dst);
+        arps_remove_route(tcpips, &dst);
         break;
     default:
         break;
@@ -197,7 +198,7 @@ void icmp_rx(TCPIPS* tcpips, IO *io, IP* src)
         ips_release_io(tcpips, io);
         return;
     }
-    if (ips_checksum(((uint8_t*)io_data(io)), io->data_size))
+    if (ip_checksum(((uint8_t*)io_data(io)), io->data_size))
     {
         ips_release_io(tcpips, io);
         return;
@@ -223,7 +224,7 @@ void icmp_rx(TCPIPS* tcpips, IO *io, IP* src)
     default:
 #if (ICMP_DEBUG)
         printf("ICMP: unhandled type %d from ", ICMP_TYPE(((uint8_t*)io_data(io))));
-        ips_print_ip(src);
+        ip_print(src);
         printf("\n");
 #endif
         ips_release_io(tcpips, io);

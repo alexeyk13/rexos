@@ -6,7 +6,7 @@
 
 #include "route.h"
 #include "tcpips_private.h"
-#include "arp.h"
+#include "arps.h"
 #include "macs.h"
 
 #define ROUTE_QUEUE_ITEM(tcpips, i)                    ((ROUTE_QUEUE_ENTRY*)array_at((tcpips)->route.tx_queue, i))
@@ -61,7 +61,7 @@ void route_tx(TCPIPS* tcpips, IO* io, const IP* target)
     ROUTE_QUEUE_ENTRY* item;
     //TODO: forward to gateway
     MAC mac;
-    if (arp_resolve(tcpips, target, &mac))
+    if (arps_resolve(tcpips, target, &mac))
         macs_tx(tcpips, io, &mac, ETHERTYPE_IP);
     else
     {

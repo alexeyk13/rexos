@@ -8,22 +8,19 @@
 #include "tcpips_private.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/endian.h"
-#include "arp.h"
+#include "arps.h"
 #include <string.h>
 
 void macs_init(TCPIPS* tcpips)
 {
-    memset(&tcpips->macs.mac, 0, sizeof(MAC));
+    memset(&tcpips->mac, 0, sizeof(MAC));
 }
 
 void macs_open(TCPIPS* tcpips)
 {
-    eth_get_mac(tcpips->eth, tcpips->eth_handle, &tcpips->macs.mac);
-}
-
-const MAC* macs_mac(TCPIPS* tcpips)
-{
-    return &tcpips->macs.mac;
+    eth_get_mac(tcpips->eth, tcpips->eth_handle, &tcpips->mac);
+    ///!!!
+    mac_print(&tcpips->mac);
 }
 
 bool macs_request(TCPIPS* tcpips, IPC* ipc)
@@ -67,7 +64,7 @@ void macs_rx(TCPIPS* tcpips, IO* io)
         return;
     default:
         //enable unicast only on address compare
-        if (!mac_compare(&tcpips->macs.mac, &hdr->dst))
+        if (!mac_compare(&tcpips->mac, &hdr->dst))
         {
             tcpips_release_io(tcpips, io);
             return;
@@ -91,7 +88,7 @@ void macs_rx(TCPIPS* tcpips, IO* io)
         ips_rx(tcpips, io);
         break;
     case ETHERTYPE_ARP:
-        arp_rx(tcpips, io);
+        arps_rx(tcpips, io);
         break;
     default:
 #if (TCPIP_MAC_DEBUG)
@@ -119,8 +116,8 @@ void macs_tx(TCPIPS* tcpips, IO* io, const MAC* dst, uint16_t lentype)
 
     hdr->dst.u32.hi = dst->u32.hi;
     hdr->dst.u32.lo = dst->u32.lo;
-    hdr->src.u32.hi = tcpips->macs.mac.u32.hi;
-    hdr->src.u32.lo = tcpips->macs.mac.u32.lo;
+    hdr->src.u32.hi = tcpips->mac.u32.hi;
+    hdr->src.u32.lo = tcpips->mac.u32.lo;
     short2be(hdr->lentype_be, lentype);
 
     tcpips_tx(tcpips, io);

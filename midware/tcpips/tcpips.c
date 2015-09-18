@@ -13,11 +13,11 @@
 #include "../../userspace/sys.h"
 #include "sys_config.h"
 #include "macs.h"
-#include "arp.h"
+#include "arps.h"
 #include "route.h"
 #include "ips.h"
 
-#define FRAME_MAX_SIZE                          (TCPIP_MTU + sizeof(MAC_HEADER))
+#define FRAME_MAX_SIZE                          (TCPIP_MTU + sizeof(MAC_HEADER) + sizeof(IP_STACK))
 
 #if (TCPIP_DEBUG)
 static void print_conn_status(TCPIPS* tcpips, const char* head)
@@ -151,6 +151,7 @@ static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE e
         return;
     ack(tcpips->eth, HAL_CMD(HAL_ETH, IPC_OPEN), tcpips->eth_handle, conn, 0);
     macs_open(tcpips);
+    ips_open(tcpips);
     tcpips->seconds = 0;
     timer_start_ms(tcpips->timer, 1000);
 }
@@ -201,7 +202,7 @@ static inline void tcpips_link_changed(TCPIPS* tcpips, ETH_CONN_TYPE conn)
         tcpips_rx_next(tcpips);
 #endif
     }
-    arp_link_event(tcpips, tcpips->connected);
+    arps_link_event(tcpips, tcpips->connected);
 }
 
 void tcpips_init(TCPIPS* tcpips)
@@ -220,7 +221,7 @@ void tcpips_init(TCPIPS* tcpips)
     array_create(&tcpips->tx_queue, sizeof(IO*), 1);
     tcpips->tx_count = 0;
     macs_init(tcpips);
-    arp_init(tcpips);
+    arps_init(tcpips);
     route_init(tcpips);
     ips_init(tcpips);
 #if (ICMP)
@@ -232,7 +233,7 @@ static inline void tcpips_timer(TCPIPS* tcpips)
 {
     ++tcpips->seconds;
     //forward to others
-    arp_timer(tcpips, tcpips->seconds);
+    arps_timer(tcpips, tcpips->seconds);
     icmp_timer(tcpips, tcpips->seconds);
     timer_start_ms(tcpips->timer, 1000);
 }
@@ -308,7 +309,7 @@ void tcpips_main()
             need_post = macs_request(&tcpips, &ipc);
             break;
         case HAL_ARP:
-            need_post = arp_request(&tcpips, &ipc);
+            need_post = arps_request(&tcpips, &ipc);
             break;
         case HAL_IP:
             need_post = ips_request(&tcpips, &ipc);
@@ -322,6 +323,6 @@ void tcpips_main()
             break;
         }
         if (need_post)
-            ipc_post_or_error(&ipc);
+            ipc_write(&ipc);
     }
 }

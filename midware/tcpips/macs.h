@@ -12,10 +12,6 @@
 #include "sys_config.h"
 #include <stdint.h>
 
-typedef struct {
-    MAC mac;
-} MACS;
-
 #pragma pack(push, 1)
 
 typedef struct {
@@ -25,8 +21,6 @@ typedef struct {
 } MAC_HEADER;
 
 #pragma pack(pop)
-
-const MAC* macs_mac(TCPIPS* tcpips);
 
 //from tcpip process
 void macs_init(TCPIPS* tcpips);

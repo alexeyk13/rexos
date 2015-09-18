@@ -9,8 +9,10 @@
 
 #include "../../userspace/array.h"
 #include "../../userspace/eth.h"
+#include "../../userspace/mac.h"
+#include "../../userspace/ip.h"
 #include "macs.h"
-#include "arp.h"
+#include "arps.h"
 #include "route.h"
 #include "ips.h"
 #include "icmp.h"
@@ -26,10 +28,11 @@ typedef struct _TCPIPS {
     ARRAY* free_io;
     ARRAY* tx_queue;
     bool connected;
-    MACS macs;
+    MAC mac;
+    IP ip;
+    IPS ips;
     TCPIP_ARP arp;
     TCPIP_ROUTE route;
-    IPS ips;
 #if (ICMP)
     TCPIP_ICMP icmp;
 #endif

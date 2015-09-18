@@ -7,58 +7,33 @@
 #include "ips.h"
 #include "tcpips_private.h"
 #include "../../userspace/stdio.h"
+#include "../../userspace/endian.h"
 #include "icmp.h"
 #include <string.h>
 #include "udp.h"
 
 #define IP_DF                                   (1 << 6)
 #define IP_MF                                   (1 << 5)
-
-#define IP_HEADER_VERSION(buf)                  ((buf)[0] >> 4)
-#define IP_HEADER_IHL(buf)                      ((buf)[0] & 0xf)
-#define IP_HEADER_TOTAL_LENGTH(buf)             (((buf)[2] << 8) | (buf)[3])
-#define IP_HEADER_ID(buf)                       (((buf)[4] << 8) | (buf)[5])
-#define IP_HEADER_FLAGS(buf)                    ((buf)[6] & 0xe0)
-#define IP_HEADER_FRAME_OFFSET(buf)             ((((buf)[6] & 0x1f) << 8) | (buf[7]))
-#define IP_HEADER_TTL(buf)                      ((buf)[8])
-#define IP_HEADER_PROTOCOL(buf)                 ((buf)[9])
-#define IP_HEADER_CHECKSUM(buf)                 (((buf)[10] << 8) | (buf)[11])
-#define IP_HEADER_SRC_IP(buf)                   ((IP*)((buf) + 12))
-#define IP_HEADER_DST_IP(buf)                   ((IP*)((buf) + 16))
-
-
-#if (TCPIP_DEBUG)
-void ips_print_ip(const IP* ip)
-{
-    int i;
-    for (i = 0; i < IP_SIZE; ++i)
-    {
-        printf("%d", ip->u8[i]);
-        if (i < IP_SIZE - 1)
-            printf(".");
-    }
-}
-#endif // (TCPIP_DEBUG)
-
-const IP* tcpip_ip(TCPIPS* tcpips)
-{
-    return &tcpips->ips.ip;
-}
+#define IP_FLAGS_MASK                           (7 << 5)
 
 void ips_init(TCPIPS* tcpips)
 {
-    tcpips->ips.ip.u32.ip = IP_MAKE(0, 0, 0, 0);
+    tcpips->ip.u32.ip = IP_MAKE(0, 0, 0, 0);
+}
+
+void ips_open(TCPIPS* tcpips)
+{
     tcpips->ips.id = 0;
 }
 
 static inline void ips_set(TCPIPS* tcpips, uint32_t ip)
 {
-    tcpips->ips.ip.u32.ip = ip;
+    tcpips->ip.u32.ip = ip;
 }
 
 static inline void ips_get(TCPIPS* tcpips, HANDLE process)
 {
-    ipc_post_inline(process, HAL_CMD(HAL_IP, IP_GET), 0, tcpips->ips.ip.u32.ip, 0);
+    ipc_post_inline(process, HAL_CMD(HAL_IP, IP_GET), 0, tcpips->ip.u32.ip, 0);
 }
 
 bool ips_request(TCPIPS* tcpips, IPC* ipc)
@@ -89,13 +64,12 @@ IO *ips_allocate_io(TCPIPS* tcpips, unsigned int size, uint8_t proto)
     if (io == NULL)
         return NULL;
 
-    io_push(io, sizeof(IP_STACK));
-    ip_stack = io_stack(io);
+    ip_stack = io_push(io, sizeof(IP_STACK));
 
     //reserve space for IP header
-    io->data_offset += IP_HEADER_SIZE;
+    io->data_offset += sizeof(IP_HEADER);
     ip_stack->proto = proto;
-    ip_stack->hdr_size = IP_HEADER_SIZE;
+    ip_stack->hdr_size = sizeof(IP_HEADER);
     return io;
 }
 
@@ -107,40 +81,34 @@ void ips_release_io(TCPIPS* tcpips, IO* io)
 
 void ips_tx(TCPIPS* tcpips, IO* io, const IP* dst)
 {
-    IP_STACK* ip_stack;
-    ip_stack = io_stack(io);
+    IP_HEADER* hdr;
+    IP_STACK* ip_stack = io_stack(io);
     //TODO: fragmented frames
-    uint16_t cs;
-    unsigned int size = io->data_size;
     io->data_offset -= ip_stack->hdr_size;
     io->data_size += ip_stack->hdr_size;
+    hdr = io_data(io);
 
     //VERSION, IHL
-    ((uint8_t*)io_data(io))[0] = 0x45;
+    hdr->ver_ihl = 0x45;
     //DSCP, ECN
-    ((uint8_t*)io_data(io))[1] = 0;
+    hdr->tos = 0;
     //total len
-    ((uint8_t*)io_data(io))[2] = (size >> 8) & 0xff;
-    ((uint8_t*)io_data(io))[3] = size & 0xff;
+    short2be(hdr->total_len_be, io->data_size);
     //id
-    ((uint8_t*)io_data(io))[4] = (tcpips->ips.id >> 8) & 0xff;
-    ((uint8_t*)io_data(io))[5] = tcpips->ips.id & 0xff;
-    ++tcpips->ips.id;
+    short2be(hdr->id, tcpips->ips.id++);
     //flags, offset
-    ((uint8_t*)io_data(io))[6] = ((uint8_t*)io_data(io))[7] = 0;
+    hdr->flags_offset_be[0] = hdr->flags_offset_be[1] = 0;
     //ttl
-    ((uint8_t*)io_data(io))[8] = 0xff;
+    hdr->ttl = 0xff;
     //proto
-    ((uint8_t*)io_data(io))[9] = ip_stack->proto;
+    hdr->proto = ip_stack->proto;
     //src
-    *(uint32_t*)(((uint8_t*)io_data(io)) + 12) = tcpip_ip(tcpips)->u32.ip;
+    hdr->src.u32.ip = tcpips->ip.u32.ip;
     //dst
-    *(uint32_t*)(((uint8_t*)io_data(io)) + 16) = dst->u32.ip;
+    hdr->dst.u32.ip = dst->u32.ip;
     //update checksum
-    ((uint8_t*)io_data(io))[10] = ((uint8_t*)io_data(io))[11] = 0;
-    cs = ips_checksum(((uint8_t*)io_data(io)), ip_stack->hdr_size);
-    ((uint8_t*)io_data(io))[10] = (cs >> 8) & 0xff;
-    ((uint8_t*)io_data(io))[11] = cs & 0xff;
+    short2be(hdr->header_crc_be, 0);
+    short2be(hdr->header_crc_be, ip_checksum(io_data(io), ip_stack->hdr_size));
 
     io_pop(io, sizeof(IP_STACK));
     route_tx(tcpips, io, dst);
@@ -148,8 +116,7 @@ void ips_tx(TCPIPS* tcpips, IO* io, const IP* dst)
 
 static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
 {
-    IP_STACK* ip_stack;
-    ip_stack = io_stack(io);
+    IP_STACK* ip_stack = io_stack(io);
 #if (IP_DEBUG_FLOW)
     printf("IP: from ");
     ip_print(src);
@@ -159,6 +126,7 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
     {
 #if (ICMP)
     case PROTO_ICMP:
+        printd("ICMP!\n");
         icmp_rx(tcpips, io, src);
         break;
 #endif //ICMP
@@ -170,7 +138,7 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
 #endif //UDP
 #if (IP_DEBUG)
         printf("IP: unhandled proto %d from", ip_stack->proto);
-        ips_print_ip(src);
+        ip_print(src);
         printf("\n");
 #endif
 #if (ICMP_FLOW_CONTROL)
@@ -181,45 +149,35 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
     }
 }
 
-#if (IP_CHECKSUM)
-uint16_t ips_checksum(uint8_t* buf, unsigned int size)
-{
-    unsigned int i;
-    uint32_t sum = 0;
-    for (i = 0; i < (size >> 1); ++i)
-        sum += (buf[i << 1] << 8) | (buf[(i << 1) + 1]);
-    sum = ((sum & 0xffff) + (sum >> 16)) & 0xffff;
-    return ~((uint16_t)sum);
-}
-#endif
-
 void ips_rx(TCPIPS* tcpips, IO* io)
 {
     IP src;
+    uint16_t total_len, offset;
+    uint8_t flags;
     IP_STACK* ip_stack;
-    uint8_t* ip_header = io_data(io);
-    if (io->data_size < IP_HEADER_SIZE)
+    IP_HEADER* hdr = io_data(io);
+    if (io->data_size < sizeof(IP_HEADER))
     {
         tcpips_release_io(tcpips, io);
         return;
     }
-    io_push(io, sizeof(IP_STACK));
-    ip_stack = io_stack(io);
+    ip_stack = io_push(io, sizeof(IP_STACK));
 
-    ip_stack->hdr_size = IP_HEADER_IHL(ip_header) << 2;
+    ip_stack->hdr_size = (hdr->ver_ihl & 0xf) << 2;
 #if (IP_CHECKSUM)
     //drop if checksum is invalid
-    if (ips_checksum(ip_header, ip_stack->hdr_size))
+    if (ip_checksum(io_data(io), ip_stack->hdr_size))
     {
         tcpips_release_io(tcpips, io);
         return;
     }
 #endif
-    src.u32.ip = IP_HEADER_SRC_IP(ip_header)->u32.ip;
-    ip_stack->proto = IP_HEADER_PROTOCOL(ip_header);
+    src.u32.ip = hdr->src.u32.ip;
+    total_len = be2short(hdr->total_len_be);
+    ip_stack->proto = hdr->proto;
 
     //len more than MTU, inform host by ICMP and only than drop packet
-    if (IP_HEADER_TOTAL_LENGTH(ip_header) > io->data_size)
+    if (total_len > io->data_size)
     {
 #if (ICMP_FLOW_CONTROL)
         icmp_parameter_problem(tcpips, 2, io, &src);
@@ -229,10 +187,10 @@ void ips_rx(TCPIPS* tcpips, IO* io)
         return;
     }
 
-    io->data_size = IP_HEADER_TOTAL_LENGTH(ip_header);
+    io->data_size = total_len;
     io->data_offset += ip_stack->hdr_size;
     io->data_size -= ip_stack->hdr_size;
-    if ((IP_HEADER_VERSION(ip_header) != 4) || (ip_stack->hdr_size < IP_HEADER_SIZE))
+    if (((hdr->ver_ihl >> 4) != 4) || (ip_stack->hdr_size < sizeof(IP_HEADER)))
     {
 #if (ICMP_FLOW_CONTROL)
         icmp_parameter_problem(tcpips, 0, io, &src);
@@ -242,14 +200,14 @@ void ips_rx(TCPIPS* tcpips, IO* io)
         return;
     }
     //unicast-only filter
-    if (tcpip_ip(tcpips)->u32.ip != IP_HEADER_DST_IP(ip_header)->u32.ip)
+    if (tcpips->ip.u32.ip != hdr->dst.u32.ip)
     {
         tcpips_release_io(tcpips, io);
         return;
     }
 
     //ttl exceeded
-    if (IP_HEADER_TTL(ip_header) == 0)
+    if (hdr->ttl == 0)
     {
 #if (ICMP_FLOW_CONTROL)
         icmp_time_exceeded(tcpips, ICMP_TTL_EXCEED_IN_TRANSIT, io, &src);
@@ -259,12 +217,14 @@ void ips_rx(TCPIPS* tcpips, IO* io)
         return;
     }
 
+    flags = hdr->flags_offset_be[0] & IP_FLAGS_MASK;
+    offset = ((hdr->flags_offset_be[0] & ~IP_FLAGS_MASK) << 8) | hdr->flags_offset_be[1];
 #if (IP_FRAGMENTATION)
     //TODO: packet assembly from fragments
 #error IP FRAGMENTATION is Not Implemented!
 #else
     //drop all fragmented frames, inform by ICMP
-    if ((IP_HEADER_FLAGS(ip_header) & IP_MF) || (IP_HEADER_FRAME_OFFSET(ip_header)))
+    if ((flags & IP_MF) || offset)
     {
 #if (ICMP_FLOW_CONTROL)
         icmp_parameter_problem(tcpips, 6, io, &src);

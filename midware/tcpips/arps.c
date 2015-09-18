@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "arp.h"
+#include "arps.h"
 #include "tcpips_private.h"
 #include "../../userspace/stdio.h"
 #include "macs.h"
@@ -35,12 +35,12 @@ typedef struct {
 static const MAC __MAC_BROADCAST =                  {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
 static const MAC __MAC_REQUEST =                    {{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
-void arp_init(TCPIPS* tcpips)
+void arps_init(TCPIPS* tcpips)
 {
     array_create(&tcpips->arp.cache, sizeof(ARP_CACHE_ENTRY), 1);
 }
 
-static void arp_cmd_request(TCPIPS* tcpips, const IP* ip)
+static void arps_cmd_request(TCPIPS* tcpips, const IP* ip)
 {
 #if (ARP_DEBUG_FLOW)
     printf("ARP: request to ");
@@ -66,11 +66,11 @@ static void arp_cmd_request(TCPIPS* tcpips, const IP* ip)
     ((uint8_t*)io_data(io))[6] = (ARP_REQUEST >> 8) & 0xff;
     ((uint8_t*)io_data(io))[7] = ARP_REQUEST & 0xff;
     //sha
-    own_mac = macs_mac(tcpips);
+    own_mac = &tcpips->mac;
     ARP_SHA(((uint8_t*)io_data(io)))->u32.hi = own_mac->u32.hi;
     ARP_SHA(((uint8_t*)io_data(io)))->u32.lo = own_mac->u32.lo;
     //spa
-    ARP_SPA(((uint8_t*)io_data(io)))->u32.ip = tcpip_ip(tcpips)->u32.ip;
+    ARP_SPA(((uint8_t*)io_data(io)))->u32.ip = tcpips->ip.u32.ip;
     //tha
     ARP_THA(((uint8_t*)io_data(io)))->u32.hi = __MAC_REQUEST.u32.hi;
     ARP_THA(((uint8_t*)io_data(io)))->u32.lo = __MAC_REQUEST.u32.lo;
@@ -81,7 +81,7 @@ static void arp_cmd_request(TCPIPS* tcpips, const IP* ip)
     macs_tx(tcpips, io, &__MAC_BROADCAST, ETHERTYPE_ARP);
 }
 
-static inline void arp_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
+static inline void arps_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
 {
 #if (ARP_DEBUG_FLOW)
     printf("ARP: reply to ");
@@ -109,11 +109,11 @@ static inline void arp_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
     ((uint8_t*)io_data(io))[6] = (ARP_REPLY >> 8) & 0xff;
     ((uint8_t*)io_data(io))[7] = ARP_REPLY & 0xff;
     //sha
-    own_mac = macs_mac(tcpips);
+    own_mac = &tcpips->mac;
     ARP_SHA(((uint8_t*)io_data(io)))->u32.hi = own_mac->u32.hi;
     ARP_SHA(((uint8_t*)io_data(io)))->u32.lo = own_mac->u32.lo;
     //spa
-    ARP_SPA(((uint8_t*)io_data(io)))->u32.ip = tcpip_ip(tcpips)->u32.ip;
+    ARP_SPA(((uint8_t*)io_data(io)))->u32.ip = tcpips->ip.u32.ip;
     //tha
     ARP_THA(((uint8_t*)io_data(io)))->u32.hi = mac->u32.hi;
     ARP_THA(((uint8_t*)io_data(io)))->u32.lo = mac->u32.lo;
@@ -124,7 +124,7 @@ static inline void arp_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
     macs_tx(tcpips, io, mac, ETHERTYPE_ARP);
 }
 
-static int arp_index(TCPIPS* tcpips, const IP* ip)
+static int arps_index(TCPIPS* tcpips, const IP* ip)
 {
     int i;
     for (i = 0; i < array_size(tcpips->arp.cache); ++i)
@@ -135,7 +135,7 @@ static int arp_index(TCPIPS* tcpips, const IP* ip)
     return -1;
 }
 
-static void arp_remove(TCPIPS* tcpips, int idx)
+static void arps_remove(TCPIPS* tcpips, int idx)
 {
     IP ip;
     ip.u32.ip = 0;
@@ -145,7 +145,7 @@ static void arp_remove(TCPIPS* tcpips, int idx)
     else
     {
         printf("ARP: route to ");
-        ips_print_ip(&ARP_CACHE_ITEM(tcpips, idx)->ip);
+        ip_print(&ARP_CACHE_ITEM(tcpips, idx)->ip);
         printf(" removed\n");
     }
 #endif
@@ -156,12 +156,12 @@ static void arp_remove(TCPIPS* tcpips, int idx)
         arp_not_resolved(tcpips, &ip);
 }
 
-static void arp_insert(TCPIPS* tcpips, const IP* ip, const MAC* mac, unsigned int timeout)
+static void arps_insert(TCPIPS* tcpips, const IP* ip, const MAC* mac, unsigned int timeout)
 {
     int i, idx;
     unsigned int ttl;
     //don't add dups
-    if (arp_index(tcpips, ip) >= 0)
+    if (arps_index(tcpips, ip) >= 0)
         return;
     //remove first non-static if no place
     if (array_size(tcpips->arp.cache) == ARP_CACHE_SIZE_MAX)
@@ -169,7 +169,7 @@ static void arp_insert(TCPIPS* tcpips, const IP* ip, const MAC* mac, unsigned in
         //first is static, can't remove
         if (ARP_CACHE_ITEM(tcpips, 0)->ttl == 0)
             return;
-        arp_remove(tcpips, 0);
+        arps_remove(tcpips, 0);
     }
     idx = array_size(tcpips->arp.cache);
     ttl = 0;
@@ -195,7 +195,7 @@ static void arp_insert(TCPIPS* tcpips, const IP* ip, const MAC* mac, unsigned in
     if (mac->u32.hi && mac->u32.lo)
     {
         printf("ARP: route added ");
-        ips_print_ip(ip);
+        ip_print(ip);
         printf(" -> ");
         mac_print(mac);
         printf("\n");
@@ -203,9 +203,9 @@ static void arp_insert(TCPIPS* tcpips, const IP* ip, const MAC* mac, unsigned in
 #endif
 }
 
-static void arp_update(TCPIPS* tcpips, const IP* ip, const MAC* mac)
+static void arps_update(TCPIPS* tcpips, const IP* ip, const MAC* mac)
 {
-    int idx = arp_index(tcpips, ip);
+    int idx = arps_index(tcpips, ip);
     if (idx < 0)
         return;
     ARP_CACHE_ITEM(tcpips, idx)->mac.u32.hi = mac->u32.hi;
@@ -213,23 +213,23 @@ static void arp_update(TCPIPS* tcpips, const IP* ip, const MAC* mac)
     ARP_CACHE_ITEM(tcpips, idx)->ttl = tcpips_seconds(tcpips) + ARP_CACHE_TIMEOUT;
 #if (ARP_DEBUG)
     printf("ARP: route resolved ");
-    ips_print_ip(ip);
+    ip_print(ip);
     printf(" -> ");
     mac_print(mac);
     printf("\n");
 #endif
 }
 
-void arp_remove_route(TCPIPS* tcpips, const IP* ip)
+void arps_remove_route(TCPIPS* tcpips, const IP* ip)
 {
-    int idx = arp_index(tcpips, ip);
+    int idx = arps_index(tcpips, ip);
     if (idx >= 0)
-        arp_remove(tcpips, idx);
+        arps_remove(tcpips, idx);
 }
 
-static bool arp_lookup(TCPIPS* tcpips, const IP* ip, MAC* mac)
+static bool arps_lookup(TCPIPS* tcpips, const IP* ip, MAC* mac)
 {
-    int idx = arp_index(tcpips, ip);
+    int idx = arps_index(tcpips, ip);
     if (idx >= 0)
     {
         mac->u32.hi = ARP_CACHE_ITEM(tcpips, idx)->mac.u32.hi;
@@ -241,29 +241,29 @@ static bool arp_lookup(TCPIPS* tcpips, const IP* ip, MAC* mac)
     return false;
 }
 
-void arp_link_event(TCPIPS* tcpips, bool link)
+void arps_link_event(TCPIPS* tcpips, bool link)
 {
     if (link)
     {
         //announce IP
-        if (tcpip_ip(tcpips)->u32.ip)
-            arp_cmd_request(tcpips, tcpip_ip(tcpips));
+        if (tcpips->ip.u32.ip)
+            arps_cmd_request(tcpips, &tcpips->ip);
     }
     else
     {
         //flush ARP cache, except static routes
         while (array_size(tcpips->arp.cache) && ARP_CACHE_ITEM(tcpips, 0)->ttl)
-            arp_remove(tcpips, 0);
+            arps_remove(tcpips, 0);
     }
 }
 
-void arp_timer(TCPIPS* tcpips, unsigned int seconds)
+void arps_timer(TCPIPS* tcpips, unsigned int seconds)
 {
     while (array_size(tcpips->arp.cache) && ARP_CACHE_ITEM(tcpips, 0)->ttl && (ARP_CACHE_ITEM(tcpips, 0)->ttl <= seconds))
-        arp_remove(tcpips, 0);
+        arps_remove(tcpips, 0);
 }
 
-bool arp_request(TCPIPS* tcpips, IPC* ipc)
+bool arps_request(TCPIPS* tcpips, IPC* ipc)
 {
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
@@ -276,7 +276,7 @@ bool arp_request(TCPIPS* tcpips, IPC* ipc)
     return need_post;
 }
 
-void arp_rx(TCPIPS* tcpips, IO *io)
+void arps_rx(TCPIPS* tcpips, IO *io)
 {
     if (io->data_size < ARP_HEADER_SIZE)
     {
@@ -291,20 +291,20 @@ void arp_rx(TCPIPS* tcpips, IO *io)
     switch (ARP_OP(((uint8_t*)io_data(io))))
     {
     case ARP_REQUEST:
-        if (ARP_TPA(((uint8_t*)io_data(io)))->u32.ip == tcpip_ip(tcpips)->u32.ip)
+        if (ARP_TPA(((uint8_t*)io_data(io)))->u32.ip == tcpips->ip.u32.ip)
         {
-            arp_cmd_reply(tcpips, ARP_SHA(((uint8_t*)io_data(io))), ARP_SPA(((uint8_t*)io_data(io))));
+            arps_cmd_reply(tcpips, ARP_SHA(((uint8_t*)io_data(io))), ARP_SPA(((uint8_t*)io_data(io))));
             //insert in cache
-            arp_insert(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))), ARP_CACHE_TIMEOUT);
+            arps_insert(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))), ARP_CACHE_TIMEOUT);
         }
         //announcment
         if (ARP_TPA(((uint8_t*)io_data(io)))->u32.ip == ARP_SPA(((uint8_t*)io_data(io)))->u32.ip && mac_compare(ARP_THA(((uint8_t*)io_data(io))), &__MAC_REQUEST))
-            arp_insert(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))), ARP_CACHE_TIMEOUT);
+            arps_insert(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))), ARP_CACHE_TIMEOUT);
         break;
     case ARP_REPLY:
-        if (mac_compare(macs_mac(tcpips), ARP_THA(((uint8_t*)io_data(io)))))
+        if (mac_compare(&tcpips->mac, ARP_THA(((uint8_t*)io_data(io)))))
         {
-            arp_update(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))));
+            arps_update(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))));
             arp_resolved(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))));
 #if (ARP_DEBUG_FLOW)
             printf("ARP: reply from ");
@@ -319,12 +319,12 @@ void arp_rx(TCPIPS* tcpips, IO *io)
     tcpips_release_io(tcpips, io);
 }
 
-bool arp_resolve(TCPIPS* tcpips, const IP* ip, MAC* mac)
+bool arps_resolve(TCPIPS* tcpips, const IP* ip, MAC* mac)
 {
-    if (arp_lookup(tcpips, ip, mac))
+    if (arps_lookup(tcpips, ip, mac))
         return true;
     //request mac
-    arp_insert(tcpips, ip, mac, ARP_CACHE_INCOMPLETE_TIMEOUT);
-    arp_cmd_request(tcpips, ip);
+    arps_insert(tcpips, ip, mac, ARP_CACHE_INCOMPLETE_TIMEOUT);
+    arps_cmd_request(tcpips, ip);
     return false;
 }

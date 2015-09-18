@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef ARP_H
-#define ARP_H
+#ifndef ARPS_H
+#define ARPS_H
 
 #include "tcpips.h"
 #include "../../userspace/eth.h"
@@ -42,18 +42,18 @@ typedef struct {
 } TCPIP_ARP;
 
 //from tcpip
-void arp_init(TCPIPS* tcpips);
-void arp_link_event(TCPIPS* tcpips, bool link);
-void arp_timer(TCPIPS* tcpips, unsigned int seconds);
-bool arp_request(TCPIPS* tcpips, IPC* ipc);
+void arps_init(TCPIPS* tcpips);
+void arps_link_event(TCPIPS* tcpips, bool link);
+void arps_timer(TCPIPS* tcpips, unsigned int seconds);
+bool arps_request(TCPIPS* tcpips, IPC* ipc);
 
 //from mac
-void arp_rx(TCPIPS* tcpips, IO* io);
+void arps_rx(TCPIPS* tcpips, IO* io);
 
 //from route. If false returned, sender must queue request for asynchronous answer
-bool arp_resolve(TCPIPS* tcpips, const IP* ip, MAC* mac);
+bool arps_resolve(TCPIPS* tcpips, const IP* ip, MAC* mac);
 
 //from icmp or application
-void arp_remove_route(TCPIPS* tcpips, const IP* ip);
+void arps_remove_route(TCPIPS* tcpips, const IP* ip);
 
-#endif // TCPIP_ARP_H
+#endif // ARPS_H
