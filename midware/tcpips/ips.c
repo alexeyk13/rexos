@@ -84,7 +84,7 @@ bool ips_request(TCPIPS* tcpips, IPC* ipc)
 IO *ips_allocate_io(TCPIPS* tcpips, unsigned int size, uint8_t proto)
 {
     IP_STACK* ip_stack;
-    IO* io = mac_allocate_io(tcpips);
+    IO* io = macs_allocate_io(tcpips);
     //TODO: fragmented frames
     if (io == NULL)
         return NULL;

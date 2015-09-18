@@ -12,12 +12,12 @@
 #include "../../userspace/systime.h"
 #include "../../userspace/sys.h"
 #include "sys_config.h"
-#include "mac.h"
+#include "macs.h"
 #include "arp.h"
 #include "route.h"
 #include "ips.h"
 
-#define FRAME_MAX_SIZE                          (TCPIP_MTU + MAC_HEADER_SIZE)
+#define FRAME_MAX_SIZE                          (TCPIP_MTU + sizeof(MAC_HEADER))
 
 #if (TCPIP_DEBUG)
 static void print_conn_status(TCPIPS* tcpips, const char* head)
@@ -165,7 +165,7 @@ static inline void tcpips_eth_rx(TCPIPS* tcpips, IO* io, int param3)
         return;
     }
     //forward to MAC
-    mac_rx(tcpips, io);
+    macs_rx(tcpips, io);
 }
 
 static inline void tcpips_eth_tx_complete(TCPIPS* tcpips, IO* io, int param3)
@@ -305,7 +305,7 @@ void tcpips_main()
             need_post = tcpips_request(&tcpips, &ipc);
             break;
         case HAL_MAC:
-            need_post = mac_request(&tcpips, &ipc);
+            need_post = macs_request(&tcpips, &ipc);
             break;
         case HAL_ARP:
             need_post = arp_request(&tcpips, &ipc);

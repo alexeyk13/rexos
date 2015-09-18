@@ -7,7 +7,6 @@
 #ifndef LIB_H
 #define LIB_H
 
-#include "cc_macro.h"
 #include "svc.h"
 #include "error.h"
 

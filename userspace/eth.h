@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include "ipc.h"
+#include "mac.h"
 
 typedef enum {
     ETH_10_HALF = 0,
@@ -22,8 +23,6 @@ typedef enum {
     ETH_REMOTE_FAULT
 } ETH_CONN_TYPE;
 
-#define MAC_SIZE                                    6
-
 typedef enum {
     ETH_SET_MAC = IPC_USER,
     ETH_GET_MAC,
@@ -31,18 +30,6 @@ typedef enum {
 
     ETH_HAL_MAX
 }ETH_IPCS;
-
-#pragma pack(push, 1)
-
-typedef union {
-    uint8_t u8[MAC_SIZE];
-    struct {
-        uint32_t hi;
-        uint16_t lo;
-    }u32;
-} MAC;
-
-#pragma pack(pop)
 
 void eth_set_mac(HANDLE eth, unsigned int eth_handle, const MAC* mac);
 void eth_get_mac(HANDLE eth, unsigned int eth_handle, MAC* mac);

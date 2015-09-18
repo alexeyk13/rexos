@@ -7,7 +7,7 @@
 #include "arp.h"
 #include "tcpips_private.h"
 #include "../../userspace/stdio.h"
-#include "mac.h"
+#include "macs.h"
 #include "ips.h"
 
 #define ARP_HEADER_SIZE                             (2 + 2 + 1 + 1 + 2)
@@ -49,7 +49,7 @@ static void arp_cmd_request(TCPIPS* tcpips, const IP* ip)
 #endif
 
     const MAC* own_mac;
-    IO* io = mac_allocate_io(tcpips);
+    IO* io = macs_allocate_io(tcpips);
     if (io == NULL)
         return;
     //hrd
@@ -59,14 +59,14 @@ static void arp_cmd_request(TCPIPS* tcpips, const IP* ip)
     ((uint8_t*)io_data(io))[2] = (ETHERTYPE_IP >> 8) & 0xff;
     ((uint8_t*)io_data(io))[3] = ETHERTYPE_IP & 0xff;
     //hln
-    ((uint8_t*)io_data(io))[4] = MAC_SIZE;
+    ((uint8_t*)io_data(io))[4] = sizeof(MAC);
     //pln
     ((uint8_t*)io_data(io))[5] = IP_SIZE;
     //op
     ((uint8_t*)io_data(io))[6] = (ARP_REQUEST >> 8) & 0xff;
     ((uint8_t*)io_data(io))[7] = ARP_REQUEST & 0xff;
     //sha
-    own_mac = tcpip_mac(tcpips);
+    own_mac = macs_mac(tcpips);
     ARP_SHA(((uint8_t*)io_data(io)))->u32.hi = own_mac->u32.hi;
     ARP_SHA(((uint8_t*)io_data(io)))->u32.lo = own_mac->u32.lo;
     //spa
@@ -77,8 +77,8 @@ static void arp_cmd_request(TCPIPS* tcpips, const IP* ip)
     //tpa
     ARP_TPA(((uint8_t*)io_data(io)))->u32.ip = ip->u32.ip;
 
-    io->data_size = ARP_HEADER_SIZE + MAC_SIZE * 2 + IP_SIZE * 2;
-    mac_tx(tcpips, io, &__MAC_BROADCAST, ETHERTYPE_ARP);
+    io->data_size = ARP_HEADER_SIZE + sizeof(MAC) * 2 + IP_SIZE * 2;
+    macs_tx(tcpips, io, &__MAC_BROADCAST, ETHERTYPE_ARP);
 }
 
 static inline void arp_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
@@ -92,7 +92,7 @@ static inline void arp_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
 #endif
 
     const MAC* own_mac;
-    IO* io = mac_allocate_io(tcpips);
+    IO* io = macs_allocate_io(tcpips);
     if (io == NULL)
         return;
     //hrd
@@ -102,14 +102,14 @@ static inline void arp_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
     ((uint8_t*)io_data(io))[2] = (ETHERTYPE_IP >> 8) & 0xff;
     ((uint8_t*)io_data(io))[3] = ETHERTYPE_IP & 0xff;
     //hln
-    ((uint8_t*)io_data(io))[4] = MAC_SIZE;
+    ((uint8_t*)io_data(io))[4] = sizeof(MAC);
     //pln
     ((uint8_t*)io_data(io))[5] = IP_SIZE;
     //op
     ((uint8_t*)io_data(io))[6] = (ARP_REPLY >> 8) & 0xff;
     ((uint8_t*)io_data(io))[7] = ARP_REPLY & 0xff;
     //sha
-    own_mac = tcpip_mac(tcpips);
+    own_mac = macs_mac(tcpips);
     ARP_SHA(((uint8_t*)io_data(io)))->u32.hi = own_mac->u32.hi;
     ARP_SHA(((uint8_t*)io_data(io)))->u32.lo = own_mac->u32.lo;
     //spa
@@ -120,8 +120,8 @@ static inline void arp_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
     //tpa
     ARP_TPA(((uint8_t*)io_data(io)))->u32.ip = ip->u32.ip;
 
-    io->data_size = ARP_HEADER_SIZE + MAC_SIZE * 2 + IP_SIZE * 2;
-    mac_tx(tcpips, io, mac, ETHERTYPE_ARP);
+    io->data_size = ARP_HEADER_SIZE + sizeof(MAC) * 2 + IP_SIZE * 2;
+    macs_tx(tcpips, io, mac, ETHERTYPE_ARP);
 }
 
 static int arp_index(TCPIPS* tcpips, const IP* ip)
@@ -283,7 +283,7 @@ void arp_rx(TCPIPS* tcpips, IO *io)
         tcpips_release_io(tcpips, io);
         return;
     }
-    if (ARP_PRO(((uint8_t*)io_data(io))) != ETHERTYPE_IP || ARP_HLN(((uint8_t*)io_data(io))) != MAC_SIZE || ARP_PLN(((uint8_t*)io_data(io))) != IP_SIZE)
+    if (ARP_PRO(((uint8_t*)io_data(io))) != ETHERTYPE_IP || ARP_HLN(((uint8_t*)io_data(io))) != sizeof(MAC) || ARP_PLN(((uint8_t*)io_data(io))) != IP_SIZE)
     {
         tcpips_release_io(tcpips, io);
         return;
@@ -302,7 +302,7 @@ void arp_rx(TCPIPS* tcpips, IO *io)
             arp_insert(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))), ARP_CACHE_TIMEOUT);
         break;
     case ARP_REPLY:
-        if (mac_compare(tcpip_mac(tcpips), ARP_THA(((uint8_t*)io_data(io)))))
+        if (mac_compare(macs_mac(tcpips), ARP_THA(((uint8_t*)io_data(io)))))
         {
             arp_update(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))));
             arp_resolved(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))));

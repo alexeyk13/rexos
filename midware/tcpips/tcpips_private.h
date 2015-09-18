@@ -9,7 +9,7 @@
 
 #include "../../userspace/array.h"
 #include "../../userspace/eth.h"
-#include "mac.h"
+#include "macs.h"
 #include "arp.h"
 #include "route.h"
 #include "ips.h"
@@ -26,7 +26,7 @@ typedef struct _TCPIPS {
     ARRAY* free_io;
     ARRAY* tx_queue;
     bool connected;
-    TCPIP_MAC mac;
+    MACS macs;
     TCPIP_ARP arp;
     TCPIP_ROUTE route;
     IPS ips;
