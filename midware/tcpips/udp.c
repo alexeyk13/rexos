@@ -5,7 +5,7 @@
 */
 
 #include "udp.h"
-#include "tcpip_private.h"
+#include "tcpips_private.h"
 #include "../../userspace/stdio.h"
 
 void udp_rx(TCPIPS* tcpips, IO* io, IP* src)

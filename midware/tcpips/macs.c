@@ -19,8 +19,6 @@ void macs_init(TCPIPS* tcpips)
 void macs_open(TCPIPS* tcpips)
 {
     eth_get_mac(tcpips->eth, tcpips->eth_handle, &tcpips->mac);
-    ///!!!
-    mac_print(&tcpips->mac);
 }
 
 bool macs_request(TCPIPS* tcpips, IPC* ipc)

@@ -126,7 +126,6 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
     {
 #if (ICMP)
     case PROTO_ICMP:
-        printd("ICMP!\n");
         icmp_rx(tcpips, io, src);
         break;
 #endif //ICMP
