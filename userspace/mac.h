@@ -16,10 +16,6 @@
 
 #define MAC_CAST_MASK                               (3 << 0)
 
-#define ETHERTYPE_IP                                0x0800
-#define ETHERTYPE_ARP                               0x0806
-#define ETHERTYPE_IPV6                              0x86dd
-
 #pragma pack(push, 1)
 
 typedef union {

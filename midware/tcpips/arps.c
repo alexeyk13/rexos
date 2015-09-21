@@ -7,20 +7,9 @@
 #include "arps.h"
 #include "tcpips_private.h"
 #include "../../userspace/stdio.h"
+#include "../../userspace/endian.h"
 #include "macs.h"
 #include "ips.h"
-
-#define ARP_HEADER_SIZE                             (2 + 2 + 1 + 1 + 2)
-
-#define ARP_HRD(buf)                                (((buf)[0] << 8) | (buf)[1])
-#define ARP_PRO(buf)                                (((buf)[2] << 8) | (buf)[3])
-#define ARP_HLN(buf)                                ((buf)[4])
-#define ARP_PLN(buf)                                ((buf)[5])
-#define ARP_OP(buf)                                 (((buf)[6] << 8) | (buf)[7])
-#define ARP_SHA(buf)                                ((MAC*)((buf) + 8))
-#define ARP_SPA(buf)                                ((IP*)((buf) + 8 + 6))
-#define ARP_THA(buf)                                ((MAC*)((buf) + 8 + 6 + 4))
-#define ARP_TPA(buf)                                ((IP*)((buf) + 8 + 6 + 4 + 6))
 
 #define ARP_CACHE_ITEM(tcpips, i)                    ((ARP_CACHE_ENTRY*)array_at((tcpips)->arp.cache, i))
 
@@ -48,36 +37,29 @@ static void arps_cmd_request(TCPIPS* tcpips, const IP* ip)
     printf("\n");
 #endif
 
-    const MAC* own_mac;
+    ARP_PACKET* arp;
     IO* io = macs_allocate_io(tcpips);
     if (io == NULL)
         return;
-    //hrd
-    ((uint8_t*)io_data(io))[0] = (ARP_HRD_ETHERNET >> 8) & 0xff;
-    ((uint8_t*)io_data(io))[1] = ARP_HRD_ETHERNET & 0xff;
-    //pro
-    ((uint8_t*)io_data(io))[2] = (ETHERTYPE_IP >> 8) & 0xff;
-    ((uint8_t*)io_data(io))[3] = ETHERTYPE_IP & 0xff;
-    //hln
-    ((uint8_t*)io_data(io))[4] = sizeof(MAC);
-    //pln
-    ((uint8_t*)io_data(io))[5] = IP_SIZE;
-    //op
-    ((uint8_t*)io_data(io))[6] = (ARP_REQUEST >> 8) & 0xff;
-    ((uint8_t*)io_data(io))[7] = ARP_REQUEST & 0xff;
-    //sha
-    own_mac = &tcpips->mac;
-    ARP_SHA(((uint8_t*)io_data(io)))->u32.hi = own_mac->u32.hi;
-    ARP_SHA(((uint8_t*)io_data(io)))->u32.lo = own_mac->u32.lo;
-    //spa
-    ARP_SPA(((uint8_t*)io_data(io)))->u32.ip = tcpips->ip.u32.ip;
-    //tha
-    ARP_THA(((uint8_t*)io_data(io)))->u32.hi = __MAC_REQUEST.u32.hi;
-    ARP_THA(((uint8_t*)io_data(io)))->u32.lo = __MAC_REQUEST.u32.lo;
-    //tpa
-    ARP_TPA(((uint8_t*)io_data(io)))->u32.ip = ip->u32.ip;
+    arp = io_data(io);
 
-    io->data_size = ARP_HEADER_SIZE + sizeof(MAC) * 2 + IP_SIZE * 2;
+    short2be(arp->hrd_be, ARP_HRD_ETHERNET);
+    short2be(arp->pro_be, ETHERTYPE_IP);
+    arp->hln = sizeof(MAC);
+    arp->pln = sizeof(IP);
+    short2be(arp->op_be, ARP_REQUEST);
+    //sha
+    arp->src_mac.u32.hi = tcpips->mac.u32.hi;
+    arp->src_mac.u32.lo = tcpips->mac.u32.lo;
+    //spa
+    arp->src_ip.u32.ip = tcpips->ip.u32.ip;
+    //tha
+    arp->dst_mac.u32.hi = __MAC_REQUEST.u32.hi;
+    arp->dst_mac.u32.lo = __MAC_REQUEST.u32.lo;
+    //tpa
+    arp->dst_ip.u32.ip = ip->u32.ip;
+
+    io->data_size = sizeof(ARP_PACKET);
     macs_tx(tcpips, io, &__MAC_BROADCAST, ETHERTYPE_ARP);
 }
 
@@ -91,36 +73,30 @@ static inline void arps_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
     printf(")\n");
 #endif
 
-    const MAC* own_mac;
+    ARP_PACKET* arp;
     IO* io = macs_allocate_io(tcpips);
     if (io == NULL)
         return;
-    //hrd
-    ((uint8_t*)io_data(io))[0] = (ARP_HRD_ETHERNET >> 8) & 0xff;
-    ((uint8_t*)io_data(io))[1] = ARP_HRD_ETHERNET & 0xff;
-    //pro
-    ((uint8_t*)io_data(io))[2] = (ETHERTYPE_IP >> 8) & 0xff;
-    ((uint8_t*)io_data(io))[3] = ETHERTYPE_IP & 0xff;
-    //hln
-    ((uint8_t*)io_data(io))[4] = sizeof(MAC);
-    //pln
-    ((uint8_t*)io_data(io))[5] = IP_SIZE;
-    //op
-    ((uint8_t*)io_data(io))[6] = (ARP_REPLY >> 8) & 0xff;
-    ((uint8_t*)io_data(io))[7] = ARP_REPLY & 0xff;
-    //sha
-    own_mac = &tcpips->mac;
-    ARP_SHA(((uint8_t*)io_data(io)))->u32.hi = own_mac->u32.hi;
-    ARP_SHA(((uint8_t*)io_data(io)))->u32.lo = own_mac->u32.lo;
-    //spa
-    ARP_SPA(((uint8_t*)io_data(io)))->u32.ip = tcpips->ip.u32.ip;
-    //tha
-    ARP_THA(((uint8_t*)io_data(io)))->u32.hi = mac->u32.hi;
-    ARP_THA(((uint8_t*)io_data(io)))->u32.lo = mac->u32.lo;
-    //tpa
-    ARP_TPA(((uint8_t*)io_data(io)))->u32.ip = ip->u32.ip;
+    arp = io_data(io);
 
-    io->data_size = ARP_HEADER_SIZE + sizeof(MAC) * 2 + IP_SIZE * 2;
+
+    short2be(arp->hrd_be, ARP_HRD_ETHERNET);
+    short2be(arp->pro_be, ETHERTYPE_IP);
+    arp->hln = sizeof(MAC);
+    arp->pln = sizeof(IP);
+    short2be(arp->op_be, ARP_REPLY);
+    //sha
+    arp->src_mac.u32.hi = tcpips->mac.u32.hi;
+    arp->src_mac.u32.lo = tcpips->mac.u32.lo;
+    //spa
+    arp->src_ip.u32.ip = tcpips->ip.u32.ip;
+    //tha
+    arp->dst_mac.u32.hi = mac->u32.hi;
+    arp->dst_mac.u32.lo = mac->u32.lo;
+    //tpa
+    arp->dst_ip.u32.ip = ip->u32.ip;
+
+    io->data_size = sizeof(ARP_PACKET);
     macs_tx(tcpips, io, mac, ETHERTYPE_ARP);
 }
 
@@ -278,39 +254,40 @@ bool arps_request(TCPIPS* tcpips, IPC* ipc)
 
 void arps_rx(TCPIPS* tcpips, IO *io)
 {
-    if (io->data_size < ARP_HEADER_SIZE)
+    ARP_PACKET* arp = io_data(io);
+    if (io->data_size < sizeof(ARP_PACKET))
     {
         tcpips_release_io(tcpips, io);
         return;
     }
-    if (ARP_PRO(((uint8_t*)io_data(io))) != ETHERTYPE_IP || ARP_HLN(((uint8_t*)io_data(io))) != sizeof(MAC) || ARP_PLN(((uint8_t*)io_data(io))) != IP_SIZE)
+    if (be2short(arp->pro_be) != ETHERTYPE_IP || arp->hln != sizeof(MAC) || arp->pln != sizeof(IP))
     {
         tcpips_release_io(tcpips, io);
         return;
     }
-    switch (ARP_OP(((uint8_t*)io_data(io))))
+    switch (be2short(arp->op_be))
     {
     case ARP_REQUEST:
-        if (ARP_TPA(((uint8_t*)io_data(io)))->u32.ip == tcpips->ip.u32.ip)
+        if (arp->dst_ip.u32.ip == tcpips->ip.u32.ip)
         {
-            arps_cmd_reply(tcpips, ARP_SHA(((uint8_t*)io_data(io))), ARP_SPA(((uint8_t*)io_data(io))));
+            arps_cmd_reply(tcpips, &arp->src_mac, &arp->src_ip);
             //insert in cache
-            arps_insert(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))), ARP_CACHE_TIMEOUT);
+            arps_insert(tcpips, &arp->src_ip, &arp->src_mac, ARP_CACHE_TIMEOUT);
         }
         //announcment
-        if (ARP_TPA(((uint8_t*)io_data(io)))->u32.ip == ARP_SPA(((uint8_t*)io_data(io)))->u32.ip && mac_compare(ARP_THA(((uint8_t*)io_data(io))), &__MAC_REQUEST))
-            arps_insert(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))), ARP_CACHE_TIMEOUT);
+        if (arp->dst_ip.u32.ip == arp->src_ip.u32.ip && mac_compare(&arp->dst_mac, &__MAC_REQUEST))
+            arps_insert(tcpips, &arp->src_ip, &arp->src_mac, ARP_CACHE_TIMEOUT);
         break;
     case ARP_REPLY:
-        if (mac_compare(&tcpips->mac, ARP_THA(((uint8_t*)io_data(io)))))
+        if (mac_compare(&tcpips->mac, &arp->dst_mac))
         {
-            arps_update(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))));
-            arp_resolved(tcpips, ARP_SPA(((uint8_t*)io_data(io))), ARP_SHA(((uint8_t*)io_data(io))));
+            arps_update(tcpips, &arp->src_ip, &arp->src_mac);
+            arp_resolved(tcpips, &arp->src_ip, &arp->src_mac);
 #if (ARP_DEBUG_FLOW)
             printf("ARP: reply from ");
-            ip_print(ARP_SPA(((uint8_t*)io_data(io))));
+            ip_print(&arp->src_ip);
             printf(" is ");
-            mac_print(ARP_SHA(((uint8_t*)io_data(io))));
+            mac_print(&arp->src_mac);
             printf("\n");
 #endif
         }

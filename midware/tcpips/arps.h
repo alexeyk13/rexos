@@ -15,19 +15,21 @@
 #include <stdint.h>
 #include "sys_config.h"
 
-/*
-    ARP packet structure
+#pragma pack(push, 1)
 
-    uint16_t hrd
-    uint16_t pro
-    uint8_t hln
-    uint16_t pln
-    uint16_t op
-    uint8_t sha[]
-    uint8_t spa[]
-    uint8_t tha[]
-    uint8_t tpa[]
- */
+typedef struct {
+    uint8_t hrd_be[2];
+    uint8_t pro_be[2];
+    uint8_t hln;
+    uint8_t pln;
+    uint8_t op_be[2];
+    MAC src_mac;
+    IP src_ip;
+    MAC dst_mac;
+    IP dst_ip;
+} ARP_PACKET;
+
+#pragma pack(pop)
 
 #define ARP_HRD_ETHERNET                1
 #define ARP_HRD_IEEE802                 6

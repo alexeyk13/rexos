@@ -10,10 +10,10 @@
 void ip_print(const IP* ip)
 {
     int i;
-    for (i = 0; i < IP_SIZE; ++i)
+    for (i = 0; i < 4; ++i)
     {
         printf("%d", ip->u8[i]);
-        if (i < IP_SIZE - 1)
+        if (i < 4 - 1)
             printf(".");
     }
 }
