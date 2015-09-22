@@ -12,6 +12,7 @@
 #include "../../userspace/inet.h"
 #include "../../userspace/array.h"
 #include "../../userspace/ipc.h"
+#include "../../userspace/arp.h"
 #include <stdint.h>
 #include "sys_config.h"
 
@@ -54,8 +55,7 @@ void arps_rx(TCPIPS* tcpips, IO* io);
 
 //from route. If false returned, sender must queue request for asynchronous answer
 bool arps_resolve(TCPIPS* tcpips, const IP* ip, MAC* mac);
-
-//from icmp or application
-void arps_remove_route(TCPIPS* tcpips, const IP* ip);
+//from icmp
+void arps_not_resolved(TCPIPS* tcpips, const IP* ip);
 
 #endif // ARPS_H

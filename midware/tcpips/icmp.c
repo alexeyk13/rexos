@@ -151,7 +151,7 @@ static inline void icmp_cmd_destination_unreachable(TCPIPS* tcpips, IO* io)
     case ICMP_NET_UNREACHABLE:
     case ICMP_HOST_UNREACHABLE:
     case ICMP_SOURCE_ROUTE_FAILED:
-        arps_remove_route(tcpips, &dst);
+        arps_not_resolved(tcpips, &dst);
         break;
     default:
         break;

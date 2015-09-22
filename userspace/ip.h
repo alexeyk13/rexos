@@ -26,8 +26,6 @@ typedef union {
 typedef enum {
     IP_SET = IPC_USER,
     IP_GET,
-
-    IP_HAL_MAX
 }IP_IPCS;
 
 void ip_print(const IP* ip);
