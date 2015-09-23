@@ -35,6 +35,8 @@
 #define ERROR_DEADLOCK                                  (ERROR_GENERAL - 20)
 #define ERROR_INVALID_MODE                              (ERROR_GENERAL - 21)
 #define ERROR_INVALID_LENGTH                            (ERROR_GENERAL - 22)
+#define ERROR_TOO_MANY_HANDLES                          (ERROR_GENERAL - 23)
+#define ERROR_NOT_RESPONDING                            (ERROR_GENERAL - 24)
 
 #define ERROR_IO                                        -100
 #define ERROR_FILE_SHARING_VIOLATION                    (ERROR_IO - 1)

@@ -13,7 +13,7 @@
 
 #include "tcpips.h"
 #include "../../userspace/eth.h"
-#include "../../userspace/inet.h"
+#include "../../userspace/ip.h"
 #include "../../userspace/array.h"
 
 typedef struct {

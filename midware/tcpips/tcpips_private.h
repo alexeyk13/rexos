@@ -15,7 +15,7 @@
 #include "arps.h"
 #include "routes.h"
 #include "ips.h"
-#include "icmp.h"
+#include "icmps.h"
 #include "sys_config.h"
 
 typedef struct _TCPIPS {
@@ -34,7 +34,7 @@ typedef struct _TCPIPS {
     ARPS arps;
     ROUTES routes;
 #if (ICMP)
-    TCPIP_ICMP icmp;
+    ICMPS icmps;
 #endif
 } TCPIPS;
 

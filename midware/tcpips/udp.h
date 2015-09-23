@@ -9,7 +9,7 @@
 
 #include "tcpips.h"
 #include "ips.h"
-#include "../../userspace/inet.h"
+#include "../../userspace/ip.h"
 #include "../../userspace/io.h"
 
 //TODO: udp_init

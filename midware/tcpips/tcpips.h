@@ -19,8 +19,5 @@ IO* tcpips_allocate_io(TCPIPS* tcpips);
 void tcpips_release_io(TCPIPS* tcpips, IO* io);
 //transmit. If tx operation is in place (2 tx for double buffering), io will be putted in queue for later processing
 void tcpips_tx(TCPIPS* tcpips, IO* io);
-//get seconds from start
-unsigned int tcpips_seconds(TCPIPS* tcpips);
-
 
 #endif // TCPIPS_H

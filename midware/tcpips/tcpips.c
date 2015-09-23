@@ -93,6 +93,7 @@ IO* tcpips_allocate_io(TCPIPS* tcpips)
         }
         else
         {
+            error(ERROR_TOO_MANY_HANDLES);
 #if (TCPIP_DEBUG_ERRORS)
             printf("TCPIP: too many ios\n");
 #endif
@@ -130,11 +131,6 @@ void tcpips_tx(TCPIPS* tcpips, IO *io)
     }
     else
         io_write(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_WRITE), tcpips->eth_handle, io);
-}
-
-unsigned int tcpips_seconds(TCPIPS* tcpips)
-{
-    return tcpips->seconds;
 }
 
 static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE eth, ETH_CONN_TYPE conn)
@@ -225,7 +221,7 @@ void tcpips_init(TCPIPS* tcpips)
     routes_init(tcpips);
     ips_init(tcpips);
 #if (ICMP)
-    icmp_init(tcpips);
+    icmps_init(tcpips);
 #endif
 }
 
@@ -234,7 +230,7 @@ static inline void tcpips_timer(TCPIPS* tcpips)
     ++tcpips->seconds;
     //forward to others
     arps_timer(tcpips, tcpips->seconds);
-    icmp_timer(tcpips, tcpips->seconds);
+    icmps_timer(tcpips, tcpips->seconds);
     timer_start_ms(tcpips->timer, 1000);
 }
 
@@ -315,7 +311,7 @@ void tcpips_main()
             need_post = ips_request(&tcpips, &ipc);
             break;
         case HAL_ICMP:
-            need_post = icmp_request(&tcpips, &ipc);
+            need_post = icmps_request(&tcpips, &ipc);
             break;
         default:
             error(ERROR_NOT_SUPPORTED);

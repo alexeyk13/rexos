@@ -115,7 +115,7 @@ static void arps_remove_item(TCPIPS* tcpips, int idx)
 {
     IP ip;
     ip.u32.ip = 0;
-    if ((ARP_CACHE_ITEM(tcpips, idx)->mac.u32.hi == 0) && (ARP_CACHE_ITEM(tcpips, idx)->mac.u32.lo == 0))
+    if (mac_compare(&ARP_CACHE_ITEM(tcpips, idx)->mac, &__MAC_REQUEST))
         ip.u32.ip = ARP_CACHE_ITEM(tcpips, idx)->ip.u32.ip;
 #if (ARP_DEBUG)
     else
@@ -152,7 +152,7 @@ static void arps_insert_item(TCPIPS* tcpips, const IP* ip, const MAC* mac, unsig
     //add all static routes to the end of cache
     if (timeout)
     {
-        ttl = tcpips_seconds(tcpips) + timeout;
+        ttl = tcpips->seconds + timeout;
         for (i = 0; i < array_size(tcpips->arps.cache); ++i)
             if ((ARP_CACHE_ITEM(tcpips, i)->ttl > ttl) || (ARP_CACHE_ITEM(tcpips, i)->ttl == 0))
             {
@@ -186,7 +186,7 @@ static void arps_update_item(TCPIPS* tcpips, const IP* ip, const MAC* mac)
         return;
     ARP_CACHE_ITEM(tcpips, idx)->mac.u32.hi = mac->u32.hi;
     ARP_CACHE_ITEM(tcpips, idx)->mac.u32.lo = mac->u32.lo;
-    ARP_CACHE_ITEM(tcpips, idx)->ttl = tcpips_seconds(tcpips) + ARP_CACHE_TIMEOUT;
+    ARP_CACHE_ITEM(tcpips, idx)->ttl = tcpips->seconds + ARP_CACHE_TIMEOUT;
 #if (ARP_DEBUG)
     printf("ARP: route resolved ");
     ip_print(ip);
@@ -250,12 +250,10 @@ static inline void arps_add_static(TCPIPS* tcpips, IPC* ipc)
     ipc->param2 = ipc->param3 = 0;
 }
 
-static inline void arps_remove(TCPIPS* tcpips, uint32_t ip_i)
+static inline void arps_remove(TCPIPS* tcpips, IP* ip)
 {
-    IP ip;
     int idx;
-    ip.u32.ip = ip_i;
-    idx = arps_index(tcpips, &ip);
+    idx = arps_index(tcpips, ip);
     if (idx < 0)
     {
         error(ERROR_ALREADY_CONFIGURED);
@@ -304,6 +302,7 @@ static inline void arps_show_table(TCPIPS* tcpips)
 
 bool arps_request(TCPIPS* tcpips, IPC* ipc)
 {
+    IP ip;
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
@@ -312,7 +311,8 @@ bool arps_request(TCPIPS* tcpips, IPC* ipc)
         need_post = true;
         break;
     case ARP_REMOVE:
-        arps_remove(tcpips, ipc->param1);
+        ip.u32.ip = ipc->param1;
+        arps_remove(tcpips, &ip);
         need_post = true;
         break;
     case IPC_FLUSH:
@@ -375,13 +375,6 @@ void arps_rx(TCPIPS* tcpips, IO *io)
         break;
     }
     tcpips_release_io(tcpips, io);
-}
-
-void arps_not_resolved(TCPIPS* tcpips, const IP* ip)
-{
-    int idx = arps_index(tcpips, ip);
-    if (idx >= 0)
-        arps_remove_item(tcpips, idx);
 }
 
 bool arps_resolve(TCPIPS* tcpips, const IP* ip, MAC* mac)

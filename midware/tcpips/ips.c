@@ -8,7 +8,7 @@
 #include "tcpips_private.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/endian.h"
-#include "icmp.h"
+#include "icmps.h"
 #include <string.h>
 #include "udp.h"
 
@@ -126,7 +126,7 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
     {
 #if (ICMP)
     case PROTO_ICMP:
-        icmp_rx(tcpips, io, src);
+        icmps_rx(tcpips, io, src);
         break;
 #endif //ICMP
 #if (UDP)
@@ -140,8 +140,8 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
         ip_print(src);
         printf("\n");
 #endif
-#if (ICMP_FLOW_CONTROL)
-        icmp_destination_unreachable(tcpips, ICMP_PROTOCOL_UNREACHABLE, io, src);
+#if (ICMP)
+        icmps_destination_unreachable(tcpips, ICMP_PROTOCOL_UNREACHABLE, io, src);
 #else
         ips_release_io(tcpips, io);
 #endif
@@ -178,11 +178,11 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     //len more than MTU, inform host by ICMP and only than drop packet
     if (total_len > io->data_size)
     {
-#if (ICMP_FLOW_CONTROL)
-        icmp_parameter_problem(tcpips, 2, io, &src);
+#if (ICMP)
+        icmps_parameter_problem(tcpips, 2, io, &src);
 #else
         tcpips_release_io(tcpips, io);
-#endif
+#endif //ICMP
         return;
     }
 
@@ -191,11 +191,11 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     io->data_size -= ip_stack->hdr_size;
     if (((hdr->ver_ihl >> 4) != 4) || (ip_stack->hdr_size < sizeof(IP_HEADER)))
     {
-#if (ICMP_FLOW_CONTROL)
-        icmp_parameter_problem(tcpips, 0, io, &src);
+#if (ICMP)
+        icmps_parameter_problem(tcpips, 0, io, &src);
 #else
         tcpips_release_io(tcpips, io);
-#endif
+#endif //ICMP
         return;
     }
     //unicast-only filter
@@ -208,11 +208,11 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     //ttl exceeded
     if (hdr->ttl == 0)
     {
-#if (ICMP_FLOW_CONTROL)
-        icmp_time_exceeded(tcpips, ICMP_TTL_EXCEED_IN_TRANSIT, io, &src);
+#if (ICMP)
+        icmps_time_exceeded(tcpips, ICMP_TTL_EXCEED_IN_TRANSIT, io, &src);
 #else
         tcpips_release_io(tcpips, io);
-#endif
+#endif //ICMP
         return;
     }
 
@@ -225,14 +225,14 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     //drop all fragmented frames, inform by ICMP
     if ((flags & IP_MF) || offset)
     {
-#if (ICMP_FLOW_CONTROL)
-        icmp_parameter_problem(tcpips, 6, io, &src);
+#if (ICMP)
+        icmps_parameter_problem(tcpips, 6, io, &src);
 #else
         tcpips_release_io(tcpips, io);
 #endif
         return;
     }
-#endif
+#endif //ICMP
 
     ips_process(tcpips, io, &src);
 }
