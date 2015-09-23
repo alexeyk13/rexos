@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef ROUTE_H
-#define ROUTE_H
+#ifndef ROUTES_H
+#define ROUTES_H
 
 /*
     routing. Lookup router address by target IP. For now is just stub, always returning target IP.
@@ -18,17 +18,17 @@
 
 typedef struct {
     ARRAY* tx_queue;
-} TCPIP_ROUTE;
+} ROUTES;
 
 //called from tcpip
-void route_init(TCPIPS* tcpips);
-bool route_drop(TCPIPS* tcpips);
+void routes_init(TCPIPS* tcpips);
+bool routes_drop(TCPIPS* tcpips);
 
 //called from arp
-void arp_resolved(TCPIPS* tcpips, const IP* ip, const MAC* mac);
-void arp_not_resolved(TCPIPS* tcpips, const IP* ip);
+void routes_resolved(TCPIPS* tcpips, const IP* ip, const MAC* mac);
+void routes_not_resolved(TCPIPS* tcpips, const IP* ip);
 
 //called from ip
-void route_tx(TCPIPS* tcpips, IO* io, const IP* target);
+void routes_tx(TCPIPS* tcpips, IO* io, const IP* target);
 
-#endif // ROUTE_H
+#endif // ROUTES_H

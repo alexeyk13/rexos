@@ -13,7 +13,7 @@
 #include "../../userspace/ip.h"
 #include "macs.h"
 #include "arps.h"
-#include "route.h"
+#include "routes.h"
 #include "ips.h"
 #include "icmp.h"
 #include "sys_config.h"
@@ -31,8 +31,8 @@ typedef struct _TCPIPS {
     MAC mac;
     IP ip;
     IPS ips;
-    TCPIP_ARP arp;
-    TCPIP_ROUTE route;
+    ARPS arps;
+    ROUTES routes;
 #if (ICMP)
     TCPIP_ICMP icmp;
 #endif

@@ -111,7 +111,7 @@ void ips_tx(TCPIPS* tcpips, IO* io, const IP* dst)
     short2be(hdr->header_crc_be, ip_checksum(io_data(io), ip_stack->hdr_size));
 
     io_pop(io, sizeof(IP_STACK));
-    route_tx(tcpips, io, dst);
+    routes_tx(tcpips, io, dst);
 }
 
 static void ips_process(TCPIPS* tcpips, IO* io, IP* src)

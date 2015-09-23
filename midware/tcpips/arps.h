@@ -42,7 +42,7 @@ typedef struct {
 
 typedef struct {
     ARRAY* cache;
-} TCPIP_ARP;
+} ARPS;
 
 //from tcpip
 void arps_init(TCPIPS* tcpips);

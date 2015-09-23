@@ -14,7 +14,7 @@
 #include "sys_config.h"
 #include "macs.h"
 #include "arps.h"
-#include "route.h"
+#include "routes.h"
 #include "ips.h"
 
 #define FRAME_MAX_SIZE                          (TCPIP_MTU + sizeof(MAC_HEADER) + sizeof(IP_STACK))
@@ -75,7 +75,7 @@ IO* tcpips_allocate_io(TCPIPS* tcpips)
 #endif
         }
         //try to drop first in queue, waiting for resolve
-        else if (route_drop(tcpips))
+        else if (routes_drop(tcpips))
         {
             io = tcpips_allocate_io_internal(tcpips);
 #if (TCPIP_DEBUG)
@@ -222,7 +222,7 @@ void tcpips_init(TCPIPS* tcpips)
     tcpips->tx_count = 0;
     macs_init(tcpips);
     arps_init(tcpips);
-    route_init(tcpips);
+    routes_init(tcpips);
     ips_init(tcpips);
 #if (ICMP)
     icmp_init(tcpips);
