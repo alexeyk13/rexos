@@ -27,3 +27,13 @@ bool tcpip_open(HANDLE tcpip, HANDLE eth, unsigned int eth_handle, ETH_CONN_TYPE
 {
     return get(tcpip, HAL_CMD(HAL_TCPIP, IPC_OPEN), eth_handle, eth, conn_type) != INVALID_HANDLE;
 }
+
+void tcpip_close(HANDLE tcpip)
+{
+    ack(tcpip, HAL_CMD(HAL_TCPIP, IPC_CLOSE), 0, 0, 0);
+}
+
+ETH_CONN_TYPE tcpip_get_conn_state(HANDLE tcpip)
+{
+    return (ETH_CONN_TYPE)get(tcpip, HAL_CMD(HAL_TCPIP, TCPIP_GET_CONN_STATE), 0, 0, 0);
+}

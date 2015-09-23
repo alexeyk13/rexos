@@ -235,8 +235,8 @@ typedef struct {
 
 //from tcpip
 void ips_init(TCPIPS* tcpips);
-void ips_open(TCPIPS* tcpips);
 bool ips_request(TCPIPS* tcpips, IPC* ipc);
+void ips_link_changed(TCPIPS* tcpips, bool link);
 
 //allocate IP io. If more than (MTU - MAC header - IP header) and fragmentation enabled, will be allocated long frame
 IO* ips_allocate_io(TCPIPS* tcpips, unsigned int size, uint8_t proto);

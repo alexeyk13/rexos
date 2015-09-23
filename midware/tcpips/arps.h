@@ -45,7 +45,7 @@ typedef struct {
 
 //from tcpip
 void arps_init(TCPIPS* tcpips);
-void arps_link_event(TCPIPS* tcpips, bool link);
+void arps_link_changed(TCPIPS* tcpips, bool link);
 void arps_timer(TCPIPS* tcpips, unsigned int seconds);
 bool arps_request(TCPIPS* tcpips, IPC* ipc);
 

@@ -16,11 +16,6 @@ void macs_init(TCPIPS* tcpips)
     memset(&tcpips->mac, 0, sizeof(MAC));
 }
 
-void macs_open(TCPIPS* tcpips)
-{
-    eth_get_mac(tcpips->eth, tcpips->eth_handle, &tcpips->mac);
-}
-
 bool macs_request(TCPIPS* tcpips, IPC* ipc)
 {
     bool need_post;
@@ -32,6 +27,14 @@ bool macs_request(TCPIPS* tcpips, IPC* ipc)
         break;
     }
     return need_post;
+}
+
+void macs_link_changed(TCPIPS* tcpips, bool link)
+{
+    if (link)
+    {
+        eth_get_mac(tcpips->eth, tcpips->eth_handle, &tcpips->mac);
+    }
 }
 
 void macs_rx(TCPIPS* tcpips, IO* io)

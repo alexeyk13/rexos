@@ -21,11 +21,6 @@ void ips_init(TCPIPS* tcpips)
     tcpips->ip.u32.ip = IP_MAKE(0, 0, 0, 0);
 }
 
-void ips_open(TCPIPS* tcpips)
-{
-    tcpips->ips.id = 0;
-}
-
 static inline void ips_set(TCPIPS* tcpips, uint32_t ip)
 {
     tcpips->ip.u32.ip = ip;
@@ -54,6 +49,14 @@ bool ips_request(TCPIPS* tcpips, IPC* ipc)
         break;
     }
     return need_post;
+}
+
+void ips_link_changed(TCPIPS* tcpips, bool link)
+{
+    if (link)
+    {
+        tcpips->ips.id = 0;
+    }
 }
 
 IO *ips_allocate_io(TCPIPS* tcpips, unsigned int size, uint8_t proto)

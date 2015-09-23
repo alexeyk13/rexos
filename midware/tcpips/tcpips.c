@@ -6,6 +6,7 @@
 
 #include "tcpips.h"
 #include "tcpips_private.h"
+#include "../../userspace/tcpip.h"
 #include "../../userspace/ipc.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdio.h"
@@ -140,16 +141,24 @@ static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE e
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
-    tcpips->eth = eth;
-    tcpips->eth_handle = eth_handle;
     tcpips->timer = timer_create(0, HAL_TCPIP);
     if (tcpips->timer == INVALID_HANDLE)
         return;
+    tcpips->eth = eth;
+    tcpips->eth_handle = eth_handle;
     ack(tcpips->eth, HAL_CMD(HAL_ETH, IPC_OPEN), tcpips->eth_handle, conn, 0);
-    macs_open(tcpips);
-    ips_open(tcpips);
-    tcpips->seconds = 0;
-    timer_start_ms(tcpips->timer, 1000);
+}
+
+static inline void tcpips_close(TCPIPS* tcpips)
+{
+    if (tcpips->eth == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    ack(tcpips->eth, HAL_CMD(HAL_ETH, IPC_CLOSE), tcpips->eth_handle, 0, 0);
+    tcpips->eth = INVALID_HANDLE;
+    timer_destroy(tcpips->timer);
 }
 
 static inline void tcpips_eth_rx(TCPIPS* tcpips, IO* io, int param3)
@@ -198,7 +207,26 @@ static inline void tcpips_link_changed(TCPIPS* tcpips, ETH_CONN_TYPE conn)
         tcpips_rx_next(tcpips);
 #endif
     }
-    arps_link_event(tcpips, tcpips->connected);
+    else
+    {
+        //flush TX queue
+        while (array_size(tcpips->tx_queue))
+        {
+            tcpips_release_io(tcpips, array_at(tcpips->tx_queue, 0));
+            array_remove(&tcpips->tx_queue, 0);
+            --tcpips->tx_count;
+        }
+    }
+    macs_link_changed(tcpips, tcpips->connected);
+    arps_link_changed(tcpips, tcpips->connected);
+    routes_link_changed(tcpips, tcpips->connected);
+    icmps_link_changed(tcpips, tcpips->connected);
+    ips_link_changed(tcpips, tcpips->connected);
+    if (tcpips->connected)
+    {
+        tcpips->seconds = 0;
+        timer_start_ms(tcpips->timer, 1000);
+    }
 }
 
 void tcpips_init(TCPIPS* tcpips)
@@ -227,11 +255,19 @@ void tcpips_init(TCPIPS* tcpips)
 
 static inline void tcpips_timer(TCPIPS* tcpips)
 {
-    ++tcpips->seconds;
-    //forward to others
-    arps_timer(tcpips, tcpips->seconds);
-    icmps_timer(tcpips, tcpips->seconds);
-    timer_start_ms(tcpips->timer, 1000);
+    if (tcpips->connected)
+    {
+        ++tcpips->seconds;
+        //forward to others
+        arps_timer(tcpips, tcpips->seconds);
+        icmps_timer(tcpips, tcpips->seconds);
+        timer_start_ms(tcpips->timer, 1000);
+    }
+}
+
+static inline void tcpips_get_conn_state(TCPIPS* tcpips, HANDLE process)
+{
+    ipc_post_inline(process, HAL_CMD(HAL_TCPIP, TCPIP_GET_CONN_STATE), 0, tcpips->conn, 0);
 }
 
 static inline bool tcpips_request(TCPIPS* tcpips, IPC* ipc)
@@ -244,11 +280,14 @@ static inline bool tcpips_request(TCPIPS* tcpips, IPC* ipc)
         need_post = true;
         break;
     case IPC_CLOSE:
-        //TODO:
+        tcpips_close(tcpips);
         need_post = true;
         break;
     case IPC_TIMEOUT:
         tcpips_timer(tcpips);
+        break;
+    case TCPIP_GET_CONN_STATE:
+        tcpips_get_conn_state(tcpips, ipc->process);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

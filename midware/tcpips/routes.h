@@ -23,6 +23,7 @@ typedef struct {
 //called from tcpip
 void routes_init(TCPIPS* tcpips);
 bool routes_drop(TCPIPS* tcpips);
+void routes_link_changed(TCPIPS* tcpips, bool link);
 
 //called from arp
 void routes_resolved(TCPIPS* tcpips, const IP* ip, const MAC* mac);

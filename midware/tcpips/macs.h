@@ -30,6 +30,7 @@ typedef struct {
 void macs_init(TCPIPS* tcpips);
 void macs_open(TCPIPS* tcpips);
 bool macs_request(TCPIPS* tcpips, IPC* ipc);
+void macs_link_changed(TCPIPS* tcpips, bool link);
 void macs_rx(TCPIPS* tcpips, IO* io);
 
 IO* macs_allocate_io(TCPIPS* tcpips);

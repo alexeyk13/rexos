@@ -32,6 +32,15 @@ bool routes_drop(TCPIPS* tcpips)
     return false;
 }
 
+void routes_link_changed(TCPIPS* tcpips, bool link)
+{
+    if (!link)
+    {
+        //drop all routes
+        while (routes_drop(tcpips)) {}
+    }
+}
+
 void routes_resolved(TCPIPS* tcpips, const IP* ip, const MAC* mac)
 {
     int i;

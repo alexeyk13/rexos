@@ -210,7 +210,7 @@ static bool arps_lookup(TCPIPS* tcpips, const IP* ip, MAC* mac)
     return false;
 }
 
-void arps_link_event(TCPIPS* tcpips, bool link)
+void arps_link_changed(TCPIPS* tcpips, bool link)
 {
     if (link)
     {

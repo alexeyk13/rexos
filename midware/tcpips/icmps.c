@@ -23,7 +23,6 @@ static const uint8_t __ICMP_DATA_MAGIC[ICMP_DATA_MAGIC_SIZE] =      {1, 2, 3, 4,
 
 void icmps_init(TCPIPS* tcpips)
 {
-    tcpips->icmps.id = tcpips->icmps.seq;
     tcpips->icmps.echo_ip.u32.ip = 0;
     tcpips->icmps.process = INVALID_HANDLE;
 }
@@ -121,12 +120,6 @@ static inline void icmps_rx_destination_unreachable(TCPIPS* tcpips, IO* io)
     icmps_error(tcpips, io, icmp->code, 0);
 }
 
-void icmps_timer(TCPIPS* tcpips, unsigned int seconds)
-{
-    if (tcpips->icmps.process != INVALID_HANDLE && tcpips->icmps.ttl < seconds)
-        icmps_echo_complete(tcpips, ERROR_TIMEOUT);
-}
-
 void icmps_rx(TCPIPS* tcpips, IO *io, IP* src)
 {
     ICMP_HEADER* icmp = io_data(io);
@@ -201,6 +194,25 @@ bool icmps_request(TCPIPS* tcpips, IPC* ipc)
         break;
     }
     return need_post;
+}
+
+void icmps_timer(TCPIPS* tcpips, unsigned int seconds)
+{
+    if (tcpips->icmps.process != INVALID_HANDLE && tcpips->icmps.ttl < seconds)
+        icmps_echo_complete(tcpips, ERROR_TIMEOUT);
+}
+
+void icmps_link_changed(TCPIPS* tcpips, bool link)
+{
+    if (link)
+    {
+        tcpips->icmps.id = tcpips->icmps.seq = 0;
+    }
+    else
+    {
+        if (tcpips->icmps.process != INVALID_HANDLE)
+            icmps_echo_complete(tcpips, ERROR_NOT_FOUND);
+    }
 }
 
 static void icmps_control_prepare(TCPIPS* tcpips, uint8_t cmd, uint8_t code, IO* original)
