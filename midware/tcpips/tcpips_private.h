@@ -20,7 +20,7 @@
 
 typedef struct _TCPIPS {
     //stack itself - public use
-    HANDLE eth, timer;
+    HANDLE eth, timer, app;
     unsigned seconds;
     ETH_CONN_TYPE conn;
     //stack itself - private use

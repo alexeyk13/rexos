@@ -26,6 +26,9 @@ typedef union {
 typedef enum {
     IP_SET = IPC_USER,
     IP_GET,
+    //notification of ip interface up/down
+    IP_UP,
+    IP_DOWN
 }IP_IPCS;
 
 void ip_print(const IP* ip);

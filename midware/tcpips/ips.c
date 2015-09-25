@@ -19,6 +19,7 @@
 void ips_init(TCPIPS* tcpips)
 {
     tcpips->ip.u32.ip = IP_MAKE(0, 0, 0, 0);
+    tcpips->ips.up = false;
 }
 
 static inline void ips_set(TCPIPS* tcpips, uint32_t ip)
@@ -55,7 +56,14 @@ void ips_link_changed(TCPIPS* tcpips, bool link)
 {
     if (link)
     {
+        tcpips->ips.up = true;
         tcpips->ips.id = 0;
+        ipc_post_inline(tcpips->app, HAL_CMD(HAL_IP, IP_UP), 0, 0, 0);
+    }
+    else
+    {
+        tcpips->ips.up = false;
+        ipc_post_inline(tcpips->app, HAL_CMD(HAL_IP, IP_DOWN), 0, 0, 0);
     }
 }
 
@@ -84,6 +92,12 @@ void ips_release_io(TCPIPS* tcpips, IO* io)
 
 void ips_tx(TCPIPS* tcpips, IO* io, const IP* dst)
 {
+    //drop if interface is not up
+    if (!tcpips->ips.up)
+    {
+        tcpips_release_io(tcpips, io);
+        return;
+    }
     IP_HEADER* hdr;
     IP_STACK* ip_stack = io_stack(io);
     //TODO: fragmented frames

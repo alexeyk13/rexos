@@ -134,9 +134,9 @@ void tcpips_tx(TCPIPS* tcpips, IO *io)
         io_write(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_WRITE), tcpips->eth_handle, io);
 }
 
-static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE eth, ETH_CONN_TYPE conn)
+static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE eth, ETH_CONN_TYPE conn, HANDLE app)
 {
-    if (tcpips->eth != INVALID_HANDLE)
+    if (tcpips->app != INVALID_HANDLE)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
@@ -146,18 +146,19 @@ static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE e
         return;
     tcpips->eth = eth;
     tcpips->eth_handle = eth_handle;
+    tcpips->app = app;
     ack(tcpips->eth, HAL_CMD(HAL_ETH, IPC_OPEN), tcpips->eth_handle, conn, 0);
 }
 
 static inline void tcpips_close(TCPIPS* tcpips)
 {
-    if (tcpips->eth == INVALID_HANDLE)
+    if (tcpips->app == INVALID_HANDLE)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
     }
     ack(tcpips->eth, HAL_CMD(HAL_ETH, IPC_CLOSE), tcpips->eth_handle, 0, 0);
-    tcpips->eth = INVALID_HANDLE;
+    tcpips->app = INVALID_HANDLE;
     timer_destroy(tcpips->timer);
 }
 
@@ -231,7 +232,7 @@ static inline void tcpips_link_changed(TCPIPS* tcpips, ETH_CONN_TYPE conn)
 
 void tcpips_init(TCPIPS* tcpips)
 {
-    tcpips->eth = INVALID_HANDLE;
+    tcpips->app = INVALID_HANDLE;
     tcpips->timer = INVALID_HANDLE;
     tcpips->conn = ETH_NO_LINK;
     tcpips->io_allocated = 0;
@@ -276,7 +277,7 @@ static inline bool tcpips_request(TCPIPS* tcpips, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        tcpips_open(tcpips, ipc->param1, ipc->param2, ipc->param3);
+        tcpips_open(tcpips, ipc->param1, ipc->param2, ipc->param3, ipc->process);
         need_post = true;
         break;
     case IPC_CLOSE:
