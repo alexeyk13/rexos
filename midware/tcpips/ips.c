@@ -158,7 +158,7 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
         printf("\n");
 #endif
 #if (ICMP)
-        icmps_destination_unreachable(tcpips, ICMP_PROTOCOL_UNREACHABLE, io, src);
+        icmps_tx_error(tcpips, io, ICMP_ERROR_PROTOCOL, 0);
 #else
         ips_release_io(tcpips, io);
 #endif
@@ -196,7 +196,7 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     if (total_len > io->data_size)
     {
 #if (ICMP)
-        icmps_parameter_problem(tcpips, 2, io, &src);
+        icmps_tx_error(tcpips, io, ICMP_ERROR_PARAMETER, 2);
 #else
         tcpips_release_io(tcpips, io);
 #endif //ICMP
@@ -209,7 +209,7 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     if (((hdr->ver_ihl >> 4) != 4) || (ip_stack->hdr_size < sizeof(IP_HEADER)))
     {
 #if (ICMP)
-        icmps_parameter_problem(tcpips, 0, io, &src);
+        icmps_tx_error(tcpips, io, ICMP_ERROR_PARAMETER, 0);
 #else
         tcpips_release_io(tcpips, io);
 #endif //ICMP
@@ -226,7 +226,7 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     if (hdr->ttl == 0)
     {
 #if (ICMP)
-        icmps_time_exceeded(tcpips, ICMP_TTL_EXCEED_IN_TRANSIT, io, &src);
+        icmps_tx_error(tcpips, io, ICMP_ERROR_TTL_EXCEED, 0);
 #else
         tcpips_release_io(tcpips, io);
 #endif //ICMP
@@ -243,7 +243,7 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     if ((flags & IP_MF) || offset)
     {
 #if (ICMP)
-        icmps_parameter_problem(tcpips, 6, io, &src);
+        icmps_tx_error(tcpips, io, ICMP_ERROR_PARAMETER, 6);
 #else
         tcpips_release_io(tcpips, io);
 #endif

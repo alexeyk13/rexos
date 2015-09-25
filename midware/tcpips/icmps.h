@@ -87,9 +87,7 @@ void icmps_link_changed(TCPIPS* tcpips, bool link);
 //from ip
 void icmps_rx(TCPIPS* tcpips, IO* io, IP* src);
 
-//flow control tools
-void icmps_destination_unreachable(TCPIPS* tcpips, uint8_t code, IO* original, const IP* dst);
-void icmps_time_exceeded(TCPIPS* tcpips, uint8_t code, IO* original, const IP* dst);
-void icmps_parameter_problem(TCPIPS* tcpips, uint8_t offset, IO *original, const IP* dst);
+//flow control
+void icmps_tx_error(TCPIPS* tcpips, IO* original, ICMP_ERROR err, unsigned int offset);
 
 #endif // ICMPS_H

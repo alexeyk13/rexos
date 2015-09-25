@@ -57,6 +57,8 @@ static inline void icmps_error_process(TCPIPS* tcpips, IO* io, ICMP_ERROR code, 
         case ICMP_ERROR_PROTOCOL:
         case ICMP_ERROR_PORT:
         case ICMP_ERROR_ROUTE:
+            icmps_echo_complete(tcpips, ERROR_NOT_RESPONDING);
+            break;
         case ICMP_ERROR_TTL_EXCEED:
         case ICMP_ERROR_FRAGMENT_REASSEMBLY_EXCEED:
             icmps_echo_complete(tcpips, ERROR_TIMEOUT);
@@ -122,6 +124,51 @@ static inline void icmps_rx_echo_reply(TCPIPS* tcpips, IO* io, IP* src)
     icmps_echo_complete(tcpips, (memcmp(((uint8_t*)io_data(io)) + sizeof(ICMP_HEADER), __ICMP_DATA_MAGIC, ICMP_DATA_MAGIC_SIZE)) ? ERROR_CRC : ERROR_OK);
 }
 
+static inline void icmps_rx_destination_unreachable(TCPIPS* tcpips, IO* io)
+{
+    ICMP_HEADER* icmp = io_data(io);
+    //useless if no original header provided
+    if (io->data_size < sizeof(ICMP_HEADER) + sizeof(IP_HEADER) + 8)
+    {
+        ips_release_io(tcpips, io);
+        return;
+    }
+#if (ICMP_DEBUG)
+    printf("ICMP: Destination unreachable(%d) ", icmp->code);
+#endif
+    icmps_rx_error(tcpips, io, icmp->code, 0);
+}
+
+static inline void icmps_rx_time_exceeded(TCPIPS* tcpips, IO* io)
+{
+    ICMP_HEADER* icmp = io_data(io);
+    //useless if no original header provided
+    if (io->data_size < sizeof(ICMP_HEADER) + sizeof(IP_HEADER) + 8)
+    {
+        ips_release_io(tcpips, io);
+        return;
+    }
+#if (ICMP_DEBUG)
+    printf("ICMP: Time exceeded in transit (%d) ", icmp->code);
+#endif
+    icmps_rx_error(tcpips, io, icmp->code + ICMP_ERROR_TTL_EXCEED, 0);
+}
+
+static inline void icmps_rx_parameter_problem(TCPIPS* tcpips, IO* io)
+{
+    ICMP_HEADER_PARAM* icmp = io_data(io);
+    //useless if no original header provided
+    if (io->data_size < sizeof(ICMP_HEADER_PARAM) + sizeof(IP_HEADER) + 8)
+    {
+        ips_release_io(tcpips, io);
+        return;
+    }
+#if (ICMP_DEBUG)
+    printf("ICMP: Parameter problem (%d) ", icmp->param);
+#endif
+    icmps_rx_error(tcpips, io, icmp->code + ICMP_ERROR_PARAMETER, icmp->param);
+}
+
 static inline void icmps_tx_echo(TCPIPS* tcpips)
 {
     ICMP_HEADER_ID_SEQ* icmp;
@@ -140,35 +187,68 @@ static inline void icmps_tx_echo(TCPIPS* tcpips)
     icmps_tx(tcpips, io, &tcpips->icmps.echo_ip);
 }
 
-static inline void icmps_rx_destination_unreachable(TCPIPS* tcpips, IO* io)
+static inline void icmps_tx_destination_unreachable(TCPIPS* tcpips, uint8_t code, IO* original)
 {
-    ICMP_HEADER* icmp = io_data(io);
-    //useless if no original header provided
-    if (io->data_size < sizeof(ICMP_HEADER) + sizeof(IP_HEADER) + 8)
-    {
-        ips_release_io(tcpips, io);
-        return;
-    }
+    ICMP_HEADER* icmp;
+    IP_STACK* ip_stack = io_stack(original);
+    IP_HEADER* hdr = io_data(original);
 #if (ICMP_DEBUG)
-    printf("ICMP: Destination unreachable(%d) ", icmp->code);
+    printf("ICMP: Destination unreachable(%d) to ", code);
+    ip_print(&hdr->src);
+    printf("\n");
 #endif
-    icmps_rx_error(tcpips, io, icmp->code, 0);
+    IO* io = ips_allocate_io(tcpips, sizeof(ICMP_HEADER) + ip_stack->hdr_size + 8, PROTO_ICMP);
+    if (io == NULL)
+        return;
+    icmp = io_data(io);
+    icmp->type = ICMP_CMD_DESTINATION_UNREACHABLE;
+    icmp->code = code;
+    memcpy(((uint8_t*)io_data(io)) + sizeof(ICMP_HEADER), io_data(original), ip_stack->hdr_size + 8);
+    io->data_size = ip_stack->hdr_size + 8 + sizeof(ICMP_HEADER);
+    icmps_tx(tcpips, io, &hdr->src);
 }
 
-static inline void icmps_rx_time_exceeded(TCPIPS* tcpips, IO* io)
+static inline void icmps_tx_time_exceed(TCPIPS* tcpips, uint8_t code, IO* original)
 {
-    //TODO: not working really
-    ICMP_HEADER* icmp = io_data(io);
-    //useless if no original header provided
-    if (io->data_size < sizeof(ICMP_HEADER) + sizeof(IP_HEADER) + 8)
-    {
-        ips_release_io(tcpips, io);
-        return;
-    }
+    ICMP_HEADER* icmp;
+    IP_STACK* ip_stack = io_stack(original);
+    IP_HEADER* hdr = io_data(original);
 #if (ICMP_DEBUG)
-    printf("ICMP: Time exceeded in transit (%d) ", icmp->code);
+    printf("ICMP: Time exceeded(%d) to ", code);
+    ip_print(&hdr->src);
+    printf("\n");
 #endif
-    icmps_rx_error(tcpips, io, icmp->code, 0);
+    IO* io = ips_allocate_io(tcpips, sizeof(ICMP_HEADER) + ip_stack->hdr_size + 8, PROTO_ICMP);
+    if (io == NULL)
+        return;
+    icmp = io_data(io);
+    icmp->type = ICMP_CMD_TIME_EXCEEDED;
+    icmp->code = code;
+    memcpy(((uint8_t*)io_data(io)) + sizeof(ICMP_HEADER), io_data(original), ip_stack->hdr_size + 8);
+    io->data_size = ip_stack->hdr_size + 8 + sizeof(ICMP_HEADER);
+    icmps_tx(tcpips, io, &hdr->src);
+}
+
+static inline void icmps_tx_parameter_problem(TCPIPS* tcpips, uint8_t offset, IO* original)
+{
+    ICMP_HEADER_PARAM* icmp;
+    IP_STACK* ip_stack = io_stack(original);
+    IP_HEADER* hdr = io_data(original);
+#if (ICMP_DEBUG)
+    printf("ICMP: Parameter problem(%d) to ", offset);
+    ip_print(&hdr->src);
+    printf("\n");
+#endif
+    IO* io = ips_allocate_io(tcpips, sizeof(ICMP_HEADER_PARAM) + ip_stack->hdr_size + 8, PROTO_ICMP);
+    if (io == NULL)
+        return;
+    icmp = io_data(io);
+    icmp->type = ICMP_CMD_PARAMETER_PROBLEM;
+    icmp->code = 0;
+    icmp->param = offset;
+    memcpy(((uint8_t*)io_data(io)) + sizeof(ICMP_HEADER_PARAM), io_data(original), ip_stack->hdr_size + 8);
+    io->data_size = ip_stack->hdr_size + 8 + sizeof(ICMP_HEADER_PARAM);
+    icmps_tx(tcpips, io, &hdr->src);
 }
 
 void icmps_rx(TCPIPS* tcpips, IO *io, IP* src)
@@ -196,8 +276,14 @@ void icmps_rx(TCPIPS* tcpips, IO *io, IP* src)
         icmps_rx_echo(tcpips, io, src);
         break;
 #endif
-    case  ICMP_CMD_DESTINATION_UNREACHABLE:
+    case ICMP_CMD_DESTINATION_UNREACHABLE:
         icmps_rx_destination_unreachable(tcpips, io);
+        break;
+    case ICMP_CMD_TIME_EXCEEDED:
+        icmps_rx_time_exceeded(tcpips, io);
+        break;
+    case ICMP_CMD_PARAMETER_PROBLEM:
+        icmps_rx_parameter_problem(tcpips, io);
         break;
     default:
 #if (ICMP_DEBUG)
@@ -280,15 +366,35 @@ static void icmps_control_prepare(TCPIPS* tcpips, uint8_t cmd, uint8_t code, IO*
     memmove(((uint8_t*)io_data(original)) + sizeof(ICMP_HEADER), ((uint8_t*)io_data(original)) - ip_stack->hdr_size, ip_stack->hdr_size + 8);
 }
 
-void icmps_destination_unreachable(TCPIPS* tcpips, uint8_t code, IO* original, const IP *dst)
+void icmps_tx_error(TCPIPS* tcpips, IO* original, ICMP_ERROR err, unsigned int offset)
 {
-#if (ICMP_DEBUG)
-    printf("ICMP: Destination unreachable(%d) to ", code);
-    ip_print(dst);
-    printf("\n");
-#endif
-    icmps_control_prepare(tcpips, ICMP_CMD_DESTINATION_UNREACHABLE, code, original);
-    icmps_tx(tcpips, original, dst);
+    //unhide ip header
+    IP_STACK* ip_stack;
+    ip_stack = io_stack(original);
+    original->data_offset -= ip_stack->hdr_size;
+    original->data_size += ip_stack->hdr_size;
+    switch (err)
+    {
+    case ICMP_ERROR_NETWORK:
+    case ICMP_ERROR_HOST:
+    case ICMP_ERROR_PROTOCOL:
+    case ICMP_ERROR_PORT:
+    case ICMP_ERROR_FRAGMENTATION:
+    case ICMP_ERROR_ROUTE:
+        icmps_tx_destination_unreachable(tcpips, err, original);
+        break;
+    case ICMP_ERROR_TTL_EXCEED:
+    case ICMP_ERROR_FRAGMENT_REASSEMBLY_EXCEED:
+        icmps_tx_time_exceed(tcpips, err - ICMP_ERROR_TTL_EXCEED, original);
+        break;
+    case ICMP_ERROR_PARAMETER:
+        icmps_tx_parameter_problem(tcpips, offset, original);
+        break;
+    }
+
+    original->data_offset -= ip_stack->hdr_size;
+    original->data_size += ip_stack->hdr_size;
+    ips_release_io(tcpips, original);
 }
 
 void icmps_time_exceeded(TCPIPS* tcpips, uint8_t code, IO* original, const IP* dst)
