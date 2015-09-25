@@ -59,13 +59,18 @@ typedef enum {
     HAL_APP
 } HAL;
 
-#define HAL_CMD(group, item)                                ((group & 0xffff) << 16 | (item & 0x7fff))
-#define HAL_ITEM(cmd)                                       ((cmd) & 0x7fff)
-#define HAL_GROUP(cmd)                                      ((cmd) >> 16)
-
 //ipc contains IO in param2
 #define HAL_IO_FLAG                                         (1 << 15)
-#define HAL_IO_CMD(group, item)                             ((group & 0xffff) << 16 | (item & 0x7fff) | HAL_IO_FLAG)
+//response required
+#define HAL_REQ_FLAG                                        (1 << 31)
+
+#define HAL_CMD(group, item)                                (((group & 0x7fff) << 16) | (item & 0x7fff))
+#define HAL_REQ(group, item)                                (((group & 0x7fff) << 16) | (item & 0x7fff) | HAL_REQ_FLAG)
+#define HAL_ITEM(cmd)                                       ((cmd) & 0x7fff)
+#define HAL_GROUP(cmd)                                      (((cmd) >> 16) & 0x7fff)
+
+#define HAL_IO_CMD(group, item)                             (((group & 0x7fff) << 16) | (item & 0x7fff) | HAL_IO_FLAG)
+#define HAL_IO_REQ(group, item)                             (((group & 0x7fff) << 16) | (item & 0x7fff) | HAL_IO_FLAG | HAL_REQ_FLAG)
 
 #define ANY_CMD                                             0xffffffff
 
@@ -98,14 +103,6 @@ unsigned int ipc_remove(HANDLE process, unsigned int cmd, unsigned int param1);
     \retval none
 */
 void ipc_post(IPC* ipc);
-
-/**
-    \brief post IPC with extra parameter in param3
-    \param ipc: IPC structure
-    \param param3: extra parameter to set, generally error or size
-    \retval none
-*/
-void ipc_post_ex(IPC* ipc, int param3);
 
 /**
     \brief post IPC, inline version
@@ -182,7 +179,8 @@ void call(IPC* ipc);
 void ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
-    \brief get value from process
+    \brief get hangle value from process.
+    \details INVALID_HANDLE on error
     \param cmd: command to post
     \param process: IPC receiver
     \param param1: cmd specific
@@ -191,10 +189,11 @@ void ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int par
     \retval param1
 */
 
-unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
+unsigned int get_handle(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
-    \brief get size value from process
+    \brief get int value from process.
+    \details Error set if INVALID_HANDLE on param2
     \param cmd: command to post
     \param process: IPC receiver
     \param param1: cmd specific
@@ -203,7 +202,7 @@ unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned
     \retval param1
 */
 
-int get_size(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
+int get_int(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /** \} */ // end of sem group
 

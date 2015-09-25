@@ -50,7 +50,7 @@ typedef struct {
     DAC_CHANNEL channels[DAC_CHANNELS_COUNT_USER];
 } DAC_DRV;
 
-bool stm32_dac_request(CORE* core, IPC* ipc);
+void stm32_dac_request(CORE* core, IPC* ipc);
 void stm32_dac_init(CORE* core);
 
 #endif // STM32_DAC_H

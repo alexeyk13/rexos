@@ -314,7 +314,7 @@ static inline void stm32_eth_read(ETH_DRV* drv, IPC* ipc)
     IO* io = (IO*)ipc->param2;
     if (!drv->connected)
     {
-        ipc_post_ex(ipc, ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_ACTIVE);
         return;
     }
 #if (ETH_DOUBLE_BUFFERING)
@@ -327,7 +327,7 @@ static inline void stm32_eth_read(ETH_DRV* drv, IPC* ipc)
         i = (cur_rx + 1) & 1;
     if (i < 0)
     {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     drv->rx_des[i].buf1 = io_data(io);
@@ -341,7 +341,7 @@ static inline void stm32_eth_read(ETH_DRV* drv, IPC* ipc)
 #else
     if (drv->rx != NULL)
     {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     drv->rx_des.buf1 = io_data(io);
@@ -353,6 +353,7 @@ static inline void stm32_eth_read(ETH_DRV* drv, IPC* ipc)
 #endif
     //enable and poll DMA. Value is doesn't matter
     ETH->DMARPDR = 0;
+    error(ERROR_SYNC);
 }
 
 static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
@@ -360,7 +361,7 @@ static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
     IO* io = (IO*)ipc->param2;
     if (!drv->connected)
     {
-        ipc_post_ex(ipc, ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_ACTIVE);
         return;
     }
 #if (ETH_DOUBLE_BUFFERING)
@@ -373,7 +374,7 @@ static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
         i = (cur_tx + 1) & 1;
     if (i < 0)
     {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     drv->tx_des[i].buf1 = io_data(io);
@@ -387,7 +388,7 @@ static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
 #else
     if (drv->tx != NULL)
     {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     drv->tx_des.buf1 = io_data(io);
@@ -399,6 +400,7 @@ static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
 #endif
     //enable and poll DMA. Value is doesn't matter
     ETH->DMATPDR = 0;
+    error(ERROR_SYNC);
 }
 
 static inline void stm32_eth_set_mac(ETH_DRV* drv, unsigned int param2, unsigned int param3)
@@ -427,60 +429,50 @@ void stm32_eth_init(ETH_DRV* drv)
 #endif
 }
 
-bool stm32_eth_request(ETH_DRV* drv, IPC* ipc)
+void stm32_eth_request(ETH_DRV* drv, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         stm32_eth_open(drv, ipc->param1, ipc->param2, ipc->process);
-        need_post = true;
         break;
     case IPC_CLOSE:
         stm32_eth_close(drv);
-        need_post = true;
         break;
     case IPC_FLUSH:
         stm32_eth_flush(drv);
-        need_post = true;
         break;
     case IPC_READ:
         stm32_eth_read(drv, ipc);
-        //generally posted with io, no return IPC
         break;
     case IPC_WRITE:
         stm32_eth_write(drv, ipc);
-        //generally posted with io, no return IPC
         break;
     case IPC_TIMEOUT:
         stm32_eth_conn_check(drv);
         break;
     case ETH_SET_MAC:
         stm32_eth_set_mac(drv, ipc->param2, ipc->param3);
-        need_post = true;
         break;
     case ETH_GET_MAC:
         stm32_eth_get_mac(drv, ipc);
-        need_post = true;
         break;
     default:
+        error(ERROR_NOT_SUPPORTED);
         break;
     }
-    return need_post;
 }
 
 void stm32_eth()
 {
     IPC ipc;
     ETH_DRV drv;
-    bool need_post;
     stm32_eth_init(&drv);
     object_set_self(SYS_OBJ_ETH);
     for (;;)
     {
         ipc_read(&ipc);
-        need_post = stm32_eth_request(&drv, &ipc);
-        if (need_post)
-            ipc_write(&ipc);
+        stm32_eth_request(&drv, &ipc);
+        ipc_write(&ipc);
     }
 }

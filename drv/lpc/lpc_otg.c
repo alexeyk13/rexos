@@ -383,12 +383,12 @@ static void lpc_otg_io(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, IPC* ipc, bool r
     EP* ep = ep_data(port, drv, num);
     if (ep == NULL)
     {
-        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     if (ep->io != NULL)
     {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     ep->io = (IO*)ipc->param2;
@@ -417,6 +417,7 @@ static void lpc_otg_io(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, IPC* ipc, bool r
         //required before EP0 transfers
         while (__USB_REGS[port]->ENDPTSETUPSTAT & (1 << 0)) {}
     __USB_REGS[port]->ENDPTPRIME = EP_BIT(num);
+    error(ERROR_SYNC);
 }
 
 static inline void lpc_otg_open_device(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, HANDLE device)
@@ -459,7 +460,7 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, 
         LPC_SCU->SFSUSB |= SCU_SFSUSB_EPWR_Msk;
 
         //enable VBUS monitoring
-        ack_pin(drv, HAL_CMD(HAL_PIN, LPC_PIN_ENABLE), P2_5, P2_5_USB1_VBUS | SCU_SFS_EPUN | SCU_SFS_EZI | SCU_SFS_ZIF, 0);
+        ack_pin(drv, HAL_REQ(HAL_PIN, LPC_PIN_ENABLE), P2_5, P2_5_USB1_VBUS | SCU_SFS_EPUN | SCU_SFS_EZI | SCU_SFS_ZIF, 0);
 #endif //USB1_ULPI
     }
     else
@@ -548,7 +549,7 @@ static inline void lpc_otg_close_device(USB_PORT_TYPE port, SHARED_OTG_DRV* drv)
 #if !(USB1_ULPI)
     if (port == USB_1)
     {
-        ack_pin(drv, HAL_CMD(HAL_PIN, LPC_PIN_DISABLE), P2_5, 0, 0);
+        ack_pin(drv, HAL_REQ(HAL_PIN, LPC_PIN_DISABLE), P2_5, 0, 0);
         LPC_SCU->SFSUSB &= ~SCU_SFSUSB_EPWR_Msk;
 
         LPC_CGU->BASE_USB1_CLK = CGU_BASE_USB1_CLK_PD_Msk;
@@ -583,31 +584,25 @@ static inline void lpc_otg_set_test_mode(USB_PORT_TYPE port, SHARED_OTG_DRV* drv
 }
 #endif //USB_TEST_MODE_SUPPORT
 
-static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
+static inline void lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case USB_GET_SPEED:
         ipc->param2 = drv->otg.otg[USB_PORT(ipc->param1)]->speed;
-        need_post = true;
         break;
     case IPC_OPEN:
         lpc_otg_open_device(USB_PORT(ipc->param1), drv, ipc->process);
-        need_post = true;
         break;
     case IPC_CLOSE:
         lpc_otg_close_device(USB_PORT(ipc->param1), drv);
-        need_post = true;
         break;
     case USB_SET_ADDRESS:
         lpc_otg_set_address(USB_PORT(ipc->param1), drv, ipc->param2);
-        need_post = true;
         break;
 #if (USB_TEST_MODE_SUPPORT)
     case USB_SET_TEST_MODE:
         lpc_otg_set_test_mode(USB_PORT(ipc->param1), drv, ipc->param2);
-        need_post = true;
         break;
 #endif //USB_TEST_MODE_SUPPORT
 #if (USB_DEBUG_ERRORS)
@@ -618,92 +613,70 @@ static inline bool lpc_otg_device_request(SHARED_OTG_DRV* drv, IPC* ipc)
 #endif
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
-static inline bool lpc_otg_ep_request(SHARED_OTG_DRV* drv, IPC* ipc)
+static inline void lpc_otg_ep_request(SHARED_OTG_DRV* drv, IPC* ipc)
 {
-    bool need_post = false;
     if (USB_EP_NUM(USB_NUM(ipc->param1)) >= USB_EP_COUNT_MAX)
     {
-        switch (HAL_ITEM(ipc->cmd))
-        {
-        case IPC_READ:
-        case IPC_WRITE:
-            ipc_post_ex(ipc, ERROR_INVALID_PARAMS);
-            break;
-        default:
-            error(ERROR_INVALID_PARAMS);
-            need_post = true;
-        }
+        error(ERROR_INVALID_PARAMS);
+        return;
     }
-    else
-        switch (HAL_ITEM(ipc->cmd))
-        {
-        case IPC_OPEN:
-            lpc_otg_open_ep(USB_PORT(ipc->param1), drv, USB_NUM(ipc->param1), ipc->param2, ipc->param3);
-            need_post = true;
-            break;
-        case IPC_CLOSE:
-            lpc_otg_close_ep(USB_PORT(ipc->param1), drv, USB_NUM(ipc->param1));
-            need_post = true;
-            break;
-        case IPC_FLUSH:
-            lpc_otg_ep_flush(USB_PORT(ipc->param1), drv, USB_NUM(ipc->param1));
-            need_post = true;
-            break;
-        case USB_EP_SET_STALL:
-            lpc_otg_ep_set_stall(USB_PORT(ipc->param1), drv, USB_NUM(ipc->param1));
-            need_post = true;
-            break;
-        case USB_EP_CLEAR_STALL:
-            lpc_otg_ep_clear_stall(USB_PORT(ipc->param1), drv, USB_NUM(ipc->param1));
-            need_post = true;
-            break;
-        case USB_EP_IS_STALL:
-            ipc->param2 = lpc_otg_ep_is_stall(USB_PORT(ipc->param1), USB_NUM(ipc->param1));
-            need_post = true;
-            break;
-        case IPC_READ:
-            lpc_otg_io(USB_PORT(ipc->param1), drv, ipc, true);
-            break;
-        case IPC_WRITE:
-            lpc_otg_io(USB_PORT(ipc->param1), drv, ipc, false);
-            break;
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    case IPC_OPEN:
+        lpc_otg_open_ep(USB_PORT(ipc->param1), drv, USB_NUM(ipc->param1), ipc->param2, ipc->param3);
+        break;
+    case IPC_CLOSE:
+        lpc_otg_close_ep(USB_PORT(ipc->param1), drv, USB_NUM(ipc->param1));
+        break;
+    case IPC_FLUSH:
+        lpc_otg_ep_flush(USB_PORT(ipc->param1), drv, USB_NUM(ipc->param1));
+        break;
+    case USB_EP_SET_STALL:
+        lpc_otg_ep_set_stall(USB_PORT(ipc->param1), drv, USB_NUM(ipc->param1));
+        break;
+    case USB_EP_CLEAR_STALL:
+        lpc_otg_ep_clear_stall(USB_PORT(ipc->param1), drv, USB_NUM(ipc->param1));
+        break;
+    case USB_EP_IS_STALL:
+        ipc->param2 = lpc_otg_ep_is_stall(USB_PORT(ipc->param1), USB_NUM(ipc->param1));
+        break;
+    case IPC_READ:
+        lpc_otg_io(USB_PORT(ipc->param1), drv, ipc, true);
+        break;
+    case IPC_WRITE:
+        lpc_otg_io(USB_PORT(ipc->param1), drv, ipc, false);
+        break;
 #if (USB_DEBUG_ERRORS)
-        case LPC_OTG_BUFFER_ERROR:
-            printd("OTG_%d EP%x buffer error\n", USB_PORT(ipc->param1), USB_NUM(ipc->param1));
-            //posted from isr
-            break;
-        case LPC_OTG_TRANSACTION_ERROR:
-            printd("OTG_%d EP%x transaction error\n", USB_PORT(ipc->param1), USB_NUM(ipc->param1));
-            //posted from isr
-            break;
+    case LPC_OTG_BUFFER_ERROR:
+        printd("OTG_%d EP%x buffer error\n", USB_PORT(ipc->param1), USB_NUM(ipc->param1));
+        //posted from isr
+        break;
+    case LPC_OTG_TRANSACTION_ERROR:
+        printd("OTG_%d EP%x transaction error\n", USB_PORT(ipc->param1), USB_NUM(ipc->param1));
+        //posted from isr
+        break;
 #endif
-        default:
-            error(ERROR_NOT_SUPPORTED);
-            need_post = true;
-            break;
-        }
-    return need_post;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        break;
+    }
 }
 
-bool lpc_otg_request(SHARED_OTG_DRV* drv, IPC* ipc)
+void lpc_otg_request(SHARED_OTG_DRV* drv, IPC* ipc)
 {
-    bool need_post = false;
     if (USB_PORT(ipc->param1) >= USB_COUNT)
     {
         error(ERROR_INVALID_PARAMS);
-        return true;
+        return;
     }
     if (USB_NUM(ipc->param1) == USB_HANDLE_DEVICE)
-        need_post = lpc_otg_device_request(drv, ipc);
+        lpc_otg_device_request(drv, ipc);
     else
-        need_post = lpc_otg_ep_request(drv, ipc);
-    return need_post;
+        lpc_otg_ep_request(drv, ipc);
 }
 
 #if !(MONOLITH_USB)
@@ -711,15 +684,13 @@ void lpc_otg()
 {
     IPC ipc;
     SHARED_OTG_DRV drv;
-    bool need_post;
     object_set_self(SYS_OBJ_USB);
     lpc_otg_init(&drv);
     for (;;)
     {
         ipc_read(&ipc);
-        need_post = lpc_otg_request(&drv, &ipc);
-        if (need_post)
-            ipc_write(&ipc);
+        lpc_otg_request(&drv, &ipc);
+        ipc_write(&ipc);
     }
 }
 #endif //!MONOLITH_USB

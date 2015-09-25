@@ -183,19 +183,19 @@ void mscd_storage_cb(void* param, IO* io, SCSIS_REQUEST request)
     switch (request)
     {
     case SCSIS_REQUEST_READ:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_READ), io, size);
+        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_READ), io, size);
         break;
     case SCSIS_REQUEST_WRITE:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_WRITE), io, size);
+        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_WRITE), io, size);
         break;
     case SCSIS_REQUEST_VERIFY:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_VERIFY), io, size);
+        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_VERIFY), io, size);
         break;
     case SCSIS_REQUEST_GET_STORAGE_DESCRIPTOR:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_GET_STORAGE_DESCRIPTOR), io, 0);
+        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_GET_STORAGE_DESCRIPTOR), io, 0);
         break;
     case SCSIS_REQUEST_GET_MEDIA_DESCRIPTOR:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_CMD(HAL_USBD_IFACE, USB_MSC_GET_MEDIA_DESCRIPTOR), io, 0);
+        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_GET_MEDIA_DESCRIPTOR), io, 0);
         break;
     default:
 #if (USBD_MSC_DEBUG_ERRORS)
@@ -368,9 +368,8 @@ static inline void mscd_usb_io_complete(USBD* usbd, MSCD* mscd)
     }
 }
 
-static inline bool mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
+static inline void mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_WRITE:
@@ -391,9 +390,7 @@ static inline bool mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
     }
-    return need_post;
 }
 
 static inline void mscd_storage_response(USBD* usbd, MSCD* mscd, int param3)
@@ -421,15 +418,15 @@ static inline void mscd_direct_write(USBD* usbd, MSCD* mscd, IO* io)
         size = mscd->residue;
     mscd->residue -= size;
     mscd->state = MSCD_STATE_DIRECT_WRITE;
+    error(ERROR_SYNC);
 }
 #endif //SCSI_READ_CACHE
 
-bool mscd_class_request(USBD* usbd, void* param, IPC* ipc)
+void mscd_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     MSCD* mscd = (MSCD*)param;
-    bool need_post = false;
     if (HAL_GROUP(ipc->cmd) == HAL_USB)
-        need_post = mscd_driver_event(usbd, mscd, ipc);
+        mscd_driver_event(usbd, mscd, ipc);
     else
         switch (HAL_ITEM(ipc->cmd))
         {
@@ -451,13 +448,10 @@ bool mscd_class_request(USBD* usbd, void* param, IPC* ipc)
 #endif //SCSI_READ_CACHE
         case USB_MSC_MEDIA_REMOVED:
             scsis_media_removed(mscd->scsis);
-            need_post = true;
             break;
         default:
             error(ERROR_NOT_SUPPORTED);
-            need_post = true;
         }
-    return need_post;
 }
 
 const USBD_CLASS __MSCD_CLASS = {

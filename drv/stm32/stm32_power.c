@@ -677,35 +677,28 @@ void stm32_power_init(CORE* core)
 #endif
 }
 
-bool stm32_power_request(CORE* core, IPC* ipc)
+void stm32_power_request(CORE* core, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case STM32_POWER_GET_CLOCK:
         ipc->param2 = get_clock(ipc->param1);
-        need_post = true;
         break;
     case STM32_POWER_SET_CLOCK_SOURCE:
         set_clock_source(core, (STM32_CLOCK_SOURCE_TYPE)ipc->param1, ipc->param2, ipc->param3);
-        need_post = true;
         break;
 #if (STM32_DECODE_RESET)
     case STM32_POWER_GET_RESET_REASON:
         ipc->param2 = core->power.reset_reason;
-        need_post = true;
         break;
 #endif //STM32_DECODE_RESET
 #if (POWER_MANAGEMENT_SUPPORT)
     case POWER_SET_MODE:
         //no return
         stm32_power_set_mode(core, ipc->param1);
-        need_post = true;
         break;
 #endif //POWER_MANAGEMENT_SUPPORT
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
     }
-    return need_post;
 }

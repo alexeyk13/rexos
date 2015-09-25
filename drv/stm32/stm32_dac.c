@@ -122,13 +122,13 @@ static inline void stm32_dac_open(CORE* core, int num, DAC_MODE mode, unsigned i
 
     //enable pin
 #ifdef STM32F1
-    stm32_pin_request_inside(core, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), DAC_PINS[num], STM32_GPIO_MODE_INPUT_ANALOG, false);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), DAC_PINS[num], STM32_GPIO_MODE_INPUT_ANALOG, false);
 #if (DAC_DUAL_CHANNEL)
-    stm32_pin_request_inside(core, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), DAC_PINS[1], STM32_GPIO_MODE_INPUT_ANALOG, false);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), DAC_PINS[1], STM32_GPIO_MODE_INPUT_ANALOG, false);
 #endif //DAC_DUAL_CHANNEL
 #endif //STM32F1
 #ifdef STM32L0
-    stm32_pin_request_inside(core, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), DAC_PINS[num], STM32_GPIO_MODE_ANALOG, AF0);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), DAC_PINS[num], STM32_GPIO_MODE_ANALOG, AF0);
 #endif //STM32L0
 
     DAC->CR = 0;
@@ -141,11 +141,11 @@ static inline void stm32_dac_open(CORE* core, int num, DAC_MODE mode, unsigned i
             return;
 
         core->dac.channels[num].samplerate = samplerate;
-        stm32_timer_request_inside(core, HAL_CMD(HAL_TIMER, IPC_OPEN), DAC_TRIGGERS[num], STM32_TIMER_DMA_ENABLE, 0);
+        stm32_timer_request_inside(core, HAL_REQ(HAL_TIMER, IPC_OPEN), DAC_TRIGGERS[num], STM32_TIMER_DMA_ENABLE, 0);
         DAC->CR |= DAC_CR_DMAEN1 << (16 * num);
 
         //setup DMA
-        stm32_power_request_inside(core, HAL_CMD(HAL_POWER, STM32_POWER_SET_CLOCK_SOURCE), STM32_CLOCK_SOURCE_DMA, DAC_DMA, true);
+        stm32_power_request_inside(core, HAL_REQ(HAL_POWER, STM32_POWER_SET_CLOCK_SOURCE), STM32_CLOCK_SOURCE_DMA, DAC_DMA, true);
         DAC_DMA_GLOBAL_REGS->IFCR |= 0xf << (DAC_DMA_CHANNELS[num] << 2);
 
         //dst
@@ -199,7 +199,7 @@ static inline void stm32_dac_open(CORE* core, int num, DAC_MODE mode, unsigned i
 static void stm32_dac_flush(CORE* core, int num)
 {
     IO* io;
-    stm32_timer_request_inside(core, HAL_CMD(HAL_TIMER, TIMER_STOP), DAC_TRIGGERS[num], 0, 0);
+    stm32_timer_request_inside(core, HAL_REQ(HAL_TIMER, TIMER_STOP), DAC_TRIGGERS[num], 0, 0);
     __disable_irq();
     io = core->dac.channels[num].io;
     core->dac.channels[num].io = NULL;
@@ -232,8 +232,8 @@ void stm32_dac_close(CORE* core, int num)
         }
 #endif //DAC_STREAM
         NVIC_DisableIRQ(DAC_DMA_VECTORS[num]);
-        stm32_power_request_inside(core, HAL_CMD(HAL_TIMER, STM32_POWER_SET_CLOCK_SOURCE), STM32_CLOCK_SOURCE_DMA, DAC_DMA, false);
-        stm32_timer_request_inside(core, HAL_CMD(HAL_TIMER, TIMER_STOP), DAC_TRIGGERS[num], 0, 0);
+        stm32_power_request_inside(core, HAL_REQ(HAL_TIMER, STM32_POWER_SET_CLOCK_SOURCE), STM32_CLOCK_SOURCE_DMA, DAC_DMA, false);
+        stm32_timer_request_inside(core, HAL_REQ(HAL_TIMER, TIMER_STOP), DAC_TRIGGERS[num], 0, 0);
     }
 
     //disable channel
@@ -252,9 +252,9 @@ void stm32_dac_close(CORE* core, int num)
 #endif //(DAC_MANY)
 
     //disable pin
-    stm32_pin_request_inside(core, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), DAC_PINS[num], 0, 0);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), DAC_PINS[num], 0, 0);
 #if (DAC_DUAL_CHANNEL)
-    stm32_pin_request_inside(core, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), DAC_PINS[1], 0, 0);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), DAC_PINS[1], 0, 0);
 #endif //DAC_DUAL_CHANNEL
 }
 
@@ -265,17 +265,17 @@ static inline void stm32_dac_write(CORE* core, IPC*ipc)
     bool need_start = true;
     if (num >= DAC_CHANNELS_COUNT_USER)
     {
-        ipc_post_ex(ipc, ERROR_INVALID_PARAMS);
+        error(ERROR_INVALID_PARAMS);
         return;
     }
     if (!core->dac.channels[num].active)
     {
-        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     if (core->dac.channels[num].cnt > 2)
     {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     core->dac.channels[num].io = (IO*)ipc->param2;
@@ -298,19 +298,15 @@ static inline void stm32_dac_write(CORE* core, IPC*ipc)
         core->dac.channels[num].ptr += HALF_FIFO_BYTES;
         --cnt_left;
     }
-    if (!cnt_left)
-    {
-        //ready for next
-        ipc_post(ipc);
-    }
-
+    if (cnt_left)
+        error(ERROR_SYNC);
     __disable_irq();
     need_start = core->dac.channels[num].cnt == 0;
     core->dac.channels[num].cnt += cnt;
     __enable_irq();
 
     if (need_start)
-        stm32_timer_request_inside(core, HAL_CMD(HAL_TIMER, TIMER_START), DAC_TRIGGERS[num], TIMER_VALUE_HZ, core->dac.channels[num].samplerate);
+        stm32_timer_request_inside(core, HAL_REQ(HAL_TIMER, TIMER_START), DAC_TRIGGERS[num], TIMER_VALUE_HZ, core->dac.channels[num].samplerate);
 }
 #endif //DAC_STREAM
 
@@ -341,41 +337,35 @@ void stm32_dac_wave(CORE* core, int num, DAC_WAVE_TYPE wave_type, int amplitude)
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    stm32_timer_request_inside(core, HAL_CMD(HAL_TIMER, TIMER_STOP), DAC_TRIGGERS[num], 0, 0);
+    stm32_timer_request_inside(core, HAL_REQ(HAL_TIMER, TIMER_STOP), DAC_TRIGGERS[num], 0, 0);
     if (amplitude)
     {
         wave_gen(core->dac.channels[num].fifo, DAC_DMA_FIFO_SIZE, wave_type, amplitude);
-        stm32_timer_request_inside(core, HAL_CMD(HAL_TIMER, TIMER_START), DAC_TRIGGERS[num], TIMER_VALUE_HZ, core->dac.channels[num].samplerate * DAC_DMA_FIFO_SIZE);
+        stm32_timer_request_inside(core, HAL_REQ(HAL_TIMER, TIMER_START), DAC_TRIGGERS[num], TIMER_VALUE_HZ, core->dac.channels[num].samplerate * DAC_DMA_FIFO_SIZE);
     }
     else
         *(unsigned int*)(DAC_DATA_REG[num]) = 0;
 }
 
-bool stm32_dac_request(CORE* core, IPC* ipc)
+void stm32_dac_request(CORE* core, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         stm32_dac_open(core, ipc->param1, (DAC_MODE)ipc->param2, ipc->param3);
-        need_post = true;
         break;
     case IPC_CLOSE:
         stm32_dac_close(core, ipc->param1);
-        need_post = true;
         break;
     case DAC_SET:
         stm32_dac_set_level(core, ipc->param1, ipc->param2);
-        need_post = true;
         break;
     case DAC_WAVE:
         stm32_dac_wave(core, ipc->param1, (DAC_WAVE_TYPE)ipc->param2, ipc->param3);
-        need_post = true;
         break;
 #if (DAC_STREAM)
     case IPC_FLUSH:
         stm32_dac_flush(core, ipc->param1);
-        need_post = true;
         break;
     case IPC_WRITE:
         stm32_dac_write(core, ipc);
@@ -390,10 +380,8 @@ bool stm32_dac_request(CORE* core, IPC* ipc)
 #endif //DAC_STREAM
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
 void stm32_dac_init(CORE* core)

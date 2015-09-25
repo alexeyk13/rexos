@@ -247,7 +247,7 @@ static inline void arps_add_static(TCPIPS* tcpips, IPC* ipc)
         return;
     }
     arps_insert_item(tcpips, &ip, &mac, 0);
-    ipc->param2 = ipc->param3 = 0;
+    ipc->param2 = 0;
 }
 
 static inline void arps_remove(TCPIPS* tcpips, IP* ip)
@@ -300,37 +300,30 @@ static inline void arps_show_table(TCPIPS* tcpips)
 }
 #endif //ARP_DEBUG
 
-bool arps_request(TCPIPS* tcpips, IPC* ipc)
+void arps_request(TCPIPS* tcpips, IPC* ipc)
 {
     IP ip;
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case ARP_ADD_STATIC:
         arps_add_static(tcpips, ipc);
-        need_post = true;
         break;
     case ARP_REMOVE:
         ip.u32.ip = ipc->param1;
         arps_remove(tcpips, &ip);
-        need_post = true;
         break;
     case IPC_FLUSH:
         arps_flush(tcpips);
-        need_post = true;
         break;
 #if (ARP_DEBUG)
     case ARP_SHOW_TABLE:
         arps_show_table(tcpips);
-        need_post = true;
         break;
 #endif //ARP_DEBUG
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
 void arps_rx(TCPIPS* tcpips, IO *io)

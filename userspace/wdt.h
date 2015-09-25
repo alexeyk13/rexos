@@ -18,7 +18,7 @@ typedef enum {
 
 __STATIC_INLINE void wdt_kick()
 {
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_WDT, WDT_KICK), 0, 0, 0);
+    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_WDT, WDT_KICK), 0, 0, 0);
 }
 
 

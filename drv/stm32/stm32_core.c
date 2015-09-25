@@ -42,68 +42,64 @@ const REX __STM32_CORE = {
 void stm32_core_loop(CORE* core)
 {
     IPC ipc;
-    bool need_post;
     for (;;)
     {
         ipc_read(&ipc);
-        need_post = false;
         switch (HAL_GROUP(ipc.cmd))
         {
         case HAL_POWER:
-            need_post = stm32_power_request(core, &ipc);
+            stm32_power_request(core, &ipc);
             break;
         case HAL_PIN:
-            need_post = stm32_pin_request(core, &ipc);
+            stm32_pin_request(core, &ipc);
             break;
         case HAL_TIMER:
-            need_post = stm32_timer_request(core, &ipc);
+            stm32_timer_request(core, &ipc);
             break;
 #if (STM32_RTC_DRIVER)
         case HAL_RTC:
-            need_post = stm32_rtc_request(&ipc);
+            stm32_rtc_request(&ipc);
             break;
 #endif // STM32_RTC_DRIVER
 #if (STM32_WDT_DRIVER)
         case HAL_WDT:
-            need_post = stm32_wdt_request(&ipc);
+            stm32_wdt_request(&ipc);
             break;
 #endif //STM32_WDT_DRIVER
 #if (MONOLITH_UART)
         case HAL_UART:
-            need_post = stm32_uart_request(core, &ipc);
+            stm32_uart_request(core, &ipc);
             break;
 #endif //MONOLITH_UART
 #if (STM32_ADC_DRIVER)
         case HAL_ADC:
-            need_post = stm32_adc_request(core, &ipc);
+            stm32_adc_request(core, &ipc);
             break;
 #endif //STM32_ADC_DRIVER
 #if (STM32_DAC_DRIVER)
         case HAL_DAC:
-            need_post = stm32_dac_request(core, &ipc);
+            stm32_dac_request(core, &ipc);
             break;
 #endif //STM32_DAC_DRIVER
 #if (STM32_EEP_DRIVER)
         case HAL_EEPROM:
-            need_post = stm32_eep_request(core, &ipc);
+            stm32_eep_request(core, &ipc);
             break;
 #endif //STM32_EEP_DRIVER
 #if (MONOLITH_USB)
         case HAL_USB:
 #ifdef STM32F10X_CL
-            need_post = stm32_otg_request(core, &ipc);
+            stm32_otg_request(core, &ipc);
 #else
-            need_post = stm32_usb_request(core, &ipc);
+            stm32_usb_request(core, &ipc);
 #endif //STM32F10X_CL
             break;
 #endif //MONOLITH_USB
         default:
             error(ERROR_NOT_SUPPORTED);
-            need_post = true;
             break;
         }
-        if (need_post)
-            ipc_write(&ipc);
+        ipc_write(&ipc);
     }
 }
 

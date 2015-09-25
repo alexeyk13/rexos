@@ -115,7 +115,7 @@ static void tcpips_rx_next(TCPIPS* tcpips)
     IO* io = tcpips_allocate_io(tcpips);
     if (io == NULL)
         return;
-    io_read(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_READ), tcpips->eth_handle, io, FRAME_MAX_SIZE);
+    io_read(tcpips->eth, HAL_IO_REQ(HAL_ETH, IPC_READ), tcpips->eth_handle, io, FRAME_MAX_SIZE);
 }
 
 void tcpips_tx(TCPIPS* tcpips, IO *io)
@@ -131,7 +131,7 @@ void tcpips_tx(TCPIPS* tcpips, IO *io)
         *((IO**)array_at(tcpips->tx_queue, array_size(tcpips->tx_queue) - 1)) = io;
     }
     else
-        io_write(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_WRITE), tcpips->eth_handle, io);
+        io_write(tcpips->eth, HAL_IO_REQ(HAL_ETH, IPC_WRITE), tcpips->eth_handle, io);
 }
 
 static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE eth, ETH_CONN_TYPE conn, HANDLE app)
@@ -147,7 +147,7 @@ static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE e
     tcpips->eth = eth;
     tcpips->eth_handle = eth_handle;
     tcpips->app = app;
-    ack(tcpips->eth, HAL_CMD(HAL_ETH, IPC_OPEN), tcpips->eth_handle, conn, 0);
+    ack(tcpips->eth, HAL_REQ(HAL_ETH, IPC_OPEN), tcpips->eth_handle, conn, 0);
 }
 
 static inline void tcpips_close(TCPIPS* tcpips)
@@ -157,7 +157,7 @@ static inline void tcpips_close(TCPIPS* tcpips)
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    ack(tcpips->eth, HAL_CMD(HAL_ETH, IPC_CLOSE), tcpips->eth_handle, 0, 0);
+    ack(tcpips->eth, HAL_REQ(HAL_ETH, IPC_CLOSE), tcpips->eth_handle, 0, 0);
     tcpips->app = INVALID_HANDLE;
     timer_destroy(tcpips->timer);
 }
@@ -188,7 +188,7 @@ static inline void tcpips_eth_tx_complete(TCPIPS* tcpips, IO* io, int param3)
         //send next in queue
         queue_io = *((IO**)array_at(tcpips->tx_queue, 0));
         array_remove(&tcpips->tx_queue, 0);
-        io_write(tcpips->eth, HAL_IO_CMD(HAL_ETH, IPC_WRITE), tcpips->eth_handle, queue_io);
+        io_write(tcpips->eth, HAL_IO_REQ(HAL_ETH, IPC_WRITE), tcpips->eth_handle, queue_io);
     }
 }
 
@@ -269,20 +269,18 @@ static inline void tcpips_timer(TCPIPS* tcpips)
 static inline void tcpips_get_conn_state(TCPIPS* tcpips, HANDLE process)
 {
     ipc_post_inline(process, HAL_CMD(HAL_TCPIP, TCPIP_GET_CONN_STATE), 0, tcpips->conn, 0);
+    error(ERROR_SYNC);
 }
 
-static inline bool tcpips_request(TCPIPS* tcpips, IPC* ipc)
+static inline void tcpips_request(TCPIPS* tcpips, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         tcpips_open(tcpips, ipc->param1, ipc->param2, ipc->param3, ipc->process);
-        need_post = true;
         break;
     case IPC_CLOSE:
         tcpips_close(tcpips);
-        need_post = true;
         break;
     case IPC_TIMEOUT:
         tcpips_timer(tcpips);
@@ -292,15 +290,12 @@ static inline bool tcpips_request(TCPIPS* tcpips, IPC* ipc)
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
-static inline bool tcpips_driver_event(TCPIPS* tcpips, IPC* ipc)
+static inline void tcpips_driver_event(TCPIPS* tcpips, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
@@ -314,17 +309,14 @@ static inline bool tcpips_driver_event(TCPIPS* tcpips, IPC* ipc)
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
 void tcpips_main()
 {
     IPC ipc;
     TCPIPS tcpips;
-    bool need_post;
     tcpips_init(&tcpips);
 #if (TCPIP_DEBUG)
     open_stdout();
@@ -332,33 +324,30 @@ void tcpips_main()
     for (;;)
     {
         ipc_read(&ipc);
-        need_post = false;
         switch (HAL_GROUP(ipc.cmd))
         {
         case HAL_ETH:
-            need_post = tcpips_driver_event(&tcpips, &ipc);
+            tcpips_driver_event(&tcpips, &ipc);
             break;
         case HAL_TCPIP:
-            need_post = tcpips_request(&tcpips, &ipc);
+            tcpips_request(&tcpips, &ipc);
             break;
         case HAL_MAC:
-            need_post = macs_request(&tcpips, &ipc);
+            macs_request(&tcpips, &ipc);
             break;
         case HAL_ARP:
-            need_post = arps_request(&tcpips, &ipc);
+            arps_request(&tcpips, &ipc);
             break;
         case HAL_IP:
-            need_post = ips_request(&tcpips, &ipc);
+            ips_request(&tcpips, &ipc);
             break;
         case HAL_ICMP:
-            need_post = icmps_request(&tcpips, &ipc);
+            icmps_request(&tcpips, &ipc);
             break;
         default:
             error(ERROR_NOT_SUPPORTED);
-            need_post = true;
             break;
         }
-        if (need_post)
-            ipc_write(&ipc);
+        ipc_write(&ipc);
     }
 }

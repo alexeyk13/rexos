@@ -25,15 +25,15 @@ HANDLE tcpip_create(unsigned int process_size, unsigned int priority, unsigned i
 
 bool tcpip_open(HANDLE tcpip, HANDLE eth, unsigned int eth_handle, ETH_CONN_TYPE conn_type)
 {
-    return get(tcpip, HAL_CMD(HAL_TCPIP, IPC_OPEN), eth_handle, eth, conn_type) != INVALID_HANDLE;
+    return get_handle(tcpip, HAL_REQ(HAL_TCPIP, IPC_OPEN), eth_handle, eth, conn_type) != INVALID_HANDLE;
 }
 
 void tcpip_close(HANDLE tcpip)
 {
-    ack(tcpip, HAL_CMD(HAL_TCPIP, IPC_CLOSE), 0, 0, 0);
+    ack(tcpip, HAL_REQ(HAL_TCPIP, IPC_CLOSE), 0, 0, 0);
 }
 
 ETH_CONN_TYPE tcpip_get_conn_state(HANDLE tcpip)
 {
-    return (ETH_CONN_TYPE)get(tcpip, HAL_CMD(HAL_TCPIP, TCPIP_GET_CONN_STATE), 0, 0, 0);
+    return (ETH_CONN_TYPE)get_handle(tcpip, HAL_REQ(HAL_TCPIP, TCPIP_GET_CONN_STATE), 0, 0, 0);
 }

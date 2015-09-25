@@ -229,30 +229,25 @@ void stm32_rtc_set(TIME* time)
     leave_configuration();
 }
 
-bool stm32_rtc_request(IPC* ipc)
+void stm32_rtc_request(IPC* ipc)
 {
     TIME time;
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case RTC_GET:
         stm32_rtc_get(&time);
         ipc->param1 = (unsigned int)time.day;
         ipc->param2 = (unsigned int)time.ms;
-        need_post = true;
         break;
     case RTC_SET:
         time.day = ipc->param1;
         time.ms = ipc->param2;
         stm32_rtc_set(&time);
-        need_post = true;
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
 void stm32_rtc_disable()

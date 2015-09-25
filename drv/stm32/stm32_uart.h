@@ -45,7 +45,7 @@ typedef struct {
 #endif
 
 void stm32_uart_init(SHARED_UART_DRV* drv);
-bool stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc);
+void stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc);
 
 #if !(MONOLITH_UART)
 extern const REX __STM32_UART;

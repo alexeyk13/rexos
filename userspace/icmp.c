@@ -9,5 +9,5 @@
 
 bool icmp_ping(HANDLE tcpip, const IP* dst)
 {
-    return get(tcpip, HAL_CMD(HAL_ICMP, ICMP_PING), dst->u32.ip, 0, 0) != INVALID_HANDLE;
+    return get_handle(tcpip, HAL_REQ(HAL_ICMP, ICMP_PING), dst->u32.ip, 0, 0) != INVALID_HANDLE;
 }

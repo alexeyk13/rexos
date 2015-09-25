@@ -80,7 +80,7 @@ typedef struct {
 
 //from tcpip
 void icmps_init(TCPIPS* tcpips);
-bool icmps_request(TCPIPS* tcpips, IPC* ipc);
+void icmps_request(TCPIPS* tcpips, IPC* ipc);
 void icmps_timer(TCPIPS* tcpips, unsigned int seconds);
 void icmps_link_changed(TCPIPS* tcpips, bool link);
 

@@ -305,12 +305,12 @@ static void lpc_i2c_io(CORE* core, IPC* ipc, bool read)
     I2C* i2c = core->i2c.i2cs[port];
     if (i2c == NULL)
     {
-        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     if (i2c->io_mode != I2C_IO_MODE_IDLE)
     {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     i2c->process = ipc->process;
@@ -345,6 +345,7 @@ static void lpc_i2c_io(CORE* core, IPC* ipc, bool read)
     //set START
     __I2C_REGS[port]->CONSET = I2C0_CONSET_I2EN_Msk | I2C0_CONSET_STA_Msk;
     //all rest in isr
+    error(ERROR_SYNC);
 }
 
 #if (LPC_I2C_TIMEOUT_MS)
@@ -374,28 +375,24 @@ void lpc_i2c_init(CORE* core)
         core->i2c.i2cs[i] = NULL;
 }
 
-bool lpc_i2c_request(CORE* core, IPC* ipc)
+void lpc_i2c_request(CORE* core, IPC* ipc)
 {
     I2C_PORT port = (I2C_PORT)ipc->param1;
     if (port >= I2C_COUNT)
     {
         error(ERROR_INVALID_PARAMS);
-        return true;
+        return;
     }
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         lpc_i2c_open(core, port, ipc->param2, ipc->param3);
-        need_post = true;
         break;
     case IPC_CLOSE:
         lpc_i2c_close(core, port);
-        need_post = true;
         break;
     case IPC_WRITE:
         lpc_i2c_io(core, ipc, false);
-        //async message, no write
         break;
     case IPC_READ:
         lpc_i2c_io(core, ipc, true);
@@ -408,8 +405,6 @@ bool lpc_i2c_request(CORE* core, IPC* ipc)
 #endif
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }

@@ -9,7 +9,7 @@
 #include "stm32_core.h"
 
 void stm32_rtc_init();
-bool stm32_rtc_request(IPC* ipc);
+void stm32_rtc_request(IPC* ipc);
 
 void stm32_rtc_disable();
 

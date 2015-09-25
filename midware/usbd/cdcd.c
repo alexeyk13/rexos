@@ -396,9 +396,8 @@ int cdcd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
     return res;
 }
 
-static inline bool cdcd_driver_event(USBD* usbd, CDCD* cdcd, IPC* ipc)
+static inline void cdcd_driver_event(USBD* usbd, CDCD* cdcd, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
@@ -415,17 +414,14 @@ static inline bool cdcd_driver_event(USBD* usbd, CDCD* cdcd, IPC* ipc)
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
     }
-    return need_post;
 }
 
-bool cdcd_class_request(USBD* usbd, void* param, IPC* ipc)
+void cdcd_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     CDCD* cdcd = (CDCD*)param;
-    bool need_post = false;
     if (HAL_GROUP(ipc->cmd) == HAL_USB)
-        need_post = cdcd_driver_event(usbd, cdcd, ipc);
+        cdcd_driver_event(usbd, cdcd, ipc);
     else
         switch (HAL_ITEM(ipc->cmd))
         {
@@ -435,21 +431,16 @@ bool cdcd_class_request(USBD* usbd, void* param, IPC* ipc)
             break;
         case IPC_GET_TX_STREAM:
             ipc->param2 = cdcd->tx_stream;
-            need_post = true;
             break;
         case IPC_GET_RX_STREAM:
             ipc->param2 = cdcd->rx_stream;
-            need_post = true;
             break;
         case USB_CDC_SEND_BREAK:
             cdcd_notify_serial_state(usbd, cdcd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_BREAK);
-            need_post = true;
             break;
         default:
             error(ERROR_NOT_SUPPORTED);
-            need_post = true;
         }
-    return need_post;
 }
 
 const USBD_CLASS __CDCD_CLASS = {

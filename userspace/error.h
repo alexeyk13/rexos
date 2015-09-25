@@ -11,6 +11,9 @@
     error.h - error handling
 */
 
+//not actually error, just flag
+#define ERROR_SYNC                                      1
+
 #define ERROR_GENERAL                                   0
 #define ERROR_OK                                        (ERROR_GENERAL - 0)
 #define ERROR_IN_PROGRESS                               (ERROR_GENERAL - 1)

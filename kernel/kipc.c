@@ -75,10 +75,10 @@ void kipc_post_process(IPC* ipc, KPROCESS* sender)
     }
     disable_interrupts();
     if ((wake = ((receiver->kipc.wait_process == sender || receiver->kipc.wait_process == (KPROCESS*)ANY_HANDLE) &&
-                 (receiver->kipc.cmd == ipc->cmd || receiver->kipc.cmd == ANY_CMD))))
+                 (receiver->kipc.cmd == ipc->cmd || receiver->kipc.cmd == ANY_CMD) &&
+                 ((receiver->kipc.param1 == ipc->param1) || (receiver->kipc.param1 == ANY_HANDLE)))) == true)
     {
         receiver->kipc.wait_process = (KPROCESS*)INVALID_HANDLE;
-        receiver->kipc.cmd = ANY_CMD;
     }
     if (!rb_is_full(&receiver->process->ipcs))
         index = rb_put(&receiver->process->ipcs);
@@ -137,5 +137,5 @@ void kipc_call(IPC* ipc)
     KPROCESS* kprocess = kprocess_get_current();
     CHECK_ADDRESS(kprocess, ipc, sizeof(IPC));
     kipc_post_process(ipc, kprocess);
-    kipc_wait_process(kprocess, (KPROCESS*)(ipc->process), ipc->cmd, ipc->param1);
+    kipc_wait_process(kprocess, (KPROCESS*)(ipc->process), ipc->cmd & ~HAL_REQ_FLAG, ipc->param1);
 }

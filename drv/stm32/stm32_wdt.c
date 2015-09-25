@@ -58,20 +58,16 @@ void stm32_wdt_kick()
     IWDG->KR = KICK_KEY;
 }
 
-bool stm32_wdt_request(IPC* ipc)
+void stm32_wdt_request(IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case WDT_KICK:
         stm32_wdt_kick();
-        need_post = true;
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 

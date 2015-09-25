@@ -26,7 +26,7 @@ typedef enum {
 
 __STATIC_INLINE void power_set_mode(POWER_MODE mode)
 {
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_POWER, POWER_SET_MODE), mode, 0, 0);
+    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_POWER, POWER_SET_MODE), mode, 0, 0);
 }
 
 #endif // POWER_H

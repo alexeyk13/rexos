@@ -293,12 +293,13 @@ static inline void hidd_kbd_modifier_change(USBD* usbd, HIDD_KBD* hidd, uint8_t 
 {
     if (hidd->state != USB_HID_KBD_IDLE)
     {
-        usbd_post_user(usbd, hidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_HID_KBD_MODIFIER_CHANGE), 0, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     hidd->kbd.modifier = modifier;
     hidd->state = USB_HID_KBD_MODIFIER_CHANGE;
     hidd_kbd_send_report(usbd, hidd);
+    error(ERROR_SYNC);
 }
 
 static inline void hidd_kbd_key_press(USBD* usbd, HIDD_KBD* hidd, unsigned int key)
@@ -307,13 +308,13 @@ static inline void hidd_kbd_key_press(USBD* usbd, HIDD_KBD* hidd, unsigned int k
     int i;
     if (hidd->state != USB_HID_KBD_IDLE)
     {
-        usbd_post_user(usbd, hidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_HID_KBD_KEY_PRESS), 0, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     for (i = 0; i < 6 && hidd->kbd.keys[i]; ++i)
         if (hidd->kbd.keys[i] == key)
         {
-            usbd_post_user(usbd, hidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_HID_KBD_KEY_PRESS), 0, ERROR_ALREADY_CONFIGURED);
+            error(ERROR_ALREADY_CONFIGURED);
             return;
         }
 
@@ -339,6 +340,7 @@ static inline void hidd_kbd_key_press(USBD* usbd, HIDD_KBD* hidd, unsigned int k
     }
     hidd->state = USB_HID_KBD_KEY_PRESS;
     hidd_kbd_send_report(usbd, hidd);
+    error(ERROR_SYNC);
 }
 
 static inline void hidd_kbd_key_release(USBD* usbd, HIDD_KBD* hidd, unsigned int key)
@@ -346,7 +348,7 @@ static inline void hidd_kbd_key_release(USBD* usbd, HIDD_KBD* hidd, unsigned int
     int i;
     if (hidd->state != USB_HID_KBD_IDLE)
     {
-        usbd_post_user(usbd, hidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_HID_KBD_KEY_RELEASE), 0, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     hidd->over = false;
@@ -362,6 +364,7 @@ static inline void hidd_kbd_key_release(USBD* usbd, HIDD_KBD* hidd, unsigned int
     }
     hidd->state = USB_HID_KBD_KEY_RELEASE;
     hidd_kbd_send_report(usbd, hidd);
+    error(ERROR_SYNC);
 }
 
 static inline void hidd_kbd_get_leds_state(HIDD_KBD* hidd, IPC* ipc)
@@ -369,9 +372,8 @@ static inline void hidd_kbd_get_leds_state(HIDD_KBD* hidd, IPC* ipc)
     ipc->param2 = hidd->kbd.leds;
 }
 
-static inline bool hidd_kbd_driver_event(USBD* usbd, HIDD_KBD* hidd, IPC* ipc)
+static inline void hidd_kbd_driver_event(USBD* usbd, HIDD_KBD* hidd, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_WRITE:
@@ -379,17 +381,14 @@ static inline bool hidd_kbd_driver_event(USBD* usbd, HIDD_KBD* hidd, IPC* ipc)
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
     }
-    return need_post;
 }
 
-bool hidd_kbd_class_request(USBD* usbd, void* param, IPC* ipc)
+void hidd_kbd_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     HIDD_KBD* hidd = (HIDD_KBD*)param;
-    bool need_post = false;
     if (HAL_GROUP(ipc->cmd) == HAL_USB)
-        need_post = hidd_kbd_driver_event(usbd, hidd, ipc);
+        hidd_kbd_driver_event(usbd, hidd, ipc);
     else
         switch (HAL_ITEM(ipc->cmd))
         {
@@ -404,13 +403,10 @@ bool hidd_kbd_class_request(USBD* usbd, void* param, IPC* ipc)
             break;
         case USB_HID_KBD_GET_LEDS_STATE:
             hidd_kbd_get_leds_state(hidd, ipc);
-            need_post = true;
             break;
         default:
             error(ERROR_NOT_SUPPORTED);
-            need_post = true;
         }
-    return need_post;
 }
 
 const USBD_CLASS __HIDD_KBD_CLASS = {

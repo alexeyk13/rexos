@@ -8,13 +8,13 @@
 
 void eth_set_mac(HANDLE eth, unsigned int eth_handle, const MAC* mac)
 {
-    ack(eth, HAL_CMD(HAL_ETH, ETH_SET_MAC), eth_handle, mac->u32.hi, mac->u32.lo);
+    ack(eth, HAL_REQ(HAL_ETH, ETH_SET_MAC), eth_handle, mac->u32.hi, mac->u32.lo);
 }
 
 void eth_get_mac(HANDLE eth, unsigned int eth_handle, MAC* mac)
 {
     IPC ipc;
-    ipc.cmd = HAL_CMD(HAL_ETH, ETH_GET_MAC);
+    ipc.cmd = HAL_REQ(HAL_ETH, ETH_GET_MAC);
     ipc.process = eth;
     ipc.param1 = eth_handle;
     call(&ipc);

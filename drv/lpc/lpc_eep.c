@@ -39,7 +39,7 @@ static inline void lpc_eep_read(CORE* core, IPC* ipc)
 #ifdef LPC18xx
     if (ipc->param1 + ipc->param3 > EEP_SIZE)
     {
-        ipc_post_ex(ipc, ERROR_OUT_OF_RANGE);
+        error(ERROR_OUT_OF_RANGE);
         return;
     }
     io_data_write(io, (void*)(ipc->param1 + EEP_BASE), ipc->param3);
@@ -54,12 +54,11 @@ static inline void lpc_eep_read(CORE* core, IPC* ipc)
     iap(req, resp);
     if (resp[0] != 0)
     {
-        ipc_post_ex(ipc, ERROR_INVALID_PARAMS);
+        error(ERROR_INVALID_PARAMS);
         return;
     }
     io->data_size = ipc->param3;
 #endif //LPC18xx
-    ipc_post_ex(ipc, io->data_size);
 }
 
 static inline void lpc_eep_write(CORE* core, IPC* ipc)
@@ -69,7 +68,7 @@ static inline void lpc_eep_write(CORE* core, IPC* ipc)
     unsigned int addr, count, processed, cur, i;
     if (ipc->param1 + io->data_size > EEP_SIZE)
     {
-        ipc_post_ex(ipc, ERROR_OUT_OF_RANGE);
+        error(ERROR_OUT_OF_RANGE);
         return;
     }
     for(count = (io->data_size + 3) >> 2, processed = 0, addr = (ipc->param1 + EEP_BASE) & ~3; count; count -= cur, processed += (cur << 2), addr += (cur << 2))
@@ -97,11 +96,10 @@ static inline void lpc_eep_write(CORE* core, IPC* ipc)
     iap(req, resp);
     if (resp[0] != 0)
     {
-        ipc_post_ex(ipc, ERROR_INVALID_PARAMS);
+        error(ERROR_INVALID_PARAMS);
         return;
     }
 #endif //LPC18xx
-    ipc_post_ex(ipc, io->data_size);
 }
 
 #ifdef LPC18xx
@@ -114,9 +112,8 @@ void lpc_eep_init(CORE* core)
 }
 #endif //LPC18xx
 
-bool lpc_eep_request(CORE* core, IPC* ipc)
+void lpc_eep_request(CORE* core, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
@@ -127,7 +124,5 @@ bool lpc_eep_request(CORE* core, IPC* ipc)
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
     }
-    return need_post;
 }

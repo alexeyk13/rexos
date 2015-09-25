@@ -133,14 +133,12 @@ void stm32_pin_init(CORE* core)
     memset(&core->gpio, 0, sizeof (GPIO_DRV));
 }
 
-bool stm32_pin_request(CORE* core, IPC* ipc)
+void stm32_pin_request(CORE* core, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case STM32_GPIO_DISABLE_PIN:
         stm32_gpio_disable_pin(&core->gpio, (PIN)ipc->param1);
-        need_post = true;
         break;
     case STM32_GPIO_ENABLE_PIN:
 #if defined(STM32F1)
@@ -148,21 +146,15 @@ bool stm32_pin_request(CORE* core, IPC* ipc)
 #elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
         stm32_gpio_enable_pin(&core->gpio, (PIN)ipc->param1, ipc->param2, (AF)ipc->param3);
 #endif
-        need_post = true;
         break;
     case STM32_GPIO_ENABLE_EXTI:
         stm32_gpio_enable_exti(&core->gpio, (PIN)ipc->param1, ipc->param2);
-        need_post = true;
         break;
     case STM32_GPIO_DISABLE_EXTI:
         stm32_gpio_disable_exti(&core->gpio, (PIN)ipc->param1);
-        need_post = true;
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
-

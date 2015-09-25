@@ -12,7 +12,7 @@
 #include "../../userspace/lpc/lpc_driver.h"
 
 void lpc_power_init(CORE* core);
-bool lpc_power_request(CORE* core, IPC* ipc);
+void lpc_power_request(CORE* core, IPC* ipc);
 
 typedef struct {
     RESET_REASON reset_reason;
@@ -31,13 +31,13 @@ __STATIC_INLINE unsigned int lpc_power_request_inside(CORE* core, unsigned int c
 
 __STATIC_INLINE unsigned int lpc_power_get_core_clock_outside(void* unused)
 {
-    return lpc_core_request_outside(unused, HAL_CMD(HAL_POWER, LPC_POWER_GET_CORE_CLOCK), 0, 0, 0);
+    return lpc_core_request_outside(unused, HAL_REQ(HAL_POWER, LPC_POWER_GET_CORE_CLOCK), 0, 0, 0);
 }
 
 __STATIC_INLINE unsigned int lpc_power_get_core_clock_inside(CORE* core)
 {
     IPC ipc;
-    ipc.cmd = HAL_CMD(HAL_POWER, LPC_POWER_GET_CORE_CLOCK);
+    ipc.cmd = HAL_REQ(HAL_POWER, LPC_POWER_GET_CORE_CLOCK);
     lpc_power_request(core, &ipc);
     return ipc.param2;
 }

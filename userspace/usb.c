@@ -64,7 +64,7 @@ static bool usbd_register_descriptor_internal(HANDLE usbd, IO* io, unsigned int 
     udrs->index = index;
     udrs->lang = lang;
 
-    io_write_sync(usbd, HAL_IO_CMD(HAL_USBD, USBD_REGISTER_DESCRIPTOR), 0, io);
+    io_write_sync(usbd, HAL_IO_REQ(HAL_USBD, USBD_REGISTER_DESCRIPTOR), 0, io);
     io_destroy(io);
     return get_last_error() == ERROR_OK;
 }

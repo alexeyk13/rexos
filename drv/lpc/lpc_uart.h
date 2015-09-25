@@ -62,6 +62,6 @@ typedef struct {
 #endif
 
 void lpc_uart_init(SHARED_UART_DRV* drv);
-bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc);
+void lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc);
 
 #endif // LPC_UART_H

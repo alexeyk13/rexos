@@ -52,23 +52,18 @@ void lpc_pin_init()
     //all clocks on 18xx are enabled by default
 }
 
-bool lpc_pin_request(IPC* ipc)
+void lpc_pin_request(IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case LPC_PIN_ENABLE:
         lpc_pin_enable(ipc->param1, ipc->param2);
-        need_post = true;
         break;
     case LPC_PIN_DISABLE:
         lpc_pin_disable(ipc->param1);
-        need_post = true;
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }

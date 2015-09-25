@@ -27,29 +27,20 @@ static inline void ips_set(TCPIPS* tcpips, uint32_t ip)
     tcpips->ip.u32.ip = ip;
 }
 
-static inline void ips_get(TCPIPS* tcpips, HANDLE process)
+void ips_request(TCPIPS* tcpips, IPC* ipc)
 {
-    ipc_post_inline(process, HAL_CMD(HAL_IP, IP_GET), 0, tcpips->ip.u32.ip, 0);
-}
-
-bool ips_request(TCPIPS* tcpips, IPC* ipc)
-{
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IP_SET:
         ips_set(tcpips, ipc->param2);
-        need_post = true;
         break;
     case IP_GET:
-        ips_get(tcpips, ipc->process);
+        ipc->param2 = tcpips->ip.u32.ip;
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
 void ips_link_changed(TCPIPS* tcpips, bool link)

@@ -655,17 +655,17 @@ static inline void lpc_uart_io_read(SHARED_UART_DRV* drv, UART_PORT port, IPC* i
     IO* io;
     if (uart == NULL)
     {
-        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     if (!uart->io_mode)
     {
-        ipc_post_ex(ipc, ERROR_INVALID_STATE);
+        error(ERROR_INVALID_STATE);
         return;
     }
     if (uart->i.rx_io)
     {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     io = (IO*)ipc->param2;
@@ -685,6 +685,7 @@ static inline void lpc_uart_io_read(SHARED_UART_DRV* drv, UART_PORT port, IPC* i
 #else
     timer_start_ms(uart->i.rx_timer, uart->i.rx_char_timeout);
 #endif //UART_IO_PREBUFFER
+    error(ERROR_SYNC);
 }
 
 static inline void lpc_uart_io_write(SHARED_UART_DRV* drv, UART_PORT port, IPC* ipc)
@@ -693,17 +694,17 @@ static inline void lpc_uart_io_write(SHARED_UART_DRV* drv, UART_PORT port, IPC* 
     IO* io;
     if (uart == NULL)
     {
-        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     if (!uart->io_mode)
     {
-        ipc_post_ex(ipc, ERROR_INVALID_STATE);
+        error(ERROR_INVALID_STATE);
         return;
     }
     if (uart->i.tx_io)
     {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     io = (IO*)ipc->param2;
@@ -725,6 +726,7 @@ static inline void lpc_uart_io_write(SHARED_UART_DRV* drv, UART_PORT port, IPC* 
     else
 #endif
         __USART_REGS[port]->IER |= USART0_IER_THREIE_Msk;
+    error(ERROR_SYNC);
 }
 
 static inline void lpc_uart_io_read_timeout(SHARED_UART_DRV* drv, UART_PORT port)
@@ -793,52 +795,42 @@ void lpc_uart_init(SHARED_UART_DRV* drv)
         drv->uart.uarts[i] = NULL;
 }
 
-bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
+void lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
 {
     UART_PORT port = ipc->param1;
     if (port >= UARTS_COUNT)
     {
         error(ERROR_INVALID_PARAMS);
-        return true;
+        return;
     }
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         lpc_uart_open(drv, port, ipc->param2);
-        need_post = true;
         break;
     case IPC_CLOSE:
         lpc_uart_close(drv, port);
-        need_post = true;
         break;
     case IPC_UART_SET_BAUDRATE:
         lpc_uart_set_baudrate(drv, port, ipc);
-        need_post = true;
         break;
     case IPC_FLUSH:
         lpc_uart_flush(drv, port);
-        need_post = true;
         break;
     case IPC_GET_TX_STREAM:
         ipc->param2 = lpc_uart_get_tx_stream(drv, port);
-        need_post = true;
         break;
     case IPC_GET_RX_STREAM:
         ipc->param2 = lpc_uart_get_rx_stream(drv, port);
-        need_post = true;
         break;
     case IPC_UART_GET_LAST_ERROR:
         ipc->param2 = lpc_uart_get_last_error(drv, port);
-        need_post = true;
         break;
     case IPC_UART_CLEAR_ERROR:
         lpc_uart_clear_error(drv, port);
-        need_post = true;
         break;
     case IPC_UART_SETUP_PRINTK:
         lpc_uart_setup_printk(drv, port);
-        need_post = true;
         break;
     case IPC_STREAM_WRITE:
     case IPC_UART_ISR_TX:
@@ -862,10 +854,8 @@ bool lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
 #endif //UART_IO_MODE_SUPPORT
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
 #if !(MONOLITH_UART)
@@ -873,20 +863,14 @@ void lpc_uart()
 {
     SHARED_UART_DRV drv;
     IPC ipc;
-    bool need_post;
     object_set_self(SYS_OBJ_UART);
     lpc_uart_init(&drv);
     for (;;)
     {
         error(ERROR_OK);
-        need_post = false;
         ipc_read(&ipc);
-        if (ipc.cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
-            need_post = true;
-        else
-            need_post = lpc_uart_request(&drv, &ipc);
-        if (need_post)
-            ipc_write(&ipc);
+        lpc_uart_request(&drv, &ipc);
+        ipc_write(&ipc);
     }
 }
 #endif

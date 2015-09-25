@@ -55,12 +55,6 @@ void ipc_post(IPC* ipc)
     svc_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
 }
 
-void ipc_post_ex(IPC* ipc, int param3)
-{
-    ipc->param3 = param3;
-    ipc_post(ipc);
-}
-
 void ipc_post_inline(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     IPC ipc;
@@ -96,7 +90,7 @@ void ipc_read(IPC* ipc)
         if (rb_is_empty(&__GLOBAL->process->ipcs))
             svc_call(SVC_IPC_WAIT, ANY_HANDLE, ANY_CMD, ANY_HANDLE);
         ipc_peek(__GLOBAL->process->ipcs.tail, ipc);
-        if (ipc->cmd == HAL_CMD(HAL_SYSTEM, IPC_PING))
+        if (ipc->cmd == HAL_REQ(HAL_SYSTEM, IPC_PING))
             ipc_write(ipc);
         else
             break;
@@ -112,15 +106,29 @@ void ipc_read_ex(IPC* ipc, HANDLE process, unsigned int cmd, unsigned int param1
 
 void ipc_write(IPC* ipc)
 {
-    if (get_last_error() != ERROR_OK)
-        ipc->param3 = get_last_error();
-    svc_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
+    if (ipc->cmd & HAL_REQ_FLAG)
+    {
+        ipc->cmd &= ~HAL_REQ_FLAG;
+        switch (get_last_error())
+        {
+        case ERROR_OK:
+            //no error
+            break;
+        case ERROR_SYNC:
+            //asyncronous completion
+            return;
+        default:
+            ipc->param2 = INVALID_HANDLE;
+            ipc->param3 = get_last_error();
+        }
+        svc_call(SVC_IPC_POST, (unsigned int)ipc, 0, 0);
+    }
 }
 
 void call(IPC* ipc)
 {
     svc_call(SVC_IPC_CALL, (unsigned int)ipc, 0, 0);
-    ipc_peek(ipc_index(ipc->process, ipc->cmd, ipc->param1), ipc);
+    ipc_peek(ipc_index(ipc->process, ipc->cmd & ~HAL_REQ_FLAG, ipc->param1), ipc);
 }
 
 void ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
@@ -134,7 +142,7 @@ void ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int par
     call(&ipc);
 }
 
-unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+unsigned int get_handle(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     IPC ipc;
     ipc.cmd = cmd;
@@ -143,13 +151,12 @@ unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned
     ipc.param2 = param2;
     ipc.param3 = param3;
     call(&ipc);
-    if ((int)(ipc.param3) >= 0)
-        return ipc.param2;
-    error(ipc.param3);
-    return INVALID_HANDLE;
+    if (ipc.param2 == INVALID_HANDLE)
+        error(ipc.param3);
+    return ipc.param2;
 }
 
-int get_size(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+int get_int(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
 {
     IPC ipc;
     ipc.cmd = cmd;
@@ -158,7 +165,7 @@ int get_size(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int
     ipc.param2 = param2;
     ipc.param3 = param3;
     call(&ipc);
-    if ((int)(ipc.param3) < 0)
+    if (ipc.param2 == INVALID_HANDLE)
         error(ipc.param3);
     return (int)ipc.param3;
 }

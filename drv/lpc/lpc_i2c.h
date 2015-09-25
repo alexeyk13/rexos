@@ -44,6 +44,6 @@ typedef struct  {
 } I2C_DRV;
 
 void lpc_i2c_init(CORE* core);
-bool lpc_i2c_request(CORE* core, IPC* ipc);
+void lpc_i2c_request(CORE* core, IPC* ipc);
 
 #endif // LPC_I2C_H

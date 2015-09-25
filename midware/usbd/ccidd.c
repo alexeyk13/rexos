@@ -120,7 +120,7 @@ static void ccidd_user_request(USBD* usbd, CCIDD* ccidd, unsigned int req, uint8
     ccidd->io->data_offset += sizeof(CCID_MESSAGE);
     ccidd->io->data_size -= sizeof(CCID_MESSAGE);
     ccidd->request = req;
-    usbd_io_user(usbd, ccidd->iface, 0, HAL_IO_CMD(HAL_USBD_IFACE, req), ccidd->io, param);
+    usbd_io_user(usbd, ccidd->iface, 0, HAL_IO_REQ(HAL_USBD_IFACE, req), ccidd->io, param);
     ccidd->state = CCIDD_STATE_CARD_REQUEST;
 }
 
@@ -522,9 +522,8 @@ static inline void ccidd_params_response(USBD* usbd, CCIDD* ccidd, int param3)
     ccidd_send_params(usbd, ccidd, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR, (CCID_PROTOCOL)param3);
 }
 
-static inline bool ccidd_driver_event(USBD* usbd, CCIDD* ccidd, IPC* ipc)
+static inline void ccidd_driver_event(USBD* usbd, CCIDD* ccidd, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
@@ -542,9 +541,7 @@ static inline bool ccidd_driver_event(USBD* usbd, CCIDD* ccidd, IPC* ipc)
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
     }
-    return need_post;
 }
 
 static inline void ccidd_user_response(USBD* usbd, CCIDD* ccidd, IPC* ipc)
@@ -570,12 +567,11 @@ static inline void ccidd_user_response(USBD* usbd, CCIDD* ccidd, IPC* ipc)
     }
 }
 
-bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
+void ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     CCIDD* ccidd = (CCIDD*)param;
-    bool need_post = false;
     if (HAL_GROUP(ipc->cmd) == HAL_USB)
-        need_post = ccidd_driver_event(usbd, ccidd, ipc);
+        ccidd_driver_event(usbd, ccidd, ipc);
     else
         switch (HAL_ITEM(ipc->cmd))
         {
@@ -597,9 +593,7 @@ bool ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
             break;
         default:
             error(ERROR_NOT_SUPPORTED);
-            need_post = true;
         }
-    return need_post;
 }
 
 const USBD_CLASS __CCIDD_CLASS = {

@@ -19,7 +19,7 @@ typedef struct {
 }POWER_DRV;
 
 void stm32_power_init(CORE* core);
-bool stm32_power_request(CORE* core, IPC* ipc);
+void stm32_power_request(CORE* core, IPC* ipc);
 
 __STATIC_INLINE unsigned int stm32_power_request_inside(CORE* core, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
 {
@@ -34,13 +34,13 @@ __STATIC_INLINE unsigned int stm32_power_request_inside(CORE* core, unsigned int
 
 __STATIC_INLINE unsigned int stm32_power_get_clock_outside(void* unused, STM32_POWER_CLOCKS type)
 {
-    return stm32_core_request_outside(unused, HAL_CMD(HAL_POWER, STM32_POWER_GET_CLOCK), type, 0, 0);
+    return stm32_core_request_outside(unused, HAL_REQ(HAL_POWER, STM32_POWER_GET_CLOCK), type, 0, 0);
 }
 
 __STATIC_INLINE unsigned int stm32_power_get_clock_inside(CORE* core, STM32_POWER_CLOCKS type)
 {
     IPC ipc;
-    ipc.cmd = HAL_CMD(HAL_POWER, STM32_POWER_GET_CLOCK);
+    ipc.cmd = HAL_REQ(HAL_POWER, STM32_POWER_GET_CLOCK);
     ipc.param1 = (unsigned int)type;
     stm32_power_request(core, &ipc);
     return ipc.param2;

@@ -21,7 +21,7 @@ typedef struct {
     void (*usbd_class_suspend)(USBD*, void*);
     void (*usbd_class_resume)(USBD*, void*);
     int (*usbd_class_setup)(USBD*, void*, SETUP*, IO*);
-    bool (*usbd_class_request)(USBD*, void*, IPC*);
+    void (*usbd_class_request)(USBD*, void*, IPC*);
 } USBD_CLASS;
 
 bool usbd_register_interface(USBD* usbd, unsigned int iface, const USBD_CLASS* usbd_class, void* param);

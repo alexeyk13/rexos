@@ -24,7 +24,7 @@ typedef struct {
 } TIMER_DRV;
 
 void stm32_timer_init(CORE* core);
-bool stm32_timer_request(CORE* core, IPC* ipc);
+void stm32_timer_request(CORE* core, IPC* ipc);
 
 #if (POWER_MANAGEMENT_SUPPORT)
 void stm32_timer_pm_event(CORE* core);

@@ -149,32 +149,26 @@ static inline void pinboard_init(PINBOARD* pinboard)
     timer_start_ms(pinboard->timer, PINBOARD_POLL_TIME_MS);
 }
 
-static inline bool pinboard_request(PINBOARD* pinboard, IPC* ipc)
+static inline void pinboard_request(PINBOARD* pinboard, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         pinboard_open(pinboard, ipc->param1, ipc->param2, ipc->param3, ipc->process);
-        need_post = true;
         break;
     case IPC_CLOSE:
         pinboard_close(pinboard, ipc->param1, ipc->process);
-        need_post = true;
         break;
     case PINBOARD_GET_KEY_STATE:
         ipc->param2 = pinboard_get_key_state(pinboard, ipc->param1);
-        need_post = true;
         break;
     case IPC_TIMEOUT:
         pinboard_poll(pinboard);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
 void pinboard()
@@ -187,7 +181,7 @@ void pinboard()
     for (;;)
     {
         ipc_read(&ipc);
-        if (pinboard_request(&pinboard, &ipc))
-            ipc_write(&ipc);
+        pinboard_request(&pinboard, &ipc);
+        ipc_write(&ipc);
     }
 }

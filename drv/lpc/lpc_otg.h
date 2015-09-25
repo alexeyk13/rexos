@@ -44,6 +44,6 @@ typedef struct {
 #endif
 
 void lpc_otg_init(SHARED_OTG_DRV* drv);
-bool lpc_otg_request(SHARED_OTG_DRV* drv, IPC* ipc);
+void lpc_otg_request(SHARED_OTG_DRV* drv, IPC* ipc);
 
 #endif // LPC_OTG_H

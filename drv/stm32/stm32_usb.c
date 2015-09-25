@@ -323,8 +323,8 @@ void stm32_usb_open_device(SHARED_USB_DRV* drv, HANDLE device)
     drv->usb.device = device;
 
     //enable DM/DP
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), USB_DM, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), USB_DP, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
+    ack_pin(drv, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), USB_DM, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
+    ack_pin(drv, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), USB_DP, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
 
     //enable clock
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;
@@ -476,8 +476,8 @@ static inline void stm32_usb_close_device(SHARED_USB_DRV* drv)
     RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
 
     //disable pins
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), USB_DM, 0, 0);
-    ack_pin(drv, HAL_CMD(HAL_PIN, STM32_GPIO_DISABLE_PIN), USB_DP, 0, 0);
+    ack_pin(drv, HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), USB_DM, 0, 0);
+    ack_pin(drv, HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), USB_DP, 0, 0);
 }
 
 static inline void stm32_usb_set_address(SHARED_USB_DRV* drv, int addr)
@@ -494,15 +494,16 @@ static bool stm32_usb_io_prepare(SHARED_USB_DRV* drv, IPC* ipc)
     EP* ep = ep_data(drv, ipc->param1);
     if (ep == NULL)
     {
-        ipc_post_ex(ipc, ERROR_NOT_CONFIGURED);
+        error(ERROR_NOT_CONFIGURED);
         return false;
     }
     if (ep->io_active)
     {
-        ipc_post_ex(ipc, ERROR_IN_PROGRESS);
+        error(ipc, ERROR_IN_PROGRESS);
         return false;
     }
     ep->io = (IO*)ipc->param2;
+    error(ERROR_SYNC);
     return true;
 }
 
@@ -550,26 +551,21 @@ void stm32_usb_init(SHARED_USB_DRV* drv)
     }
 }
 
-static inline bool stm32_usb_device_request(SHARED_USB_DRV* drv, IPC* ipc)
+static inline void stm32_usb_device_request(SHARED_USB_DRV* drv, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case USB_GET_SPEED:
         ipc->param2 = stm32_usb_get_speed(drv);
-        need_post = true;
         break;
     case IPC_OPEN:
         stm32_usb_open_device(drv, ipc->process);
-        need_post = true;
         break;
     case IPC_CLOSE:
         stm32_usb_close_device(drv);
-        need_post = true;
         break;
     case USB_SET_ADDRESS:
         stm32_usb_set_address(drv, ipc->param2);
-        need_post = true;
         break;
 #if (USB_DEBUG_ERRORS)
     case STM32_USB_ERROR:
@@ -583,79 +579,55 @@ static inline bool stm32_usb_device_request(SHARED_USB_DRV* drv, IPC* ipc)
 #endif
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
-static inline bool stm32_usb_ep_request(SHARED_USB_DRV* drv, IPC* ipc)
+static inline void stm32_usb_ep_request(SHARED_USB_DRV* drv, IPC* ipc)
 {
-    bool need_post = false;
     if (USB_EP_NUM(ipc->param1) >= USB_EP_COUNT_MAX)
     {
-        switch (HAL_ITEM(ipc->cmd))
-        {
-        case IPC_READ:
-        case IPC_WRITE:
-            ipc_post_ex(ipc, ERROR_INVALID_PARAMS);
-            break;
-        default:
-            error(ERROR_INVALID_PARAMS);
-            need_post = true;
-        }
+        error(ERROR_INVALID_PARAMS);
+        return;
     }
-    else
-        switch (HAL_ITEM(ipc->cmd))
-        {
-        case IPC_OPEN:
-            stm32_usb_open_ep(drv, ipc->param1, ipc->param2, ipc->param3);
-            need_post = true;
-            break;
-        case IPC_CLOSE:
-            stm32_usb_close_ep(drv, ipc->param1);
-            need_post = true;
-            break;
-        case IPC_FLUSH:
-            stm32_usb_ep_flush(drv, ipc->param1);
-            need_post = true;
-            break;
-        case USB_EP_SET_STALL:
-            stm32_usb_ep_set_stall(drv, ipc->param1);
-            need_post = true;
-            break;
-        case USB_EP_CLEAR_STALL:
-            stm32_usb_ep_clear_stall(drv, ipc->param1);
-            need_post = true;
-            break;
-        case USB_EP_IS_STALL:
-            ipc->param2 = stm32_usb_ep_is_stall(ipc->param1);
-            need_post = true;
-            break;
-        case IPC_READ:
-            stm32_usb_read(drv, ipc);
-            //posted with io, no return IPC
-            break;
-        case IPC_WRITE:
-            stm32_usb_write(drv, ipc);
-            //posted with io, no return IPC
-            break;
-        default:
-            error(ERROR_NOT_SUPPORTED);
-            need_post = true;
-            break;
-        }
-    return need_post;
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    case IPC_OPEN:
+        stm32_usb_open_ep(drv, ipc->param1, ipc->param2, ipc->param3);
+        break;
+    case IPC_CLOSE:
+        stm32_usb_close_ep(drv, ipc->param1);
+        break;
+    case IPC_FLUSH:
+        stm32_usb_ep_flush(drv, ipc->param1);
+        break;
+    case USB_EP_SET_STALL:
+        stm32_usb_ep_set_stall(drv, ipc->param1);
+        break;
+    case USB_EP_CLEAR_STALL:
+        stm32_usb_ep_clear_stall(drv, ipc->param1);
+        break;
+    case USB_EP_IS_STALL:
+        ipc->param2 = stm32_usb_ep_is_stall(ipc->param1);
+        break;
+    case IPC_READ:
+        stm32_usb_read(drv, ipc);
+        break;
+    case IPC_WRITE:
+        stm32_usb_write(drv, ipc);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        break;
+    }
 }
 
-bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
+void stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
 {
-    bool need_post = false;
     if (ipc->param1 == USB_HANDLE_DEVICE)
-        need_post = stm32_usb_device_request(drv, ipc);
+        stm32_usb_device_request(drv, ipc);
     else
-        need_post = stm32_usb_ep_request(drv, ipc);
-    return need_post;
+        stm32_usb_ep_request(drv, ipc);
 }
 
 #if !(MONOLITH_USB)
@@ -663,15 +635,13 @@ void stm32_usb()
 {
     IPC ipc;
     SHARED_USB_DRV drv;
-    bool need_post;
     stm32_usb_init(&drv);
     object_set_self(SYS_OBJ_USB);
     for (;;)
     {
         ipc_read(&ipc);
-        need_post = stm32_usb_request(&drv, &ipc);
-        if (need_post)
-            ipc_write(&ipc);
+        stm32_usb_request(&drv, &ipc);
+        ipc_write(&ipc);
     }
 }
 #endif

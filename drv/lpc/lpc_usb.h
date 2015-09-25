@@ -41,6 +41,6 @@ typedef struct {
 #endif
 
 void lpc_usb_init(SHARED_USB_DRV* drv);
-bool lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc);
+void lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc);
 
 #endif // LPC_USB_H

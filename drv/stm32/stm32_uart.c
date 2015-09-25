@@ -457,52 +457,42 @@ static inline void stm32_uart_read(SHARED_UART_DRV* drv, UART_PORT port, char c)
     }
 }
 
-bool stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
+void stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
 {
     UART_PORT port = (UART_PORT)ipc->param1;
     if (port >= UARTS_COUNT)
     {
         error(ERROR_INVALID_PARAMS);
-        return true;
+        return;
     }
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         stm32_uart_open(drv, port, ipc->param2);
-        need_post = true;
         break;
     case IPC_CLOSE:
         stm32_uart_close(drv, port);
-        need_post = true;
         break;
     case IPC_UART_SET_BAUDRATE:
         stm32_uart_set_baudrate(drv, port, ipc);
-        need_post = true;
         break;
     case IPC_FLUSH:
         stm32_uart_flush(drv, port);
-        need_post = true;
         break;
     case IPC_GET_TX_STREAM:
         ipc->param2 = stm32_uart_get_tx_stream(drv, port);
-        need_post = true;
         break;
     case IPC_GET_RX_STREAM:
         ipc->param2 = stm32_uart_get_rx_stream(drv, port);
-        need_post = true;
         break;
     case IPC_UART_GET_LAST_ERROR:
         ipc->param2 = stm32_uart_get_last_error(drv, port);
-        need_post = true;
         break;
     case IPC_UART_CLEAR_ERROR:
         stm32_uart_clear_error(drv, port);
-        need_post = true;
         break;
     case IPC_UART_SETUP_PRINTK:
         stm32_uart_setup_printk(drv, port);
-        need_post = true;
         break;
     case IPC_STREAM_WRITE:
     case IPC_UART_ISR_TX:
@@ -515,10 +505,8 @@ bool stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
 void stm32_uart_init(SHARED_UART_DRV* drv)
@@ -533,15 +521,13 @@ void stm32_uart()
 {
     SHARED_UART_DRV drv;
     IPC ipc;
-    bool need_post;
     object_set_self(SYS_OBJ_UART);
     stm32_uart_init(&drv);
     for (;;)
     {
         ipc_read(&ipc);
-        need_post = stm32_uart_request(&drv, &ipc);
-        if (need_post)
-            ipc_write(&ipc);
+        stm32_uart_request(&drv, &ipc);
+        ipc_write(&ipc);
     }
 }
 #endif

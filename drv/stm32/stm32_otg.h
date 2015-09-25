@@ -41,7 +41,7 @@ typedef struct {
 
 
 void stm32_otg_init(SHARED_USB_DRV* drv);
-bool stm32_otg_request(SHARED_USB_DRV* drv, IPC* ipc);
+void stm32_otg_request(SHARED_USB_DRV* drv, IPC* ipc);
 
 #if !(MONOLITH_USB)
 extern const REX __STM32_OTG;

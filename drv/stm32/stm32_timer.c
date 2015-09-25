@@ -321,43 +321,35 @@ void stm32_timer_init(CORE *core)
 #endif //STM32_RTC_DRIVER
 }
 
-bool stm32_timer_request(CORE* core, IPC* ipc)
+void stm32_timer_request(CORE* core, IPC* ipc)
 {
     TIMER_NUM num = (TIMER_NUM)ipc->param1;
-    bool need_post = false;
     if (num >= TIMERS_COUNT)
     {
         error(ERROR_INVALID_PARAMS);
-        return true;
+        return;
     }
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
         stm32_timer_open(core, num, ipc->param2);
-        need_post = true;
         break;
     case IPC_CLOSE:
         stm32_timer_close(core, num);
-        need_post = true;
         break;
     case TIMER_START:
         stm32_timer_start(core, num, (TIMER_VALUE_TYPE)ipc->param2, ipc->param3);
-        need_post = true;
         break;
     case TIMER_STOP:
         stm32_timer_stop(num);
-        need_post = true;
         break;
 #if (TIMER_IO)
     case TIMER_SETUP_CHANNEL:
         stm32_timer_setup_channel(num, TIMER_CHANNEL_VALUE(ipc->param2), TIMER_CHANNEL_TYPE_VALUE(ipc->param2), ipc->param3);
-        need_post = true;
         break;
 #endif //TIMER_IO
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }

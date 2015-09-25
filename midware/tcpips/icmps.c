@@ -37,7 +37,7 @@ static void icmps_tx(TCPIPS* tcpips, IO* io, const IP* dst)
 
 static void icmps_echo_complete(TCPIPS* tcpips, int err)
 {
-    ipc_post_inline(tcpips->icmps.process, HAL_CMD(HAL_ICMP, ICMP_PING), tcpips->icmps.echo_ip.u32.ip, 0, err);
+    ipc_post_inline(tcpips->icmps.process, HAL_CMD(HAL_ICMP, ICMP_PING), tcpips->icmps.echo_ip.u32.ip, err == ERROR_OK ? 0 : INVALID_HANDLE, err);
     tcpips->icmps.process = INVALID_HANDLE;
 }
 
@@ -297,12 +297,12 @@ void icmps_rx(TCPIPS* tcpips, IO *io, IP* src)
     }
 }
 
-static inline bool icmps_ping(TCPIPS* tcpips, const IP* dst, HANDLE process)
+static inline void icmps_ping(TCPIPS* tcpips, const IP* dst, HANDLE process)
 {
     if (tcpips->icmps.process != INVALID_HANDLE)
     {
         error(ERROR_IN_PROGRESS);
-        return true;
+        return;
     }
     if (tcpips->icmps.echo_ip.u32.ip != dst->u32.ip)
     {
@@ -312,25 +312,22 @@ static inline bool icmps_ping(TCPIPS* tcpips, const IP* dst, HANDLE process)
     }
     tcpips->icmps.process = process;
     icmps_tx_echo(tcpips);
-    return false;
+    error(ERROR_SYNC);
 }
 
-bool icmps_request(TCPIPS* tcpips, IPC* ipc)
+void icmps_request(TCPIPS* tcpips, IPC* ipc)
 {
-    bool need_post = false;
     IP ip;
     switch (HAL_ITEM(ipc->cmd))
     {
     case ICMP_PING:
         ip.u32.ip = ipc->param1;
-        need_post = icmps_ping(tcpips, &ip, ipc->process);
+        icmps_ping(tcpips, &ip, ipc->process);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
 void icmps_timer(TCPIPS* tcpips, unsigned int seconds)

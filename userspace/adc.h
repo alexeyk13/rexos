@@ -22,7 +22,7 @@ typedef enum {
 
 __STATIC_INLINE int adc_get(int channel)
 {
-    return get(object_get(SYS_OBJ_ADC), HAL_CMD(HAL_ADC, ADC_GET), channel, 0, 0);
+    return get_handle(object_get(SYS_OBJ_ADC), HAL_REQ(HAL_ADC, ADC_GET), channel, 0, 0);
 }
 
 #endif // ADC_H

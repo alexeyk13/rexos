@@ -22,6 +22,6 @@ typedef struct {
 } ADC_DRV;
 
 void stm32_adc_init(CORE* core);
-bool stm32_adc_request(CORE* core, IPC* ipc);
+void stm32_adc_request(CORE* core, IPC* ipc);
 
 #endif // STM32_ADC_H

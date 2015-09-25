@@ -16,17 +16,14 @@ void macs_init(TCPIPS* tcpips)
     memset(&tcpips->mac, 0, sizeof(MAC));
 }
 
-bool macs_request(TCPIPS* tcpips, IPC* ipc)
+void macs_request(TCPIPS* tcpips, IPC* ipc)
 {
-    bool need_post;
     switch (HAL_ITEM(ipc->cmd))
     {
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
         break;
     }
-    return need_post;
 }
 
 void macs_link_changed(TCPIPS* tcpips, bool link)

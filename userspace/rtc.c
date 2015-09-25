@@ -10,7 +10,7 @@
 TIME* rtc_get(TIME* time)
 {
     IPC ipc;
-    ipc.cmd = HAL_CMD(HAL_RTC, RTC_GET);
+    ipc.cmd = HAL_REQ(HAL_RTC, RTC_GET);
     ipc.process = object_get(SYS_OBJ_CORE);
     call(&ipc);
     time->day = ipc.param1;
@@ -20,5 +20,5 @@ TIME* rtc_get(TIME* time)
 
 void rtc_set(TIME* time)
 {
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_RTC, RTC_SET), (unsigned int)time->day, (unsigned int)time->ms, 0);
+    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_RTC, RTC_SET), (unsigned int)time->day, (unsigned int)time->ms, 0);
 }

@@ -38,53 +38,49 @@ const REX __LPC_CORE = {
 void lpc_core_loop(CORE* core)
 {
     IPC ipc;
-    bool need_post;
     for (;;)
     {
         ipc_read(&ipc);
-        need_post = false;
         switch (HAL_GROUP(ipc.cmd))
         {
         case HAL_POWER:
-            need_post = lpc_power_request(core, &ipc);
+            lpc_power_request(core, &ipc);
             break;
         case HAL_PIN:
-            need_post = lpc_pin_request(&ipc);
+            lpc_pin_request(&ipc);
             break;
         case HAL_TIMER:
-            need_post = lpc_timer_request(core, &ipc);
+            lpc_timer_request(core, &ipc);
             break;
 #if (MONOLITH_UART)
         case HAL_UART:
-            need_post = lpc_uart_request(core, &ipc);
+            lpc_uart_request(core, &ipc);
             break;
 #endif //MONOLITH_UART
 #if (LPC_I2C_DRIVER)
         case HAL_I2C:
-            need_post = lpc_i2c_request(core, &ipc);
+            lpc_i2c_request(core, &ipc);
             break;
 #endif //LPC_I2C_DRIVER
 #if (MONOLITH_USB)
         case HAL_USB:
 #ifdef LPC11Uxx
-            need_post = lpc_usb_request(core, &ipc);
+            lpc_usb_request(core, &ipc);
 #else //LPC18xx
-            need_post = lpc_otg_request(core, &ipc);
+            lpc_otg_request(core, &ipc);
 #endif //LPC11Uxx
             break;
 #endif //MONOLITH_USB
 #if (LPC_EEPROM_DRIVER)
         case HAL_EEPROM:
-            need_post = lpc_eep_request(core, &ipc);
+            lpc_eep_request(core, &ipc);
             break;
 #endif //LPC_EEPROM_DRIVER
         default:
             error(ERROR_NOT_SUPPORTED);
-            need_post = true;
             break;
         }
-        if (need_post)
-            ipc_write(&ipc);
+        ipc_write(&ipc);
     }
 }
 

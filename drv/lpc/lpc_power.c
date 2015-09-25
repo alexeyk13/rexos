@@ -267,24 +267,19 @@ void lpc_power_init(CORE *core)
     lpc_setup_clock();
 }
 
-bool lpc_power_request(CORE* core, IPC* ipc)
+void lpc_power_request(CORE* core, IPC* ipc)
 {
-    bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case LPC_POWER_GET_CORE_CLOCK:
         ipc->param2 = lpc_get_core_clock();
-        need_post = true;
         break;
 #if (LPC_DECODE_RESET)
     case LPC_POWER_GET_RESET_REASON:
         ipc->param2 = lpc_get_reset_reason(core);
-        need_post = true;
         break;
 #endif //LPC_DECODE_RESET
     default:
         error(ERROR_NOT_SUPPORTED);
-        need_post = true;
     }
-    return need_post;
 }
