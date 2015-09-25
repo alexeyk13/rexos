@@ -21,22 +21,19 @@
 #define ERROR_ALREADY_CONFIGURED                        (ERROR_GENERAL - 6)
 #define ERROR_INVALID_PARAMS                            (ERROR_GENERAL - 7)
 #define ERROR_INVALID_MAGIC                             (ERROR_GENERAL - 8)
-#define ERROR_TIMEOUT                                   (ERROR_GENERAL - 9)
-#define ERROR_INVALID_SVC                               (ERROR_GENERAL - 10)
-#define ERROR_SYNC_OBJECT_DESTROYED                     (ERROR_GENERAL - 11)
-#define ERROR_STUB_CALLED                               (ERROR_GENERAL - 12)
-#define ERROR_OUT_OF_RANGE                              (ERROR_GENERAL - 13)
-#define ERROR_ACCESS_DENIED                             (ERROR_GENERAL - 14)
-#define ERROR_OVERFLOW                                  (ERROR_GENERAL - 15)
-#define ERROR_UNDERFLOW                                 (ERROR_GENERAL - 16)
-#define ERROR_NAK                                       (ERROR_GENERAL - 17)
-#define ERROR_INVALID_STATE                             (ERROR_GENERAL - 18)
-#define ERROR_INVALID_ALIGN                             (ERROR_GENERAL - 19)
-#define ERROR_DEADLOCK                                  (ERROR_GENERAL - 20)
-#define ERROR_INVALID_MODE                              (ERROR_GENERAL - 21)
-#define ERROR_INVALID_LENGTH                            (ERROR_GENERAL - 22)
-#define ERROR_TOO_MANY_HANDLES                          (ERROR_GENERAL - 23)
-#define ERROR_NOT_RESPONDING                            (ERROR_GENERAL - 24)
+#define ERROR_INVALID_SVC                               (ERROR_GENERAL - 9)
+#define ERROR_SYNC_OBJECT_DESTROYED                     (ERROR_GENERAL - 10)
+#define ERROR_STUB_CALLED                               (ERROR_GENERAL - 11)
+#define ERROR_OUT_OF_RANGE                              (ERROR_GENERAL - 12)
+#define ERROR_ACCESS_DENIED                             (ERROR_GENERAL - 13)
+#define ERROR_OVERFLOW                                  (ERROR_GENERAL - 14)
+#define ERROR_UNDERFLOW                                 (ERROR_GENERAL - 15)
+#define ERROR_INVALID_STATE                             (ERROR_GENERAL - 16)
+#define ERROR_INVALID_ALIGN                             (ERROR_GENERAL - 17)
+#define ERROR_DEADLOCK                                  (ERROR_GENERAL - 18)
+#define ERROR_INVALID_MODE                              (ERROR_GENERAL - 19)
+#define ERROR_INVALID_LENGTH                            (ERROR_GENERAL - 20)
+#define ERROR_TOO_MANY_HANDLES                          (ERROR_GENERAL - 21)
 
 #define ERROR_IO                                        -100
 #define ERROR_FILE_SHARING_VIOLATION                    (ERROR_IO - 1)
@@ -56,18 +53,16 @@
 #define ERROR_POOL_CORRUPTED                            (ERROR_MEMORY - 4)
 #define ERROR_POOL_RANGE_CHECK_FAILED                   (ERROR_MEMORY - 5)
 
-#define ERROR_UART                                      -300
-#define ERROR_UART_NOISE                                (ERROR_UART - 1)
-#define ERROR_UART_FRAME                                (ERROR_UART - 2)
-#define ERROR_UART_PARITY                               (ERROR_UART - 3)
-#define ERROR_UART_BREAK                                (ERROR_UART - 4)
+#define ERROR_COMM                                      -300
+#define ERROR_INVALID_FRAME                             (ERROR_COMM - 1)
+#define ERROR_CRC                                       (ERROR_COMM - 2)
+#define ERROR_NOT_RESPONDING                            (ERROR_COMM - 3)
+#define ERROR_CONNECTION_REFUSED                        (ERROR_COMM - 4)
+#define ERROR_LINE_NOISE                                (ERROR_COMM - 5)
+#define ERROR_INVALID_PARITY                            (ERROR_COMM - 6)
+#define ERROR_COMM_BREAK                                (ERROR_COMM - 7)
+#define ERROR_NAK                                       (ERROR_COMM - 8)
+#define ERROR_TIMEOUT                                   (ERROR_COMM - 9)
 
-#define ERROR_USB                                       -350
-#define ERROR_USB_STALL                                 (ERROR_USB - 1)
-
-#define ERROR_HARDWARE                                  -400
-#define ERROR_NO_DEVICE                                 (ERROR_HARDWARE - 1)
-#define ERROR_CRC                                       (ERROR_HARDWARE - 2)
-#define ERROR_INVALID_FRAME                             (ERROR_HARDWARE - 3)
 
 #endif // ERROR_H

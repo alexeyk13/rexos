@@ -116,25 +116,7 @@ void kprocess_timeout(void* param)
     disable_interrupts();
     //because timeout is not atomic anymore
     if (kprocess->flags & PROCESS_FLAGS_WAITING)
-    {
-        //say sync object to release us
-        switch (kprocess->flags & PROCESS_SYNC_MASK)
-        {
-        case PROCESS_SYNC_TIMER_ONLY:
-            break;
-        case PROCESS_SYNC_IPC:
-            kipc_lock_release(kprocess);
-            break;
-        case PROCESS_SYNC_STREAM:
-            kstream_lock_release((STREAM_HANDLE*)kprocess->sync_object, kprocess);
-            break;
-        default:
-            ASSERT(false);
-        }
-        if ((kprocess->flags & PROCESS_SYNC_MASK) != PROCESS_SYNC_TIMER_ONLY)
-            kprocess->process->error =  ERROR_TIMEOUT;
         kprocess_wakeup_internal(kprocess);
-    }
     enable_interrupts();
 }
 

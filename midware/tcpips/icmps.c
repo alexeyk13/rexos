@@ -41,16 +41,51 @@ static void icmps_echo_complete(TCPIPS* tcpips, int err)
     tcpips->icmps.process = INVALID_HANDLE;
 }
 
-static void icmps_error(TCPIPS* tcpips, IO* io, ICMP_ERROR code, unsigned int offset)
+static inline void icmps_error_process(TCPIPS* tcpips, IO* io, ICMP_ERROR code, unsigned int offset)
 {
-    //TODO: major refactoring required
+    IP_HEADER* hdr;
+    //only icmp echo response
+    if (tcpips->icmps.process == INVALID_HANDLE)
+        return;
+    hdr = io_data(io);
+    if (hdr->dst.u32.ip == tcpips->ip.u32.ip)
+    {
+        switch (code)
+        {
+        case ICMP_ERROR_NETWORK:
+        case ICMP_ERROR_HOST:
+        case ICMP_ERROR_PROTOCOL:
+        case ICMP_ERROR_PORT:
+        case ICMP_ERROR_ROUTE:
+        case ICMP_ERROR_TTL_EXCEED:
+        case ICMP_ERROR_FRAGMENT_REASSEMBLY_EXCEED:
+            icmps_echo_complete(tcpips, ERROR_TIMEOUT);
+            break;
+        default:
+            icmps_echo_complete(tcpips, ERROR_CONNECTION_REFUSED);
+        }
+    }
+}
+
+static void icmps_rx_error(TCPIPS* tcpips, IO* io, ICMP_ERROR code, unsigned int offset)
+{
+    //hide ICMP header for protocol-depending processing
     IP_HEADER* hdr;
     io->data_offset += sizeof(ICMP_HEADER);
     io->data_size -= sizeof(ICMP_HEADER);
     hdr = io_data(io);
-    //TODO: check proto,
-    //if icmp and request is echo, fail echo
-
+    switch (hdr->proto)
+    {
+    case PROTO_ICMP:
+        icmps_error_process(tcpips, io, code, offset);
+        break;
+    //RFU: forward to UDP/TCP
+    case PROTO_UDP:
+    case PROTO_TCP:
+    default:
+        break;
+    }
+    //restore ICMP header and release
     io->data_offset -= sizeof(ICMP_HEADER);
     io->data_size += sizeof(ICMP_HEADER);
     ips_release_io(tcpips, io);
@@ -115,9 +150,25 @@ static inline void icmps_rx_destination_unreachable(TCPIPS* tcpips, IO* io)
         return;
     }
 #if (ICMP_DEBUG)
-    printf("ICMP: DESTINATION UNREACHABLE(%d) ", icmp->code);
+    printf("ICMP: Destination unreachable(%d) ", icmp->code);
 #endif
-    icmps_error(tcpips, io, icmp->code, 0);
+    icmps_rx_error(tcpips, io, icmp->code, 0);
+}
+
+static inline void icmps_rx_time_exceeded(TCPIPS* tcpips, IO* io)
+{
+    //TODO: not working really
+    ICMP_HEADER* icmp = io_data(io);
+    //useless if no original header provided
+    if (io->data_size < sizeof(ICMP_HEADER) + sizeof(IP_HEADER) + 8)
+    {
+        ips_release_io(tcpips, io);
+        return;
+    }
+#if (ICMP_DEBUG)
+    printf("ICMP: Time exceeded in transit (%d) ", icmp->code);
+#endif
+    icmps_rx_error(tcpips, io, icmp->code, 0);
 }
 
 void icmps_rx(TCPIPS* tcpips, IO *io, IP* src)

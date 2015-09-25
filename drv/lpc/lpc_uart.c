@@ -180,11 +180,11 @@ void lpc_uart_on_isr(int vector, void* param)
         if (lsr & USART0_LSR_OE_Msk)
             uart->error = ERROR_OVERFLOW;
         if (lsr & USART0_LSR_PE_Msk)
-            uart->error = ERROR_UART_PARITY;
+            uart->error = ERROR_INVALID_PARITY;
         if (lsr & USART0_LSR_FE_Msk)
-            uart->error = ERROR_UART_FRAME;
+            uart->error = ERROR_INVALID_FRAME;
         if (lsr & USART0_LSR_BI_Msk)
-            uart->error = ERROR_UART_BREAK;
+            uart->error = ERROR_COMM_BREAK;
         break;
     case USART0_IIR_INTID_RDA:
         //need more data?
@@ -229,13 +229,13 @@ void lpc_uart4_on_isr(int vector, void* param)
             if (__USART1_REGS[port - 1]->STAT & USART4_STAT_OVERRUNINT)
                 drv->uart.uarts[port - 1]->error = ERROR_OVERFLOW;
             if (__USART1_REGS[port - 1]->STAT & USART4_STAT_FRAMERRINT)
-                drv->uart.uarts[port - 1]->error = ERROR_UART_FRAME;
+                drv->uart.uarts[port - 1]->error = ERROR_INVALID_FRAME;
             if (__USART1_REGS[port - 1]->STAT & USART4_STAT_PARITTERRINT)
-                drv->uart.uarts[port - 1]->error = ERROR_UART_PARITY;
+                drv->uart.uarts[port - 1]->error = ERROR_INVALID_PARITY;
             if (__USART1_REGS[port - 1]->STAT & USART4_STAT_RXNOISEINT)
-                drv->uart.uarts[port - 1]->error = ERROR_UART_NOISE;
+                drv->uart.uarts[port - 1]->error = ERROR_LINE_NOISE;
             if (__USART1_REGS[port - 1]->STAT & USART4_STAT_DELTARXBRKINT)
-                drv->uart.uarts[port - 1]->error = ERROR_UART_BREAK;
+                drv->uart.uarts[port - 1]->error = ERROR_COMM_BREAK;
             __USART1_REGS[port - 1]->STAT = USART4_STAT_OVERRUNINT | USART4_STAT_FRAMERRINT | USART4_STAT_PARITTERRINT | USART4_STAT_RXNOISEINT | USART4_STAT_DELTARXBRKINT;
         }
         //ready to rx

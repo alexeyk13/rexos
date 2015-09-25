@@ -137,11 +137,11 @@ void stm32_uart_on_isr(int vector, void* param)
             __REG_RC32(UART_REGS[port]->DR);
 #endif
             if (sr & USART_SR_FE)
-                drv->uart.uarts[port]->error = ERROR_UART_FRAME;
+                drv->uart.uarts[port]->error = ERROR_INVALID_FRAME;
             else if (sr & USART_SR_PE)
-                drv->uart.uarts[port]->error = ERROR_UART_PARITY;
+                drv->uart.uarts[port]->error = ERROR_INVALID_PARITY;
             else if  (sr & USART_SR_NE)
-                drv->uart.uarts[port]->error = ERROR_UART_NOISE;
+                drv->uart.uarts[port]->error = ERROR_LINE_NOISE;
         }
     }
 
