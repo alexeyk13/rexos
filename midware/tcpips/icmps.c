@@ -38,7 +38,6 @@ static void icmps_tx(TCPIPS* tcpips, IO* io, const IP* dst)
 static void icmps_echo_complete(TCPIPS* tcpips, int err)
 {
     ipc_post_inline(tcpips->icmps.process, HAL_CMD(HAL_ICMP, ICMP_PING), tcpips->icmps.echo_ip.u32.ip, 0, err);
-    printd("ICMP: %d\n", err);
     tcpips->icmps.process = INVALID_HANDLE;
 }
 

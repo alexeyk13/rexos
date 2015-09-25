@@ -14,6 +14,6 @@ typedef enum {
     ICMP_PING = IPC_USER
 }ICMP_IPCS;
 
-bool icmp_ping(HANDLE tcpip, IP* dst);
+bool icmp_ping(HANDLE tcpip, const IP* dst);
 
 #endif // ICMP_H

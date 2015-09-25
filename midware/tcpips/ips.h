@@ -203,6 +203,7 @@
 
 typedef struct {
     uint16_t id;
+    bool up;
 } IPS;
 
 #pragma pack(push, 1)

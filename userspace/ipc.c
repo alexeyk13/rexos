@@ -143,7 +143,7 @@ unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned
     ipc.param2 = param2;
     ipc.param3 = param3;
     call(&ipc);
-    if (ipc.param3 >= 0)
+    if ((int)(ipc.param3) >= 0)
         return ipc.param2;
     error(ipc.param3);
     return INVALID_HANDLE;
@@ -158,7 +158,7 @@ int get_size(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int
     ipc.param2 = param2;
     ipc.param3 = param3;
     call(&ipc);
-    if (ipc.param3 < 0)
+    if ((int)(ipc.param3) < 0)
         error(ipc.param3);
     return (int)ipc.param3;
 }
