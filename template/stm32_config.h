@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2014, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -15,11 +15,15 @@
 #define MONOLITH_UART                           1
 #define MONOLITH_USB                            1
 
+//disable only for power saving if no EXTI or remap is used
+#define SYSCFG_ENABLED                          1
+//stupid F1 series only. Remap mask. See datasheet
+#define STM32F1_MAPR                            (AFIO_MAPR_USART2_REMAP)
 //------------------------------ POWER -----------------------------------------------
 //save few bytes here
 #define STM32_DECODE_RESET                      0
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
-#define HSE_VALUE                               8000000
+#define HSE_VALUE                               24000000
 #define HSE_BYPASS                              0
 //0 meaning HSE
 #define LSE_VALUE                               32768
@@ -27,11 +31,11 @@
 #define MSI_RANGE                               6
 
 //STM32F1
-//#define PLL_MUL                                 6
-//#define PLL_DIV                                 2
+#define PLL_MUL                                 6
+#define PLL_DIV                                 2
 //STM32L0
-#define PLL_MUL                                 12
-#define PLL_DIV                                 3
+//#define PLL_MUL                                 12
+//#define PLL_DIV                                 3
 //STM32F10X_CL only
 // use PLL2 as clock source for main PLL. Set to 0 to disable
 #define PLL2_DIV                                0
@@ -42,9 +46,7 @@
 #define PLL_N                                   0
 #define PLL_P                                   0
 
-#define STANDBY_WKUP                            STANDBY_WKUP_PIN2
-//disable only for power saving if no EXTI or remap is used
-#define SYSCFG_ENABLED                          1
+#define STANDBY_WKUP                            0
 //------------------------------ UART ------------------------------------------------
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
 //remember, that process itself requires around 256 bytes
@@ -54,13 +56,13 @@
 //Sizeof UART process. Remember, that process itself requires around 450 bytes. Only for stand-alone UART driver
 #define STM32_UART_PROCESS_SIZE                 410 + (50 + UART_TX_BUF_SIZE) * 1
 //------------------------------ TIMER -----------------------------------------------
-#define HPET_TIMER                              TIM_22
+#define HPET_TIMER                              TIM_2
 //only required if no STM32_RTC_DRIVER is set
-#define SECOND_PULSE_TIMER                      TIM_2
+#define SECOND_PULSE_TIMER                      TIM_3
 //disable to save few bytes
-#define TIMER_IO                                0
+#define TIMER_IO                                1
 //------------------------------- ADC ------------------------------------------------
-#define STM32_ADC_DRIVER                        1
+#define STM32_ADC_DRIVER                        0
 //In L0 series - select HSI16 as clock source
 #define STM32_ADC_ASYNCRONOUS_CLOCK             0
 // Avg Slope, refer to datasheet
@@ -69,7 +71,7 @@
 #define V25_MV                                  1400
 
 //------------------------------- DAC ------------------------------------------------
-#define STM32_DAC_DRIVER                        1
+#define STM32_DAC_DRIVER                        0
 #define DAC_BOFF                                0
 
 //DAC streaming support with DMA. Can be disabled for flash saving
@@ -98,17 +100,7 @@
 #define STM32_WDT_DRIVER                        0
 //------------------------------- RTC ------------------------------------------------
 #define STM32_RTC_DRIVER                        1
-//------------------------------- EEP ------------------------------------------------
-#define STM32_EEP_DRIVER                        1
-//increase for perfomance, decrease for memory saving. Must be 4 bytes aligned
-#define STM32_EEPROM_BUF_SIZE                   20
-//------------------------------- ETH ------------------------------------------------
+//------------------------------- ETH -----------------------------------------------
 #define STM32_ETH_PROCESS_SIZE                  512
-
-//enable Pulse per second signal
-#define STM32_ETH_PPS_OUT_ENABLE                0
-//pin remapping for 105/107
-#define STM32_ETH_REMAP                         0
-
 
 #endif // STM32_CONFIG_H

@@ -56,14 +56,14 @@ static inline void stat()
     diff = systime_elapsed_us(&uptime);
     printf("average switch time: %d.%dus\n", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
-    printf("core clock: %d\n", get(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_POWER, STM32_POWER_GET_CLOCK), STM32_CLOCK_CORE, 0, 0));
+    printf("core clock: %d\n", get_int(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_POWER, STM32_POWER_GET_CLOCK), STM32_CLOCK_CORE, 0, 0));
     process_info();
 }
 
 static inline void app_setup_dbg()
 {
     BAUD baudrate;
-    ack(object_get(SYS_OBJ_CORE), HAL_CMD(HAL_PIN, STM32_GPIO_ENABLE_PIN), DBG_CONSOLE_TX_PIN, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, DBG_CONSOLE_TX_PIN_AF);
+    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), DBG_CONSOLE_TX_PIN, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, DBG_CONSOLE_TX_PIN_AF);
     uart_open(DBG_CONSOLE, UART_MODE_STREAM | UART_TX_STREAM);
     baudrate.baud = DBG_CONSOLE_BAUD;
     baudrate.data_bits = 8;
@@ -103,21 +103,18 @@ void app()
 {
     APP app;
     IPC ipc;
-    bool need_post = false;
 
     app_init(&app);
     comm_init(&app);
 
-
-    ack(object_get(SYS_OBJ_ADC), HAL_CMD(HAL_ADC, IPC_OPEN), STM32_ADC_DEVICE, 0, 0);
-    ack(object_get(SYS_OBJ_ADC), HAL_CMD(HAL_ADC, IPC_OPEN), STM32_ADC_VREF, STM32_ADC_SMPR_55_5, 0);
+    ack(object_get(SYS_OBJ_ADC), HAL_REQ(HAL_ADC, IPC_OPEN), STM32_ADC_DEVICE, 0, 0);
+    ack(object_get(SYS_OBJ_ADC), HAL_REQ(HAL_ADC, IPC_OPEN), STM32_ADC_VREF, STM32_ADC_SMPR_55_5, 0);
     adc_get(STM32_ADC_VREF);
 
 
     for (;;)
     {
         ipc_read(&ipc);
-        need_post = false;
         switch (HAL_ITEM(ipc.cmd))
         {
         case USBD_ALERT:
@@ -134,10 +131,8 @@ void app()
             printf("sender: %#X\n", ipc.process);
             printf("p1: %#X\n", ipc.param1);
             error(ERROR_NOT_SUPPORTED);
-            need_post = true;
             break;
         }
-        if (need_post)
-            ipc_write(&ipc);
+        ipc_write(&ipc);
     }
 }

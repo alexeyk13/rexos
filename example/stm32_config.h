@@ -15,6 +15,10 @@
 #define MONOLITH_UART                           1
 #define MONOLITH_USB                            1
 
+//disable only for power saving if no EXTI or remap is used
+#define SYSCFG_ENABLED                          1
+//stupid F1 series only. Remap mask. See datasheet
+#define STM32F1_MAPR                            (AFIO_MAPR_USART2_REMAP)
 //------------------------------ POWER -----------------------------------------------
 //save few bytes here
 #define STM32_DECODE_RESET                      0
@@ -44,8 +48,6 @@
 #define PLL_P                                   0
 
 #define STANDBY_WKUP                            0
-//disable only for power saving if no EXTI or remap is used
-#define SYSCFG_ENABLED                          1
 //------------------------------ UART ------------------------------------------------
 //size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
 //remember, that process itself requires around 256 bytes
@@ -101,11 +103,6 @@
 #define STM32_RTC_DRIVER                        1
 //------------------------------- ETH -----------------------------------------------
 #define STM32_ETH_PROCESS_SIZE                  512
-
-//enable Pulse per second signal
-#define STM32_ETH_PPS_OUT_ENABLE                0
-//pin remapping for 105/107
-#define STM32_ETH_REMAP                         0
 
 
 #endif // STM32_CONFIG_H
