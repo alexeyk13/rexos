@@ -499,7 +499,7 @@ static bool stm32_usb_io_prepare(SHARED_USB_DRV* drv, IPC* ipc)
     }
     if (ep->io_active)
     {
-        error(ipc, ERROR_IN_PROGRESS);
+        error(ERROR_IN_PROGRESS);
         return false;
     }
     ep->io = (IO*)ipc->param2;
