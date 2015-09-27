@@ -105,9 +105,11 @@ IO* tcpips_allocate_io(TCPIPS* tcpips)
 
 void tcpips_release_io(TCPIPS* tcpips, IO* io)
 {
+    IO** iop;
     io_reset(io);
-    array_append(&tcpips->free_io);
-    *((IO**)array_at(tcpips->free_io, array_size(tcpips->free_io) - 1)) = io;
+    iop = array_append(&tcpips->free_io);
+    if (iop)
+        *iop = io;
 }
 
 static void tcpips_rx_next(TCPIPS* tcpips)
@@ -262,6 +264,9 @@ static inline void tcpips_timer(TCPIPS* tcpips)
         //forward to others
         arps_timer(tcpips, tcpips->seconds);
         icmps_timer(tcpips, tcpips->seconds);
+#if (IP_FRAGMENTATION)
+        ips_timer(tcpips, tcpips->seconds);
+#endif //IP_FRAGMENTATION
         timer_start_ms(tcpips->timer, 1000);
     }
 }

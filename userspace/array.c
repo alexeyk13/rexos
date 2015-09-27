@@ -49,7 +49,7 @@ unsigned int array_size(ARRAY* ar)
     return ar->size;
 }
 
-ARRAY* array_append(ARRAY **ar)
+void* array_append(ARRAY **ar)
 {
     if (*ar == NULL)
         return NULL;
@@ -62,10 +62,10 @@ ARRAY* array_append(ARRAY **ar)
         ++(*ar)->size;
         (*ar) = realloc(*ar, sizeof(ARRAY) + (*ar)->data_size * (*ar)->reserved);
     }
-    return (*ar);
+    return array_at(*ar, (*ar)->size - 1);
 }
 
-ARRAY* array_insert(ARRAY **ar, unsigned int index)
+void* array_insert(ARRAY **ar, unsigned int index)
 {
     if (array_append(ar) == NULL)
         return NULL;
@@ -75,7 +75,7 @@ ARRAY* array_insert(ARRAY **ar, unsigned int index)
         return (*ar);
     }
     memmove(ARRAY_DATA(*ar) + (index + 1) * (*ar)->data_size, ARRAY_DATA(*ar) + index * (*ar)->data_size, ((*ar)->size - index - 1) * (*ar)->data_size);
-    return (*ar);
+    return array_at(*ar, index);
 }
 
 ARRAY* array_clear(ARRAY **ar)
