@@ -179,6 +179,19 @@ void call(IPC* ipc);
 void ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
+    \brief get value from process.
+    \details Error set if param3 is negative
+    \param cmd: command to post
+    \param process: IPC receiver
+    \param param1: cmd specific
+    \param param2: cmd specific
+    \param param3: cmd specific
+    \retval returned param2
+*/
+
+unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
+
+/**
     \brief get hangle value from process.
     \details INVALID_HANDLE on error
     \param cmd: command to post
@@ -192,17 +205,17 @@ void ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int par
 unsigned int get_handle(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
-    \brief get int value from process.
-    \details Error set if INVALID_HANDLE on param2
+    \brief get size (positive) value from process.
+    \details Error set if param3 is negative
     \param cmd: command to post
     \param process: IPC receiver
     \param param1: cmd specific
     \param param2: cmd specific
     \param param3: cmd specific
-    \retval param1
+    \retval param3
 */
 
-int get_int(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
+int get_size(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /** \} */ // end of sem group
 

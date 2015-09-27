@@ -35,5 +35,5 @@ void ip_set(HANDLE tcpip, const IP* ip)
 
 void ip_get(HANDLE tcpip, IP* ip)
 {
-    ip->u32.ip = get_int(tcpip, HAL_REQ(HAL_IP, IP_GET), 0, 0, 0);
+    ip->u32.ip = get(tcpip, HAL_REQ(HAL_IP, IP_GET), 0, 0, 0);
 }

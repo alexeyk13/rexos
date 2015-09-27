@@ -740,7 +740,7 @@ static inline int usbd_endpoint_get_status(USBD* usbd)
     printf("USB: get endpoint status\n");
 #endif
     uint16_t status = 0;
-    if (get_int(usbd->usb, HAL_REQ(HAL_USB, USB_EP_IS_STALL), USB_HANDLE(usbd->port, usbd->setup.wIndex), 0, 0))
+    if (get(usbd->usb, HAL_REQ(HAL_USB, USB_EP_IS_STALL), USB_HANDLE(usbd->port, usbd->setup.wIndex), 0, 0))
         status |= 1 << 0;
     return io_data_write(usbd->io, &status, sizeof(uint16_t));
 }

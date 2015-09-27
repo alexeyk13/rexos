@@ -67,5 +67,7 @@
 #define ERROR_NAK                                       (ERROR_COMM - 8)
 #define ERROR_TIMEOUT                                   (ERROR_COMM - 9)
 
+#define ERROR_HARDWARE                                  -400
+
 
 #endif // ERROR_H
