@@ -77,6 +77,18 @@ ARM7 features:
 
 History
 =======
+0.3.8
+- IPC request flag. No need to check if response on IPC is required anymore.
+- HAL_REQ, HAL_IO_REQ helpers to make CMD for IPC request.
+- IPC get refactoring:
+  - get_handle when handle is expected. If error is set, INVALID_HANDLE is returned.
+  - get_size for IO operations. Negative value means error.
+  - get_int for generic int. Error is set, but original param2 returned.
+- error codes refactoring. Synthetic ERROR_SYNC added as helper for asynchronous IPC request completion
+- IP stack refactoring
+- ARP static routes and debug info
+- ICMP echo request simplified. More detailed flow control.
+
 0.3.7
 - UART flush HAL
 - UART IO interface for block transfers
