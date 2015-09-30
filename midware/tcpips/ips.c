@@ -288,45 +288,93 @@ void ips_release_io(TCPIPS* tcpips, IO* io)
         tcpips_release_io(tcpips, io);
 }
 
-void ips_tx(TCPIPS* tcpips, IO* io, const IP* dst)
+static void ips_tx_internal(TCPIPS* tcpips, IO* io, const IP* dst, unsigned int hdr_size)
 {
-    //drop if interface is not up
-    if (!tcpips->ips.up)
-    {
-        tcpips_release_io(tcpips, io);
-        return;
-    }
     IP_HEADER* hdr;
-    IP_STACK* ip_stack = io_stack(io);
-    //TODO: fragmented frames
-    io->data_offset -= ip_stack->hdr_size;
-    io->data_size += ip_stack->hdr_size;
     hdr = io_data(io);
 
     //VERSION, IHL
-    hdr->ver_ihl = 0x45;
+    hdr->ver_ihl = (0x4 << 4) | (hdr_size >> 2);
     //DSCP, ECN
     hdr->tos = 0;
     //total len
     short2be(hdr->total_len_be, io->data_size);
-    //id
-    short2be(hdr->id_be, tcpips->ips.id++);
-    //flags, offset
-    hdr->flags_offset_be[0] = hdr->flags_offset_be[1] = 0;
     //ttl
     hdr->ttl = 0xff;
-    //proto
-    hdr->proto = ip_stack->proto;
     //src
     hdr->src.u32.ip = tcpips->ip.u32.ip;
     //dst
     hdr->dst.u32.ip = dst->u32.ip;
     //update checksum
     short2be(hdr->header_crc_be, 0);
-    short2be(hdr->header_crc_be, ip_checksum(io_data(io), ip_stack->hdr_size));
+    short2be(hdr->header_crc_be, ip_checksum(io_data(io), hdr_size));
 
-    io_pop(io, sizeof(IP_STACK));
     routes_tx(tcpips, io, dst);
+}
+
+void ips_tx(TCPIPS* tcpips, IO* io, const IP* dst)
+{
+    IP_HEADER* hdr;
+    IP_STACK* ip_stack;
+#if (IP_FRAGMENTATION)
+    unsigned int offset, cur;
+    IO* fragment;
+#endif //IP_FRAGMENTATION
+    //drop if interface is not up
+    if (!tcpips->ips.up)
+    {
+        ips_release_io(tcpips, io);
+        return;
+    }
+    ip_stack = io_stack(io);
+    io->data_offset -= ip_stack->hdr_size;
+    io->data_size += ip_stack->hdr_size;
+    hdr = io_data(io);
+
+#if (IP_FRAGMENTATION)
+    if (ip_stack->is_long)
+    {
+        for (offset = ip_stack->hdr_size; offset < io->data_size; offset += cur)
+        {
+            fragment = tcpips_allocate_io(tcpips);
+            if (fragment == NULL)
+            {
+#if (IP_DEBUG)
+                printf("IP: fragmentation failed - out of free blocks\n");
+#endif //IP_DEBUG
+                if (offset > ip_stack->hdr_size)
+                    ++tcpips->ips.id;
+                ips_release_io(tcpips, io);
+                return;
+            }
+            cur = IP_FRAME_MAX_DATA_SIZE;
+            if (offset + cur > io->data_size)
+                cur = io->data_size - offset;
+            //hdr
+            memcpy(io_data(fragment), io_data(io), ip_stack->hdr_size);
+            //data
+            memcpy((uint8_t*)io_data(fragment) + ip_stack->hdr_size, (uint8_t*)io_data(io) + offset, cur);
+
+            hdr = io_data(fragment);
+            short2be(hdr->id_be, tcpips->ips.id);
+            hdr->proto = ip_stack->proto;
+            short2be(hdr->flags_offset_be, offset >> 3);
+            //MF
+            if (offset + cur < io->data_size)
+                hdr->flags_offset_be[0] |= IP_FLAGS_MASK;
+        }
+        ips_release_io(tcpips, io);
+        ++tcpips->ips.id;
+        return;
+    }
+#endif //IP_FRAGMENTATION
+
+    short2be(hdr->id_be, tcpips->ips.id++);
+    hdr->proto = ip_stack->proto;
+    //flags, offset
+    hdr->flags_offset_be[0] = hdr->flags_offset_be[1] = 0;
+    io_pop(io, sizeof(IP_STACK));
+    ips_tx_internal(tcpips, io, dst, ip_stack->hdr_size);
 }
 
 static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
