@@ -18,12 +18,15 @@ void ip_print(const IP* ip)
     }
 }
 
-uint16_t ip_checksum(uint8_t* buf, unsigned int size)
+uint16_t ip_checksum(void* buf, unsigned int size)
 {
     unsigned int i;
     uint32_t sum = 0;
     for (i = 0; i < (size >> 1); ++i)
-        sum += (buf[i << 1] << 8) | (buf[(i << 1) + 1]);
+        sum += (((uint8_t*)buf)[i << 1] << 8) | (((uint8_t*)buf)[(i << 1) + 1]);
+    //padding zero
+    if (size & 1)
+        sum += ((uint8_t*)buf)[size - 1] << 8;
     sum = ((sum & 0xffff) + (sum >> 16)) & 0xffff;
     return ~((uint16_t)sum);
 }

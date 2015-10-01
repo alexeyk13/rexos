@@ -32,7 +32,7 @@ typedef enum {
 }IP_IPCS;
 
 void ip_print(const IP* ip);
-uint16_t ip_checksum(uint8_t* buf, unsigned int size);
+uint16_t ip_checksum(void *buf, unsigned int size);
 void ip_set(HANDLE tcpip, const IP* ip);
 void ip_get(HANDLE tcpip, IP* ip);
 
