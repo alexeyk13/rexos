@@ -17,8 +17,10 @@ typedef struct _SO {
 
 SO* so_create(SO* so, unsigned int data_size, unsigned int reserved);
 void so_destroy(SO* so);
-unsigned int so_allocate(SO* so);
-void so_free(SO* so, unsigned int handle);
-void* so_get(SO* so, unsigned int handle);
+HANDLE so_allocate(SO* so);
+void so_free(SO* so, HANDLE handle);
+void* so_get(SO* so, HANDLE handle);
+HANDLE so_first(SO* so);
+HANDLE so_next(SO* so, HANDLE prev);
 
 #endif // SO_H

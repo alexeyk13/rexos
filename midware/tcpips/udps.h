@@ -11,14 +11,15 @@
 #include "ips.h"
 #include "../../userspace/ip.h"
 #include "../../userspace/io.h"
+#include "../../userspace/so.h"
 
 typedef struct {
-    unsigned int stub;
+    SO handles;
 } UDPS;
 
 void udps_init(TCPIPS* tcpips);
 //TODO: link change - drop all connections
 void udps_rx(TCPIPS* tcpips, IO* ip, IP* src);
-//TODO: user request processing
+void udps_request(TCPIPS* tcpips, IPC* ipc);
 
 #endif // UDPS_H

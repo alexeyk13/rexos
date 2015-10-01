@@ -18,10 +18,8 @@
 #include "routes.h"
 #include "ips.h"
 #include "udps.h"
-#include "../../userspace/udp.h"
 
-//TODO: change to TCP in future
-#define FRAME_MAX_SIZE                          (TCPIP_MTU + sizeof(MAC_HEADER) + sizeof(IP_STACK) + sizeof(UDP_STACK))
+#define FRAME_MAX_SIZE                          (TCPIP_MTU + sizeof(MAC_HEADER) + sizeof(IP_STACK))
 
 #if (TCPIP_DEBUG)
 static void print_conn_status(TCPIPS* tcpips, const char* head)
@@ -256,7 +254,7 @@ void tcpips_init(TCPIPS* tcpips)
     ips_init(tcpips);
 #if (ICMP)
     icmps_init(tcpips);
-#endif
+#endif //ICMP
 #if (UDP)
     udps_init(tcpips);
 #endif //UDP
@@ -352,10 +350,16 @@ void tcpips_main()
         case HAL_IP:
             ips_request(&tcpips, &ipc);
             break;
+#if (ICMP)
         case HAL_ICMP:
             icmps_request(&tcpips, &ipc);
             break;
-        //TODO: UDP
+#endif //ICMP
+#if (UDP)
+        case HAL_UDP:
+            udps_request(&tcpips, &ipc);
+            break;
+#endif //UDP
         default:
             error(ERROR_NOT_SUPPORTED);
             break;

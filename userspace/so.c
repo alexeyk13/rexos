@@ -12,12 +12,12 @@
 #define SO_SEQUENCE(handle)                     ((handle) & 0xff)
 #define SO_HANDLE(index, sequence)              (((index) << 8) | ((sequence) & 0xff))
 #define SO_FREE                                 0xffffff
-#define SO_AT(so, index)                        (*((unsigned int*)array_at((so)->ar, (index))))
-#define SO_DATA(so, handle)                     ((void*)((uint8_t*)array_at((so)->ar, SO_INDEX(handle)) + sizeof(unsigned int)))
+#define SO_AT(so, index)                        (*((HANDLE*)array_at((so)->ar, (index))))
+#define SO_DATA(so, handle)                     ((void*)((uint8_t*)array_at((so)->ar, SO_INDEX(handle)) + sizeof(HANDLE)))
 
 SO* so_create(SO* so, unsigned int data_size, unsigned int reserved)
 {
-    if (!array_create(&so->ar, (data_size < sizeof(unsigned int) ? sizeof(unsigned int) : data_size) + sizeof(unsigned int), reserved))
+    if (!array_create(&so->ar, data_size + sizeof(HANDLE), reserved))
         return NULL;
     so->first_free = SO_FREE;
     return so;
@@ -28,9 +28,9 @@ void so_destroy(SO* so)
     array_destroy(&so->ar);
 }
 
-unsigned int so_allocate(SO* so)
+HANDLE so_allocate(SO* so)
 {
-    unsigned int handle = INVALID_HANDLE;
+    HANDLE handle = INVALID_HANDLE;
     //no free, append array
     if (so->first_free == SO_FREE)
     {
@@ -49,7 +49,7 @@ unsigned int so_allocate(SO* so)
     return handle;
 }
 
-static bool so_check_handle(SO* so, unsigned int handle)
+static bool so_check_handle(SO* so, HANDLE handle)
 {
     if (SO_INDEX(handle) >= array_size(so->ar))
     {
@@ -69,9 +69,9 @@ static bool so_check_handle(SO* so, unsigned int handle)
     return true;
 }
 
-void so_free(SO* so, unsigned int handle)
+void so_free(SO* so, HANDLE handle)
 {
-    unsigned int tmp;
+    HANDLE tmp;
     if (!so_check_handle(so, handle))
         return;
     tmp = SO_AT(so, SO_INDEX(handle));
@@ -79,9 +79,31 @@ void so_free(SO* so, unsigned int handle)
     so->first_free = SO_INDEX(tmp);
 }
 
-void* so_get(SO* so, unsigned int handle)
+void* so_get(SO* so, HANDLE handle)
 {
     if (!so_check_handle(so, handle))
         return NULL;
     return SO_DATA(so, handle);
+}
+
+HANDLE so_first(SO* so)
+{
+    int i;
+    for (i = 0; i < array_size(so->ar); ++i)
+    {
+        if (SO_INDEX(SO_AT(so, i)) != SO_FREE)
+            return SO_AT(so, i);
+    }
+    return INVALID_HANDLE;
+}
+
+HANDLE so_next(SO* so, HANDLE prev)
+{
+    int i;
+    for (i = SO_INDEX(prev) + 1; i < array_size(so->ar); ++i)
+    {
+        if (SO_INDEX(SO_AT(so, i)) != SO_FREE)
+            return SO_AT(so, i);
+    }
+    return INVALID_HANDLE;
 }

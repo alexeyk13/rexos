@@ -8,6 +8,7 @@
 #define UDP_H
 
 #include "ip.h"
+#include "io.h"
 
 #pragma pack(push, 1)
 
@@ -17,5 +18,7 @@ typedef struct {
 } UDP_STACK;
 
 #pragma pack(pop)
+
+HANDLE udp_listen(HANDLE tcpip, unsigned short port);
 
 #endif // UDP_H
