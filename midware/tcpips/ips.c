@@ -10,7 +10,7 @@
 #include "../../userspace/endian.h"
 #include "icmps.h"
 #include <string.h>
-#include "udp.h"
+#include "udps.h"
 
 #define IP_FRAME_MAX_DATA_SIZE                  (TCPIP_MTU - sizeof(IP_HEADER))
 
@@ -394,7 +394,7 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
 #endif //ICMP
 #if (UDP)
     case PROTO_UDP:
-        udp_rx(tcpips, io, src);
+        udps_rx(tcpips, io, src);
         break;
     default:
 #endif //UDP

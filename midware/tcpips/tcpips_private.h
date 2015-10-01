@@ -16,6 +16,7 @@
 #include "routes.h"
 #include "ips.h"
 #include "icmps.h"
+#include "udps.h"
 #include "sys_config.h"
 
 typedef struct _TCPIPS {
@@ -36,6 +37,9 @@ typedef struct _TCPIPS {
 #if (ICMP)
     ICMPS icmps;
 #endif
+#if (UDP)
+    UDPS udps;
+#endif //UDP
 } TCPIPS;
 
 #endif // TCPIPS_PRIVATE_H

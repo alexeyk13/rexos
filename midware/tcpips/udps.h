@@ -4,17 +4,21 @@
     All rights reserved.
 */
 
-#ifndef UDP_H
-#define UDP_H
+#ifndef UDPS_H
+#define UDPS_H
 
 #include "tcpips.h"
 #include "ips.h"
 #include "../../userspace/ip.h"
 #include "../../userspace/io.h"
 
-//TODO: udp_init
+typedef struct {
+    unsigned int stub;
+} UDPS;
 
-void udp_rx(TCPIPS* tcpips, IO* ip, IP* src);
+void udps_init(TCPIPS* tcpips);
+//TODO: link change - drop all connections
+void udps_rx(TCPIPS* tcpips, IO* ip, IP* src);
+//TODO: user request processing
 
-
-#endif // UDP_H
+#endif // UDPS_H
