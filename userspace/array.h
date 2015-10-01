@@ -9,9 +9,7 @@
 
 #include "types.h"
 
-typedef struct {
-    unsigned int size, reserved, data_size;
-} ARRAY;
+typedef struct _ARRAY ARRAY;
 
 ARRAY* array_create(ARRAY** ar, unsigned int data_size, unsigned int reserved);
 void array_destroy(ARRAY** ar);

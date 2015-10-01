@@ -10,6 +10,10 @@
 #include "svc.h"
 #include <string.h>
 
+typedef struct _ARRAY {
+    unsigned int size, reserved, data_size;
+} ARRAY;
+
 #define ARRAY_DATA(ar)                      (((void*)(ar)) + sizeof(ARRAY))
 
 ARRAY* array_create(ARRAY** ar, unsigned int data_size, unsigned int reserved)
@@ -51,6 +55,7 @@ unsigned int array_size(ARRAY* ar)
 
 void* array_append(ARRAY **ar)
 {
+    ARRAY* tmp;
     if (*ar == NULL)
         return NULL;
     //already have space
@@ -60,7 +65,10 @@ void* array_append(ARRAY **ar)
     {
         ++(*ar)->reserved;
         ++(*ar)->size;
-        (*ar) = realloc(*ar, sizeof(ARRAY) + (*ar)->data_size * (*ar)->reserved);
+        tmp = realloc(*ar, sizeof(ARRAY) + (*ar)->data_size * (*ar)->reserved);
+        if (tmp == NULL)
+            return NULL;
+        (*ar) = tmp;
     }
     return array_at(*ar, (*ar)->size - 1);
 }
