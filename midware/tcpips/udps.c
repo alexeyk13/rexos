@@ -154,7 +154,21 @@ static void udps_send_user(TCPIPS* tcpips, IP* src, IO* io, HANDLE handle)
 void udps_init(TCPIPS* tcpips)
 {
     so_create(&tcpips->udps.handles, sizeof(UDP_HANDLE), 1);
-    tcpips->udps.dynamic = TCPIP_DYNAMIC_RANGE_LO;
+}
+
+void udps_link_changed(TCPIPS* tcpips, bool link)
+{
+    HANDLE handle;
+    if (link)
+        tcpips->udps.dynamic = TCPIP_DYNAMIC_RANGE_LO;
+    else
+    {
+        while ((handle = so_first(&tcpips->udps.handles)) != INVALID_HANDLE)
+        {
+            udps_flush(tcpips, handle);
+            so_free(&tcpips->udps.handles, handle);
+        }
+    }
 }
 
 void udps_rx(TCPIPS* tcpips, IO* io, IP* src)
@@ -351,6 +365,11 @@ static inline void udps_write(TCPIPS* tcpips, HANDLE handle, IO* io)
 
 void udps_request(TCPIPS* tcpips, IPC* ipc)
 {
+    if (!tcpips->connected)
+    {
+        error(ERROR_NOT_ACTIVE);
+        return;
+    }
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:

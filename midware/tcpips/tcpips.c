@@ -226,8 +226,13 @@ static inline void tcpips_link_changed(TCPIPS* tcpips, ETH_CONN_TYPE conn)
     macs_link_changed(tcpips, tcpips->connected);
     arps_link_changed(tcpips, tcpips->connected);
     routes_link_changed(tcpips, tcpips->connected);
+#if (ICMP)
     icmps_link_changed(tcpips, tcpips->connected);
+#endif //ICMP
     ips_link_changed(tcpips, tcpips->connected);
+#if (UDP)
+    udps_link_changed(tcpips, tcpips->connected);
+#endif //UDP
     if (tcpips->connected)
     {
         tcpips->seconds = 0;

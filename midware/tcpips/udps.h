@@ -21,7 +21,7 @@ typedef struct {
 
 //from tcpip
 void udps_init(TCPIPS* tcpips);
-//TODO: link change - drop all connections
+void udps_link_changed(TCPIPS* tcpips, bool link);
 void udps_rx(TCPIPS* tcpips, IO* io, IP* src);
 void udps_request(TCPIPS* tcpips, IPC* ipc);
 
