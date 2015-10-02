@@ -13,6 +13,8 @@
 #include "../../userspace/array.h"
 #include "sys_config.h"
 
+#define IP_FRAME_MAX_DATA_SIZE                          (TCPIP_MTU - sizeof(IP_HEADER))
+
 //Internet Control Message       [RFC792,JBP]
 #define PROTO_ICMP                                      1
 //Internet Group Management     [RFC1112,JBP]

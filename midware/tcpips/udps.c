@@ -40,6 +40,8 @@ typedef struct {
 #endif //ICMP
 } UDP_HANDLE;
 
+#define UDP_FRAME_MAX_DATA_SIZE                                 (IP_FRAME_MAX_DATA_SIZE - sizeof(UDP_HEADER))
+
 static uint16_t udps_checksum(IO* io, const IP* src, const IP* dst)
 {
     UDP_PSEUDO_HEADER uph;
@@ -132,8 +134,7 @@ static void udps_send_user(TCPIPS* tcpips, IP* src, IO* io, HANDLE handle)
         user_io = udps_peek_head(tcpips, uh);
         udp_stack = io_push(user_io, sizeof(UDP_STACK));
         udp_stack->remote_addr.u32.ip = src->u32.ip;
-        udp_stack->dst_port = be2short(hdr->dst_port_be);
-        udp_stack->src_port = be2short(hdr->src_port_be);
+        udp_stack->remote_port = be2short(hdr->src_port_be);
 
         size = io_get_free(user_io);
         if (size > io->data_size - offset)
@@ -240,9 +241,14 @@ static inline void udps_connect(TCPIPS* tcpips, IPC* ipc)
     if ((handle = so_allocate(&tcpips->udps.handles)) == INVALID_HANDLE)
         return;
     uh = so_get(&tcpips->udps.handles, handle);
-
-//TODO: real processing
-//TODO: #if (ICMP)
+    uh->remote_port = (uint16_t)ipc->param1;
+    uh->local_port = local_port;
+    uh->remote_addr.u32.ip = dst.u32.ip;
+    uh->process = ipc->process;
+    uh->head = NULL;
+#if (ICMP)
+    uh->err = ERROR_OK;
+#endif //ICMP
     ipc->param2 = handle;
 }
 
@@ -274,6 +280,64 @@ static inline void udps_read(TCPIPS* tcpips, HANDLE handle, IO* io)
     error(ERROR_SYNC);
 }
 
+static inline void udps_write(TCPIPS* tcpips, HANDLE handle, IO* io)
+{
+    IO* cur;
+    unsigned int offset, size;
+    unsigned short remote_port;
+    IP dst;
+    UDP_STACK* udp_stack;
+    UDP_HEADER* udp;
+    UDP_HANDLE* uh = so_get(&tcpips->udps.handles, handle);
+    if (uh == NULL)
+        return;
+#if (ICMP)
+    if (uh->err != ERROR_OK)
+    {
+        error(uh->err);
+        return;
+    }
+#endif //ICMP
+    //listening socket
+    if (uh->remote_port == 0)
+    {
+        if (io->stack_size < sizeof(UDP_STACK))
+        {
+            error(ERROR_INVALID_PARAMS);
+            return;
+        }
+        udp_stack = io_stack(io);
+        remote_port = udp_stack->remote_port;
+        dst.u32.ip = udp_stack->remote_addr.u32.ip;
+        io_pop(io, sizeof(UDP_STACK));
+    }
+    else
+    {
+        remote_port = uh->remote_port;
+        dst.u32.ip = uh->remote_addr.u32.ip;
+    }
+
+    for (offset = 0; offset < io->data_size; offset += size)
+    {
+        size = UDP_FRAME_MAX_DATA_SIZE;
+        if (size > io->data_size - offset)
+            size = io->data_size - offset;
+        cur = ips_allocate_io(tcpips, size + sizeof(UDP_HEADER), PROTO_UDP);
+        if (cur == NULL)
+            return;
+        //copy data
+        memcpy((uint8_t*)io_data(cur) + sizeof(UDP_HEADER), (uint8_t*)io_data(io) + offset, size);
+        udp = io_data(cur);
+        //format header
+        short2be(udp->src_port_be, uh->local_port);
+        short2be(udp->dst_port_be, remote_port);
+        short2be(udp->len_be, size + sizeof(UDP_HEADER));
+        short2be(udp->checksum_be, 0);
+        short2be(udp->checksum_be, udps_checksum(cur, &tcpips->ip, &dst));
+        ips_tx(tcpips, cur, &dst);
+    }
+}
+
 void udps_request(TCPIPS* tcpips, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -292,7 +356,8 @@ void udps_request(TCPIPS* tcpips, IPC* ipc)
         udps_read(tcpips, ipc->param1, (IO*)ipc->param2);
         break;
     case IPC_WRITE:
-        //TODO:
+        udps_write(tcpips, ipc->param1, (IO*)ipc->param2);
+        break;
     case IPC_FLUSH:
         //TODO:
     default:

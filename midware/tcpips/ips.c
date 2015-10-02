@@ -12,8 +12,6 @@
 #include <string.h>
 #include "udps.h"
 
-#define IP_FRAME_MAX_DATA_SIZE                  (TCPIP_MTU - sizeof(IP_HEADER))
-
 #if (IP_FRAGMENTATION)
 
 typedef struct _ASSEMBLY_SLOT {
