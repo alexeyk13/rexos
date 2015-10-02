@@ -10,8 +10,14 @@
 #include "../../userspace/process.h"
 #include "../../userspace/types.h"
 #include "../../userspace/io.h"
+#include "../../userspace/ip.h"
 
 typedef struct _TCPIPS TCPIPS;
+
+extern const IP __LOCALHOST;
+
+#define TCPIP_DYNAMIC_RANGE_LO                      49152
+#define TCPIP_DYNAMIC_RANGE_HI                      65535
 
 //allocate io. Find in queue of free io, or allocate new. Handle must be checked on return
 IO* tcpips_allocate_io(TCPIPS* tcpips);

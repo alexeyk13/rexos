@@ -41,31 +41,26 @@ static void icmps_echo_complete(TCPIPS* tcpips, int err)
     tcpips->icmps.process = INVALID_HANDLE;
 }
 
-static inline void icmps_error_process(TCPIPS* tcpips, IO* io, ICMP_ERROR code, unsigned int offset)
+static inline void icmps_error_process(TCPIPS* tcpips, ICMP_ERROR code)
 {
-    IP_HEADER* hdr;
     //only icmp echo response
     if (tcpips->icmps.process == INVALID_HANDLE)
         return;
-    hdr = io_data(io);
-    if (hdr->dst.u32.ip == tcpips->ip.u32.ip)
+    switch (code)
     {
-        switch (code)
-        {
-        case ICMP_ERROR_NETWORK:
-        case ICMP_ERROR_HOST:
-        case ICMP_ERROR_PROTOCOL:
-        case ICMP_ERROR_PORT:
-        case ICMP_ERROR_ROUTE:
-            icmps_echo_complete(tcpips, ERROR_NOT_RESPONDING);
-            break;
-        case ICMP_ERROR_TTL_EXCEED:
-        case ICMP_ERROR_FRAGMENT_REASSEMBLY_EXCEED:
-            icmps_echo_complete(tcpips, ERROR_TIMEOUT);
-            break;
-        default:
-            icmps_echo_complete(tcpips, ERROR_CONNECTION_REFUSED);
-        }
+    case ICMP_ERROR_NETWORK:
+    case ICMP_ERROR_HOST:
+    case ICMP_ERROR_PROTOCOL:
+    case ICMP_ERROR_PORT:
+    case ICMP_ERROR_ROUTE:
+        icmps_echo_complete(tcpips, ERROR_NOT_RESPONDING);
+        break;
+    case ICMP_ERROR_TTL_EXCEED:
+    case ICMP_ERROR_FRAGMENT_REASSEMBLY_EXCEED:
+        icmps_echo_complete(tcpips, ERROR_TIMEOUT);
+        break;
+    default:
+        icmps_echo_complete(tcpips, ERROR_CONNECTION_REFUSED);
     }
 }
 
@@ -73,23 +68,36 @@ static void icmps_rx_error(TCPIPS* tcpips, IO* io, ICMP_ERROR code, unsigned int
 {
     //hide ICMP header for protocol-depending processing
     IP_HEADER* hdr;
+    IP src;
+    unsigned int hdr_size;
     io->data_offset += sizeof(ICMP_HEADER);
     io->data_size -= sizeof(ICMP_HEADER);
     hdr = io_data(io);
-    switch (hdr->proto)
+    hdr_size = (hdr->ver_ihl & 0xf) << 2;
+    io->data_offset += hdr_size;
+    io->data_size -= hdr_size;
+    if (hdr->dst.u32.ip == tcpips->ip.u32.ip)
     {
-    case PROTO_ICMP:
-        icmps_error_process(tcpips, io, code, offset);
-        break;
-    //RFU: forward to UDP/TCP
-    case PROTO_UDP:
-    case PROTO_TCP:
-    default:
-        break;
+        src.u32.ip = hdr->src.u32.ip;
+        switch (hdr->proto)
+        {
+        case PROTO_ICMP:
+            icmps_error_process(tcpips, code);
+            break;
+#if (UDP)
+        case PROTO_UDP:
+            udps_icmps_error_process(tcpips, io, code, &src);
+            break;
+#endif //UDP
+            //RFU: forward to TCP
+        case PROTO_TCP:
+        default:
+            break;
+        }
     }
     //restore ICMP header and release
-    io->data_offset -= sizeof(ICMP_HEADER);
-    io->data_size += sizeof(ICMP_HEADER);
+    io->data_offset -= sizeof(ICMP_HEADER) + hdr_size;
+    io->data_size += sizeof(ICMP_HEADER) + hdr_size;
     ips_release_io(tcpips, io);
 }
 
@@ -386,6 +394,8 @@ void icmps_tx_error(TCPIPS* tcpips, IO* original, ICMP_ERROR err, unsigned int o
         break;
     case ICMP_ERROR_PARAMETER:
         icmps_tx_parameter_problem(tcpips, offset, original);
+        break;
+    case ICMP_ERROR_OK:
         break;
     }
 

@@ -21,6 +21,8 @@
 
 #define FRAME_MAX_SIZE                          (TCPIP_MTU + sizeof(MAC_HEADER) + sizeof(IP_STACK))
 
+const IP __LOCALHOST =                          {{127, 0, 0, 1}};
+
 #if (TCPIP_DEBUG)
 static void print_conn_status(TCPIPS* tcpips, const char* head)
 {
