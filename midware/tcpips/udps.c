@@ -254,6 +254,15 @@ static inline void udps_connect(TCPIPS* tcpips, IPC* ipc)
     ipc->param2 = handle;
 }
 
+static inline void udps_close(TCPIPS* tcpips, HANDLE handle)
+{
+    UDP_HANDLE* uh;
+    if ((uh = so_get(&tcpips->udps.handles, handle)) == NULL)
+        return;
+    udps_flush(tcpips, handle);
+    so_free(&tcpips->udps.handles, handle);
+}
+
 static inline void udps_read(TCPIPS* tcpips, HANDLE handle, IO* io)
 {
     IO* cur;
@@ -351,8 +360,7 @@ void udps_request(TCPIPS* tcpips, IPC* ipc)
             udps_connect(tcpips, ipc);
         break;
     case IPC_CLOSE:
-        //TODO:
-        error(ERROR_NOT_SUPPORTED);
+        udps_close(tcpips, ipc->param1);
         break;
     case IPC_READ:
         udps_read(tcpips, ipc->param1, (IO*)ipc->param2);
