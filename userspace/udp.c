@@ -31,3 +31,8 @@ int udp_write_listen_sync(HANDLE tcpip, HANDLE handle, IO* io, const IP* remote_
     udp_stack->remote_port = remote_port;
     return io_write_sync(tcpip, HAL_IO_REQ(HAL_UDP, IPC_WRITE), handle, io);
 }
+
+void udp_flush(HANDLE tcpip, HANDLE handle)
+{
+    ack(tcpip, HAL_CMD(HAL_UDP, IPC_FLUSH), handle, 0, 0);
+}

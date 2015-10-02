@@ -31,4 +31,6 @@ HANDLE udp_connect(HANDLE tcpip, unsigned short port, const IP* remote_addr);
 void udp_write_listen(HANDLE tcpip, HANDLE handle, IO* io, const IP* remote_addr, unsigned short remote_port);
 int udp_write_listen_sync(HANDLE tcpip, HANDLE handle, IO* io, const IP* remote_addr, unsigned short remote_port);
 
+void udp_flush(HANDLE tcpip, HANDLE handle);
+
 #endif // UDP_H

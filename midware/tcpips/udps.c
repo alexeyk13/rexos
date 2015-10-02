@@ -111,6 +111,8 @@ static void udps_flush(TCPIPS* tcpips, HANDLE handle)
     UDP_HANDLE* uh;
     int err;
     uh = so_get(&tcpips->udps.handles, handle);
+    if (uh == NULL)
+        return;
     err = ERROR_IO_CANCELLED;
 #if (ICMP)
     if (uh->err != ERROR_OK)
@@ -359,7 +361,8 @@ void udps_request(TCPIPS* tcpips, IPC* ipc)
         udps_write(tcpips, ipc->param1, (IO*)ipc->param2);
         break;
     case IPC_FLUSH:
-        //TODO:
+        udps_flush(tcpips, ipc->param1);
+        break;
     default:
         error(ERROR_NOT_SUPPORTED);
     }
