@@ -90,5 +90,6 @@ void icmps_rx(TCPIPS* tcpips, IO* io, IP* src);
 
 //flow control
 void icmps_tx_error(TCPIPS* tcpips, IO* original, ICMP_ERROR err, unsigned int offset);
+void icmps_no_route(TCPIPS* tcpips, IO* original);
 
 #endif // ICMPS_H

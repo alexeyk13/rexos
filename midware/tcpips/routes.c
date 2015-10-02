@@ -8,6 +8,7 @@
 #include "tcpips_private.h"
 #include "arps.h"
 #include "macs.h"
+#include "icmps.h"
 
 #define ROUTE_QUEUE_ITEM(tcpips, i)                    ((ROUTE_QUEUE_ENTRY*)array_at((tcpips)->routes.tx_queue, i))
 
@@ -59,6 +60,9 @@ void routes_not_resolved(TCPIPS* tcpips, const IP* ip)
     for (i = 0; i < array_size(tcpips->routes.tx_queue); ++i)
         if (ROUTE_QUEUE_ITEM(tcpips, i)->ip.u32.ip == ip->u32.ip)
         {
+#if (ICMP)
+            icmps_no_route(tcpips, ROUTE_QUEUE_ITEM(tcpips, i)->io);
+#endif //ICMP
             //drop if not resolved
             tcpips_release_io(tcpips, ROUTE_QUEUE_ITEM(tcpips, i)->io);
             array_remove(&tcpips->routes.tx_queue, i);

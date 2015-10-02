@@ -235,11 +235,15 @@ static inline void udps_connect(TCPIPS* tcpips, IPC* ipc)
     uint16_t local_port;
     dst.u32.ip = ipc->param2;
     local_port = udps_allocate_port(tcpips);
-    handle = so_allocate(&tcpips->udps.handles);
-    if (handle == INVALID_HANDLE)
+    if ((local_port = udps_allocate_port(tcpips)) == 0)
         return;
+    if ((handle = so_allocate(&tcpips->udps.handles)) == INVALID_HANDLE)
+        return;
+    uh = so_get(&tcpips->udps.handles, handle);
+
 //TODO: real processing
 //TODO: #if (ICMP)
+    ipc->param2 = handle;
 }
 
 static inline void udps_read(TCPIPS* tcpips, HANDLE handle, IO* io)

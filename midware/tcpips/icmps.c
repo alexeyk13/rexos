@@ -64,21 +64,19 @@ static inline void icmps_error_process(TCPIPS* tcpips, ICMP_ERROR code)
     }
 }
 
-static void icmps_rx_error(TCPIPS* tcpips, IO* io, ICMP_ERROR code, unsigned int offset)
+static void icmps_rx_error_process(TCPIPS* tcpips, IO* io, ICMP_ERROR code)
 {
     //hide ICMP header for protocol-depending processing
     IP_HEADER* hdr;
-    IP src;
+    IP dst;
     unsigned int hdr_size;
-    io->data_offset += sizeof(ICMP_HEADER);
-    io->data_size -= sizeof(ICMP_HEADER);
     hdr = io_data(io);
     hdr_size = (hdr->ver_ihl & 0xf) << 2;
     io->data_offset += hdr_size;
     io->data_size -= hdr_size;
-    if (hdr->dst.u32.ip == tcpips->ip.u32.ip)
+    if (hdr->src.u32.ip == tcpips->ip.u32.ip)
     {
-        src.u32.ip = hdr->src.u32.ip;
+        dst.u32.ip = hdr->dst.u32.ip;
         switch (hdr->proto)
         {
         case PROTO_ICMP:
@@ -86,7 +84,7 @@ static void icmps_rx_error(TCPIPS* tcpips, IO* io, ICMP_ERROR code, unsigned int
             break;
 #if (UDP)
         case PROTO_UDP:
-            udps_icmps_error_process(tcpips, io, code, &src);
+            udps_icmps_error_process(tcpips, io, code, &dst);
             break;
 #endif //UDP
             //RFU: forward to TCP
@@ -95,9 +93,20 @@ static void icmps_rx_error(TCPIPS* tcpips, IO* io, ICMP_ERROR code, unsigned int
             break;
         }
     }
+    //restore IP header
+    io->data_offset -= hdr_size;
+    io->data_size += hdr_size;
+}
+
+static void icmps_rx_error(TCPIPS* tcpips, IO* io, ICMP_ERROR code)
+{
+    //hide ICMP header for protocol-depending processing
+    io->data_offset += sizeof(ICMP_HEADER);
+    io->data_size -= sizeof(ICMP_HEADER);
+    icmps_rx_error_process(tcpips, io, code);
     //restore ICMP header and release
-    io->data_offset -= sizeof(ICMP_HEADER) + hdr_size;
-    io->data_size += sizeof(ICMP_HEADER) + hdr_size;
+    io->data_offset -= sizeof(ICMP_HEADER);
+    io->data_size += sizeof(ICMP_HEADER);
     ips_release_io(tcpips, io);
 }
 
@@ -144,7 +153,7 @@ static inline void icmps_rx_destination_unreachable(TCPIPS* tcpips, IO* io)
 #if (ICMP_DEBUG)
     printf("ICMP: Destination unreachable(%d) ", icmp->code);
 #endif
-    icmps_rx_error(tcpips, io, icmp->code, 0);
+    icmps_rx_error(tcpips, io, icmp->code);
 }
 
 static inline void icmps_rx_time_exceeded(TCPIPS* tcpips, IO* io)
@@ -159,7 +168,7 @@ static inline void icmps_rx_time_exceeded(TCPIPS* tcpips, IO* io)
 #if (ICMP_DEBUG)
     printf("ICMP: Time exceeded in transit (%d) ", icmp->code);
 #endif
-    icmps_rx_error(tcpips, io, icmp->code + ICMP_ERROR_TTL_EXCEED, 0);
+    icmps_rx_error(tcpips, io, icmp->code + ICMP_ERROR_TTL_EXCEED);
 }
 
 static inline void icmps_rx_parameter_problem(TCPIPS* tcpips, IO* io)
@@ -174,7 +183,7 @@ static inline void icmps_rx_parameter_problem(TCPIPS* tcpips, IO* io)
 #if (ICMP_DEBUG)
     printf("ICMP: Parameter problem (%d) ", icmp->param);
 #endif
-    icmps_rx_error(tcpips, io, icmp->code + ICMP_ERROR_PARAMETER, icmp->param);
+    icmps_rx_error(tcpips, io, icmp->code + ICMP_ERROR_PARAMETER);
 }
 
 static inline void icmps_tx_echo(TCPIPS* tcpips)
@@ -425,4 +434,9 @@ void icmps_parameter_problem(TCPIPS* tcpips, uint8_t offset, IO* original, const
     icmps_control_prepare(tcpips, ICMP_CMD_PARAMETER_PROBLEM, 0, original);
     ((uint8_t*)io_data(original))[4] = offset;
     icmps_tx(tcpips, original, dst);
+}
+
+void icmps_no_route(TCPIPS* tcpips, IO* original)
+{
+    icmps_rx_error_process(tcpips, original, ICMP_ERROR_HOST);
 }
