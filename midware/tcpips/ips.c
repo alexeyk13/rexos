@@ -11,6 +11,7 @@
 #include "icmps.h"
 #include <string.h>
 #include "udps.h"
+#include "tcps.h"
 
 #if (IP_FRAGMENTATION)
 
@@ -394,8 +395,11 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
     case PROTO_UDP:
         udps_rx(tcpips, io, src);
         break;
-    default:
 #endif //UDP
+    case PROTO_TCP:
+        tcps_rx(tcpips, io, src);
+        break;
+    default:
 #if (IP_DEBUG)
         printf("IP: unhandled proto %d from", ip_stack->proto);
         ip_print(src);
@@ -507,6 +511,7 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     ip_stack = io_push(io, sizeof(IP_STACK));
 
     ip_stack->hdr_size = (hdr->ver_ihl & 0xf) << 2;
+    ip_stack->is_long = false;
 #if (IP_CHECKSUM)
     //drop if checksum is invalid
     if (ip_checksum(io_data(io), ip_stack->hdr_size))
