@@ -18,6 +18,7 @@
 #include "routes.h"
 #include "ips.h"
 #include "udps.h"
+#include "tcps.h"
 
 #define FRAME_MAX_SIZE                          (TCPIP_MTU + sizeof(MAC_HEADER) + sizeof(IP_STACK))
 
@@ -265,6 +266,7 @@ void tcpips_init(TCPIPS* tcpips)
 #if (UDP)
     udps_init(tcpips);
 #endif //UDP
+    tcps_init(tcpips);
 }
 
 static inline void tcpips_timer(TCPIPS* tcpips)
@@ -367,6 +369,9 @@ void tcpips_main()
             udps_request(&tcpips, &ipc);
             break;
 #endif //UDP
+        case HAL_TCP:
+            tcps_request(&tcpips, &ipc);
+            break;
         default:
             error(ERROR_NOT_SUPPORTED);
             break;

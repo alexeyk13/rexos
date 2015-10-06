@@ -34,6 +34,26 @@ typedef struct {
 } TCP_PSEUDO_HEADER;
 #pragma pack(pop)
 
+typedef struct {
+    HANDLE process;
+    uint16_t port;
+} TCP_LISTEN_HANDLE;
+
+typedef struct {
+    HANDLE process;
+    uint16_t remote_port, local_port, mss;
+    IP remote_addr;
+    IO* head;
+    //TODO: icmp?
+} TCP_ACTIVE_HANDLE;
+
+#if (TCP_DEBUG_FLOW)
+static const char* __TCP_FLAGS[TCP_FLAGS_COUNT] =                   {"FIN", "SYN", "RST", "PSH", "ACK", "URG"};
+
+    bool has_flag;
+    int i;
+#endif //TCP_DEBUG_FLOW
+
 static uint16_t tcps_checksum(IO* io, const IP* src, const IP* dst)
 {
     TCP_PSEUDO_HEADER tph;
@@ -49,12 +69,67 @@ static uint16_t tcps_checksum(IO* io, const IP* src, const IP* dst)
     return sum;
 }
 
+static HANDLE tcps_find_listen(TCPIPS* tcpips, uint16_t port)
+{
+    HANDLE handle;
+    TCP_LISTEN_HANDLE* tlh;
+    for (handle = so_first(&tcpips->tcps.listen); handle != INVALID_HANDLE; handle = so_next(&tcpips->tcps.listen, handle))
+    {
+        tlh = so_get(&tcpips->tcps.listen, handle);
+        if (tlh->port == port)
+            return handle;
+    }
+    return INVALID_HANDLE;
+}
+
+//TODO:
+/*
+static inline uint16_t tcps_allocate_port(TCPIPS* tcpips)
+{
+    unsigned int res;
+    //from current to HI
+    for (res = tcpips->tcps.dynamic; res <= TCPIP_DYNAMIC_RANGE_HI; ++res)
+    {
+        if (udps_find(tcpips, res) == INVALID_HANDLE)
+        {
+            tcpips->tcps.dynamic = res == TCPIP_DYNAMIC_RANGE_HI ? TCPIP_DYNAMIC_RANGE_LO : res + 1;
+            return (uint16_t)res;
+        }
+
+    }
+    //from LO to current
+    for (res = TCPIP_DYNAMIC_RANGE_LO; res < tcpips->tcps.dynamic; ++res)
+    {
+        if (udps_find(tcpips, res) == INVALID_HANDLE)
+        {
+            tcpips->udps.dynamic = res + 1;
+            return res;
+        }
+
+    }
+    error(ERROR_TOO_MANY_HANDLES);
+    return 0;
+}
+*/
+
+void tcps_init(TCPIPS* tcpips)
+{
+    so_create(&tcpips->tcps.listen, sizeof(TCP_LISTEN_HANDLE), 1);
+    so_create(&tcpips->tcps.active, sizeof(TCP_ACTIVE_HANDLE), 1);
+}
+
 void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
 {
-//TODO:    HANDLE handle;
+#if (TCP_DEBUG_FLOW)
+    bool has_flag;
+    int i;
+#endif //TCP_DEBUG_FLOW
+
+    HANDLE handle;
     TCP_HEADER* hdr;
 //TODO:    TCP_HANDLE* th;
     uint16_t src_port, dst_port;
+    uint8_t data_offset;
     if (io->data_size < sizeof(TCP_HEADER) || tcps_checksum(io, src, &tcpips->ip))
     {
         ips_release_io(tcpips, io);
@@ -63,16 +138,44 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
     hdr = io_data(io);
     src_port = be2short(hdr->src_port_be);
     dst_port = be2short(hdr->dst_port_be);
-
+    data_offset = (hdr->data_off >> 4) << 2;
 #if (TCP_DEBUG_FLOW)
     printf("TCP: ");
     ip_print(src);
     printf(":%d -> ", src_port);
     ip_print(&tcpips->ip);
-    //TODO: size is wrong
-    printf(":%d, %d byte(s)\n", dst_port, io->data_size - sizeof(TCP_HEADER));
+    printf(" ");
+    if (hdr->flags & TCP_FLAG_MSK)
+    {
+        printf("<CTL=");
+        has_flag = false;
+        for (i = 0; i < TCP_FLAGS_COUNT; ++i)
+            if (hdr->flags & (1 << i))
+            {
+                if (has_flag)
+                    printf(",");
+                printf(__TCP_FLAGS[i]);
+            }
+        printf(">");
+    }
+    if (io->data_size - data_offset)
+        printf("<DATA=%d byte(s)>", io->data_size - data_offset);
+    printf("\n");
 #endif //TCP_DEBUG_FLOW
 
+    //TODO: search in active handles
+    if ((handle = tcps_find_listen(tcpips, dst_port)) != INVALID_HANDLE)
+    {
+        //TODO:
+
+    }
+    else
+    {
+#if (TCP_DEBUG)
+        printf("TCP: no connection, RST\n");
+#endif //TCP_DEBUG
+        //TODO: send RST
+    }
 #if 0
     //search in listeners
     handle = udps_find(tcpips, dst_port);
@@ -101,4 +204,85 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
 
 //    dump(io_data(io), io->data_size);
     ips_release_io(tcpips, io);
+}
+
+static inline void tcps_listen(TCPIPS* tcpips, IPC* ipc)
+{
+    HANDLE handle;
+    TCP_LISTEN_HANDLE* tlh;
+    if (tcps_find_listen(tcpips, (uint16_t)ipc->param1) != INVALID_HANDLE)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    handle = so_allocate(&tcpips->tcps.listen);
+    if (handle == INVALID_HANDLE)
+        return;
+    tlh = so_get(&tcpips->tcps.listen, handle);
+    tlh->port = (uint16_t)ipc->param1;
+    tlh->process = ipc->process;
+    ipc->param2 = handle;
+}
+
+static inline void tcps_connect(TCPIPS* tcpips, IPC* ipc)
+{
+    //TODO:
+/*    HANDLE handle;
+    UDP_HANDLE* uh;
+    IP dst;
+    uint16_t local_port;
+    dst.u32.ip = ipc->param2;
+    local_port = udps_allocate_port(tcpips);
+    if ((local_port = udps_allocate_port(tcpips)) == 0)
+        return;
+    if ((handle = so_allocate(&tcpips->udps.handles)) == INVALID_HANDLE)
+        return;
+    uh = so_get(&tcpips->udps.handles, handle);
+    uh->remote_port = (uint16_t)ipc->param1;
+    uh->local_port = local_port;
+    uh->remote_addr.u32.ip = dst.u32.ip;
+    uh->process = ipc->process;
+    uh->head = NULL;
+#if (ICMP)
+    uh->err = ERROR_OK;
+#endif //ICMP
+    ipc->param2 = handle;*/
+    error(ERROR_NOT_SUPPORTED);
+}
+
+void tcps_request(TCPIPS* tcpips, IPC* ipc)
+{
+    if (!tcpips->connected)
+    {
+        error(ERROR_NOT_ACTIVE);
+        return;
+    }
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    case IPC_OPEN:
+        if (ipc->param2 == LOCALHOST)
+            tcps_listen(tcpips, ipc);
+        else
+            tcps_connect(tcpips, ipc);
+        break;
+    case IPC_CLOSE:
+        //TODO:
+//        tcps_close(tcpips, ipc->param1);
+        break;
+    case IPC_READ:
+        //TODO:
+//        tcps_read(tcpips, ipc->param1, (IO*)ipc->param2);
+        break;
+    case IPC_WRITE:
+        //TODO:
+//        tcps_write(tcpips, ipc->param1, (IO*)ipc->param2);
+        break;
+    case IPC_FLUSH:
+        //TODO:
+//        tcps_flush(tcpips, ipc->param1);
+        break;
+    //TODO: accept/reject
+    default:
+        error(ERROR_NOT_SUPPORTED);
+    }
 }
