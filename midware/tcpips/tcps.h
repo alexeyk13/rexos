@@ -22,7 +22,7 @@
 #define TCP_FLAGS_COUNT                             6
 
 typedef struct {
-    SO listen, active;
+    SO listen, tcbs;
     uint16_t dynamic;
 } TCPS;
 
