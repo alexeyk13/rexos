@@ -410,7 +410,6 @@ void icmps_tx_error(TCPIPS* tcpips, IO* original, ICMP_ERROR err, unsigned int o
 
     original->data_offset -= ip_stack->hdr_size;
     original->data_size += ip_stack->hdr_size;
-    ips_release_io(tcpips, original);
 }
 
 void icmps_time_exceeded(TCPIPS* tcpips, uint8_t code, IO* original, const IP* dst)

@@ -407,9 +407,8 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
 #endif //IP_DEBUG
 #if (ICMP)
         icmps_tx_error(tcpips, io, ICMP_ERROR_PROTOCOL, 0);
-#else
+#endif //ICMP
         ips_release_io(tcpips, io);
-#endif
     }
 }
 
@@ -441,9 +440,8 @@ static inline void ips_insert_fragment(TCPIPS* tcpips, IO* io, unsigned int offs
 #endif //IP_DEBUG
 #if (ICMP)
         icmps_tx_error(tcpips, io, ICMP_ERROR_PARAMETER, 2);
-#else
-        tcpips_release_io(tcpips, io);
 #endif //ICMP
+        tcpips_release_io(tcpips, io);
         //assembly drop
         ips_release_long(tcpips, as->io);
         ips_free_assembly(tcpips, &as->src, as->id);
@@ -529,9 +527,8 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     {
 #if (ICMP)
         icmps_tx_error(tcpips, io, ICMP_ERROR_PARAMETER, 2);
-#else
-        tcpips_release_io(tcpips, io);
 #endif //ICMP
+        tcpips_release_io(tcpips, io);
         return;
     }
 
@@ -542,9 +539,8 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     {
 #if (ICMP)
         icmps_tx_error(tcpips, io, ICMP_ERROR_PARAMETER, 0);
-#else
-        tcpips_release_io(tcpips, io);
 #endif //ICMP
+        tcpips_release_io(tcpips, io);
         return;
     }
     //unicast-only filter
@@ -559,9 +555,8 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     {
 #if (ICMP)
         icmps_tx_error(tcpips, io, ICMP_ERROR_TTL_EXCEED, 0);
-#else
-        tcpips_release_io(tcpips, io);
 #endif //ICMP
+        tcpips_release_io(tcpips, io);
         return;
     }
 
@@ -575,9 +570,8 @@ void ips_rx(TCPIPS* tcpips, IO* io)
 #else
 #if (ICMP)
         icmps_tx_error(tcpips, io, ICMP_ERROR_PARAMETER, 6);
-#else
-        tcpips_release_io(tcpips, io);
 #endif //ICMP
+        tcpips_release_io(tcpips, io);
 #endif //IP_FRAGMENTATION
         return;
     }

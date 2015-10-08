@@ -11,7 +11,8 @@
 #include "../../userspace/systime.h"
 #include "icmps.h"
 
-#define TCP_MSS                                         (IP_FRAME_MAX_DATA_SIZE - sizeof(TCP_HEADER))
+#define TCP_MSS_MAX                                      (IP_FRAME_MAX_DATA_SIZE - sizeof(TCP_HEADER))
+#define TCP_MSS_MIN                                      536
 
 #pragma pack(push, 1)
 typedef struct {
@@ -68,7 +69,7 @@ typedef struct {
     IO* head;
     uint32_t snd_una, snd_nxt, rcv_nxt, ttl;
     TCP_STATE state;
-    uint16_t remote_port, local_port, mss;
+    uint16_t remote_port, local_port, mss, rx_wnd, tx_wnd;
     //TODO: icmp?
 } TCP_TCB;
 
@@ -125,6 +126,9 @@ static void tcps_debug(IO* io, const IP* src, const IP* dst)
     printf(":%d -> ", be2short(hdr->src_port_be));
     ip_print(dst);
     printf(":%d <SEQ=%u>", be2short(hdr->dst_port_be), be2int(hdr->seq_be));
+    if (hdr->flags & TCP_FLAG_ACK)
+        printf("<ACK=%u>", be2int(hdr->ack_be));
+    printf("<WND=%d>", be2short(hdr->window_be));
     if (hdr->flags & TCP_FLAG_MSK)
     {
         printf("<CTL=");
@@ -201,7 +205,7 @@ static uint32_t tcps_gen_isn()
     return (uptime.sec % 17179) + (uptime.usec >> 2);
 }
 
-static HANDLE tcps_find_listen(TCPIPS* tcpips, uint16_t port)
+static HANDLE tcps_find_listener(TCPIPS* tcpips, uint16_t port)
 {
     HANDLE handle;
     TCP_LISTEN_HANDLE* tlh;
@@ -209,7 +213,7 @@ static HANDLE tcps_find_listen(TCPIPS* tcpips, uint16_t port)
     {
         tlh = so_get(&tcpips->tcps.listen, handle);
         if (tlh->port == port)
-            return handle;
+            return tlh->process;
     }
     return INVALID_HANDLE;
 }
@@ -272,8 +276,41 @@ static HANDLE tcps_create_tcb(TCPIPS* tcpips, const IP* remote_addr, uint16_t re
     tcb->state = TCP_STATE_CLOSED;
     tcb->remote_port = remote_port;
     tcb->local_port = local_port;
-    tcb->mss = TCP_MSS;
+    tcb->mss = TCP_MSS_MAX;
+    tcb->rx_wnd = TCP_MSS_MAX;
+    tcb->tx_wnd = 0;
     return handle;
+}
+
+static inline bool tcps_set_mss(TCP_TCB* tcb, uint16_t mss)
+{
+    if (mss < TCP_MSS_MIN || mss > TCP_MSS_MAX)
+        return false;
+    tcb->mss = mss;
+    return true;
+}
+
+static void tcps_apply_options(TCPIPS* tcpips, IO* io, TCP_TCB* tcb)
+{
+    int i;
+    TCP_OPT* opt;
+    for (i = tcps_get_first_opt(io); i; i = tcps_get_next_opt(io, i))
+    {
+        opt = (TCP_OPT*)((uint8_t*)io_data(io) + i);
+        switch(opt->kind)
+        {
+        case TCP_OPTS_MSS:
+#if (ICMP)
+            if (!tcps_set_mss(tcb, be2short(opt->data)))
+                icmps_tx_error(tcpips, io, ICMP_ERROR_PARAMETER, ((IP_STACK*)io_stack(io))->hdr_size + sizeof(TCP_HEADER) + i);
+#else
+            tcps_set_mss(tcpips, tcb, be2short(opt->data));
+#endif //ICMP
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 void tcps_init(TCPIPS* tcpips)
@@ -282,81 +319,73 @@ void tcps_init(TCPIPS* tcpips)
     so_create(&tcpips->tcps.tcbs, sizeof(TCP_TCB), 1);
 }
 
-static void tcps_tx(TCPIPS* tcpips, IO* io, HANDLE handle)
+static void tcps_tx(TCPIPS* tcpips, IO* io, TCP_TCB* tcb)
 {
+    TCP_HEADER* tcp = io_data(io);
+    short2be(tcp->src_port_be, tcb->local_port);
+    short2be(tcp->dst_port_be, tcb->remote_port);
+    int2be(tcp->seq_be, tcb->snd_una);
+    int2be(tcp->ack_be, (tcp->flags & TCP_FLAG_ACK) ? tcb->rcv_nxt : 0);
+    //not byte aligned
+//    uint8_t data_off;
+//    uint8_t window_be[2];
+    //TODO:
+//    uint8_t checksum_be[2];
+    //TODO:
+//    uint8_t urgent_pointer_be[2];
+
+    ips_tx(tcpips, io, &tcb->remote_addr);
     //TODO:
 }
 
-static inline void tcps_rx_syn(TCPIPS* tcpips, IO* io, IP* src, HANDLE handle)
+static inline void tcps_rx_listen(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 {
-    int i;
     TCP_HEADER* hdr;
-    TCP_LISTEN_HANDLE* tlh;
-    TCP_TCB* tcb;
-    HANDLE tcb_handle;
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
     hdr = io_data(io);
-    tlh = so_get(&tcpips->tcps.listen, handle);
-    tcb_handle = tcps_create_tcb(tcpips, src, be2short(hdr->src_port_be), tlh->port, tlh->process);
-    if (tcb_handle == INVALID_HANDLE)
+
+    //SYN flag - new connection request
+    if (hdr->flags & TCP_FLAG_SYN)
     {
-        ips_release_io(tcpips, io);
-        return;
-    }
+        tcb->state = TCP_STATE_SYN_RECEIVED;
 #if (TCP_DEBUG_FLOW)
-    tcps_debug_state(TCP_STATE_LISTEN, TCP_STATE_SYN_RECEIVED);
+        tcps_debug_state(TCP_STATE_LISTEN, TCP_STATE_SYN_RECEIVED);
 #endif //TCP_DEBUG_FLOW
-    tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
-    tcb->snd_nxt = tcb->snd_una = tcps_gen_isn();
-    //SYN needs 1 seq
-    tcb->rcv_nxt = be2int(hdr->seq_be) + 1;
-    tcb->state = TCP_STATE_SYN_RECEIVED;
-    //decode options
-/*    for (i = tcps_get_first_opt(io); i; i = tcps_get_next_opt(io, i))
-    {
-        has_flag = false;
-        printf("<OPTS=");
-        if (has_flag)
-            printf(",");
-        opt = (TCP_OPT*)((uint8_t*)io_data(io) + i);
-        switch(opt->kind)
-        {
-        case TCP_OPTS_NOOP:
-            printf("NOOP");
-            break;
-        case TCP_OPTS_MSS:
-            printf("MSS:%d", be2short(opt->data));
-            break;
-        default:
-            printf("K%d", opt->kind);
-            for (j = 0; j < opt->len - 2; ++j)
-            {
-                printf(j ? " " : ":");
-                printf("%02X", opt->data[j]);
-            }
-        }
-        printf(">");
+        tcb->snd_nxt = tcb->snd_una = tcps_gen_isn();
+        //SYN needs 1 seq
+        tcb->rcv_nxt = be2int(hdr->seq_be) + 1;
+
+        //TODO: tx ack here
     }
-    */
-    ips_release_io(tcpips, io);
-    //TODO: tx syn
+    //half opened connection, RST
+    else
+    {
+#if (TCP_DEBUG)
+        printf("TCP: Half-opened connection, closing");
+#endif //TCP_DEBUG_FLOW
+        //TODO: half opened connection, send RST
+    }
 }
 
-static inline void tcps_rx_fin(TCPIPS* tcpips, IO* io, HANDLE handle)
+static inline void tcps_rx_process(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 {
-    printf("TCP: FIN\n");
-    //TODO:
-}
-
-static inline void tcps_rx_process(TCPIPS* tcpips, IO* io, HANDLE handle)
-{
-    printf("TCP: PROCESS:TODO!\n");
-    //TODO:
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    switch (tcb->state)
+    {
+    case TCP_STATE_LISTEN:
+        tcps_rx_listen(tcpips, io, tcb_handle);
+        break;
+    default:
+        printf("TODO: unsupported state: %d\n", tcb->state);
+        break;
+    }
 }
 
 void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
 {
     TCP_HEADER* hdr;
-    HANDLE handle;
+    TCP_TCB* tcb;
+    HANDLE tcb_handle, process;
     uint16_t src_port, dst_port;
     if (io->data_size < sizeof(TCP_HEADER) || tcps_checksum(io, src, &tcpips->ip))
     {
@@ -370,47 +399,45 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
     tcps_debug(io, src, &tcpips->ip);
 #endif //TCP_DEBUG_FLOW
 
-    handle = tcps_find_tcb(tcpips, src, src_port, dst_port);
-    if (handle != INVALID_HANDLE)
+    tcb_handle = tcps_find_tcb(tcpips, src, src_port, dst_port);
+    if (tcb_handle == INVALID_HANDLE)
     {
-        //FIN flag - connection close request
-        if (hdr->flags & TCP_FLAG_FIN)
-            tcps_rx_fin(tcpips, io, handle);
-        //normal processing
-        else
-            tcps_rx_process(tcpips, io, handle);
-    }
-    //SYN flag - new connection request
-    else if (hdr->flags & TCP_FLAG_SYN)
-    {
-        handle = tcps_find_listen(tcpips, dst_port);
-        if (handle != INVALID_HANDLE)
-            tcps_rx_syn(tcpips, io, src, handle);
+        process = tcps_find_listener(tcpips, dst_port);
+        //found? Create TCB
+        if (process != INVALID_HANDLE)
+        {
+            tcb_handle = tcps_create_tcb(tcpips, src, src_port, dst_port, process);
+            tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+            tcb->state = TCP_STATE_LISTEN;
+        }
         //no listening on port, inform by ICMP
+#if (TCP_DEBUG_FLOW) || (ICMP)
         else
         {
 #if (TCP_DEBUG_FLOW)
-            printf("TCP: port closed, reject\n");
+            printf("TCP: port closed, connection rejected\n");
 #endif //TCP_DEBUG_FLOW
 #if (ICMP)
             icmps_tx_error(tcpips, io, ICMP_ERROR_PORT, 0);
-#else
-            ips_release_io(tcpips, io);
 #endif //ICMP
         }
+#endif //(TCP_DEBUG_FLOW) || (ICMP)
     }
-    else
+    if (tcb_handle != INVALID_HANDLE)
     {
-        printf("RST half-opened: TODO RST\n");
-        //TODO: half opened connection, send RST
+        tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+        tcps_apply_options(tcpips, io, tcb);
+        tcb->tx_wnd = be2short(hdr->window_be);
+        tcps_rx_process(tcpips, io, tcb_handle);
     }
+    ips_release_io(tcpips, io);
 }
 
 static inline void tcps_listen(TCPIPS* tcpips, IPC* ipc)
 {
     HANDLE handle;
     TCP_LISTEN_HANDLE* tlh;
-    if (tcps_find_listen(tcpips, (uint16_t)ipc->param1) != INVALID_HANDLE)
+    if (tcps_find_listener(tcpips, (uint16_t)ipc->param1) != INVALID_HANDLE)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;

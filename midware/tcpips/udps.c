@@ -206,9 +206,7 @@ void udps_rx(TCPIPS* tcpips, IO* io, IP* src)
             handle = INVALID_HANDLE;
     }
 
-    if (handle != INVALID_HANDLE)
-        ips_release_io(tcpips, io);
-    else
+    if (handle == INVALID_HANDLE)
     {
 #if (UDP_DEBUG)
         printf("UDP: no connection, datagramm dropped\n");
@@ -217,6 +215,7 @@ void udps_rx(TCPIPS* tcpips, IO* io, IP* src)
         icmps_tx_error(tcpips, io, ICMP_ERROR_PORT, 0);
 #endif //ICMP
     }
+    ips_release_io(tcpips, io);
 }
 
 static inline void udps_listen(TCPIPS* tcpips, IPC* ipc)
