@@ -81,8 +81,8 @@ static const char* __TCP_STATES[TCP_STATE_MAX] =                    {"CLOSED", "
 
 static inline unsigned int tcps_get_data_offset(IO* io)
 {
-    TCP_HEADER* hdr = io_data(io);
-    return (hdr->data_off >> 4) << 2;
+    TCP_HEADER* tcp = io_data(io);
+    return (tcp->data_off >> 4) << 2;
 }
 
 static unsigned int tcps_get_first_opt(IO* io)
@@ -119,26 +119,27 @@ static void tcps_debug(IO* io, const IP* src, const IP* dst)
 {
     bool has_flag;
     int i, j;
-    TCP_HEADER* hdr = io_data(io);
+    TCP_HEADER* tcp = io_data(io);
     TCP_OPT* opt;
     printf("TCP: ");
     ip_print(src);
-    printf(":%d -> ", be2short(hdr->src_port_be));
+    printf(":%d -> ", be2short(tcp->src_port_be));
     ip_print(dst);
-    printf(":%d <SEQ=%u>", be2short(hdr->dst_port_be), be2int(hdr->seq_be));
-    if (hdr->flags & TCP_FLAG_ACK)
-        printf("<ACK=%u>", be2int(hdr->ack_be));
-    printf("<WND=%d>", be2short(hdr->window_be));
-    if (hdr->flags & TCP_FLAG_MSK)
+    printf(":%d <SEQ=%u>", be2short(tcp->dst_port_be), be2int(tcp->seq_be));
+    if (tcp->flags & TCP_FLAG_ACK)
+        printf("<ACK=%u>", be2int(tcp->ack_be));
+    printf("<WND=%d>", be2short(tcp->window_be));
+    if (tcp->flags & TCP_FLAG_MSK)
     {
         printf("<CTL=");
         has_flag = false;
         for (i = 0; i < TCP_FLAGS_COUNT; ++i)
-            if (hdr->flags & (1 << i))
+            if (tcp->flags & (1 << i))
             {
                 if (has_flag)
                     printf(",");
                 printf(__TCP_FLAGS[i]);
+                has_flag = true;
             }
         printf(">");
     }
@@ -313,39 +314,48 @@ static void tcps_apply_options(TCPIPS* tcpips, IO* io, TCP_TCB* tcb)
     }
 }
 
-void tcps_init(TCPIPS* tcpips)
+static IO* tcps_allocate_io(TCPIPS* tcpips, TCP_TCB* tcb)
 {
-    so_create(&tcpips->tcps.listen, sizeof(TCP_LISTEN_HANDLE), 1);
-    so_create(&tcpips->tcps.tcbs, sizeof(TCP_TCB), 1);
+    TCP_HEADER* tcp;
+    IO* io = ips_allocate_io(tcpips, IP_FRAME_MAX_DATA_SIZE, PROTO_TCP);
+    if (io == NULL)
+        return NULL;
+    tcp = io_data(io);
+    short2be(tcp->src_port_be, tcb->local_port);
+    short2be(tcp->dst_port_be, tcb->remote_port);
+    int2be(tcp->seq_be, tcb->snd_una);
+    int2be(tcp->ack_be, 0);
+    tcp->data_off = (sizeof(TCP_HEADER) >> 2) << 4;
+    tcp->flags = 0;
+    short2be(tcp->window_be, tcb->rx_wnd);
+    short2be(tcp->urgent_pointer_be, 0);
+    short2be(tcp->checksum_be, 0);
+    io->data_size = sizeof(TCP_HEADER);
+    return io;
 }
 
 static void tcps_tx(TCPIPS* tcpips, IO* io, TCP_TCB* tcb)
 {
     TCP_HEADER* tcp = io_data(io);
-    short2be(tcp->src_port_be, tcb->local_port);
-    short2be(tcp->dst_port_be, tcb->remote_port);
-    int2be(tcp->seq_be, tcb->snd_una);
-    int2be(tcp->ack_be, (tcp->flags & TCP_FLAG_ACK) ? tcb->rcv_nxt : 0);
-    //not byte aligned
-//    uint8_t data_off;
-//    uint8_t window_be[2];
-    //TODO:
-//    uint8_t checksum_be[2];
-    //TODO:
-//    uint8_t urgent_pointer_be[2];
-
+    if (tcp->flags & TCP_FLAG_ACK)
+        int2be(tcp->ack_be, tcb->rcv_nxt);
+    short2be(tcp->checksum_be, tcps_checksum(io, &tcpips->ip, &tcb->remote_addr));
+#if (TCP_DEBUG_FLOW)
+    tcps_debug(io, &tcpips->ip, &tcb->remote_addr);
+#endif //TCP_DEBUG_FLOW
     ips_tx(tcpips, io, &tcb->remote_addr);
-    //TODO:
 }
 
 static inline void tcps_rx_listen(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 {
-    TCP_HEADER* hdr;
+    IO* tx;
+    TCP_HEADER* tcp;
+    TCP_HEADER* tcp_tx;
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
-    hdr = io_data(io);
+    tcp = io_data(io);
 
     //SYN flag - new connection request
-    if (hdr->flags & TCP_FLAG_SYN)
+    if (tcp->flags & TCP_FLAG_SYN)
     {
         tcb->state = TCP_STATE_SYN_RECEIVED;
 #if (TCP_DEBUG_FLOW)
@@ -353,9 +363,18 @@ static inline void tcps_rx_listen(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 #endif //TCP_DEBUG_FLOW
         tcb->snd_nxt = tcb->snd_una = tcps_gen_isn();
         //SYN needs 1 seq
-        tcb->rcv_nxt = be2int(hdr->seq_be) + 1;
+        tcb->rcv_nxt = be2int(tcp->seq_be) + 1;
 
-        //TODO: tx ack here
+        //allocate IO
+        if ((tx = tcps_allocate_io(tcpips, tcb)) == NULL)
+            return;
+        tcp_tx = io_data(tx);
+        //add ACK, SYN flags
+        tcp_tx->flags |= TCP_FLAG_ACK | TCP_FLAG_SYN;
+        //allocate for SYN
+        ++tcb->snd_nxt;
+        //TODO: add MSS to option list
+        tcps_tx(tcpips, tx, tcb);
     }
     //half opened connection, RST
     else
@@ -381,9 +400,15 @@ static inline void tcps_rx_process(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     }
 }
 
+void tcps_init(TCPIPS* tcpips)
+{
+    so_create(&tcpips->tcps.listen, sizeof(TCP_LISTEN_HANDLE), 1);
+    so_create(&tcpips->tcps.tcbs, sizeof(TCP_TCB), 1);
+}
+
 void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
 {
-    TCP_HEADER* hdr;
+    TCP_HEADER* tcp;
     TCP_TCB* tcb;
     HANDLE tcb_handle, process;
     uint16_t src_port, dst_port;
@@ -392,9 +417,9 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
         ips_release_io(tcpips, io);
         return;
     }
-    hdr = io_data(io);
-    src_port = be2short(hdr->src_port_be);
-    dst_port = be2short(hdr->dst_port_be);
+    tcp = io_data(io);
+    src_port = be2short(tcp->src_port_be);
+    dst_port = be2short(tcp->dst_port_be);
 #if (TCP_DEBUG_FLOW)
     tcps_debug(io, src, &tcpips->ip);
 #endif //TCP_DEBUG_FLOW
@@ -427,7 +452,7 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
     {
         tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
         tcps_apply_options(tcpips, io, tcb);
-        tcb->tx_wnd = be2short(hdr->window_be);
+        tcb->tx_wnd = be2short(tcp->window_be);
         tcps_rx_process(tcpips, io, tcb_handle);
     }
     ips_release_io(tcpips, io);
