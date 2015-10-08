@@ -21,6 +21,10 @@
 #define TCP_FLAG_MSK                                0x3f
 #define TCP_FLAGS_COUNT                             6
 
+#define TCP_OPTS_END                                0
+#define TCP_OPTS_NOOP                               1
+#define TCP_OPTS_MSS                                2
+
 typedef struct {
     SO listen, tcbs;
     uint16_t dynamic;
