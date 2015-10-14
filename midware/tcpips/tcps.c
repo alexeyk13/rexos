@@ -63,7 +63,7 @@ typedef struct {
     uint32_t snd_una, snd_nxt, rcv_nxt, ttl;
     TCP_STATE state;
     uint16_t remote_port, local_port, mss, rx_wnd, tx_wnd;
-    //TODO: icmp?
+    bool active;
 } TCP_TCB;
 
 #if (TCP_DEBUG_FLOW)
@@ -284,6 +284,7 @@ static HANDLE tcps_create_tcb(TCPIPS* tcpips, const IP* remote_addr, uint16_t re
     tcb->mss = TCP_MSS_MAX;
     tcb->rx_wnd = TCP_MSS_MAX;
     tcb->tx_wnd = 0;
+    tcb->active = false;
     return handle;
 }
 
@@ -446,6 +447,7 @@ static inline void tcps_rx_listen(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 static inline void tcps_rx_otherwise(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 {
     unsigned int seg_len;
+    uint32_t seq;
 ///    uint32_t ack;
     IO* tx;
     TCP_HEADER* tcp;
@@ -455,9 +457,13 @@ static inline void tcps_rx_otherwise(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 
     //first check sequence number
     seg_len = tcps_seg_len(io);
-    if (be2int(tcp->seq_be) != tcb->rcv_nxt || seg_len > tcb->rx_wnd)
+    seq = be2int(tcp->seq_be);
+    //TODO: partial fit
+    if (seq != tcb->rcv_nxt || seg_len > tcb->rx_wnd)
     {
-        printf("boundary fail\n");
+#if (TCP_DEBUG_FLOW)
+        printf("TCP: boundary fail\n");
+#endif //TCP_DEBUG_FLOW
         //RST bit is set, drop the segment and return:
         if (tcp->flags & TCP_FLAG_RST)
             return;
@@ -471,7 +477,50 @@ static inline void tcps_rx_otherwise(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         return;
     }
 
-    printf("ok\n");
+    //second check the RST bit
+    if (tcp->flags & TCP_FLAG_RST)
+    {
+        switch (tcb->state)
+        {
+        case TCP_STATE_SYN_RECEIVED:
+            if (tcb->active)
+            {
+                printf("TODO: SYN-RECEIVED: inform user\n");
+            }
+            break;
+        case TCP_STATE_ESTABLISHED:
+        case TCP_STATE_FIN_WAIT_1:
+        case TCP_STATE_FIN_WAIT_2:
+        case TCP_STATE_CLOSE_WAIT:
+            printf("TODO: RST flush rx/tx\n");
+            printf("TODO: RST inform user on connection closed\n");
+            break;
+        default:
+            break;
+        }
+        //enter closed state, destroy TCB and return
+        tcps_destroy_tcb(tcpips, tcb_handle);
+        return;
+    }
+
+    //fourth, check the SYN bit
+    if (tcp->flags & TCP_FLAG_SYN)
+    {
+        printf("TODO: RST flush rx/tx\n");
+        printf("TODO: RST inform user on connection closed\n");
+        //enter closed state, destroy TCB and return
+        tcps_destroy_tcb(tcpips, tcb_handle);
+        return;
+    }
+
+    //fifth check the ACK field
+    if (tcp->flags & TCP_FLAG_ACK)
+    {
+        printf("ok\n");
+    }
+    else
+        return;
+
 /*    ///    case TCP_STATE_SYN_RECEIVED:
             //ACK and window update
             if (tcp->flags & TCP_FLAG_ACK)
@@ -506,7 +555,6 @@ static inline void tcps_rx_process(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         printf("TODO: SYN-SENT\n");
         break;
     default:
-        printf("otherwise\n");
         tcps_rx_otherwise(tcpips, io, tcb_handle);
         break;
     }
@@ -545,6 +593,7 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
             {
                 tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
                 tcb->state = TCP_STATE_LISTEN;
+                tcb->active = false;
                 tcb->process = process;
             }
         }
