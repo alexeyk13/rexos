@@ -27,7 +27,8 @@ uint16_t ip_checksum(void* buf, unsigned int size)
     //padding zero
     if (size & 1)
         sum += ((uint8_t*)buf)[size - 1] << 8;
-    sum = ((sum & 0xffff) + (sum >> 16)) & 0xffff;
+    while (sum >> 16)
+        sum = (sum & 0xffff) + (sum >> 16);
     return ~((uint16_t)sum);
 }
 
