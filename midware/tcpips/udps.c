@@ -6,9 +6,9 @@
 
 #include "udps.h"
 #include "tcpips_private.h"
+#include "../../userspace/udp.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/endian.h"
-#include "../../userspace/udp.h"
 #include <string.h>
 #include "sys_config.h"
 #include "icmps.h"
@@ -20,14 +20,6 @@ typedef struct {
     uint8_t len_be[2];
     uint8_t checksum_be[2];
 } UDP_HEADER;
-
-typedef struct {
-    IP src;
-    IP dst;
-    uint8_t zero;
-    uint8_t proto;
-    uint8_t length_be[2];
-} UDP_PSEUDO_HEADER;
 #pragma pack(pop)
 
 typedef struct {
@@ -41,21 +33,6 @@ typedef struct {
 } UDP_HANDLE;
 
 #define UDP_FRAME_MAX_DATA_SIZE                                 (IP_FRAME_MAX_DATA_SIZE - sizeof(UDP_HEADER))
-
-static uint16_t udps_checksum(IO* io, const IP* src, const IP* dst)
-{
-    UDP_PSEUDO_HEADER uph;
-    uint16_t sum;
-    uph.src.u32.ip = src->u32.ip;
-    uph.dst.u32.ip = dst->u32.ip;
-    uph.zero = 0;
-    uph.proto = PROTO_UDP;
-    short2be(uph.length_be, io->data_size);
-    sum = ~ip_checksum(&uph, sizeof(UDP_PSEUDO_HEADER));
-    sum += ~ip_checksum(io_data(io), io->data_size);
-    sum = ~(((sum & 0xffff) + (sum >> 16)) & 0xffff);
-    return sum;
-}
 
 static HANDLE udps_find(TCPIPS* tcpips, uint16_t local_port)
 {
@@ -177,7 +154,7 @@ void udps_rx(TCPIPS* tcpips, IO* io, IP* src)
     UDP_HEADER* hdr;
     UDP_HANDLE* uh;
     uint16_t src_port, dst_port;
-    if (io->data_size < sizeof(UDP_HEADER) || udps_checksum(io, src, &tcpips->ip))
+    if (io->data_size < sizeof(UDP_HEADER) || udp_checksum(io_data(io), io->data_size, src, &tcpips->ip))
     {
         ips_release_io(tcpips, io);
         return;
@@ -357,7 +334,7 @@ static inline void udps_write(TCPIPS* tcpips, HANDLE handle, IO* io)
         short2be(udp->dst_port_be, remote_port);
         short2be(udp->len_be, size + sizeof(UDP_HEADER));
         short2be(udp->checksum_be, 0);
-        short2be(udp->checksum_be, udps_checksum(cur, &tcpips->ip, &dst));
+        short2be(udp->checksum_be, udp_checksum(io_data(cur), cur->data_size, &tcpips->ip, &dst));
         ips_tx(tcpips, cur, &dst);
     }
 }

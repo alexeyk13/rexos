@@ -9,6 +9,7 @@
 
 #include "ip.h"
 #include "io.h"
+#include <stdint.h>
 
 #pragma pack(push, 1)
 
@@ -19,6 +20,7 @@ typedef struct {
 
 #pragma pack(pop)
 
+uint16_t udp_checksum(void* buf, unsigned int size, const IP* src, const IP* dst);
 HANDLE udp_listen(HANDLE tcpip, unsigned short port);
 HANDLE udp_connect(HANDLE tcpip, unsigned short port, const IP* remote_addr);
 #define udp_read(tcpip, handle, io, size)                           io_read((tcpip), HAL_IO_REQ(HAL_UDP, IPC_READ), (handle), (io), (size))
