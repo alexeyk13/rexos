@@ -13,7 +13,7 @@
 #define SO_HANDLE(index, sequence)              (((index) << 8) | ((sequence) & 0xff))
 #define SO_FREE                                 0xffffff
 #define SO_AT(so, index)                        (*((HANDLE*)array_at((so)->ar, (index))))
-#define SO_DATA(so, handle)                     ((void*)((uint8_t*)array_at((so)->ar, SO_INDEX(handle)) + sizeof(HANDLE)))
+#define SO_DATA(so, index)                      ((void*)((uint8_t*)array_at((so)->ar, (index)) + sizeof(HANDLE)))
 
 SO* so_create(SO* so, unsigned int data_size, unsigned int reserved)
 {
@@ -35,16 +35,14 @@ HANDLE so_allocate(SO* so)
     if (so->first_free == SO_FREE)
     {
         if (array_append(&so->ar))
-        {
-            SO_AT(so, array_size(so->ar) - 1) = 0;
-            handle = SO_HANDLE(array_size(so->ar) - 1, 0);
-        }
+            handle = SO_AT(so, array_size(so->ar) - 1) = SO_HANDLE(array_size(so->ar) - 1, 0);
     }
     //get first
     else
     {
         handle = SO_HANDLE(so->first_free, SO_SEQUENCE(SO_AT(so, so->first_free)));
-        so->first_free = SO_INDEX(SO_AT(so, so->first_free));
+        SO_AT(so, so->first_free) = handle;
+        so->first_free = *(unsigned int*)SO_DATA(so, so->first_free);
     }
     return handle;
 }
@@ -71,19 +69,18 @@ static bool so_check_handle(SO* so, HANDLE handle)
 
 void so_free(SO* so, HANDLE handle)
 {
-    HANDLE tmp;
     if (!so_check_handle(so, handle))
         return;
-    tmp = SO_AT(so, SO_INDEX(handle));
-    SO_AT(so, SO_INDEX(handle)) = SO_HANDLE(so->first_free, SO_SEQUENCE(tmp) + 1);
-    so->first_free = SO_INDEX(tmp);
+    *(unsigned int*)SO_DATA(so, SO_INDEX(handle)) = so->first_free;
+    so->first_free = SO_INDEX(handle);
+    SO_AT(so, so->first_free) = SO_HANDLE(SO_FREE, SO_SEQUENCE(handle) + 1);
 }
 
 void* so_get(SO* so, HANDLE handle)
 {
     if (!so_check_handle(so, handle))
         return NULL;
-    return SO_DATA(so, handle);
+    return SO_DATA(so, SO_INDEX(handle));
 }
 
 HANDLE so_first(SO* so)
