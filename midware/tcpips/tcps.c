@@ -62,9 +62,10 @@ typedef struct {
     IP remote_addr;
     IO* head;
     uint32_t snd_una, snd_nxt, rcv_nxt;
+
     TCP_STATE state;
     uint16_t remote_port, local_port, mss, rx_wnd, tx_wnd;
-    bool active;
+    bool active, transmit;
     //TODO: time
 } TCP_TCB;
 
@@ -298,6 +299,7 @@ static HANDLE tcps_create_tcb(TCPIPS* tcpips, const IP* remote_addr, uint16_t re
     tcb->rx_wnd = TCP_MSS_MAX;
     tcb->tx_wnd = 0;
     tcb->active = false;
+    tcb->transmit = false;
     return handle;
 }
 
@@ -420,12 +422,18 @@ static void tcps_tx_ack(TCPIPS* tcpips, HANDLE tcb_handle)
     tcps_tx(tcpips, tx, tcb);
 }
 
-static void tcps_tx_ack_text(TCPIPS* tcpips, HANDLE tcb_handle)
+static void tcps_tx_text(TCPIPS* tcpips, HANDLE tcb_handle, bool reply)
 {
     IO* tx;
     TCP_HEADER* tcp_tx;
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 
+    //ack from remote host - we transmitted all
+    if (reply && tcb->transmit && (tcb->snd_una == tcb->snd_nxt))
+    {
+        tcb->transmit = false;
+        return;
+    }
     if ((tx = tcps_allocate_io(tcpips, tcb)) == NULL)
         return;
 
@@ -621,6 +629,7 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 #if (TCP_DEBUG_FLOW)
             tcps_debug_state(TCP_STATE_SYN_RECEIVED, TCP_STATE_ESTABLISHED);
 #endif //TCP_DEBUG_FLOW
+            ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, tcb->remote_addr.u32.ip, 0);
             //and continue processing in that state
             return true;
         }
@@ -706,9 +715,16 @@ static inline void tcps_rx_otw_text(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
             //TODO: user processing, PSH
             //TODO: adjust rx wnd
             if (data_size)
-                dump((uint8_t*)io_data(io) + data_offset, data_size);
+            {
+                int i;
+                printf("\n");
+                for (i = 0; i < data_size; ++i)
+                    printf("%c",((char*)io_data(io))[data_offset + i]);
+                printf("\n");
+///                dump((uint8_t*)io_data(io) + data_offset, data_size);
+            }
         }
-        tcps_tx_ack_text(tcpips, tcb_handle);
+        tcps_tx_text(tcpips, tcb_handle, true);
         break;
     default:
         //Ignore the segment text
