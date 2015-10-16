@@ -60,7 +60,9 @@ typedef enum {
 typedef struct {
     HANDLE process;
     IP remote_addr;
-    IO* head;
+    IO* rx;
+    IO* rx_tmp;
+    IO* tx;
     uint32_t snd_una, snd_nxt, rcv_nxt;
 
     TCP_STATE state;
@@ -224,6 +226,15 @@ static uint32_t tcps_gen_isn()
     return (uptime.sec % 17179) + (uptime.usec >> 2);
 }
 
+static void tcps_update_rx_wnd(TCP_TCB* tcb)
+{
+    tcb->rx_wnd = TCP_MSS_MAX;
+    if (tcb->rx != NULL)
+        tcb->rx_wnd += io_get_free(tcb->rx);
+    if (tcb->rx_tmp != NULL)
+        tcb->rx_wnd = io_get_free(tcb->rx_tmp);
+}
+
 static HANDLE tcps_find_listener(TCPIPS* tcpips, uint16_t port)
 {
     HANDLE handle;
@@ -289,17 +300,17 @@ static HANDLE tcps_create_tcb(TCPIPS* tcpips, const IP* remote_addr, uint16_t re
     tcb = so_get(&tcpips->tcps.tcbs, handle);
     tcb->process = INVALID_HANDLE;
     tcb->remote_addr.u32.ip = remote_addr->u32.ip;
-    tcb->head = NULL;
     tcb->snd_una = tcb->snd_nxt = 0;
     tcb->rcv_nxt = 0;
     tcb->state = TCP_STATE_CLOSED;
     tcb->remote_port = remote_port;
     tcb->local_port = local_port;
     tcb->mss = TCP_MSS_MAX;
-    tcb->rx_wnd = TCP_MSS_MAX;
-    tcb->tx_wnd = 0;
     tcb->active = false;
     tcb->transmit = false;
+    tcb->rx = tcb->tx = tcb->rx_tmp = NULL;
+    tcps_update_rx_wnd(tcb);
+    tcb->tx_wnd = 0;
     return handle;
 }
 
@@ -696,8 +707,11 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 
 static inline void tcps_rx_otw_text(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 {
+    TCP_STACK* tcp_stack;
     TCP_HEADER* tcp;
-    unsigned int data_size, data_offset;
+    TCP_HEADER* tcp_tmp;
+    unsigned int data_size, data_offset, size, data_offset_tmp;
+    uint16_t urg, urg_tmp;
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
     tcp = io_data(io);
 
@@ -710,19 +724,86 @@ static inline void tcps_rx_otw_text(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         if (data_size)
         {
             data_offset = tcps_data_offset(io);
-            //TODO: check on real window
+            urg = 0;
+            if (tcp->flags & TCP_FLAG_URG)
+            {
+                urg = be2int(tcp->urgent_pointer_be);
+                //make sure urg don't overlaps total data size
+                if (urg > data_size)
+                {
+                    urg = data_size;
+                    short2be(tcp->urgent_pointer_be, urg);
+                }
+            }
             tcb->rcv_nxt += data_size;
-            //TODO: user processing, PSH
-            //TODO: adjust rx wnd
+            //has user block
+            if (tcb->rx != NULL)
+            {
+                size = data_size;
+                if (size > io_get_free(tcb->rx))
+                    size = io_get_free(tcb->rx);
+                memcpy((uint8_t*)io_data(tcb->rx) + tcb->rx->data_size, (uint8_t*)io_data(io) + data_offset, size);
+                tcb->rx->data_size += size;
+                data_offset += size;
+                data_size -= size;
+
+                //apply flags, urgent data
+                tcp_stack = (TCP_STACK*)io_stack(tcb->rx);
+                if (tcp->flags & TCP_FLAG_PSH)
+                    tcp_stack->flags |= TCP_PSH;
+                if (urg)
+                {
+                    tcp_stack->flags |= TCP_URG;
+                    tcp_stack->urg_len = urg;
+                    if (urg > size)
+                        urg -= size;
+                    else
+                        urg = 0;
+                }
+
+                //filled, send to user
+                if ((io_get_free(tcb->rx) == 0) || (tcp->flags & TCP_FLAG_PSH))
+                {
+                    io_complete(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, tcb->rx);
+                    tcb->rx = NULL;
+                }
+
+            }
+            //no user block/no fit
             if (data_size)
             {
-                int i;
-                printf("\n");
-                for (i = 0; i < data_size; ++i)
-                    printf("%c",((char*)io_data(io))[data_offset + i]);
-                printf("\n");
-///                dump((uint8_t*)io_data(io) + data_offset, data_size);
+                //move to tmp
+                if (tcb->rx_tmp == NULL)
+                    tcb->rx_tmp = io;
+                //append to tmp
+                else
+                {
+                    tcp_tmp = io_data(tcb->rx_tmp);
+                    //apply flags, urgent data
+                    if (tcp->flags & TCP_FLAG_PSH)
+                        tcp_tmp->flags |= TCP_PSH;
+                    if (urg)
+                    {
+                        data_offset_tmp = tcps_data_offset(tcb->rx_tmp);
+                        urg_tmp = 0;
+                        //already have urgent pointer? add to end of urgent data
+                        if (tcp_tmp->flags & TCP_FLAG_URG)
+                            urg_tmp = be2short(tcp_tmp->urgent_pointer_be);
+                        memmove((uint8_t*)io_data(tcb->rx_tmp) + data_offset_tmp + urg_tmp + urg,
+                                (uint8_t*)io_data(tcb->rx_tmp) + data_offset_tmp + urg_tmp,
+                                tcb->rx_tmp->data_size - data_offset - urg_tmp);
+                        memcpy((uint8_t*)io_data(tcb->rx_tmp) + data_offset_tmp + urg_tmp, (uint8_t*)io_data(io) + data_offset, urg);
+                        tcb->rx_tmp->data_size += urg;
+                        data_offset += urg;
+                        data_size -= urg;
+                        tcp_tmp->flags |= TCP_FLAG_URG;
+                        short2be(tcp_tmp->urgent_pointer_be, urg_tmp + urg);
+                    }
+                    memcpy((uint8_t*)io_data(tcb->rx_tmp) + tcb->rx_tmp->data_size, (uint8_t*)io_data(io) + data_offset, data_size);
+                    tcb->rx_tmp->data_size += data_size;
+                }
             }
+            tcps_update_rx_wnd(tcb);
         }
         tcps_tx_text(tcpips, tcb_handle, true);
         break;
@@ -831,6 +912,9 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
         tcps_apply_options(tcpips, io, tcb);
         tcb->tx_wnd = be2short(tcp->window_be);
         tcps_rx_process(tcpips, io, tcb_handle);
+        //make sure not queued in rx
+        if (tcb->rx_tmp == io)
+            return;
     }
     ips_release_io(tcpips, io);
 }
@@ -879,6 +963,93 @@ static inline void tcps_connect(TCPIPS* tcpips, IPC* ipc)
     error(ERROR_NOT_SUPPORTED);
 }
 
+static inline void tcps_read(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
+{
+    TCP_TCB* tcb;
+    TCP_STACK* tcp_stack;
+    TCP_HEADER* tcp;
+    uint16_t urg;
+    tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    unsigned int size, data_size, data_offset;
+    if (tcb == NULL)
+        return;
+    if (tcb->rx != NULL)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    switch (tcb->state)
+    {
+    case TCP_STATE_ESTABLISHED:
+    case TCP_STATE_FIN_WAIT_1:
+    case TCP_STATE_FIN_WAIT_2:
+        io->data_size = 0;
+        tcp_stack = io_push(io, sizeof(TCP_STACK));
+        tcp_stack->flags = 0;
+        tcp_stack->urg_len = 0;
+        size = io_get_free(io);
+        error(ERROR_SYNC);
+        //already on tmp buffers
+        if (tcb->rx_tmp != NULL)
+        {
+            data_offset = tcps_data_offset(tcb->rx_tmp);
+            data_size = tcps_data_len(tcb->rx_tmp);
+            if (size > data_size)
+                size = data_size;
+            memcpy(io_data(io), (uint8_t*)io_data(tcb->rx_tmp) + data_offset, size);
+            io->data_size = size;
+            //apply flags
+            tcp = io_data(tcb->rx_tmp);
+            if (tcp->flags & TCP_FLAG_PSH)
+                tcp_stack->flags |= TCP_PSH;
+            if (tcp->flags & TCP_FLAG_URG)
+            {
+                urg = be2int(tcp->urgent_pointer_be);
+                //make sure urg don't overlaps total data size
+                if (urg > size)
+                {
+                    tcp_stack->urg_len = size;
+                    short2be(tcp->urgent_pointer_be, urg - size);
+                }
+                else
+                {
+                    //all URG data processed
+                    tcp_stack->urg_len = urg;
+                    if (size < data_size)
+                    {
+                        short2be(tcp->urgent_pointer_be, 0);
+                        tcp->flags &= ~TCP_FLAG_URG;
+                    }
+                }
+                tcp_stack->flags |= TCP_URG;
+            }
+            //all copied?
+            if (size == data_size)
+            {
+                ips_release_io(tcpips, tcb->rx_tmp);
+                tcb->rx_tmp = NULL;
+            }
+            else
+            {
+                memmove((uint8_t*)io_data(tcb->rx_tmp) + data_offset, (uint8_t*)io_data(tcb->rx_tmp) + data_offset + size, data_size - size);
+                tcb->rx_tmp->data_size -= size;
+            }
+            //can return to user?
+            if ((io_get_free(io) == 0) || (tcp_stack->flags & TCP_PSH))
+            {
+                tcps_update_rx_wnd(tcb);
+                io_complete(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, io);
+                return;
+            }
+        }
+        tcb->rx = io;
+        tcps_update_rx_wnd(tcb);
+        break;
+    default:
+        error(ERROR_INVALID_STATE);
+    }
+}
+
 void tcps_request(TCPIPS* tcpips, IPC* ipc)
 {
     if (!tcpips->connected)
@@ -899,8 +1070,7 @@ void tcps_request(TCPIPS* tcpips, IPC* ipc)
 //        tcps_close(tcpips, ipc->param1);
         break;
     case IPC_READ:
-        //TODO:
-//        tcps_read(tcpips, ipc->param1, (IO*)ipc->param2);
+        tcps_read(tcpips, ipc->param1, (IO*)ipc->param2);
         break;
     case IPC_WRITE:
         //TODO:
