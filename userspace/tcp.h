@@ -9,6 +9,7 @@
 
 #include "ip.h"
 #include "io.h"
+#include "ipc.h"
 #include <stdint.h>
 
 #define TCP_PSH                     (1 << 0)
@@ -19,8 +20,18 @@ typedef struct {
     uint16_t urg_len;
 } TCP_STACK;
 
+typedef enum {
+    TCP_LISTEN = IPC_USER,
+    TCP_CLOSE_LISTEN,
+    TCP_CREATE_TCB,
+    TCP_GET_REMOTE_ADDR,
+    TCP_GET_REMOTE_PORT,
+    TCP_GET_LOCAL_PORT
+}TCP_IPCS;
+
 uint16_t tcp_checksum(void* buf, unsigned int size, const IP* src, const IP* dst);
 HANDLE tcp_listen(HANDLE tcpip, unsigned short port);
+void tcp_close_listen(HANDLE tcpip, HANDLE handle);
 HANDLE tcp_connect(HANDLE tcpip, unsigned short port, const IP* remote_addr);
 #define tcp_read(tcpip, handle, io, size)                           io_read((tcpip), HAL_IO_REQ(HAL_TCP, IPC_READ), (handle), (io), (size))
 #define tcp_read_sync(tcpip, handle, io, size)                      io_read_sync((tcpip), HAL_IO_REQ(HAL_TCP, IPC_READ), (handle), (io), (size))

@@ -382,6 +382,29 @@ static IO* tcps_allocate_io(TCPIPS* tcpips, TCP_TCB* tcb)
     return io;
 }
 
+static void tcps_rx_flush(TCPIPS* tcpips, HANDLE tcb_handle)
+{
+    TCP_STACK* tcp_stack;
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    if (tcb->rx)
+    {
+        if (tcb->rx->data_size)
+        {
+            tcp_stack = io_stack(tcb->rx);
+            tcp_stack->flags |= TCP_PSH;
+            io_complete(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, tcb->rx);
+        }
+        else
+            io_complete_ex(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, tcb->rx, ERROR_CONNECTION_CLOSED);
+        tcb->rx = NULL;
+    }
+    if (tcb->rx_tmp)
+    {
+        ips_release_io(tcpips, tcb->rx_tmp);
+        tcb->rx_tmp = NULL;
+    }
+}
+
 static void tcps_tx(TCPIPS* tcpips, IO* io, TCP_TCB* tcb)
 {
     TCP_HEADER* tcp = io_data(io);
@@ -631,19 +654,20 @@ static inline bool tcps_rx_otw_check_seq(TCPIPS* tcpips, IO* io, HANDLE tcb_hand
 static inline void tcps_rx_otw_syn_rst(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 {
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+
+    printf("TODO: RST flush tx\n");
+    tcps_rx_flush(tcpips, tcb_handle);
     switch (tcb->state)
     {
     case TCP_STATE_SYN_RECEIVED:
         if (tcb->active)
-        {
-            printf("TODO: SYN-RECEIVED: inform user\n");
-        }
+            ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, 0, ERROR_CONNECTION_REFUSED);
         break;
     case TCP_STATE_ESTABLISHED:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
-        printf("TODO: RST flush rx/tx\n");
-        printf("TODO: RST inform user on connection closed\n");
+        //inform user on connection closed\n"
+        ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, 0);
         break;
     default:
         break;
@@ -842,7 +866,8 @@ static inline void tcps_rx_otw_fin(TCPIPS* tcpips, HANDLE tcb_handle)
     switch (tcb->state)
     {
     case TCP_STATE_ESTABLISHED:
-        //TODO: return all rx buffers
+        //return all rx buffers
+        tcps_rx_flush(tcpips, tcb_handle);
         //inform user
         ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, 0);
         //follow down
@@ -1007,6 +1032,11 @@ static inline void tcps_listen(TCPIPS* tcpips, IPC* ipc)
     ipc->param2 = handle;
 }
 
+static inline void tcps_close_listen(TCPIPS* tcpips, HANDLE handle)
+{
+    so_free(&tcpips->tcps.listen, handle);
+}
+
 static inline void tcps_connect(TCPIPS* tcpips, IPC* ipc)
 {
     //TODO:
@@ -1129,11 +1159,14 @@ void tcps_request(TCPIPS* tcpips, IPC* ipc)
     }
     switch (HAL_ITEM(ipc->cmd))
     {
+    case TCP_LISTEN:
+        tcps_listen(tcpips, ipc);
+        break;
+    case TCP_CLOSE_LISTEN:
+        tcps_close_listen(tcpips, (HANDLE)ipc->param1);
+        break;
     case IPC_OPEN:
-        if (ipc->param2 == LOCALHOST)
-            tcps_listen(tcpips, ipc);
-        else
-            tcps_connect(tcpips, ipc);
+        tcps_connect(tcpips, ipc);
         break;
     case IPC_CLOSE:
         //TODO:

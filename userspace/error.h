@@ -61,11 +61,12 @@
 #define ERROR_CRC                                       (ERROR_COMM - 2)
 #define ERROR_NOT_RESPONDING                            (ERROR_COMM - 3)
 #define ERROR_CONNECTION_REFUSED                        (ERROR_COMM - 4)
-#define ERROR_LINE_NOISE                                (ERROR_COMM - 5)
-#define ERROR_INVALID_PARITY                            (ERROR_COMM - 6)
-#define ERROR_COMM_BREAK                                (ERROR_COMM - 7)
-#define ERROR_NAK                                       (ERROR_COMM - 8)
-#define ERROR_TIMEOUT                                   (ERROR_COMM - 9)
+#define ERROR_CONNECTION_CLOSED                         (ERROR_COMM - 5)
+#define ERROR_LINE_NOISE                                (ERROR_COMM - 6)
+#define ERROR_INVALID_PARITY                            (ERROR_COMM - 7)
+#define ERROR_COMM_BREAK                                (ERROR_COMM - 8)
+#define ERROR_NAK                                       (ERROR_COMM - 9)
+#define ERROR_TIMEOUT                                   (ERROR_COMM - 10)
 
 #define ERROR_HARDWARE                                  -400
 

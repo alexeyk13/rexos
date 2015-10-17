@@ -42,7 +42,12 @@ uint16_t tcp_checksum(void* buf, unsigned int size, const IP* src, const IP* dst
 
 HANDLE tcp_listen(HANDLE tcpip, unsigned short port)
 {
-    return get_handle(tcpip, HAL_REQ(HAL_TCP, IPC_OPEN), port, LOCALHOST, 0);
+    return get_handle(tcpip, HAL_REQ(HAL_TCP, TCP_LISTEN), port, 0, 0);
+}
+
+void tcp_close_listen(HANDLE tcpip, HANDLE handle)
+{
+    ack(tcpip, HAL_REQ(HAL_TCP, TCP_CLOSE_LISTEN), handle, 0, 0);
 }
 
 HANDLE tcp_connect(HANDLE tcpip, unsigned short port, const IP* remote_addr)
