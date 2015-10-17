@@ -50,7 +50,6 @@ typedef enum {
     TCP_STATE_ESTABLISHED,
     TCP_STATE_FIN_WAIT_1,
     TCP_STATE_FIN_WAIT_2,
-    TCP_STATE_CLOSE_WAIT,
     TCP_STATE_CLOSING,
     TCP_STATE_LAST_ACK,
     TCP_STATE_TIME_WAIT,
@@ -67,14 +66,14 @@ typedef struct {
 
     TCP_STATE state;
     uint16_t remote_port, local_port, mss, rx_wnd, tx_wnd;
-    bool active, transmit;
+    bool active, transmit, fin;
     //TODO: time
 } TCP_TCB;
 
 #if (TCP_DEBUG_FLOW)
 static const char* __TCP_FLAGS[TCP_FLAGS_COUNT] =                   {"FIN", "SYN", "RST", "PSH", "ACK", "URG"};
 static const char* __TCP_STATES[TCP_STATE_MAX] =                    {"CLOSED", "LISTEN", "SYN SENT", "SYN RECEIVED", "ESTABLISHED", "FIN WAIT1",
-                                                                     "FIN WAIT2", "CLOSE WAIT", "CLOSING", "LAST ACK", "TIME_WAIT"};
+                                                                     "FIN WAIT2", "CLOSING", "LAST ACK", "TIME_WAIT"};
 #endif //TCP_DEBUG_FLOW
 
 static inline unsigned int tcps_data_offset(IO* io)
@@ -218,6 +217,14 @@ static void tcps_debug_state(TCP_STATE from, TCP_STATE to)
 }
 #endif //TCP_DEBUG_FLOW
 
+static inline void tcps_set_state(TCP_TCB* tcb, TCP_STATE state)
+{
+#if (TCP_DEBUG_FLOW)
+    tcps_debug_state(tcb->state, state);
+#endif //TCP_DEBUG_FLOW
+    tcb->state = state;
+}
+
 static uint32_t tcps_gen_isn()
 {
     SYSTIME uptime;
@@ -308,6 +315,7 @@ static HANDLE tcps_create_tcb(TCPIPS* tcpips, const IP* remote_addr, uint16_t re
     tcb->mss = TCP_MSS_MAX;
     tcb->active = false;
     tcb->transmit = false;
+    tcb->fin = false;
     tcb->rx = tcb->tx = tcb->rx_tmp = NULL;
     tcps_update_rx_wnd(tcb);
     tcb->tx_wnd = 0;
@@ -433,28 +441,25 @@ static void tcps_tx_ack(TCPIPS* tcpips, HANDLE tcb_handle)
     tcps_tx(tcpips, tx, tcb);
 }
 
-static void tcps_tx_text(TCPIPS* tcpips, HANDLE tcb_handle, bool reply)
+static void tcps_tx_text_ack_fin(TCPIPS* tcpips, HANDLE tcb_handle)
 {
     IO* tx;
     TCP_HEADER* tcp_tx;
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 
-    //ack from remote host - we transmitted all
-    if (reply && tcb->transmit && (tcb->snd_una == tcb->snd_nxt))
-    {
-        tcb->transmit = false;
-        return;
-    }
     if ((tx = tcps_allocate_io(tcpips, tcb)) == NULL)
         return;
 
     tcp_tx = io_data(tx);
 
-    //TODO: real data, retransmit timer
+    //TODO: real data
     tcp_tx->flags |= TCP_FLAG_ACK;
+    if (tcb->fin && tcb->snd_una != tcb->snd_nxt)
+        tcp_tx->flags |= TCP_FLAG_FIN;
     int2be(tcp_tx->seq_be, tcb->snd_una);
     int2be(tcp_tx->ack_be, tcb->rcv_nxt);
     tcps_tx(tcpips, tx, tcb);
+    //TODO: retransmit timer
 }
 
 static void tcps_tx_syn_ack(TCPIPS* tcpips, HANDLE tcb_handle)
@@ -516,15 +521,12 @@ static inline void tcps_rx_listen(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 
         if (tcp->flags & TCP_FLAG_SYN)
         {
-            tcb->state = TCP_STATE_SYN_RECEIVED;
+            tcps_set_state(tcb, TCP_STATE_SYN_RECEIVED);
             tcb->rcv_nxt = be2int(tcp->seq_be) + 1;
             tcb->snd_una = tcb->snd_nxt = tcps_gen_isn();
             ++tcb->snd_nxt;
 
             tcps_tx_syn_ack(tcpips, tcb_handle);
-#if (TCP_DEBUG_FLOW)
-            tcps_debug_state(TCP_STATE_LISTEN, TCP_STATE_SYN_RECEIVED);
-#endif //TCP_DEBUG_FLOW
             return;
         }
 
@@ -640,7 +642,6 @@ static inline void tcps_rx_otw_syn_rst(TCPIPS* tcpips, IO* io, HANDLE tcb_handle
     case TCP_STATE_ESTABLISHED:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
-    case TCP_STATE_CLOSE_WAIT:
         printf("TODO: RST flush rx/tx\n");
         printf("TODO: RST inform user on connection closed\n");
         break;
@@ -665,10 +666,7 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         //SND.UNA =< SEG.ACK =< SND.NXT
         if (ack_diff >= 0 && ack_diff <= snd_diff)
         {
-            tcb->state = TCP_STATE_ESTABLISHED;
-#if (TCP_DEBUG_FLOW)
-            tcps_debug_state(TCP_STATE_SYN_RECEIVED, TCP_STATE_ESTABLISHED);
-#endif //TCP_DEBUG_FLOW
+            tcps_set_state(tcb, TCP_STATE_ESTABLISHED);
             ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, tcb->remote_addr.u32.ip, 0);
             //and continue processing in that state
             return true;
@@ -701,25 +699,14 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     {
     case TCP_STATE_FIN_WAIT_1:
         if (tcb->snd_nxt == tcb->snd_una)
-        {
-            tcb->state = TCP_STATE_FIN_WAIT_2;
-#if (TCP_DEBUG_FLOW)
-            tcps_debug_state(TCP_STATE_FIN_WAIT_1, TCP_STATE_FIN_WAIT_2);
-#endif //TCP_DEBUG_FLOW
-        }
+            tcps_set_state(tcb, TCP_STATE_FIN_WAIT_2);
         break;
     case TCP_STATE_FIN_WAIT_2:
         printf("In addition to the processing for the ESTABLISHED state, if the retransmission queue is empty, the user’s CLOSE can be acknowledged\n");
         break;
     case TCP_STATE_CLOSING:
         if (tcb->snd_nxt == tcb->snd_una)
-        {
-            tcb->state = TCP_STATE_TIME_WAIT;
-#if (TCP_DEBUG_FLOW)
-            tcps_debug_state(TCP_STATE_CLOSING, TCP_STATE_CLOSE_WAIT);
-#endif //TCP_DEBUG_FLOW
-            printf("TODO: TIME WAIT timer set\n");
-        }
+            tcps_set_state(tcb, TCP_STATE_TIME_WAIT);
         break;
     case TCP_STATE_LAST_ACK:
         if (tcb->snd_nxt == tcb->snd_una)
@@ -834,7 +821,6 @@ static inline void tcps_rx_otw_text(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
             }
             tcps_update_rx_wnd(tcb);
         }
-        tcps_tx_text(tcpips, tcb_handle, true);
         break;
     default:
         //Ignore the segment text
@@ -842,20 +828,60 @@ static inline void tcps_rx_otw_text(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     }
 }
 
-static inline void tcps_rx_otw_fin(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
+static inline void tcps_rx_otw_fin(TCPIPS* tcpips, HANDLE tcb_handle)
 {
-    TCP_STACK* tcp_stack;
-    TCP_HEADER* tcp;
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
-    tcp = io_data(io);
 
+    //ack FIN
+    ++tcb->rcv_nxt;
+    if (!tcb->fin)
+    {
+        tcb->fin = true;
+        ++tcb->snd_nxt;
+    }
     switch (tcb->state)
     {
-
+    case TCP_STATE_ESTABLISHED:
+        //TODO: return all rx buffers
+        //inform user
+        ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, 0);
+        //follow down
+    case TCP_STATE_SYN_RECEIVED:
+        tcps_set_state(tcb, TCP_STATE_LAST_ACK);
+        break;
+    case TCP_STATE_FIN_WAIT_1:
+        if (tcb->snd_una == tcb->snd_nxt)
+            tcps_set_state(tcb, TCP_STATE_TIME_WAIT);
+        else
+            tcps_set_state(tcb, TCP_STATE_CLOSING);
+        break;
+    case TCP_STATE_FIN_WAIT_2:
+        tcps_set_state(tcb, TCP_STATE_TIME_WAIT);
+        break;
     default:
         break;
     }
 }
+
+static inline void tcps_rx_send(TCPIPS* tcpips, HANDLE tcb_handle)
+{
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+
+    //ack from remote host - we transmitted all
+    if (tcb->state == TCP_STATE_ESTABLISHED && tcb->transmit && (tcb->snd_una == tcb->snd_nxt) && !tcb->fin)
+    {
+        tcb->transmit = false;
+        return;
+    }
+
+    if (tcb->state == TCP_STATE_TIME_WAIT)
+    {
+        //TODO: Don't send anything, just restart timer
+    }
+    else
+        tcps_tx_text_ack_fin(tcpips, tcb_handle);
+}
+
 static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 {
     TCP_HEADER* tcp = io_data(io);
@@ -885,7 +911,11 @@ static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     tcps_rx_otw_text(tcpips, io, tcb_handle);
 
     //eighth, check the FIN bit
-    tcps_rx_otw_fin(tcpips, io, tcb_handle);
+    if (tcp->flags & TCP_FLAG_FIN)
+        tcps_rx_otw_fin(tcpips, tcb_handle);
+
+    //finally send ACK reply/data/fin/etc
+    tcps_rx_send(tcpips, tcb_handle);
 }
 
 static inline void tcps_rx_process(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
@@ -894,8 +924,6 @@ static inline void tcps_rx_process(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     switch (tcb->state)
     {
     case TCP_STATE_CLOSED:
-        printf("closed\n");
-        printf("seq: %d\n", tcb->snd_una);
         tcps_rx_closed(tcpips, io, tcb_handle);
         break;
     case TCP_STATE_LISTEN:
