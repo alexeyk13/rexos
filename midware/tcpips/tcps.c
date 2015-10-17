@@ -535,8 +535,8 @@ static inline void tcps_rx_listen(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 
 static inline bool tcps_rx_otw_check_seq(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 {
-    int seq_delta;
-    unsigned int seg_data_len, data_off;
+    int seq_delta, seg_len;
+    unsigned int data_off;
     uint32_t seq;
     IO* tx;
     TCP_HEADER* tcp;
@@ -546,11 +546,11 @@ static inline bool tcps_rx_otw_check_seq(TCPIPS* tcpips, IO* io, HANDLE tcb_hand
 
     seq = be2int(tcp->seq_be);
     seq_delta = tcps_diff(tcb->rcv_nxt, seq);
-    seg_data_len = tcps_data_len(io);
+    seg_len = tcps_seg_len(io);
     //already paritally received segment
-    if (seq_delta < 0 && (seg_data_len >= -seq_delta))
+    if (seq_delta < 0)
     {
-        if (seg_data_len + seq_delta == 0)
+        if (seg_len + seq_delta <= 0)
         {
 #if (TCP_DEBUG_FLOW)
             printf("TCP: Dup\n");
@@ -558,25 +558,54 @@ static inline bool tcps_rx_otw_check_seq(TCPIPS* tcpips, IO* io, HANDLE tcb_hand
             return false;
         }
 #if (TCP_DEBUG_FLOW)
-        printf("TCP: partial receive %d bytes\n", seg_data_len + seq_delta);
+        printf("TCP: partial receive %d seq\n", seg_len + seq_delta);
 #endif //TCP_DEBUG_FLOW
+        //SYN flag space goes first, remove from sequence
+        if (tcp->flags & TCP_FLAG_SYN)
+        {
+            tcp->flags &= ~TCP_FLAG_SYN;
+            --seg_len;
+            ++seq_delta;
+            ++seq;
+        }
         data_off = tcps_data_offset(io);
-        seg_data_len += seq_delta;
-        memmove((uint8_t*)io_data(io) + data_off, (uint8_t*)io_data(io) + data_off - seq_delta, seg_data_len);
-        io->data_size += seq_delta;
-        seq -= seq_delta;
+        seg_len -= -seq_delta;
+        //FIN is not in data, but occupying virtual byte
+        if (tcp->flags & TCP_FLAG_FIN)
+        {
+            memmove((uint8_t*)io_data(io) + data_off, (uint8_t*)io_data(io) + data_off + (-seq_delta), seg_len - 1);
+            io->data_size -= (-seq_delta) - 1;
+        }
+        else
+        {
+            memmove((uint8_t*)io_data(io) + data_off, (uint8_t*)io_data(io) + data_off + (-seq_delta), seg_len);
+            io->data_size -= -seq_delta;
+        }
+        seq += -seq_delta;
         seq_delta = 0;
     }
     //don't fit in rx window
-    if (seg_data_len > tcb->rx_wnd && tcb->rx_wnd > 0)
+    if (seg_len > tcb->rx_wnd && tcb->rx_wnd > 0)
     {
 #if (TCP_DEBUG_FLOW)
-        printf("TCP: chop rx wnd %d bytes\n", seg_data_len - tcb->rx_wnd);
+        printf("TCP: chop rx wnd %d seq\n", seg_len - tcb->rx_wnd);
 #endif //TCP_DEBUG_FLOW
-        io->data_size = seg_data_len - tcb->rx_wnd;
-        seg_data_len = tcb->rx_wnd;
+        //FIN is last virtual byte, remove it first
+        if (tcp->flags & TCP_FLAG_FIN)
+        {
+            tcp->flags &= ~TCP_FLAG_FIN;
+            --seg_len;
+        }
+        //still don't fit? remove some data
+        if (seg_len > tcb->rx_wnd)
+        {
+            io->data_size = seg_len - tcb->rx_wnd;
+            seg_len = tcb->rx_wnd;
+        }
+        //remove PSH flag, cause it's goes after all bytes
+        tcp->flags &= ~TCP_FLAG_PSH;
     }
-    if (seq != tcb->rcv_nxt || seg_data_len > tcb->rx_wnd)
+    if (seq != tcb->rcv_nxt || seg_len > tcb->rx_wnd)
     {
 #if (TCP_DEBUG_FLOW)
         printf("TCP: boundary fail\n");
@@ -813,6 +842,20 @@ static inline void tcps_rx_otw_text(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     }
 }
 
+static inline void tcps_rx_otw_fin(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
+{
+    TCP_STACK* tcp_stack;
+    TCP_HEADER* tcp;
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    tcp = io_data(io);
+
+    switch (tcb->state)
+    {
+
+    default:
+        break;
+    }
+}
 static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 {
     TCP_HEADER* tcp = io_data(io);
@@ -838,12 +881,11 @@ static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         return;
 
     //sixth, check the URG bit
-    //TODO: URG
-
     //seventh, process the segment text
     tcps_rx_otw_text(tcpips, io, tcb_handle);
 
-    //TODO: fin
+    //eighth, check the FIN bit
+    tcps_rx_otw_fin(tcpips, io, tcb_handle);
 }
 
 static inline void tcps_rx_process(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
