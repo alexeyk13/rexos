@@ -62,6 +62,7 @@ typedef struct {
     IO* rx;
     IO* rx_tmp;
     IO* tx;
+    unsigned int tx_cur;
     uint32_t snd_una, snd_nxt, rcv_nxt;
 
     TCP_STATE state;
@@ -70,8 +71,10 @@ typedef struct {
     //TODO: time
 } TCP_TCB;
 
-#if (TCP_DEBUG_FLOW)
+#if (TCP_DEBUG_PACKETS)
 static const char* __TCP_FLAGS[TCP_FLAGS_COUNT] =                   {"FIN", "SYN", "RST", "PSH", "ACK", "URG"};
+#endif //TCP_DEBUG_PACKETS
+#if (TCP_DEBUG_FLOW)
 static const char* __TCP_STATES[TCP_STATE_MAX] =                    {"CLOSED", "LISTEN", "SYN SENT", "SYN RECEIVED", "ESTABLISHED", "FIN WAIT1",
                                                                      "FIN WAIT2", "CLOSING", "LAST ACK", "TIME_WAIT"};
 #endif //TCP_DEBUG_FLOW
@@ -148,7 +151,7 @@ static unsigned int tcps_get_next_opt(IO* io, unsigned int prev)
     return res < offset ? res : 0;
 }
 
-#if (TCP_DEBUG_FLOW)
+#if (TCP_DEBUG_PACKETS)
 static void tcps_debug(IO* io, const IP* src, const IP* dst)
 {
     bool has_flag;
@@ -210,7 +213,9 @@ static void tcps_debug(IO* io, const IP* src, const IP* dst)
     }
     printf("\n");
 }
+#endif //TCP_DEBUG_PACKETS
 
+#if (TCP_DEBUG_FLOW)
 static void tcps_debug_state(TCP_STATE from, TCP_STATE to)
 {
     printf("%s -> %s\n", __TCP_STATES[from], __TCP_STATES[to]);
@@ -317,6 +322,7 @@ static HANDLE tcps_create_tcb(TCPIPS* tcpips, const IP* remote_addr, uint16_t re
     tcb->transmit = false;
     tcb->fin = false;
     tcb->rx = tcb->tx = tcb->rx_tmp = NULL;
+    tcb->tx_cur = 0;
     tcps_update_rx_wnd(tcb);
     tcb->tx_wnd = 0;
     return handle;
@@ -410,9 +416,9 @@ static void tcps_tx(TCPIPS* tcpips, IO* io, TCP_TCB* tcb)
     TCP_HEADER* tcp = io_data(io);
     short2be(tcp->window_be, tcb->rx_wnd);
     short2be(tcp->checksum_be, tcp_checksum(io_data(io), io->data_size, &tcpips->ip, &tcb->remote_addr));
-#if (TCP_DEBUG_FLOW)
+#if (TCP_DEBUG_PACKETS)
     tcps_debug(io, &tcpips->ip, &tcb->remote_addr);
-#endif //TCP_DEBUG_FLOW
+#endif //TCP_DEBUG_PACKETS
     ips_tx(tcpips, io, &tcb->remote_addr);
 }
 
@@ -459,29 +465,52 @@ static void tcps_tx_ack(TCPIPS* tcpips, HANDLE tcb_handle)
     tcp_tx = io_data(tx);
 
     tcp_tx->flags |= TCP_FLAG_ACK;
-    int2be(tcp_tx->seq_be, tcb->snd_una);
+    int2be(tcp_tx->seq_be, tcb->snd_nxt);
     int2be(tcp_tx->ack_be, tcb->rcv_nxt);
     tcps_tx(tcpips, tx, tcb);
 }
 
 static void tcps_tx_text_ack_fin(TCPIPS* tcpips, HANDLE tcb_handle)
 {
-    IO* tx;
-    TCP_HEADER* tcp_tx;
+    IO* io;
+    TCP_HEADER* tcp;
+    TCP_STACK* tcp_stack;
+    unsigned int size;
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 
-    if ((tx = tcps_allocate_io(tcpips, tcb)) == NULL)
+    if ((io = tcps_allocate_io(tcpips, tcb)) == NULL)
         return;
 
-    tcp_tx = io_data(tx);
-
-    //TODO: real data
-    tcp_tx->flags |= TCP_FLAG_ACK;
-    if (tcb->fin && tcb->snd_una != tcb->snd_nxt)
-        tcp_tx->flags |= TCP_FLAG_FIN;
-    int2be(tcp_tx->seq_be, tcb->snd_una);
-    int2be(tcp_tx->ack_be, tcb->rcv_nxt);
-    tcps_tx(tcpips, tx, tcb);
+    tcp = io_data(io);
+    tcp->flags |= TCP_FLAG_ACK;
+    int2be(tcp->seq_be, tcb->snd_una);
+    int2be(tcp->ack_be, tcb->rcv_nxt);
+    //if no transmit window, request window update, wait timeout, than try again
+    if (tcb->tx_wnd)
+    {
+        if (tcb->tx != NULL)
+        {
+            size = tcb->tx->data_size - tcb->tx_cur;
+            if (size > tcb->tx_wnd)
+                size = tcb->tx_wnd;
+            memcpy((uint8_t*)io_data(io) + io->data_size, (uint8_t*)io_data(tcb->tx) + tcb->tx_cur, size);
+            io->data_size += size;
+            //apply flags
+            tcp_stack = io_stack(tcb->tx);
+            if ((tcp_stack->flags & TCP_PSH) && (tcb->tx_cur + size >= tcb->tx->data_size))
+                tcp->flags |= TCP_FLAG_PSH;
+            if ((tcp_stack->flags & TCP_URG) && (tcp_stack->urg_len > tcb->tx_cur))
+            {
+                tcp->flags |= TCP_FLAG_URG;
+                short2be(tcp->urgent_pointer_be, tcp_stack->urg_len - tcb->tx_cur);
+            }
+        }
+        else
+            size = 0;
+        if (tcb->fin && (tcb->snd_una != tcb->snd_nxt) && (size < tcb->tx_wnd))
+            tcp->flags |= TCP_FLAG_FIN;
+        tcps_tx(tcpips, io, tcb);
+    }
     //TODO: retransmit timer
 }
 
@@ -563,9 +592,7 @@ static inline bool tcps_rx_otw_check_seq(TCPIPS* tcpips, IO* io, HANDLE tcb_hand
     int seq_delta, seg_len;
     unsigned int data_off;
     uint32_t seq;
-    IO* tx;
     TCP_HEADER* tcp;
-    TCP_HEADER* tcp_tx;
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
     tcp = io_data(io);
 
@@ -580,6 +607,7 @@ static inline bool tcps_rx_otw_check_seq(TCPIPS* tcpips, IO* io, HANDLE tcb_hand
 #if (TCP_DEBUG_FLOW)
             printf("TCP: Dup\n");
 #endif //TCP_DEBUG_FLOW
+            tcps_tx_ack(tcpips, tcb_handle);
             return false;
         }
 #if (TCP_DEBUG_FLOW)
@@ -633,19 +661,13 @@ static inline bool tcps_rx_otw_check_seq(TCPIPS* tcpips, IO* io, HANDLE tcb_hand
     if (seq != tcb->rcv_nxt || seg_len > tcb->rx_wnd)
     {
 #if (TCP_DEBUG_FLOW)
-        printf("TCP: boundary fail\n");
+        printf("TCP: Future sequence/don't fit\n");
 #endif //TCP_DEBUG_FLOW
         //RST bit is set, drop the segment and return:
         if (tcp->flags & TCP_FLAG_RST)
             return false;
 
-        if ((tx = tcps_allocate_io(tcpips, tcb)) == NULL)
-            return false;
-
-        tcp_tx = io_data(tx);
-        tcp_tx->flags |= TCP_FLAG_ACK;
-        int2be(tcp_tx->seq_be, tcb->snd_una);
-        tcps_tx(tcpips, tx, tcb);
+        tcps_tx_ack(tcpips, tcb_handle);
         return false;
     }
     return true;
@@ -693,7 +715,6 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
             tcps_set_state(tcb, TCP_STATE_ESTABLISHED);
             ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, tcb->remote_addr.u32.ip, 0);
             //and continue processing in that state
-            return true;
         }
         else
         {
@@ -716,7 +737,19 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     if (ack_diff > 0)
     {
         tcb->snd_una += ack_diff;
-        //TODO: return sent buffers to user
+        if (tcb->tx != NULL)
+        {
+            if (ack_diff >= tcb->tx->data_size - tcb->tx_cur)
+            {
+                //return sent buffers to user
+                io_pop(tcb->tx, sizeof(TCP_STACK));
+                io_complete(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_WRITE), tcb_handle, tcb->tx);
+                tcb->tx = NULL;
+                tcb->tx_cur = 0;
+            }
+            else
+                tcb->tx_cur += ack_diff;
+        }
     }
 
     switch (tcb->state)
@@ -899,12 +932,7 @@ static inline void tcps_rx_send(TCPIPS* tcpips, HANDLE tcb_handle)
         return;
     }
 
-    if (tcb->state == TCP_STATE_TIME_WAIT)
-    {
-        //TODO: Don't send anything, just restart timer
-    }
-    else
-        tcps_tx_text_ack_fin(tcpips, tcb_handle);
+    tcps_tx_text_ack_fin(tcpips, tcb_handle);
 }
 
 static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
@@ -983,9 +1011,9 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
     tcp = io_data(io);
     src_port = be2short(tcp->src_port_be);
     dst_port = be2short(tcp->dst_port_be);
-#if (TCP_DEBUG_FLOW)
+#if (TCP_DEBUG_PACKETS)
     tcps_debug(io, src, &tcpips->ip);
-#endif //TCP_DEBUG_FLOW
+#endif //TCP_DEBUG_PACKETS
 
     if ((tcb_handle = tcps_find_tcb(tcpips, src, src_port, dst_port)) == INVALID_HANDLE)
     {
@@ -1075,7 +1103,7 @@ static inline void tcps_read(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
         return;
     if (tcb->rx != NULL)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        error(ERROR_IN_PROGRESS);
         return;
     }
     switch (tcb->state)
@@ -1150,6 +1178,32 @@ static inline void tcps_read(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
     }
 }
 
+static inline void tcps_write(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
+{
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    if (tcb == NULL)
+    {
+        return;
+    }
+    if (tcb->state != TCP_STATE_ESTABLISHED)
+    {
+        error(ERROR_INVALID_STATE);
+        return;
+    }
+    if (tcb->tx != NULL)
+    {
+        error(ERROR_IN_PROGRESS);
+        return;
+    }
+    //TODO: stop timer
+
+    tcb->tx = io;
+    tcb->snd_nxt += io->data_size;
+    tcb->transmit = true;
+    tcps_tx_text_ack_fin(tcpips, tcb_handle);
+    error(ERROR_SYNC);
+}
+
 void tcps_request(TCPIPS* tcpips, IPC* ipc)
 {
     if (!tcpips->connected)
@@ -1176,8 +1230,7 @@ void tcps_request(TCPIPS* tcpips, IPC* ipc)
         tcps_read(tcpips, ipc->param1, (IO*)ipc->param2);
         break;
     case IPC_WRITE:
-        //TODO:
-//        tcps_write(tcpips, ipc->param1, (IO*)ipc->param2);
+        tcps_write(tcpips, ipc->param1, (IO*)ipc->param2);
         break;
     case IPC_FLUSH:
         //TODO:
