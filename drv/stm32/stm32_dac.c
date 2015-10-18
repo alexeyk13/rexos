@@ -298,8 +298,6 @@ static inline void stm32_dac_write(CORE* core, IPC*ipc)
         core->dac.channels[num].ptr += HALF_FIFO_BYTES;
         --cnt_left;
     }
-    if (cnt_left)
-        error(ERROR_SYNC);
     __disable_irq();
     need_start = core->dac.channels[num].cnt == 0;
     core->dac.channels[num].cnt += cnt;
@@ -307,6 +305,8 @@ static inline void stm32_dac_write(CORE* core, IPC*ipc)
 
     if (need_start)
         stm32_timer_request_inside(core, HAL_REQ(HAL_TIMER, TIMER_START), DAC_TRIGGERS[num], TIMER_VALUE_HZ, core->dac.channels[num].samplerate);
+    if (cnt_left)
+        error(ERROR_SYNC);
 }
 #endif //DAC_STREAM
 
