@@ -30,9 +30,17 @@ typedef enum {
 }TCP_IPCS;
 
 uint16_t tcp_checksum(void* buf, unsigned int size, const IP* src, const IP* dst);
+
+void tcp_get_remote_addr(HANDLE tcpip, HANDLE handle, IP* ip);
+uint16_t tcp_get_remote_port(HANDLE tcpip, HANDLE handle);
+uint16_t tcp_get_local_port(HANDLE tcpip, HANDLE handle);
+
 HANDLE tcp_listen(HANDLE tcpip, unsigned short port);
 void tcp_close_listen(HANDLE tcpip, HANDLE handle);
+
+//TODO: refactor
 HANDLE tcp_connect(HANDLE tcpip, unsigned short port, const IP* remote_addr);
+
 #define tcp_read(tcpip, handle, io, size)                           io_read((tcpip), HAL_IO_REQ(HAL_TCP, IPC_READ), (handle), (io), (size))
 #define tcp_read_sync(tcpip, handle, io, size)                      io_read_sync((tcpip), HAL_IO_REQ(HAL_TCP, IPC_READ), (handle), (io), (size))
 #define tcp_write(tcpip, handle, io)                                io_write((tcpip), HAL_IO_REQ(HAL_TCP, IPC_WRITE), (handle), (io))

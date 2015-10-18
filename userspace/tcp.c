@@ -40,6 +40,21 @@ uint16_t tcp_checksum(void* buf, unsigned int size, const IP* src, const IP* dst
     return ~((uint16_t)sum);
 }
 
+void tcp_get_remote_addr(HANDLE tcpip, HANDLE handle, IP* ip)
+{
+    ip->u32.ip = get(tcpip, HAL_REQ(HAL_TCP, TCP_GET_REMOTE_ADDR), handle, 0, 0);
+}
+
+uint16_t tcp_get_remote_port(HANDLE tcpip, HANDLE handle)
+{
+    return get(tcpip, HAL_REQ(HAL_TCP, TCP_GET_REMOTE_PORT), handle, 0, 0);
+}
+
+uint16_t tcp_get_local_port(HANDLE tcpip, HANDLE handle)
+{
+    return get(tcpip, HAL_REQ(HAL_TCP, TCP_GET_LOCAL_PORT), handle, 0, 0);
+}
+
 HANDLE tcp_listen(HANDLE tcpip, unsigned short port)
 {
     return get_handle(tcpip, HAL_REQ(HAL_TCP, TCP_LISTEN), port, 0, 0);

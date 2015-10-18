@@ -713,7 +713,7 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         if (ack_diff >= 0 && ack_diff <= snd_diff)
         {
             tcps_set_state(tcb, TCP_STATE_ESTABLISHED);
-            ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, tcb->remote_addr.u32.ip, 0);
+            ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, 0, 0);
             //and continue processing in that state
         }
         else
@@ -1065,6 +1065,31 @@ static inline void tcps_close_listen(TCPIPS* tcpips, HANDLE handle)
     so_free(&tcpips->tcps.listen, handle);
 }
 
+static inline void tcps_get_remote_addr(TCPIPS* tcpips, HANDLE tcb_handle, IP* ip)
+{
+    ip->u32.ip = 0;
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    if (tcb == NULL)
+        return;
+    ip->u32.ip = tcb->remote_addr.u32.ip;
+}
+
+static inline uint16_t tcps_get_remote_port(TCPIPS* tcpips, HANDLE tcb_handle)
+{
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    if (tcb == NULL)
+        return 0;
+    return tcb->remote_port;
+}
+
+static inline uint16_t tcps_get_local_port(TCPIPS* tcpips, HANDLE tcb_handle)
+{
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    if (tcb == NULL)
+        return 0;
+    return tcb->local_port;
+}
+
 static inline void tcps_connect(TCPIPS* tcpips, IPC* ipc)
 {
     //TODO:
@@ -1206,6 +1231,7 @@ static inline void tcps_write(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
 
 void tcps_request(TCPIPS* tcpips, IPC* ipc)
 {
+    IP ip;
     if (!tcpips->connected)
     {
         error(ERROR_NOT_ACTIVE);
@@ -1218,6 +1244,16 @@ void tcps_request(TCPIPS* tcpips, IPC* ipc)
         break;
     case TCP_CLOSE_LISTEN:
         tcps_close_listen(tcpips, (HANDLE)ipc->param1);
+        break;
+    case TCP_GET_REMOTE_ADDR:
+        tcps_get_remote_addr(tcpips, (HANDLE)ipc->param1, &ip);
+        ipc->param2 = ip.u32.ip;
+        break;
+    case TCP_GET_REMOTE_PORT:
+        ipc->param2 = tcps_get_remote_port(tcpips, (HANDLE)ipc->param1);
+        break;
+    case TCP_GET_LOCAL_PORT:
+        ipc->param2 = tcps_get_local_port(tcpips, (HANDLE)ipc->param1);
         break;
     case IPC_OPEN:
         tcps_connect(tcpips, ipc);
