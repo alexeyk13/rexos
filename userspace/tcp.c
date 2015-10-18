@@ -77,5 +77,10 @@ bool tcp_open(HANDLE tcpip, HANDLE handle)
 
 void tcp_close(HANDLE tcpip, HANDLE handle)
 {
-    get(tcpip, HAL_REQ(HAL_TCP, IPC_CLOSE), handle, 0, 0);
+    ack(tcpip, HAL_REQ(HAL_TCP, IPC_CLOSE), handle, 0, 0);
+}
+
+void tcp_flush(HANDLE tcpip, HANDLE handle)
+{
+    ack(tcpip, HAL_REQ(HAL_TCP, IPC_FLUSH), handle, 0, 0);
 }

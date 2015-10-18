@@ -47,4 +47,6 @@ void tcp_close(HANDLE tcpip, HANDLE handle);
 #define tcp_write(tcpip, handle, io)                                io_write((tcpip), HAL_IO_REQ(HAL_TCP, IPC_WRITE), (handle), (io))
 #define tcp_write_sync(tcpip, handle, io)                           io_write_sync((tcpip), HAL_IO_REQ(HAL_TCP, IPC_WRITE), (handle), (io))
 
+void tcp_flush(HANDLE tcpip, HANDLE handle);
+
 #endif // TCP_H

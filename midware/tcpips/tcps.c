@@ -247,6 +247,29 @@ static void tcps_update_rx_wnd(TCP_TCB* tcb)
         tcb->rx_wnd = io_get_free(tcb->rx_tmp);
 }
 
+static void tcps_rx_flush(TCPIPS* tcpips, HANDLE tcb_handle)
+{
+    TCP_STACK* tcp_stack;
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    if (tcb->rx)
+    {
+        if (tcb->rx->data_size)
+        {
+            tcp_stack = io_stack(tcb->rx);
+            tcp_stack->flags |= TCP_PSH;
+            io_complete(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, tcb->rx);
+        }
+        else
+            io_complete_ex(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, tcb->rx, ERROR_CONNECTION_CLOSED);
+        tcb->rx = NULL;
+    }
+    if (tcb->rx_tmp)
+    {
+        ips_release_io(tcpips, tcb->rx_tmp);
+        tcb->rx_tmp = NULL;
+    }
+}
+
 static HANDLE tcps_find_listener(TCPIPS* tcpips, uint16_t port)
 {
     HANDLE handle;
@@ -318,6 +341,9 @@ static void tcps_destroy_tcb(TCPIPS* tcpips, HANDLE tcb_handle)
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
     printf("%s -> 0\n", __TCP_STATES[tcb->state]);
 #endif //TCP_DEBUG_FLOW
+    tcps_rx_flush(tcpips, tcb_handle);
+    if (tcb->tx)
+        io_complete_ex(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_WRITE), tcb_handle, tcb->tx, ERROR_CONNECTION_CLOSED);
     so_free(&tcpips->tcps.tcbs, tcb_handle);
 }
 
@@ -396,29 +422,6 @@ static IO* tcps_allocate_io(TCPIPS* tcpips, TCP_TCB* tcb)
     short2be(tcp->checksum_be, 0);
     io->data_size = sizeof(TCP_HEADER);
     return io;
-}
-
-static void tcps_rx_flush(TCPIPS* tcpips, HANDLE tcb_handle)
-{
-    TCP_STACK* tcp_stack;
-    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
-    if (tcb->rx)
-    {
-        if (tcb->rx->data_size)
-        {
-            tcp_stack = io_stack(tcb->rx);
-            tcp_stack->flags |= TCP_PSH;
-            io_complete(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, tcb->rx);
-        }
-        else
-            io_complete_ex(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, tcb->rx, ERROR_CONNECTION_CLOSED);
-        tcb->rx = NULL;
-    }
-    if (tcb->rx_tmp)
-    {
-        ips_release_io(tcpips, tcb->rx_tmp);
-        tcb->rx_tmp = NULL;
-    }
 }
 
 static void tcps_tx(TCPIPS* tcpips, IO* io, TCP_TCB* tcb)
@@ -655,8 +658,6 @@ static inline void tcps_rx_otw_syn_rst(TCPIPS* tcpips, IO* io, HANDLE tcb_handle
 {
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 
-    printf("TODO: RST flush tx\n");
-    tcps_rx_flush(tcpips, tcb_handle);
     switch (tcb->state)
     {
     case TCP_STATE_SYN_RECEIVED:
@@ -1319,9 +1320,7 @@ static inline void tcps_write(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
 {
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
     if (tcb == NULL)
-    {
         return;
-    }
     if (tcb->state != TCP_STATE_ESTABLISHED)
     {
         error(ERROR_INVALID_STATE);
@@ -1339,6 +1338,14 @@ static inline void tcps_write(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
     tcb->transmit = true;
     tcps_tx_text_ack_fin(tcpips, tcb_handle);
     error(ERROR_SYNC);
+}
+
+static inline void tcps_flush(TCPIPS* tcpips, HANDLE tcb_handle)
+{
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    if (tcb == NULL)
+        return;
+    tcps_rx_flush(tcpips, tcb_handle);
 }
 
 void tcps_request(TCPIPS* tcpips, IPC* ipc)
@@ -1375,19 +1382,17 @@ void tcps_request(TCPIPS* tcpips, IPC* ipc)
         tcps_open(tcpips, (HANDLE)ipc->param1);
         break;
     case IPC_CLOSE:
-        tcps_close(tcpips, ipc->param1);
+        tcps_close(tcpips, (HANDLE)ipc->param1);
         break;
     case IPC_READ:
-        tcps_read(tcpips, ipc->param1, (IO*)ipc->param2);
+        tcps_read(tcpips, (HANDLE)ipc->param1, (IO*)ipc->param2);
         break;
     case IPC_WRITE:
-        tcps_write(tcpips, ipc->param1, (IO*)ipc->param2);
+        tcps_write(tcpips, (HANDLE)ipc->param1, (IO*)ipc->param2);
         break;
     case IPC_FLUSH:
-        //TODO:
-//        tcps_flush(tcpips, ipc->param1);
+        tcps_flush(tcpips, (HANDLE)ipc->param1);
         break;
-    //TODO: accept/reject
     default:
         error(ERROR_NOT_SUPPORTED);
     }
