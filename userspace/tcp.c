@@ -65,8 +65,13 @@ void tcp_close_listen(HANDLE tcpip, HANDLE handle)
     ack(tcpip, HAL_REQ(HAL_TCP, TCP_CLOSE_LISTEN), handle, 0, 0);
 }
 
-HANDLE tcp_connect(HANDLE tcpip, unsigned short port, const IP* remote_addr)
+HANDLE tcp_create_tcb(HANDLE tcpip, const IP* remote_addr, uint16_t remote_port)
 {
-    return get_handle(tcpip, HAL_REQ(HAL_TCP, IPC_OPEN), port, remote_addr->u32.ip, 0);
+    return get_handle(tcpip, HAL_REQ(HAL_TCP, TCP_CREATE_TCB), remote_port, remote_addr->u32.ip, 0);
+}
+
+bool tcp_open(HANDLE tcpip, HANDLE handle)
+{
+    return get_handle(tcpip, HAL_REQ(HAL_TCP, IPC_OPEN), handle, 0, 0) != INVALID_HANDLE;
 }
 
