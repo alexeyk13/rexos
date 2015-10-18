@@ -75,3 +75,7 @@ bool tcp_open(HANDLE tcpip, HANDLE handle)
     return get_handle(tcpip, HAL_REQ(HAL_TCP, IPC_OPEN), handle, 0, 0) != INVALID_HANDLE;
 }
 
+void tcp_close(HANDLE tcpip, HANDLE handle)
+{
+    get(tcpip, HAL_REQ(HAL_TCP, IPC_CLOSE), handle, 0, 0);
+}

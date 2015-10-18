@@ -667,7 +667,7 @@ static inline void tcps_rx_otw_syn_rst(TCPIPS* tcpips, IO* io, HANDLE tcb_handle
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
         //inform user on connection closed\n"
-        ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, 0);
+        ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, ERROR_CONNECTION_REFUSED);
         break;
     default:
         break;
@@ -734,10 +734,11 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     {
     case TCP_STATE_FIN_WAIT_1:
         if (tcb->snd_nxt == tcb->snd_una)
+        {
             tcps_set_state(tcb, TCP_STATE_FIN_WAIT_2);
-        break;
-    case TCP_STATE_FIN_WAIT_2:
-        printf("In addition to the processing for the ESTABLISHED state, if the retransmission queue is empty, the user’s CLOSE can be acknowledged\n");
+            //In addition to the processing for the ESTABLISHED state, if the retransmission queue is empty, the user’s CLOSE can be acknowledged
+            ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, 0);
+        }
         break;
     case TCP_STATE_CLOSING:
         if (tcb->snd_nxt == tcb->snd_una)
@@ -886,10 +887,8 @@ static inline void tcps_rx_otw_fin(TCPIPS* tcpips, HANDLE tcb_handle)
         tcps_set_state(tcb, TCP_STATE_LAST_ACK);
         break;
     case TCP_STATE_FIN_WAIT_1:
-        if (tcb->snd_una == tcb->snd_nxt)
-            tcps_set_state(tcb, TCP_STATE_TIME_WAIT);
-        else
-            tcps_set_state(tcb, TCP_STATE_CLOSING);
+        tcps_set_state(tcb, TCP_STATE_CLOSING);
+        ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, 0);
         break;
     case TCP_STATE_FIN_WAIT_2:
         tcps_set_state(tcb, TCP_STATE_TIME_WAIT);
@@ -1204,6 +1203,30 @@ static inline void tcps_open(TCPIPS* tcpips, HANDLE tcb_handle)
     error(ERROR_SYNC);
 }
 
+static inline void tcps_close(TCPIPS* tcpips, HANDLE tcb_handle)
+{
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    if (tcb == NULL)
+        return;
+    switch (tcb->state)
+    {
+    case TCP_STATE_ESTABLISHED:
+        tcps_set_state(tcb, TCP_STATE_FIN_WAIT_1);
+        tcb->fin = true;
+        ++tcb->snd_nxt;
+        tcps_rx_flush(tcpips, tcb_handle);
+        tcps_tx_text_ack_fin(tcpips, tcb_handle);
+        error(ERROR_SYNC);
+        break;
+    case TCP_STATE_LAST_ACK:
+        //already sent with same handle
+        error(ERROR_SYNC);
+        break;
+    default:
+        error(ERROR_INVALID_STATE);
+    }
+}
+
 static inline void tcps_read(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
 {
     TCP_TCB* tcb;
@@ -1352,8 +1375,7 @@ void tcps_request(TCPIPS* tcpips, IPC* ipc)
         tcps_open(tcpips, (HANDLE)ipc->param1);
         break;
     case IPC_CLOSE:
-        //TODO:
-//        tcps_close(tcpips, ipc->param1);
+        tcps_close(tcpips, ipc->param1);
         break;
     case IPC_READ:
         tcps_read(tcpips, ipc->param1, (IO*)ipc->param2);

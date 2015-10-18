@@ -40,6 +40,7 @@ void tcp_close_listen(HANDLE tcpip, HANDLE handle);
 
 HANDLE tcp_create_tcb(HANDLE tcpip, const IP* remote_addr, uint16_t remote_port);
 bool tcp_open(HANDLE tcpip, HANDLE handle);
+void tcp_close(HANDLE tcpip, HANDLE handle);
 
 #define tcp_read(tcpip, handle, io, size)                           io_read((tcpip), HAL_IO_REQ(HAL_TCP, IPC_READ), (handle), (io), (size))
 #define tcp_read_sync(tcpip, handle, io, size)                      io_read_sync((tcpip), HAL_IO_REQ(HAL_TCP, IPC_READ), (handle), (io), (size))
