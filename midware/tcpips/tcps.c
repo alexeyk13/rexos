@@ -374,7 +374,18 @@ static HANDLE tcps_find_tcb_local_port(TCPIPS* tcpips, uint16_t local_port)
 static HANDLE tcps_create_tcb_internal(TCPIPS* tcpips, const IP* remote_addr, uint16_t remote_port, uint16_t local_port)
 {
     TCP_TCB* tcb;
-    HANDLE handle = so_allocate(&tcpips->tcps.tcbs);
+    HANDLE handle;
+#if (TCP_HANDLES_LIMIT)
+    if (so_count(&tcpips->tcps.tcbs) >= TCP_HANDLES_LIMIT)
+    {
+        error(ERROR_TOO_MANY_HANDLES);
+#if (TCP_DEBUG_FLOW)
+        printf("TCP: Too many handles\n");
+#endif //TCP_DEBUG_FLOW
+        return INVALID_HANDLE;
+    }
+#endif //TCP_HANDLES_LIMIT
+    handle = so_allocate(&tcpips->tcps.tcbs);
     if (handle == INVALID_HANDLE)
         return handle;
     tcb = so_get(&tcpips->tcps.tcbs, handle);
