@@ -104,3 +104,14 @@ HANDLE so_next(SO* so, HANDLE prev)
     }
     return INVALID_HANDLE;
 }
+
+unsigned int so_count(SO* so)
+{
+    unsigned int idx;
+    unsigned int res = array_size(so->ar);
+    if (so->first_free == SO_FREE)
+        return res;
+    for (idx = so->first_free; idx != SO_FREE; idx = SO_INDEX(SO_AT(so, idx)))
+        --res;
+    return res;
+}

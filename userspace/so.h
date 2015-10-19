@@ -22,5 +22,6 @@ void so_free(SO* so, HANDLE handle);
 void* so_get(SO* so, HANDLE handle);
 HANDLE so_first(SO* so);
 HANDLE so_next(SO* so, HANDLE prev);
+unsigned int so_count(SO* so);
 
 #endif // SO_H
