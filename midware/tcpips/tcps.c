@@ -300,8 +300,10 @@ static void tcps_timer_start(TCP_TCB* tcb)
         timer_start_ms(tcb->timer, MSL_MS * 2);
         break;
     case TCP_STATE_ESTABLISHED:
+#if !(TCP_KEEP_ALIVE)
         if (!tcb->transmit)
             break;
+#endif //!TCP_KEEP_ALIVE
     default:
         timer_start_ms(tcb->timer, TCP_TIMEOUT);
     }
@@ -982,7 +984,9 @@ static inline void tcps_rx_send(TCPIPS* tcpips, HANDLE tcb_handle)
     if (tcb->state == TCP_STATE_ESTABLISHED && tcb->transmit && (tcb->snd_una == tcb->snd_nxt) && !tcb->fin)
     {
         tcb->transmit = false;
-        //TODO: keep-alive here
+#if (TCP_KEEP_ALIVE)
+        tcps_timer_start(tcb);
+#endif //TCP_KEEP_ALIVE
         return;
     }
     tcps_tx_text_ack_fin(tcpips, tcb_handle);
@@ -1152,7 +1156,6 @@ static inline void tcps_rx_process(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         tcps_rx_otw(tcpips, io, tcb_handle);
         break;
     }
-    tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 }
 
 void tcps_init(TCPIPS* tcpips)
@@ -1436,13 +1439,20 @@ static inline void tcps_timeout(TCPIPS* tcpips, HANDLE tcb_handle)
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
     if (tcb == NULL)
         return;
-    //TODO: keep-alive, not error condition
-/*    if ((tcb->state == TCP_STATE_ESTABLISHED) && (tcb->transmit == false))
+#if (TCP_KEEP_ALIVE)
+    //keep-alive, not error condition
+    if ((tcb->state == TCP_STATE_ESTABLISHED) && (tcb->transmit == false))
     {
+#if (TCP_DEBUG_FLOW)
+        printf("TCP: Keep-alive to ");
+        ip_print(&tcb->remote_addr);
+        printf(":%u\n", tcb->remote_port);
+#endif //TCP_DEBUG_FLOW
         tcb->transmit = true;
         tcps_tx_text_ack_fin(tcpips, tcb_handle);
         return;
-    }*/
+    }
+#endif //TCP_KEEP_ALIVE
 
     //time-wait is not error condition
     if (tcb->state == TCP_STATE_TIME_WAIT)
