@@ -16,6 +16,8 @@
 #define TCP_MSS_MAX                                      (IP_FRAME_MAX_DATA_SIZE - sizeof(TCP_HEADER))
 #define TCP_MSS_MIN                                      536
 
+#define MSL_MS                                           60000
+
 #pragma pack(push, 1)
 typedef struct {
     uint8_t src_port_be[2];
@@ -62,13 +64,13 @@ typedef struct {
     IO* rx;
     IO* rx_tmp;
     IO* tx;
+    HANDLE timer;
     unsigned int tx_cur;
     uint32_t snd_una, snd_nxt, rcv_nxt;
 
     TCP_STATE state;
-    uint16_t remote_port, local_port, mss, rx_wnd, tx_wnd;
+    uint16_t remote_port, local_port, mss, rx_wnd, tx_wnd, retry;
     bool active, transmit, fin;
-    //TODO: time
 } TCP_TCB;
 
 #if (TCP_DEBUG_PACKETS)
@@ -270,6 +272,7 @@ static inline void tcps_set_state(TCP_TCB* tcb, TCP_STATE state)
     tcps_debug_state(tcb->state, state);
 #endif //TCP_DEBUG_FLOW
     tcb->state = state;
+    tcb->retry = 0;
 }
 
 static uint32_t tcps_gen_isn()
@@ -287,6 +290,21 @@ static void tcps_update_rx_wnd(TCP_TCB* tcb)
         tcb->rx_wnd += io_get_free(tcb->rx);
     if (tcb->rx_tmp != NULL)
         tcb->rx_wnd = io_get_free(tcb->rx_tmp);
+}
+
+static void tcps_timer_start(TCP_TCB* tcb)
+{
+    switch (tcb->state)
+    {
+    case TCP_STATE_TIME_WAIT:
+        timer_start_ms(tcb->timer, MSL_MS * 2);
+        break;
+    case TCP_STATE_ESTABLISHED:
+        if (!tcb->transmit)
+            break;
+    default:
+        timer_start_ms(tcb->timer, TCP_TIMEOUT);
+    }
 }
 
 static void tcps_rx_flush(TCPIPS* tcpips, HANDLE tcb_handle)
@@ -358,6 +376,13 @@ static HANDLE tcps_create_tcb_internal(TCPIPS* tcpips, const IP* remote_addr, ui
     if (handle == INVALID_HANDLE)
         return handle;
     tcb = so_get(&tcpips->tcps.tcbs, handle);
+    tcb->timer = timer_create(handle, HAL_TCP);
+    if (tcb->timer == INVALID_HANDLE)
+    {
+        so_free(&tcpips->tcps.tcbs, handle);
+        return INVALID_HANDLE;
+    }
+    tcb->retry = 0;
     tcb->process = INVALID_HANDLE;
     tcb->remote_addr.u32.ip = remote_addr->u32.ip;
     tcb->snd_una = tcb->snd_nxt = 0;
@@ -378,15 +403,38 @@ static HANDLE tcps_create_tcb_internal(TCPIPS* tcpips, const IP* remote_addr, ui
 
 static void tcps_destroy_tcb(TCPIPS* tcpips, HANDLE tcb_handle)
 {
-    //TODO: free timers
-#if (TCP_DEBUG_FLOW)
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+#if (TCP_DEBUG_FLOW)
     printf("%s -> 0\n", __TCP_STATES[tcb->state]);
 #endif //TCP_DEBUG_FLOW
+    timer_destroy(tcb->timer);
     tcps_rx_flush(tcpips, tcb_handle);
     if (tcb->tx)
         io_complete_ex(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_WRITE), tcb_handle, tcb->tx, ERROR_CONNECTION_CLOSED);
     so_free(&tcpips->tcps.tcbs, tcb_handle);
+}
+
+static inline void tcps_close_connection(TCPIPS* tcpips, HANDLE tcb_handle)
+{
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+
+    switch (tcb->state)
+    {
+    case TCP_STATE_SYN_RECEIVED:
+        if (tcb->active)
+            ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, INVALID_HANDLE, ERROR_CONNECTION_REFUSED);
+        break;
+    case TCP_STATE_ESTABLISHED:
+    case TCP_STATE_FIN_WAIT_1:
+    case TCP_STATE_FIN_WAIT_2:
+        //inform user on connection closed\n"
+        ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, ERROR_CONNECTION_REFUSED);
+        break;
+    default:
+        break;
+    }
+    //enter closed state, destroy TCB and return
+    tcps_destroy_tcb(tcpips, tcb_handle);
 }
 
 static inline uint16_t tcps_allocate_port(TCPIPS* tcpips)
@@ -523,6 +571,7 @@ static void tcps_tx_ack(TCPIPS* tcpips, HANDLE tcb_handle)
     int2be(tcp_tx->seq_be, tcb->snd_nxt);
     int2be(tcp_tx->ack_be, tcb->rcv_nxt);
     tcps_tx(tcpips, tx, tcb);
+    tcps_timer_start(tcb);
 }
 
 static void tcps_tx_text_ack_fin(TCPIPS* tcpips, HANDLE tcb_handle)
@@ -566,7 +615,7 @@ static void tcps_tx_text_ack_fin(TCPIPS* tcpips, HANDLE tcb_handle)
             tcp->flags |= TCP_FLAG_FIN;
         tcps_tx(tcpips, io, tcb);
     }
-    //TODO: retransmit timer
+    tcps_timer_start(tcb);
 }
 
 static void tcps_tx_syn(TCPIPS* tcpips, HANDLE tcb_handle)
@@ -586,7 +635,7 @@ static void tcps_tx_syn(TCPIPS* tcpips, HANDLE tcb_handle)
 
     int2be(tcp->seq_be, tcb->snd_una);
     tcps_tx(tcpips, io, tcb);
-    //TODO: retransmit timer
+    tcps_timer_start(tcb);
 }
 
 static void tcps_tx_syn_ack(TCPIPS* tcpips, HANDLE tcb_handle)
@@ -607,7 +656,7 @@ static void tcps_tx_syn_ack(TCPIPS* tcpips, HANDLE tcb_handle)
     int2be(tcp->seq_be, tcb->snd_una);
     int2be(tcp->ack_be, tcb->rcv_nxt);
     tcps_tx(tcpips, io, tcb);
-    //TODO: retransmit timer
+    tcps_timer_start(tcb);
 }
 
 static inline bool tcps_rx_otw_check_seq(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
@@ -688,35 +737,15 @@ static inline bool tcps_rx_otw_check_seq(TCPIPS* tcpips, IO* io, HANDLE tcb_hand
 #endif //TCP_DEBUG_FLOW
         //RST bit is set, drop the segment and return:
         if (tcp->flags & TCP_FLAG_RST)
+        {
+            tcps_timer_start(tcb);
             return false;
+        }
 
         tcps_tx_ack(tcpips, tcb_handle);
         return false;
     }
     return true;
-}
-
-static inline void tcps_rx_otw_syn_rst(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
-{
-    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
-
-    switch (tcb->state)
-    {
-    case TCP_STATE_SYN_RECEIVED:
-        if (tcb->active)
-            ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, INVALID_HANDLE, ERROR_CONNECTION_REFUSED);
-        break;
-    case TCP_STATE_ESTABLISHED:
-    case TCP_STATE_FIN_WAIT_1:
-    case TCP_STATE_FIN_WAIT_2:
-        //inform user on connection closed\n"
-        ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, ERROR_CONNECTION_REFUSED);
-        break;
-    default:
-        break;
-    }
-    //enter closed state, destroy TCB and return
-    tcps_destroy_tcb(tcpips, tcb_handle);
 }
 
 static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
@@ -741,6 +770,7 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         {
             //form a reset segment
             tcps_tx_rst(tcpips, tcb_handle, be2int(tcp->ack_be));
+            tcps_timer_start(tcb);
             return false;
         }
     }
@@ -754,6 +784,8 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         return false;
     }
 
+    if ((ack_diff > 0) || ((ack_diff == 0) && (tcb->snd_nxt == tcb->snd_una)))
+        tcb->retry = 0;
     //adjust ack
     if (ack_diff > 0)
     {
@@ -831,6 +863,7 @@ static void tcps_rx_text(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
                 }
             }
             tcb->rcv_nxt += data_size;
+            tcb->retry = 0;
             //has user block
             if (tcb->rx != NULL)
             {
@@ -941,7 +974,7 @@ static inline void tcps_rx_otw_fin(TCPIPS* tcpips, HANDLE tcb_handle)
     }
 }
 
-static void tcps_rx_send(TCPIPS* tcpips, HANDLE tcb_handle)
+static inline void tcps_rx_send(TCPIPS* tcpips, HANDLE tcb_handle)
 {
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 
@@ -949,9 +982,9 @@ static void tcps_rx_send(TCPIPS* tcpips, HANDLE tcb_handle)
     if (tcb->state == TCP_STATE_ESTABLISHED && tcb->transmit && (tcb->snd_una == tcb->snd_nxt) && !tcb->fin)
     {
         tcb->transmit = false;
+        //TODO: keep-alive here
         return;
     }
-
     tcps_tx_text_ack_fin(tcpips, tcb_handle);
 }
 
@@ -1026,6 +1059,7 @@ static inline void tcps_rx_syn_sent(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         {
             if ((tcp->flags & TCP_FLAG_RST) == 0)
                 tcps_tx_rst(tcpips, tcb_handle, ack);
+            tcps_timer_start(tcb);
             return;
         }
     }
@@ -1039,6 +1073,8 @@ static inline void tcps_rx_syn_sent(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
             ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, INVALID_HANDLE, ERROR_CONNECTION_REFUSED);
             tcps_destroy_tcb(tcpips, tcb_handle);
         }
+        else
+            tcps_timer_start(tcb);
         return;
     }
 
@@ -1056,7 +1092,6 @@ static inline void tcps_rx_syn_sent(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         tcps_rx_send(tcpips, tcb_handle);
         return;
     }
-    //fifth, if neither of the SYN or RST bits is set then drop the segment and return.
 }
 
 static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
@@ -1071,7 +1106,7 @@ static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     //fourth, check the SYN bit
     if (tcp->flags & (TCP_FLAG_RST | TCP_FLAG_SYN))
     {
-        tcps_rx_otw_syn_rst(tcpips, io, tcb_handle);
+        tcps_close_connection(tcpips, tcb_handle);
         return;
     }
     //fifth check the ACK field
@@ -1081,7 +1116,11 @@ static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
             return;
     }
     else
+    {
+
+        tcps_timer_start(so_get(&tcpips->tcps.tcbs, tcb_handle));
         return;
+    }
 
     //sixth, check the URG bit
     //seventh, process the segment text
@@ -1113,6 +1152,7 @@ static inline void tcps_rx_process(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         tcps_rx_otw(tcpips, io, tcb_handle);
         break;
     }
+    tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 }
 
 void tcps_init(TCPIPS* tcpips)
@@ -1156,6 +1196,7 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
     if (tcb_handle != INVALID_HANDLE)
     {
         tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+        timer_stop(tcb->timer, tcb_handle, HAL_TCP);
         tcps_apply_options(tcpips, io, tcb);
         tcb->tx_wnd = be2short(tcp->window_be);
         tcps_rx_process(tcpips, io, tcb_handle);
@@ -1373,7 +1414,7 @@ static inline void tcps_write(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
         error(ERROR_IN_PROGRESS);
         return;
     }
-    //TODO: stop timer
+    timer_stop(tcb->timer, tcb_handle, HAL_TCP);
 
     tcb->tx = io;
     tcb->snd_nxt += io->data_size;
@@ -1388,6 +1429,50 @@ static inline void tcps_flush(TCPIPS* tcpips, HANDLE tcb_handle)
     if (tcb == NULL)
         return;
     tcps_rx_flush(tcpips, tcb_handle);
+}
+
+static inline void tcps_timeout(TCPIPS* tcpips, HANDLE tcb_handle)
+{
+    TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
+    if (tcb == NULL)
+        return;
+    //TODO: keep-alive, not error condition
+/*    if ((tcb->state == TCP_STATE_ESTABLISHED) && (tcb->transmit == false))
+    {
+        tcb->transmit = true;
+        tcps_tx_text_ack_fin(tcpips, tcb_handle);
+        return;
+    }*/
+
+    //time-wait is not error condition
+    if (tcb->state == TCP_STATE_TIME_WAIT)
+    {
+        tcps_destroy_tcb(tcpips, tcb_handle);
+        return;
+    }
+#if (TCP_DEBUG_FLOW)
+    printf("TCP: ");
+    ip_print(&tcb->remote_addr);
+    printf(":%u retry\n", tcb->remote_port);
+#endif //TCP_DEBUG_FLOW
+    if (++tcb->retry > TCP_RETRY_COUNT)
+    {
+#if (TCP_DEBUG_FLOW)
+        printf("TCP: Retry exceed, closing connection\n");
+#endif //TCP_DEBUG_FLOW
+        tcps_close_connection(tcpips, tcb_handle);
+        return;
+    }
+
+    switch (tcb->state)
+    {
+    case TCP_STATE_SYN_SENT:
+        tcps_tx_syn(tcpips, tcb_handle);
+        break;
+    default:
+        tcps_tx_text_ack_fin(tcpips, tcb_handle);
+        break;
+    }
 }
 
 void tcps_request(TCPIPS* tcpips, IPC* ipc)
@@ -1434,6 +1519,9 @@ void tcps_request(TCPIPS* tcpips, IPC* ipc)
         break;
     case IPC_FLUSH:
         tcps_flush(tcpips, (HANDLE)ipc->param1);
+        break;
+    case IPC_TIMEOUT:
+        tcps_timeout(tcpips, (HANDLE)ipc->param1);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
