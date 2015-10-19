@@ -151,6 +151,47 @@ static unsigned int tcps_get_next_opt(IO* io, unsigned int prev)
     return res < offset ? res : 0;
 }
 
+static void tcps_append_opt(IO* io, uint8_t kind, uint8_t* data, uint8_t size)
+{
+    unsigned int opts_offset, data_offset;
+    TCP_OPT* opt;
+    TCP_HEADER* tcp = io_data(io);
+    data_offset = tcps_data_offset(io);
+    for (opts_offset = sizeof(TCP_HEADER); opts_offset < data_offset; )
+    {
+        opt = (TCP_OPT*)((uint8_t*)io_data(io) + opts_offset);
+        if (opt->kind == TCP_OPTS_END)
+            break;
+        else if (opt->kind == TCP_OPTS_NOOP)
+            ++opts_offset;
+        else
+            opts_offset += opt->len;
+    }
+    //append offset by size
+    data_offset = (opts_offset + size + 3) & ~3;
+    tcp->data_off = (data_offset >> 2) << 4;
+    memset((uint8_t*)io_data(io) + opts_offset + size, TCP_OPTS_END, data_offset - opts_offset - size);
+    io->data_size = data_offset;
+    opt = (TCP_OPT*)((uint8_t*)io_data(io) + opts_offset);
+    opt->kind = kind;
+    switch(opt->kind)
+    {
+    case TCP_OPTS_END:
+    case TCP_OPTS_NOOP:
+        break;
+    default:
+        opt->len = size;
+        memcpy(opt->data, data, size - 2);
+    }
+}
+
+static void tcps_append_mss(IO* io)
+{
+    uint8_t mss_be[2];
+    short2be(mss_be, TCP_MSS_MAX);
+    tcps_append_opt(io, TCP_OPTS_MSS, mss_be, 2 + 2);
+}
+
 #if (TCP_DEBUG_PACKETS)
 static void tcps_debug(IO* io, const IP* src, const IP* dst)
 {
@@ -184,6 +225,7 @@ static void tcps_debug(IO* io, const IP* src, const IP* dst)
         printf("<DATA=%d byte(s)>", tcps_data_len(io));
     if ((i = tcps_get_first_opt(io)) != 0)
     {
+        tcps_append_opt(io, 0, NULL, 0);
         has_flag = false;
         printf("<OPTS=");
         for (; i; i = tcps_get_next_opt(io, i))
@@ -529,42 +571,42 @@ static void tcps_tx_text_ack_fin(TCPIPS* tcpips, HANDLE tcb_handle)
 
 static void tcps_tx_syn(TCPIPS* tcpips, HANDLE tcb_handle)
 {
-    IO* tx;
-    TCP_HEADER* tcp_tx;
+    IO* io;
+    TCP_HEADER* tcp;
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 
-    if ((tx = tcps_allocate_io(tcpips, tcb)) == NULL)
+    if ((io = tcps_allocate_io(tcpips, tcb)) == NULL)
         return;
 
-    tcp_tx = io_data(tx);
+    tcp = io_data(io);
 
     //SYN flag
-    tcp_tx->flags |= TCP_FLAG_SYN;
-    //TODO: add MSS to option list
+    tcp->flags |= TCP_FLAG_SYN;
+    tcps_append_mss(io);
 
-    int2be(tcp_tx->seq_be, tcb->snd_una);
-    tcps_tx(tcpips, tx, tcb);
+    int2be(tcp->seq_be, tcb->snd_una);
+    tcps_tx(tcpips, io, tcb);
     //TODO: retransmit timer
 }
 
 static void tcps_tx_syn_ack(TCPIPS* tcpips, HANDLE tcb_handle)
 {
-    IO* tx;
-    TCP_HEADER* tcp_tx;
+    IO* io;
+    TCP_HEADER* tcp;
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 
-    if ((tx = tcps_allocate_io(tcpips, tcb)) == NULL)
+    if ((io = tcps_allocate_io(tcpips, tcb)) == NULL)
         return;
 
-    tcp_tx = io_data(tx);
+    tcp = io_data(io);
 
     //add ACK, SYN flags
-    tcp_tx->flags |= TCP_FLAG_ACK | TCP_FLAG_SYN;
-    //TODO: add MSS to option list
+    tcp->flags |= TCP_FLAG_ACK | TCP_FLAG_SYN;
+    tcps_append_mss(io);
 
-    int2be(tcp_tx->seq_be, tcb->snd_una);
-    int2be(tcp_tx->ack_be, tcb->rcv_nxt);
-    tcps_tx(tcpips, tx, tcb);
+    int2be(tcp->seq_be, tcb->snd_una);
+    int2be(tcp->ack_be, tcb->rcv_nxt);
+    tcps_tx(tcpips, io, tcb);
     //TODO: retransmit timer
 }
 
