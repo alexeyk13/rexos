@@ -9,10 +9,12 @@
 
 #include "app.h"
 #include "comm.h"
+#include "net.h"
 #include <stdint.h>
 
 typedef struct _APP {
     COMM comm;
+    NET net;
     HANDLE timer;
     HANDLE usbd;
 } APP;

@@ -20,14 +20,14 @@
 static inline void comm_usb_start(APP* app)
 {
     HANDLE tx_stream;
-    tx_stream = get_handle(app->usbd, HAL_CMD(HAL_USBD_IFACE, IPC_GET_TX_STREAM), USBD_IFACE(0, 0), 0, 0);
-    app->comm.rx_stream = get_handle(app->usbd, HAL_CMD(HAL_USBD_IFACE, IPC_GET_RX_STREAM), USBD_IFACE(0, 0), 0, 0);
+    tx_stream = get_handle(app->usbd, HAL_REQ(HAL_USBD_IFACE, IPC_GET_TX_STREAM), USBD_IFACE(0, 0), 0, 0);
+    app->comm.rx_stream = get_handle(app->usbd, HAL_REQ(HAL_USBD_IFACE, IPC_GET_RX_STREAM), USBD_IFACE(0, 0), 0, 0);
 
     app->comm.tx = stream_open(tx_stream);
     app->comm.rx = stream_open(app->comm.rx_stream);
     app->comm.active = true;
 
-    stream_listen(app->comm.rx_stream, 0, HAL_APP);
+    stream_listen(app->comm.rx_stream, 0, HAL_USBD);
 
     printf("USB start\n");
 }
@@ -45,7 +45,7 @@ static void comm_usb_stop(APP* app)
     }
 }
 
-void comm_usbd_alert(APP* app, USBD_ALERTS alert)
+static inline void comm_usbd_alert(APP* app, USBD_ALERTS alert)
 {
     switch (alert)
     {
@@ -62,7 +62,7 @@ void comm_usbd_alert(APP* app, USBD_ALERTS alert)
     }
 }
 
-void comm_usbd_stream_rx(APP* app, unsigned int size)
+static inline void comm_usbd_stream_rx(APP* app, unsigned int size)
 {
     printf("rx: %d ", size);
     char c;
@@ -78,7 +78,7 @@ void comm_usbd_stream_rx(APP* app, unsigned int size)
             printf("\\x%u", (uint8_t)c);
     }
     printf("\n");
-    stream_listen(app->comm.rx_stream, 0, HAL_APP);
+    stream_listen(app->comm.rx_stream, 0, HAL_USBD);
 }
 
 void comm_init(APP *app)
@@ -103,4 +103,20 @@ void comm_init(APP *app)
     ack(app->usbd, HAL_REQ(HAL_USBD, IPC_OPEN), USB_PORT_NUM, 0, 0);
 
     printf("Comm init\n");
+}
+
+void comm_request(APP* app, IPC* ipc)
+{
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    case USBD_ALERT:
+        comm_usbd_alert(app, ipc->param1);
+        break;
+    case IPC_STREAM_WRITE:
+        comm_usbd_stream_rx(app, ipc->param3);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        break;
+    }
 }

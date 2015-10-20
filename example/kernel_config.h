@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2015, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #ifndef KERNEL_CONFIG_H
 #define KERNEL_CONFIG_H
 
@@ -16,13 +22,13 @@
 #define KERNEL_PROFILING                            1
 //Kernel assertions, halt on fatal error, disable power save mode
 //Don't forget to turn off in production.
-#define KERNEL_DEVELOPER_MODE                       0
+#define KERNEL_DEVELOPER_MODE                       1
 //enable this only if you have problems with system timer. May decrease perfomance
 #define KERNEL_TIMER_DEBUG                          0
 //Enabling this you will get stats on each thread uptime, but decreasing context switching up to 2 times
 #define KERNEL_PROCESS_STAT                         1
 //size of IPC queue per process
-#define KERNEL_IPC_COUNT                            5
+#define KERNEL_IPC_COUNT                            7
 //Enable this only if you have problems with IPC oferflow.
 #define KERNEL_IPC_DEBUG                            1
 //maximum number of global handles. Must be at least 1

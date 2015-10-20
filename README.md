@@ -37,6 +37,10 @@ unavailable, another HPET timer can be used for RTC emulation
   * USB device CCID class
   * USB device MSC class
   * SCSI stack: SPC5, SBC3
+  * TCP/IP: MAC level 802.3, RFC768, RFC791, RFC792,  RFC793, RFC826
+  * IP: fragmentation supported
+  * ICMP: ECHO and flow control
+  * ARP: timeouts and static routes support
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -77,23 +81,28 @@ ARM7 features:
 
 History
 =======
+0.3.9
+- TCP/IP stack full support. Fragmentation safe
+- SO: fragmentation-safe object handles support library
+- Example updated to support both USB (cdc echo) and TCP/IP telnet(23) echo
+
 0.3.8
-- IPC request flag. No need to check if response on IPC is required anymore.
-- HAL_REQ, HAL_IO_REQ helpers to make CMD for IPC request.
+- IPC request flag. No need to check if response on IPC is required anymore
+- HAL_REQ, HAL_IO_REQ helpers to make CMD for IPC request
 - IPC get refactoring:
-  - get_handle when handle is expected. If error is set, INVALID_HANDLE is returned.
-  - get_size for IO operations. Negative value means error.
-  - get_int for generic int. Error is set, but original param2 returned.
+  - get_handle when handle is expected. If error is set, INVALID_HANDLE is returned
+  - get_size for IO operations. Negative value means error
+  - get_int for generic int. Error is set, but original param2 returned
 - error codes refactoring. Synthetic ERROR_SYNC added as helper for asynchronous IPC request completion
 - IP stack refactoring
 - ARP static routes and debug info
-- ICMP echo request simplified. More detailed flow control.
+- ICMP echo request simplified. More detailed flow control
 
 0.3.7
 - UART flush HAL
 - UART IO interface for block transfers
 - LPC uart IO interface
-- soft timers start/stop in ISR. 
+- soft timers start/stop in ISR
 - USB device high-speed fix
 
 0.3.6

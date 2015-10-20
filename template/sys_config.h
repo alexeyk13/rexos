@@ -141,8 +141,9 @@
 //set, if not supported by hardware
 #define IP_CHECKSUM                                         1
 
-#define IP_FRAGMENTATION                                    0
-#define IP_FRAGMENT_ASSEMBLY_TIMEOUT                        10
+#define IP_FRAGMENTATION                                    1
+#define IP_FRAGMENTATION_ASSEMBLY_TIMEOUT                   10
+//must be less TCPIP_MTU * TCPIP_MAX_FRAMES_COUNT
 #define IP_MAX_LONG_SIZE                                    5000
 #define IP_MAX_LONG_PACKETS                                 2
 
@@ -154,5 +155,20 @@
 //reply on ICMP echo and echo request
 #define ICMP_ECHO                                           1
 
+//----------------------------- TCP/IP UDP --------------------------------------------
+#define UDP                                                 1
+#define UDP_DEBUG                                           1
+#define UDP_DEBUG_FLOW                                      0
+
+//----------------------------- TCP/IP TCP --------------------------------------------
+#define TCP_DEBUG                                           1
+#define TCP_RETRY_COUNT                                     3
+#define TCP_KEEP_ALIVE                                      0
+#define TCP_TIMEOUT                                         30000
+//0 - don't limit
+#define TCP_HANDLES_LIMIT                                   10
+//Low-level debug. only for development
+#define TCP_DEBUG_FLOW                                      0
+#define TCP_DEBUG_PACKETS                                   0
 
 #endif // SYS_CONFIG_H

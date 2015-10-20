@@ -7,19 +7,20 @@
 #include "../../rexos/userspace/stdio.h"
 #include "../../rexos/userspace/stdlib.h"
 #include "../../rexos/userspace/process.h"
-#include "../userspace/sys.h"
-#include "../userspace/gpio.h"
-#include "../userspace/stm32_driver.h"
-#include "../userspace/ipc.h"
-#include "../userspace/systime.h"
-#include "../userspace/wdt.h"
-#include "../userspace/uart.h"
-#include "../userspace/process.h"
-#include "../midware/pinboard.h"
+#include "../../rexos/userspace/sys.h"
+#include "../../rexos/userspace/gpio.h"
+#include "../../rexos/userspace/stm32_driver.h"
+#include "../../rexos/userspace/ipc.h"
+#include "../../rexos/userspace/systime.h"
+#include "../../rexos/userspace/wdt.h"
+#include "../../rexos/userspace/uart.h"
+#include "../../rexos/userspace/process.h"
+#include "../../rexos/midware/pinboard.h"
 #include "app_private.h"
 #include "comm.h"
+#include "net.h"
 #include "config.h"
-#include "../userspace/adc.h"
+#include "../../rexos/userspace/adc.h"
 
 
 void app();
@@ -56,14 +57,14 @@ static inline void stat()
     diff = systime_elapsed_us(&uptime);
     printf("average switch time: %d.%dus\n", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
-    printf("core clock: %d\n", get_int(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_POWER, STM32_POWER_GET_CLOCK), STM32_CLOCK_CORE, 0, 0));
+    printf("core clock: %d\n", get_handle(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_POWER, STM32_POWER_GET_CLOCK), STM32_CLOCK_CORE, 0, 0));
     process_info();
 }
 
 static inline void app_setup_dbg()
 {
     BAUD baudrate;
-    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), DBG_CONSOLE_TX_PIN, STM32_GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, DBG_CONSOLE_TX_PIN_AF);
+    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), DBG_CONSOLE_TX_PIN, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
     uart_open(DBG_CONSOLE, UART_MODE_STREAM | UART_TX_STREAM);
     baudrate.baud = DBG_CONSOLE_BAUD;
     baudrate.data_bits = 8;
@@ -84,9 +85,8 @@ static inline void app_init(APP* app)
 
 
     app_setup_dbg();
-
     app->timer = timer_create(0, HAL_APP);
-    timer_start_ms(app->timer, 1000);
+//    timer_start_ms(app->timer, 1000);
 
     stat();
     printf("App init\n");
@@ -95,7 +95,6 @@ static inline void app_init(APP* app)
 static inline void app_timeout(APP* app)
 {
     printf("app timer timeout test\n");
-    printf("vlcd: %d\n", adc_get(STM32_ADC_VREF));
     timer_start_ms(app->timer, 1000);
 }
 
@@ -106,30 +105,25 @@ void app()
 
     app_init(&app);
     comm_init(&app);
-
-    ack(object_get(SYS_OBJ_ADC), HAL_REQ(HAL_ADC, IPC_OPEN), STM32_ADC_DEVICE, 0, 0);
-    ack(object_get(SYS_OBJ_ADC), HAL_REQ(HAL_ADC, IPC_OPEN), STM32_ADC_VREF, STM32_ADC_SMPR_55_5, 0);
-    adc_get(STM32_ADC_VREF);
-
+    net_init(&app);
 
     for (;;)
     {
         ipc_read(&ipc);
-        switch (HAL_ITEM(ipc.cmd))
+        switch (HAL_GROUP(ipc.cmd))
         {
-        case USBD_ALERT:
-            comm_usbd_alert(&app, ipc.param1);
+        case HAL_USBD:
+            comm_request(&app, &ipc);
             break;
-        case IPC_STREAM_WRITE:
-            comm_usbd_stream_rx(&app, ipc.param3);
+        case HAL_IP:
+        case HAL_UDP:
+        case HAL_TCP:
+            net_request(&app, &ipc);
             break;
-        case IPC_TIMEOUT:
+        case HAL_APP:
             app_timeout(&app);
             break;
         default:
-            printf("Unhandled cmd: %#X\n", ipc.cmd);
-            printf("sender: %#X\n", ipc.process);
-            printf("p1: %#X\n", ipc.param1);
             error(ERROR_NOT_SUPPORTED);
             break;
         }

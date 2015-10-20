@@ -23,20 +23,19 @@
 //save few bytes here
 #define STM32_DECODE_RESET                      0
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
-#define HSE_VALUE                               8000000
-#define HSE_BYPASS                              1
+#define HSE_VALUE                               24000000
+#define HSE_BYPASS                              0
 //0 meaning HSE
-///#define LSE_VALUE                               32768
-#define LSE_VALUE                               0
+#define LSE_VALUE                               32768
 //STM32L0
 #define MSI_RANGE                               6
 
 //STM32F1
-//#define PLL_MUL                                 6
-//#define PLL_DIV                                 2
+#define PLL_MUL                                 6
+#define PLL_DIV                                 2
 //STM32L0
-#define PLL_MUL                                 12
-#define PLL_DIV                                 3
+//#define PLL_MUL                                 12
+//#define PLL_DIV                                 3
 //STM32F10X_CL only
 // use PLL2 as clock source for main PLL. Set to 0 to disable
 #define PLL2_DIV                                0
@@ -57,13 +56,13 @@
 //Sizeof UART process. Remember, that process itself requires around 450 bytes. Only for stand-alone UART driver
 #define STM32_UART_PROCESS_SIZE                 410 + (50 + UART_TX_BUF_SIZE) * 1
 //------------------------------ TIMER -----------------------------------------------
-#define HPET_TIMER                              TIM_22
+#define HPET_TIMER                              TIM_2
 //only required if no STM32_RTC_DRIVER is set
-#define SECOND_PULSE_TIMER                      TIM_21
+#define SECOND_PULSE_TIMER                      TIM_3
 //disable to save few bytes
 #define TIMER_IO                                1
 //------------------------------- ADC ------------------------------------------------
-#define STM32_ADC_DRIVER                        1
+#define STM32_ADC_DRIVER                        0
 //In L0 series - select HSI16 as clock source
 #define STM32_ADC_ASYNCRONOUS_CLOCK             0
 // Avg Slope, refer to datasheet
@@ -103,6 +102,5 @@
 #define STM32_RTC_DRIVER                        1
 //------------------------------- ETH -----------------------------------------------
 #define STM32_ETH_PROCESS_SIZE                  512
-
 
 #endif // STM32_CONFIG_H
