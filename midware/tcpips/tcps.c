@@ -1548,3 +1548,16 @@ void tcps_request(TCPIPS* tcpips, IPC* ipc)
         error(ERROR_NOT_SUPPORTED);
     }
 }
+
+#if (ICMP)
+void tcps_icmps_error_process(TCPIPS* tcpips, IO* io, ICMP_ERROR code, const IP* src)
+{
+    HANDLE tcb_handle;
+    TCP_HEADER* tcp;
+    tcp = io_data(io);
+
+    if ((tcb_handle = tcps_find_tcb(tcpips, src, be2short(tcp->dst_port_be), be2short(tcp->src_port_be))) == INVALID_HANDLE)
+        return;
+    tcps_close_connection(tcpips, tcb_handle);
+}
+#endif //ICMP

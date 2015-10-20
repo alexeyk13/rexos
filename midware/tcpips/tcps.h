@@ -11,6 +11,7 @@
 #include "../../userspace/ip.h"
 #include "../../userspace/so.h"
 #include "tcpips.h"
+#include "icmps.h"
 
 #define TCP_FLAG_FIN                                (1 << 0)
 #define TCP_FLAG_SYN                                (1 << 1)
@@ -40,7 +41,6 @@ void tcps_request(TCPIPS* tcpips, IPC* ipc);
 void tcps_rx(TCPIPS* tcpips, IO* io, IP* src);
 
 //from icmp
-//TODO: void tcps_icmps_error_process(TCPIPS* tcpips, IO* io, ICMP_ERROR code, const IP* src);
-
+void tcps_icmps_error_process(TCPIPS* tcpips, IO* io, ICMP_ERROR code, const IP* src);
 
 #endif // TCPS_H

@@ -87,8 +87,8 @@ static void icmps_rx_error_process(TCPIPS* tcpips, IO* io, ICMP_ERROR code)
             udps_icmps_error_process(tcpips, io, code, &dst);
             break;
 #endif //UDP
-            //RFU: forward to TCP
         case PROTO_TCP:
+            tcps_icmps_error_process(tcpips, io, code, &dst);
         default:
             break;
         }
