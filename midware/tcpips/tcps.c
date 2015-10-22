@@ -468,7 +468,7 @@ static inline uint16_t tcps_allocate_port(TCPIPS* tcpips)
     {
         if (tcps_find_tcb_local_port(tcpips, res) == INVALID_HANDLE)
         {
-            tcpips->udps.dynamic = res + 1;
+            tcpips->tcps.dynamic = res + 1;
             return res;
         }
 
