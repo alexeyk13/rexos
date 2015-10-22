@@ -18,8 +18,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define get_clock               stm32_power_get_clock_outside
-#define ack_power               stm32_core_request_outside
+#define get_core_clock               lpc_power_get_core_clock_outside
 
 void lpc_eth();
 
@@ -38,23 +37,23 @@ const REX __LPC_ETH = {
 
 void eth_phy_write(uint8_t phy_addr, uint8_t reg_addr, uint16_t data)
 {
-/*    while (ETH->MACMIIAR & ETH_MACMIIAR_MB) {}
-    ETH->MACMIIAR &= ~(ETH_MACMIIAR_PA | ETH_MACMIIAR_MR);
-    ETH->MACMIIAR |= ((phy_addr & 0x1f) << 11) | ((reg_addr & 0x1f) << 6) | ETH_MACMIIAR_MW;
-    ETH->MACMIIDR = data & ETH_MACMIIDR_MD;
-    ETH->MACMIIAR |= ETH_MACMIIAR_MB;
-    while (ETH->MACMIIAR & ETH_MACMIIAR_MB) {}*/
+    while (LPC_ETHERNET->MAC_MII_ADDR & ETHERNET_MAC_MII_ADDR_GB_Msk) {}
+    LPC_ETHERNET->MAC_MII_ADDR &= ~(ETHERNET_MAC_MII_ADDR_GR_Msk | ETHERNET_MAC_MII_ADDR_PA_Msk);
+    LPC_ETHERNET->MAC_MII_DATA = data;
+    LPC_ETHERNET->MAC_MII_ADDR |= ETHERNET_MAC_MII_ADDR_W_Msk | ((reg_addr & 0x1f) << ETHERNET_MAC_MII_ADDR_GR_Pos) |
+                                  ((phy_addr & 0x1f) << ETHERNET_MAC_MII_ADDR_PA_Pos);
+    LPC_ETHERNET->MAC_MII_ADDR |= ETHERNET_MAC_MII_ADDR_GB_Msk;
+    while (LPC_ETHERNET->MAC_MII_ADDR & ETHERNET_MAC_MII_ADDR_GB_Msk) {}
 }
 
 uint16_t eth_phy_read(uint8_t phy_addr, uint8_t reg_addr)
 {
-/*    while (ETH->MACMIIAR & ETH_MACMIIAR_MB) {}
-    ETH->MACMIIAR &= ~(ETH_MACMIIAR_PA | ETH_MACMIIAR_MR | ETH_MACMIIAR_MW);
-    ETH->MACMIIAR |= ((phy_addr & 0x1f) << 11) | ((reg_addr & 0x1f) << 6);
-    ETH->MACMIIAR |= ETH_MACMIIAR_MB;
-    while (ETH->MACMIIAR & ETH_MACMIIAR_MB) {}
-    return ETH->MACMIIDR & ETH_MACMIIDR_MD;*/
-    return 0;
+    while (LPC_ETHERNET->MAC_MII_ADDR & ETHERNET_MAC_MII_ADDR_GB_Msk) {}
+    LPC_ETHERNET->MAC_MII_ADDR &= ~(ETHERNET_MAC_MII_ADDR_W_Msk | ETHERNET_MAC_MII_ADDR_GR_Msk | ETHERNET_MAC_MII_ADDR_PA_Msk);
+    LPC_ETHERNET->MAC_MII_ADDR |= ((reg_addr & 0x1f) << ETHERNET_MAC_MII_ADDR_GR_Pos) | ((phy_addr & 0x1f) << ETHERNET_MAC_MII_ADDR_PA_Pos);
+    LPC_ETHERNET->MAC_MII_ADDR |= ETHERNET_MAC_MII_ADDR_GB_Msk;
+    while (LPC_ETHERNET->MAC_MII_ADDR & ETHERNET_MAC_MII_ADDR_GB_Msk) {}
+    return LPC_ETHERNET->MAC_MII_DATA & 0xffff;
 }
 
 static void lpc_eth_flush(ETH_DRV* drv)
@@ -234,17 +233,33 @@ static void lpc_eth_close(ETH_DRV* drv)
 
 static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TYPE conn, HANDLE tcpip)
 {
-/*    unsigned int clock;
+    unsigned int clock;
 
-    drv->phy_addr = phy_addr;
     drv->timer = timer_create(0, HAL_ETH);
     if (drv->timer == INVALID_HANDLE)
         return;
     drv->tcpip = tcpip;
+    drv->phy_addr = phy_addr;
 
-    //enable clocks
-    RCC->AHBENR |= RCC_AHBENR_ETHMACEN | RCC_AHBENR_ETHMACTXEN | RCC_AHBENR_ETHMACRXEN;
+    //setup PHY interface type and reset ETHERNET
+    LPC_CREG->CREG6 &= ~CREG_CREG6_ETHMODE_Msk;
 
+    LPC_CGU->BASE_PHY_TX_CLK = CGU_BASE_PHY_TX_CLK_PD_Pos;
+    LPC_CGU->BASE_PHY_TX_CLK |= CGU_CLK_ENET_TX;
+    LPC_CGU->BASE_PHY_TX_CLK &= ~CGU_BASE_PHY_TX_CLK_PD_Pos;
+#if (LPC_ETH_MII)
+    LPC_CGU->BASE_PHY_RX_CLK = CGU_BASE_PHY_RX_CLK_PD_Pos;
+    LPC_CGU->BASE_PHY_RX_CLK |= CGU_CLK_ENET_RX;
+    LPC_CGU->BASE_PHY_RX_CLK &= ~CGU_BASE_PHY_RX_CLK_PD_Pos;
+#else
+    LPC_CGU->BASE_PHY_RX_CLK = CGU_BASE_PHY_RX_CLK_PD_Pos;
+    LPC_CGU->BASE_PHY_RX_CLK |= CGU_CLK_ENET_TX;
+    LPC_CGU->BASE_PHY_RX_CLK &= ~CGU_BASE_PHY_RX_CLK_PD_Pos;
+    LPC_CREG->CREG6 |= CREG_CREG6_ETHMODE_RMII;
+#endif //LPC_ETH_MII
+    LPC_RGU->RESET_CTRL0 = RGU_RESET_CTRL0_ETHERNET_RST_Msk;
+    while ((LPC_RGU->RESET_ACTIVE_STATUS0 & RGU_RESET_ACTIVE_STATUS0_ETHERNET_RST_Msk) == 0) {}
+/*
     //reset DMA
     ETH->DMABMR |= ETH_DMABMR_SR;
     while(ETH->DMABMR & ETH_DMABMR_SR) {}
@@ -285,31 +300,39 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
 #else
     ETH->MACFFR = 0;
 #endif
-
-    //configure clock for SMI
-    clock = get_clock(drv, STM32_CLOCK_AHB);
-    if (clock <= 35000000)
-        ETH->MACMIIAR = ETH_MACMIIAR_CR_Div16;
-    else if (clock <= 60000000)
-        ETH->MACMIIAR = ETH_MACMIIAR_CR_Div26;
+*/
+    //configure SMI
+    clock = get_core_clock(drv);
+    if (clock > 250000000)
+        LPC_ETHERNET->MAC_MII_ADDR |= 5 << ETHERNET_MAC_MII_ADDR_CR_Pos;
+    else if (clock > 150000000)
+        LPC_ETHERNET->MAC_MII_ADDR |= 4 << ETHERNET_MAC_MII_ADDR_CR_Pos;
+    else if (clock > 100000000)
+        LPC_ETHERNET->MAC_MII_ADDR |= 1 << ETHERNET_MAC_MII_ADDR_CR_Pos;
+    else if (clock > 60000000)
+        LPC_ETHERNET->MAC_MII_ADDR |= 0 << ETHERNET_MAC_MII_ADDR_CR_Pos;
+    else if (clock > 35000000)
+        LPC_ETHERNET->MAC_MII_ADDR |= 3 << ETHERNET_MAC_MII_ADDR_CR_Pos;
     else
-        ETH->MACMIIAR = ETH_MACMIIAR_CR_Div42;
+        LPC_ETHERNET->MAC_MII_ADDR |= 2 << ETHERNET_MAC_MII_ADDR_CR_Pos;
 
     //enable dma interrupts
-    irq_register(ETH_IRQn, stm32_eth_isr, (void*)drv);
+/*    irq_register(ETH_IRQn, stm32_eth_isr, (void*)drv);
     NVIC_EnableIRQ(ETH_IRQn);
     NVIC_SetPriority(ETH_IRQn, 13);
     ETH->DMAIER = ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE;
-
+*/
     //turn phy on
     if (!eth_phy_power_on(drv->phy_addr, conn))
     {
+        printd("PHY not found\n");
         error(ERROR_NOT_FOUND);
-        stm32_eth_close(drv);
+        lpc_eth_close(drv);
         return;
     }
+    printd("PHY comm ok!!!\n");
 
-    lpc_eth_conn_check(drv);*/
+    lpc_eth_conn_check(drv);
 }
 
 static inline void lpc_eth_read(ETH_DRV* drv, IPC* ipc)
