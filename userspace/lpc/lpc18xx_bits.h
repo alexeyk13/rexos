@@ -4,8 +4,8 @@
     All rights reserved.
 */
 
-#ifndef LPC11UXX_BITS_H
-#define LPC11UXX_BITS_H
+#ifndef LPC18UXX_BITS_H
+#define LPC18UXX_BITS_H
 
 /*
  *      Only values, not provided by vendor library
@@ -1445,4 +1445,15 @@ typedef struct {                                /*!< (@ 0x4000e000) EEPROM Struc
 #define I2C0_STAT_ERROR                         0x00                    /* Bus error during MSTor selected slave modes, due to an illegal START or
                                                                            STOP condition. State 0x00 can also occur when interference causes the I2C block
                                                                            to enter an undefined state */
-#endif // LPC11UXX_BITS_H
+
+/******************************************************************************/
+/*                                                                            */
+/*                                 CREG                                       */
+/*                                                                            */
+/******************************************************************************/
+
+/**********  Bit definition for CREG6 register  *******************************/
+#define CREG_CREG6_ETHMODE_MII                  (0x0 << 0)
+#define CREG_CREG6_ETHMODE_RMII                 (0x4 << 0)
+
+#endif // LPC18UXX_BITS_H
