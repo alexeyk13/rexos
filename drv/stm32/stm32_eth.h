@@ -8,7 +8,7 @@
 #define STM32_ETH_H
 
 /*
-    STM32 Ethernet driver. Warning! It's just scratch, not ready yet.
+    STM32 Ethernet driver.
 */
 
 #include "../../userspace/process.h"
