@@ -105,7 +105,7 @@ static void lpc_eth_flush(ETH_DRV* drv)
 
 static void lpc_eth_conn_check(ETH_DRV* drv)
 {
-/*    ETH_CONN_TYPE new_conn;
+    ETH_CONN_TYPE new_conn;
     new_conn = eth_phy_get_conn_status(drv->phy_addr);
     if (new_conn != drv->conn)
     {
@@ -115,7 +115,7 @@ static void lpc_eth_conn_check(ETH_DRV* drv)
         if (drv->connected)
         {
             //set speed and duplex
-            switch (drv->conn)
+/*            switch (drv->conn)
             {
             case ETH_10_HALF:
                 ETH->MACCR &= ~(ETH_MACCR_FES | ETH_MACCR_DM);
@@ -136,16 +136,16 @@ static void lpc_eth_conn_check(ETH_DRV* drv)
             }
             //enable RX/TX and DMA operations
             ETH->MACCR |= ETH_MACCR_TE | ETH_MACCR_RE;
-            ETH->DMAOMR |= ETH_DMAOMR_SR | ETH_DMAOMR_ST;
+            ETH->DMAOMR |= ETH_DMAOMR_SR | ETH_DMAOMR_ST;*/
         }
         else
         {
-            stm32_eth_flush(drv);
-            ETH->MACCR &= ~(ETH_MACCR_TE | ETH_MACCR_RE);
-            ETH->DMAOMR &= ~(ETH_DMAOMR_SR | ETH_DMAOMR_ST);
+//            stm32_eth_flush(drv);
+//            ETH->MACCR &= ~(ETH_MACCR_TE | ETH_MACCR_RE);
+//            ETH->DMAOMR &= ~(ETH_DMAOMR_SR | ETH_DMAOMR_ST);
         }
     }
-    timer_start_ms(drv->timer, 1000);*/
+    timer_start_ms(drv->timer, 1000);
 }
 
 void lpc_eth_isr(int vector, void* param)
@@ -325,7 +325,6 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
     //turn phy on
     if (!eth_phy_power_on(drv->phy_addr, conn))
     {
-        printd("PHY not found\n");
         error(ERROR_NOT_FOUND);
         lpc_eth_close(drv);
         return;
@@ -378,8 +377,8 @@ static inline void lpc_eth_read(ETH_DRV* drv, IPC* ipc)
     drv->rx_des.ctl = ETH_RDES_OWN;
 #endif
     //enable and poll DMA. Value is doesn't matter
-    ETH->DMARPDR = 0;
-    error(ERROR_SYNC);*/
+    ETH->DMARPDR = 0;*/
+    error(ERROR_SYNC);
 }
 
 static inline void lpc_eth_write(ETH_DRV* drv, IPC* ipc)
@@ -425,8 +424,8 @@ static inline void lpc_eth_write(ETH_DRV* drv, IPC* ipc)
     drv->tx_des.ctl |= ETH_TDES_OWN;
 #endif
     //enable and poll DMA. Value is doesn't matter
-    ETH->DMATPDR = 0;
-    error(ERROR_SYNC);*/
+    ETH->DMATPDR = 0;*/
+    error(ERROR_SYNC);
 }
 
 static inline void lpc_eth_set_mac(ETH_DRV* drv, unsigned int param2, unsigned int param3)
