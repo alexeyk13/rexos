@@ -12,6 +12,7 @@
 #include "../process.h"
 
 extern const REX __LPC_CORE;
+extern const REX __LPC_ETH;
 
 #if !(MONOLITH_USB)
 extern const REX __LPC_USB;
