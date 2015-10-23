@@ -115,34 +115,32 @@ static void lpc_eth_conn_check(ETH_DRV* drv)
         if (drv->connected)
         {
             //set speed and duplex
-/*            switch (drv->conn)
+            switch (drv->conn)
             {
             case ETH_10_HALF:
-                ETH->MACCR &= ~(ETH_MACCR_FES | ETH_MACCR_DM);
+                LPC_ETHERNET->MAC_CONFIG &= ~(ETHERNET_MAC_CONFIG_DM_Msk | ETHERNET_MAC_CONFIG_FES_Msk);
                 break;
             case ETH_10_FULL:
-                ETH->MACCR &= ~ETH_MACCR_FES;
-                ETH->MACCR |= ETH_MACCR_DM;
+                LPC_ETHERNET->MAC_CONFIG &= ~ETHERNET_MAC_CONFIG_FES_Msk;
+                LPC_ETHERNET->MAC_CONFIG |= ETHERNET_MAC_CONFIG_DM_Msk;
                 break;
             case ETH_100_HALF:
-                ETH->MACCR &= ~(ETH_MACCR_DM);
-                ETH->MACCR |= ETH_MACCR_FES;
+                LPC_ETHERNET->MAC_CONFIG &= ~ETHERNET_MAC_CONFIG_DM_Msk;
+                LPC_ETHERNET->MAC_CONFIG |= ETHERNET_MAC_CONFIG_FES_Msk;
                 break;
             case ETH_100_FULL:
-                ETH->MACCR |= ETH_MACCR_FES | ETH_MACCR_DM;
+                LPC_ETHERNET->MAC_CONFIG |= ETHERNET_MAC_CONFIG_DM_Msk | ETHERNET_MAC_CONFIG_FES_Msk;
                 break;
             default:
                 break;
             }
-            //enable RX/TX and DMA operations
-            ETH->MACCR |= ETH_MACCR_TE | ETH_MACCR_RE;
-            ETH->DMAOMR |= ETH_DMAOMR_SR | ETH_DMAOMR_ST;*/
+            //enable RX/TX, PAD/CRC strip
+            LPC_ETHERNET->MAC_CONFIG |= ETHERNET_MAC_CONFIG_RE_Msk | ETHERNET_MAC_CONFIG_TE_Msk | ETHERNET_MAC_CONFIG_ACS_Msk;
         }
         else
         {
-//            stm32_eth_flush(drv);
-//            ETH->MACCR &= ~(ETH_MACCR_TE | ETH_MACCR_RE);
-//            ETH->DMAOMR &= ~(ETH_DMAOMR_SR | ETH_DMAOMR_ST);
+            lpc_eth_flush(drv);
+            LPC_ETHERNET->MAC_CONFIG &= ~(ETHERNET_MAC_CONFIG_RE_Msk | ETHERNET_MAC_CONFIG_TE_Msk | ETHERNET_MAC_CONFIG_ACS_Msk);
         }
     }
     timer_start_ms(drv->timer, 1000);
@@ -150,18 +148,19 @@ static void lpc_eth_conn_check(ETH_DRV* drv)
 
 void lpc_eth_isr(int vector, void* param)
 {
-/*    int i;
+    iprintd("ISR!!!\n");
+    int i;
     uint32_t sta;
     ETH_DRV* drv = (ETH_DRV*)param;
-    sta = ETH->DMASR;
-    if (sta & ETH_DMASR_RS)
+    sta = LPC_ETHERNET->DMA_STAT;
+    if (sta & ETHERNET_DMA_STAT_RI_Msk)
     {
 #if (ETH_DOUBLE_BUFFERING)
         for (i = 0; i < 2; ++i)
         {
-            if ((drv->rx[drv->cur_rx] != NULL) && ((drv->rx_des[drv->cur_rx].ctl & ETH_RDES_OWN) == 0))
+            if ((drv->rx[drv->cur_rx] != NULL) && ((drv->rx_des[drv->cur_rx].ctl & ETH_RDES0_OWN) == 0))
             {
-                drv->rx[drv->cur_rx]->data_size = (drv->rx_des[drv->cur_rx].ctl & ETH_RDES_FL_MASK) >> ETH_RDES_FL_POS;
+                drv->rx[drv->cur_rx]->data_size = (drv->rx_des[drv->cur_rx].ctl & ETH_RDES0_FL_MASK) >> ETH_RDES0_FL_POS;
                 iio_complete(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), drv->phy_addr, drv->rx[drv->cur_rx]);
                 drv->rx[drv->cur_rx] = NULL;
                 drv->cur_rx = (drv->cur_rx + 1) & 1;
@@ -172,19 +171,19 @@ void lpc_eth_isr(int vector, void* param)
 #else
         if (drv->rx != NULL)
         {
-            drv->rx->data_size = (drv->rx_des.ctl & ETH_RDES_FL_MASK) >> ETH_RDES_FL_POS;
+            drv->rx->data_size = (drv->rx_des.ctl & ETH_RDES0_FL_MASK) >> ETH_RDES0_FL_POS;
             iio_complete(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), drv->phy_addr, drv->rx);
             drv->rx = NULL;
         }
 #endif
-        ETH->DMASR = ETH_DMASR_RS;
+        LPC_ETHERNET->DMA_STAT = ETHERNET_DMA_STAT_RI_Msk;
     }
-    if (sta & ETH_DMASR_TS)
+    if (sta & ETHERNET_DMA_STAT_TI_Msk)
     {
 #if (ETH_DOUBLE_BUFFERING)
         for (i = 0; i < 2; ++i)
         {
-            if ((drv->tx[drv->cur_tx] != NULL) && ((drv->tx_des[drv->cur_tx].ctl & ETH_TDES_OWN) == 0))
+            if ((drv->tx[drv->cur_tx] != NULL) && ((drv->tx_des[drv->cur_tx].ctl & ETH_TDES0_OWN) == 0))
             {
                 iio_complete(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), drv->phy_addr, drv->tx[drv->cur_tx]);
                 drv->tx[drv->cur_tx] = NULL;
@@ -200,10 +199,9 @@ void lpc_eth_isr(int vector, void* param)
             drv->tx = NULL;
         }
 #endif
-        ETH->DMASR = ETH_DMASR_TS;
+        LPC_ETHERNET->DMA_STAT = ETHERNET_DMA_STAT_TI_Msk;
     }
-    ETH->DMASR = ETH_DMASR_NIS;
-    */
+    LPC_ETHERNET->DMA_STAT = ETHERNET_DMA_STAT_NIS_Msk;
 }
 
 static void lpc_eth_close(ETH_DRV* drv)
@@ -259,48 +257,52 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
 #endif //LPC_ETH_MII
     LPC_RGU->RESET_CTRL0 = RGU_RESET_CTRL0_ETHERNET_RST_Msk;
     while ((LPC_RGU->RESET_ACTIVE_STATUS0 & RGU_RESET_ACTIVE_STATUS0_ETHERNET_RST_Msk) == 0) {}
-/*
+
     //reset DMA
-    ETH->DMABMR |= ETH_DMABMR_SR;
-    while(ETH->DMABMR & ETH_DMABMR_SR) {}
+    LPC_ETHERNET->DMA_BUS_MODE |= ETHERNET_DMA_BUS_MODE_SWR_Msk;
+    while(LPC_ETHERNET->DMA_BUS_MODE & ETHERNET_DMA_BUS_MODE_SWR_Msk) {}
 
-    //setup DMA
+    //setup descriptors
 #if (ETH_DOUBLE_BUFFERING)
-    drv->rx_des[0].ctl = 0;
-    drv->rx_des[0].size = ETH_RDES_RCH;
+    memset(drv->tx_des, 0, sizeof(ETH_DESCRIPTOR) * 2);
+    memset(drv->rx_des, 0, sizeof(ETH_DESCRIPTOR) * 2);
+    drv->rx_des[0].size = ETH_RDES1_RCH;
     drv->rx_des[0].buf2_ndes = &drv->rx_des[1];
-    drv->rx_des[1].ctl = 0;
-    drv->rx_des[1].size = ETH_RDES_RCH;
-    drv->rx_des[1].buf2_ndes = &drv->rx_des[0];
+//    drv->rx_des[1].size = ETH_RDES1_RCH;
+//    drv->rx_des[1].buf2_ndes = &drv->rx_des[0];
+    drv->rx_des[1].size = ETH_RDES1_RCH | ETH_RDES1_RER;
+    drv->rx_des[1].buf2_ndes = NULL;
 
-    drv->tx_des[0].ctl = ETH_TDES_TCH | ETH_TDES_IC;
+    drv->tx_des[0].ctl = ETH_TDES0_TCH | ETH_TDES0_IC;
     drv->tx_des[0].buf2_ndes = &drv->tx_des[1];
-    drv->tx_des[1].ctl = ETH_TDES_TCH | ETH_TDES_IC;
-    drv->tx_des[1].buf2_ndes = &drv->tx_des[0];
+//    drv->tx_des[1].ctl = ETH_TDES0_TCH | ETH_TDES0_IC;
+//    drv->tx_des[1].buf2_ndes = &drv->tx_des[0];
+    drv->tx_des[1].ctl = ETH_TDES0_TCH | ETH_TDES0_IC | ETH_TDES0_TER;
+    drv->tx_des[1].buf2_ndes = NULL;
 
     drv->cur_rx = drv->cur_tx = 0;
 #else
-    drv->rx_des.ctl = 0;
+    memset(drv->tx_des, 0, sizeof(ETH_DESCRIPTOR));
+    memset(drv->rx_des, 0, sizeof(ETH_DESCRIPTOR));
     drv->rx_des.size = ETH_RDES_RCH;
     drv->rx_des.buf2_ndes = &drv->rx_des;
     drv->tx_des.ctl = ETH_TDES_TCH;
     drv->tx_des.buf2_ndes = &drv->tx_des;
 #endif
-    ETH->DMATDLAR = (unsigned int)&drv->tx_des;
-    ETH->DMARDLAR = (unsigned int)&drv->rx_des;
+    LPC_ETHERNET->DMA_TRANS_DES_ADDR = (unsigned int)&drv->tx_des;
+    LPC_ETHERNET->DMA_REC_DES_ADDR = (unsigned int)&drv->rx_des;
 
-    //disable receiver/transmitter before link established
-    ETH->MACCR = 0x8000;
     //setup MAC
-    ETH->MACA0HR = (drv->mac.u8[5] << 8) | (drv->mac.u8[4] << 0) |  (1 << 31);
-    ETH->MACA0LR = (drv->mac.u8[3] << 24) | (drv->mac.u8[2] << 16) | (drv->mac.u8[1] << 8) | (drv->mac.u8[0] << 0);
+    LPC_ETHERNET->MAC_ADDR0_HIGH = (drv->mac.u8[5] << 8) | (drv->mac.u8[4] << 0) |  (1 << 31);
+    LPC_ETHERNET->MAC_ADDR0_LOW = (drv->mac.u8[3] << 24) | (drv->mac.u8[2] << 16) | (drv->mac.u8[1] << 8) | (drv->mac.u8[0] << 0);
     //apply MAC unicast filter
-#if (TCPIP_MAC_FILTER)
-    ETH->MACFFR = ETH_MACFFR_RA;
+#if (MAC_FILTER)
+    LPC_ETHERNET->MAC_FRAME_FILTER = ETHERNET_MAC_FRAME_FILTER_RA_Msk;
 #else
-    ETH->MACFFR = 0;
+    LPC_ETHERNET->MAC_FRAME_FILTER = 0;
 #endif
-*/
+    LPC_ETHERNET->DMA_OP_MODE |= ETHERNET_DMA_OP_MODE_SR_Msk | ETHERNET_DMA_OP_MODE_ST_Msk;
+
     //configure SMI
     clock = get_core_clock(drv);
     if (clock > 250000000)
@@ -317,11 +319,12 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
         LPC_ETHERNET->MAC_MII_ADDR |= 2 << ETHERNET_MAC_MII_ADDR_CR_Pos;
 
     //enable dma interrupts
-/*    irq_register(ETH_IRQn, stm32_eth_isr, (void*)drv);
-    NVIC_EnableIRQ(ETH_IRQn);
-    NVIC_SetPriority(ETH_IRQn, 13);
-    ETH->DMAIER = ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE;
-*/
+    irq_register(ETHERNET_IRQn, lpc_eth_isr, (void*)drv);
+    NVIC_EnableIRQ(ETHERNET_IRQn);
+    NVIC_SetPriority(ETHERNET_IRQn, 13);
+    //TODO: abnormal interrupts?
+    LPC_ETHERNET->DMA_INT_EN = ETHERNET_DMA_INT_EN_TIE_Msk | ETHERNET_DMA_INT_EN_RIE_Msk | ETHERNET_DMA_INT_EN_NIE_Msk;
+
     //turn phy on
     if (!eth_phy_power_on(drv->phy_addr, conn))
     {
@@ -336,7 +339,7 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
 
 static inline void lpc_eth_read(ETH_DRV* drv, IPC* ipc)
 {
-/*    IO* io = (IO*)ipc->param2;
+    IO* io = (IO*)ipc->param2;
     if (!drv->connected)
     {
         error(ERROR_NOT_ACTIVE);
@@ -356,12 +359,12 @@ static inline void lpc_eth_read(ETH_DRV* drv, IPC* ipc)
         return;
     }
     drv->rx_des[i].buf1 = io_data(io);
-    drv->rx_des[i].size &= ~ETH_RDES_RBS1_MASK;
-    drv->rx_des[i].size |= ((ipc->param3 << ETH_RDES_RBS1_POS) & ETH_RDES_RBS1_MASK);
+    drv->rx_des[i].size &= ~ETH_RDES1_RBS1_MASK;
+    drv->rx_des[i].size |= (((ipc->param3 + 3) << ETH_RDES1_RBS1_POS) & ETH_RDES1_RBS1_MASK);
     __disable_irq();
     drv->rx[i] = io;
     //give descriptor to DMA
-    drv->rx_des[i].ctl = ETH_RDES_OWN;
+    drv->rx_des[i].ctl = ETH_RDES0_OWN;
     __enable_irq();
 #else
     if (drv->rx != NULL)
@@ -371,19 +374,19 @@ static inline void lpc_eth_read(ETH_DRV* drv, IPC* ipc)
     }
     drv->rx_des.buf1 = io_data(io);
     drv->rx = io;
-    drv->rx_des.size &= ~ETH_RDES_RBS1_MASK;
-    drv->rx_des.size |= ((ipc->param3 << ETH_RDES_RBS1_POS) & ETH_RDES_RBS1_MASK);
+    drv->rx_des.size &= ~ETH_RDES1_RBS1_MASK;
+    drv->rx_des.size |= (((ipc->param3 + 3) << ETH_RDES1_RBS1_POS) & ETH_RDES1_RBS1_MASK);
     //give descriptor to DMA
-    drv->rx_des.ctl = ETH_RDES_OWN;
+    drv->rx_des.ctl = ETH_RDES0_OWN;
 #endif
     //enable and poll DMA. Value is doesn't matter
-    ETH->DMARPDR = 0;*/
+    LPC_ETHERNET->DMA_REC_POLL_DEMAND = 0;
     error(ERROR_SYNC);
 }
 
 static inline void lpc_eth_write(ETH_DRV* drv, IPC* ipc)
 {
-/*    IO* io = (IO*)ipc->param2;
+    IO* io = (IO*)ipc->param2;
     if (!drv->connected)
     {
         error(ERROR_NOT_ACTIVE);
@@ -403,12 +406,12 @@ static inline void lpc_eth_write(ETH_DRV* drv, IPC* ipc)
         return;
     }
     drv->tx_des[i].buf1 = io_data(io);
-    drv->tx_des[i].size = ((io->data_size << ETH_TDES_TBS1_POS) & ETH_TDES_TBS1_MASK);
-    drv->tx_des[i].ctl = ETH_TDES_TCH | ETH_TDES_FS | ETH_TDES_LS | ETH_TDES_IC;
+    drv->tx_des[i].size = ((io->data_size << ETH_TDES1_TBS1_POS) & ETH_TDES1_TBS1_MASK);
+    drv->tx_des[i].ctl = ETH_TDES0_TCH | ETH_TDES0_FS | ETH_TDES0_LS | ETH_TDES0_IC;
     __disable_irq();
     drv->tx[i] = io;
     //give descriptor to DMA
-    drv->tx_des[i].ctl |= ETH_TDES_OWN;
+    drv->tx_des[i].ctl |= ETH_TDES0_OWN;
     __enable_irq();
 #else
     if (drv->tx != NULL)
@@ -418,13 +421,13 @@ static inline void lpc_eth_write(ETH_DRV* drv, IPC* ipc)
     }
     drv->tx_des.buf1 = io_data(io);
     drv->tx = io;
-    drv->tx_des.size = ((io->data_size << ETH_TDES_TBS1_POS) & ETH_TDES_TBS1_MASK);
+    drv->tx_des.size = ((io->data_size << ETH_TDES1_TBS1_POS) & ETH_TDES1_TBS1_MASK);
     //give descriptor to DMA
-    drv->tx_des.ctl = ETH_TDES_TCH | ETH_TDES_FS | ETH_TDES_LS | ETH_TDES_IC;
-    drv->tx_des.ctl |= ETH_TDES_OWN;
+    drv->tx_des.ctl = ETH_TDES0_TCH | ETH_TDES0_FS | ETH_TDES0_LS | ETH_TDES0_IC;
+    drv->tx_des.ctl |= ETH_TDES0_OWN;
 #endif
     //enable and poll DMA. Value is doesn't matter
-    ETH->DMATPDR = 0;*/
+    LPC_ETHERNET->DMA_TRANS_POLL_DEMAND = 0;
     error(ERROR_SYNC);
 }
 
