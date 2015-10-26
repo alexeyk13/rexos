@@ -58,15 +58,25 @@ uint16_t eth_phy_read(uint8_t phy_addr, uint8_t reg_addr)
 
 static void lpc_eth_flush(ETH_DRV* drv)
 {
-/*    IO* io;
+    IO* io;
 
     //flush TxFIFO controller
-    ETH->DMAOMR |= ETH_DMAOMR_FTF;
-    while(ETH->DMAOMR & ETH_DMAOMR_FTF) {}
+    LPC_ETHERNET->DMA_OP_MODE |= ETHERNET_DMA_OP_MODE_FTF_Msk;
+    while(LPC_ETHERNET->DMA_OP_MODE & ETHERNET_DMA_OP_MODE_FTF_Msk) {}
 #if (ETH_DOUBLE_BUFFERING)
     int i;
     for (i = 0; i < 2; ++i)
     {
+        drv->rx_des[0].size = ETH_RDES1_RCH;
+        drv->rx_des[0].buf2_ndes = &drv->rx_des[1];
+        drv->rx_des[1].size = ETH_RDES1_RCH;
+        drv->rx_des[1].buf2_ndes = &drv->rx_des[0];
+
+        drv->tx_des[0].ctl = ETH_TDES0_TCH | ETH_TDES0_IC;
+        drv->tx_des[0].buf2_ndes = &drv->tx_des[1];
+        drv->tx_des[1].ctl = ETH_TDES0_TCH | ETH_TDES0_IC;
+        drv->tx_des[1].buf2_ndes = &drv->tx_des[0];
+
         __disable_irq();
         drv->rx_des[i].ctl = 0;
         io = drv->rx[i];
@@ -76,15 +86,15 @@ static void lpc_eth_flush(ETH_DRV* drv)
             io_complete_ex(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), drv->phy_addr, io, ERROR_IO_CANCELLED);
 
         __disable_irq();
-        drv->tx_des[i].ctl = 0;
+        drv->tx_des[i].ctl = ETH_TDES0_TCH | ETH_TDES0_IC;;
         io = drv->tx[i];
         drv->tx[i] = NULL;
         __enable_irq();
         if (io != NULL)
             io_complete_ex(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), drv->phy_addr, io, ERROR_IO_CANCELLED);
     }
-    drv->cur_rx = (ETH->DMACHRDR == (unsigned int)(&drv->rx_des[0]) ? 0 : 1);
-    drv->cur_tx = (ETH->DMACHTDR == (unsigned int)(&drv->tx_des[0]) ? 0 : 1);
+    drv->cur_rx = (LPC_ETHERNET->DMA_CURHOST_REC_BUF == (unsigned int)(&drv->rx_des[0]) ? 0 : 1);
+    drv->cur_tx = (LPC_ETHERNET->DMA_CURHOST_TRANS_BUF == (unsigned int)(&drv->tx_des[0]) ? 0 : 1);
 #else
     __disable_irq();
     io = drv->rx;
@@ -100,7 +110,6 @@ static void lpc_eth_flush(ETH_DRV* drv)
     if (io != NULL)
         io_complete_ex(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), drv->phy_addr, io, ERROR_IO_CANCELLED);
 #endif
-    */
 }
 
 static void lpc_eth_conn_check(ETH_DRV* drv)
@@ -134,22 +143,37 @@ static void lpc_eth_conn_check(ETH_DRV* drv)
             default:
                 break;
             }
+            //Looks like some timeout is required after connection mode is changed to setup state machin
+            //in other case there is chance it will hang
+            sleep_ms(1);
             //enable RX/TX, PAD/CRC strip
             LPC_ETHERNET->MAC_CONFIG |= ETHERNET_MAC_CONFIG_RE_Msk | ETHERNET_MAC_CONFIG_TE_Msk | ETHERNET_MAC_CONFIG_ACS_Msk;
+            LPC_ETHERNET->DMA_OP_MODE |= ETHERNET_DMA_OP_MODE_SR_Msk | ETHERNET_DMA_OP_MODE_ST_Msk;
         }
         else
         {
             lpc_eth_flush(drv);
+            LPC_ETHERNET->DMA_OP_MODE &= ~(ETHERNET_DMA_OP_MODE_SR_Msk | ETHERNET_DMA_OP_MODE_ST_Msk);
             LPC_ETHERNET->MAC_CONFIG &= ~(ETHERNET_MAC_CONFIG_RE_Msk | ETHERNET_MAC_CONFIG_TE_Msk | ETHERNET_MAC_CONFIG_ACS_Msk);
         }
+    }
+    if (LPC_ETHERNET->MAC_DEBUG)
+    {
+#if (LPC_ETH_DEBUG)
+        printd("DBG fail, restart\n");
+#endif //LPC_ETH_DEBUG
+        drv->conn = ETH_NO_LINK;
+        drv->connected = false;
+        ipc_post_inline(drv->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), 0, drv->conn, 0);
     }
     timer_start_ms(drv->timer, 1000);
 }
 
 void lpc_eth_isr(int vector, void* param)
 {
-    iprintd("ISR!!!\n");
+#if (ETH_DOUBLE_BUFFERING)
     int i;
+#endif //ETH_DOUBLE_BUFFERING
     uint32_t sta;
     ETH_DRV* drv = (ETH_DRV*)param;
     sta = LPC_ETHERNET->DMA_STAT;
@@ -206,18 +230,15 @@ void lpc_eth_isr(int vector, void* param)
 
 static void lpc_eth_close(ETH_DRV* drv)
 {
-/*    //disable interrupts
-    NVIC_DisableIRQ(ETH_IRQn);
-    irq_unregister(ETH_IRQn);
+    //disable interrupts
+    NVIC_DisableIRQ(ETHERNET_IRQn);
+    irq_unregister(ETHERNET_IRQn);
 
     //flush
-    stm32_eth_flush(drv);
+    lpc_eth_flush(drv);
 
     //turn phy off
     eth_phy_power_off(drv->phy_addr);
-
-    //disable clocks
-    RCC->AHBENR &= ~(RCC_AHBENR_ETHMACEN | RCC_AHBENR_ETHMACTXEN | RCC_AHBENR_ETHMACRXEN);
 
     //destroy timer
     timer_destroy(drv->timer);
@@ -226,7 +247,7 @@ static void lpc_eth_close(ETH_DRV* drv)
     //switch to unconfigured state
     drv->tcpip = INVALID_HANDLE;
     drv->connected = false;
-    drv->conn = ETH_NO_LINK;*/
+    drv->conn = ETH_NO_LINK;
 }
 
 static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TYPE conn, HANDLE tcpip)
@@ -241,10 +262,10 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
 
     //setup PHY interface type and reset ETHERNET
     LPC_CREG->CREG6 &= ~CREG_CREG6_ETHMODE_Msk;
-
     LPC_CGU->BASE_PHY_TX_CLK = CGU_BASE_PHY_TX_CLK_PD_Pos;
     LPC_CGU->BASE_PHY_TX_CLK |= CGU_CLK_ENET_TX;
     LPC_CGU->BASE_PHY_TX_CLK &= ~CGU_BASE_PHY_TX_CLK_PD_Pos;
+
 #if (LPC_ETH_MII)
     LPC_CGU->BASE_PHY_RX_CLK = CGU_BASE_PHY_RX_CLK_PD_Pos;
     LPC_CGU->BASE_PHY_RX_CLK |= CGU_CLK_ENET_RX;
@@ -268,25 +289,21 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
     memset(drv->rx_des, 0, sizeof(ETH_DESCRIPTOR) * 2);
     drv->rx_des[0].size = ETH_RDES1_RCH;
     drv->rx_des[0].buf2_ndes = &drv->rx_des[1];
-//    drv->rx_des[1].size = ETH_RDES1_RCH;
-//    drv->rx_des[1].buf2_ndes = &drv->rx_des[0];
-    drv->rx_des[1].size = ETH_RDES1_RCH | ETH_RDES1_RER;
-    drv->rx_des[1].buf2_ndes = NULL;
+    drv->rx_des[1].size = ETH_RDES1_RCH;
+    drv->rx_des[1].buf2_ndes = &drv->rx_des[0];
 
     drv->tx_des[0].ctl = ETH_TDES0_TCH | ETH_TDES0_IC;
     drv->tx_des[0].buf2_ndes = &drv->tx_des[1];
-//    drv->tx_des[1].ctl = ETH_TDES0_TCH | ETH_TDES0_IC;
-//    drv->tx_des[1].buf2_ndes = &drv->tx_des[0];
-    drv->tx_des[1].ctl = ETH_TDES0_TCH | ETH_TDES0_IC | ETH_TDES0_TER;
-    drv->tx_des[1].buf2_ndes = NULL;
+    drv->tx_des[1].ctl = ETH_TDES0_TCH | ETH_TDES0_IC;
+    drv->tx_des[1].buf2_ndes = &drv->tx_des[0];
 
     drv->cur_rx = drv->cur_tx = 0;
 #else
-    memset(drv->tx_des, 0, sizeof(ETH_DESCRIPTOR));
-    memset(drv->rx_des, 0, sizeof(ETH_DESCRIPTOR));
-    drv->rx_des.size = ETH_RDES_RCH;
+    memset(&drv->tx_des, 0, sizeof(ETH_DESCRIPTOR));
+    memset(&drv->rx_des, 0, sizeof(ETH_DESCRIPTOR));
+    drv->rx_des.size = ETH_RDES1_RCH;
     drv->rx_des.buf2_ndes = &drv->rx_des;
-    drv->tx_des.ctl = ETH_TDES_TCH;
+    drv->tx_des.ctl = ETH_TDES0_TCH;
     drv->tx_des.buf2_ndes = &drv->tx_des;
 #endif
     LPC_ETHERNET->DMA_TRANS_DES_ADDR = (unsigned int)&drv->tx_des;
@@ -297,11 +314,10 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
     LPC_ETHERNET->MAC_ADDR0_LOW = (drv->mac.u8[3] << 24) | (drv->mac.u8[2] << 16) | (drv->mac.u8[1] << 8) | (drv->mac.u8[0] << 0);
     //apply MAC unicast filter
 #if (MAC_FILTER)
-    LPC_ETHERNET->MAC_FRAME_FILTER = ETHERNET_MAC_FRAME_FILTER_RA_Msk;
+    LPC_ETHERNET->MAC_FRAME_FILTER = ETHERNET_MAC_FRAME_FILTER_PR_Msk | ETHERNET_MAC_FRAME_FILTER_RA_Msk;
 #else
     LPC_ETHERNET->MAC_FRAME_FILTER = 0;
 #endif
-    LPC_ETHERNET->DMA_OP_MODE |= ETHERNET_DMA_OP_MODE_SR_Msk | ETHERNET_DMA_OP_MODE_ST_Msk;
 
     //configure SMI
     clock = get_core_clock(drv);
@@ -322,7 +338,6 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
     irq_register(ETHERNET_IRQn, lpc_eth_isr, (void*)drv);
     NVIC_EnableIRQ(ETHERNET_IRQn);
     NVIC_SetPriority(ETHERNET_IRQn, 13);
-    //TODO: abnormal interrupts?
     LPC_ETHERNET->DMA_INT_EN = ETHERNET_DMA_INT_EN_TIE_Msk | ETHERNET_DMA_INT_EN_RIE_Msk | ETHERNET_DMA_INT_EN_NIE_Msk;
 
     //turn phy on
@@ -332,7 +347,6 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
         lpc_eth_close(drv);
         return;
     }
-    printd("PHY comm ok!!!\n");
 
     lpc_eth_conn_check(drv);
 }
@@ -380,7 +394,7 @@ static inline void lpc_eth_read(ETH_DRV* drv, IPC* ipc)
     drv->rx_des.ctl = ETH_RDES0_OWN;
 #endif
     //enable and poll DMA. Value is doesn't matter
-    LPC_ETHERNET->DMA_REC_POLL_DEMAND = 0;
+    LPC_ETHERNET->DMA_REC_POLL_DEMAND = 1;
     error(ERROR_SYNC);
 }
 
@@ -427,7 +441,7 @@ static inline void lpc_eth_write(ETH_DRV* drv, IPC* ipc)
     drv->tx_des.ctl |= ETH_TDES0_OWN;
 #endif
     //enable and poll DMA. Value is doesn't matter
-    LPC_ETHERNET->DMA_TRANS_POLL_DEMAND = 0;
+    LPC_ETHERNET->DMA_TRANS_POLL_DEMAND = 1;
     error(ERROR_SYNC);
 }
 
