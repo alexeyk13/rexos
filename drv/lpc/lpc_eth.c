@@ -157,15 +157,6 @@ static void lpc_eth_conn_check(ETH_DRV* drv)
             LPC_ETHERNET->MAC_CONFIG &= ~(ETHERNET_MAC_CONFIG_RE_Msk | ETHERNET_MAC_CONFIG_TE_Msk | ETHERNET_MAC_CONFIG_ACS_Msk);
         }
     }
-    if (LPC_ETHERNET->MAC_DEBUG)
-    {
-#if (LPC_ETH_DEBUG)
-        printd("DBG fail, restart\n");
-#endif //LPC_ETH_DEBUG
-        drv->conn = ETH_NO_LINK;
-        drv->connected = false;
-        ipc_post_inline(drv->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), 0, drv->conn, 0);
-    }
     timer_start_ms(drv->timer, 1000);
 }
 
