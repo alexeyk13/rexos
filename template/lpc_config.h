@@ -72,5 +72,8 @@
 //in some application slave devices may hang bus for infinite time.
 //Set this value greater than 0 to solve problem. Soft timers is required.
 #define LPC_I2C_TIMEOUT_MS                  3000
+//-------------------------------------- ETH ----------------------------------------------
+#define LPC_ETH_PROCESS_SIZE                512
+#define LPC_ETH_MII                         0
 
 #endif //LPC_CONFIG_H
