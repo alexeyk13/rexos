@@ -8,21 +8,22 @@
 #define HTTP_H
 
 typedef enum {
-    HTTP_GET,
+    HTTP_GET = 0,
     HTTP_HEAD,
     HTTP_POST,
     HTTP_PUT,
     HTTP_DELETE,
     HTTP_CONNECT,
     HTTP_OPTIONS,
-    HTTP_TRACE
+    HTTP_TRACE,
+    HTTP_METHOD_MAX
 } HTTP_METHOD;
 
 typedef enum {
-    HTTP_0_9,
-    HTTP_1_0,
-    HTTP_1_1,
-    HTTP_2_0,
+    HTTP_0_9 = 0x09,
+    HTTP_1_0 = 0x10,
+    HTTP_1_1 = 0x11,
+    HTTP_2_0 = 0x20,
 } HTTP_VERSION;
 
 typedef struct {
@@ -80,6 +81,7 @@ typedef enum {
     HTTP_RESPONSE_HTTP_VERSION_NOT_SUPPORTED = 505
 } HTTP_RESPONSE;
 
+void http_print(char* data, unsigned int size);
 HTTP_RESPONSE http_parse_request(char* data, unsigned int size, HTTP_REQUEST* req);
 void test_print(HTTP_RESPONSE resp);
 
