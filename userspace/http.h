@@ -7,6 +7,9 @@
 #ifndef HTTP_H
 #define HTTP_H
 
+#include <stdbool.h>
+#include "io.h"
+
 typedef enum {
     HTTP_GET = 0,
     HTTP_HEAD,
@@ -27,15 +30,9 @@ typedef enum {
 } HTTP_VERSION;
 
 typedef struct {
-    HTTP_METHOD method;
-    HTTP_VERSION version;
-    char* url;
-    unsigned int url_len;
-    char* head;
-    unsigned int head_len;
-    char* body;
-    unsigned int body_len;
-} HTTP_REQUEST;
+    char* s;
+    unsigned int len;
+} STR;
 
 typedef enum {
     HTTP_RESPONSE_CONTINUE = 100,
@@ -81,8 +78,20 @@ typedef enum {
     HTTP_RESPONSE_HTTP_VERSION_NOT_SUPPORTED = 505
 } HTTP_RESPONSE;
 
-void http_print(char* data, unsigned int size);
-HTTP_RESPONSE http_parse_request(char* data, unsigned int size, HTTP_REQUEST* req);
-void test_print(HTTP_RESPONSE resp);
+typedef struct {
+    HTTP_METHOD method;
+    HTTP_VERSION version;
+    HTTP_RESPONSE resp;
+    STR url, head, body;
+} HTTP;
+
+void http_print(STR* str);
+void http_set_error(HTTP* http, HTTP_RESPONSE response);
+bool http_parse_request(IO* io, HTTP* http);
+bool http_make_response(HTTP* http, IO* io);
+bool http_find_param(HTTP* http, char* param, STR* value);
+bool http_get_host(HTTP* http, STR* value);
+bool http_get_path(HTTP* http, STR* path);
+bool http_compare_path(STR* str1, char* str2);
 
 #endif // HTTP_H
