@@ -19,6 +19,10 @@ typedef struct {
     IP ip;
     uint16_t id;
     bool up;
+#if (IP_FIREWALL)
+    bool firewall_enabled;
+    IP src, mask;
+#endif //IP_FIREWALL
 #if (IP_FRAGMENTATION)
     unsigned int io_allocated;
     ARRAY* free_io;

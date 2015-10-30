@@ -32,6 +32,11 @@ uint16_t ip_checksum(void* buf, unsigned int size)
     return ~((uint16_t)sum);
 }
 
+bool ip_compare(const IP* ip1, const IP* ip2, const IP* mask)
+{
+    return (ip1->u32.ip & mask->u32.ip) == (ip2->u32.ip & mask->u32.ip);
+}
+
 void ip_set(HANDLE tcpip, const IP* ip)
 {
     ack(tcpip, HAL_REQ(HAL_IP, IP_SET), 0, ip->u32.ip, 0);
@@ -40,4 +45,14 @@ void ip_set(HANDLE tcpip, const IP* ip)
 void ip_get(HANDLE tcpip, IP* ip)
 {
     ip->u32.ip = get(tcpip, HAL_REQ(HAL_IP, IP_GET), 0, 0, 0);
+}
+
+void ip_enable_firewall(HANDLE tcpip, const IP* src, const IP* mask)
+{
+    ack(tcpip, HAL_REQ(HAL_IP, IP_ENABLE_FIREWALL), 0, src->u32.ip, mask->u32.ip);
+}
+
+void ip_disable_firewall(HANDLE tcpip)
+{
+    ack(tcpip, HAL_REQ(HAL_IP, IP_DISABLE_FIREWALL), 0, 0, 0);
 }

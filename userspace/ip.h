@@ -219,12 +219,17 @@ typedef enum {
     IP_GET,
     //notification of ip interface up/down
     IP_UP,
-    IP_DOWN
+    IP_DOWN,
+    IP_ENABLE_FIREWALL,
+    IP_DISABLE_FIREWALL
 }IP_IPCS;
 
 void ip_print(const IP* ip);
 uint16_t ip_checksum(void *buf, unsigned int size);
+bool ip_compare(const IP* ip1, const IP* ip2, const IP* mask);
 void ip_set(HANDLE tcpip, const IP* ip);
 void ip_get(HANDLE tcpip, IP* ip);
+void ip_enable_firewall(HANDLE tcpip, const IP* src, const IP* mask);
+void ip_disable_firewall(HANDLE tcpip);
 
 #endif // IP_H

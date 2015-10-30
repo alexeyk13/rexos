@@ -42,6 +42,10 @@ void ips_init(TCPIPS* tcpips)
     tcpips->ips.ip.u32.ip = IP_MAKE(0, 0, 0, 0);
     tcpips->ips.up = false;
 
+#if (IP_FIREWALL)
+    tcpips->ips.firewall_enabled = false;
+#endif //IP_FIREWALL
+
 #if (IP_FRAGMENTATION)
     tcpips->ips.io_allocated = 0;
     array_create(&tcpips->ips.free_io, sizeof(IO*), 1);
@@ -187,8 +191,36 @@ static inline void ips_set(TCPIPS* tcpips, uint32_t ip)
     tcpips->ips.ip.u32.ip = ip;
 }
 
+#if (IP_FIREWALL)
+void ips_enable_firewall(TCPIPS* tcpips, IP* src, IP* mask)
+{
+    if (tcpips->ips.firewall_enabled)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    tcpips->ips.src.u32.ip = src->u32.ip;
+    tcpips->ips.mask.u32.ip = mask->u32.ip;
+    tcpips->ips.firewall_enabled = true;
+}
+
+void ips_disable_firewall(TCPIPS* tcpips)
+{
+    if (!tcpips->ips.firewall_enabled)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    tcpips->ips.firewall_enabled = false;
+}
+#endif //IP_FIREWALL
+
+
 void ips_request(TCPIPS* tcpips, IPC* ipc)
 {
+#if (IP_FIREWALL)
+    IP src, mask;
+#endif //IP_FIREWALL
     switch (HAL_ITEM(ipc->cmd))
     {
     case IP_SET:
@@ -197,6 +229,16 @@ void ips_request(TCPIPS* tcpips, IPC* ipc)
     case IP_GET:
         ipc->param2 = tcpips->ips.ip.u32.ip;
         break;
+#if (IP_FIREWALL)
+    case IP_ENABLE_FIREWALL:
+        src.u32.ip = ipc->param2;
+        mask.u32.ip = ipc->param3;
+        ips_enable_firewall(tcpips, &src, &mask);
+        break;
+    case IP_DISABLE_FIREWALL:
+        ips_disable_firewall(tcpips);
+        break;
+#endif //IP_FIREWALL
     default:
         error(ERROR_NOT_SUPPORTED);
         break;
@@ -518,6 +560,19 @@ void ips_rx(TCPIPS* tcpips, IO* io)
         return;
     }
 #endif
+
+#if (IP_FIREWALL)
+    if (tcpips->ips.firewall_enabled && !ip_compare(&hdr->src, &tcpips->ips.src, &tcpips->ips.mask))
+    {
+#if (IP_DEBUG)
+        printf("IP: ");
+        ip_print(&hdr->src);
+        printf(" Firewall condition\n");
+#endif //IP_DEBUG
+        tcpips_release_io(tcpips, io);
+        return;
+    }
+#endif //IP_FIREWALL
     src.u32.ip = hdr->src.u32.ip;
     total_len = be2short(hdr->total_len_be);
     ip_stack->proto = hdr->proto;
