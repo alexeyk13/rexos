@@ -26,6 +26,14 @@ typedef struct {
 
 #pragma pack(pop)
 
+typedef struct {
+    MAC mac;
+#if (MAC_FIREWALL)
+    MAC src;
+    bool firewall_enabled;
+#endif //MAC_FIREWALL
+} MACS;
+
 //from tcpip process
 void macs_init(TCPIPS* tcpips);
 void macs_open(TCPIPS* tcpips);

@@ -154,7 +154,7 @@ void udps_rx(TCPIPS* tcpips, IO* io, IP* src)
     UDP_HEADER* hdr;
     UDP_HANDLE* uh;
     uint16_t src_port, dst_port;
-    if (io->data_size < sizeof(UDP_HEADER) || udp_checksum(io_data(io), io->data_size, src, &tcpips->ip))
+    if (io->data_size < sizeof(UDP_HEADER) || udp_checksum(io_data(io), io->data_size, src, &tcpips->ips.ip))
     {
         ips_release_io(tcpips, io);
         return;
@@ -167,7 +167,7 @@ void udps_rx(TCPIPS* tcpips, IO* io, IP* src)
     printf("UDP: ");
     ip_print(src);
     printf(":%d -> ", src_port);
-    ip_print(&tcpips->ip);
+    ip_print(&tcpips->ips.ip);
     printf(":%d, %d byte(s)\n", dst_port, io->data_size - sizeof(UDP_HEADER));
 #endif //UDP_DEBUG_FLOW
 
@@ -334,7 +334,7 @@ static inline void udps_write(TCPIPS* tcpips, HANDLE handle, IO* io)
         short2be(udp->dst_port_be, remote_port);
         short2be(udp->len_be, size + sizeof(UDP_HEADER));
         short2be(udp->checksum_be, 0);
-        short2be(udp->checksum_be, udp_checksum(io_data(cur), cur->data_size, &tcpips->ip, &dst));
+        short2be(udp->checksum_be, udp_checksum(io_data(cur), cur->data_size, &tcpips->ips.ip, &dst));
         ips_tx(tcpips, cur, &dst);
     }
 }

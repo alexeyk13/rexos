@@ -74,7 +74,7 @@ static void icmps_rx_error_process(TCPIPS* tcpips, IO* io, ICMP_ERROR code)
     hdr_size = (hdr->ver_ihl & 0xf) << 2;
     io->data_offset += hdr_size;
     io->data_size -= hdr_size;
-    if (hdr->src.u32.ip == tcpips->ip.u32.ip)
+    if (hdr->src.u32.ip == tcpips->ips.ip.u32.ip)
     {
         dst.u32.ip = hdr->dst.u32.ip;
         switch (hdr->proto)

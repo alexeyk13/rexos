@@ -33,3 +33,13 @@ bool mac_compare(const MAC* src, const MAC* dst)
 {
     return (src->u32.hi == dst->u32.hi) && (src->u32.lo == dst->u32.lo);
 }
+
+void mac_enable_firewall(HANDLE tcpip, const MAC* src)
+{
+    ack(tcpip, HAL_REQ(HAL_MAC, MAC_ENABLE_FIREWALL), 0, src->u32.hi, src->u32.lo);
+}
+
+void mac_disable_firewall(HANDLE tcpip)
+{
+    ack(tcpip, HAL_REQ(HAL_MAC, MAC_DISABLE_FIREWALL), 0, 0, 0);
+}

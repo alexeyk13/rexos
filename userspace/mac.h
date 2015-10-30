@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "ipc.h"
 
 #define MAC_INDIVIDUAL_ADDRESS                      (0 << 0)
 #define MAC_MULTICAST_ADDRESS                       (1 << 0)
@@ -28,7 +29,14 @@ typedef union {
 
 #pragma pack(pop)
 
+typedef enum {
+    MAC_ENABLE_FIREWALL = IPC_USER,
+    MAC_DISABLE_FIREWALL
+}MAC_IPCS;
+
 void mac_print(const MAC* mac);
 bool mac_compare(const MAC* src, const MAC* dst);
+void mac_enable_firewall(HANDLE tcpip, const MAC* src);
+void mac_disable_firewall(HANDLE tcpip);
 
 #endif // MAC_H

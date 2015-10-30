@@ -531,9 +531,9 @@ static void tcps_tx(TCPIPS* tcpips, IO* io, TCP_TCB* tcb)
 {
     TCP_HEADER* tcp = io_data(io);
     short2be(tcp->window_be, tcb->rx_wnd);
-    short2be(tcp->checksum_be, tcp_checksum(io_data(io), io->data_size, &tcpips->ip, &tcb->remote_addr));
+    short2be(tcp->checksum_be, tcp_checksum(io_data(io), io->data_size, &tcpips->ips.ip, &tcb->remote_addr));
 #if (TCP_DEBUG_PACKETS)
-    tcps_debug(io, &tcpips->ip, &tcb->remote_addr);
+    tcps_debug(io, &tcpips->ips.ip, &tcb->remote_addr);
 #endif //TCP_DEBUG_PACKETS
     ips_tx(tcpips, io, &tcb->remote_addr);
 }
@@ -1183,7 +1183,7 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
     TCP_TCB* tcb;
     HANDLE tcb_handle, process;
     uint16_t src_port, dst_port;
-    if (io->data_size < sizeof(TCP_HEADER) || tcp_checksum(io_data(io), io->data_size, src, &tcpips->ip))
+    if (io->data_size < sizeof(TCP_HEADER) || tcp_checksum(io_data(io), io->data_size, src, &tcpips->ips.ip))
     {
         ips_release_io(tcpips, io);
         return;
@@ -1192,7 +1192,7 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
     src_port = be2short(tcp->src_port_be);
     dst_port = be2short(tcp->dst_port_be);
 #if (TCP_DEBUG_PACKETS)
-    tcps_debug(io, src, &tcpips->ip);
+    tcps_debug(io, src, &tcpips->ips.ip);
 #endif //TCP_DEBUG_PACKETS
 
     if ((tcb_handle = tcps_find_tcb(tcpips, src, src_port, dst_port)) == INVALID_HANDLE)

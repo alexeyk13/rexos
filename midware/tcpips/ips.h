@@ -16,6 +16,7 @@
 #define IP_FRAME_MAX_DATA_SIZE                          (TCPIP_MTU - sizeof(IP_HEADER))
 
 typedef struct {
+    IP ip;
     uint16_t id;
     bool up;
 #if (IP_FRAGMENTATION)

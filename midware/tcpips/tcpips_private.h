@@ -30,8 +30,7 @@ typedef struct _TCPIPS {
     ARRAY* free_io;
     ARRAY* tx_queue;
     bool connected;
-    MAC mac;
-    IP ip;
+    MACS macs;
     IPS ips;
     ARPS arps;
     ROUTES routes;

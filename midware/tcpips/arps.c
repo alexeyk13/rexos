@@ -49,10 +49,10 @@ static void arps_cmd_request(TCPIPS* tcpips, const IP* ip)
     arp->pln = sizeof(IP);
     short2be(arp->op_be, ARP_REQUEST);
     //sha
-    arp->src_mac.u32.hi = tcpips->mac.u32.hi;
-    arp->src_mac.u32.lo = tcpips->mac.u32.lo;
+    arp->src_mac.u32.hi = tcpips->macs.mac.u32.hi;
+    arp->src_mac.u32.lo = tcpips->macs.mac.u32.lo;
     //spa
-    arp->src_ip.u32.ip = tcpips->ip.u32.ip;
+    arp->src_ip.u32.ip = tcpips->ips.ip.u32.ip;
     //tha
     arp->dst_mac.u32.hi = __MAC_REQUEST.u32.hi;
     arp->dst_mac.u32.lo = __MAC_REQUEST.u32.lo;
@@ -86,10 +86,10 @@ static inline void arps_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
     arp->pln = sizeof(IP);
     short2be(arp->op_be, ARP_REPLY);
     //sha
-    arp->src_mac.u32.hi = tcpips->mac.u32.hi;
-    arp->src_mac.u32.lo = tcpips->mac.u32.lo;
+    arp->src_mac.u32.hi = tcpips->macs.mac.u32.hi;
+    arp->src_mac.u32.lo = tcpips->macs.mac.u32.lo;
     //spa
-    arp->src_ip.u32.ip = tcpips->ip.u32.ip;
+    arp->src_ip.u32.ip = tcpips->ips.ip.u32.ip;
     //tha
     arp->dst_mac.u32.hi = mac->u32.hi;
     arp->dst_mac.u32.lo = mac->u32.lo;
@@ -215,8 +215,8 @@ void arps_link_changed(TCPIPS* tcpips, bool link)
     if (link)
     {
         //announce IP
-        if (tcpips->ip.u32.ip)
-            arps_cmd_request(tcpips, &tcpips->ip);
+        if (tcpips->ips.ip.u32.ip)
+            arps_cmd_request(tcpips, &tcpips->ips.ip);
     }
     else
     {
@@ -342,7 +342,7 @@ void arps_rx(TCPIPS* tcpips, IO *io)
     switch (be2short(arp->op_be))
     {
     case ARP_REQUEST:
-        if (arp->dst_ip.u32.ip == tcpips->ip.u32.ip)
+        if (arp->dst_ip.u32.ip == tcpips->ips.ip.u32.ip)
         {
             arps_cmd_reply(tcpips, &arp->src_mac, &arp->src_ip);
             //insert in cache
@@ -353,7 +353,7 @@ void arps_rx(TCPIPS* tcpips, IO *io)
             arps_insert_item(tcpips, &arp->src_ip, &arp->src_mac, ARP_CACHE_TIMEOUT);
         break;
     case ARP_REPLY:
-        if (mac_compare(&tcpips->mac, &arp->dst_mac))
+        if (mac_compare(&tcpips->macs.mac, &arp->dst_mac))
         {
             arps_update_item(tcpips, &arp->src_ip, &arp->src_mac);
             routes_resolved(tcpips, &arp->src_ip, &arp->src_mac);

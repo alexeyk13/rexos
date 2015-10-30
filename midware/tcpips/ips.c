@@ -39,7 +39,7 @@ typedef struct {
 
 void ips_init(TCPIPS* tcpips)
 {
-    tcpips->ip.u32.ip = IP_MAKE(0, 0, 0, 0);
+    tcpips->ips.ip.u32.ip = IP_MAKE(0, 0, 0, 0);
     tcpips->ips.up = false;
 
 #if (IP_FRAGMENTATION)
@@ -184,7 +184,7 @@ static bool ips_insert_assembly(IPS_ASSEMBLY* as, IO* io, unsigned int offset)
 
 static inline void ips_set(TCPIPS* tcpips, uint32_t ip)
 {
-    tcpips->ip.u32.ip = ip;
+    tcpips->ips.ip.u32.ip = ip;
 }
 
 void ips_request(TCPIPS* tcpips, IPC* ipc)
@@ -195,7 +195,7 @@ void ips_request(TCPIPS* tcpips, IPC* ipc)
         ips_set(tcpips, ipc->param2);
         break;
     case IP_GET:
-        ipc->param2 = tcpips->ip.u32.ip;
+        ipc->param2 = tcpips->ips.ip.u32.ip;
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -301,7 +301,7 @@ static void ips_tx_internal(TCPIPS* tcpips, IO* io, const IP* dst, unsigned int 
     //ttl
     hdr->ttl = 0xff;
     //src
-    hdr->src.u32.ip = tcpips->ip.u32.ip;
+    hdr->src.u32.ip = tcpips->ips.ip.u32.ip;
     //dst
     hdr->dst.u32.ip = dst->u32.ip;
     //update checksum
@@ -544,7 +544,7 @@ void ips_rx(TCPIPS* tcpips, IO* io)
         return;
     }
     //unicast-only filter
-    if (tcpips->ip.u32.ip != hdr->dst.u32.ip)
+    if (tcpips->ips.ip.u32.ip != hdr->dst.u32.ip)
     {
         tcpips_release_io(tcpips, io);
         return;
