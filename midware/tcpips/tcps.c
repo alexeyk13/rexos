@@ -777,7 +777,9 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         {
             tcps_set_state(tcb, TCP_STATE_ESTABLISHED);
             ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, tcb_handle, 0);
-            //and continue processing in that state
+            //and continue processing in that state if no data
+            if (io->data_size == 0)
+                return false;
         }
         else
         {
