@@ -74,6 +74,9 @@ static const char* __HTTP_METHOD[] =        {"GET",
                                              "OPTIONS",
                                              "TRACE"};
 
+static const char* __HTTP_CONTENT[] =       {"text/plain",
+                                             "text/html"};
+
 static const char* __HTTP_VER =             "HTTP/";
 #define HTTP_VER_LEN                        5
 
@@ -206,6 +209,7 @@ bool http_parse_request(IO* io, HTTP* http)
     unsigned int cur, ver_hi, ver_lo;
     req_line_size = http_line_size(io_data(io), io->data_size);
     http->resp = HTTP_RESPONSE_OK;
+    http->version = HTTP_1_1;
 
     do {
         if (req_line_size < 0)
@@ -295,26 +299,32 @@ bool http_make_response(HTTP* http, IO* io)
     if (!http_append_line(io, &head))
         return false;
     //header
-    //TODO: user header
     sprintf(head, "Server: RExOS\r\n");
     if (!http_append_line(io, &head))
         return false;
+    //user header
+    if (http->head.s != NULL && http->head.len)
+    {
+        if (io_get_free(io) < http->head.len + HTTP_LINE_SIZE + 2)
+            return false;
+        memcpy(head, http->head.s, http->head.len);
+        head += http->head.len;
+        sprintf(head, "\r\n");
+        head += 2;
+        io->data_size += http->head.len + 2;
+    }
+
     if (http->body.s != NULL && http->body.len)
     {
         sprintf(head, "Content-Length: %d\r\n", http->body.len);
         if (!http_append_line(io, &head))
             return false;
-        //TODO: real content encode
-        sprintf(head, "Content-Type: text/plain\r\n");
-        if (!http_append_line(io, &head))
-            return false;
-    }
-    //test!
-    if (http->resp >= 400)
-    {
-        sprintf(head, "Connection: close\r\n");
-        if (!http_append_line(io, &head))
-            return false;
+        if (http->content_type < HTTP_CONTENT_MAX)
+        {
+            sprintf(head, "Content-Type: %s\r\n", __HTTP_CONTENT[http->content_type]);
+            if (!http_append_line(io, &head))
+                return false;
+        }
     }
 
     sprintf(head, "\r\n");
@@ -328,11 +338,6 @@ bool http_make_response(HTTP* http, IO* io)
         memcpy(head, http->body.s, http->body.len);
         io->data_size += http->body.len;
     }
-
-    ((char*)io_data(io))[io->data_size] = 0x00;
-    printf("res: \n");
-    printf("%s", io_data(io));
-    printf("res end\n");
     return true;
 }
 

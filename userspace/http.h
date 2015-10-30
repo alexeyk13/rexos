@@ -29,6 +29,12 @@ typedef enum {
     HTTP_2_0 = 0x20,
 } HTTP_VERSION;
 
+typedef enum {
+    HTTP_CONTENT_PLAIN_TEXT = 0,
+    HTTP_CONTENT_HTML,
+    HTTP_CONTENT_MAX
+} HTTP_CONTENT_TYPE;
+
 typedef struct {
     char* s;
     unsigned int len;
@@ -82,6 +88,7 @@ typedef struct {
     HTTP_METHOD method;
     HTTP_VERSION version;
     HTTP_RESPONSE resp;
+    HTTP_CONTENT_TYPE content_type;
     STR url, head, body;
 } HTTP;
 
