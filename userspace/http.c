@@ -8,7 +8,11 @@
 #include "types.h"
 #include <string.h>
 #include "stdio.h"
+#include "process.h"
 #include "sys_config.h"
+#include "../midware/https/https.h"
+
+extern void https_main();
 
 #define HTTP_LINE_SIZE                      64
 
@@ -406,4 +410,17 @@ bool http_compare_path(STR* str1, char* str2)
     if (strlen(str2) != str1->len)
         return false;
     return http_stricmp(str1, str2);
+}
+
+HANDLE http_create(unsigned int process_size, unsigned int priority, unsigned int handle)
+{
+    char name[24];
+    REX rex;
+    sprintf(name, "HTTP Server %d", handle);
+    rex.name = name;
+    rex.size = process_size;
+    rex.priority = priority;
+    rex.flags = PROCESS_FLAGS_ACTIVE;
+    rex.fn = https_main;
+    return process_create(&rex);
 }

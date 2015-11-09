@@ -101,4 +101,6 @@ bool http_get_host(HTTP* http, STR* value);
 bool http_get_path(HTTP* http, STR* path);
 bool http_compare_path(STR* str1, char* str2);
 
+HANDLE http_create(unsigned int process_size, unsigned int priority, unsigned int handle);
+
 #endif // HTTP_H
