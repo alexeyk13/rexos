@@ -4,8 +4,11 @@
     All rights reserved.
 */
 
-#ifndef HTTPS_H
-#define HTTPS_H
+#ifndef HSS_H
+#define HSS_H
 
+#include "../../userspace/process.h"
 
-#endif // HTTPS_H
+extern const REX __HSS;
+
+#endif // HSS_H

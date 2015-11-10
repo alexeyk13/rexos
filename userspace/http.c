@@ -10,9 +10,6 @@
 #include "stdio.h"
 #include "process.h"
 #include "sys_config.h"
-#include "../midware/https/https.h"
-
-extern void https_main();
 
 #define HTTP_LINE_SIZE                      64
 
@@ -200,7 +197,7 @@ void http_print(STR* str)
     }
 }
 
-void http_set_error(HTTP* http, HTTP_RESPONSE response)
+void http_set_error(HTTP* http, int response)
 {
     http->head.s = http->body.s = NULL;
     http->head.len = http->body.len = 0;
@@ -212,7 +209,7 @@ bool http_parse_request(IO* io, HTTP* http)
     int req_line_size, len, idx;
     unsigned int cur, ver_hi, ver_lo;
     req_line_size = http_line_size(io_data(io), io->data_size);
-    http->resp = HTTP_RESPONSE_OK;
+    http->resp = 200;
     http->version = HTTP_1_1;
 
     do {
@@ -235,8 +232,8 @@ bool http_parse_request(IO* io, HTTP* http)
         //parse method
         if ((len = http_next_word(io_data(io), req_line_size, &cur)) < 3)
             break;
-        if ((idx = http_find_keyword(io_data(io), len, __HTTP_METHOD, HTTP_METHOD_MAX)) < 0)
-            break;
+///        if ((idx = http_find_keyword(io_data(io), len, __HTTP_METHOD, HTTP_METHOD_MAX)) < 0)
+///            break;
         http->method = idx;
         //parse URL
         cur += len;
@@ -263,7 +260,7 @@ bool http_parse_request(IO* io, HTTP* http)
         if (http->version > HTTP_1_1)
         {
             http->version = HTTP_1_1;
-            http->resp = HTTP_RESPONSE_HTTP_VERSION_NOT_SUPPORTED;
+///            http->resp = HTTP_RESPONSE_HTTP_VERSION_NOT_SUPPORTED;
             return false;
         }
 
@@ -278,7 +275,7 @@ bool http_parse_request(IO* io, HTTP* http)
 #endif //HTTP_DEBUG
         return true;
     } while (false);
-    http_set_error(http, HTTP_RESPONSE_BAD_REQUEST);
+///    http_set_error(http, HTTP_RESPONSE_BAD_REQUEST);
     return false;
 }
 
@@ -323,7 +320,8 @@ bool http_make_response(HTTP* http, IO* io)
         sprintf(head, "Content-Length: %d\r\n", http->body.len);
         if (!http_append_line(io, &head))
             return false;
-        if (http->content_type < HTTP_CONTENT_MAX)
+        //!!
+///        if (http->content_type < HTTP_CONTENT_MAX)
         {
             sprintf(head, "Content-Type: %s\r\n", __HTTP_CONTENT[http->content_type]);
             if (!http_append_line(io, &head))
@@ -399,7 +397,7 @@ bool http_get_path(HTTP* http, STR* path)
         path->len = path->len - (delim - path->s);
     else
     {
-        http_set_error(http, HTTP_RESPONSE_BAD_REQUEST);
+///        http_set_error(http, HTTP_RESPONSE_BAD_REQUEST);
         return false;
     }
     return true;
@@ -410,17 +408,4 @@ bool http_compare_path(STR* str1, char* str2)
     if (strlen(str2) != str1->len)
         return false;
     return http_stricmp(str1, str2);
-}
-
-HANDLE http_create(unsigned int process_size, unsigned int priority, unsigned int handle)
-{
-    char name[24];
-    REX rex;
-    sprintf(name, "HTTP Server %d", handle);
-    rex.name = name;
-    rex.size = process_size;
-    rex.priority = priority;
-    rex.flags = PROCESS_FLAGS_ACTIVE;
-    rex.fn = https_main;
-    return process_create(&rex);
 }
