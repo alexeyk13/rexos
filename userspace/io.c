@@ -72,6 +72,16 @@ void io_reset(IO* io)
     io->data_offset = sizeof(IO);
 }
 
+void io_unhide(IO* io)
+{
+    unsigned int delta = io->data_offset - sizeof(IO);
+    if (delta)
+    {
+        io->data_offset -= delta;
+        io->data_size += delta;
+    }
+}
+
 IO* io_create(unsigned int size)
 {
     IO* io;

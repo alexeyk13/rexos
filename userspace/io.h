@@ -117,6 +117,13 @@ unsigned int io_data_append(IO* io, const void *data, unsigned int size);
 void io_reset(IO* io);
 
 /**
+    \brief unhide all IO data
+    \param io: IO pointer
+    \retval none
+*/
+void io_unhide(IO* io);
+
+/**
     \brief creates IO
     \param size: size of io without header
     \retval IO pointer on success.
