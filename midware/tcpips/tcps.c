@@ -54,7 +54,6 @@ typedef enum {
     TCP_STATE_FIN_WAIT_2,
     TCP_STATE_CLOSING,
     TCP_STATE_LAST_ACK,
-    TCP_STATE_TIME_WAIT,
     TCP_STATE_MAX
 } TCP_STATE;
 
@@ -296,9 +295,6 @@ static void tcps_timer_start(TCP_TCB* tcb)
 {
     switch (tcb->state)
     {
-    case TCP_STATE_TIME_WAIT:
-        timer_start_ms(tcb->timer, MSL_MS * 2);
-        break;
     case TCP_STATE_ESTABLISHED:
 #if !(TCP_KEEP_ALIVE)
         if (!tcb->transmit)
@@ -831,9 +827,6 @@ static inline bool tcps_rx_otw_ack(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
         }
         break;
     case TCP_STATE_CLOSING:
-        if (tcb->snd_nxt == tcb->snd_una)
-            tcps_set_state(tcb, TCP_STATE_TIME_WAIT);
-        break;
     case TCP_STATE_LAST_ACK:
         if (tcb->snd_nxt == tcb->snd_una)
         {
@@ -955,7 +948,7 @@ static void tcps_rx_text(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     }
 }
 
-static inline void tcps_rx_otw_fin(TCPIPS* tcpips, HANDLE tcb_handle)
+static inline bool tcps_rx_otw_fin(TCPIPS* tcpips, HANDLE tcb_handle)
 {
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 
@@ -982,11 +975,12 @@ static inline void tcps_rx_otw_fin(TCPIPS* tcpips, HANDLE tcb_handle)
         ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, 0);
         break;
     case TCP_STATE_FIN_WAIT_2:
-        tcps_set_state(tcb, TCP_STATE_TIME_WAIT);
-        break;
+        tcps_destroy_tcb(tcpips, tcb_handle);
+        return false;
     default:
         break;
     }
+    return true;
 }
 
 static inline void tcps_rx_send(TCPIPS* tcpips, HANDLE tcb_handle)
@@ -1134,7 +1128,6 @@ static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     }
     else
     {
-
         tcps_timer_start(so_get(&tcpips->tcps.tcbs, tcb_handle));
         return;
     }
@@ -1145,7 +1138,10 @@ static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
 
     //eighth, check the FIN bit
     if (tcp->flags & TCP_FLAG_FIN)
-        tcps_rx_otw_fin(tcpips, tcb_handle);
+    {
+        if (!tcps_rx_otw_fin(tcpips, tcb_handle))
+            return;
+    }
 
     //finally send ACK reply/data/fin/etc
     tcps_rx_send(tcpips, tcb_handle);
@@ -1467,12 +1463,6 @@ static inline void tcps_timeout(TCPIPS* tcpips, HANDLE tcb_handle)
     }
 #endif //TCP_KEEP_ALIVE
 
-    //time-wait is not error condition
-    if (tcb->state == TCP_STATE_TIME_WAIT)
-    {
-        tcps_destroy_tcb(tcpips, tcb_handle);
-        return;
-    }
 #if (TCP_DEBUG_FLOW)
     printf("TCP: ");
     ip_print(&tcb->remote_addr);
