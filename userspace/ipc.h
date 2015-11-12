@@ -67,13 +67,13 @@ typedef enum {
 //response required
 #define HAL_REQ_FLAG                                        (1 << 31)
 
-#define HAL_CMD(group, item)                                (((group & 0x7fff) << 16) | (item & 0x7fff))
-#define HAL_REQ(group, item)                                (((group & 0x7fff) << 16) | (item & 0x7fff) | HAL_REQ_FLAG)
+#define HAL_CMD(group, item)                                ((((group) & 0x7fff) << 16) | ((item) & 0x7fff))
+#define HAL_REQ(group, item)                                ((((group) & 0x7fff) << 16) | ((item) & 0x7fff) | HAL_REQ_FLAG)
 #define HAL_ITEM(cmd)                                       ((cmd) & 0x7fff)
 #define HAL_GROUP(cmd)                                      (((cmd) >> 16) & 0x7fff)
 
-#define HAL_IO_CMD(group, item)                             (((group & 0x7fff) << 16) | (item & 0x7fff) | HAL_IO_FLAG)
-#define HAL_IO_REQ(group, item)                             (((group & 0x7fff) << 16) | (item & 0x7fff) | HAL_IO_FLAG | HAL_REQ_FLAG)
+#define HAL_IO_CMD(group, item)                             ((((group) & 0x7fff) << 16) | ((item) & 0x7fff) | HAL_IO_FLAG)
+#define HAL_IO_REQ(group, item)                             ((((group) & 0x7fff) << 16) | ((item) & 0x7fff) | HAL_IO_FLAG | HAL_REQ_FLAG)
 
 #define ANY_CMD                                             0xffffffff
 
