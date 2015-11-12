@@ -9,20 +9,34 @@
 
 #include "process.h"
 #include "ipc.h"
+#include "io.h"
 
-#define HTTP_GET                (1 << 0)
-#define HTTP_HEAD               (1 << 1)
-#define HTTP_POST               (1 << 2)
-#define HTTP_PUT                (1 << 3)
-#define HTTP_DELETE             (1 << 4)
-#define HTTP_CONNECT            (1 << 5)
-#define HTTP_OPTIONS            (1 << 6)
-#define HTTP_TRACE              (1 << 7)
+typedef enum {
+    HTTP_GET = IPC_USER,
+    HTTP_HEAD,
+    HTTP_POST,
+    HTTP_PUT,
+    HTTP_DELETE,
+    HTTP_CONNECT,
+    HTTP_OPTIONS,
+    HTTP_TRACE
+} HTTP_IPCS;
+
+#define HTTP_FLAG_GET               (1 << 0)
+#define HTTP_FLAG_HEAD              (1 << 1)
+#define HTTP_FLAG_POST              (1 << 2)
+#define HTTP_FLAG_PUT               (1 << 3)
+#define HTTP_FLAG_DELETE            (1 << 4)
+#define HTTP_FLAG_CONNECT           (1 << 5)
+#define HTTP_FLAG_OPTIONS           (1 << 6)
+#define HTTP_FLAG_TRACE             (1 << 7)
 
 typedef enum {
     HTTP_CONTENT_PLAIN_TEXT = 0,
     HTTP_CONTENT_HTML,
-    HTTP_CONTENT_MAX
+    HTTP_CONTENT_FORM,
+    HTTP_CONTENT_NONE,
+    HTTP_CONTENT_UNKNOWN
 } HTTP_CONTENT_TYPE;
 
 typedef enum {
@@ -70,14 +84,22 @@ typedef enum {
 } HTTP_RESPONSE;
 
 typedef struct {
-    HANDLE session;
+    unsigned int content_size;
     HTTP_CONTENT_TYPE content_type;
-    HTTP_RESPONSE response;
-    uint16_t method;
+    HANDLE obj;
 } HS_STACK;
 
+typedef struct {
+    unsigned int content_size;
+    HTTP_CONTENT_TYPE content_type;
+    uint16_t response;
+} HS_RESPONSE;
+
 HANDLE hs_create();
-bool hs_open(HANDLE hs, HANDLE tcpip);
+bool hs_open(HANDLE hs, uint16_t port, HANDLE tcpip);
 void hs_close(HANDLE hs);
+
+void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_CONTENT_TYPE content_type, IO* user_io);
+void hs_respond_error(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_RESPONSE code);
 
 #endif // HS_H
