@@ -21,7 +21,9 @@ typedef enum {
     HTTP_OPTIONS,
     HTTP_TRACE,
     HTTP_CREATE_OBJ,
-    HTTP_DESTROY_OBJ
+    HTTP_DESTROY_OBJ,
+    HTTP_REGISTER_ERROR,
+    HTTP_UNREGISTER_ERROR
 } HTTP_IPCS;
 
 #define HTTP_FLAG_GET               (1 << 0)
@@ -33,6 +35,7 @@ typedef enum {
 #define HTTP_FLAG_OPTIONS           (1 << 6)
 #define HTTP_FLAG_TRACE             (1 << 7)
 
+#define HS_GENERIC_ERROR            0
 #define HS_ROOT_OBJ                 INVALID_HANDLE
 #define HS_OBJ_WILDCARD             "*"
 
@@ -108,5 +111,8 @@ HANDLE hs_create_obj(HANDLE hs, HANDLE parent, const char* name, unsigned int fl
 
 void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_CONTENT_TYPE content_type, IO* user_io);
 void hs_respond_error(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_RESPONSE code);
+
+void hs_register_error(HANDLE hs, HTTP_RESPONSE code, const char *html);
+void hs_unregister_error(HANDLE hs, HTTP_RESPONSE code);
 
 #endif // HS_H

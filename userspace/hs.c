@@ -62,3 +62,13 @@ void hs_respond_error(HANDLE hs, HANDLE session, unsigned int method, IO* io, HT
     //send response
     io_complete(hs, HAL_IO_CMD(HAL_HTTP, method), session, io);
 }
+
+void hs_register_error(HANDLE hs, HTTP_RESPONSE code, const char* html)
+{
+    ack(hs, HAL_REQ(HAL_HTTP, HTTP_REGISTER_ERROR), (unsigned int)code, (unsigned int)html, 0);
+}
+
+void hs_unregister_error(HANDLE hs, HTTP_RESPONSE code)
+{
+    ack(hs, HAL_REQ(HAL_HTTP, HTTP_UNREGISTER_ERROR), (unsigned int)code, 0, 0);
+}

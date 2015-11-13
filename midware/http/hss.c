@@ -14,6 +14,7 @@
 #include "../../userspace/sys.h"
 #include "../../userspace/hs.h"
 #include "../../userspace/so.h"
+#include "../../userspace/array.h"
 #include <string.h>
 #include "sys_config.h"
 
@@ -46,7 +47,6 @@ typedef struct {
     uint16_t method_idx;
 } HSS_SESSION;
 
-
 typedef struct _HSS_OBJ {
     struct _HSS_OBJ* child;
     struct _HSS_OBJ* next;
@@ -56,11 +56,19 @@ typedef struct _HSS_OBJ {
 } HSS_OBJ;
 
 typedef struct {
+    HTTP_RESPONSE code;
+    char* data;
+} HSS_ERROR;
+
+typedef struct {
     HANDLE tcpip, process, listener;
     bool busy;
 
     SO objs;
     HANDLE root;
+
+    ARRAY* errors;
+    char* generic_error;
 
     //only one session for now
     HSS_SESSION session;
@@ -305,6 +313,9 @@ static inline void hss_init(HSS* hss)
     so_create(&hss->objs, sizeof(HSS_OBJ), 1);
     hss->root = INVALID_HANDLE;
 
+    array_create(&hss->errors, sizeof(HSS_ERROR), 1);
+    hss->generic_error = NULL;
+
     //TODO: Multiple session support
     hss->session.io = NULL;
     hss->session.conn = INVALID_HANDLE;
@@ -380,11 +391,43 @@ static void hss_fill_header(HSS_SESSION* session, HTTP_RESPONSE resp)
 #endif //HS_DEBUG
 }
 
+static char* hss_get_error_html(HSS* hss, HTTP_RESPONSE code)
+{
+    int i;
+    HSS_ERROR* err;
+    for (i = 0; i < array_size(hss->errors); ++i)
+    {
+        err = array_at(hss->errors, i);
+        if (err->code == code)
+            return err->data;
+    }
+    return NULL;
+}
+
 static void hss_respond_error(HSS* hss, HSS_SESSION* session, HTTP_RESPONSE code)
 {
+    TCP_STACK* tcp_stack;
+    char* html = hss_get_error_html(hss, code);
+    if (html == NULL)
+        html = hss->generic_error;
+    if (html == NULL)
+    {
+        //no generic error set
+        hss_destroy_connection(hss, session);
+        return;
+    }
+    session->content_size = strlen(html);
+    session->content_type = HTTP_CONTENT_HTML;
     hss_fill_header(session, code);
-    //TODO: TX
-    hss_destroy_connection(hss, session);
+    memcpy((uint8_t*)io_data(session->io) + session->io->data_size, html, session->content_size);
+    session->io->data_size += session->content_size;
+    tcp_stack = io_push(session->io, sizeof(TCP_STACK));
+    tcp_stack->flags = TCP_PSH;
+    tcp_write_sync(hss->tcpip, session->conn, session->io);
+
+    session->state = HSS_SESSION_STATE_IDLE;
+    io_reset(session->io);
+    tcp_read(hss->tcpip, session->conn, session->io, HS_IO_SIZE);
 }
 
 static HANDLE hss_find_child_obj(HSS* hss, HANDLE parent, char* name, unsigned int len)
@@ -569,6 +612,56 @@ static inline void hss_create_obj(HSS* hss, HANDLE process, HANDLE parent, IO* i
     error(ERROR_SYNC);
 }
 
+static inline void hss_register_error(HSS* hss, int code, char* html)
+{
+    HSS_ERROR* err;
+    if (code == HS_GENERIC_ERROR)
+    {
+        if (hss->generic_error != NULL)
+        {
+            error(ERROR_ALREADY_CONFIGURED);
+            return;
+        }
+        hss->generic_error = html;
+        return;
+    }
+    if (hss_get_error_html(hss, code))
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    if ((err = array_append(&hss->errors)) == NULL)
+        return;
+    err->code = code;
+    err->data = html;
+}
+
+static inline void hss_unregister_error(HSS* hss, int code)
+{
+    int i;
+    HSS_ERROR* err;
+    if (code == HS_GENERIC_ERROR)
+    {
+        if (hss->generic_error == NULL)
+        {
+            error(ERROR_NOT_CONFIGURED);
+            return;
+        }
+        hss->generic_error = NULL;
+        return;
+    }
+    for (i = 0; i < array_size(hss->errors); ++i)
+    {
+        err = array_at(hss->errors, i);
+        if (err->code == code)
+        {
+            array_remove(&hss->errors, i);
+            return;
+        }
+    }
+    error(ERROR_NOT_CONFIGURED);
+}
+
 static inline void hss_request(HSS* hss, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -594,6 +687,15 @@ static inline void hss_request(HSS* hss, IPC* ipc)
         break;
     case HTTP_CREATE_OBJ:
         hss_create_obj(hss, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3);
+        break;
+    case HTTP_DESTROY_OBJ:
+        //TODO:
+        break;
+    case HTTP_REGISTER_ERROR:
+        hss_register_error(hss, (int)ipc->param1, (char*)ipc->param2);
+        break;
+    case HTTP_UNREGISTER_ERROR:
+        hss_unregister_error(hss, (int)ipc->param1);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
