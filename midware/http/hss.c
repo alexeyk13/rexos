@@ -612,6 +612,63 @@ static inline void hss_create_obj(HSS* hss, HANDLE process, HANDLE parent, IO* i
     error(ERROR_SYNC);
 }
 
+static void hss_remove_tree(HSS* hss, HANDLE root)
+{
+    HSS_OBJ* obj;
+    HSS_OBJ* next;
+    obj = so_get(&hss->objs, root);
+    if (obj->child != NULL)
+        hss_remove_tree(hss, obj->child->self);
+
+    for (obj = obj->next; obj != NULL; obj = next)
+    {
+        next = obj->next;
+        hss_remove_tree(hss, obj->self);
+    }
+    so_free(&hss->objs, root);
+}
+
+static bool hss_destroy_obj_internal(HSS* hss, HANDLE handle, HANDLE root)
+{
+    HSS_OBJ* obj;
+    obj = so_get(&hss->objs, root);
+    if (obj->child != NULL)
+    {
+        if (obj->child->self == handle)
+        {
+            hss_remove_tree(hss, obj->child->self);
+            obj->child = NULL;
+            return true;
+        }
+        else if (hss_destroy_obj_internal(hss, handle, obj->child->self))
+            return true;
+    }
+
+    for (; obj->next != NULL; obj = obj->next)
+    {
+        if (obj->next->self == handle)
+        {
+            hss_remove_tree(hss, obj->next->self);
+            obj->next = obj->next->next;
+            return true;
+        }
+        else if (hss_destroy_obj_internal(hss, handle, obj->next->self))
+            return true;
+    }
+    return false;
+}
+
+static inline void hss_destroy_obj(HSS* hss, HANDLE handle)
+{
+    if (hss->root == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (!hss_destroy_obj_internal(hss, handle, hss->root))
+        error(ERROR_NOT_CONFIGURED);
+}
+
 static inline void hss_register_error(HSS* hss, int code, char* html)
 {
     HSS_ERROR* err;
@@ -689,7 +746,7 @@ static inline void hss_request(HSS* hss, IPC* ipc)
         hss_create_obj(hss, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3);
         break;
     case HTTP_DESTROY_OBJ:
-        //TODO:
+        hss_destroy_obj(hss, (HANDLE)ipc->param1);
         break;
     case HTTP_REGISTER_ERROR:
         hss_register_error(hss, (int)ipc->param1, (char*)ipc->param2);

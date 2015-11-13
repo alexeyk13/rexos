@@ -38,6 +38,11 @@ HANDLE hs_create_obj(HANDLE hs, HANDLE parent, const char* name, unsigned int fl
     return res;
 }
 
+void hs_destroy_obj(HANDLE hs, HANDLE obj)
+{
+    ack(hs, HAL_REQ(HAL_HTTP, HTTP_DESTROY_OBJ), obj, 0, 0);
+}
+
 void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_CONTENT_TYPE content_type, IO* user_io)
 {
     HS_RESPONSE* resp;

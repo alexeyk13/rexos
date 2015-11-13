@@ -108,6 +108,7 @@ bool hs_open(HANDLE hs, uint16_t port, HANDLE tcpip);
 void hs_close(HANDLE hs);
 
 HANDLE hs_create_obj(HANDLE hs, HANDLE parent, const char* name, unsigned int flags);
+void hs_destroy_obj(HANDLE hs, HANDLE obj);
 
 void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_CONTENT_TYPE content_type, IO* user_io);
 void hs_respond_error(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_RESPONSE code);
