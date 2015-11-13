@@ -47,7 +47,7 @@ HANDLE so_allocate(SO* so)
     return handle;
 }
 
-static bool so_check_handle(SO* so, HANDLE handle)
+bool so_check_handle(SO* so, HANDLE handle)
 {
     if (SO_INDEX(handle) >= array_size(so->ar))
     {
