@@ -528,6 +528,30 @@ static inline void hss_close_session(HSS* hss, HSS_SESSION* session)
     hss_destroy_session(hss, session);
 }
 
+static inline bool hs_url_to_relative(char** url, unsigned int* url_size)
+{
+    char* cur;
+    if ((*url_size) == 0)
+        return false;
+    //absolute?
+    if ((*url)[0] != '/')
+    {
+        if (!hs_stricmp((*url), (*url_size), __HTTP_URL_HEAD))
+            return false;
+        (*url_size) -= HTTP_URL_HEAD_LEN;
+        (*url) += HTTP_URL_HEAD_LEN;
+        //remove host
+        if ((cur = memchr((*url), '/', (*url_size))) == NULL)
+            return false;
+        (*url_size) -= cur - (*url);
+        (*url) = cur;
+    }
+    //remove tailing slashes
+    while (((*url_size) > 1) && ((*url)[(*url_size) -1] == '/'))
+        --(*url_size);
+    return true;
+}
+
 static inline bool hs_decode_version(char* data, unsigned int size, HSS_SESSION* session)
 {
     char* dot;
@@ -592,7 +616,7 @@ static inline bool hss_session_rx_idle(HSS* hss, HSS_SESSION* session)
         url = cur_txt;
         cur_txt += url_size + 1;
         icur -= url_size + 1;
-        if ((url[0] != '/') && !hs_stricmp(url, url_size, __HTTP_URL_HEAD))
+        if (!hs_url_to_relative(&url, &url_size))
             break;
 
         //3. version
@@ -695,60 +719,6 @@ static inline void hss_session_rx(HSS* hss, HSS_SESSION* session, int size)
 
     //TODO: one request per time
     io_write(hss->process, HAL_IO_REQ(HAL_HTTP, (IPC_USER + session->method_idx)), (unsigned int)session, session->io);
-/*
-    do {
-        if (!http_parse_request(app->net.io, &http))
-            break;
-        if (!http_get_path(&http, &path))
-            break;
-        //only root path
-        if (!http_compare_path(&path, "/"))
-        {
-            http_set_error(&http, HTTP_RESPONSE_NOT_FOUND);
-            break;
-        }
-        //nothing in head, prepare for response
-        http.head.s = NULL;
-        http.head.len = 0;
-        switch (http.method)
-        {
-        case HTTP_GET:
-            net_get(app, &http);
-            break;
-        case HTTP_POST:
-            net_post(app, &http);
-            break;
-        default:
-            http_set_error(&http, HTTP_RESPONSE_METHOD_NOT_ALLOWED);
-        }
-    } while (false);
-
-    switch (http.resp)
-    {
-    case HTTP_RESPONSE_OK:
-        printf("200 OK\n");
-        break;
-    case HTTP_RESPONSE_NOT_FOUND:
-        net_not_found(app, &http);
-        printf("404 Not found\n");
-        break;
-    default:
-        printf("Error: %d\n", http.resp);
-        net_other_error(app, &http);
-        break;
-    }
-
-    http.body.s = app->net.page_buf;
-    http.body.len = strlen(app->net.page_buf);
-    http.content_type = HTTP_CONTENT_HTML;
-
-    http_make_response(&http, app->net.io);
-    tcp_stack = io_stack(app->net.io);
-    tcp_stack->flags = TCP_PSH;
-    tcp_write_sync(app->net.tcpip, app->net.connection, app->net.io);
-
-    io_reset(app->net.io);
-    tcp_read(app->net.tcpip, app->net.connection, app->net.io, HTTP_IO_SIZE);*/
 }
 
 static inline void hss_tcp_request(HSS* hss, IPC* ipc)
