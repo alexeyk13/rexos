@@ -6,6 +6,7 @@
 
 #include "hs.h"
 #include "../midware/http/hss.h"
+#include <string.h>
 
 HANDLE hs_create()
 {
@@ -20,6 +21,21 @@ bool hs_open(HANDLE hs, uint16_t port, HANDLE tcpip)
 void hs_close(HANDLE hs)
 {
     ack(hs, HAL_REQ(HAL_HTTP, IPC_CLOSE), 0, 0, 0);
+}
+
+HANDLE hs_create_obj(HANDLE hs, HANDLE parent, const char* name, unsigned int flags)
+{
+    HANDLE res;
+    IO* io = io_create(strlen(name) + 1);
+    if (io == NULL)
+        return INVALID_HANDLE;
+    strcpy(io_data(io), name);
+    if (get_size(hs, HAL_IO_REQ(HAL_HTTP, HTTP_CREATE_OBJ), parent, (unsigned int)io, flags) >= sizeof(HANDLE))
+        res = *((HANDLE*)io_data(io));
+    else
+        res = INVALID_HANDLE;
+    io_destroy(io);
+    return res;
 }
 
 void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_CONTENT_TYPE content_type, IO* user_io)

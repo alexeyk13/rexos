@@ -19,7 +19,9 @@ typedef enum {
     HTTP_DELETE,
     HTTP_CONNECT,
     HTTP_OPTIONS,
-    HTTP_TRACE
+    HTTP_TRACE,
+    HTTP_CREATE_OBJ,
+    HTTP_DESTROY_OBJ
 } HTTP_IPCS;
 
 #define HTTP_FLAG_GET               (1 << 0)
@@ -30,6 +32,9 @@ typedef enum {
 #define HTTP_FLAG_CONNECT           (1 << 5)
 #define HTTP_FLAG_OPTIONS           (1 << 6)
 #define HTTP_FLAG_TRACE             (1 << 7)
+
+#define HS_ROOT_OBJ                 INVALID_HANDLE
+#define HS_OBJ_WILDCARD             "*"
 
 typedef enum {
     HTTP_CONTENT_PLAIN_TEXT = 0,
@@ -98,6 +103,8 @@ typedef struct {
 HANDLE hs_create();
 bool hs_open(HANDLE hs, uint16_t port, HANDLE tcpip);
 void hs_close(HANDLE hs);
+
+HANDLE hs_create_obj(HANDLE hs, HANDLE parent, const char* name, unsigned int flags);
 
 void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_CONTENT_TYPE content_type, IO* user_io);
 void hs_respond_error(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_RESPONSE code);

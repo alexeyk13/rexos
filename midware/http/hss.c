@@ -13,6 +13,7 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/hs.h"
+#include "../../userspace/so.h"
 #include <string.h>
 #include "sys_config.h"
 
@@ -34,7 +35,7 @@ typedef enum {
 
 typedef struct {
     IO* io;
-    HANDLE conn;
+    HANDLE conn, obj_handle;
 #if (HS_DEBUG)
     IP remote_addr;
 #endif //HS_DEBUG
@@ -45,9 +46,21 @@ typedef struct {
     uint16_t method_idx;
 } HSS_SESSION;
 
+
+typedef struct _HSS_OBJ {
+    struct _HSS_OBJ* child;
+    struct _HSS_OBJ* next;
+    HANDLE self;
+    char* name;
+    unsigned int flags;
+} HSS_OBJ;
+
 typedef struct {
     HANDLE tcpip, process, listener;
     bool busy;
+
+    SO objs;
+    HANDLE root;
 
     //only one session for now
     HSS_SESSION session;
@@ -170,12 +183,12 @@ static int hs_get_line_size(char* data, unsigned int size)
     return size;
 }
 
-static unsigned int hs_get_word(char* data, unsigned int size)
+static unsigned int hs_get_word(char* data, unsigned int size, char delim)
 {
     char* p;
     if (!size)
         return 0;
-    p = memchr(data, ' ', size);
+    p = memchr(data, delim, size);
     if (p == NULL)
         return size;
     return p - data;
@@ -213,15 +226,18 @@ static bool hs_atou(char* data, unsigned int size, unsigned int* u)
 static bool hs_stricmp(char* data, unsigned int size, const char* keyword)
 {
     unsigned int i;
-    char c;
+    char c, k;
     for (i = 0; i < size; ++i)
     {
         if (!keyword[i])
             return false;
         c = data[i];
+        k = keyword[i];
         if (c >= 'A' && c <= 'Z')
             c += 0x20;
-        if (c != keyword[i])
+        if (k >= 'A' && k <= 'Z')
+            k += 0x20;
+        if (c != k)
             return false;
     }
     return true;
@@ -260,6 +276,13 @@ static char* hs_find_param(char* head, unsigned int head_size, char* param, unsi
     return NULL;
 }
 
+static char* hss_append_line(IO* io, char* head)
+{
+    unsigned int len = strlen(head);
+    io->data_size += len;
+    return head + len;
+}
+
 #if (HS_DEBUG)
 void hs_print(char* data, unsigned int size)
 {
@@ -279,6 +302,8 @@ static inline void hss_init(HSS* hss)
 {
     hss->process = INVALID_HANDLE;
     hss->busy = false;
+    so_create(&hss->objs, sizeof(HSS_OBJ), 1);
+    hss->root = INVALID_HANDLE;
 
     //TODO: Multiple session support
     hss->session.io = NULL;
@@ -318,13 +343,6 @@ static void hss_destroy_connection(HSS* hss, HSS_SESSION* session)
 {
     tcp_close(hss->tcpip, session->conn);
     hss_destroy_session(hss, session);
-}
-
-static char* hss_append_line(IO* io, char* head)
-{
-    unsigned int len = strlen(head);
-    io->data_size += len;
-    return head + len;
 }
 
 static void hss_fill_header(HSS_SESSION* session, HTTP_RESPONSE resp)
@@ -367,6 +385,23 @@ static void hss_respond_error(HSS* hss, HSS_SESSION* session, HTTP_RESPONSE code
     hss_fill_header(session, code);
     //TODO: TX
     hss_destroy_connection(hss, session);
+}
+
+static HANDLE hss_find_child_obj(HSS* hss, HANDLE parent, char* name, unsigned int len)
+{
+    HSS_OBJ* cur;
+    HSS_OBJ* parent_obj = so_get(&hss->objs, parent);
+    if (parent_obj == NULL)
+        return INVALID_HANDLE;
+    for(cur = parent_obj->child; cur != NULL; cur = cur->next)
+    {
+        if (hs_stricmp(HS_OBJ_WILDCARD, 1, cur->name))
+            return cur->self;
+
+        if (hs_stricmp(name, len, cur->name))
+            return cur->self;
+    }
+    return INVALID_HANDLE;
 }
 
 static inline void hss_open(HSS* hss, uint16_t port, HANDLE tcpip, HANDLE process)
@@ -467,6 +502,73 @@ static inline void hss_write(HSS* hss, HSS_SESSION* session, IO* io)
     }
 }
 
+static inline void hss_create_obj(HSS* hss, HANDLE process, HANDLE parent, IO* io, unsigned int flags)
+{
+    HSS_OBJ* parent_obj;
+    HSS_OBJ* cur_obj;
+    HANDLE cur;
+    unsigned int len;
+
+    char* name = io_data(io);
+    len = strlen(name);
+    if (parent == INVALID_HANDLE)
+    {
+        if (hss->root != INVALID_HANDLE)
+        {
+            error(ERROR_ALREADY_CONFIGURED);
+            return;
+        }
+    }
+    else
+    {
+        if (!so_check_handle(&hss->objs, parent))
+        {
+            error(ERROR_NOT_FOUND);
+            return;
+        }
+        if (hss_find_child_obj(hss, parent, name, len) != INVALID_HANDLE)
+        {
+            error(ERROR_ALREADY_CONFIGURED);
+            return;
+        }
+    }
+
+    if ((cur = so_allocate(&hss->objs)) == INVALID_HANDLE)
+        return;
+    if (parent != INVALID_HANDLE)
+        parent_obj = so_get(&hss->objs, parent);
+    cur_obj = so_get(&hss->objs, cur);
+    if ((cur_obj->name = malloc(len + 1)) == NULL)
+    {
+        so_free(&hss->objs, cur);
+        return;
+    }
+    strcpy(cur_obj->name, name);
+    cur_obj->self = cur;
+    cur_obj->next = NULL;
+    cur_obj->child = NULL;
+    cur_obj->flags = flags;
+    *((HANDLE*)io_data(io)) = cur;
+    io->data_size = sizeof(HANDLE);
+
+    //root obj
+    if (parent == INVALID_HANDLE)
+        hss->root = cur;
+    //first child
+    else if (parent_obj->child == NULL)
+        parent_obj->child = cur_obj;
+    //add sibling
+    else
+    {
+        parent_obj = parent_obj->child;
+        for(parent_obj = parent_obj->child; parent_obj->next != NULL; parent_obj = parent_obj->next) {}
+        parent_obj->next = cur_obj;
+    }
+
+    io_complete(process, HAL_IO_CMD(HAL_HTTP, HTTP_CREATE_OBJ), parent, io);
+    error(ERROR_SYNC);
+}
+
 static inline void hss_request(HSS* hss, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -489,6 +591,9 @@ static inline void hss_request(HSS* hss, IPC* ipc)
         break;
     case IPC_WRITE:
         hss_write(hss, (HSS_SESSION*)ipc->param1, (IO*)ipc->param2);
+        break;
+    case HTTP_CREATE_OBJ:
+        hss_create_obj(hss, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -528,10 +633,10 @@ static inline void hss_close_session(HSS* hss, HSS_SESSION* session)
     hss_destroy_session(hss, session);
 }
 
-static inline bool hs_url_to_relative(char** url, unsigned int* url_size)
+static inline bool hs_url_to_relative(char** url, int* url_size)
 {
     char* cur;
-    if ((*url_size) == 0)
+    if ((*url_size) <= 0)
         return false;
     //absolute?
     if ((*url)[0] != '/')
@@ -575,6 +680,7 @@ static inline bool hss_session_rx_idle(HSS* hss, HSS_SESSION* session)
     char* url;
     int icur, method_idx, url_size;
     unsigned int cur;
+    HSS_OBJ* obj;
     int head_size = hss_get_head_size(io_data(session->io), session->io->data_size);
     if (head_size < 0)
     {
@@ -602,7 +708,7 @@ static inline bool hss_session_rx_idle(HSS* hss, HSS_SESSION* session)
     do {
         //decode status line
         //1. method
-        if ((cur = hs_get_word(cur_txt, icur)) == 0)
+        if ((cur = hs_get_word(cur_txt, icur, ' ')) == 0)
             break;
         if ((method_idx = hs_find_keyword(cur_txt, cur, __HTTP_METHODS, HTTP_METHODS_COUNT)) < 0)
             break;
@@ -611,7 +717,7 @@ static inline bool hss_session_rx_idle(HSS* hss, HSS_SESSION* session)
         session->method_idx = method_idx;
 
         //2. URL
-        if ((url_size = hs_get_word(cur_txt, icur)) == 0)
+        if ((url_size = hs_get_word(cur_txt, icur, ' ')) == 0)
             break;
         url = cur_txt;
         cur_txt += url_size + 1;
@@ -620,7 +726,7 @@ static inline bool hss_session_rx_idle(HSS* hss, HSS_SESSION* session)
             break;
 
         //3. version
-        if ((cur = hs_get_word(cur_txt, icur)) == 0)
+        if ((cur = hs_get_word(cur_txt, icur, ' ')) == 0)
             break;
         if (!hs_decode_version(cur_txt, cur, session))
             break;
@@ -658,12 +764,35 @@ static inline bool hss_session_rx_idle(HSS* hss, HSS_SESSION* session)
         printf("\n");
 #endif //HS_DEBUG_HEAD
 #endif //HS_DEBUG
-        //TODO: check url
-/*
 
-        while ((http->url.len > 1) && http->url.s[http->url.len - 1] == '/')
-            --http->url.len;
-*/
+        //check url path and method
+        if (hss->root == INVALID_HANDLE)
+        {
+            hss_respond_error(hss, session, HTTP_RESPONSE_NOT_FOUND);
+            return false;
+        }
+        ++url;
+        --url_size;
+        session->obj_handle = hss->root;
+        while (url_size > 0)
+        {
+            icur = hs_get_word(url, url_size, '/');
+            session->obj_handle = hss_find_child_obj(hss, session->obj_handle, url, icur);
+            if (session->obj_handle == INVALID_HANDLE)
+            {
+                hss_respond_error(hss, session, HTTP_RESPONSE_NOT_FOUND);
+                return false;
+            }
+            url += icur + 1;
+            url_size -= icur + 1;
+        }
+        obj = so_get(&hss->objs, session->obj_handle);
+        if ((obj->flags & (1 << session->method_idx)) == 0)
+        {
+            hss_respond_error(hss, session, HTTP_RESPONSE_METHOD_NOT_ALLOWED);
+            return false;
+        }
+
         session->state = HSS_SESSION_STATE_RX;
         return true;
     } while (false);
@@ -714,8 +843,7 @@ static inline void hss_session_rx(HSS* hss, HSS_SESSION* session, int size)
     stack = io_push(session->io, sizeof(HS_STACK));
     stack->content_size = session->content_size;
     stack->content_type = session->content_type;
-    //TODO: object
-    stack->obj = 0;
+    stack->obj = session->obj_handle;
 
     //TODO: one request per time
     io_write(hss->process, HAL_IO_REQ(HAL_HTTP, (IPC_USER + session->method_idx)), (unsigned int)session, session->io);
