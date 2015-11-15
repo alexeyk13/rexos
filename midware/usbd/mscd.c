@@ -382,7 +382,7 @@ static inline void mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
 #if (USBD_MSC_DEBUG_IO)
             printf("MSC: direct write complete\n");
 #endif //USBD_MSC_DEBUG_IO
-            return false;
+            return;
         }
 #endif //SCSI_READ_CACHE
     case IPC_READ:
