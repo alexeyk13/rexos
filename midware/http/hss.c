@@ -89,16 +89,16 @@ const REX __HSS = {
 
 #define HTTP_LINE_SIZE                         64
 
-static const char* __HTTP_REASON100[] =        {"Continue",
+static const char* const __HTTP_REASON100[] = {"Continue",
                                                "Switching Protocols"};
-static const char* __HTTP_REASON200[] =        {"OK",
+static const char* const __HTTP_REASON200[] = {"OK",
                                                "Created",
                                                "Accepted",
                                                "Non-Authoritative Information",
                                                "No Content",
                                                "Reset Content",
                                                "Partial Content"};
-static const char* __HTTP_REASON300[] =        {"Multiple Choices",
+static const char* const __HTTP_REASON300[] = {"Multiple Choices",
                                                "Moved Permanently",
                                                "Found",
                                                "See Other",
@@ -106,7 +106,7 @@ static const char* __HTTP_REASON300[] =        {"Multiple Choices",
                                                "Use Proxy",
                                                "",
                                                "Temporary Redirect"};
-static const char* __HTTP_REASON400[] =        {"Bad Request",
+static const char* const __HTTP_REASON400[] = {"Bad Request",
                                                "Unauthorized",
                                                "Payment Required",
                                                "Forbidden",
@@ -133,21 +133,21 @@ static const char* __HTTP_REASON400[] =        {"Bad Request",
                                                 "",
                                                 "",
                                                 "Upgrade Required"};
-static const char* __HTTP_REASON500[] =         {"Internal Server Error",
+static const char* const __HTTP_REASON500[] =  {"Internal Server Error",
                                                 "Not Implemented",
                                                 "Bad Gateway",
                                                 "Service Unavailable",
                                                 "Gateway Timeout",
                                                 "HTTP Version Not Supported"};
 
-static const char** const __HTTP_REASONS[] =    {__HTTP_REASON100, __HTTP_REASON200, __HTTP_REASON300, __HTTP_REASON400, __HTTP_REASON500};
+static const char* const* const __HTTP_REASONS[] =    {__HTTP_REASON100, __HTTP_REASON200, __HTTP_REASON300, __HTTP_REASON400, __HTTP_REASON500};
 
 
-static const char* __HTTP_CONTENT[] =           {"text/plain",
+static const char* const __HTTP_CONTENT[] =    {"text/plain",
                                                 "text/html",
                                                 "application/x-www-form-urlencoded"};
 
-static const char* __HTTP_METHODS[] =           {"GET",
+static const char* const __HTTP_METHODS[] =     {"GET",
                                                 "HEAD",
                                                 "POST",
                                                 "PUT",
@@ -202,7 +202,7 @@ static unsigned int hs_get_word(char* data, unsigned int size, char delim)
     return p - data;
 }
 
-static int hs_find_keyword(char* data, unsigned int size, const char** keywords, unsigned int keywords_count)
+static int hs_find_keyword(char* data, unsigned int size, const char* const* keywords, unsigned int keywords_count)
 {
     unsigned int i;
     for (i = 0; i < keywords_count; ++i)
