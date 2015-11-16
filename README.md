@@ -41,6 +41,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * IP: fragmentation supported
   * ICMP: ECHO and flow control
   * ARP: timeouts and static routes support
+  * HTTP Server (beta)
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -66,7 +67,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * ADC: STM32F1, STM32L0
   * DAC: STM32F1, STM32L0
   * USB: STM32F1_CL, STM32L0, LPC11Uxx, LPC18xx
-  * ETH: STM32F1
+  * ETH: STM32F1, LPC18xx
   * МЭЛТ mt12864j LCD display
 
 Cortex-M3 features:
@@ -81,6 +82,11 @@ ARM7 features:
 
 History
 =======
+0.4.0
+- HTTP server (beta)
+- LPC18xx ethernet driver
+- minor TCP/IP fixes
+
 0.3.9
 - TCP/IP stack full support. Fragmentation safe
 - SO: fragmentation-safe object handles support library

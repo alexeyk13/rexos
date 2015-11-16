@@ -118,11 +118,12 @@
 #define TCPIP_DEBUG_ERRORS                                  1
 
 #define TCPIP_MTU                                           1500
-#define TCPIP_MAX_FRAMES_COUNT                              20
+#define TCPIP_MAX_FRAMES_COUNT                              10
 
 //----------------------------- TCP/IP MAC --------------------------------------------
 //software MAC filter. Turn on in case of hardware is not supporting
 #define MAC_FILTER                                          0
+#define MAC_FIREWALL                                        1
 #define TCPIP_MAC_DEBUG                                     0
 
 //----------------------------- TCP/IP ARP --------------------------------------------
@@ -147,6 +148,8 @@
 #define IP_MAX_LONG_SIZE                                    5000
 #define IP_MAX_LONG_PACKETS                                 2
 
+#define IP_FIREWALL                                         1
+
 //---------------------------- TCP/IP ICMP --------------------------------------------
 #define ICMP                                                1
 #define ICMP_DEBUG                                          1
@@ -156,8 +159,8 @@
 #define ICMP_ECHO                                           1
 
 //----------------------------- TCP/IP UDP --------------------------------------------
-#define UDP                                                 1
-#define UDP_DEBUG                                           1
+#define UDP                                                 0
+#define UDP_DEBUG                                           0
 #define UDP_DEBUG_FLOW                                      0
 
 //----------------------------- TCP/IP TCP --------------------------------------------
@@ -170,5 +173,15 @@
 //Low-level debug. only for development
 #define TCP_DEBUG_FLOW                                      0
 #define TCP_DEBUG_PACKETS                                   0
+
+//---------------------------- HTTP server---------------------------------------------
+#define HS_PROCESS_SIZE                                     1200
+#define HS_PROCESS_PRIORITY                                 160
+
+#define HS_DEBUG                                            1
+#define HS_DEBUG_HEAD                                       0
+#define HS_MAX_CONNECTIONS                                  2
+//URL and header must fit completely in IO. Default to MSS
+#define HS_IO_SIZE                                          1460
 
 #endif // SYS_CONFIG_H
