@@ -688,7 +688,10 @@ static inline bool tcps_rx_otw_check_seq(TCPIPS* tcpips, IO* io, HANDLE tcb_hand
 #if (TCP_DEBUG_FLOW)
             printf("TCP: Dup\n");
 #endif //TCP_DEBUG_FLOW
-            tcps_tx_ack(tcpips, tcb_handle);
+            if (tcb->state == TCP_STATE_SYN_RECEIVED)
+                tcps_tx_syn_ack(tcpips, tcb_handle);
+            else
+                tcps_tx_ack(tcpips, tcb_handle);
             return false;
         }
 #if (TCP_DEBUG_FLOW)

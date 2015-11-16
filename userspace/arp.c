@@ -13,7 +13,7 @@ bool arp_add_static(HANDLE tcpip, const IP* ip, const MAC* mac)
 
 bool arp_remove(HANDLE tcpip, const IP* ip)
 {
-    return get_handle(tcpip, HAL_REQ(HAL_ARP, ARP_ADD_STATIC), ip->u32.ip, 0, 0) != INVALID_HANDLE;
+    return get_handle(tcpip, HAL_REQ(HAL_ARP, ARP_REMOVE), ip->u32.ip, 0, 0) != INVALID_HANDLE;
 }
 
 void arp_flush(HANDLE tcpip)
