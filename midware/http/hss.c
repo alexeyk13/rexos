@@ -481,7 +481,6 @@ static inline void hss_close(HSS* hss, HANDLE process)
 
 static inline void hss_response(HSS* hss, HSS_SESSION* session, int size)
 {
-    TCP_STACK* tcp_stack;
     HS_RESPONSE* resp;
     //TODO: multiple session support
     //session closed, ignore
@@ -512,9 +511,6 @@ static inline void hss_response(HSS* hss, HSS_SESSION* session, int size)
     session->content_size = resp->content_size;
     session->content_type = resp->content_type;
     hss_fill_header(session, resp->response);
-    tcp_stack = io_push(session->io, sizeof(TCP_STACK));
-    tcp_stack->flags = 0;
-    tcp_write_sync(hss->tcpip, session->conn, session->io);
 }
 
 static inline void hss_write(HSS* hss, HSS_SESSION* session, IO* io)
@@ -530,11 +526,13 @@ static inline void hss_write(HSS* hss, HSS_SESSION* session, IO* io)
         error(ERROR_INVALID_STATE);
         return;
     }
-    tcp_stack = io_push(io, sizeof(TCP_STACK));
+    tcp_stack = io_push(session->io, sizeof(TCP_STACK));
+    memcpy((uint8_t*)io_data(session->io) + session->io->data_size, io_data(io), io->data_size);
+    session->io->data_size += io->data_size;
     session->processed += io->data_size;
     tcp_stack->flags = (session->processed >= session->content_size) ? TCP_PSH : 0;
 
-    if (tcp_write_sync(hss->tcpip, session->conn, io) < 0)
+    if (tcp_write_sync(hss->tcpip, session->conn, session->io) < 0)
         return;
 
     if (session->processed >= session->content_size)
