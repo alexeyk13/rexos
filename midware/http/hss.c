@@ -601,7 +601,6 @@ static inline void hss_create_obj(HSS* hss, HANDLE process, HANDLE parent, IO* i
     //add sibling
     else
     {
-        parent_obj = parent_obj->child;
         for(parent_obj = parent_obj->child; parent_obj->next != NULL; parent_obj = parent_obj->next) {}
         parent_obj->next = cur_obj;
     }
