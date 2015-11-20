@@ -336,7 +336,6 @@ static inline HSS_SESSION* hss_create_session(HSS* hss)
     hss->session.io = io_create(HS_IO_SIZE + sizeof(TCP_STACK) + sizeof(HS_STACK));
     if (hss->session.io == NULL)
         return NULL;
-    io_push(hss->session.io, sizeof(HS_STACK));
     hss->session.state = HSS_SESSION_STATE_IDLE;
     return &hss->session;
 }
@@ -427,6 +426,7 @@ static void hss_respond_error(HSS* hss, HSS_SESSION* session, HTTP_RESPONSE code
 
     session->state = HSS_SESSION_STATE_IDLE;
     io_reset(session->io);
+    io_push(session->io, sizeof(HS_STACK));
     tcp_read(hss->tcpip, session->conn, session->io, HS_IO_SIZE);
 }
 
@@ -497,6 +497,7 @@ static inline void hss_response(HSS* hss, HSS_SESSION* session, int size)
         //read more from tcp
         session->data_off = 0;
         io_reset(session->io);
+        io_push(session->io, sizeof(HS_STACK));
         tcp_read(hss->tcpip, session->conn, session->io, HS_IO_SIZE);
         return;
     }
@@ -539,6 +540,7 @@ static inline void hss_write(HSS* hss, HSS_SESSION* session, IO* io)
     {
         session->state = HSS_SESSION_STATE_IDLE;
         io_reset(session->io);
+        io_push(session->io, sizeof(HS_STACK));
         tcp_read(hss->tcpip, session->conn, session->io, HS_IO_SIZE);
     }
 }
@@ -775,6 +777,7 @@ static inline void hss_open_session(HSS* hss, HANDLE handle)
 #endif //HS_DEBUG
 
     io_reset(session->io);
+    io_push(session->io, sizeof(HS_STACK));
     tcp_read(hss->tcpip, session->conn, session->io, HS_IO_SIZE);
 }
 
@@ -983,6 +986,7 @@ static inline void hss_session_rx(HSS* hss, HSS_SESSION* session, int size)
         {
             session->data_off = 0;
             io_reset(session->io);
+            io_push(session->io, sizeof(HS_STACK));
         }
         else
         {
@@ -996,9 +1000,11 @@ static inline void hss_session_rx(HSS* hss, HSS_SESSION* session, int size)
     io_unhide(session->io);
     session->io->data_offset += session->data_off;
     session->io->data_size -= session->data_off;
-    stack = io_push(session->io, sizeof(HS_STACK));
+    //stack already here
+    stack = io_stack(session->io);
     stack->content_size = session->content_size;
     stack->content_type = session->content_type;
+    stack->processed = session->processed;
     stack->obj = session->obj_handle;
 
     //TODO: one request per time

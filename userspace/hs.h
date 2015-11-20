@@ -92,7 +92,7 @@ typedef enum {
 } HTTP_RESPONSE;
 
 typedef struct {
-    unsigned int content_size;
+    unsigned int processed, content_size;
     HTTP_CONTENT_TYPE content_type;
     HANDLE obj;
 } HS_STACK;
