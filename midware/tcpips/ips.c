@@ -548,6 +548,9 @@ void ips_rx(TCPIPS* tcpips, IO* io)
         tcpips_release_io(tcpips, io);
         return;
     }
+    //some hardware sending packet more than MTU. Noise on line?
+    if (io->data_size > TCPIP_MTU)
+        io->data_size = TCPIP_MTU;
     ip_stack = io_push(io, sizeof(IP_STACK));
 
     ip_stack->hdr_size = (hdr->ver_ihl & 0xf) << 2;
