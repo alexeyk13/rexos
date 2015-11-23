@@ -43,6 +43,7 @@ typedef struct {
     HSS_SESSION_STATE state;
     unsigned int content_size, processed, data_off;
     HTTP_CONTENT_TYPE content_type;
+    HTTP_ENCODING_TYPE encoding_type;
     HTTP_VERSION version;
     uint16_t method_idx;
 } HSS_SESSION;
@@ -146,6 +147,12 @@ static const char* const* const __HTTP_REASONS[] =    {__HTTP_REASON100, __HTTP_
 static const char* const __HTTP_CONTENT[] =    {"text/plain",
                                                 "text/html",
                                                 "application/x-www-form-urlencoded"};
+
+static const char* const __HTTP_ENCODING[] =   {"identity",
+                                                "gzip",
+                                                "compress",
+                                                "deflate"};
+#define HTTP_ENCODING_SIZE                      4
 
 static const char* const __HTTP_METHODS[] =     {"GET",
                                                 "HEAD",
@@ -377,6 +384,11 @@ static void hss_fill_header(HSS_SESSION* session, HTTP_RESPONSE resp)
             sprintf(head, "Content-Type: %s\r\n", __HTTP_CONTENT[session->content_type]);
             head = hss_append_line(session->io, head);
         }
+        if (session->encoding_type != HTTP_ENCODING_NONE && session->encoding_type < HTTP_ENCODING_SIZE)
+        {
+            sprintf(head, "Content-Encoding: %s\r\n", __HTTP_ENCODING[session->encoding_type]);
+            head = hss_append_line(session->io, head);
+        }
     }
 
     sprintf(head, "\r\n");
@@ -417,6 +429,7 @@ static void hss_respond_error(HSS* hss, HSS_SESSION* session, HTTP_RESPONSE code
     }
     session->content_size = strlen(html);
     session->content_type = HTTP_CONTENT_HTML;
+    session->encoding_type = HTTP_ENCODING_NONE;
     hss_fill_header(session, code);
     memcpy((uint8_t*)io_data(session->io) + session->io->data_size, html, session->content_size);
     session->io->data_size += session->content_size;
@@ -511,6 +524,7 @@ static inline void hss_response(HSS* hss, HSS_SESSION* session, int size)
     session->processed = 0;
     session->content_size = resp->content_size;
     session->content_type = resp->content_type;
+    session->encoding_type = resp->encoding_type;
     hss_fill_header(session, resp->response);
 }
 
@@ -910,9 +924,19 @@ static inline bool hss_session_rx_idle(HSS* hss, HSS_SESSION* session)
                 if ((icur = hs_find_keyword(cur_txt, cur, __HTTP_CONTENT, HTTP_CONTENT_NONE)) >= 0)
                     session->content_type = icur;
             }
+            if ((cur_txt = hs_find_param(head, head_size, "encoding-type", &cur)) != NULL)
+            {
+                if ((icur = hs_find_keyword(cur_txt, cur, __HTTP_ENCODING, HTTP_ENCODING_SIZE)) >= 0)
+                    session->encoding_type = icur;
+            }
+            else
+                session->encoding_type = HTTP_ENCODING_NONE;
         }
         else
+        {
             session->content_type = HTTP_CONTENT_NONE;
+            session->encoding_type = HTTP_ENCODING_NONE;
+        }
 
 #if (HS_DEBUG)
         printf("HS: %s ", __HTTP_METHODS[method_idx]);
@@ -1004,6 +1028,7 @@ static inline void hss_session_rx(HSS* hss, HSS_SESSION* session, int size)
     stack = io_stack(session->io);
     stack->content_size = session->content_size;
     stack->content_type = session->content_type;
+    stack->encoding_type = session->encoding_type;
     stack->processed = session->processed;
     stack->obj = session->obj_handle;
 

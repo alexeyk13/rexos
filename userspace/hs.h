@@ -48,6 +48,13 @@ typedef enum {
 } HTTP_CONTENT_TYPE;
 
 typedef enum {
+    HTTP_ENCODING_NONE = 0,
+    HTTP_ENCODING_GZIP,
+    HTTP_ENCODING_LZW,
+    HTTP_ENCODING_ZLIB,
+} HTTP_ENCODING_TYPE;
+
+typedef enum {
     HTTP_RESPONSE_CONTINUE = 100,
     HTTP_RESPONSE_SWITCHING_PROTOCOLS = 101,
     HTTP_RESPONSE_OK = 200,
@@ -94,12 +101,14 @@ typedef enum {
 typedef struct {
     unsigned int processed, content_size;
     HTTP_CONTENT_TYPE content_type;
+    HTTP_ENCODING_TYPE encoding_type;
     HANDLE obj;
 } HS_STACK;
 
 typedef struct {
     unsigned int content_size;
     HTTP_CONTENT_TYPE content_type;
+    HTTP_ENCODING_TYPE encoding_type;
     uint16_t response;
 } HS_RESPONSE;
 
@@ -110,7 +119,8 @@ void hs_close(HANDLE hs);
 HANDLE hs_create_obj(HANDLE hs, HANDLE parent, const char* name, unsigned int flags);
 void hs_destroy_obj(HANDLE hs, HANDLE obj);
 
-void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_CONTENT_TYPE content_type, IO* user_io);
+HS_RESPONSE *hs_prepare_response(IO* io);
+void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, IO* user_io);
 void hs_respond_error(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_RESPONSE code);
 
 void hs_register_error(HANDLE hs, HTTP_RESPONSE code, const char *html);

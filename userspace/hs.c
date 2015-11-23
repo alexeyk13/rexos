@@ -43,15 +43,22 @@ void hs_destroy_obj(HANDLE hs, HANDLE obj)
     ack(hs, HAL_REQ(HAL_HTTP, HTTP_DESTROY_OBJ), obj, 0, 0);
 }
 
-void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_CONTENT_TYPE content_type, IO* user_io)
+HS_RESPONSE* hs_prepare_response(IO* io)
 {
     HS_RESPONSE* resp;
     io_reset(io);
     resp = io_push(io, sizeof(HS_RESPONSE));
-
     resp->response = HTTP_RESPONSE_OK;
+    resp->content_size = 0;
+    resp->content_type = HTTP_CONTENT_NONE;
+    resp->encoding_type = HTTP_ENCODING_NONE;
+    return resp;
+}
+
+void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, IO* user_io)
+{
+    HS_RESPONSE* resp = io_stack(io);
     resp->content_size = user_io->data_size;
-    resp->content_type = content_type;
     //send response (ok)
     io_complete(hs, HAL_IO_CMD(HAL_HTTP, method), session, io);
     io_write_sync(hs, HAL_IO_REQ(HAL_HTTP, IPC_WRITE), session, user_io);
@@ -59,9 +66,7 @@ void hs_respond(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_CON
 
 void hs_respond_error(HANDLE hs, HANDLE session, unsigned int method, IO* io, HTTP_RESPONSE code)
 {
-    HS_RESPONSE* resp;
-    io_reset(io);
-    resp = io_push(io, sizeof(HS_RESPONSE));
+    HS_RESPONSE* resp = hs_prepare_response(io);
 
     resp->response = code;
     //send response
