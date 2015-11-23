@@ -247,7 +247,7 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 
 #if (USBD_MSC_DEBUG_REQUESTS)
     printf("Found USB MSCD class, EP%d, size: %d, iface: %d\n", ep_num, ep_size, iface_num);
-#endif //USBD_CDC_DEBUG_REQUESTS
+#endif //USBD_MSC_DEBUG_REQUESTS
 
     usbd_register_interface(usbd, iface_num, &__MSCD_CLASS, mscd);
     usbd_register_endpoint(usbd, iface_num, ep_num);
@@ -288,7 +288,7 @@ static inline int mscd_get_max_lun(USBD* usbd, MSCD* mscd, IO* io)
     io->data_size = sizeof(uint8_t);
 #if (USBD_MSC_DEBUG_REQUESTS)
     printf("MSCD: Get Max Lun - %d\n", USBD_MSC_LUN_COUNT - 1);
-#endif //USBD_CDC_DEBUG_REQUESTS
+#endif //USBD_MSC_DEBUG_REQUESTS
     return sizeof(uint8_t);
 }
 
@@ -298,7 +298,7 @@ static int mscd_mass_storage_reset(USBD* usbd, MSCD* mscd)
     usbd_usb_ep_read(usbd, mscd->ep_num, mscd->control, mscd->ep_size);
 #if (USBD_MSC_DEBUG_REQUESTS)
     printf("MSCD: Mass Storage Reset\n");
-#endif //USBD_CDC_DEBUG_REQUESTS
+#endif //USBD_MSC_DEBUG_REQUESTS
     return 0;
 }
 
@@ -325,7 +325,7 @@ static inline void mscd_cbw(USBD* usbd, MSCD* mscd)
     {
 #if (USBD_MSC_DEBUG_ERRORS)
         printf("MSCD: Fatal - invalid CBW\n");
-#endif //USBD_CDC_DEBUG_ERRORS
+#endif //USBD_MSC_DEBUG_ERRORS
         mscd_fatal(usbd, mscd);
     }
 #if (USBD_MSC_DEBUG_IO)
@@ -363,7 +363,7 @@ static inline void mscd_usb_io_complete(USBD* usbd, MSCD* mscd)
     default:
 #if (USBD_MSC_DEBUG_ERRORS)
         printf("MSCD: invalid stage on io complete - %d\n", mscd->state);
-#endif //USBD_CDC_DEBUG_ERRORS
+#endif //USBD_MSC_DEBUG_ERRORS
         mscd_phase_error(usbd, mscd);
     }
 }

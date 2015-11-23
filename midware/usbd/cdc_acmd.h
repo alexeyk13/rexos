@@ -4,11 +4,11 @@
     All rights reserved.
 */
 
-#ifndef CDCD_H
-#define CDCD_H
+#ifndef CDC_ACMD_H
+#define CDC_ACMD_H
 
 #include "usbd.h"
 
-extern const USBD_CLASS __CDCD_CLASS;
+extern const USBD_CLASS __CDC_ACMD_CLASS;
 
-#endif // CDCD_H
+#endif // CDC_ACMD_H

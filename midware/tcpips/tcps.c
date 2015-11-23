@@ -64,7 +64,7 @@ typedef struct {
     IO* rx_tmp;
     IO* tx;
     HANDLE timer;
-    unsigned int tx_cur;
+    unsigned int tx_cur, rx_cur;
     uint32_t snd_una, snd_nxt, rcv_nxt;
 
     TCP_STATE state;
@@ -77,7 +77,7 @@ static const char* __TCP_FLAGS[TCP_FLAGS_COUNT] =                   {"FIN", "SYN
 #endif //TCP_DEBUG_PACKETS
 #if (TCP_DEBUG_FLOW)
 static const char* __TCP_STATES[TCP_STATE_MAX] =                    {"CLOSED", "LISTEN", "SYN SENT", "SYN RECEIVED", "ESTABLISHED", "FIN WAIT1",
-                                                                     "FIN WAIT2", "CLOSING", "LAST ACK", "TIME_WAIT"};
+                                                                     "FIN WAIT2", "CLOSING", "LAST ACK"};
 #endif //TCP_DEBUG_FLOW
 
 static inline unsigned int tcps_data_offset(IO* io)
@@ -858,7 +858,7 @@ static void tcps_rx_text(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     case TCP_STATE_ESTABLISHED:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
-        data_size = tcps_data_len(io);
+        tcb->rx_cur = data_size = tcps_data_len(io);
         if (data_size)
         {
             data_offset = tcps_data_offset(io);
@@ -920,7 +920,7 @@ static void tcps_rx_text(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
                     tcp_tmp = io_data(tcb->rx_tmp);
                     //apply flags, urgent data
                     if (tcp->flags & TCP_FLAG_PSH)
-                        tcp_tmp->flags |= TCP_PSH;
+                        tcp_tmp->flags |= TCP_FLAG_PSH;
                     if (urg)
                     {
                         data_offset_tmp = tcps_data_offset(tcb->rx_tmp);
@@ -991,7 +991,7 @@ static inline void tcps_rx_send(TCPIPS* tcpips, HANDLE tcb_handle)
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 
     //ack from remote host - we transmitted all
-    if (tcb->state == TCP_STATE_ESTABLISHED && tcb->transmit && (tcb->snd_una == tcb->snd_nxt) && !tcb->fin)
+    if (tcb->state == TCP_STATE_ESTABLISHED && tcb->transmit && (tcb->snd_una == tcb->snd_nxt) && !tcb->fin && tcb->rx_cur == 0)
     {
         tcb->transmit = false;
 #if (TCP_KEEP_ALIVE)
@@ -1214,6 +1214,7 @@ void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
         timer_stop(tcb->timer, tcb_handle, HAL_TCP);
         tcps_apply_options(tcpips, io, tcb);
         tcb->tx_wnd = be2short(tcp->window_be);
+        tcb->rx_cur = 0;
         tcps_rx_process(tcpips, io, tcb_handle);
         //make sure not queued in rx
         if (tcb->rx_tmp == io)
@@ -1400,6 +1401,7 @@ static inline void tcps_read(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
             if ((io_get_free(io) == 0) || (tcp_stack->flags & TCP_PSH))
             {
                 tcps_update_rx_wnd(tcb);
+                tcps_tx_ack(tcpips, tcb_handle);
                 io_complete(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, io);
                 error(ERROR_SYNC);
                 return;
@@ -1407,6 +1409,7 @@ static inline void tcps_read(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
         }
         tcb->rx = io;
         tcps_update_rx_wnd(tcb);
+        tcps_tx_ack(tcpips, tcb_handle);
         error(ERROR_SYNC);
         break;
     default:

@@ -10,9 +10,9 @@
 #include "../../userspace/stdlib.h"
 #include <string.h>
 #include "../../userspace/array.h"
-#if (USBD_CDC_CLASS)
-#include "cdcd.h"
-#endif //USBD_CDC_CLASS
+#if (USBD_CDC_ACM_CLASS)
+#include "cdc_acmd.h"
+#endif //USBD_CDC_ACM_CLASS
 #if (USBD_HID_KBD_CLASS)
 #include "hidd_kbd.h"
 #endif //USBD_HID_KBD_CLASS
@@ -91,9 +91,9 @@ const USBD_CLASS __USBD_STUB_CLASS = {
 };
 
 static const USBD_CLASS* __USBD_CLASSES[] =         {
-#if (USBD_CDC_CLASS)
-                                                        &__CDCD_CLASS,
-#endif //USBD_CDC_CLASS
+#if (USBD_CDC_ACM_CLASS)
+                                                        &__CDC_ACMD_CLASS,
+#endif //USBD_CDC_ACM_CLASS
 #if (USBD_HID_KBD_CLASS)
                                                         &__HIDD_KBD_CLASS,
 #endif //USBD_HID_KBD_CLASS
