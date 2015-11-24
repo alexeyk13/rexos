@@ -10,18 +10,11 @@
 #include "../../userspace/stdlib.h"
 #include <string.h>
 #include "../../userspace/array.h"
-#if (USBD_CDC_ACM_CLASS)
 #include "cdc_acmd.h"
-#endif //USBD_CDC_ACM_CLASS
-#if (USBD_HID_KBD_CLASS)
+#include "rndisd.h"
 #include "hidd_kbd.h"
-#endif //USBD_HID_KBD_CLASS
-#if (USBD_MSC_CLASS)
 #include "mscd.h"
-#endif //USBD_MSC_CLASS
-#if (USBD_CCID_CLASS)
 #include "ccidd.h"
-#endif //USBD_CCID_CLASS
 
 typedef enum {
     USB_SETUP_STATE_REQUEST = 0,
@@ -94,6 +87,9 @@ static const USBD_CLASS* __USBD_CLASSES[] =         {
 #if (USBD_CDC_ACM_CLASS)
                                                         &__CDC_ACMD_CLASS,
 #endif //USBD_CDC_ACM_CLASS
+#if (USBD_RNDIS_CLASS)
+                                                        &__RNDISD_CLASS,
+#endif //USBD_RNDIS_CLASS
 #if (USBD_HID_KBD_CLASS)
                                                         &__HIDD_KBD_CLASS,
 #endif //USBD_HID_KBD_CLASS
