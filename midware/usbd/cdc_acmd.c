@@ -25,7 +25,7 @@ static const int LC_BAUD_STOP_BITS[LC_BAUD_STOP_BITS_SIZE] =                    
 static const char LC_BAUD_PARITY[LC_BAUD_PARITY_SIZE] =                         "NOEMS";
 
 #if (USBD_CDC_ACM_DEBUG)
-const char* const ON_OFF[] =                                                    {"off", "on"};
+static const char* const ON_OFF[] =                                             {"off", "on"};
 #endif
 
 typedef struct {
@@ -466,11 +466,11 @@ static inline int cdc_acmd_send_break(USBD* usbd, CDC_ACMD* cdc_acmd)
 
 int cdc_acmd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
 {
+#if (USBD_CDC_ACM_FLOW_CONTROL)
     CDC_ACMD* cdc_acmd = (CDC_ACMD*)param;
     int res = -1;
     switch (setup->bRequest)
     {
-#if (USBD_CDC_ACM_FLOW_CONTROL)
     case SET_LINE_CODING:
         res = set_line_coding(usbd, cdc_acmd, io);
         break;
@@ -483,14 +483,13 @@ int cdc_acmd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
     case CDC_ACM_SEND_BREAK:
         res = cdc_acmd_send_break(usbd, cdc_acmd);
         break;
-#endif //USBD_CDC_ACM_FLOW_CONTROL
     default:
-        //TODO: RNDIS here
-//        dump(setup, 8);
-//        dump(io_data(io), 0x18);
         break;
     }
     return res;
+#else
+    return -1;
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 }
 
 static inline void cdc_acmd_driver_event(USBD* usbd, CDC_ACMD* cdc_acmd, IPC* ipc)
