@@ -27,6 +27,60 @@ typedef struct {
     bool suspended;
 } RNDISD;
 
+//The host and device use this to send network data to one another.
+#define REMOTE_NDIS_PACKET_MSG                                                  0x00000001
+//Sent by the host to initialize the device
+#define REMOTE_NDIS_INITIALIZE_MSG                                              0x00000002
+//Device response to an initialize message
+#define REMOTE_NDIS_INITIALIZE_CMPLT                                            0x80000002
+//Sent by the host to halt the device. This does
+//not have a response. It is optional for the
+//device to send this message to the host
+#define REMOTE_NDIS_HALT_MSG                                                    0x00000003
+//Sent by the host to send a query OID
+#define REMOTE_NDIS_QUERY_MSG                                                   0x00000004
+//Device response to a query OID
+#define REMOTE_NDIS_QUERY_CMPLT                                                 0x80000004
+//Sent by the host to send a set OID
+#define REMOTE_NDIS_SET_MSG                                                     0x00000005
+//Device response to a set OID
+#define REMOTE_NDIS_SET_CMPLT                                                   0x80000005
+//Sent by the host to perform a soft reset on the device
+#define REMOTE_NDIS_RESET_MSG                                                   0x00000006
+//Device response to reset message
+#define REMOTE_NDIS_RESET_CMPLT                                                 0x80000006
+//Sent by the device to indicate its status or an
+//error when an unrecognized message is received
+#define REMOTE_NDIS_INDICATE_STATUS_MSG                                         0x00000007
+//During idle periods, sent every few seconds
+//by the host to check that the device is still
+//responsive. It is optional for the device to
+//send this message to check if the host is active
+#define REMOTE_NDIS_KEEPALIVE_MSG                                               0x00000008
+//The device response to a keepalive
+//message. The host can respond with this
+//message to a keepalive message from the
+//device when the device implements the
+//optional KeepAliveTimer
+#define REMOTE_NDIS_KEEPALIVE_CMPLT                                             0x80000008
+
+#pragma pack(push, 1)
+typedef struct {
+    uint32_t message_type;
+    uint32_t message_length;
+    uint32_t request_id;
+} RNDIS_GENERIC_MSG;
+
+typedef struct {
+    uint32_t message_type;
+    uint32_t message_length;
+    uint32_t request_id;
+    uint32_t major_version;
+    uint32_t minor_version;
+    uint32_t max_transfer_size;
+} RNDIS_INITIALIZE_MSG;
+#pragma pack(pop)
+
 void rndisd_destroy(RNDISD* rndisd)
 {
     io_destroy(rndisd->rx);
@@ -160,19 +214,55 @@ void rndisd_write(USBD* usbd, RNDISD* rndisd)
 
 }
 
+static inline int rndisd_init(USBD* usbd, RNDISD* rndisd, IO* io)
+{
+    RNDIS_INITIALIZE_MSG* msg;
+    int res = -1;
+    msg = io_data(io);
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: INITIALIZE, ver%d.%d, size: %d\n", msg->major_version, msg->minor_version, msg->max_transfer_size);
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+    //TODO: initialize IO according to max_transfer_size
+    return res;
+}
 
 int rndisd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
 {
-    RNDISD* rndisd = (RNDISD*)param;
+    RNDISD* rndisd;
+    RNDIS_GENERIC_MSG* msg;
     int res = -1;
-    switch (setup->bRequest)
+    rndisd = (RNDISD*)param;
+    if (io->data_size < sizeof(RNDIS_GENERIC_MSG))
+        return res;
+    msg = io_data(io);
+    if (msg->message_length != io->data_size)
+        return res;
+    //Fucking Microsoft doesn't use SETUP, they made own interface
+    switch (msg->message_type)
     {
-    default:
-        //TODO: RNDIS here
-        dump(setup, 8);
-        dump(io_data(io), 0x18);
+    case REMOTE_NDIS_INITIALIZE_MSG:
+        res = rndisd_init(usbd, rndisd, io);
         break;
+    case REMOTE_NDIS_HALT_MSG:
+        break;
+    case REMOTE_NDIS_QUERY_MSG:
+        break;
+    case REMOTE_NDIS_SET_MSG:
+        break;
+    case REMOTE_NDIS_RESET_MSG:
+        break;
+    case REMOTE_NDIS_INDICATE_STATUS_MSG:
+        break;
+    case REMOTE_NDIS_KEEPALIVE_MSG:
+        break;
+    default:
+#if (USBD_RNDIS_DEBUG)
+        printf("RNDISD: unsupported MSG %#X\n", msg->message_type);
+#endif //USBD_RNDIS_DEBUG
     }
+
+    //TODO: RNDIS here
+    dump(io_data(io), 0x18);
     return res;
 }
 
