@@ -4,16 +4,20 @@
     All rights reserved.
 */
 
-#ifndef CDC_H
-#define CDC_H
+#ifndef CDC_ACM_H
+#define CDC_ACM_H
 
 #include <stdint.h>
+#include "ipc.h"
+#include "uart.h"
 
 typedef enum {
-    USB_CDC_SEND_BREAK = USBD_MAX,
-    USB_CDC_MAX
-} USB_CDC_REQUESTS;
-
+    USB_CDC_ACM_SET_BAUDRATE = IPC_USER,
+    USB_CDC_ACM_GET_BAUDRATE,
+    USB_CDC_ACM_BAUDRATE_REQUEST,
+    USB_CDC_ACM_SEND_BREAK,
+    USB_CDC_ACM_BREAK_REQUEST
+} USB_CDC_ACM_REQUESTS;
 
 #define COMMUNICATION_DEVICE_CLASS                                                      0x02
 
@@ -206,7 +210,7 @@ typedef struct {
 #define SET_LINE_CODING                                                                 0x20
 #define GET_LINE_CODING                                                                 0x21
 #define SET_CONTROL_LINE_STATE                                                          0x22
-#define SEND_BREAK                                                                      0x23
+#define CDC_ACM_SEND_BREAK                                                              0x23
 
 #define SET_RINGER_PARMS                                                                0x30
 #define GET_RINGER_PARMS                                                                0x31
@@ -261,4 +265,4 @@ typedef struct {
 #define CDC_SERIAL_STATE_PARITY_ERROR                                                   (1 << 5)
 #define CDC_SERIAL_STATE_OVERRUN                                                        (1 << 6)
 
-#endif // CDC_H
+#endif // CDC_ACM_H

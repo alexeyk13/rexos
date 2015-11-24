@@ -213,8 +213,9 @@ typedef struct {
 
 USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_first_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg);
 USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_next_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start);
-USB_DESCRIPTOR_TYPE* usb_interface_get_first_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start, unsigned int type);
-USB_DESCRIPTOR_TYPE* usb_interface_get_next_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_DESCRIPTOR_TYPE* start, unsigned int type);
+USB_INTERFACE_DESCRIPTOR_TYPE* usb_find_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, uint8_t num);
+void* usb_interface_get_first_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start, unsigned int type);
+void* usb_interface_get_next_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const void *start, unsigned int type);
 
 //--------------------------------------------------- USB device ---------------------------------------------------------------
 

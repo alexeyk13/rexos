@@ -11,7 +11,7 @@
 #include "../../userspace/io.h"
 #include "../../userspace/uart.h"
 #include "../../userspace/stdlib.h"
-#include "../../userspace/cdc.h"
+#include "../../userspace/cdc_acm.h"
 #include "../../userspace/usb.h"
 #include "sys_config.h"
 
@@ -28,7 +28,6 @@ static const char LC_BAUD_PARITY[LC_BAUD_PARITY_SIZE] =                         
 const char* const ON_OFF[] =                                                    {"off", "on"};
 #endif
 
-
 typedef struct {
     IO* rx;
     IO* tx;
@@ -36,13 +35,18 @@ typedef struct {
     HANDLE rx_stream, tx_stream;
     HANDLE tx_stream_handle, rx_stream_handle;
     uint8_t data_ep, control_ep;
-    uint16_t data_ep_size, control_ep_size, rx_free, tx_size;
-    uint8_t DTR, RTS, tx_idle, control_iface, data_iface;
-    uint8_t suspended;
+    uint16_t data_ep_size, rx_free, tx_size;
+    uint8_t tx_idle, data_iface;
+    bool suspended;
+#if (USBD_CDC_ACM_FLOW_CONTROL)
+    uint16_t control_ep_size;
+    uint8_t DTR, RTS, control_iface;
     bool notify_ready;
     BAUD baud;
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 } CDC_ACMD;
 
+#if (USBD_CDC_ACM_FLOW_CONTROL)
 void cdc_acmd_notify_serial_state(USBD* usbd, CDC_ACMD* cdc_acmd, unsigned int state)
 {
     if (!cdc_acmd->notify_ready)
@@ -59,10 +63,13 @@ void cdc_acmd_notify_serial_state(USBD* usbd, CDC_ACMD* cdc_acmd, unsigned int s
     cdc_acmd->notify->data_size = sizeof(SETUP) + 2;
     usbd_usb_ep_write(usbd, cdc_acmd->control_ep, cdc_acmd->notify);
 }
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 
 void cdc_acmd_destroy(CDC_ACMD* cdc_acmd)
 {
+#if (USBD_CDC_ACM_FLOW_CONTROL)
     io_destroy(cdc_acmd->notify);
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 
     io_destroy(cdc_acmd->rx);
     stream_close(cdc_acmd->rx_stream_handle);
@@ -77,111 +84,167 @@ void cdc_acmd_destroy(CDC_ACMD* cdc_acmd)
 
 void cdc_acmd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 {
-
     USB_INTERFACE_DESCRIPTOR_TYPE* iface;
+    USB_INTERFACE_DESCRIPTOR_TYPE* diface;
+    CDC_UNION_DESCRIPTOR_TYPE* u;
     USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
-    uint8_t data_ep, control_ep, control_iface, data_iface;
-    uint16_t data_ep_size, control_ep_size;
-    data_ep = control_ep = data_ep_size = control_ep_size = data_iface = control_iface = 0;
+    uint8_t data_ep, data_iface;
+    uint16_t data_ep_size;
+#if (USBD_CDC_ACM_FLOW_CONTROL)
+    uint8_t control_ep, control_iface;
+    uint16_t control_ep_size;
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 
     //check control/data ep here
     for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
     {
+        //also skip RNDIS
+        if ((iface->bInterfaceClass != CDC_COMM_INTERFACE_CLASS) || (iface->bInterfaceSubClass != CDC_ACM) || (iface->bInterfaceProtocol == CDC_CP_VENDOR))
+            continue;
+#if (USBD_CDC_ACM_DEBUG)
+        printf("Found USB CDC ACM interface: %d\n", iface->bInterfaceNumber);
+#endif //USBD_CDC_ACM_DEBUG
+        //find union descriptor
+        for (u = usb_interface_get_first_descriptor(cfg, iface, CS_INTERFACE); u != NULL; u = usb_interface_get_next_descriptor(cfg, u, CS_INTERFACE))
+        {
+            if ((u->bDescriptorSybType == CDC_DESCRIPTOR_UNION) && (u->bControlInterface == iface->bInterfaceNumber) &&
+                (u->bFunctionLength > sizeof(CDC_UNION_DESCRIPTOR_TYPE)))
+                break;
+        }
+        if (u == NULL)
+        {
+#if (USBD_CDC_ACM_DEBUG)
+            printf("USB CDC ACM: Warning - no UNION descriptor, skipping interface\n");
+#endif //USBD_CDC_ACM_DEBUG
+            continue;
+        }
+        data_iface = ((uint8_t*)u)[sizeof(CDC_UNION_DESCRIPTOR_TYPE)];
+        diface = usb_find_interface(cfg, data_iface);
+        if (diface == NULL)
+        {
+#if (USBD_CDC_ACM_DEBUG)
+            printf("USB CDC ACM: Warning no data interface\n");
+#endif //USBD_CDC_ACM_DEBUG
+            continue;
+        }
+#if (USBD_CDC_ACM_DEBUG)
+        printf("Found USB CDC ACM data interface: %d\n", data_iface);
+#endif //USBD_CDC_ACM_DEBUG
+
+        ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, diface, USB_ENDPOINT_DESCRIPTOR_INDEX);
+        if (ep == NULL)
+        {
+#if (USBD_CDC_ACM_DEBUG)
+            printf("USB CDC ACM: Warning no data EP, skipping interface\n");
+#endif //USBD_CDC_ACM_DEBUG
+            continue;
+        }
+        data_ep = USB_EP_NUM(ep->bEndpointAddress);
+        data_ep_size = ep->wMaxPacketSize;
+
+#if (USBD_CDC_ACM_FLOW_CONTROL)
+        control_iface = iface->bInterfaceNumber;
+        control_ep = control_ep_size = 0;
         ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
         if (ep != NULL)
         {
-            switch (iface->bInterfaceClass)
-            {
-            case CDC_DATA_INTERFACE_CLASS:
-                data_ep = USB_EP_NUM(ep->bEndpointAddress);
-                data_ep_size = ep->wMaxPacketSize;
-                data_iface = iface->bInterfaceNumber;
-                break;
-            case CDC_COMM_INTERFACE_CLASS:
-                control_ep = USB_EP_NUM(ep->bEndpointAddress);
-                control_ep_size = ep->wMaxPacketSize;
-                control_iface = iface->bInterfaceNumber;
-                break;
-            default:
-                break;
-            }
+            control_ep = USB_EP_NUM(ep->bEndpointAddress);
+            control_ep_size = ep->wMaxPacketSize;
         }
-    }
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 
-    //No CDC descriptors in interface
-    if (control_ep == 0)
-        return;
-    CDC_ACMD* cdc_acmd = (CDC_ACMD*)malloc(sizeof(CDC_ACMD));
-    if (cdc_acmd == NULL)
-        return;
-
-    cdc_acmd->control_iface = control_iface;
-    cdc_acmd->control_ep = control_ep;
-    cdc_acmd->control_ep_size = control_ep_size;
-    cdc_acmd->data_iface = data_iface;
-    cdc_acmd->data_ep = data_ep;
-    cdc_acmd->data_ep_size = data_ep_size;
-    cdc_acmd->tx = cdc_acmd->rx = cdc_acmd->notify = NULL;
-    cdc_acmd->tx_stream = cdc_acmd->rx_stream = cdc_acmd->tx_stream_handle = cdc_acmd->rx_stream_handle = INVALID_HANDLE;
-    cdc_acmd->suspended = false;
-    cdc_acmd->notify_ready = true;
-
+        //configuration is ok, applying
+        CDC_ACMD* cdc_acmd = (CDC_ACMD*)malloc(sizeof(CDC_ACMD));
+        if (cdc_acmd == NULL)
+        {
 #if (USBD_CDC_ACM_DEBUG)
-    printf("Found USB CDCD ACM class, EP%d, size: %d, iface: %d\n", cdc_acmd->data_ep, cdc_acmd->data_ep_size, cdc_acmd->data_iface);
-    if (cdc_acmd->control_ep)
-        printf("Has control EP%d, size: %d, iface: %d\n", cdc_acmd->control_ep, cdc_acmd->control_ep_size, cdc_acmd->control_iface);
+            printf("USB CDC ACM: Out of memory\n");
 #endif //USBD_CDC_ACM_DEBUG
+            return;
+        }
+
+        cdc_acmd->data_iface = data_iface;
+        cdc_acmd->data_ep = data_ep;
+        cdc_acmd->data_ep_size = data_ep_size;
+        cdc_acmd->tx = cdc_acmd->rx = NULL;
+        cdc_acmd->tx_stream = cdc_acmd->rx_stream = cdc_acmd->tx_stream_handle = cdc_acmd->rx_stream_handle = INVALID_HANDLE;
+        cdc_acmd->suspended = false;
+
+#if (USBD_CDC_ACM_FLOW_CONTROL)
+        cdc_acmd->control_iface = control_iface;
+        cdc_acmd->control_ep = control_ep;
+        cdc_acmd->control_ep_size = control_ep_size;
+        cdc_acmd->notify = NULL;
+        cdc_acmd->notify_ready = true;
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 
 #if (USBD_CDC_ACM_TX_STREAM_SIZE)
-    cdc_acmd->tx = io_create(cdc_acmd->data_ep_size);
-    cdc_acmd->tx_stream = stream_create(USBD_CDC_ACM_RX_STREAM_SIZE);
-    cdc_acmd->tx_stream_handle = stream_open(cdc_acmd->tx_stream);
-    if (cdc_acmd->tx == NULL || cdc_acmd->tx_stream_handle == INVALID_HANDLE)
-    {
-        cdc_acmd_destroy(cdc_acmd);
-        return;
-    }
-    cdc_acmd->tx_size = 0;
-    cdc_acmd->tx_idle = true;
-    usbd_usb_ep_open(usbd, USB_EP_IN | cdc_acmd->data_ep, USB_EP_BULK, cdc_acmd->data_ep_size);
-    stream_listen(cdc_acmd->tx_stream, USBD_IFACE(cdc_acmd->data_iface, 0), HAL_USBD_IFACE);
-#endif //USBD_CDC_ACM_TX_STREAM_SIZE
-
-#if (USBD_CDC_ACM_RX_STREAM_SIZE)
-    cdc_acmd->rx = io_create(cdc_acmd->data_ep_size);
-    cdc_acmd->rx_stream = stream_create(USBD_CDC_ACM_RX_STREAM_SIZE);
-    cdc_acmd->rx_stream_handle = stream_open(cdc_acmd->rx_stream);
-    if (cdc_acmd->rx == NULL || cdc_acmd->rx_stream_handle == INVALID_HANDLE)
-    {
-        cdc_acmd_destroy(cdc_acmd);
-        return;
-    }
-    cdc_acmd->rx_free = 0;
-    usbd_usb_ep_open(usbd, cdc_acmd->data_ep, USB_EP_BULK, cdc_acmd->data_ep_size);
-    usbd_usb_ep_read(usbd, cdc_acmd->data_ep, cdc_acmd->rx, cdc_acmd->data_ep_size);
-#endif //USBD_CDC_ACM_RX_STREAM_SIZE
-
-    if (control_ep)
-    {
-        cdc_acmd->notify = io_create(cdc_acmd->control_ep_size);
-        if (cdc_acmd->notify == NULL)
+        cdc_acmd->tx = io_create(cdc_acmd->data_ep_size);
+        cdc_acmd->tx_stream = stream_create(USBD_CDC_ACM_RX_STREAM_SIZE);
+        cdc_acmd->tx_stream_handle = stream_open(cdc_acmd->tx_stream);
+        if (cdc_acmd->tx == NULL || cdc_acmd->tx_stream_handle == INVALID_HANDLE)
         {
+#if (USBD_CDC_ACM_DEBUG)
+            printf("USB CDC ACM: Out of memory\n");
+#endif //USBD_CDC_ACM_DEBUG
             cdc_acmd_destroy(cdc_acmd);
             return;
         }
-        usbd_usb_ep_open(usbd, USB_EP_IN | cdc_acmd->control_ep, USB_EP_INTERRUPT, cdc_acmd->control_ep_size);
-        cdc_acmd_notify_serial_state(usbd, cdc_acmd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
-        usbd_register_interface(usbd, cdc_acmd->control_iface, &__CDC_ACMD_CLASS, cdc_acmd);
-        usbd_register_endpoint(usbd, cdc_acmd->control_iface, cdc_acmd->control_ep);
-    }
-    usbd_register_interface(usbd, cdc_acmd->data_iface, &__CDC_ACMD_CLASS, cdc_acmd);
-    usbd_register_endpoint(usbd, cdc_acmd->data_iface, cdc_acmd->data_ep);
+        cdc_acmd->tx_size = 0;
+        cdc_acmd->tx_idle = true;
+        usbd_usb_ep_open(usbd, USB_EP_IN | cdc_acmd->data_ep, USB_EP_BULK, cdc_acmd->data_ep_size);
+        stream_listen(cdc_acmd->tx_stream, USBD_IFACE(cdc_acmd->data_iface, 0), HAL_USBD_IFACE);
+#endif //USBD_CDC_ACM_TX_STREAM_SIZE
 
-    cdc_acmd->DTR = cdc_acmd->RTS = false;
-    cdc_acmd->baud.baud = 115200;
-    cdc_acmd->baud.data_bits = 8;
-    cdc_acmd->baud.parity = 'N';
-    cdc_acmd->baud.stop_bits = 1;
+#if (USBD_CDC_ACM_RX_STREAM_SIZE)
+        cdc_acmd->rx = io_create(cdc_acmd->data_ep_size);
+        cdc_acmd->rx_stream = stream_create(USBD_CDC_ACM_RX_STREAM_SIZE);
+        cdc_acmd->rx_stream_handle = stream_open(cdc_acmd->rx_stream);
+        if (cdc_acmd->rx == NULL || cdc_acmd->rx_stream_handle == INVALID_HANDLE)
+        {
+#if (USBD_CDC_ACM_DEBUG)
+            printf("USB CDC ACM: Out of memory\n");
+#endif //USBD_CDC_ACM_DEBUG
+            cdc_acmd_destroy(cdc_acmd);
+            return;
+        }
+        cdc_acmd->rx_free = 0;
+        usbd_usb_ep_open(usbd, cdc_acmd->data_ep, USB_EP_BULK, cdc_acmd->data_ep_size);
+        usbd_usb_ep_read(usbd, cdc_acmd->data_ep, cdc_acmd->rx, cdc_acmd->data_ep_size);
+#endif //USBD_CDC_ACM_RX_STREAM_SIZE
+
+        usbd_register_interface(usbd, cdc_acmd->data_iface, &__CDC_ACMD_CLASS, cdc_acmd);
+        usbd_register_endpoint(usbd, cdc_acmd->data_iface, cdc_acmd->data_ep);
+
+#if (USBD_CDC_ACM_FLOW_CONTROL)
+        if (control_ep_size)
+        {
+            if (cdc_acmd->control_ep_size < 16)
+            {
+#if (USBD_CDC_ACM_DEBUG)
+                printf("USB CDC ACM: Warning - control endpoint is too small(%d), 16 at least required to fit notify", cdc_acmd->control_ep_size);
+#endif //USBD_CDC_ACM_DEBUG
+                cdc_acmd->notify = io_create(16);
+            }
+            else
+                cdc_acmd->notify = io_create(cdc_acmd->control_ep_size);
+            if (cdc_acmd->notify == NULL)
+            {
+                cdc_acmd_destroy(cdc_acmd);
+                return;
+            }
+            usbd_usb_ep_open(usbd, USB_EP_IN | cdc_acmd->control_ep, USB_EP_INTERRUPT, cdc_acmd->control_ep_size);
+            cdc_acmd_notify_serial_state(usbd, cdc_acmd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
+            usbd_register_interface(usbd, cdc_acmd->control_iface, &__CDC_ACMD_CLASS, cdc_acmd);
+            usbd_register_endpoint(usbd, cdc_acmd->control_iface, cdc_acmd->control_ep);
+        }
+        cdc_acmd->DTR = cdc_acmd->RTS = false;
+        cdc_acmd->baud.baud = 115200;
+        cdc_acmd->baud.data_bits = 8;
+        cdc_acmd->baud.parity = 'N';
+        cdc_acmd->baud.stop_bits = 1;
+#endif //USBD_CDC_ACM_FLOW_CONTROL
+    }
 }
 
 void cdc_acmd_class_reset(USBD* usbd, void* param)
@@ -200,12 +263,14 @@ void cdc_acmd_class_reset(USBD* usbd, void* param)
 
     usbd_unregister_endpoint(usbd, cdc_acmd->data_iface, cdc_acmd->data_ep);
     usbd_unregister_interface(usbd, cdc_acmd->data_iface, &__CDC_ACMD_CLASS);
+#if (USBD_CDC_ACM_FLOW_CONTROL)
     if (cdc_acmd->control_ep)
     {
         usbd_usb_ep_close(usbd, USB_EP_IN | cdc_acmd->control_ep);
         usbd_unregister_endpoint(usbd, cdc_acmd->control_iface, cdc_acmd->control_ep);
         usbd_unregister_interface(usbd, cdc_acmd->control_iface, &__CDC_ACMD_CLASS);
     }
+#endif //USBD_CDC_ACM_FLOW_CONTROL
     cdc_acmd_destroy(cdc_acmd);
 }
 
@@ -225,8 +290,10 @@ void cdc_acmd_class_suspend(USBD* usbd, void* param)
     cdc_acmd->rx_free = 0;
 #endif //USBD_CDC_ACM_RX_STREAM_SIZE
 
+#if (USBD_CDC_ACM_FLOW_CONTROL)
     if (cdc_acmd->control_ep)
         usbd_usb_ep_flush(usbd, USB_EP_IN | cdc_acmd->control_ep);
+#endif //USBD_CDC_ACM_FLOW_CONTROL
     cdc_acmd->suspended = true;
 }
 
@@ -251,11 +318,13 @@ static inline void cdc_acmd_read_complete(USBD* usbd, CDC_ACMD* cdc_acmd)
     to_read = cdc_acmd->rx->data_size;
     if (to_read > cdc_acmd->rx_free)
         to_read = cdc_acmd->rx_free;
+#if (USBD_CDC_ACM_FLOW_CONTROL)
     if (to_read < cdc_acmd->rx->data_size)
         cdc_acmd_notify_serial_state(usbd, cdc_acmd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_OVERRUN);
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 #if (USBD_CDC_ACM_DEBUG_FLOW)
     int i;
-    printf("CDC_ACMD rx: ");
+    printf("USB CDC ACM: rx ");
     for (i = 0; i < cdc_acmd->rx->data_size; ++i)
         if (((uint8_t*)io_data(cdc_acmd->rx))[i] >= ' ' && ((uint8_t*)io_data(cdc_acmd->rx))[i] <= '~')
             printf("%c", ((char*)io_data(cdc_acmd->rx))[i]);
@@ -270,8 +339,13 @@ static inline void cdc_acmd_read_complete(USBD* usbd, CDC_ACMD* cdc_acmd)
 
 void cdc_acmd_write(USBD* usbd, CDC_ACMD* cdc_acmd)
 {
+#if (USBD_CDC_ACM_FLOW_CONTROL)
     if (!cdc_acmd->DTR || !cdc_acmd->tx_idle || cdc_acmd->suspended)
         return;
+#else
+    if (!cdc_acmd->tx_idle || cdc_acmd->suspended)
+        return;
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 
     unsigned int to_write;
     if (cdc_acmd->tx_size == 0)
@@ -298,8 +372,7 @@ void cdc_acmd_write(USBD* usbd, CDC_ACMD* cdc_acmd)
 }
 
 #if (USBD_CDC_ACM_FLOW_CONTROL)
-
-static inline int set_line_coding(CDC_ACMD* cdc_acmd, IO* io)
+static inline int set_line_coding(USBD* usbd, CDC_ACMD* cdc_acmd, IO* io)
 {
     LINE_CODING_STRUCT* lc = io_data(io);
     cdc_acmd->baud.baud = lc->dwDTERate;
@@ -311,8 +384,10 @@ static inline int set_line_coding(CDC_ACMD* cdc_acmd, IO* io)
     cdc_acmd->baud.parity = LC_BAUD_PARITY[lc->bParityType];
     cdc_acmd->baud.data_bits = lc->bDataBits;
 
+    usbd_post_user(usbd, cdc_acmd->data_iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_CDC_ACM_BAUDRATE_REQUEST), cdc_acmd->baud.baud,
+                   (cdc_acmd->baud.data_bits << 16) | (cdc_acmd->baud.parity << 8) | cdc_acmd->baud.stop_bits);
 #if (USBD_CDC_ACM_DEBUG)
-    printf("CDC_ACMD set line coding: %d %d%c%d\n", cdc_acmd->baud.baud, cdc_acmd->baud.data_bits, cdc_acmd->baud.parity, cdc_acmd->baud.stop_bits);
+    printf("USB CDC ACM: set line coding %d %d%c%d\n", cdc_acmd->baud.baud, cdc_acmd->baud.data_bits, cdc_acmd->baud.parity, cdc_acmd->baud.stop_bits);
 #endif
     return 0;
 }
@@ -354,7 +429,7 @@ static inline int get_line_coding(CDC_ACMD* cdc_acmd, IO* io)
     lc->bDataBits = cdc_acmd->baud.data_bits;
 
 #if (USBD_CDC_ACM_DEBUG)
-    printf("CDC_ACMD get line coding: %d %d%c%d\n", cdc_acmd->baud.baud, cdc_acmd->baud.data_bits, cdc_acmd->baud.parity, cdc_acmd->baud.stop_bits);
+    printf("USB CDC ACM: get line coding %d %d%c%d\n", cdc_acmd->baud.baud, cdc_acmd->baud.data_bits, cdc_acmd->baud.parity, cdc_acmd->baud.stop_bits);
 #endif
     return sizeof(LINE_CODING_STRUCT);
 }
@@ -364,7 +439,7 @@ static inline int set_control_line_state(USBD* usbd, CDC_ACMD* cdc_acmd, SETUP* 
     cdc_acmd->DTR = (setup->wValue >> 0) & 1;
     cdc_acmd->RTS = (setup->wValue >> 0) & 1;
 #if (USBD_CDC_ACM_DEBUG)
-    printf("CDC_ACMD set control line state: DTR %s, RTS %s\n", ON_OFF[1 * cdc_acmd->DTR], ON_OFF[1 * cdc_acmd->RTS]);
+    printf("USB CDC ACM: DTR %s, RTS %s\n", ON_OFF[1 * cdc_acmd->DTR], ON_OFF[1 * cdc_acmd->RTS]);
 #endif
 
     //resume write if DTR is set
@@ -378,23 +453,35 @@ static inline int set_control_line_state(USBD* usbd, CDC_ACMD* cdc_acmd, SETUP* 
     }
     return 0;
 }
+
+static inline int cdc_acmd_send_break(USBD* usbd, CDC_ACMD* cdc_acmd)
+{
+    usbd_post_user(usbd, cdc_acmd->data_iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_CDC_ACM_BREAK_REQUEST), 0, 0);
+#if (USBD_CDC_ACM_DEBUG)
+    printf("USB CDC ACM: BREAK request\n");
+#endif
+    return 0;
+}
 #endif //USBD_CDC_ACM_FLOW_CONTROL
 
 int cdc_acmd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
 {
-    CDC_ACMD* cdc = (CDC_ACMD*)param;
+    CDC_ACMD* cdc_acmd = (CDC_ACMD*)param;
     int res = -1;
     switch (setup->bRequest)
     {
 #if (USBD_CDC_ACM_FLOW_CONTROL)
     case SET_LINE_CODING:
-        res = set_line_coding(cdc, io);
+        res = set_line_coding(usbd, cdc_acmd, io);
         break;
     case GET_LINE_CODING:
-        res = get_line_coding(cdc, io);
+        res = get_line_coding(cdc_acmd, io);
         break;
     case SET_CONTROL_LINE_STATE:
-        res = set_control_line_state(usbd, cdc, setup);
+        res = set_control_line_state(usbd, cdc_acmd, setup);
+        break;
+    case CDC_ACM_SEND_BREAK:
+        res = cdc_acmd_send_break(usbd, cdc_acmd);
         break;
 #endif //USBD_CDC_ACM_FLOW_CONTROL
     default:
@@ -419,8 +506,10 @@ static inline void cdc_acmd_driver_event(USBD* usbd, CDC_ACMD* cdc_acmd, IPC* ip
             cdc_acmd->tx_idle = true;
             cdc_acmd_write(usbd, cdc_acmd);
         }
+#if (USBD_CDC_ACM_FLOW_CONTROL)
         else
             cdc_acmd->notify_ready = true;
+#endif //USBD_CDC_ACM_FLOW_CONTROL
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -445,9 +534,17 @@ void cdc_acmd_class_request(USBD* usbd, void* param, IPC* ipc)
         case IPC_GET_RX_STREAM:
             ipc->param2 = cdc_acmd->rx_stream;
             break;
-        case USB_CDC_SEND_BREAK:
+#if (USBD_CDC_ACM_FLOW_CONTROL)
+        case USB_CDC_ACM_SET_BAUDRATE:
+            uart_decode_baudrate(ipc, &cdc_acmd->baud);
+            break;
+        case USB_CDC_ACM_GET_BAUDRATE:
+            uart_encode_baudrate(&cdc_acmd->baud, ipc);
+            break;
+        case USB_CDC_ACM_SEND_BREAK:
             cdc_acmd_notify_serial_state(usbd, cdc_acmd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_BREAK);
             break;
+#endif //USBD_CDC_ACM_FLOW_CONTROL
         default:
             error(ERROR_NOT_SUPPORTED);
         }

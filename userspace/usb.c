@@ -13,7 +13,7 @@
 #include "stdio.h"
 
 #define D_OFFSET(d, cfg)                            (((unsigned int)(d)) - ((unsigned int)(cfg)))
-#define D_NEXT(d, cfg)                              ((USB_DESCRIPTOR_TYPE*)(((unsigned int)(d)) + (d)->bLength))
+#define D_NEXT(d, cfg)                              ((USB_DESCRIPTOR_TYPE*)(((unsigned int)(d)) + ((USB_DESCRIPTOR_TYPE*)(d))->bLength))
 
 extern void usbd();
 
@@ -35,7 +35,18 @@ USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_next_interface(const USB_CONFIGURATION_DE
     return NULL;
 }
 
-USB_DESCRIPTOR_TYPE* usb_interface_get_first_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start, unsigned int type)
+USB_INTERFACE_DESCRIPTOR_TYPE* usb_find_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, uint8_t num)
+{
+    USB_INTERFACE_DESCRIPTOR_TYPE* iface;
+    for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
+    {
+        if (iface->bInterfaceNumber == num)
+            return iface;
+    }
+    return NULL;
+}
+
+void* usb_interface_get_first_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start, unsigned int type)
 {
     USB_DESCRIPTOR_TYPE* d;
     for (d = D_NEXT(start, cfg); D_OFFSET(d, cfg) < cfg->wTotalLength; d = D_NEXT(d, cfg))
@@ -44,7 +55,7 @@ USB_DESCRIPTOR_TYPE* usb_interface_get_first_descriptor(const USB_CONFIGURATION_
     return NULL;
 }
 
-USB_DESCRIPTOR_TYPE* usb_interface_get_next_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_DESCRIPTOR_TYPE* start, unsigned int type)
+void* usb_interface_get_next_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const void* start, unsigned int type)
 {
     USB_DESCRIPTOR_TYPE* d;
     for (d = D_NEXT(start, cfg); D_OFFSET(d, cfg) < cfg->wTotalLength; d = D_NEXT(d, cfg))
