@@ -1211,11 +1211,9 @@ void usbd()
         case HAL_USBD:
             usbd_device_request(&usbd, &ipc);
             break;
-        case HAL_USBD_IFACE:
+        default:
             usbd_class_interface_request(&usbd, &ipc, USBD_IFACE_NUM(ipc.param1));
             break;
-        default:
-            error(ERROR_NOT_SUPPORTED);
         }
         ipc_write(&ipc);
     }
