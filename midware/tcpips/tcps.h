@@ -34,7 +34,7 @@ typedef struct {
 
 //from tcpip
 void tcps_init(TCPIPS* tcpips);
-//TODO: void tcps_link_changed(TCPIPS* tcpips, bool link);
+void tcps_link_changed(TCPIPS* tcpips, bool link);
 void tcps_request(TCPIPS* tcpips, IPC* ipc);
 
 //from ip

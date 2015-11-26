@@ -156,6 +156,12 @@ static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE e
     ack(tcpips->eth, HAL_REQ(HAL_ETH, IPC_OPEN), tcpips->eth_handle, conn, 0);
 }
 
+static void tcpips_close_internal(TCPIPS* tcpips)
+{
+    tcpips->app = INVALID_HANDLE;
+    timer_destroy(tcpips->timer);
+}
+
 static inline void tcpips_close(TCPIPS* tcpips)
 {
     if (tcpips->app == INVALID_HANDLE)
@@ -164,8 +170,7 @@ static inline void tcpips_close(TCPIPS* tcpips)
         return;
     }
     ack(tcpips->eth, HAL_REQ(HAL_ETH, IPC_CLOSE), tcpips->eth_handle, 0, 0);
-    tcpips->app = INVALID_HANDLE;
-    timer_destroy(tcpips->timer);
+    tcpips_close_internal(tcpips);
 }
 
 static inline void tcpips_eth_rx(TCPIPS* tcpips, IO* io, int param3)
@@ -198,14 +203,10 @@ static inline void tcpips_eth_tx_complete(TCPIPS* tcpips, IO* io, int param3)
     }
 }
 
-static inline void tcpips_link_changed(TCPIPS* tcpips, ETH_CONN_TYPE conn)
+static void tcpips_link_changed_internal(TCPIPS* tcpips, ETH_CONN_TYPE conn)
 {
     tcpips->conn = conn;
     tcpips->connected = ((conn != ETH_NO_LINK) && (conn != ETH_REMOTE_FAULT));
-
-#if (TCPIP_DEBUG)
-    print_conn_status(tcpips, "ETH link changed");
-#endif
 
     if (tcpips->connected)
     {
@@ -234,11 +235,32 @@ static inline void tcpips_link_changed(TCPIPS* tcpips, ETH_CONN_TYPE conn)
 #if (UDP)
     udps_link_changed(tcpips, tcpips->connected);
 #endif //UDP
+    tcps_link_changed(tcpips, tcpips->connected);
     if (tcpips->connected)
     {
         tcpips->seconds = 0;
         timer_start_ms(tcpips->timer, 1000);
     }
+}
+
+static inline void tcpips_link_changed(TCPIPS* tcpips, ETH_CONN_TYPE conn)
+{
+#if (TCPIP_DEBUG)
+    print_conn_status(tcpips, "ETH link changed\n");
+#endif
+
+    tcpips_link_changed_internal(tcpips, conn);
+}
+
+static inline void tcpips_eth_remote_close(TCPIPS* tcpips)
+{
+#if (TCPIP_DEBUG)
+    print_conn_status(tcpips, "ETH remote close\n");
+#endif
+    tcpips_link_changed(tcpips, ETH_REMOTE_FAULT);
+    if (tcpips->app != INVALID_HANDLE)
+        ipc_post_inline(tcpips->app, HAL_CMD(HAL_TCPIP, IPC_CLOSE), tcpips->eth_handle, 0, 0);
+    tcpips_close_internal(tcpips);
 }
 
 void tcpips_init(TCPIPS* tcpips)
@@ -324,6 +346,9 @@ static inline void tcpips_driver_event(TCPIPS* tcpips, IPC* ipc)
         break;
     case ETH_NOTIFY_LINK_CHANGED:
         tcpips_link_changed(tcpips, ipc->param2);
+        break;
+    case IPC_CLOSE:
+        tcpips_eth_remote_close(tcpips);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

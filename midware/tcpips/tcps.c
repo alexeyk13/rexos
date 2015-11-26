@@ -423,7 +423,7 @@ static void tcps_destroy_tcb(TCPIPS* tcpips, HANDLE tcb_handle)
     so_free(&tcpips->tcps.tcbs, tcb_handle);
 }
 
-static inline void tcps_close_connection(TCPIPS* tcpips, HANDLE tcb_handle)
+static void tcps_close_connection(TCPIPS* tcpips, HANDLE tcb_handle, unsigned int error)
 {
     TCP_TCB* tcb = so_get(&tcpips->tcps.tcbs, tcb_handle);
 
@@ -431,13 +431,13 @@ static inline void tcps_close_connection(TCPIPS* tcpips, HANDLE tcb_handle)
     {
     case TCP_STATE_SYN_RECEIVED:
         if (tcb->active)
-            ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, INVALID_HANDLE, ERROR_CONNECTION_REFUSED);
+            ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_OPEN), tcb_handle, INVALID_HANDLE, error);
         break;
     case TCP_STATE_ESTABLISHED:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
         //inform user on connection closed\n"
-        ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, ERROR_CONNECTION_REFUSED);
+        ipc_post_inline(tcb->process, HAL_CMD(HAL_TCP, IPC_CLOSE), tcb_handle, 0, error);
         break;
     default:
         break;
@@ -1120,7 +1120,7 @@ static inline void tcps_rx_otw(TCPIPS* tcpips, IO* io, HANDLE tcb_handle)
     //fourth, check the SYN bit
     if (tcp->flags & (TCP_FLAG_RST | TCP_FLAG_SYN))
     {
-        tcps_close_connection(tcpips, tcb_handle);
+        tcps_close_connection(tcpips, tcb_handle, ERROR_CONNECTION_REFUSED);
         return;
     }
     //fifth check the ACK field
@@ -1174,6 +1174,19 @@ void tcps_init(TCPIPS* tcpips)
 {
     so_create(&tcpips->tcps.listen, sizeof(TCP_LISTEN_HANDLE), 1);
     so_create(&tcpips->tcps.tcbs, sizeof(TCP_TCB), 1);
+}
+
+void tcps_link_changed(TCPIPS* tcpips, bool link)
+{
+    HANDLE handle;
+    //nothing to do if link, close all connections if not
+    if (!link)
+    {
+        while((handle = so_first(&tcpips->tcps.tcbs)) != INVALID_HANDLE)
+            tcps_close_connection(tcpips, handle, ERROR_CONNECTION_CLOSED);
+        while((handle = so_first(&tcpips->tcps.listen)) != INVALID_HANDLE)
+            so_free(&tcpips->tcps.listen, handle);
+    }
 }
 
 void tcps_rx(TCPIPS* tcpips, IO* io, IP* src)
@@ -1479,7 +1492,7 @@ static inline void tcps_timeout(TCPIPS* tcpips, HANDLE tcb_handle)
 #if (TCP_DEBUG_FLOW)
         printf("TCP: Retry exceed, closing connection\n");
 #endif //TCP_DEBUG_FLOW
-        tcps_close_connection(tcpips, tcb_handle);
+        tcps_close_connection(tcpips, tcb_handle, ERROR_TIMEOUT);
         return;
     }
 
@@ -1556,6 +1569,6 @@ void tcps_icmps_error_process(TCPIPS* tcpips, IO* io, ICMP_ERROR code, const IP*
 
     if ((tcb_handle = tcps_find_tcb(tcpips, src, be2short(tcp->dst_port_be), be2short(tcp->src_port_be))) == INVALID_HANDLE)
         return;
-    tcps_close_connection(tcpips, tcb_handle);
+    tcps_close_connection(tcpips, tcb_handle, ERROR_NOT_RESPONDING);
 }
 #endif //ICMP
