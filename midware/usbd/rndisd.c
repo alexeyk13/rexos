@@ -7,6 +7,7 @@
 #include "rndisd.h"
 #include "usbd.h"
 #include "../../userspace/sys.h"
+#include "../../userspace/mac.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/io.h"
 #include "../../userspace/uart.h"
@@ -23,8 +24,9 @@ typedef struct {
     IO* tx;
     IO* notify;
     unsigned int transfer_size;
-    uint8_t rndis_response[RNDIS_RESPONSE_SIZE];
-    uint8_t rndis_response_size;
+    uint32_t packet_filter;
+    uint8_t response[RNDIS_RESPONSE_SIZE];
+    uint8_t response_size;
     uint8_t data_ep, control_ep;
     uint16_t data_ep_size, rx_free, tx_size;
     uint8_t tx_idle, data_iface, control_iface;
@@ -152,27 +154,40 @@ typedef struct {
 #define OID_802_3_XMIT_LATE_COLLISIONS                                          0x01020207
 
 typedef enum {
-    NDIS_PHYSICAL_MEDIUM_UNSPECIFIED = 0,
-    NDIS_PHYSICAL_MEDIUM_WIRELESS_LAN,
-    NDIS_PHYSICAL_MEDIUM_CABLE_MODEM,
-    NDIS_PHYSICAL_MEDIUM_PHONE_LINE,
-    NDIS_PHYSICAL_MEDIUM_POWER_LINE,
-    NDIS_PHYSICAL_MEDIUM_DSL,
-    NDIS_PHYSICAL_MEDIUM_FIBRE_CHANNEL,
-    NDIS_PHYSICAL_MEDIUM_1394,
-    NDIS_PHYSICAL_MEDIUM_WIRELESS_WAN,
-    NDIS_PHYSICAL_MEDIUM_NATIVE_802_11,
-    NDIS_PHYSICAL_MEDIUM_BLUETOOTH,
-    NDIS_PHYSICAL_MEDIUM_INFINIBAND,
-    NDIS_PHYSICAL_MEDIUM_WIMAX,
-    NDIS_PHYSICAL_MEDIUM_UMB,
-    NDIS_PHYSICAL_MEDIUM_802_3,
-    NDIS_PHYSICAL_MEDIUM_802_5,
-    NDIS_PHYSICAL_MEDIUM_IRDA,
-    NDIS_PHYSICAL_MEDIUM_WIRED_WAN,
-    NDIS_PHYSICAL_MEDIUM_WIRED_CO_WAN,
-    NDIS_PHYSICAL_MEDIUM_OTHER
-} NDIS_PHYSICAL_MEDIUM;
+    RNDIS_PHYSICAL_MEDIUM_UNSPECIFIED = 0,
+    RNDIS_PHYSICAL_MEDIUM_WIRELESS_LAN,
+    RNDIS_PHYSICAL_MEDIUM_CABLE_MODEM,
+    RNDIS_PHYSICAL_MEDIUM_PHONE_LINE,
+    RNDIS_PHYSICAL_MEDIUM_POWER_LINE,
+    RNDIS_PHYSICAL_MEDIUM_DSL,
+    RNDIS_PHYSICAL_MEDIUM_FIBRE_CHANNEL,
+    RNDIS_PHYSICAL_MEDIUM_1394,
+    RNDIS_PHYSICAL_MEDIUM_WIRELESS_WAN,
+    RNDIS_PHYSICAL_MEDIUM_NATIVE_802_11,
+    RNDIS_PHYSICAL_MEDIUM_BLUETOOTH,
+    RNDIS_PHYSICAL_MEDIUM_INFINIBAND,
+    RNDIS_PHYSICAL_MEDIUM_WIMAX,
+    RNDIS_PHYSICAL_MEDIUM_UMB,
+    RNDIS_PHYSICAL_MEDIUM_802_3,
+    RNDIS_PHYSICAL_MEDIUM_802_5,
+    RNDIS_PHYSICAL_MEDIUM_IRDA,
+    RNDIS_PHYSICAL_MEDIUM_WIRED_WAN,
+    RNDIS_PHYSICAL_MEDIUM_WIRED_CO_WAN,
+    RNDIS_PHYSICAL_MEDIUM_OTHER
+} RNDIS_PHYSICAL_MEDIUM;
+
+#define RNDIS_PACKET_TYPE_DIRECTED                                              0x00000001
+#define RNDIS_PACKET_TYPE_MULTICAST                                             0x00000002
+#define RNDIS_PACKET_TYPE_ALL_MULTICAST                                         0x00000004
+#define RNDIS_PACKET_TYPE_BROADCAST                                             0x00000008
+#define RNDIS_PACKET_TYPE_SOURCE_ROUTING                                        0x00000010
+#define RNDIS_PACKET_TYPE_PROMISCUOUS                                           0x00000020
+#define RNDIS_PACKET_TYPE_SMT                                                   0x00000040
+#define RNDIS_PACKET_TYPE_ALL_LOCAL                                             0x00000080
+#define RNDIS_PACKET_TYPE_GROUP                                                 0x00001000
+#define RNDIS_PACKET_TYPE_ALL_FUNCTIONAL                                        0x00002000
+#define RNDIS_PACKET_TYPE_FUNCTIONAL                                            0x00004000
+#define RNDIS_PACKET_TYPE_MAC_FRAME                                             0x00008000
 
 #pragma pack(push, 1)
 typedef struct {
@@ -218,7 +233,7 @@ typedef struct {
     uint32_t information_buffer_length;
     uint32_t information_buffer_offset;
     uint32_t device_vc_handle;
-} RNDIS_QUERY_MSG;
+} RNDIS_QUERY_SET_MSG;
 
 typedef struct {
     uint32_t message_type;
@@ -228,14 +243,37 @@ typedef struct {
     uint32_t information_buffer_length;
     uint32_t information_buffer_offset;
 } RNDIS_QUERY_CMPLT;
+
+typedef struct {
+    uint32_t message_type;
+    uint32_t message_length;
+    uint32_t request_id;
+    uint32_t status;
+} RNDIS_SET_CMPLT;
 #pragma pack(pop)
 
-void rndisd_destroy(RNDISD* rndisd)
+static void rndisd_destroy(RNDISD* rndisd)
 {
     io_destroy(rndisd->rx);
     io_destroy(rndisd->tx);
 
     free(rndisd);
+}
+
+static void rndisd_reset(RNDISD* rndisd)
+{
+    if (rndisd->rx != NULL)
+    {
+        io_destroy(rndisd->rx);
+        rndisd->rx = NULL;
+    }
+    rndisd->packet_filter = RNDIS_PACKET_TYPE_DIRECTED | RNDIS_PACKET_TYPE_ALL_MULTICAST | RNDIS_PACKET_TYPE_BROADCAST | RNDIS_PACKET_TYPE_PROMISCUOUS;
+}
+
+static void rndisd_fail(RNDISD* rndisd)
+{
+    rndisd->response[0] = 0x00;
+    rndisd->response_size = 1;
 }
 
 void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
@@ -334,6 +372,7 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
         usbd_register_interface(usbd, rndisd->data_iface, &__RNDISD_CLASS, rndisd);
         usbd_register_endpoint(usbd, rndisd->data_iface, rndisd->data_ep);
         usbd_register_endpoint(usbd, rndisd->control_iface, rndisd->control_ep);
+        rndisd_reset(rndisd);
     }
 }
 
@@ -382,12 +421,6 @@ void rndisd_write(USBD* usbd, RNDISD* rndisd)
 
 }
 
-static void rndisd_fail(RNDISD* rndisd)
-{
-    rndisd->rndis_response[0] = 0x00;
-    rndisd->rndis_response_size = 1;
-}
-
 static inline void rndisd_initialize(RNDISD* rndisd, IO* io)
 {
     RNDIS_INITIALIZE_MSG* msg;
@@ -398,11 +431,12 @@ static inline void rndisd_initialize(RNDISD* rndisd, IO* io)
         return;
     }
     msg = io_data(io);
+    rndisd_reset(rndisd);
     rndisd->transfer_size = msg->max_transfer_size;
     if (USBD_RNDIS_MAX_PACKET_SIZE < rndisd->transfer_size)
         rndisd->transfer_size = USBD_RNDIS_MAX_PACKET_SIZE;
-    cmplt = (RNDIS_INITIALIZE_CMPLT*)rndisd->rndis_response;
-    rndisd->rndis_response_size = cmplt->message_length = sizeof(RNDIS_INITIALIZE_CMPLT);
+    cmplt = (RNDIS_INITIALIZE_CMPLT*)rndisd->response;
+    rndisd->response_size = cmplt->message_length = sizeof(RNDIS_INITIALIZE_CMPLT);
     cmplt->message_type = REMOTE_NDIS_INITIALIZE_CMPLT;
     cmplt->request_id = msg->request_id;
     cmplt->status = RNDIS_STATUS_SUCCESS;
@@ -442,24 +476,86 @@ static inline void rndisd_halt(RNDISD* rndisd)
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
 
-static inline void rndisd_query(RNDISD* rndisd, IO* io)
+static bool rndisd_query_set_check(RNDISD* rndisd, IO* io)
 {
-    RNDIS_QUERY_MSG* msg;
-//    RNDIS_INITIALIZE_CMPLT* cmplt;
-    if (io->data_size < sizeof(RNDIS_QUERY_MSG))
+    RNDIS_QUERY_SET_MSG* msg = io_data(io);
+    if (io->data_size < sizeof(RNDIS_QUERY_SET_MSG))
     {
         rndisd_fail(rndisd);
-        return;
+        return false;
     }
     msg = io_data(io);
-    if (msg->information_buffer_offset + msg->information_buffer_length > io->data_size)
+    if (msg->information_buffer_length && (msg->information_buffer_offset + msg->information_buffer_length + offsetof(RNDIS_QUERY_SET_MSG, request_id) > io->data_size))
     {
         rndisd_fail(rndisd);
-        return;
+        return false;
     }
+    return true;
+}
+
+static void* rndisd_query_set_buf(IO* io)
+{
+    RNDIS_QUERY_SET_MSG* msg = io_data(io);
+    return msg->information_buffer_length ? ((uint8_t*)io_data(io) + msg->information_buffer_offset + offsetof(RNDIS_QUERY_SET_MSG, request_id)) : NULL;
+}
+
+static void* rndisd_query_append(RNDISD* rndisd, unsigned int size)
+{
+    RNDIS_QUERY_CMPLT* cmplt = (RNDIS_QUERY_CMPLT*)rndisd->response;
+    if (cmplt->information_buffer_length)
+        cmplt->information_buffer_offset += size;
+    else
+        cmplt->information_buffer_offset = sizeof(RNDIS_QUERY_CMPLT) - offsetof(RNDIS_QUERY_CMPLT, request_id);
+    cmplt->information_buffer_length += size;
+    cmplt->message_length += size;
+    rndisd->response_size += size;
+    return rndisd->response + cmplt->information_buffer_offset + offsetof(RNDIS_QUERY_CMPLT, request_id);
+}
+
+static inline void rndisd_query_gen_physical_medium(RNDISD* rndisd)
+{
+    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = RNDIS_PHYSICAL_MEDIUM_802_3;
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: QUERY physical medium(802.3)\n");
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
+
+static inline void rndisd_query_802_3_permanent_address(RNDISD* rndisd)
+{
+    MAC* mac;
+    mac = rndisd_query_append(rndisd, sizeof(MAC));
+    //TODO:
+    mac->u8[0] = 0x20;
+    mac->u8[1] = 0xD9;
+    mac->u8[2] = 0x97;
+    mac->u8[3] = 0xA1;
+    mac->u8[4] = 0x90;
+    mac->u8[5] = 0x42;
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: QUERY 802.3 permanent address\n");
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
+
+static inline void rndisd_query(RNDISD* rndisd, IO* io)
+{
+    RNDIS_QUERY_SET_MSG* msg;
+    RNDIS_QUERY_CMPLT* cmplt;
+    void* buf;
+    if (!rndisd_query_set_check(rndisd, io))
+        return;
+    msg = io_data(io);
+    buf = rndisd_query_set_buf(io);
+    cmplt = (RNDIS_QUERY_CMPLT*)rndisd->response;
+    cmplt->message_type = REMOTE_NDIS_QUERY_CMPLT;
+    rndisd->response_size = cmplt->message_length = sizeof(RNDIS_QUERY_CMPLT);
+    cmplt->request_id = msg->request_id;
+    cmplt->status = RNDIS_STATUS_SUCCESS;
+    cmplt->information_buffer_length = 0;
+    cmplt->information_buffer_offset = 0;
+
     switch (msg->oid)
     {
-    case OID_GEN_SUPPORTED_LIST:
+/*    case OID_GEN_SUPPORTED_LIST:
     case OID_GEN_HARDWARE_STATUS:
     case OID_GEN_MEDIA_SUPPORTED:
     case OID_GEN_MEDIA_IN_USE:
@@ -469,11 +565,12 @@ static inline void rndisd_query(RNDISD* rndisd, IO* io)
     case OID_GEN_RECEIVE_BLOCK_SIZE:
     case OID_GEN_VENDOR_ID:
     case OID_GEN_VENDOR_DESCRIPTION:
-    case OID_GEN_CURRENT_PACKET_FILTER:
     case OID_GEN_MAXIMUM_TOTAL_SIZE:
-    case OID_GEN_MEDIA_CONNECT_STATUS:
+    case OID_GEN_MEDIA_CONNECT_STATUS:*/
     case OID_GEN_PHYSICAL_MEDIUM:
-    case OID_GEN_RNDIS_CONFIG_PARAMETER:
+        rndisd_query_gen_physical_medium(rndisd);
+        break;
+/*    case OID_GEN_RNDIS_CONFIG_PARAMETER:
     case OID_GEN_XMIT_OK:
     case OID_GEN_RCV_OK:
     case OID_GEN_XMIT_ERROR:
@@ -492,8 +589,10 @@ static inline void rndisd_query(RNDISD* rndisd, IO* io)
     case OID_GEN_BROADCAST_BYTES_RCV:
     case OID_GEN_BROADCAST_FRAMES_RCV:
     case OID_GEN_RCV_CRC_ERROR:
-    case OID_GEN_TRANSMIT_QUEUE_LENGTH:
+    case OID_GEN_TRANSMIT_QUEUE_LENGTH:*/
     case OID_802_3_PERMANENT_ADDRESS:
+        rndisd_query_802_3_permanent_address(rndisd);
+        break;
     case OID_802_3_CURRENT_ADDRESS:
     case OID_802_3_MULTICAST_LIST:
     case OID_802_3_MAXIMUM_LIST_SIZE:
@@ -512,10 +611,105 @@ static inline void rndisd_query(RNDISD* rndisd, IO* io)
 #if (USBD_RNDIS_DEBUG_REQUESTS)
         printf("RNDIS device: unsupported QUERY Oid: %#X\n", msg->oid);
 #endif //USBD_RNDIS_DEBUG_REQUESTS
-//        dump(io_data(io) + msg->information_buffer_offset, msg->information_buffer_length);
+        if (msg->information_buffer_length)
+            dump(io_data(io) + msg->information_buffer_offset + 8, msg->information_buffer_length);
+        rndisd_fail(rndisd);
     }
+}
 
-    dump(io_data(io), io->data_size);
+static inline void rndisd_set_packet_filter(RNDISD* rndisd, void* buf, unsigned int size)
+{
+    if (size < sizeof(uint32_t))
+    {
+        rndisd_fail(rndisd);
+        return;
+    }
+    rndisd->packet_filter = *((uint32_t*)buf);
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: SET current packet filter: %#08X\n", rndisd->packet_filter);
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
+
+static inline void rndisd_set(RNDISD* rndisd, IO* io)
+{
+    RNDIS_QUERY_SET_MSG* msg;
+    RNDIS_SET_CMPLT* cmplt;
+    void* buf;
+    if (!rndisd_query_set_check(rndisd, io))
+        return;
+    msg = io_data(io);
+    buf = rndisd_query_set_buf(io);
+    cmplt = (RNDIS_SET_CMPLT*)rndisd->response;
+    cmplt->message_type = REMOTE_NDIS_SET_CMPLT;
+    rndisd->response_size = cmplt->message_length = sizeof(RNDIS_SET_CMPLT);
+    cmplt->request_id = msg->request_id;
+    cmplt->status = RNDIS_STATUS_SUCCESS;
+
+    switch (msg->oid)
+    {
+/*    case OID_GEN_SUPPORTED_LIST:
+    case OID_GEN_HARDWARE_STATUS:
+    case OID_GEN_MEDIA_SUPPORTED:
+    case OID_GEN_MEDIA_IN_USE:
+    case OID_GEN_MAXIMUM_FRAME_SIZE:
+    case OID_GEN_LINK_SPEED:
+    case OID_GEN_TRANSMIT_BLOCK_SIZE:
+    case OID_GEN_RECEIVE_BLOCK_SIZE:
+    case OID_GEN_VENDOR_ID:
+    case OID_GEN_VENDOR_DESCRIPTION:*/
+    case OID_GEN_CURRENT_PACKET_FILTER:
+        rndisd_set_packet_filter(rndisd, buf, msg->information_buffer_length);
+        break;
+/*    case OID_GEN_MAXIMUM_TOTAL_SIZE:
+    case OID_GEN_MEDIA_CONNECT_STATUS:*/
+    case OID_GEN_PHYSICAL_MEDIUM:
+  //      rndisd_gen_oid_physical_medium(rndisd);
+  //      break;
+/*    case OID_GEN_RNDIS_CONFIG_PARAMETER:
+    case OID_GEN_XMIT_OK:
+    case OID_GEN_RCV_OK:
+    case OID_GEN_XMIT_ERROR:
+    case OID_GEN_RCV_ERROR:
+    case OID_GEN_RCV_NO_BUFFER:
+    case OID_GEN_DIRECTED_BYTES_XMIT:
+    case OID_GEN_DIRECTED_FRAMES_XMIT:
+    case OID_GEN_MULTICAST_BYTES_XMIT:
+    case OID_GEN_MULTICAST_FRAMES_XMIT:
+    case OID_GEN_BROADCAST_BYTES_XMIT:
+    case OID_GEN_BROADCAST_FRAMES_XMIT:
+    case OID_GEN_DIRECTED_BYTES_RCV:
+    case OID_GEN_DIRECTED_FRAMES_RCV:
+    case OID_GEN_MULTICAST_BYTES_RCV:
+    case OID_GEN_MULTICAST_FRAMES_RCV:
+    case OID_GEN_BROADCAST_BYTES_RCV:
+    case OID_GEN_BROADCAST_FRAMES_RCV:
+    case OID_GEN_RCV_CRC_ERROR:
+    case OID_GEN_TRANSMIT_QUEUE_LENGTH:*/
+    case OID_802_3_PERMANENT_ADDRESS:
+//        rndisd_oid_802_3_permanent_address(rndisd);
+//        break;
+    case OID_802_3_CURRENT_ADDRESS:
+    case OID_802_3_MULTICAST_LIST:
+    case OID_802_3_MAXIMUM_LIST_SIZE:
+    case OID_802_3_MAC_OPTIONS:
+    case OID_802_3_RCV_ERROR_ALIGNMENT:
+    case OID_802_3_XMIT_ONE_COLLISION:
+    case OID_802_3_XMIT_MORE_COLLISIONS:
+    case OID_802_3_XMIT_DEFERRED:
+    case OID_802_3_XMIT_MAX_COLLISIONS:
+    case OID_802_3_RCV_OVERRUN:
+    case OID_802_3_XMIT_UNDERRUN:
+    case OID_802_3_XMIT_HEARTBEAT_FAILURE:
+    case OID_802_3_XMIT_TIMES_CRS_LOST:
+    case OID_802_3_XMIT_LATE_COLLISIONS:
+    default:
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+        printf("RNDIS device: unsupported SET Oid: %#X\n", msg->oid);
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+        if (msg->information_buffer_length)
+            dump(io_data(io) + msg->information_buffer_offset + 8, msg->information_buffer_length);
+        rndisd_fail(rndisd);
+    }
 }
 
 static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, IO* io)
@@ -549,7 +743,8 @@ static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, I
             rndisd_query(rndisd, io);
             break;
         case REMOTE_NDIS_SET_MSG:
-//            break;
+            rndisd_set(rndisd, io);
+            break;
         case REMOTE_NDIS_RESET_MSG:
 //            break;
         case REMOTE_NDIS_INDICATE_STATUS_MSG:
@@ -561,7 +756,7 @@ static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, I
             printf("RNDISD: unsupported MSG %#X\n", msg->message_type);
     #endif //USBD_RNDIS_DEBUG
             //TODO: format unsupported
-            dump(io_data(io), 0x18);
+            dump(io_data(io), io->data_size);
         }
 
     } while (false);
@@ -576,9 +771,9 @@ static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, I
 
 static inline int rndisd_get_encapsulated_response(RNDISD* rndisd, IO* io)
 {
-    memcpy(io_data(io), rndisd->rndis_response, rndisd->rndis_response_size);
-    io->data_size = rndisd->rndis_response_size;
-    return rndisd->rndis_response_size;
+    memcpy(io_data(io), rndisd->response, rndisd->response_size);
+    io->data_size = rndisd->response_size;
+    return rndisd->response_size;
 }
 
 int rndisd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
