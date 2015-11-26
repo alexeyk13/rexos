@@ -8,6 +8,7 @@
 #include "usbd.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/mac.h"
+#include "../../userspace/eth.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/io.h"
 #include "../../userspace/uart.h"
@@ -25,6 +26,7 @@ typedef struct {
     IO* notify;
     unsigned int transfer_size;
     uint32_t packet_filter;
+    MAC mac;
     uint8_t response[RNDIS_RESPONSE_SIZE];
     uint8_t response_size;
     uint8_t data_ep, control_ep;
@@ -372,6 +374,8 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
         usbd_register_interface(usbd, rndisd->data_iface, &__RNDISD_CLASS, rndisd);
         usbd_register_endpoint(usbd, rndisd->data_iface, rndisd->data_ep);
         usbd_register_endpoint(usbd, rndisd->control_iface, rndisd->control_ep);
+
+        rndisd->mac.u32.hi = rndisd->mac.u32.lo = 0;
         rndisd_reset(rndisd);
     }
 }
@@ -524,13 +528,8 @@ static inline void rndisd_query_802_3_permanent_address(RNDISD* rndisd)
 {
     MAC* mac;
     mac = rndisd_query_append(rndisd, sizeof(MAC));
-    //TODO:
-    mac->u8[0] = 0x20;
-    mac->u8[1] = 0xD9;
-    mac->u8[2] = 0x97;
-    mac->u8[3] = 0xA1;
-    mac->u8[4] = 0x90;
-    mac->u8[5] = 0x42;
+    mac->u32.hi = rndisd->mac.u32.hi;
+    mac->u32.lo = rndisd->mac.u32.lo;
 #if (USBD_RNDIS_DEBUG_REQUESTS)
     printf("RNDIS device: QUERY 802.3 permanent address\n");
 #endif //USBD_RNDIS_DEBUG_REQUESTS
@@ -811,17 +810,48 @@ static inline void rndisd_driver_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
     }
 }
 
+static inline void rndisd_eth_set_mac(RNDISD* rndisd, unsigned int param2, unsigned int param3)
+{
+    printf("set mac\n");
+    rndisd->mac.u32.hi = param2;
+    rndisd->mac.u32.lo = (uint16_t)param3;
+}
+
+static inline void rndisd_eth_get_mac(RNDISD* rndisd, IPC* ipc)
+{
+    ipc->param2 = rndisd->mac.u32.hi;
+    ipc->param3 = rndisd->mac.u32.lo;
+}
+
+static inline void rndisd_eth_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
+{
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    case ETH_SET_MAC:
+        rndisd_eth_set_mac(rndisd, ipc->param2, ipc->param3);
+        break;
+    case ETH_GET_MAC:
+        rndisd_eth_get_mac(rndisd, ipc);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+    }
+}
+
 void rndisd_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     RNDISD* rndisd = (RNDISD*)param;
-    if (HAL_GROUP(ipc->cmd) == HAL_USB)
+    switch (HAL_GROUP(ipc->cmd))
+    {
+    case HAL_USB:
         rndisd_driver_event(usbd, rndisd, ipc);
-    else
-        switch (HAL_ITEM(ipc->cmd))
-        {
-        default:
-            error(ERROR_NOT_SUPPORTED);
-        }
+        break;
+    case HAL_ETH:
+        rndisd_eth_event(usbd, rndisd, ipc);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+    }
 }
 
 const USBD_CLASS __RNDISD_CLASS = {
