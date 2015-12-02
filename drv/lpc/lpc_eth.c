@@ -120,7 +120,7 @@ static void lpc_eth_conn_check(ETH_DRV* drv)
     {
         drv->conn = new_conn;
         drv->connected = ((drv->conn != ETH_NO_LINK) && (drv->conn != ETH_REMOTE_FAULT));
-        ipc_post_inline(drv->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), 0, drv->conn, 0);
+        ipc_post_inline(drv->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), drv->phy_addr, drv->conn, 0);
         if (drv->connected)
         {
             //set speed and duplex

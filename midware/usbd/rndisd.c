@@ -6,6 +6,7 @@
 
 #include "rndisd.h"
 #include "usbd.h"
+#include "../../userspace/rndis.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/mac.h"
 #include "../../userspace/eth.h"
@@ -26,13 +27,15 @@ typedef struct {
     IO* notify;
     unsigned int transfer_size;
     uint32_t packet_filter;
+    ETH_CONN_TYPE conn;
     MAC mac;
+    HANDLE tcpip;
     uint8_t response[RNDIS_RESPONSE_SIZE];
     uint8_t response_size;
     uint8_t data_ep, control_ep;
-    uint16_t data_ep_size, rx_free, tx_size;
-    uint8_t tx_idle, data_iface, control_iface;
-    bool suspended;
+    uint16_t data_ep_size;
+    uint8_t data_iface, control_iface;
+    bool busy, link_status_queued;
 } RNDISD;
 
 #define SEND_ENCAPSULATED_COMMAND                                               0x00
@@ -252,6 +255,15 @@ typedef struct {
     uint32_t request_id;
     uint32_t status;
 } RNDIS_SET_CMPLT;
+
+typedef struct {
+    uint32_t message_type;
+    uint32_t message_length;
+    uint32_t status;
+    uint32_t information_buffer_length;
+    uint32_t information_buffer_offset;
+} RNDIS_INDICATE_STATUS_MSG;
+
 #pragma pack(pop)
 
 static void rndisd_destroy(RNDISD* rndisd)
@@ -270,12 +282,38 @@ static void rndisd_reset(RNDISD* rndisd)
         rndisd->rx = NULL;
     }
     rndisd->packet_filter = RNDIS_PACKET_TYPE_DIRECTED | RNDIS_PACKET_TYPE_ALL_MULTICAST | RNDIS_PACKET_TYPE_BROADCAST | RNDIS_PACKET_TYPE_PROMISCUOUS;
+    rndisd->link_status_queued = false;
 }
 
 static void rndisd_fail(RNDISD* rndisd)
 {
     rndisd->response[0] = 0x00;
     rndisd->response_size = 1;
+}
+
+static void rndisd_notify(USBD* usbd, RNDISD* rndisd)
+{
+    RNDIS_RESPONSE_AVAILABLE_NOTIFY* resp;
+    resp = io_data(rndisd->notify);
+    resp->notify = RNDIS_RESPONSE_AVAILABLE;
+    resp->reserved = 0;
+    rndisd->notify->data_size = sizeof(RNDIS_RESPONSE_AVAILABLE_NOTIFY);
+    usbd_usb_ep_write(usbd, USB_EP_IN | rndisd->control_ep, rndisd->notify);
+}
+
+static void rndisd_indicate_status(RNDISD* rndisd)
+{
+    RNDIS_INDICATE_STATUS_MSG* msg;
+    if (rndisd->busy)
+    {
+        rndisd->link_status_queued = true;
+        return;
+    }
+    msg = (RNDIS_INDICATE_STATUS_MSG*)rndisd->response;
+    msg->message_type = REMOTE_NDIS_INDICATE_STATUS_MSG;
+    rndisd->response_size = msg->message_length = sizeof(RNDIS_INDICATE_STATUS_MSG);
+    msg->status = ((rndisd->conn == ETH_NO_LINK) || (rndisd->conn == ETH_REMOTE_FAULT)) ? RNDIS_STATUS_MEDIA_DISCONNECT : RNDIS_STATUS_MEDIA_CONNECT;
+    msg->information_buffer_length = msg->information_buffer_offset = 0;
 }
 
 void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
@@ -364,7 +402,6 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
         rndisd->data_ep_size = data_ep_size;
         rndisd->tx = rndisd->rx = NULL;
         rndisd->notify = io_create(control_ep_size);
-        rndisd->suspended = false;
 
         usbd_usb_ep_open(usbd, USB_EP_IN | rndisd->data_ep, USB_EP_BULK, rndisd->data_ep_size);
         usbd_usb_ep_open(usbd, rndisd->data_ep, USB_EP_BULK, rndisd->data_ep_size);
@@ -375,7 +412,10 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
         usbd_register_endpoint(usbd, rndisd->data_iface, rndisd->data_ep);
         usbd_register_endpoint(usbd, rndisd->control_iface, rndisd->control_ep);
 
+        rndisd->conn = ETH_NO_LINK;
         rndisd->mac.u32.hi = rndisd->mac.u32.lo = 0;
+        rndisd->tcpip = INVALID_HANDLE;
+        rndisd->busy = false;
         rndisd_reset(rndisd);
     }
 }
@@ -383,6 +423,8 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
 void rndisd_class_reset(USBD* usbd, void* param)
 {
     RNDISD* rndisd = (RNDISD*)param;
+
+    //TODO: tcpip remote close
 
     usbd_usb_ep_close(usbd, USB_EP_IN | rndisd->control_ep);
     usbd_usb_ep_close(usbd, USB_EP_IN | rndisd->data_ep);
@@ -397,32 +439,27 @@ void rndisd_class_reset(USBD* usbd, void* param)
 
 void rndisd_class_suspend(USBD* usbd, void* param)
 {
+    //TODO: tcpip set no link
+
     RNDISD* rndisd = (RNDISD*)param;
     usbd_usb_ep_flush(usbd, USB_EP_IN | rndisd->control_ep);
     usbd_usb_ep_flush(usbd, USB_EP_IN | rndisd->data_ep);
     usbd_usb_ep_flush(usbd, rndisd->data_ep);
-
-    rndisd->suspended = true;
 }
 
 void rndisd_class_resume(USBD* usbd, void* param)
 {
+    //TODO: tcpip restore link
+
     RNDISD* rndisd = (RNDISD*)param;
-    rndisd->suspended = false;
 }
 
 static inline void rndisd_read_complete(USBD* usbd, RNDISD* rndisd)
 {
-    if (rndisd->suspended)
-        return;
-
 }
 
 void rndisd_write(USBD* usbd, RNDISD* rndisd)
 {
-    if (!rndisd->tx_idle || rndisd->suspended)
-        return;
-
 }
 
 static inline void rndisd_initialize(RNDISD* rndisd, IO* io)
@@ -466,15 +503,12 @@ static inline void rndisd_initialize(RNDISD* rndisd, IO* io)
 #if (USBD_RNDIS_DEBUG_REQUESTS)
     printf("RNDIS device: INITIALIZE, ver%d.%d, size: %d\n", msg->major_version, msg->minor_version, msg->max_transfer_size);
 #endif //USBD_RNDIS_DEBUG_REQUESTS
+    rndisd_indicate_status(rndisd);
 }
 
 static inline void rndisd_halt(RNDISD* rndisd)
 {
-    if (rndisd->rx != NULL)
-    {
-        io_destroy(rndisd->rx);
-        rndisd->rx = NULL;
-    }
+    rndisd_reset(rndisd);
 #if (USBD_RNDIS_DEBUG_REQUESTS)
     printf("RNDIS device: HALT\n");
 #endif //USBD_RNDIS_DEBUG_REQUESTS
@@ -714,7 +748,6 @@ static inline void rndisd_set(RNDISD* rndisd, IO* io)
 static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, IO* io)
 {
     RNDIS_GENERIC_MSG* msg;
-    RNDIS_RESPONSE_AVAILABLE_NOTIFY* resp;
     do
     {
         if (io->data_size < sizeof(RNDIS_GENERIC_MSG))
@@ -728,6 +761,7 @@ static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, I
             rndisd_fail(rndisd);
             break;
         }
+        rndisd->busy = true;
         //Fucking Microsoft doesn't use SETUP, they made own interface
         switch (msg->message_type)
         {
@@ -751,20 +785,15 @@ static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, I
         case REMOTE_NDIS_KEEPALIVE_MSG:
 //            break;
         default:
-    #if (USBD_RNDIS_DEBUG)
-            printf("RNDISD: unsupported MSG %#X\n", msg->message_type);
-    #endif //USBD_RNDIS_DEBUG
+#if (USBD_RNDIS_DEBUG)
+            printf("RNDIS device: unsupported MSG %#X\n", msg->message_type);
+#endif //USBD_RNDIS_DEBUG
             //TODO: format unsupported
             dump(io_data(io), io->data_size);
         }
 
     } while (false);
-    //notify host
-    resp = io_data(rndisd->notify);
-    resp->notify = RNDIS_RESPONSE_AVAILABLE;
-    resp->reserved = 0;
-    rndisd->notify->data_size = sizeof(RNDIS_RESPONSE_AVAILABLE_NOTIFY);
-    usbd_usb_ep_write(usbd, USB_EP_IN | rndisd->control_ep, rndisd->notify);
+    rndisd_notify(usbd, rndisd);
     return 0;
 }
 
@@ -772,7 +801,13 @@ static inline int rndisd_get_encapsulated_response(RNDISD* rndisd, IO* io)
 {
     memcpy(io_data(io), rndisd->response, rndisd->response_size);
     io->data_size = rndisd->response_size;
-    return rndisd->response_size;
+    rndisd->busy = false;
+    if (rndisd->link_status_queued)
+    {
+        rndisd->link_status_queued = false;
+        rndisd_indicate_status(rndisd);
+    }
+    return io->data_size;
 }
 
 int rndisd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
@@ -812,7 +847,6 @@ static inline void rndisd_driver_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
 
 static inline void rndisd_eth_set_mac(RNDISD* rndisd, unsigned int param2, unsigned int param3)
 {
-    printf("set mac\n");
     rndisd->mac.u32.hi = param2;
     rndisd->mac.u32.lo = (uint16_t)param3;
 }
@@ -838,6 +872,34 @@ static inline void rndisd_eth_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
     }
 }
 
+static inline void rndisd_set_link(RNDISD* rndisd, ETH_CONN_TYPE conn)
+{
+    if (rndisd->conn == conn)
+        return;
+    rndisd->conn = conn;
+#if (USBD_RNDIS_DEBUG)
+    printf("RNDIS device: ETH link changed\n");
+#endif //USBD_RNDIS_DEBUG
+    //TCP/IP stack opened
+    if (rndisd->tcpip != INVALID_HANDLE)
+        ipc_post_inline(rndisd->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), USBD_IFACE(rndisd->control_iface, 0), rndisd->conn, 0);
+    //RNDIS initialized
+    if (rndisd->rx != NULL)
+        rndisd_indicate_status(rndisd);
+}
+
+static inline void rndisd_iface_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
+{
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    case RNDIS_SET_LINK:
+        rndisd_set_link(rndisd, (ETH_CONN_TYPE)ipc->param2);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+    }
+}
+
 void rndisd_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     RNDISD* rndisd = (RNDISD*)param;
@@ -848,6 +910,9 @@ void rndisd_class_request(USBD* usbd, void* param, IPC* ipc)
         break;
     case HAL_ETH:
         rndisd_eth_event(usbd, rndisd, ipc);
+        break;
+    case HAL_USBD_IFACE:
+        rndisd_iface_event(usbd, rndisd, ipc);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
