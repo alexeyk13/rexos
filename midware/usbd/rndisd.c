@@ -275,22 +275,69 @@ static inline void rndisd_read_complete(USBD* usbd, RNDISD* rndisd, int size)
 {
     RNDIS_PACKET_MSG* msg;
     void* data;
+    IO* io;
+    unsigned int frame_size;
+#if (ETH_DOUBLE_BUFFERING)
+    int i;
+#endif //ETH_DOUBLE_BUFFERING
     if (size < 0 || !rndisd_link_ready(rndisd))
         return;
-    //TODO: long packet
     do {
         if (rndisd->usb_rx->data_size < sizeof(RNDIS_PACKET_MSG))
             break;
+        io_unhide(rndisd->usb_rx);
         msg = io_data(rndisd->usb_rx);
         if (msg->message_type != REMOTE_NDIS_PACKET_MSG)
             break;
+        if (msg->message_length > rndisd->transfer_size)
+            break;
+        //long packet > EP size
+        if ((size == rndisd->data_ep_size) && (msg->message_length > rndisd->data_ep_size))
+        {
+            io_hide(rndisd->usb_rx, rndisd->data_ep_size);
+            //still maybe padding
+            usbd_usb_ep_read(usbd, rndisd->data_ep, rndisd->usb_rx, (msg->message_length - 1) & ~(rndisd->data_ep_size - 1));
+            return;
+        }
         if (msg->message_length > rndisd->usb_rx->data_size)
             break;
         if ((msg->data_offset + msg->data_length + offsetof(RNDIS_PACKET_MSG, data_offset) > msg->message_length) || (msg->data_length == 0))
             break;
         data = (uint8_t*)io_data(rndisd->usb_rx) + msg->data_offset + offsetof(RNDIS_PACKET_MSG, data_offset);
-        printd("RX!!\n");
-        dump(data, msg->data_length);
+        io = NULL;
+#if (ETH_DOUBLE_BUFFERING)
+        for (i = 0; i < 2; ++i)
+            if (rndisd->rx[i] != NULL)
+            {
+                io = rndisd->rx[i];
+                rndisd->rx[i] = NULL;
+                break;
+            }
+#else //ETH_DOUBLE_BUFFERING
+        if (rndisd->rx != NULL)
+        {
+            io = rndisd->rx;
+            rndisd->rx = NULL;
+        }
+#endif //ETH_DOUBLE_BUFFERING
+        if (io == NULL)
+        {
+#if (USBD_RNDIS_DEBUG_FLOW)
+            printf("RNDIS device: frame dropped\n");
+#endif //USBD_RNDIS_DEBUG_FLOW
+            //TODO: stat
+            break;
+        }
+        frame_size = msg->data_length;
+        if (frame_size > io_get_free(io))
+            frame_size = io_get_free(io);
+        memcpy(io_data(io), data, frame_size);
+        io->data_size = frame_size;
+        io_complete(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), USBD_IFACE(rndisd->control_iface, 0), io);
+#if (USBD_RNDIS_DEBUG_FLOW)
+        printf("RNDIS device: RX %d\n", frame_size);
+#endif //USBD_RNDIS_DEBUG_FLOW
+
     } while(false);
     rndisd_rx(usbd, rndisd);
 }
@@ -705,9 +752,34 @@ static inline void rndisd_eth_open(USBD* usbd, RNDISD* rndisd, HANDLE tcpip)
         rndisd_link_changed(usbd, rndisd);
 }
 
-static inline void rndisd_eth_read(USBD* usbd, RNDISD* rndisd, IO* io)
+static inline void rndisd_eth_read(RNDISD* rndisd, IO* io)
 {
-    printf("TODO: IPC read\n");
+#if (ETH_DOUBLE_BUFFERING)
+    int i;
+#endif //ETH_DOUBLE_BUFFERING
+    io_reset(io);
+    if (!rndisd_link_ready(rndisd))
+    {
+        error(ERROR_NOT_ACTIVE);
+        return;
+    }
+#if (ETH_DOUBLE_BUFFERING)
+    for (i = 0; i < 2; ++i)
+        if (rndisd->rx[i] == NULL)
+        {
+            rndisd->rx[i] = io;
+            error(ERROR_SYNC);
+            return;
+        }
+#else //ETH_DOUBLE_BUFFERING
+    if (rndisd->rx == NULL)
+    {
+        rndisd->rx = io;
+        error(ERROR_SYNC);
+        return;
+    }
+#endif //ETH_DOUBLE_BUFFERING
+    error(ERROR_IN_PROGRESS);
 }
 
 static inline void rndisd_eth_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
@@ -728,7 +800,7 @@ static inline void rndisd_eth_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
         error(ERROR_NOT_SUPPORTED);
         break;
     case IPC_READ:
-        rndisd_eth_read(usbd, rndisd, (IO*)ipc->param2);
+        rndisd_eth_read(rndisd, (IO*)ipc->param2);
         break;
     case IPC_WRITE:
         printf("TODO: IPC write\n");
