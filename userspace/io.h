@@ -117,6 +117,14 @@ unsigned int io_data_append(IO* io, const void *data, unsigned int size);
 void io_reset(IO* io);
 
 /**
+    \brief hide part of IO data
+    \param io: IO pointer
+    \param size: size to hide
+    \retval none
+*/
+void io_hide(IO* io, unsigned int size);
+
+/**
     \brief unhide all IO data
     \param io: IO pointer
     \retval none
