@@ -25,24 +25,24 @@ typedef struct {
     IO* usb_rx;
     IO* usb_tx;
     IO* usb_notify;
+    IO* tx_cur;
 #if (ETH_DOUBLE_BUFFERING)
-    IO* tx[2];
+    IO* tx;
     IO* rx[2];
 #else
-    IO* tx;
     IO* rx;
 #endif
     unsigned int transfer_size;
     uint32_t packet_filter;
     ETH_CONN_TYPE conn;
-    MAC mac;
+    MAC eth, host;
     HANDLE tcpip;
     uint8_t response[RNDIS_RESPONSE_SIZE];
     uint8_t response_size;
     uint8_t data_ep, control_ep;
     uint16_t data_ep_size;
     uint8_t data_iface, control_iface;
-    bool busy, link_status_queued, connected;
+    bool notify_busy, link_status_queued, connected;
 } RNDISD;
 
 static void rndisd_destroy(RNDISD* rndisd)
@@ -71,7 +71,7 @@ static inline bool rndisd_link_ready(RNDISD* rndisd)
 static void rndisd_indicate_status(RNDISD* rndisd)
 {
     RNDIS_INDICATE_STATUS_MSG* msg;
-    if (rndisd->busy)
+    if (rndisd->notify_busy)
     {
         rndisd->link_status_queued = true;
         return;
@@ -112,8 +112,9 @@ static void rndisd_reset(USBD* usbd, RNDISD* rndisd)
     bool was_ready = rndisd_link_ready(rndisd);
     if (rndisd->usb_rx != NULL)
     {
+        io_destroy(rndisd->usb_tx);
         io_destroy(rndisd->usb_rx);
-        rndisd->usb_rx = NULL;
+        rndisd->usb_tx = rndisd->usb_rx = NULL;
     }
     rndisd->packet_filter = RNDIS_PACKET_TYPE_DIRECTED | RNDIS_PACKET_TYPE_ALL_MULTICAST | RNDIS_PACKET_TYPE_BROADCAST | RNDIS_PACKET_TYPE_PROMISCUOUS;
     rndisd->link_status_queued = false;
@@ -213,9 +214,9 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
         rndisd->data_ep_size = data_ep_size;
         rndisd->usb_tx = rndisd->usb_rx = NULL;
 #if (ETH_DOUBLE_BUFFERING)
-        rndisd->tx[0] = rndisd->tx[1] = rndisd->rx[0] = rndisd->rx[1] = NULL;
+        rndisd->tx = rndisd->rx[0] = rndisd->rx[1] = NULL;
 #else
-        rndisd->tx = rndisd->rx = NULL;
+        rndisd->rx = NULL;
 #endif //ETH_DOUBLE_BUFFERING
         rndisd->usb_notify = io_create(control_ep_size);
 
@@ -229,10 +230,12 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
         usbd_register_endpoint(usbd, rndisd->control_iface, rndisd->control_ep);
 
         rndisd->conn = ETH_NO_LINK;
-        rndisd->mac.u32.hi = rndisd->mac.u32.lo = 0;
+        rndisd->eth.u32.hi = rndisd->eth.u32.lo = 0;
+        rndisd->host.u32.hi = rndisd->host.u32.lo = 0;
         rndisd->tcpip = INVALID_HANDLE;
-        rndisd->busy = false;
+        rndisd->notify_busy = false;
         rndisd->connected = false;
+        rndisd->tx_cur = NULL;
         rndisd_reset(usbd, rndisd);
     }
 }
@@ -342,8 +345,41 @@ static inline void rndisd_read_complete(USBD* usbd, RNDISD* rndisd, int size)
     rndisd_rx(usbd, rndisd);
 }
 
-void rndisd_write(USBD* usbd, RNDISD* rndisd)
+static void rndisd_write_packet(USBD* usbd, RNDISD* rndisd, IO* io)
 {
+    RNDIS_PACKET_MSG* msg;
+    io_reset(rndisd->usb_tx);
+    msg = io_data(rndisd->usb_tx);
+    memset(msg, 0x00, sizeof(RNDIS_PACKET_MSG));
+    msg->message_type = REMOTE_NDIS_PACKET_MSG;
+    rndisd->usb_tx->data_size = msg->message_length = sizeof(RNDIS_PACKET_MSG) + io->data_size;
+    msg->data_offset = sizeof(RNDIS_PACKET_MSG) - offsetof(RNDIS_PACKET_MSG, data_offset);
+    msg->data_length = io->data_size;
+    memcpy((uint8_t*)io_data(rndisd->usb_tx) + sizeof(RNDIS_PACKET_MSG), io_data(io), io->data_size);
+    usbd_usb_ep_write(usbd, USB_EP_IN | rndisd->data_ep, rndisd->usb_tx);
+    rndisd->tx_cur = io;
+#if (USBD_RNDIS_DEBUG_FLOW)
+    printf("RNDIS device: TX %d\n", io->data_size);
+#endif //USBD_RNDIS_DEBUG_FLOW
+}
+
+void rndisd_write_complete(USBD* usbd, RNDISD* rndisd, int size)
+{
+    if (rndisd->tx_cur != NULL)
+    {
+        if (size < 0)
+            io_complete_ex(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), USBD_IFACE(rndisd->control_iface, 0), rndisd->tx_cur, size);
+        else
+            io_complete(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), USBD_IFACE(rndisd->control_iface, 0), rndisd->tx_cur);
+        rndisd->tx_cur = NULL;
+    }
+#if (ETH_DOUBLE_BUFFERING)
+    if (rndisd->tx != NULL)
+    {
+        rndisd_write_packet(usbd, rndisd, rndisd->tx);
+        rndisd->tx = NULL;
+    }
+#endif //ETH_DOUBLE_BUFFERING
 }
 
 static inline void rndisd_initialize(USBD* usbd, RNDISD* rndisd, IO* io)
@@ -379,8 +415,12 @@ static inline void rndisd_initialize(USBD* usbd, RNDISD* rndisd, IO* io)
     if (rndisd->usb_rx != NULL)
         io_destroy(rndisd->usb_rx);
     rndisd->usb_rx = io_create(rndisd->transfer_size);
-    if (rndisd->usb_rx == NULL)
+    rndisd->usb_tx = io_create(rndisd->transfer_size);
+    if (rndisd->usb_rx == NULL || rndisd->usb_tx == NULL)
+    {
+        io_destroy(rndisd->usb_tx);
         cmplt->status = RNDIS_STATUS_FAILURE;
+    }
 #if (USBD_RNDIS_DEBUG_REQUESTS)
     printf("RNDIS device: INITIALIZE, ver%d.%d, size: %d\n", msg->major_version, msg->minor_version, msg->max_transfer_size);
 #endif //USBD_RNDIS_DEBUG_REQUESTS
@@ -444,8 +484,8 @@ static inline void rndisd_query_802_3_permanent_address(RNDISD* rndisd)
 {
     MAC* mac;
     mac = rndisd_query_append(rndisd, sizeof(MAC));
-    mac->u32.hi = rndisd->mac.u32.hi;
-    mac->u32.lo = rndisd->mac.u32.lo;
+    mac->u32.hi = rndisd->host.u32.hi;
+    mac->u32.lo = rndisd->host.u32.lo;
 #if (USBD_RNDIS_DEBUG_REQUESTS)
     printf("RNDIS device: QUERY 802.3 permanent address\n");
 #endif //USBD_RNDIS_DEBUG_REQUESTS
@@ -643,7 +683,7 @@ static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, I
             rndisd_fail(rndisd);
             break;
         }
-        rndisd->busy = true;
+        rndisd->notify_busy = true;
         //Fucking Microsoft doesn't use SETUP, they made own interface
         switch (msg->message_type)
         {
@@ -683,7 +723,7 @@ static inline int rndisd_get_encapsulated_response(RNDISD* rndisd, IO* io)
 {
     memcpy(io_data(io), rndisd->response, rndisd->response_size);
     io->data_size = rndisd->response_size;
-    rndisd->busy = false;
+    rndisd->notify_busy = false;
     if (rndisd->link_status_queued)
     {
         rndisd->link_status_queued = false;
@@ -720,7 +760,9 @@ static inline void rndisd_driver_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
         rndisd_read_complete(usbd, rndisd, (int)ipc->param3);
         break;
     case IPC_WRITE:
-        rndisd_write(usbd, rndisd);
+        //only usb_tx
+        if (((IO*)ipc->param2) == rndisd->usb_tx)
+            rndisd_write_complete(usbd, rndisd, (int)ipc->param3);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -729,14 +771,14 @@ static inline void rndisd_driver_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
 
 static inline void rndisd_eth_set_mac(RNDISD* rndisd, unsigned int param2, unsigned int param3)
 {
-    rndisd->mac.u32.hi = param2;
-    rndisd->mac.u32.lo = (uint16_t)param3;
+    rndisd->eth.u32.hi = param2;
+    rndisd->eth.u32.lo = (uint16_t)param3;
 }
 
 static inline void rndisd_eth_get_mac(RNDISD* rndisd, IPC* ipc)
 {
-    ipc->param2 = rndisd->mac.u32.hi;
-    ipc->param3 = rndisd->mac.u32.lo;
+    ipc->param2 = rndisd->eth.u32.hi;
+    ipc->param3 = rndisd->eth.u32.lo;
 }
 
 static inline void rndisd_eth_open(USBD* usbd, RNDISD* rndisd, HANDLE tcpip)
@@ -782,6 +824,29 @@ static inline void rndisd_eth_read(RNDISD* rndisd, IO* io)
     error(ERROR_IN_PROGRESS);
 }
 
+static inline void rndisd_eth_write(USBD* usbd, RNDISD* rndisd, IO* io)
+{
+    if (!rndisd_link_ready(rndisd))
+    {
+        error(ERROR_NOT_ACTIVE);
+        return;
+    }
+    if (rndisd->tx_cur == NULL)
+    {
+        rndisd_write_packet(usbd, rndisd, io);
+        error(ERROR_SYNC);
+    }
+#if (ETH_DOUBLE_BUFFERING)
+    else if (rndisd->tx == NULL)
+    {
+        rndisd->tx = io;
+        error(ERROR_SYNC);
+    }
+#endif //ETH_DOUBLE_BUFFERING
+    else
+        error(ERROR_IN_PROGRESS);
+}
+
 static inline void rndisd_eth_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -803,8 +868,7 @@ static inline void rndisd_eth_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
         rndisd_eth_read(rndisd, (IO*)ipc->param2);
         break;
     case IPC_WRITE:
-        printf("TODO: IPC write\n");
-        error(ERROR_NOT_SUPPORTED);
+        rndisd_eth_write(usbd, rndisd, (IO*)ipc->param2);
         break;
     case IPC_FLUSH:
         printf("TODO: IPC flush\n");
@@ -830,12 +894,31 @@ static inline void rndisd_set_link(USBD* usbd, RNDISD* rndisd, ETH_CONN_TYPE con
         rndisd_link_changed(usbd, rndisd);
 }
 
+static inline void rndisd_set_host_mac(RNDISD* rndisd, unsigned int param2, unsigned int param3)
+{
+    rndisd->host.u32.hi = param2;
+    rndisd->host.u32.lo = (uint16_t)param3;
+}
+
+static inline void rndisd_get_host_mac(RNDISD* rndisd, IPC* ipc)
+{
+    ipc->param2 = rndisd->host.u32.hi;
+    ipc->param3 = rndisd->host.u32.lo;
+}
+
+
 static inline void rndisd_iface_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {
     case RNDIS_SET_LINK:
         rndisd_set_link(usbd, rndisd, (ETH_CONN_TYPE)ipc->param2);
+        break;
+    case RNDIS_SET_HOST_MAC:
+        rndisd_set_host_mac(rndisd, ipc->param2, ipc->param3);
+        break;
+    case RNDIS_GET_HOST_MAC:
+        rndisd_get_host_mac(rndisd, ipc);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
