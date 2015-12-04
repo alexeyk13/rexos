@@ -53,6 +53,40 @@ static void rndisd_destroy(RNDISD* rndisd)
     free(rndisd);
 }
 
+static void rndisd_flush(USBD* usbd, RNDISD* rndisd)
+{
+    //flush RX
+#if (ETH_DOUBLE_BUFFERING)
+    int i;
+    for (i = 0; i < 2; ++i)
+        if (rndisd->rx[i] != NULL)
+        {
+            io_complete_ex(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), USBD_IFACE(rndisd->control_iface, 0), rndisd->rx[i], ERROR_IO_CANCELLED);
+            rndisd->rx[i] = NULL;
+        }
+    if (rndisd->tx != NULL)
+    {
+        io_complete_ex(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), USBD_IFACE(rndisd->control_iface, 0), rndisd->tx, ERROR_IO_CANCELLED);
+        rndisd->tx = NULL;
+    }
+#else //ETH_DOUBLE_BUFFERING
+    if (rndisd->rx != NULL)
+    {
+        io_complete_ex(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), USBD_IFACE(rndisd->control_iface, 0), rndisd->rx, ERROR_IO_CANCELLED);
+        rndisd->rx = NULL;
+    }
+#endif //ETH_DOUBLE_BUFFERING
+    if (rndisd->tx_cur != NULL)
+    {
+        io_complete_ex(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), USBD_IFACE(rndisd->control_iface, 0), rndisd->tx_cur, ERROR_IO_CANCELLED);
+        rndisd->tx_cur = NULL;
+    }
+    usbd_usb_ep_flush(usbd, USB_EP_IN | rndisd->control_ep);
+    usbd_usb_ep_flush(usbd, USB_EP_IN | rndisd->data_ep);
+    usbd_usb_ep_flush(usbd, rndisd->data_ep);
+    rndisd->link_status_queued = rndisd->notify_busy = false;
+}
+
 static void rndisd_notify(USBD* usbd, RNDISD* rndisd)
 {
     RNDIS_RESPONSE_AVAILABLE_NOTIFY* resp;
@@ -99,7 +133,7 @@ static void rndisd_link_changed(USBD* usbd, RNDISD* rndisd)
     }
     else
     {
-        //flush?
+        rndisd_flush(usbd, rndisd);
         if (rndisd->tcpip != INVALID_HANDLE)
             ipc_post_inline(rndisd->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), USBD_IFACE(rndisd->control_iface, 0), rndisd->conn, 0);
         if (rndisd->usb_rx != NULL)
@@ -117,7 +151,6 @@ static void rndisd_reset(USBD* usbd, RNDISD* rndisd)
         rndisd->usb_tx = rndisd->usb_rx = NULL;
     }
     rndisd->packet_filter = RNDIS_PACKET_TYPE_DIRECTED | RNDIS_PACKET_TYPE_ALL_MULTICAST | RNDIS_PACKET_TYPE_BROADCAST | RNDIS_PACKET_TYPE_PROMISCUOUS;
-    rndisd->link_status_queued = false;
     if (was_ready)
         rndisd_link_changed(usbd, rndisd);
 }
@@ -244,7 +277,9 @@ void rndisd_class_reset(USBD* usbd, void* param)
 {
     RNDISD* rndisd = (RNDISD*)param;
 
-    //TODO: tcpip remote close
+    rndisd_reset(usbd, rndisd);
+    if (rndisd->tcpip != INVALID_HANDLE)
+        ipc_post_inline(rndisd->tcpip, HAL_CMD(HAL_ETH, IPC_CLOSE), USBD_IFACE(rndisd->control_iface, 0), 0, 0);
 
     usbd_usb_ep_close(usbd, USB_EP_IN | rndisd->control_ep);
     usbd_usb_ep_close(usbd, USB_EP_IN | rndisd->data_ep);
@@ -259,19 +294,23 @@ void rndisd_class_reset(USBD* usbd, void* param)
 
 void rndisd_class_suspend(USBD* usbd, void* param)
 {
-    //TODO: tcpip set no link
-
+    bool was_link;
     RNDISD* rndisd = (RNDISD*)param;
-    usbd_usb_ep_flush(usbd, USB_EP_IN | rndisd->control_ep);
-    usbd_usb_ep_flush(usbd, USB_EP_IN | rndisd->data_ep);
-    usbd_usb_ep_flush(usbd, rndisd->data_ep);
+    was_link = rndisd_link_ready(rndisd);
+
+    rndisd_flush(usbd, rndisd);
+    if (was_link)
+        ipc_post_inline(rndisd->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), USBD_IFACE(rndisd->control_iface, 0), ETH_NO_LINK, 0);
 }
 
 void rndisd_class_resume(USBD* usbd, void* param)
 {
-    //TODO: tcpip restore link
-
     RNDISD* rndisd = (RNDISD*)param;
+    if (rndisd_link_ready(rndisd))
+    {
+        rndisd_rx(usbd, rndisd);
+        ipc_post_inline(rndisd->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), USBD_IFACE(rndisd->control_iface, 0), rndisd->conn, 0);
+    }
 }
 
 static inline void rndisd_read_complete(USBD* usbd, RNDISD* rndisd, int size)
@@ -365,12 +404,11 @@ static void rndisd_write_packet(USBD* usbd, RNDISD* rndisd, IO* io)
 
 void rndisd_write_complete(USBD* usbd, RNDISD* rndisd, int size)
 {
+    if (size < 0 || !rndisd_link_ready(rndisd))
+        return;
     if (rndisd->tx_cur != NULL)
     {
-        if (size < 0)
-            io_complete_ex(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), USBD_IFACE(rndisd->control_iface, 0), rndisd->tx_cur, size);
-        else
-            io_complete(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), USBD_IFACE(rndisd->control_iface, 0), rndisd->tx_cur);
+        io_complete(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), USBD_IFACE(rndisd->control_iface, 0), rndisd->tx_cur);
         rndisd->tx_cur = NULL;
     }
 #if (ETH_DOUBLE_BUFFERING)
@@ -794,6 +832,22 @@ static inline void rndisd_eth_open(USBD* usbd, RNDISD* rndisd, HANDLE tcpip)
         rndisd_link_changed(usbd, rndisd);
 }
 
+static inline void rndisd_eth_close(USBD* usbd, RNDISD* rndisd, HANDLE tcpip)
+{
+    if (rndisd->tcpip == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (rndisd->tcpip != tcpip)
+    {
+        error(ERROR_ACCESS_DENIED);
+        return;
+    }
+    rndisd_reset(usbd, rndisd);
+    rndisd->tcpip = INVALID_HANDLE;
+}
+
 static inline void rndisd_eth_read(RNDISD* rndisd, IO* io)
 {
 #if (ETH_DOUBLE_BUFFERING)
@@ -861,8 +915,7 @@ static inline void rndisd_eth_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
         rndisd_eth_open(usbd, rndisd, ipc->process);
         break;
     case IPC_CLOSE:
-        printf("TODO: IPC close\n");
-        error(ERROR_NOT_SUPPORTED);
+        rndisd_eth_close(usbd, rndisd, ipc->process);
         break;
     case IPC_READ:
         rndisd_eth_read(rndisd, (IO*)ipc->param2);
@@ -871,8 +924,7 @@ static inline void rndisd_eth_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
         rndisd_eth_write(usbd, rndisd, (IO*)ipc->param2);
         break;
     case IPC_FLUSH:
-        printf("TODO: IPC flush\n");
-        error(ERROR_NOT_SUPPORTED);
+        rndisd_flush(usbd, rndisd);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
