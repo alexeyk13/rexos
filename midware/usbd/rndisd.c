@@ -420,7 +420,7 @@ void rndisd_write_complete(USBD* usbd, RNDISD* rndisd, int size)
 #endif //ETH_DOUBLE_BUFFERING
 }
 
-static inline void rndisd_initialize(USBD* usbd, RNDISD* rndisd, IO* io)
+static inline void rndisd_initialize_msg(USBD* usbd, RNDISD* rndisd, IO* io)
 {
     RNDIS_INITIALIZE_MSG* msg;
     RNDIS_INITIALIZE_CMPLT* cmplt;
@@ -466,7 +466,7 @@ static inline void rndisd_initialize(USBD* usbd, RNDISD* rndisd, IO* io)
         rndisd_link_changed(usbd, rndisd);
 }
 
-static inline void rndisd_halt(USBD* usbd, RNDISD* rndisd)
+static inline void rndisd_halt_msg(USBD* usbd, RNDISD* rndisd)
 {
     rndisd_reset(usbd, rndisd);
 #if (USBD_RNDIS_DEBUG_REQUESTS)
@@ -529,7 +529,7 @@ static inline void rndisd_query_802_3_permanent_address(RNDISD* rndisd)
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
 
-static inline void rndisd_query(RNDISD* rndisd, IO* io)
+static inline void rndisd_query_msg(RNDISD* rndisd, IO* io)
 {
     RNDIS_QUERY_SET_MSG* msg;
     RNDIS_QUERY_CMPLT* cmplt;
@@ -623,18 +623,18 @@ static inline void rndisd_set_packet_filter(RNDISD* rndisd, void* buf, unsigned 
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
 
-static inline void rndisd_set(RNDISD* rndisd, IO* io)
+static inline void rndisd_set_msg(RNDISD* rndisd, IO* io)
 {
     RNDIS_QUERY_SET_MSG* msg;
-    RNDIS_SET_CMPLT* cmplt;
+    RNDIS_SET_KEEP_ALIVE_CMPLT* cmplt;
     void* buf;
     if (!rndisd_query_set_check(rndisd, io))
         return;
     msg = io_data(io);
     buf = rndisd_query_set_buf(io);
-    cmplt = (RNDIS_SET_CMPLT*)rndisd->response;
+    cmplt = (RNDIS_SET_KEEP_ALIVE_CMPLT*)rndisd->response;
     cmplt->message_type = REMOTE_NDIS_SET_CMPLT;
-    rndisd->response_size = cmplt->message_length = sizeof(RNDIS_SET_CMPLT);
+    rndisd->response_size = cmplt->message_length = sizeof(RNDIS_SET_KEEP_ALIVE_CMPLT);
     cmplt->request_id = msg->request_id;
     cmplt->status = RNDIS_STATUS_SUCCESS;
 
@@ -705,6 +705,33 @@ static inline void rndisd_set(RNDISD* rndisd, IO* io)
     }
 }
 
+static inline void rndisd_reset_msg(USBD* usbd, RNDISD* rndisd)
+{
+    RNDIS_RESET_CMPLT* cmplt = (RNDIS_RESET_CMPLT*)rndisd->response;
+    rndisd_reset(usbd, rndisd);
+    cmplt->message_type = REMOTE_NDIS_RESET_CMPLT;
+    rndisd->response_size = cmplt->message_length = sizeof(RNDIS_RESET_CMPLT);
+    cmplt->status = RNDIS_STATUS_SUCCESS;
+    cmplt->addressing_reset = 0x00000001;
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: RESET\n");
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
+
+static inline void rndisd_keepalive_msg(RNDISD* rndisd, IO* io)
+{
+    RNDIS_GENERIC_MSG* msg;
+    RNDIS_SET_KEEP_ALIVE_CMPLT* cmplt = (RNDIS_SET_KEEP_ALIVE_CMPLT*)rndisd->response;
+    msg = io_data(io);
+    cmplt->message_type = REMOTE_NDIS_KEEPALIVE_CMPLT;
+    rndisd->response_size = cmplt->message_length = sizeof(RNDIS_SET_KEEP_ALIVE_CMPLT);
+    cmplt->request_id = msg->request_id;
+    cmplt->status = RNDIS_STATUS_SUCCESS;
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: KEEP-ALIVE\n");
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
+
 static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, IO* io)
 {
     RNDIS_GENERIC_MSG* msg;
@@ -726,30 +753,29 @@ static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, I
         switch (msg->message_type)
         {
         case REMOTE_NDIS_INITIALIZE_MSG:
-            rndisd_initialize(usbd, rndisd, io);
+            rndisd_initialize_msg(usbd, rndisd, io);
             break;
         case REMOTE_NDIS_HALT_MSG:
-            rndisd_halt(usbd, rndisd);
+            rndisd_halt_msg(usbd, rndisd);
             //no need to respond on HALT
             return 0;
         case REMOTE_NDIS_QUERY_MSG:
-            rndisd_query(rndisd, io);
+            rndisd_query_msg(rndisd, io);
             break;
         case REMOTE_NDIS_SET_MSG:
-            rndisd_set(rndisd, io);
+            rndisd_set_msg(rndisd, io);
             break;
         case REMOTE_NDIS_RESET_MSG:
-//            break;
-        case REMOTE_NDIS_INDICATE_STATUS_MSG:
-//            break;
+            rndisd_reset_msg(usbd, rndisd);
+            break;
         case REMOTE_NDIS_KEEPALIVE_MSG:
-//            break;
+            rndisd_keepalive_msg(rndisd, io);
+            break;
         default:
 #if (USBD_RNDIS_DEBUG)
             printf("RNDIS device: unsupported MSG %#X\n", msg->message_type);
 #endif //USBD_RNDIS_DEBUG
-            //TODO: format unsupported
-            dump(io_data(io), io->data_size);
+            rndisd_fail(rndisd);
         }
 
     } while (false);

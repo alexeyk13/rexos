@@ -225,7 +225,14 @@ typedef struct {
     uint32_t message_length;
     uint32_t request_id;
     uint32_t status;
-} RNDIS_SET_CMPLT;
+} RNDIS_SET_KEEP_ALIVE_CMPLT;
+
+typedef struct {
+    uint32_t message_type;
+    uint32_t message_length;
+    uint32_t status;
+    uint32_t addressing_reset;
+} RNDIS_RESET_CMPLT;
 
 typedef struct {
     uint32_t message_type;
