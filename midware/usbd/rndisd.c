@@ -367,9 +367,9 @@ static inline void rndisd_read_complete(USBD* usbd, RNDISD* rndisd, int size)
     if (size < 0 || !rndisd_link_ready(rndisd))
         return;
     do {
+        io_unhide(rndisd->usb_rx);
         if (rndisd->usb_rx->data_size < sizeof(RNDIS_PACKET_MSG))
             break;
-        io_unhide(rndisd->usb_rx);
         msg = io_data(rndisd->usb_rx);
         if (msg->message_type != REMOTE_NDIS_PACKET_MSG)
             break;
@@ -730,7 +730,9 @@ static inline void rndisd_query_802_3_permanent_address(RNDISD* rndisd)
     mac->u32.hi = rndisd->host.u32.hi;
     mac->u32.lo = rndisd->host.u32.lo;
 #if (USBD_RNDIS_DEBUG_REQUESTS)
-    printf("RNDIS device: QUERY 802.3 permanent address\n");
+    printf("RNDIS device: QUERY 802.3 permanent address ");
+    mac_print(&rndisd->host);
+    printf("\n");
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
 
@@ -741,7 +743,9 @@ static inline void rndisd_query_802_3_current_address(RNDISD* rndisd)
     mac->u32.hi = rndisd->host.u32.hi;
     mac->u32.lo = rndisd->host.u32.lo;
 #if (USBD_RNDIS_DEBUG_REQUESTS)
-    printf("RNDIS device: QUERY 802.3 currentaddress\n");
+    printf("RNDIS device: QUERY 802.3 current address");
+    mac_print(&rndisd->host);
+    printf("\n");
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
 
