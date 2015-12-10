@@ -19,7 +19,7 @@
 #include <string.h>
 #include "sys_config.h"
 
-#define RNDIS_RESPONSE_SIZE                                                     104
+#define RNDIS_RESPONSE_SIZE                                                     150
 
 #define RNDIS_GEN_SUPPORTED_LIST_COUNT                                          26
 #define RNDIS_GEN_SUPPORTED_LIST_SIZE                                           (RNDIS_GEN_SUPPORTED_LIST_COUNT * sizeof(uint32_t))
@@ -476,7 +476,7 @@ static inline void rndisd_initialize_msg(USBD* usbd, RNDISD* rndisd, IO* io)
     msg = io_data(io);
     rndisd_reset(usbd, rndisd);
     rndisd->transfer_size = msg->max_transfer_size;
-    if (USBD_RNDIS_MAX_PACKET_SIZE < rndisd->transfer_size)
+    if (rndisd->transfer_size > USBD_RNDIS_MAX_PACKET_SIZE)
         rndisd->transfer_size = USBD_RNDIS_MAX_PACKET_SIZE;
     cmplt = (RNDIS_INITIALIZE_CMPLT*)rndisd->response;
     rndisd->response_size = cmplt->message_length = sizeof(RNDIS_INITIALIZE_CMPLT);
@@ -587,9 +587,9 @@ static inline void rndisd_query_gen_media_in_use(RNDISD* rndisd)
 
 static inline void rndisd_query_gen_max_frame_size(RNDISD* rndisd)
 {
-    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = TCPIP_MTU + sizeof(MAC_HEADER);
+    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = TCPIP_MTU;
 #if (USBD_RNDIS_DEBUG_REQUESTS)
-    printf("RNDIS device: QUERY maximum frame size(%d)\n", TCPIP_MTU + sizeof(MAC_HEADER));
+    printf("RNDIS device: QUERY maximum frame size(%d)\n", TCPIP_MTU);
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
 
@@ -619,17 +619,17 @@ static inline void rndisd_query_gen_link_speed(RNDISD* rndisd)
 
 static inline void rndisd_query_gen_transmit_block_size(RNDISD* rndisd)
 {
-    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = TCPIP_MTU + sizeof(MAC_HEADER);
+    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = TCPIP_MTU;
 #if (USBD_RNDIS_DEBUG_REQUESTS)
-    printf("RNDIS device: QUERY transmit block size(%d)\n", TCPIP_MTU + sizeof(MAC_HEADER));
+    printf("RNDIS device: QUERY transmit block size(%d)\n", TCPIP_MTU);
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
 
 static inline void rndisd_query_gen_receive_block_size(RNDISD* rndisd)
 {
-    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = TCPIP_MTU + sizeof(MAC_HEADER);
+    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = TCPIP_MTU;
 #if (USBD_RNDIS_DEBUG_REQUESTS)
-    printf("RNDIS device: QUERY receive block size(%d)\n", TCPIP_MTU + sizeof(MAC_HEADER));
+    printf("RNDIS device: QUERY receive block size(%d)\n", TCPIP_MTU);
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
 
@@ -661,12 +661,11 @@ static inline void rndisd_query_gen_vendor_description(RNDISD* rndisd)
 
 static inline void rndisd_query_gen_maximum_total_size(RNDISD* rndisd)
 {
-    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = TCPIP_MTU + sizeof(MAC_HEADER);
+    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = rndisd->transfer_size;
 #if (USBD_RNDIS_DEBUG_REQUESTS)
-    printf("RNDIS device: QUERY maximum total size(%d)\n", TCPIP_MTU + sizeof(MAC_HEADER));
+    printf("RNDIS device: QUERY maximum total size(%d)\n", rndisd->transfer_size);
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
-
 
 static inline void rndisd_query_gen_media_connect_status(RNDISD* rndisd)
 {
