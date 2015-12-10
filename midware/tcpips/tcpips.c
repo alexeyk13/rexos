@@ -25,10 +25,10 @@
 const IP __LOCALHOST =                          {{127, 0, 0, 1}};
 
 #if (TCPIP_DEBUG)
-static void print_conn_status(TCPIPS* tcpips, const char* head)
+static void print_conn_status(TCPIPS* tcpips, const char* head, ETH_CONN_TYPE conn)
 {
     printf("%s: ", head);
-    switch (tcpips->conn)
+    switch (conn)
     {
     case ETH_10_HALF:
         printf("10BASE_T Half duplex");
@@ -246,18 +246,17 @@ static void tcpips_link_changed_internal(TCPIPS* tcpips, ETH_CONN_TYPE conn)
 static inline void tcpips_link_changed(TCPIPS* tcpips, ETH_CONN_TYPE conn)
 {
 #if (TCPIP_DEBUG)
-    print_conn_status(tcpips, "ETH link changed\n");
+    print_conn_status(tcpips, "ETH link changed", conn);
 #endif
-
     tcpips_link_changed_internal(tcpips, conn);
 }
 
 static inline void tcpips_eth_remote_close(TCPIPS* tcpips)
 {
 #if (TCPIP_DEBUG)
-    print_conn_status(tcpips, "ETH remote close\n");
+    printf("ETH remote close\n");
 #endif
-    tcpips_link_changed(tcpips, ETH_REMOTE_FAULT);
+    tcpips_link_changed_internal(tcpips, ETH_NO_LINK);
     if (tcpips->app != INVALID_HANDLE)
         ipc_post_inline(tcpips->app, HAL_CMD(HAL_TCPIP, IPC_CLOSE), tcpips->eth_handle, 0, 0);
     tcpips_close_internal(tcpips);

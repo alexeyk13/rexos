@@ -12,20 +12,6 @@
 #include "sys_config.h"
 #include <stdint.h>
 
-#define ETHERTYPE_IP                                0x0800
-#define ETHERTYPE_ARP                               0x0806
-#define ETHERTYPE_IPV6                              0x86dd
-
-#pragma pack(push, 1)
-
-typedef struct {
-    MAC dst;
-    MAC src;
-    uint8_t lentype_be[2];
-} MAC_HEADER;
-
-#pragma pack(pop)
-
 typedef struct {
     MAC mac;
 #if (MAC_FIREWALL)
