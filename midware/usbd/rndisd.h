@@ -63,11 +63,10 @@
 #define RNDIS_STATUS_MEDIA_CONNECT                                              0x4001000B
 //Device is disconnected from the medium
 #define RNDIS_STATUS_MEDIA_DISCONNECT                                           0x4001000C
+#define RNDIS_STATUS_MULTICAST_FULL                                             0xC0010009
 
 #define RNDIS_DF_CONNECTIONLESS                                                 0x00000001
 #define RNDIS_DF_CONNECTION_ORIENTED                                            0x00000002
-
-#define RNDIS_MEDIUM_802_3                                                      0x00000000
 
 #define RNDIS_VERSION_MAJOR                                                     1
 #define RNDIS_VERSION_MINOR                                                     0
@@ -151,6 +150,41 @@ typedef enum {
     RNDIS_PHYSICAL_MEDIUM_WIRED_CO_WAN,
     RNDIS_PHYSICAL_MEDIUM_OTHER
 } RNDIS_PHYSICAL_MEDIUM;
+
+typedef enum {
+    RNDIS_HARDWARE_STATUS_READY = 0,
+    RNDIS_HARDWARE_STATUS_INITIALIZING,
+    RNDIS_HARDWARE_STATUS_RESET,
+    RNDIS_HARDWARE_STATUS_CLOSING,
+    RNDIS_HARDWARE_STATUS_NOT_READY
+} RNDIS_HARDWARE_STATUS;
+
+typedef enum {
+    RNDIS_MEDIUM_802_3 = 0,
+    RNDIS_MEDIUM_802_5,
+    RNDIS_MEDIUM_FDDI,
+    RNDIS_MEDIUM_WAN,
+    RNDIS_MEDIUM_LOCAL_TALK,
+    RNDIS_MEDIUM_DIX,
+    RNDIS_MEDIUM_ARCNET_RAW,
+    RNDIS_MEDIUM_ARCNET878_2,
+    RNDIS_MEDIUM_ATM,
+    RNDIS_MEDIUM_802_11,
+    RNDIS_MEDIUM_WIRELESS_WAN,
+    RNDIS_MEDIUM_IRDA,
+    RNDIS_MEDIUM_CO_WAN,
+    RNDIS_MEDIUM_1394,
+    RNDIS_MEDIUM_BPC,
+    RNDIS_MEDIUM_INFINI_BAND,
+    RNDIS_MEDIUM_TUNNEL,
+    RNDIS_MEDIUM_LOOPBACK,
+    RNDIS_MEDIUM_IP
+} RNDIS_MEDIUM;
+
+typedef enum {
+    RNDIS_MEDIA_STATE_CONNECTED = 0,
+    RNDIS_MEDIA_STATE_DISCONNECTED
+} RNDIS_MEDIA_STATE;
 
 #define RNDIS_PACKET_TYPE_DIRECTED                                              0x00000001
 #define RNDIS_PACKET_TYPE_MULTICAST                                             0x00000002
