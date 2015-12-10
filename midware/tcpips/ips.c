@@ -443,7 +443,7 @@ static void ips_process(TCPIPS* tcpips, IO* io, IP* src)
         break;
     default:
 #if (IP_DEBUG)
-        printf("IP: unhandled proto %d from", ip_stack->proto);
+        printf("IP: unhandled proto %d from ", ip_stack->proto);
         ip_print(src);
         printf("\n");
 #endif //IP_DEBUG
