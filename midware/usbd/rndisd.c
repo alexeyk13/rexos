@@ -21,41 +21,41 @@
 
 #define RNDIS_RESPONSE_SIZE                                                     104
 
-#define RNDIS_GEN_SUPPORTED_LIST_COUNT                                          4
+#define RNDIS_GEN_SUPPORTED_LIST_COUNT                                          26
 #define RNDIS_GEN_SUPPORTED_LIST_SIZE                                           (RNDIS_GEN_SUPPORTED_LIST_COUNT * sizeof(uint32_t))
 
 #pragma pack(push, 1)
 static const uint32_t __RNDIS_GEN_SUPPORTED_LIST[RNDIS_GEN_SUPPORTED_LIST_COUNT]= {
                                                                                 //General OIDs
                                                                                 OID_GEN_SUPPORTED_LIST,
-                                                                            //    OID_GEN_HARDWARE_STATUS,
-                                                                            //    OID_GEN_MEDIA_SUPPORTED,
-                                                                            //    OID_GEN_MEDIA_IN_USE,
-                                                                            //    OID_GEN_MAXIMUM_FRAME_SIZE,
-                                                                            //    OID_GEN_LINK_SPEED,
-                                                                            //    OID_GEN_TRANSMIT_BLOCK_SIZE,
-                                                                            //    OID_GEN_RECEIVE_BLOCK_SIZE,
-                                                                            //    OID_GEN_VENDOR_ID,
-                                                                            //    OID_GEN_VENDOR_DESCRIPTION,
+                                                                                OID_GEN_HARDWARE_STATUS,
+                                                                                OID_GEN_MEDIA_SUPPORTED,
+                                                                                OID_GEN_MEDIA_IN_USE,
+                                                                                OID_GEN_MAXIMUM_FRAME_SIZE,
+                                                                                OID_GEN_LINK_SPEED,
+                                                                                OID_GEN_TRANSMIT_BLOCK_SIZE,
+                                                                                OID_GEN_RECEIVE_BLOCK_SIZE,
+                                                                                OID_GEN_VENDOR_ID,
+                                                                                OID_GEN_VENDOR_DESCRIPTION,
                                                                                 OID_GEN_CURRENT_PACKET_FILTER,
-                                                                            //    OID_GEN_MAXIMUM_TOTAL_SIZE,
-                                                                            //    OID_GEN_MEDIA_CONNECT_STATUS,
+                                                                                OID_GEN_MAXIMUM_TOTAL_SIZE,
+                                                                                OID_GEN_MEDIA_CONNECT_STATUS,
                                                                                 OID_GEN_PHYSICAL_MEDIUM,
                                                                                 // General Statistics OIDs
-                                                                            //    OID_GEN_XMIT_OK,
-                                                                            //    OID_GEN_RCV_OK,
-                                                                            //    OID_GEN_XMIT_ERROR,
-                                                                            //    OID_GEN_RCV_ERROR,
-                                                                            //    OID_GEN_RCV_NO_BUFFER,
+                                                                                OID_GEN_XMIT_OK,
+                                                                                OID_GEN_RCV_OK,
+                                                                                OID_GEN_XMIT_ERROR,
+                                                                                OID_GEN_RCV_ERROR,
+                                                                                OID_GEN_RCV_NO_BUFFER,
                                                                                 //802.3 NDIS OIDs
                                                                                 OID_802_3_PERMANENT_ADDRESS,
-                                                                            //    OID_802_3_CURRENT_ADDRESS,
-                                                                            //    OID_802_3_MULTICAST_LIST,
-                                                                            //    OID_802_3_MAXIMUM_LIST_SIZE,
+                                                                                OID_802_3_CURRENT_ADDRESS,
+                                                                                OID_802_3_MULTICAST_LIST,
+                                                                                OID_802_3_MAXIMUM_LIST_SIZE,
                                                                                 //802.3 Statistics NDIS OIDs
-                                                                            //    OID_802_3_RCV_ERROR_ALIGNMENT,
-                                                                            //    OID_802_3_XMIT_ONE_COLLISION,
-                                                                            //    OID_802_3_XMIT_MORE_COLLISIONS,
+                                                                                OID_802_3_RCV_ERROR_ALIGNMENT,
+                                                                                OID_802_3_XMIT_ONE_COLLISION,
+                                                                                OID_802_3_XMIT_MORE_COLLISIONS,
                                                                                    };
 #pragma pack(pop)
 
@@ -71,7 +71,8 @@ typedef struct {
     IO* rx;
 #endif
     unsigned int transfer_size, tx_ok, rx_ok, rx_no_buf;
-    uint32_t packet_filter;
+    uint32_t packet_filter, vendor_id;
+    char* vendor;
     ETH_CONN_TYPE conn;
     MAC eth, host;
     HANDLE tcpip;
@@ -166,7 +167,6 @@ static void rndisd_link_changed(USBD* usbd, RNDISD* rndisd)
     if (rndisd_link_ready(rndisd))
     {
         rndisd_indicate_status(rndisd);
-        printf("tp here: %d\n", rndisd->conn);
         ipc_post_inline(rndisd->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), USBD_IFACE(rndisd->control_iface, 0), rndisd->conn, 0);
         rndisd_rx(usbd, rndisd);
     }
@@ -306,6 +306,8 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
         rndisd->eth.u32.hi = rndisd->eth.u32.lo = 0;
         rndisd->host.u32.hi = rndisd->host.u32.lo = 0;
         rndisd->tcpip = INVALID_HANDLE;
+        rndisd->vendor_id = 0x00;
+        rndisd->vendor = NULL;
         rndisd->notify_busy = false;
         rndisd->connected = false;
         rndisd->tx_cur = NULL;
@@ -631,7 +633,31 @@ static inline void rndisd_query_gen_receive_block_size(RNDISD* rndisd)
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
 
-//TODO: vendor here
+static inline void rndisd_query_gen_vendor_id(RNDISD* rndisd)
+{
+    uint8_t* id =  (uint8_t*)rndisd_query_append(rndisd, 3);
+    id[0] = (rndisd->vendor_id >> 16) & 0xff;
+    id[1] = (rndisd->vendor_id >> 8) & 0xff;
+    id[2] = (rndisd->vendor_id >> 0) & 0xff;
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: QUERY vendor id(%02X%02X%02X)\n", (rndisd->vendor_id >> 16) & 0xff, (rndisd->vendor_id >> 8) & 0xff, (rndisd->vendor_id >> 0) & 0xff);
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
+
+static inline void rndisd_query_gen_vendor_description(RNDISD* rndisd)
+{
+    unsigned int len = 0;
+    char* vendor;
+    if (rndisd->vendor != NULL)
+        len = strlen(rndisd->vendor);
+    vendor = (char*)rndisd_query_append(rndisd, len + 1);
+    if (len)
+        memcpy(vendor, rndisd->vendor, len);
+    vendor[len] = 0x0;
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: QUERY vendor description(\"%s\")\n", vendor);
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
 
 static inline void rndisd_query_gen_maximum_total_size(RNDISD* rndisd)
 {
@@ -737,15 +763,45 @@ static inline void rndisd_query_802_3_maximum_list_size(RNDISD* rndisd)
 #endif //USBD_RNDIS_DEBUG_REQUESTS
 }
 
+static inline void rndisd_query_802_3_rcv_error_alignment(RNDISD* rndisd)
+{
+    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = 0;
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: QUERY rcv error alignment (0)\n");
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
+
+static inline void rndisd_query_802_3_xmit_one_collision(RNDISD* rndisd)
+{
+    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = 0;
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: QUERY xmit one collision (0)\n");
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
+
+static inline void rndisd_query_802_3_xmit_more_collisions(RNDISD* rndisd)
+{
+    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = 0;
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: QUERY xmit more collisions (0)\n");
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
+
+static inline void rndisd_query_802_3_xmit_deferred(RNDISD* rndisd)
+{
+    *((uint32_t*)rndisd_query_append(rndisd, sizeof(uint32_t))) = 0;
+#if (USBD_RNDIS_DEBUG_REQUESTS)
+    printf("RNDIS device: QUERY xmit deferred (0)\n");
+#endif //USBD_RNDIS_DEBUG_REQUESTS
+}
+
 static inline void rndisd_query_msg(RNDISD* rndisd, IO* io)
 {
     RNDIS_QUERY_SET_MSG* msg;
     RNDIS_QUERY_CMPLT* cmplt;
-    void* buf;
     if (!rndisd_query_set_check(rndisd, io))
         return;
     msg = io_data(io);
-    buf = rndisd_query_set_buf(io);
     cmplt = (RNDIS_QUERY_CMPLT*)rndisd->response;
     cmplt->message_type = REMOTE_NDIS_QUERY_CMPLT;
     rndisd->response_size = cmplt->message_length = sizeof(RNDIS_QUERY_CMPLT);
@@ -780,8 +836,12 @@ static inline void rndisd_query_msg(RNDISD* rndisd, IO* io)
     case OID_GEN_RECEIVE_BLOCK_SIZE:
         rndisd_query_gen_receive_block_size(rndisd);
         break;
-//    case OID_GEN_VENDOR_ID:
-//    case OID_GEN_VENDOR_DESCRIPTION:
+    case OID_GEN_VENDOR_ID:
+        rndisd_query_gen_vendor_id(rndisd);
+        break;
+    case OID_GEN_VENDOR_DESCRIPTION:
+        rndisd_query_gen_vendor_description(rndisd);
+        break;
     case OID_GEN_MAXIMUM_TOTAL_SIZE:
         rndisd_query_gen_maximum_total_size(rndisd);
         break;
@@ -818,10 +878,18 @@ static inline void rndisd_query_msg(RNDISD* rndisd, IO* io)
     case OID_802_3_MAXIMUM_LIST_SIZE:
         rndisd_query_802_3_maximum_list_size(rndisd);
         break;
-//    case OID_802_3_RCV_ERROR_ALIGNMENT:
-//    case OID_802_3_XMIT_ONE_COLLISION:
-//    case OID_802_3_XMIT_MORE_COLLISIONS:
-//    case OID_802_3_XMIT_DEFERRED:
+    case OID_802_3_RCV_ERROR_ALIGNMENT:
+        rndisd_query_802_3_rcv_error_alignment(rndisd);
+        break;
+    case OID_802_3_XMIT_ONE_COLLISION:
+        rndisd_query_802_3_xmit_one_collision(rndisd);
+        break;
+    case OID_802_3_XMIT_MORE_COLLISIONS:
+        rndisd_query_802_3_xmit_more_collisions(rndisd);
+        break;
+    case OID_802_3_XMIT_DEFERRED:
+        rndisd_query_802_3_xmit_deferred(rndisd);
+        break;
     default:
 #if (USBD_RNDIS_DEBUG_REQUESTS)
         printf("RNDIS device: unsupported QUERY Oid: %#X\n", msg->oid);
@@ -1149,6 +1217,27 @@ static inline void rndisd_set_link(USBD* usbd, RNDISD* rndisd, ETH_CONN_TYPE con
         rndisd_link_changed(usbd, rndisd);
 }
 
+static inline void rndisd_set_vendor_id(RNDISD* rndisd, uint32_t vendor_id)
+{
+    rndisd->vendor_id = vendor_id;
+}
+
+static inline void rndisd_set_vendor_description(RNDISD* rndisd, IO* io)
+{
+    unsigned int len;
+    if (rndisd->vendor != NULL)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    len = strlen(io_data(io));
+    if (len > RNDIS_RESPONSE_SIZE - 1)
+        len = RNDIS_RESPONSE_SIZE - 1;
+    if ((rndisd->vendor = malloc(len + 1)) == NULL);
+    memcpy(rndisd->vendor, io_data(io), len);
+    rndisd->vendor[len] = 0x00;
+}
+
 static inline void rndisd_set_host_mac(RNDISD* rndisd, unsigned int param2, unsigned int param3)
 {
     rndisd->host.u32.hi = param2;
@@ -1168,6 +1257,12 @@ static inline void rndisd_iface_event(USBD* usbd, RNDISD* rndisd, IPC* ipc)
     {
     case RNDIS_SET_LINK:
         rndisd_set_link(usbd, rndisd, (ETH_CONN_TYPE)ipc->param2);
+        break;
+    case RNDIS_SET_VENDOR_ID:
+        rndisd_set_vendor_id(rndisd, ipc->param2);
+        break;
+    case RNDIS_SET_VENDOR_DESCRIPTION:
+        rndisd_set_vendor_description(rndisd, (IO*)ipc->param2);
         break;
     case RNDIS_SET_HOST_MAC:
         rndisd_set_host_mac(rndisd, ipc->param2, ipc->param3);
