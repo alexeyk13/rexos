@@ -324,7 +324,8 @@ static inline void hss_init(HSS* hss)
     hss->generic_error = NULL;
 
     //TODO: Multiple session support
-    hss->session.io = NULL;
+    //TODO: allocation queue (tcpip style)
+    hss->session.io = io_create(HS_IO_SIZE + sizeof(TCP_STACK) + sizeof(HS_STACK));
     hss->session.conn = INVALID_HANDLE;
 }
 
@@ -339,19 +340,12 @@ static inline HSS_SESSION* hss_create_session(HSS* hss)
 #endif //HS_DEBUG
         return NULL;
     }
-    //TODO: allocation queue (tcpip style)
-    hss->session.io = io_create(HS_IO_SIZE + sizeof(TCP_STACK) + sizeof(HS_STACK));
-    if (hss->session.io == NULL)
-        return NULL;
     hss->session.state = HSS_SESSION_STATE_IDLE;
     return &hss->session;
 }
 
 static void hss_destroy_session(HSS* hss, HSS_SESSION* session)
 {
-    //TODO: allocation queue (tcpip style)
-    io_destroy(session->io);
-    session->io = NULL;
     //TODO: multiple session support
     session->conn = INVALID_HANDLE;
 }
@@ -775,7 +769,6 @@ static inline void hss_request(HSS* hss, IPC* ipc)
 static inline void hss_open_session(HSS* hss, HANDLE handle)
 {
     HSS_SESSION* session = hss_create_session(hss);
-
     if (session == NULL)
     {
         tcp_close(hss->tcpip, handle);
