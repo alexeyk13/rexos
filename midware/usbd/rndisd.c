@@ -174,7 +174,7 @@ static void rndisd_link_changed(USBD* usbd, RNDISD* rndisd)
     {
         rndisd_flush(usbd, rndisd);
         if (rndisd->tcpip != INVALID_HANDLE)
-            ipc_post_inline(rndisd->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), USBD_IFACE(rndisd->control_iface, 0), rndisd->conn, 0);
+            ipc_post_inline(rndisd->tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), USBD_IFACE(rndisd->control_iface, 0), ETH_NO_LINK, 0);
         if (rndisd->usb_rx != NULL)
             rndisd_indicate_status(rndisd);
     }
