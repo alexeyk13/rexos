@@ -205,8 +205,11 @@ static inline void tcpips_eth_tx_complete(TCPIPS* tcpips, IO* io, int param3)
 
 static void tcpips_link_changed_internal(TCPIPS* tcpips, ETH_CONN_TYPE conn)
 {
+    bool was_connected = tcpips->connected;
     tcpips->conn = conn;
     tcpips->connected = ((conn != ETH_NO_LINK) && (conn != ETH_REMOTE_FAULT));
+    if (was_connected == tcpips->connected)
+        return;
 
     if (tcpips->connected)
     {

@@ -1360,6 +1360,7 @@ static inline void tcps_read(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
     case TCP_STATE_ESTABLISHED:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
+        timer_stop(tcb->timer, tcb_handle, HAL_TCP);
         io->data_size = 0;
         tcp_stack = io_push(io, sizeof(TCP_STACK));
         tcp_stack->flags = 0;
@@ -1413,9 +1414,9 @@ static inline void tcps_read(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
             //can return to user?
             if ((io_get_free(io) == 0) || (tcp_stack->flags & TCP_PSH))
             {
+                io_complete(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, io);
                 tcps_update_rx_wnd(tcb);
                 tcps_tx_ack(tcpips, tcb_handle);
-                io_complete(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, io);
                 error(ERROR_SYNC);
                 return;
             }
