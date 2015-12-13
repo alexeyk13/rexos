@@ -270,6 +270,7 @@ void tcpips_init(TCPIPS* tcpips)
     tcpips->app = INVALID_HANDLE;
     tcpips->timer = INVALID_HANDLE;
     tcpips->conn = ETH_NO_LINK;
+    tcpips->connected = false;
     tcpips->io_allocated = 0;
 #if (ETH_DOUBLE_BUFFERING)
     //2 rx + 2 tx + 1 for processing
