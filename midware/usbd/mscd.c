@@ -205,17 +205,17 @@ void mscd_storage_cb(void* param, IO* io, SCSIS_REQUEST request)
     }
 }
 
-void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
+void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 {
-    USB_INTERFACE_DESCRIPTOR_TYPE* iface;
-    USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
+    USB_INTERFACE_DESCRIPTOR* iface;
+    USB_ENDPOINT_DESCRIPTOR* ep;
     unsigned int ep_num, ep_size, iface_num;
     ep_num = 0;
 
     //check control/data ep here
     for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
     {
-        ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
+        ep = (USB_ENDPOINT_DESCRIPTOR*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_TYPE);
         if (ep != NULL && iface->bInterfaceClass == MSC_INTERFACE_CLASS)
         {
             ep_num = USB_EP_NUM(ep->bEndpointAddress);

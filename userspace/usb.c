@@ -13,31 +13,31 @@
 #include "stdio.h"
 
 #define D_OFFSET(d, cfg)                            (((unsigned int)(d)) - ((unsigned int)(cfg)))
-#define D_NEXT(d, cfg)                              ((USB_DESCRIPTOR_TYPE*)(((unsigned int)(d)) + ((USB_DESCRIPTOR_TYPE*)(d))->bLength))
+#define D_NEXT(d, cfg)                              ((USB_GENERIC_DESCRIPTOR*)(((unsigned int)(d)) + ((USB_GENERIC_DESCRIPTOR*)(d))->bLength))
 
 extern void usbd();
 
-USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_first_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
+USB_INTERFACE_DESCRIPTOR* usb_get_first_interface(const USB_CONFIGURATION_DESCRIPTOR* cfg)
 {
-    USB_DESCRIPTOR_TYPE* d;
-    for (d = (USB_DESCRIPTOR_TYPE*)cfg; D_OFFSET(d, cfg) < cfg->wTotalLength; d = D_NEXT(d, cfg))
-        if (d->bDescriptorType == USB_INTERFACE_DESCRIPTOR_INDEX)
-            return (USB_INTERFACE_DESCRIPTOR_TYPE*)d;
+    USB_GENERIC_DESCRIPTOR* d;
+    for (d = (USB_GENERIC_DESCRIPTOR*)cfg; D_OFFSET(d, cfg) < cfg->wTotalLength; d = D_NEXT(d, cfg))
+        if (d->bDescriptorType == USB_INTERFACE_DESCRIPTOR_TYPE)
+            return (USB_INTERFACE_DESCRIPTOR*)d;
     return NULL;
 }
 
-USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_next_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start)
+USB_INTERFACE_DESCRIPTOR* usb_get_next_interface(const USB_CONFIGURATION_DESCRIPTOR* cfg, const USB_INTERFACE_DESCRIPTOR* start)
 {
-    USB_DESCRIPTOR_TYPE* d;
+    USB_GENERIC_DESCRIPTOR* d;
     for (d = D_NEXT(start, cfg); D_OFFSET(d, cfg) < cfg->wTotalLength; d = D_NEXT(d, cfg))
-        if (d->bDescriptorType == USB_INTERFACE_DESCRIPTOR_INDEX)
-            return (USB_INTERFACE_DESCRIPTOR_TYPE*)d;
+        if (d->bDescriptorType == USB_INTERFACE_DESCRIPTOR_TYPE)
+            return (USB_INTERFACE_DESCRIPTOR*)d;
     return NULL;
 }
 
-USB_INTERFACE_DESCRIPTOR_TYPE* usb_find_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, uint8_t num)
+USB_INTERFACE_DESCRIPTOR* usb_find_interface(const USB_CONFIGURATION_DESCRIPTOR* cfg, uint8_t num)
 {
-    USB_INTERFACE_DESCRIPTOR_TYPE* iface;
+    USB_INTERFACE_DESCRIPTOR* iface;
     for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
     {
         if (iface->bInterfaceNumber == num)
@@ -46,21 +46,21 @@ USB_INTERFACE_DESCRIPTOR_TYPE* usb_find_interface(const USB_CONFIGURATION_DESCRI
     return NULL;
 }
 
-void* usb_interface_get_first_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start, unsigned int type)
+void* usb_interface_get_first_descriptor(const USB_CONFIGURATION_DESCRIPTOR* cfg, const USB_INTERFACE_DESCRIPTOR* start, unsigned int type)
 {
-    USB_DESCRIPTOR_TYPE* d;
+    USB_GENERIC_DESCRIPTOR* d;
     for (d = D_NEXT(start, cfg); D_OFFSET(d, cfg) < cfg->wTotalLength; d = D_NEXT(d, cfg))
         if (d->bDescriptorType == type || type == 0)
             return d;
     return NULL;
 }
 
-void* usb_interface_get_next_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const void* start, unsigned int type)
+void* usb_interface_get_next_descriptor(const USB_CONFIGURATION_DESCRIPTOR* cfg, const void* start, unsigned int type)
 {
-    USB_DESCRIPTOR_TYPE* d;
+    USB_GENERIC_DESCRIPTOR* d;
     for (d = D_NEXT(start, cfg); D_OFFSET(d, cfg) < cfg->wTotalLength; d = D_NEXT(d, cfg))
     {
-        if (d->bDescriptorType == USB_INTERFACE_DESCRIPTOR_INDEX)
+        if (d->bDescriptorType == USB_INTERFACE_DESCRIPTOR_TYPE)
             return NULL;
         else if (d->bDescriptorType == type || type == 0)
             return d;
@@ -83,9 +83,9 @@ static bool usbd_register_descriptor_internal(HANDLE usbd, IO* io, unsigned int 
 bool usbd_register_descriptor(HANDLE usbd, const void* d, unsigned int index, unsigned int lang)
 {
     unsigned int size;
-    const USB_DESCRIPTOR_TYPE* descriptor = (USB_DESCRIPTOR_TYPE*)d;
-    if (descriptor->bDescriptorType == USB_CONFIGURATION_DESCRIPTOR_INDEX || descriptor->bDescriptorType == USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX)
-        size = ((const USB_CONFIGURATION_DESCRIPTOR_TYPE*)d)->wTotalLength;
+    const USB_GENERIC_DESCRIPTOR* descriptor = (USB_GENERIC_DESCRIPTOR*)d;
+    if (descriptor->bDescriptorType == USB_CONFIGURATION_DESCRIPTOR_TYPE || descriptor->bDescriptorType == USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE)
+        size = ((const USB_CONFIGURATION_DESCRIPTOR*)d)->wTotalLength;
     else
         size = descriptor->bLength;
 
@@ -120,8 +120,8 @@ bool usbd_register_ascii_string(HANDLE usbd, unsigned int index, unsigned int la
     *((void**)io_data(io)) = NULL;
     io->data_size = sizeof(void*);
 
-    USB_DESCRIPTOR_TYPE* descr = (io_data(io) + io->data_size);
-    descr->bDescriptorType = USB_STRING_DESCRIPTOR_INDEX;
+    USB_GENERIC_DESCRIPTOR* descr = (io_data(io) + io->data_size);
+    descr->bDescriptorType = USB_STRING_DESCRIPTOR_TYPE;
     descr->bLength = len * 2 + 2;
 
     for (i = 0; i < len; ++i)

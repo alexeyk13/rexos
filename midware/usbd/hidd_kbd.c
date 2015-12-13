@@ -80,10 +80,10 @@ static void hidd_kbd_send_report(USBD* usbd, HIDD_KBD* hidd)
     usbd_usb_ep_write(usbd, hidd->in_ep, hidd->io);
 }
 
-void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
+void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 {
-    USB_INTERFACE_DESCRIPTOR_TYPE* iface;
-    USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
+    USB_INTERFACE_DESCRIPTOR* iface;
+    USB_ENDPOINT_DESCRIPTOR* ep;
     uint8_t in_ep, in_ep_size, hid_iface;
     in_ep = in_ep_size = hid_iface = 0;
 
@@ -93,7 +93,7 @@ void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cf
         if (iface->bInterfaceClass == HID_INTERFACE_CLASS && iface->bInterfaceSubClass == HID_SUBCLASS_BOOT_INTERFACE &&
             iface->bInterfaceProtocol == HID_PROTOCOL_KEYBOARD)
         {
-            ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
+            ep = (USB_ENDPOINT_DESCRIPTOR*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_TYPE);
             if (ep != NULL)
             {
                 in_ep = USB_EP_NUM(ep->bEndpointAddress);

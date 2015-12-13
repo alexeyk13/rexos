@@ -98,16 +98,26 @@ typedef enum {
 #define USB_REQUEST_SET_INTERFACE                               11
 #define USB_REQUEST_SYNCH_FRAME                                 12
 
-#define USB_DEVICE_DESCRIPTOR_INDEX                             1
-#define USB_CONFIGURATION_DESCRIPTOR_INDEX                      2
-#define USB_STRING_DESCRIPTOR_INDEX                             3
-#define USB_INTERFACE_DESCRIPTOR_INDEX                          4
-#define USB_ENDPOINT_DESCRIPTOR_INDEX                           5
-#define USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX                   6
-#define USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX          7
-#define USB_INTERFACE_POWER_DESCRIPTOR_INDEX                    8
+typedef enum {
+    USB_DEVICE_DESCRIPTOR_TYPE = 1,
+    USB_CONFIGURATION_DESCRIPTOR_TYPE,
+    USB_STRING_DESCRIPTOR_TYPE,
+    USB_INTERFACE_DESCRIPTOR_TYPE,
+    USB_ENDPOINT_DESCRIPTOR_TYPE,
+    USB_DEVICE_QUALIFIER_DESCRIPTOR_TYPE,
+    USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE,
+    USB_INTERFACE_POWER_DESCRIPTOR_TYPE,
+    USB_OTG_DESCRIPTOR_TYPE,
+    USB_DEBUG_DESCRIPTOR_TYPE,
+    USB_INTERFACE_ASSOCIATION_DESCRIPTOR_TYPE
+} USB_DESCRIPTOR_TYPE;
 
 #define USB_FUNCTIONAL_DESCRIPTOR                               0x21
+
+//used for composite USB with IAD
+#define USB_MISCELLANEOUS_DEVICE_CLASS                          0xef
+#define USB_MISCELLANEOUS_COMMON_SUBCLASS                       0x02
+#define USB_IAD_PROTOCOL                                        0x01
 
 #define USB_DEVICE_REMOTE_WAKEUP_FEATURE_INDEX                  1
 #define USB_ENDPOINT_HALT_FEATURE_INDEX                         0
@@ -132,17 +142,11 @@ typedef struct {
     uint16_t wLength;
 } SETUP;
 
-#define USB_DEVICE_DESCRIPTOR_SIZE                              18
-#define USB_QUALIFIER_DESCRIPTOR_SIZE                           10
-#define USB_CONFIGURATION_DESCRIPTOR_SIZE                       9
-#define USB_INTERFACE_DESCRIPTOR_SIZE                           9
-#define USB_ENDPOINT_DESCRIPTOR_SIZE                            7
-
 typedef struct {
     uint8_t  bLength;                                           //Number Size of this descriptor in bytes
     uint8_t  bDescriptorType;                                   //Constant DEVICE Descriptor Type
     uint8_t  data[256];
-} USB_DESCRIPTOR_TYPE, *P_USB_DESCRIPTOR_TYPE;
+} USB_GENERIC_DESCRIPTOR;
 
 typedef struct {
     uint8_t  bLength;                                           //Number Size of this descriptor in bytes
@@ -159,7 +163,7 @@ typedef struct {
     uint8_t  iProduct;                                          //Index of string descriptor describing product
     uint8_t  iSerialNumber;                                     //Index of string descriptor describing the device’s serial number
     uint8_t  bNumConfigurations;                                //Number of possible configurations
-} USB_DEVICE_DESCRIPTOR_TYPE, *P_USB_DEVICE_DESCRIPTOR_TYPE;
+} USB_DEVICE_DESCRIPTOR;
 
 typedef struct {
     uint8_t  bLength;                                           //Size of descriptor
@@ -171,7 +175,7 @@ typedef struct {
     uint8_t  bMaxPacketSize0;                                   //Number Maximum packet size for other speed
     uint8_t  bNumConfigurations;                                //Number Number of Other-speed Configurations
     uint8_t  bReserved;                                         //Reserved for future use, must be zero
-} USB_QUALIFIER_DESCRIPTOR_TYPE, *P_USB_QUALIFIER_DESCRIPTOR_TYPE;
+} USB_QUALIFIER_DESCRIPTOR;
 
 typedef struct {
     uint8_t  bLength;                                           //Size of this descriptor in bytes
@@ -182,7 +186,7 @@ typedef struct {
     uint8_t  iConfiguration;                                    //Index of string descriptor describing this configuration
     uint8_t  bmAttributes;                                      //Configuration characteristics
     uint8_t  bMaxPower;                                         //Maximum power consumption of the USB    device. Expressed in 2 mA units (i.e., 50 = 100 mA).
-} USB_CONFIGURATION_DESCRIPTOR_TYPE, *P_USB_CONFIGURATION_DESCRIPTOR_TYPE, **PP_USB_CONFIGURATION_DESCRIPTOR_TYPE;
+} USB_CONFIGURATION_DESCRIPTOR;
 
 typedef struct {
     uint8_t  bLength;                                           //Size of this descriptor in bytes
@@ -194,7 +198,7 @@ typedef struct {
     uint8_t  bInterfaceSubClass;                                //Subclass code (assigned by the USB-IF).
     uint8_t  bInterfaceProtocol;                                //Protocol code (assigned by the USB).
     uint8_t  iInterface;                                        //Index of string descriptor describing this    interface
-} USB_INTERFACE_DESCRIPTOR_TYPE, *P_USB_INTERFACE_DESCRIPTOR_TYPE;
+} USB_INTERFACE_DESCRIPTOR;
 
 typedef struct {
     uint8_t  bLength;                                           //Size of this descriptor in bytes
@@ -203,19 +207,35 @@ typedef struct {
     uint8_t  bmAttributes;                                      //This field describes the endpoint’s attributes when it is    configured using the bConfigurationValue.
     uint16_t wMaxPacketSize;                                    //Maximum packet size this endpoint is capable of sending or receiving when this configuration is selected.
     uint8_t  bInterval;                                         //Interval for polling endpoint for data transfers.
-} USB_ENDPOINT_DESCRIPTOR_TYPE, *P_USB_ENDPOINT_DESCRIPTOR_TYPE;
+} USB_ENDPOINT_DESCRIPTOR;
 
 typedef struct {
-    uint8_t  bLength;                                           //Size of this descriptor in bytes
-    uint8_t  bDescriptorType;                                   //STRING Descriptor Type
+    uint8_t  bLength;                                           /*Size of this descriptor in bytes*/
+    uint8_t  bDescriptorType;                                   /*STRING Descriptor Type*/
     uint16_t data[126];
-} USB_STRING_DESCRIPTOR_TYPE, *P_USB_STRING_DESCRIPTOR_TYPE, **PP_USB_STRING_DESCRIPTOR_TYPE, ***PPP_USB_STRING_DESCRIPTOR_TYPE;
+} USB_STRING_DESCRIPTOR;
 
-USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_first_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg);
-USB_INTERFACE_DESCRIPTOR_TYPE* usb_get_next_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start);
-USB_INTERFACE_DESCRIPTOR_TYPE* usb_find_interface(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, uint8_t num);
-void* usb_interface_get_first_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const USB_INTERFACE_DESCRIPTOR_TYPE* start, unsigned int type);
-void* usb_interface_get_next_descriptor(const USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg, const void *start, unsigned int type);
+typedef struct {
+    uint8_t bLength;                                            /*Size of this descriptor in bytes*/
+    uint8_t bDescriptorType;                                    /*INTERFACE ASSOCIATION Descriptor*/
+    uint8_t bFirstInterface;                                    /*Interface number of the first interface that is associated with this function*/
+    uint8_t bInterfaceCount;                                    /*Number of contiguous interfaces that are associated with this function*/
+    uint8_t bFunctionClass;                                     /*Class code (assigned by USB-IF). A value of zero is not allowed in this descriptor*/
+                                                                /*If this field is FFH, the function class is vendor-specific*/
+                                                                /*All other values are reserved for assignment by the USB-IF*/
+    uint8_t bFunctionSubClass;                                  /*Subclass code (assigned by USB-IF). If the bFunctionClass field is not set to FFH all*/
+                                                                /*values are reserved for assignment by the USB-IF*/
+
+    uint8_t bFunctionProtocol;                                  /*Protocol code (assigned by USB-IF). These codes are qualified by the values of the*/
+                                                                /*bFunctionClass and bFunctionSubClass fields*/
+    uint8_t iFunction;                                          /*Index of string descriptor describing this function*/
+} USB_INTERFACE_ASSOCIATION_DESCRIPTOR;
+
+USB_INTERFACE_DESCRIPTOR* usb_get_first_interface(const USB_CONFIGURATION_DESCRIPTOR* cfg);
+USB_INTERFACE_DESCRIPTOR* usb_get_next_interface(const USB_CONFIGURATION_DESCRIPTOR* cfg, const USB_INTERFACE_DESCRIPTOR* start);
+USB_INTERFACE_DESCRIPTOR* usb_find_interface(const USB_CONFIGURATION_DESCRIPTOR* cfg, uint8_t num);
+void* usb_interface_get_first_descriptor(const USB_CONFIGURATION_DESCRIPTOR* cfg, const USB_INTERFACE_DESCRIPTOR* start, unsigned int type);
+void* usb_interface_get_next_descriptor(const USB_CONFIGURATION_DESCRIPTOR* cfg, const void *start, unsigned int type);
 
 //--------------------------------------------------- USB device ---------------------------------------------------------------
 

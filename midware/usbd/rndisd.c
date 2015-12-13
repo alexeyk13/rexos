@@ -201,12 +201,12 @@ static void rndisd_fail(RNDISD* rndisd)
     rndisd->response_size = 1;
 }
 
-void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
+void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 {
-    USB_INTERFACE_DESCRIPTOR_TYPE* iface;
-    USB_INTERFACE_DESCRIPTOR_TYPE* diface;
+    USB_INTERFACE_DESCRIPTOR* iface;
+    USB_INTERFACE_DESCRIPTOR* diface;
     CDC_UNION_DESCRIPTOR_TYPE* u;
-    USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
+    USB_ENDPOINT_DESCRIPTOR* ep;
     uint8_t data_ep, control_ep, data_iface, control_iface;
     uint16_t data_ep_size, control_ep_size;
 
@@ -221,7 +221,7 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
         printf("Found RNDIS device interface: %d\n", control_iface);
 #endif //USBD_RNDIS_DEBUG
 
-        ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX);
+        ep = (USB_ENDPOINT_DESCRIPTOR*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_TYPE);
         if (ep == NULL)
         {
 #if (USBD_RNDIS_DEBUG)
@@ -259,7 +259,7 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
         printf("Found RNDIS device data interface: %d\n", data_iface);
 #endif //USBD_RNDIS_DEBUG
 
-        ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, diface, USB_ENDPOINT_DESCRIPTOR_INDEX);
+        ep = (USB_ENDPOINT_DESCRIPTOR*)usb_interface_get_first_descriptor(cfg, diface, USB_ENDPOINT_DESCRIPTOR_TYPE);
         if (ep == NULL)
         {
 #if (USBD_RNDIS_DEBUG)

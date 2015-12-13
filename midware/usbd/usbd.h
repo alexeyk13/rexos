@@ -16,7 +16,7 @@
 typedef struct _USBD USBD;
 
 typedef struct {
-    void (*usbd_class_configured)(USBD*, USB_CONFIGURATION_DESCRIPTOR_TYPE*);
+    void (*usbd_class_configured)(USBD*, USB_CONFIGURATION_DESCRIPTOR*);
     void (*usbd_class_reset)(USBD*, void*);
     void (*usbd_class_suspend)(USBD*, void*);
     void (*usbd_class_resume)(USBD*, void*);

@@ -29,7 +29,7 @@ typedef enum {
 
 typedef struct {
     uint16_t index, lang;
-    USB_DESCRIPTOR_TYPE** d;
+    USB_GENERIC_DESCRIPTOR** d;
 } USBD_DESCRIPTOR;
 
 typedef enum {
@@ -223,7 +223,7 @@ static int usbd_get_descriptor_index(USBD* usbd, unsigned int type, unsigned int
     return -1;
 }
 
-static USB_DESCRIPTOR_TYPE* usbd_descriptor(USBD* usbd, unsigned int type, unsigned int index, unsigned int lang)
+static USB_GENERIC_DESCRIPTOR* usbd_descriptor(USBD* usbd, unsigned int type, unsigned int index, unsigned int lang)
 {
     int idx = usbd_get_descriptor_index(usbd, type, index, lang);
     if (idx < 0)
@@ -303,19 +303,19 @@ void usbd_fatal_stub(USBD* usbd)
     usbd_fatal(usbd);
 }
 
-static inline USB_CONFIGURATION_DESCRIPTOR_TYPE* usbd_configuration_descriptor(USBD* usbd)
+static inline USB_CONFIGURATION_DESCRIPTOR* usbd_configuration_descriptor(USBD* usbd)
 {
     int i;
-    USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg = NULL;
-    USB_DEVICE_DESCRIPTOR_TYPE* device = (USB_DEVICE_DESCRIPTOR_TYPE*)usbd_descriptor(usbd,
+    USB_CONFIGURATION_DESCRIPTOR* cfg = NULL;
+    USB_DEVICE_DESCRIPTOR* device = (USB_DEVICE_DESCRIPTOR*)usbd_descriptor(usbd,
                                            (usbd->speed < USB_LOW_SPEED_ALT) ?
-                                           USB_DEVICE_DESCRIPTOR_INDEX : USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX, 0, 0);
+                                           USB_DEVICE_DESCRIPTOR_TYPE : USB_DEVICE_QUALIFIER_DESCRIPTOR_TYPE, 0, 0);
     if (device)
         for (i = 0; i < device->bNumConfigurations; ++i)
         {
-            cfg = (USB_CONFIGURATION_DESCRIPTOR_TYPE*)usbd_descriptor(usbd,
+            cfg = (USB_CONFIGURATION_DESCRIPTOR*)usbd_descriptor(usbd,
                    (usbd->speed < USB_LOW_SPEED_ALT) ?
-                   USB_CONFIGURATION_DESCRIPTOR_INDEX : USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX, i, 0);
+                   USB_CONFIGURATION_DESCRIPTOR_TYPE : USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE, i, 0);
             if (!cfg)
                 break;
             if (cfg->bConfigurationValue == usbd->configuration)
@@ -327,8 +327,8 @@ static inline USB_CONFIGURATION_DESCRIPTOR_TYPE* usbd_configuration_descriptor(U
 
 static inline void usbd_class_configured(USBD* usbd)
 {
-    USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg;
-    USB_INTERFACE_DESCRIPTOR_TYPE* iface;
+    USB_CONFIGURATION_DESCRIPTOR* cfg;
+    USB_INTERFACE_DESCRIPTOR* iface;
 
     int i;
     cfg = usbd_configuration_descriptor(usbd);
@@ -415,7 +415,7 @@ static inline int usbd_request_register_descriptor(USBD* usbd, IO* io)
 {
     int idx;
     USBD_DESCRIPTOR_REGISTER_STRUCT* udrs = io_stack(io);
-    if (usbd_get_descriptor_index(usbd, ((USB_DESCRIPTOR_TYPE*)io_data(io))->bDescriptorType, udrs->index, udrs->lang) >= 0)
+    if (usbd_get_descriptor_index(usbd, ((USB_GENERIC_DESCRIPTOR*)io_data(io))->bDescriptorType, udrs->index, udrs->lang) >= 0)
         return ERROR_ALREADY_CONFIGURED;
 
     void* d = malloc(io->data_size);
@@ -588,19 +588,19 @@ static inline int usbd_set_address(USBD* usbd)
 static int send_descriptor(USBD* usbd, unsigned int type, unsigned int index, unsigned int lang, unsigned int send_type)
 {
     unsigned int size;
-    USB_DESCRIPTOR_TYPE* d = usbd_descriptor(usbd, type, index, lang);
+    USB_GENERIC_DESCRIPTOR* d = usbd_descriptor(usbd, type, index, lang);
     if (d == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
         return -1;
     }
-    if (type == USB_CONFIGURATION_DESCRIPTOR_INDEX || type == USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX)
-        size = ((USB_CONFIGURATION_DESCRIPTOR_TYPE*)d)->wTotalLength;
+    if (type == USB_CONFIGURATION_DESCRIPTOR_TYPE || type == USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE)
+        size = ((USB_CONFIGURATION_DESCRIPTOR*)d)->wTotalLength;
     else
         size = d->bLength;
 
     size = io_data_write(usbd->io, d, size);
-    ((USB_DESCRIPTOR_TYPE*)io_data(usbd->io))->bDescriptorType = send_type;
+    ((USB_GENERIC_DESCRIPTOR*)io_data(usbd->io))->bDescriptorType = send_type;
     return size;
 }
 
@@ -614,44 +614,44 @@ static inline int usbd_get_descriptor(USBD* usbd)
     unsigned int lang = usbd->setup.wIndex;
     switch (type)
     {
-    case USB_DEVICE_DESCRIPTOR_INDEX:
+    case USB_DEVICE_DESCRIPTOR_TYPE:
         if (usbd->speed < USB_LOW_SPEED_ALT)
-            res = send_descriptor(usbd, USB_DEVICE_DESCRIPTOR_INDEX, 0, 0, USB_DEVICE_DESCRIPTOR_INDEX);
+            res = send_descriptor(usbd, USB_DEVICE_DESCRIPTOR_TYPE, 0, 0, USB_DEVICE_DESCRIPTOR_TYPE);
         else
-            res = send_descriptor(usbd, USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX, 0, 0, USB_DEVICE_DESCRIPTOR_INDEX);
+            res = send_descriptor(usbd, USB_DEVICE_QUALIFIER_DESCRIPTOR_TYPE, 0, 0, USB_DEVICE_DESCRIPTOR_TYPE);
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get DEVICE descriptor\n");
 #endif
         break;
-    case USB_CONFIGURATION_DESCRIPTOR_INDEX:
+    case USB_CONFIGURATION_DESCRIPTOR_TYPE:
         if (usbd->speed < USB_LOW_SPEED_ALT)
-            res = send_descriptor(usbd, USB_CONFIGURATION_DESCRIPTOR_INDEX, index, 0, USB_CONFIGURATION_DESCRIPTOR_INDEX);
+            res = send_descriptor(usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE, index, 0, USB_CONFIGURATION_DESCRIPTOR_TYPE);
         else
-            res = send_descriptor(usbd, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX, index, 0, USB_CONFIGURATION_DESCRIPTOR_INDEX);
+            res = send_descriptor(usbd, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE, index, 0, USB_CONFIGURATION_DESCRIPTOR_TYPE);
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get CONFIGURATION %d descriptor\n", index);
 #endif
         break;
-    case USB_STRING_DESCRIPTOR_INDEX:
-        res = send_descriptor(usbd, USB_STRING_DESCRIPTOR_INDEX, index, lang, USB_STRING_DESCRIPTOR_INDEX);
+    case USB_STRING_DESCRIPTOR_TYPE:
+        res = send_descriptor(usbd, USB_STRING_DESCRIPTOR_TYPE, index, lang, USB_STRING_DESCRIPTOR_TYPE);
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get STRING %d descriptor, lang: %#X\n", index, lang);
 #endif
         break;
-    case USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX:
+    case USB_DEVICE_QUALIFIER_DESCRIPTOR_TYPE:
         if (usbd->speed < USB_LOW_SPEED_ALT)
-            res = send_descriptor(usbd, USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX, 0, 0, USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX);
+            res = send_descriptor(usbd, USB_DEVICE_QUALIFIER_DESCRIPTOR_TYPE, 0, 0, USB_DEVICE_QUALIFIER_DESCRIPTOR_TYPE);
         if (res < 0)
-            res = send_descriptor(usbd, USB_DEVICE_DESCRIPTOR_INDEX, 0, 0, USB_DEVICE_QUALIFIER_DESCRIPTOR_INDEX);
+            res = send_descriptor(usbd, USB_DEVICE_DESCRIPTOR_TYPE, 0, 0, USB_DEVICE_QUALIFIER_DESCRIPTOR_TYPE);
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get DEVICE qualifier descriptor\n");
 #endif
         break;
-    case USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX:
+    case USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE:
         if (usbd->speed < USB_LOW_SPEED_ALT)
-            res = send_descriptor(usbd, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX, index, 0, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX);
+            res = send_descriptor(usbd, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE, index, 0, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE);
         if (res < 0)
-            res = send_descriptor(usbd, USB_CONFIGURATION_DESCRIPTOR_INDEX, index, 0, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_INDEX);
+            res = send_descriptor(usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE, index, 0, USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE);
 #if (USBD_DEBUG_REQUESTS)
         printf("USB get other speed CONFIGURATION %d descriptor\n", index);
 #endif

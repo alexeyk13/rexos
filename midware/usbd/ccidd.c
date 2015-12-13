@@ -124,10 +124,10 @@ static void ccidd_user_request(USBD* usbd, CCIDD* ccidd, unsigned int req, uint8
     ccidd->state = CCIDD_STATE_CARD_REQUEST;
 }
 
-void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
+void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 {
-    USB_INTERFACE_DESCRIPTOR_TYPE* iface;
-    USB_ENDPOINT_DESCRIPTOR_TYPE* ep;
+    USB_INTERFACE_DESCRIPTOR* iface;
+    USB_ENDPOINT_DESCRIPTOR* ep;
     CCID_DESCRIPTOR_TYPE* ccid_descriptor;
     CCIDD* ccidd;
     unsigned int status_ep_size;
@@ -146,8 +146,8 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR_TYPE* cfg)
             ccidd->data_ep = ccidd->status_ep = 0;
             ccidd->io = ccidd->status_io = NULL;
             status_ep_size = 0;
-            for (ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_INDEX); ep != NULL;
-                 ep = (USB_ENDPOINT_DESCRIPTOR_TYPE*)usb_interface_get_next_descriptor(cfg, (USB_DESCRIPTOR_TYPE*)ep, USB_ENDPOINT_DESCRIPTOR_INDEX))
+            for (ep = (USB_ENDPOINT_DESCRIPTOR*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_TYPE); ep != NULL;
+                 ep = (USB_ENDPOINT_DESCRIPTOR*)usb_interface_get_next_descriptor(cfg, (USB_GENERIC_DESCRIPTOR*)ep, USB_ENDPOINT_DESCRIPTOR_TYPE))
             {
                 switch (ep->bmAttributes & USB_EP_BM_ATTRIBUTES_TYPE_MASK)
                 {
