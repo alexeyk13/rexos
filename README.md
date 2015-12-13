@@ -36,6 +36,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * USB device HID Boot Keyboard class
   * USB device CCID class
   * USB device MSC class
+  * USB device RNDIS class
   * SCSI stack: SPC5, SBC3
   * TCP/IP: MAC level 802.3, RFC768, RFC791, RFC792,  RFC793, RFC826
   * IP: fragmentation supported
@@ -82,6 +83,12 @@ ARM7 features:
 
 History
 =======
+0.4.1
+- USB RNDIS class support
+- USB interface associations descriptor support
+- USB transparent HAL interface
+- minor fixes in HTTP server, TCP/IP stack
+
 0.4.0
 - HTTP server (beta)
 - LPC18xx ethernet driver

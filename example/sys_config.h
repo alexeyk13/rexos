@@ -49,19 +49,28 @@
 
 #define USBD_IO_SIZE                                        128
 
-#define USBD_CDC_CLASS                                      1
+#define USBD_CDC_ACM_CLASS                                  0
+#define USBD_RNDIS_CLASS                                    0
 #define USBD_HID_KBD_CLASS                                  0
-#define USBD_CCID_CLASS                                     0
+#define USBD_CCID_CLASS                                     1
 #define USBD_MSC_CLASS                                      0
 
-//----------------------------- CDCD class --------------------------------------------
+//----------------------- CDC ACM Device class ----------------------------------------
 //At least EP size required, or data will be lost. Double EP size is recommended
-#define USBD_CDC_TX_STREAM_SIZE                             32
-#define USBD_CDC_RX_STREAM_SIZE                             32
+#define USBD_CDC_ACM_TX_STREAM_SIZE                         32
+#define USBD_CDC_ACM_RX_STREAM_SIZE                         32
+#define USBD_CDC_ACM_FLOW_CONTROL                           1
 
-#define USBD_CDC_DEBUG_ERRORS                               0
-#define USBD_CDC_DEBUG_REQUESTS                             0
-#define USBD_CDC_DEBUG_IO                                   0
+#define USBD_CDC_ACM_DEBUG                                  1
+#define USBD_CDC_ACM_DEBUG_FLOW                             0
+
+//------------------------ RNDIS Device class -----------------------------------------
+#define USBD_RNDIS_DEBUG                                    1
+#define USBD_RNDIS_DEBUG_REQUESTS                           0
+#define USBD_RNDIS_DEBUG_FLOW                               0
+
+//must be more than MTU + MAC. And fully fit in EP size
+#define USBD_RNDIS_MAX_PACKET_SIZE                          2048
 
 //------------------------------ HIDD class -------------------------------------------
 #define USBD_HID_DEBUG_ERRORS                               0

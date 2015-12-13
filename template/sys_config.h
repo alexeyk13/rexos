@@ -29,7 +29,7 @@
 #define UART_CHAR_TIMEOUT_MS                                10000
 #define UART_INTERLEAVED_TIMEOUT_MS                         4
 //-------------------------------- USB -----------------------------------------------
-#define USB_EP_COUNT_MAX                                    4
+#define USB_EP_COUNT_MAX                                    5
 //low-level USB debug. Turn on only in case of IO problems
 #define USB_DEBUG_ERRORS                                    0
 //support for high speed, qualifier, other speed, test, etc
@@ -37,28 +37,37 @@
 
 //----------------------------- USB device--------------------------------------------
 //all other device-related debug depends on this
-#define USBD_DEBUG                                          0
+#define USBD_DEBUG                                          1
 #define USBD_DEBUG_ERRORS                                   0
 #define USBD_DEBUG_REQUESTS                                 0
 
 //vendor-specific requests support
 #define USBD_VSR                                            1
 
-#define USBD_IO_SIZE                                        128
+#define USBD_IO_SIZE                                        256
 
-#define USBD_CDC_CLASS                                      0
+#define USBD_CDC_ACM_CLASS                                  0
+#define USBD_RNDIS_CLASS                                    1
 #define USBD_HID_KBD_CLASS                                  0
 #define USBD_CCID_CLASS                                     1
 #define USBD_MSC_CLASS                                      0
 
-//----------------------------- CDCD class --------------------------------------------
+//----------------------- CDC ACM Device class ----------------------------------------
 //At least EP size required, or data will be lost. Double EP size is recommended
-#define USBD_CDC_TX_STREAM_SIZE                             64
-#define USBD_CDC_RX_STREAM_SIZE                             64
+#define USBD_CDC_ACM_TX_STREAM_SIZE                         32
+#define USBD_CDC_ACM_RX_STREAM_SIZE                         32
+#define USBD_CDC_ACM_FLOW_CONTROL                           1
 
-#define USBD_CDC_DEBUG_ERRORS                               0
-#define USBD_CDC_DEBUG_REQUESTS                             0
-#define USBD_CDC_DEBUG_IO                                   0
+#define USBD_CDC_ACM_DEBUG                                  1
+#define USBD_CDC_ACM_DEBUG_FLOW                             0
+
+//------------------------ RNDIS Device class -----------------------------------------
+#define USBD_RNDIS_DEBUG                                    1
+#define USBD_RNDIS_DEBUG_REQUESTS                           0
+#define USBD_RNDIS_DEBUG_FLOW                               0
+
+//must be more than MTU + MAC. And fully fit in EP size
+#define USBD_RNDIS_MAX_PACKET_SIZE                          2048
 
 //------------------------------ HIDD class -------------------------------------------
 #define USBD_HID_DEBUG_ERRORS                               0
@@ -119,7 +128,7 @@
 
 //----------------------------- TCP/IP MAC --------------------------------------------
 //software MAC filter. Turn on in case of hardware is not supporting
-#define MAC_FILTER                                          0
+#define MAC_FILTER                                          1
 #define MAC_FIREWALL                                        1
 #define TCPIP_MAC_DEBUG                                     0
 
