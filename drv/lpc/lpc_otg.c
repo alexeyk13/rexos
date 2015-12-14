@@ -349,7 +349,7 @@ static inline void lpc_otg_open_ep(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, int 
     num & USB_EP_IN ? (drv->otg.otg[port]->in[USB_EP_NUM(num)] = ep) : (drv->otg.otg[port]->out[USB_EP_NUM(num)] = ep);
 
     dqh = ep_dqh(port, num);
-    dqh->capa = (size << USB0_DQH_CAPA_MAX_PACKET_LENGTH_Pos) | USB0_DQH_CAPA_ZLT_Msk;
+    dqh->capa = (size << USB0_DQH_CAPA_MAX_PACKET_LENGTH_Pos);
     if (USB_EP_NUM(num) == 0)
         dqh->capa |= USB0_DQH_CAPA_IOS_Msk;
     dqh->next = (void*)USB0_DQH_NEXT_T_Msk;

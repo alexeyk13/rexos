@@ -81,7 +81,7 @@ typedef struct {
     uint8_t data_ep, control_ep;
     uint16_t data_ep_size;
     uint8_t data_iface, control_iface;
-    bool notify_busy, link_status_queued, connected;
+    bool notify_busy, link_status_queued, connected, zlp;
 } RNDISD;
 
 static void rndisd_destroy(RNDISD* rndisd)
@@ -159,7 +159,7 @@ static void rndisd_indicate_status(RNDISD* rndisd)
 static void rndisd_rx(USBD* usbd, RNDISD* rndisd)
 {
     if (rndisd_link_ready(rndisd))
-        usbd_usb_ep_read(usbd, rndisd->data_ep, rndisd->usb_rx, rndisd->data_ep_size);
+        usbd_usb_ep_read(usbd, rndisd->data_ep, rndisd->usb_rx, rndisd->transfer_size);
 }
 
 static void rndisd_link_changed(USBD* usbd, RNDISD* rndisd)
@@ -311,6 +311,7 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
         rndisd->notify_busy = false;
         rndisd->connected = false;
         rndisd->tx_cur = NULL;
+        rndisd->zlp = false;
         rndisd_reset(usbd, rndisd);
     }
 }
@@ -367,7 +368,6 @@ static inline void rndisd_read_complete(USBD* usbd, RNDISD* rndisd, int size)
     if (size < 0 || !rndisd_link_ready(rndisd))
         return;
     do {
-        io_unhide(rndisd->usb_rx);
         if (rndisd->usb_rx->data_size < sizeof(RNDIS_PACKET_MSG))
             break;
         msg = io_data(rndisd->usb_rx);
@@ -375,14 +375,6 @@ static inline void rndisd_read_complete(USBD* usbd, RNDISD* rndisd, int size)
             break;
         if (msg->message_length > rndisd->transfer_size)
             break;
-        //long packet > EP size
-        if ((size == rndisd->data_ep_size) && (msg->message_length > rndisd->data_ep_size))
-        {
-            io_hide(rndisd->usb_rx, rndisd->data_ep_size);
-            //still maybe padding
-            usbd_usb_ep_read(usbd, rndisd->data_ep, rndisd->usb_rx, (msg->message_length - 1) & ~(rndisd->data_ep_size - 1));
-            return;
-        }
         if (msg->message_length > rndisd->usb_rx->data_size)
             break;
         if ((msg->data_offset + msg->data_length + offsetof(RNDIS_PACKET_MSG, data_offset) > msg->message_length) || (msg->data_length == 0))
@@ -432,11 +424,11 @@ static void rndisd_write_packet(USBD* usbd, RNDISD* rndisd, IO* io)
     RNDIS_PACKET_MSG* msg;
     io_reset(rndisd->usb_tx);
     msg = io_data(rndisd->usb_tx);
-    memset(msg, 0x00, sizeof(RNDIS_PACKET_MSG));
     msg->message_type = REMOTE_NDIS_PACKET_MSG;
     rndisd->usb_tx->data_size = msg->message_length = sizeof(RNDIS_PACKET_MSG) + io->data_size;
     msg->data_offset = sizeof(RNDIS_PACKET_MSG) - offsetof(RNDIS_PACKET_MSG, data_offset);
     msg->data_length = io->data_size;
+    memset(&msg->out_of_band_data_length, 0, sizeof(RNDIS_PACKET_MSG) - offsetof(RNDIS_PACKET_MSG, out_of_band_data_offset));
     memcpy((uint8_t*)io_data(rndisd->usb_tx) + sizeof(RNDIS_PACKET_MSG), io_data(io), io->data_size);
     usbd_usb_ep_write(usbd, USB_EP_IN | rndisd->data_ep, rndisd->usb_tx);
     rndisd->tx_cur = io;
@@ -449,8 +441,17 @@ void rndisd_write_complete(USBD* usbd, RNDISD* rndisd, int size)
 {
     if (size < 0 || !rndisd_link_ready(rndisd))
         return;
+
     if (rndisd->tx_cur != NULL)
     {
+        //tx ZLP
+        if ((size % rndisd->data_ep_size) == 0)
+        {
+            io_reset(rndisd->usb_tx);
+            usbd_usb_ep_write(usbd, USB_EP_IN | rndisd->data_ep, rndisd->usb_tx);
+            return;
+        }
+
         io_complete(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), USBD_IFACE(rndisd->control_iface, 0), rndisd->tx_cur);
         ++rndisd->tx_ok;
         rndisd->tx_cur = NULL;
