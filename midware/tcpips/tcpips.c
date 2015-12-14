@@ -71,9 +71,12 @@ IO* tcpips_allocate_io(TCPIPS* tcpips)
     {
         if (tcpips->io_allocated < TCPIP_MAX_FRAMES_COUNT)
         {
-            io = io_create(FRAME_MAX_SIZE);
+            io = io_create(FRAME_MAX_SIZE + tcpips->eth_header_size);
             if (io != NULL)
+            {
                 ++tcpips->io_allocated;
+                io->data_offset += tcpips->eth_header_size;
+            }
 #if (TCPIP_DEBUG_ERRORS)
             else
                 printf("TCPIP: out of memory\n");
@@ -89,8 +92,9 @@ IO* tcpips_allocate_io(TCPIPS* tcpips)
         }
         else if (array_size(tcpips->tx_queue))
         {
+            io = *((IO**)array_at(tcpips->tx_queue, 0));
             array_remove(&tcpips->tx_queue, 0);
-            --tcpips->tx_count;
+            tcpips_release_io(tcpips, io);
             io = tcpips_allocate_io_internal(tcpips);
 #if (TCPIP_DEBUG)
             printf("TCPIP warning: io dropped from tx queue\n");
@@ -111,6 +115,7 @@ void tcpips_release_io(TCPIPS* tcpips, IO* io)
 {
     IO** iop;
     io_reset(io);
+    io->data_offset += tcpips->eth_header_size;
     iop = array_append(&tcpips->free_io);
     if (iop)
         *iop = io;
@@ -154,6 +159,7 @@ static inline void tcpips_open(TCPIPS* tcpips, unsigned int eth_handle, HANDLE e
     tcpips->eth_handle = eth_handle;
     tcpips->app = app;
     ack(tcpips->eth, HAL_REQ(HAL_ETH, IPC_OPEN), tcpips->eth_handle, conn, 0);
+    tcpips->eth_header_size = eth_get_header_size(tcpips->eth, tcpips->eth_handle);
 }
 
 static void tcpips_close_internal(TCPIPS* tcpips)
@@ -272,6 +278,7 @@ void tcpips_init(TCPIPS* tcpips)
     tcpips->conn = ETH_NO_LINK;
     tcpips->connected = false;
     tcpips->io_allocated = 0;
+    tcpips->eth_header_size = 0;
 #if (ETH_DOUBLE_BUFFERING)
     //2 rx + 2 tx + 1 for processing
     array_create(&tcpips->free_io, sizeof(IO*), 5);

@@ -282,13 +282,15 @@ static uint32_t tcps_gen_isn()
     return (uptime.sec % 17179) + (uptime.usec >> 2);
 }
 
-static void tcps_update_rx_wnd(TCP_TCB* tcb)
+static bool tcps_update_rx_wnd(TCP_TCB* tcb)
 {
+    bool need_update = tcb->rx_wnd < (TCP_MSS_MAX / 2);
     tcb->rx_wnd = TCP_MSS_MAX;
     if (tcb->rx != NULL)
         tcb->rx_wnd += io_get_free(tcb->rx);
     if (tcb->rx_tmp != NULL)
         tcb->rx_wnd = io_get_free(tcb->rx_tmp);
+    return need_update;
 }
 
 static void tcps_timer_start(TCP_TCB* tcb)
@@ -1415,15 +1417,15 @@ static inline void tcps_read(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
             if ((io_get_free(io) == 0) || (tcp_stack->flags & TCP_PSH))
             {
                 io_complete(tcb->process, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, io);
-                tcps_update_rx_wnd(tcb);
-                tcps_tx_ack(tcpips, tcb_handle);
+                if (tcps_update_rx_wnd(tcb))
+                    tcps_tx_ack(tcpips, tcb_handle);
                 error(ERROR_SYNC);
                 return;
             }
         }
         tcb->rx = io;
-        tcps_update_rx_wnd(tcb);
-        tcps_tx_ack(tcpips, tcb_handle);
+        if (tcps_update_rx_wnd(tcb))
+            tcps_tx_ack(tcpips, tcb_handle);
         error(ERROR_SYNC);
         break;
     default:

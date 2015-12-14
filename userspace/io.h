@@ -125,11 +125,19 @@ void io_reset(IO* io);
 void io_hide(IO* io, unsigned int size);
 
 /**
-    \brief unhide all IO data
+    \brief unhide part of IO data
+    \param io: IO pointer
+    \param size: size to unhide
+    \retval none
+*/
+void io_unhide(IO* io, unsigned int size);
+
+/**
+    \brief restore all hided data
     \param io: IO pointer
     \retval none
 */
-void io_unhide(IO* io);
+void io_show(IO* io);
 
 /**
     \brief creates IO

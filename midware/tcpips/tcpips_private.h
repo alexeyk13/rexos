@@ -26,7 +26,7 @@ typedef struct _TCPIPS {
     unsigned seconds;
     ETH_CONN_TYPE conn;
     //stack itself - private use
-    unsigned int io_allocated, tx_count, eth_handle;
+    unsigned int io_allocated, tx_count, eth_handle, eth_header_size;
     ARRAY* free_io;
     ARRAY* tx_queue;
     bool connected;

@@ -863,8 +863,7 @@ static inline bool hss_session_rx_idle(HSS* hss, HSS_SESSION* session)
     }
     cur_txt = io_data(session->io);
     //hide head
-    session->io->data_offset += head_size + 4;
-    session->io->data_size -= head_size + 4;
+    io_hide(session->io, head_size + 4);
     session->data_off = head_size + 4;
     icur = hs_get_line_size(cur_txt, head_size);
     head = cur_txt + icur;
@@ -986,7 +985,7 @@ static inline void hss_session_rx(HSS* hss, HSS_SESSION* session, int size)
     //we don't need TCP flags analyse
     io_pop(session->io, sizeof(TCP_STACK));
     //unhide header before processing
-    io_unhide(session->io);
+    io_show(session->io);
 
     if (session->state == HSS_SESSION_STATE_IDLE)
     {
@@ -1006,17 +1005,13 @@ static inline void hss_session_rx(HSS* hss, HSS_SESSION* session, int size)
             io_push(session->io, sizeof(HS_STACK));
         }
         else
-        {
-            session->io->data_offset += session->io->data_size;
-            session->io->data_size = 0;
-        }
+            io_hide(session->io, session->io->data_size);
         tcp_read(hss->tcpip, session->conn, session->io, io_get_free(session->io) - sizeof(HS_STACK) - sizeof(TCP_STACK));
         return;
     }
 
-    io_unhide(session->io);
-    session->io->data_offset += session->data_off;
-    session->io->data_size -= session->data_off;
+    io_show(session->io);
+    io_hide(session->io, session->data_off);
     //stack already here
     stack = io_stack(session->io);
     stack->content_size = session->content_size;

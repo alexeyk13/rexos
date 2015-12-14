@@ -80,14 +80,20 @@ void io_hide(IO* io, unsigned int size)
     io->data_size -= size;
 }
 
-void io_unhide(IO* io)
+void io_unhide(IO* io, unsigned int size)
 {
-    unsigned int delta = io->data_offset - sizeof(IO);
-    if (delta)
+    if (size > io->data_offset - sizeof(IO))
+        size = io->data_offset - sizeof(IO);
+    if (size)
     {
-        io->data_offset -= delta;
-        io->data_size += delta;
+        io->data_offset -= size;
+        io->data_size += size;
     }
+}
+
+void io_show(IO* io)
+{
+    io_unhide(io, io->data_offset - sizeof(IO));
 }
 
 IO* io_create(unsigned int size)

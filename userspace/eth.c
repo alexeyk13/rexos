@@ -21,3 +21,9 @@ void eth_get_mac(HANDLE eth, unsigned int eth_handle, MAC* mac)
     mac->u32.hi = ipc.param2;
     mac->u32.lo = ipc.param3;
 }
+
+unsigned int eth_get_header_size(HANDLE eth, unsigned int eth_handle)
+{
+    int res = get(eth, HAL_REQ(HAL_ETH, ETH_GET_HEADER_SIZE), eth_handle, 0, 0);
+    return (res < 0) ? 0 : res;
+}

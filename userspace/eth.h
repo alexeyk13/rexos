@@ -27,11 +27,11 @@ typedef enum {
     ETH_SET_MAC = IPC_USER,
     ETH_GET_MAC,
     ETH_NOTIFY_LINK_CHANGED,
-
-    ETH_HAL_MAX
+    ETH_GET_HEADER_SIZE
 }ETH_IPCS;
 
 void eth_set_mac(HANDLE eth, unsigned int eth_handle, const MAC* mac);
 void eth_get_mac(HANDLE eth, unsigned int eth_handle, MAC* mac);
+unsigned int eth_get_header_size(HANDLE eth, unsigned int eth_handle);
 
 #endif // ETH_H
