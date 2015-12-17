@@ -374,12 +374,11 @@ static inline void rndisd_read_complete(USBD* usbd, RNDISD* rndisd, int size)
             }
             rx_cur->data_offset += msg->data_offset + offsetof(RNDIS_PACKET_MSG, data_offset);
             rx_cur->data_size = msg->data_length;
-            io_complete(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), USBD_IFACE(rndisd->control_iface, 0), rx_cur);
             ++rndisd->rx_ok;
 #if (USBD_RNDIS_DEBUG_FLOW)
-            printf("RNDIS device: RX %d\n", frame_size);
+            printf("RNDIS device: RX %d\n", rx_cur->data_size);
 #endif //USBD_RNDIS_DEBUG_FLOW
-
+            io_complete(rndisd->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), USBD_IFACE(rndisd->control_iface, 0), rx_cur);
         } while(false);
     }
 }

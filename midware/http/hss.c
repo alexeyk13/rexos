@@ -352,8 +352,11 @@ static void hss_destroy_session(HSS* hss, HSS_SESSION* session)
 
 static void hss_destroy_connection(HSS* hss, HSS_SESSION* session)
 {
-    tcp_close(hss->tcpip, session->conn);
-    hss_destroy_session(hss, session);
+    if (session->conn != INVALID_HANDLE)
+    {
+        tcp_close(hss->tcpip, session->conn);
+        hss_destroy_session(hss, session);
+    }
 }
 
 static void hss_fill_header(HSS_SESSION* session, HTTP_RESPONSE resp)

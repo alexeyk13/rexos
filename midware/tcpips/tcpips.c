@@ -266,8 +266,6 @@ static inline void tcpips_eth_remote_close(TCPIPS* tcpips)
     printf("ETH remote close\n");
 #endif
     tcpips_link_changed_internal(tcpips, ETH_NO_LINK);
-    if (tcpips->app != INVALID_HANDLE)
-        ipc_post_inline(tcpips->app, HAL_CMD(HAL_TCPIP, IPC_CLOSE), tcpips->eth_handle, 0, 0);
     tcpips_close_internal(tcpips);
 }
 
