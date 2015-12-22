@@ -60,8 +60,6 @@ void CRYPTO_cbc128_encrypt(const unsigned char *in, unsigned char *out,
     size_t n;
     const unsigned char *iv = ivec;
 
-///    assert(in && out && key && ivec);
-
     while (len) {
         for (n = 0; n < 16 && n < len; ++n)
             out[n] = in[n] ^ iv[n];
@@ -87,8 +85,6 @@ void CRYPTO_cbc128_decrypt(const unsigned char *in, unsigned char *out,
         size_t t[16 / sizeof(size_t)];
         unsigned char c[16];
     } tmp;
-
-///    assert(in && out && key && ivec);
 
     while (len) {
         unsigned char c;

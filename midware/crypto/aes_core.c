@@ -780,7 +780,6 @@ void AES_encrypt(const unsigned char *in, unsigned char *out,
     u32 s0, s1, s2, s3, t0, t1, t2, t3;
     int r;
 
-///    assert(in && out && key);
     rk = key->rd_key;
 
     /*
@@ -897,7 +896,6 @@ void AES_decrypt(const unsigned char *in, unsigned char *out,
     u32 s0, s1, s2, s3, t0, t1, t2, t3;
     int r;
 
-///    assert(in && out && key);
     rk = key->rd_key;
 
     /*
