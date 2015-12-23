@@ -8,6 +8,8 @@
 #include "../midware/http/hss.h"
 #include <string.h>
 
+extern const REX __HSS;
+
 HANDLE hs_create()
 {
     return process_create(&__HSS);

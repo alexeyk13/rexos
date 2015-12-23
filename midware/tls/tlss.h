@@ -4,9 +4,8 @@
     All rights reserved.
 */
 
-#ifndef HSS_H
-#define HSS_H
+#ifndef TLSS_H
+#define TLSS_H
 
-#include "../../userspace/process.h"
 
-#endif // HSS_H
+#endif // TLSS_H
