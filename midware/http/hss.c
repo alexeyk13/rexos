@@ -335,9 +335,6 @@ static inline HSS_SESSION* hss_create_session(HSS* hss)
     if (hss->session.conn != INVALID_HANDLE)
     {
         error(ERROR_TOO_MANY_HANDLES);
-#if (HS_DEBUG)
-        printf("HS: Too many connections\n");
-#endif //HS_DEBUG
         return NULL;
     }
     hss->session.state = HSS_SESSION_STATE_IDLE;

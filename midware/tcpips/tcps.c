@@ -373,16 +373,14 @@ static HANDLE tcps_create_tcb_internal(TCPIPS* tcpips, const IP* remote_addr, ui
 {
     TCP_TCB* tcb;
     HANDLE handle;
-#if (TCP_HANDLES_LIMIT)
-    if (so_count(&tcpips->tcps.tcbs) >= TCP_HANDLES_LIMIT)
+    if (so_count(&tcpips->tcps.tcbs) > TCP_HANDLES_LIMIT)
     {
         error(ERROR_TOO_MANY_HANDLES);
-#if (TCP_DEBUG_FLOW)
+#if (TCP_DEBUG)
         printf("TCP: Too many handles\n");
-#endif //TCP_DEBUG_FLOW
+#endif //TCP_DEBUG
         return INVALID_HANDLE;
     }
-#endif //TCP_HANDLES_LIMIT
     handle = so_allocate(&tcpips->tcps.tcbs);
     if (handle == INVALID_HANDLE)
         return handle;
