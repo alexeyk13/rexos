@@ -175,21 +175,101 @@ static inline void tlss_tcp_open(TLSS* tlss, HANDLE handle)
     tlss_rx(tlss);
 }
 
-static inline void tlss_tcp_read_complete(TLSS* tlss, HANDLE handle)
+static inline bool tlss_rx_change_cypher(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned short len)
 {
-    bool read_next;
-    TLS_RECORD_HEADER* rec;
+    printd("TODO: change cypher\n");
+    dump(data, len);
+    return false;
+}
+
+static inline bool tlss_rx_alert(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned short len)
+{
+    printd("TODO: alert\n");
+    dump(data, len);
+    return false;
+}
+
+static inline bool tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned short len)
+{
+    printd("TODO: ClientHello\n");
+    dump(data, len);
+    return false;
+}
+
+static inline bool tlss_rx_handshakes(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned short len)
+{
+    unsigned short offset, len_cur;
+    TLS_HANDSHAKE* handshake;
+    void* data_cur;
+    bool alert;
+    //iterate through handshake messages
+    for (offset = 0; offset < len; offset += len_cur + sizeof(TLS_HANDSHAKE))
+    {
+        if (len - offset < sizeof(TLS_HANDSHAKE))
+        {
+            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            return true;
+        }
+        handshake = (TLS_HANDSHAKE*)((uint8_t*)data + offset);
+        len_cur = be2short(handshake->message_length_be);
+        if ((len_cur + sizeof(TLS_HANDSHAKE) > len - offset) || (handshake->reserved))
+        {
+            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            return true;
+        }
+        data_cur = (uint8_t*)data + offset + sizeof(TLS_HANDSHAKE);
+        switch (handshake->message_type)
+        {
+        case TLS_HANDSHAKE_CLIENT_HELLO:
+            alert = tlss_rx_client_hello(tlss, tcb, data_cur, len_cur);
+            break;
+        //TODO: not sure about others this time
+//        TLS_HANDSHAKE_HELLO_REQUEST:
+//        TLS_HANDSHAKE_CLIENT_HELLO,
+//        TLS_HANDSHAKE_CERTIFICATE = 11,
+//        TLS_HANDSHAKE_SERVER_KEY_EXCHANGE,
+//        TLS_HANDSHAKE_CERTIFICATE_REQUEST,
+//        TLS_HANDSHAKE_SERVER_HELLO_DONE,
+//        TLS_HANDSHAKE_CERTIFICATE_VERIFY,
+//        TLS_HANDSHAKE_CLIENT_KEY_EXCHANGE,
+//        TLS_HANDSHAKE_FINISHED = 20
+        default:
+#if (TLS_DEBUG)
+            printf("TLS: unexpected handshake type: %d\n", handshake->message_type);
+#endif //TLS_DEBUG
+            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            alert = true;
+        }
+        if (alert)
+            return true;
+    }
+    return false;
+}
+
+static inline bool tlss_rx_app(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned short len)
+{
+    printd("TODO: app\n");
+    dump(data, len);
+    return false;
+}
+
+static inline void tlss_tcp_rx(TLSS* tlss, HANDLE handle)
+{
+    bool alert;
+    TLS_RECORD* rec;
     unsigned short len;
+    void* data;
     TLSS_TCB* tcb = tlss_tcb_find(tlss, handle);
-    read_next = false;
+    alert = true;
     do {
         //closed before
         if (tcb == NULL)
         {
-            read_next = true;
+            alert = false;
             break;
         }
-        if (tlss->io->data_size < sizeof(TLS_RECORD_HEADER))
+        //Empty records disabled by TLS
+        if (tlss->io->data_size <= sizeof(TLS_RECORD))
         {
             tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
             break;
@@ -202,23 +282,37 @@ static inline void tlss_tcp_read_complete(TLSS* tlss, HANDLE handle)
             break;
         }
         len = be2short(rec->record_length_be);
-        if (len > tlss->io->data_size - sizeof(TLS_RECORD_HEADER))
+        if (len > tlss->io->data_size - sizeof(TLS_RECORD))
         {
             tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
             break;
         }
-        tlss->io->data_size = len + sizeof(TLS_RECORD_HEADER);
+        data = (uint8_t*)io_data(tlss->io) + sizeof(TLS_RECORD);
+        //TODO: check state before
+        switch (rec->content_type)
+        {
+        case TLS_CONTENT_CHANGE_CYPHER:
+            alert = tlss_rx_change_cypher(tlss, tcb, data, len);
+            break;
+        case TLS_CONTENT_ALERT:
+            alert = tlss_rx_alert(tlss, tcb, data, len);
+            break;
+        case TLS_CONTENT_HANDSHAKE:
+            alert = tlss_rx_handshakes(tlss, tcb, data, len);
+            break;
+        case TLS_CONTENT_APP:
+            alert = tlss_rx_app(tlss, tcb, data, len);
+            break;
+        default:
+#if (TLS_DEBUG)
+            printf("TLS: unexpected message type: %d\n", rec->content_type);
+#endif //TLS_DEBUG
+            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        }
 
-
-
-
-        printd("TLS: RX\n");
-        dump(io_data(tlss->io), tlss->io->data_size);
-        ((char*)io_data(tlss->io))[tlss->io->data_size] = 0x00;
-        printd("TLS: data: %s\n", io_data(tlss->io));
-
+        //TODO: process after
     } while (false);
-    if (read_next)
+    if (!alert)
         tlss_rx(tlss);
 }
 
@@ -232,7 +326,7 @@ static inline void tlss_tcp_request(TLSS* tlss, IPC* ipc)
 ///    case IPC_CLOSE:
         //TODO:
     case IPC_READ:
-        tlss_tcp_read_complete(tlss, (HANDLE)ipc->param1);
+        tlss_tcp_rx(tlss, (HANDLE)ipc->param1);
         break;
 ///    case IPC_WRITE:
         //TODO:

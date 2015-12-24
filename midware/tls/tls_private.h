@@ -10,11 +10,24 @@
 #include <stdint.h>
 
 typedef enum {
-    TLS_CONTENT_TYPE_CHANGE_CYPHER = 20,
-    TLS_CONTENT_TYPE_ALERT,
-    TLS_CONTENT_TYPE_HANDSHAKE,
-    TLS_CONTENT_TYPE_APP
+    TLS_CONTENT_CHANGE_CYPHER = 20,
+    TLS_CONTENT_ALERT,
+    TLS_CONTENT_HANDSHAKE,
+    TLS_CONTENT_APP
 } TLS_CONTENT_TYPE;
+
+typedef enum {
+    TLS_HANDSHAKE_HELLO_REQUEST = 0,
+    TLS_HANDSHAKE_CLIENT_HELLO,
+    TLS_HANDSHAKE_SERVER_HELLO,
+    TLS_HANDSHAKE_CERTIFICATE = 11,
+    TLS_HANDSHAKE_SERVER_KEY_EXCHANGE,
+    TLS_HANDSHAKE_CERTIFICATE_REQUEST,
+    TLS_HANDSHAKE_SERVER_HELLO_DONE,
+    TLS_HANDSHAKE_CERTIFICATE_VERIFY,
+    TLS_HANDSHAKE_CLIENT_KEY_EXCHANGE,
+    TLS_HANDSHAKE_FINISHED = 20
+} TLS_HANDSHAKE_TYPE;
 
 typedef enum {
     TLS_ALERT_LEVEL_WARNING = 1,
@@ -60,13 +73,13 @@ typedef struct {
     uint8_t content_type;
     TLS_VERSION version;
     uint8_t record_length_be[2];
-} TLS_RECORD_HEADER;
+} TLS_RECORD;
 
 typedef struct {
     uint8_t message_type;
     uint8_t reserved;
     uint8_t message_length_be[2];
-} TLS_HANDSHAKE_HEADER;
+} TLS_HANDSHAKE;
 
 typedef struct {
     uint8_t alert_level;
