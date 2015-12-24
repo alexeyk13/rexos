@@ -1,0 +1,80 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2015, Alexey Kramarenko
+    All rights reserved.
+*/
+
+#ifndef TLS_PRIVATE_H
+#define TLS_PRIVATE_H
+
+#include <stdint.h>
+
+typedef enum {
+    TLS_CONTENT_TYPE_CHANGE_CYPHER = 20,
+    TLS_CONTENT_TYPE_ALERT,
+    TLS_CONTENT_TYPE_HANDSHAKE,
+    TLS_CONTENT_TYPE_APP
+} TLS_CONTENT_TYPE;
+
+typedef enum {
+    TLS_ALERT_LEVEL_WARNING = 1,
+    TLS_ALERT_LEVEL_FATAL
+} TLS_ALERT_LEVEL;
+
+typedef enum {
+    TLS_ALERT_CLOSE_NOTIFY,
+    TLS_ALERT_UNEXPECTED_MESSAGE = 10,
+    TLS_ALERT_BAD_RECORD_MAC = 20,
+    TLS_ALERT_DECRYPTION_FAILED,
+    TLS_ALERT_RECORD_OVERFLOW,
+    TLS_ALERT_DECOMPRESSION_FAILURE = 30,
+    TLS_ALERT_HANDSHAKE_FAILURE = 40,
+    TLS_ALERT_NO_CERTIFICATE,
+    TLS_ALERT_BAD_CERTIFICATE,
+    TLS_ALERT_UNSUPPORTED_CERTIFICATE,
+    TLS_ALERT_CERTIFICATE_REVOKED,
+    TLS_ALERT_CERTIFICATE_EXPIRED,
+    TLS_ALERT_CERTIFICATE_UNKNOWN,
+    TLS_ALERT_ILLEGAL_PARAMETER,
+    TLS_ALERT_UNKNOWN_CA,
+    TLS_ALERT_ACCESS_DENIED,
+    TLS_ALERT_DECODE_ERROR,
+    TLS_ALERT_DECRYPT_ERROR,
+    TLS_ALERT_EXPORT_RESTRICTION = 60,
+    TLS_ALERT_PROTOCOL_VERSION = 70,
+    TLS_ALERT_INSUFFICIENT_SECURITY,
+    TLS_ALERT_INTERNAL_ERROR = 80,
+    TLS_ALERT_USER_CANCELLED = 90,
+    TLS_ALERT_NO_RENEGOTIATION = 100,
+    TLS_ALERT_UNSUPPORTED_EXTENSION = 110
+} TLS_ALERT_DESCRIPTION;
+
+#pragma pack(push, 1)
+
+typedef struct {
+    uint8_t major;
+    uint8_t minor;
+} TLS_VERSION;
+
+typedef struct {
+    uint8_t content_type;
+    TLS_VERSION version;
+    uint8_t record_length_be[2];
+} TLS_RECORD_HEADER;
+
+typedef struct {
+    uint8_t message_type;
+    uint8_t reserved;
+    uint8_t message_length_be[2];
+} TLS_HANDSHAKE_HEADER;
+
+typedef struct {
+    uint8_t alert_level;
+    uint8_t alert_description;
+} TLS_ALERT;
+
+#pragma pack(pop)
+
+
+
+#endif // TLS_PRIVATE_H
