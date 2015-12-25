@@ -1309,6 +1309,24 @@ static void tlss_print_cipher_suite(uint16_t cypher_suite)
         printf("{%#02X, %#02X}\n", (cypher_suite >> 8) & 0xff, cypher_suite & 0xff);
 }
 
+static void tlss_print_compression_method(uint8_t compression_method)
+{
+    switch (compression_method)
+    {
+    case TLS_COMPRESSION_NULL:
+        printf("NULL\n");
+        break;
+    case TLS_COMPRESSION_DEFLATE:
+        printf("DEFLATE\n");
+        break;
+    case TLS_COMPRESSION_LZS:
+        printf("LZS\n");
+        break;
+    default:
+        printf("%#02X\n", compression_method);
+    }
+}
+
 #endif //TLS_DEBUG_REQUESTS
 
 static HANDLE tlss_create_tcb(TLSS* tlss, HANDLE handle)
@@ -1454,9 +1472,11 @@ static inline bool tlss_rx_alert(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned
 static inline bool tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned short len)
 {
     int i;
-    unsigned short crypto_len;
-    uint16_t cypher_suite;
-    uint8_t* crypto;
+    unsigned short cipher_suites_len;
+    uint8_t compression_len;
+    uint16_t tmp;
+    uint8_t* cipher_suites;
+    uint8_t* compression;
     TLS_CLIENT_HELLO* hello = data;
     //1. Check state and clientHello header size
     if ((tcb->state != TLSS_STATE_CLIENT_HELLO) || (len < sizeof(TLS_CLIENT_HELLO)))
@@ -1489,25 +1509,28 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     }
     data += hello->session_id_length;
     len -= hello->session_id_length;
-    //5. decode cypher suites and apply
-    crypto_len = be2short(data);
+    //5. Decode cypher suites and apply
+    cipher_suites_len = be2short(data);
     data += 2;
     len -= 2;
-    //also byte for encryption len
-    if (len <= crypto_len)
+    //also byte for compression len
+    if (len <= cipher_suites_len)
     {
         tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
         return true;
     }
-    crypto = data;
-    data += crypto_len;
-    len -= crypto_len;
-    for (i = 0; i < crypto_len; i += 2)
+    cipher_suites = data;
+    data += cipher_suites_len;
+    len -= cipher_suites_len;
+    for (i = 0; i < cipher_suites_len; i += 2)
     {
-        cypher_suite = be2short(crypto + i);
+        tmp = be2short(cipher_suites + i);
         //Only one cypher suite supported for now
-        if (cypher_suite == TLS_RSA_WITH_AES_128_CBC_SHA)
-            tcb->cipher_suite = cypher_suite;
+        if (tmp == TLS_RSA_WITH_AES_128_CBC_SHA)
+        {
+            tcb->cipher_suite = tmp;
+            break;
+        }
     }
     if (tcb->cipher_suite == TLS_NULL_WITH_NULL_NULL)
     {
@@ -1517,8 +1540,37 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
         tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_HANDSHAKE_FAILURE);
         return true;
     }
+    //6. Decode and check compression
+    compression_len = *((uint8_t*)data);
+    ++data;
+    --len;
+    if (len < compression_len)
+    {
+        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        return true;
+    }
+    compression = data;
+    data += compression_len;
+    len -= compression_len;
+    tmp = 0xffff;
+    for (i = 0; i < compression_len; ++i)
+    {
+        //no compression supported for now
+        if (compression[i] == TLS_COMPRESSION_NULL)
+        {
+            tmp = compression[i];
+            break;
+        }
+    }
+    if (tmp == 0xffff)
+    {
+#if (TLS_DEBUG)
+        printf("TLS: Supported compression method not found\n");
+#endif //TLS_DEBUG_REQUESTS
+        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_HANDSHAKE_FAILURE);
+        return true;
+    }
 
-    //TODO: decode encryption
     //TODO: decode extensions
     tcb->state = TLSS_STATE_SERVER_HELLO;
     dump(data, len);
@@ -1538,12 +1590,19 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
         tlss_dump((uint8_t*)hello + sizeof(TLS_CLIENT_HELLO), hello->session_id_length);
     printf("\n");
     printf("Cypher suites: \n");
-    for (i = 0; i < crypto_len; i += 2)
+    for (i = 0; i < cipher_suites_len; i += 2)
     {
-        cypher_suite = be2short(crypto + i);
-        if (cypher_suite == tcb->cipher_suite)
+        tmp = be2short(cipher_suites + i);
+        if (tmp == tcb->cipher_suite)
             printf("*");
-        tlss_print_cipher_suite(cypher_suite);
+        tlss_print_cipher_suite(tmp);
+    }
+    printf("Compression methods:\n");
+    for (i = 0; i < compression_len; ++i)
+    {
+        if (compression[i] == TLS_COMPRESSION_NULL)
+            printf("*");
+        tlss_print_compression_method(i);
     }
 #endif //TLS_DEBUG_REQUESTS
     return false;

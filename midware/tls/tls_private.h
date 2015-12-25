@@ -329,6 +329,10 @@
 #define TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8                          0xC0AE
 #define TLS_ECDHE_ECDSA_WITH_AES_256_CCM_8                          0xC0AF
 
+#define TLS_COMPRESSION_NULL                                        0
+#define TLS_COMPRESSION_DEFLATE                                     1
+#define TLS_COMPRESSION_LZS                                         64
+
 typedef enum {
     TLS_PROTOCOL_VERSION_UNSUPPORTED = 0,
     TLS_PROTOCOL_1_0,
