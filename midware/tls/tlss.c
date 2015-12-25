@@ -26,12 +26,13 @@ typedef enum {
 } TLSS_STATE;
 
 typedef struct {
-    TLS_PROTOCOL_VERSION version;
-    TLS_RANDOM client_random;
     HANDLE handle;
     IO* rx;
     IO* tx;
+    TLS_RANDOM client_random;
+    TLS_PROTOCOL_VERSION version;
     TLSS_STATE state;
+    uint16_t cipher_suite;
 } TLSS_TCB;
 
 typedef struct {
@@ -1325,6 +1326,7 @@ static HANDLE tlss_create_tcb(TLSS* tlss, HANDLE handle)
     tcb->rx = tcb->tx = NULL;
     tcb->state = TLSS_STATE_CLIENT_HELLO;
     tcb->version = TLS_PROTOCOL_VERSION_UNSUPPORTED;
+    tcb->cipher_suite = TLS_NULL_WITH_NULL_NULL;
     memset(&tcb->client_random, 0x00, sizeof(TLS_RANDOM));
     return tcb_handle;
 }
@@ -1453,6 +1455,7 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
 {
     int i;
     unsigned short crypto_len;
+    uint16_t cypher_suite;
     uint8_t* crypto;
     TLS_CLIENT_HELLO* hello = data;
     //1. Check state and clientHello header size
@@ -1464,10 +1467,10 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     //2. Check protocol version
     if ((hello->version.major < 3) || (hello->version.minor < 1))
     {
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_PROTOCOL_VERSION);
 #if (TLS_DEBUG)
         printf("TLS: Protocol version too old\n");
 #endif //TLS_DEBUG_REQUESTS
+        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_PROTOCOL_VERSION);
         return true;
     }
     if ((hello->version.major > 3) || (hello->version.minor > 3))
@@ -1501,8 +1504,20 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     len -= crypto_len;
     for (i = 0; i < crypto_len; i += 2)
     {
-        //TODO:
+        cypher_suite = be2short(crypto + i);
+        //Only one cypher suite supported for now
+        if (cypher_suite == TLS_RSA_WITH_AES_128_CBC_SHA)
+            tcb->cipher_suite = cypher_suite;
     }
+    if (tcb->cipher_suite == TLS_NULL_WITH_NULL_NULL)
+    {
+#if (TLS_DEBUG)
+        printf("TLS: Supported cipher suite not found\n");
+#endif //TLS_DEBUG_REQUESTS
+        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_HANDSHAKE_FAILURE);
+        return true;
+    }
+
     //TODO: decode encryption
     //TODO: decode extensions
     tcb->state = TLSS_STATE_SERVER_HELLO;
@@ -1524,7 +1539,12 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     printf("\n");
     printf("Cypher suites: \n");
     for (i = 0; i < crypto_len; i += 2)
-        tlss_print_cipher_suite(be2short(crypto + i));
+    {
+        cypher_suite = be2short(crypto + i);
+        if (cypher_suite == tcb->cipher_suite)
+            printf("*");
+        tlss_print_cipher_suite(cypher_suite);
+    }
 #endif //TLS_DEBUG_REQUESTS
     return false;
 }
