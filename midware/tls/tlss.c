@@ -4,7 +4,6 @@
     All rights reserved.
 */
 
-#include "tlss.h"
 #include "tls_private.h"
 #include "sys_config.h"
 #include "../../userspace/process.h"
@@ -14,6 +13,7 @@
 #include "../../userspace/so.h"
 #include "../../userspace/tcp.h"
 #include "../../userspace/endian.h"
+#include <string.h>
 
 void tlss_main();
 
@@ -26,6 +26,8 @@ typedef enum {
 } TLSS_STATE;
 
 typedef struct {
+    TLS_PROTOCOL_VERSION version;
+    TLS_RANDOM client_random;
     HANDLE handle;
     IO* rx;
     IO* tx;
@@ -36,8 +38,8 @@ typedef struct {
     HANDLE tcpip, user;
     IO* io;
     IO* tx;
-    bool tx_busy;
     SO tcbs;
+    bool tx_busy;
 } TLSS;
 
 const REX __TLSS = {
@@ -53,6 +55,361 @@ const REX __TLSS = {
     tlss_main
 };
 
+#if (TLS_DEBUG_REQUESTS)
+typedef enum {
+    TLS_KEY_EXCHANGE_NULL,
+    TLS_KEY_EXCHANGE_RSA,
+    TLS_KEY_EXCHANGE_DH_DSS,
+    TLS_KEY_EXCHANGE_DH_RSA,
+    TLS_KEY_EXCHANGE_DHE_DSS,
+    TLS_KEY_EXCHANGE_DHE_RSA,
+    TLS_KEY_EXCHANGE_DH_anon,
+    TLS_KEY_EXCHANGE_KRB5,
+    TLS_KEY_EXCHANGE_PSK,
+    TLS_KEY_EXCHANGE_DHE_PSK,
+    TLS_KEY_EXCHANGE_RSA_PSK,
+    TLS_KEY_EXCHANGE_UNKNOWN
+} TLS_KEY_EXCHANGE;
+
+typedef enum {
+    TLS_CIPHER_NULL,
+    TLS_CIPHER_RC4_40,
+    TLS_CIPHER_RC4_128,
+    TLS_CIPHER_RC2_CBC_40,
+    TLS_CIPHER_IDEA_CBC,
+    TLS_CIPHER_DES40_CBC,
+    TLS_CIPHER_DES_CBC_40,
+    TLS_CIPHER_DES_CBC,
+    TLS_CIPHER_3DES_EDE_CBC,
+    TLS_CIPHER_AES_128_CBC,
+    TLS_CIPHER_AES_256_CBC,
+    TLS_CIPHER_UNKNOWN
+} TLS_CIPHER;
+
+typedef enum {
+    TLS_HASH_NULL,
+    TLS_HASH_MD5,
+    TLS_HASH_SHA,
+    TLS_HASH_UNKNOWN
+} TLS_HASH;
+
+static const char* const __TLS_KEY_ECHANGE[] =                     {"NULL",
+                                                                    "RSA",
+                                                                    "DH_DSS",
+                                                                    "DH_RSA",
+                                                                    "DHE_DSS",
+                                                                    "DHE_RSA",
+                                                                    "DH_anon",
+                                                                    "KRB5",
+                                                                    "PSK",
+                                                                    "DHE_PSK",
+                                                                    "RSA_PSK"};
+
+
+static const char* const __TLS_CIPHER[] =                          {"NULL",
+                                                                    "RC4_40",
+                                                                    "RC4_128",
+                                                                    "RC2_CBC_40",
+                                                                    "IDEA_CBC",
+                                                                    "DES40_CBC",
+                                                                    "DES_CBC_40",
+                                                                    "DES_CBC",
+                                                                    "3DES_EDE_CBC",
+                                                                    "AES_128_CBC",
+                                                                    "AES_256_CBC"};
+
+static const char* const __TLS_HASH[] =                            {"NULL",
+                                                                    "MD5",
+                                                                    "SHA"};
+
+static void tlss_dump(void* data, unsigned int len)
+{
+    int i;
+    for (i = 0; i < len; ++i)
+        printf("%02x", ((uint8_t*)data)[i]);
+}
+
+static void tlss_print_cipher_suite(uint16_t cypher_suite)
+{
+    TLS_KEY_EXCHANGE key_echange;
+    TLS_CIPHER cipher;
+    TLS_HASH hash;
+    bool exported;
+
+    switch (cypher_suite)
+    {
+    case TLS_RSA_EXPORT_WITH_RC4_40_MD5:
+    case TLS_RSA_EXPORT_WITH_RC2_CBC_40_MD5:
+    case TLS_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_DSS_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_anon_EXPORT_WITH_RC4_40_MD5:
+    case TLS_DH_anon_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_KRB5_EXPORT_WITH_DES_CBC_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_RC2_CBC_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_RC4_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_DES_CBC_40_MD5:
+    case TLS_KRB5_EXPORT_WITH_RC2_CBC_40_MD5:
+    case TLS_KRB5_EXPORT_WITH_RC4_40_MD5:
+        exported = true;
+        break;
+    default:
+        exported = false;
+    }
+
+    switch (cypher_suite)
+    {
+    case TLS_NULL_WITH_NULL_NULL:
+        key_echange = TLS_KEY_EXCHANGE_NULL;
+        break;
+    case TLS_RSA_WITH_NULL_MD5:
+    case TLS_RSA_WITH_NULL_SHA:
+    case TLS_RSA_WITH_RC4_128_MD5:
+    case TLS_RSA_WITH_RC4_128_SHA:
+    case TLS_RSA_WITH_IDEA_CBC_SHA:
+    case TLS_RSA_WITH_DES_CBC_SHA:
+    case TLS_RSA_WITH_3DES_EDE_CBC_SHA:
+    case TLS_RSA_WITH_AES_128_CBC_SHA:
+    case TLS_RSA_WITH_AES_256_CBC_SHA:
+    case TLS_RSA_EXPORT_WITH_RC4_40_MD5:
+    case TLS_RSA_EXPORT_WITH_RC2_CBC_40_MD5:
+    case TLS_RSA_EXPORT_WITH_DES40_CBC_SHA:
+        key_echange = TLS_KEY_EXCHANGE_RSA;
+        break;
+    case TLS_DH_DSS_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_DSS_WITH_DES_CBC_SHA:
+    case TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DH_DSS_WITH_AES_128_CBC_SHA:
+    case TLS_DH_DSS_WITH_AES_256_CBC_SHA:
+        key_echange = TLS_KEY_EXCHANGE_DH_DSS;
+        break;
+    case TLS_DH_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_RSA_WITH_DES_CBC_SHA:
+    case TLS_DH_RSA_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DH_RSA_WITH_AES_128_CBC_SHA:
+    case TLS_DH_RSA_WITH_AES_256_CBC_SHA:
+        key_echange = TLS_KEY_EXCHANGE_DH_RSA;
+        break;
+    case TLS_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DHE_DSS_WITH_DES_CBC_SHA:
+    case TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DHE_DSS_WITH_AES_128_CBC_SHA:
+    case TLS_DHE_DSS_WITH_AES_256_CBC_SHA:
+        key_echange = TLS_KEY_EXCHANGE_DHE_DSS;
+        break;
+    case TLS_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DHE_RSA_WITH_DES_CBC_SHA:
+    case TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DHE_RSA_WITH_AES_128_CBC_SHA:
+    case TLS_DHE_RSA_WITH_AES_256_CBC_SHA:
+        key_echange = TLS_KEY_EXCHANGE_DHE_RSA;
+        break;
+    case TLS_DH_anon_EXPORT_WITH_RC4_40_MD5:
+    case TLS_DH_anon_WITH_RC4_128_MD5:
+    case TLS_DH_anon_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_anon_WITH_DES_CBC_SHA:
+    case TLS_DH_anon_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DH_anon_WITH_AES_128_CBC_SHA:
+    case TLS_DH_anon_WITH_AES_256_CBC_SHA:
+        key_echange = TLS_KEY_EXCHANGE_DH_anon;
+        break;
+    case TLS_KRB5_WITH_DES_CBC_SHA:
+    case TLS_KRB5_WITH_3DES_EDE_CBC_SHA:
+    case TLS_KRB5_WITH_RC4_128_SHA:
+    case TLS_KRB5_WITH_IDEA_CBC_SHA:
+    case TLS_KRB5_WITH_DES_CBC_MD5:
+    case TLS_KRB5_WITH_3DES_EDE_CBC_MD5:
+    case TLS_KRB5_WITH_RC4_128_MD5:
+    case TLS_KRB5_WITH_IDEA_CBC_MD5:
+    case TLS_KRB5_EXPORT_WITH_DES_CBC_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_RC2_CBC_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_RC4_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_DES_CBC_40_MD5:
+    case TLS_KRB5_EXPORT_WITH_RC2_CBC_40_MD5:
+    case TLS_KRB5_EXPORT_WITH_RC4_40_MD5:
+        key_echange = TLS_KEY_EXCHANGE_KRB5;
+        break;
+    case TLS_PSK_WITH_NULL_SHA:
+        key_echange = TLS_KEY_EXCHANGE_PSK;
+        break;
+    case TLS_DHE_PSK_WITH_NULL_SHA:
+        key_echange = TLS_KEY_EXCHANGE_DHE_PSK;
+        break;
+    case TLS_RSA_PSK_WITH_NULL_SHA:
+        key_echange = TLS_KEY_EXCHANGE_RSA_PSK;
+        break;
+    default:
+        key_echange = TLS_KEY_EXCHANGE_UNKNOWN;
+    }
+
+    switch (cypher_suite)
+    {
+    case TLS_NULL_WITH_NULL_NULL:
+    case TLS_RSA_WITH_NULL_MD5:
+    case TLS_RSA_WITH_NULL_SHA:
+    case TLS_PSK_WITH_NULL_SHA:
+    case TLS_DHE_PSK_WITH_NULL_SHA:
+    case TLS_RSA_PSK_WITH_NULL_SHA:
+        cipher = TLS_CIPHER_NULL;
+        break;
+    case TLS_RSA_EXPORT_WITH_RC4_40_MD5:
+    case TLS_DH_anon_EXPORT_WITH_RC4_40_MD5:
+    case TLS_KRB5_EXPORT_WITH_RC4_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_RC4_40_MD5:
+        cipher = TLS_CIPHER_RC4_40;
+        break;
+    case TLS_RSA_WITH_RC4_128_MD5:
+    case TLS_RSA_WITH_RC4_128_SHA:
+    case TLS_DH_anon_WITH_RC4_128_MD5:
+    case TLS_KRB5_WITH_RC4_128_SHA:
+    case TLS_KRB5_WITH_RC4_128_MD5:
+        cipher = TLS_CIPHER_RC4_128;
+        break;
+    case TLS_RSA_EXPORT_WITH_RC2_CBC_40_MD5:
+    case TLS_KRB5_EXPORT_WITH_RC2_CBC_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_RC2_CBC_40_MD5:
+        cipher = TLS_CIPHER_RC2_CBC_40;
+        break;
+    case TLS_RSA_WITH_IDEA_CBC_SHA:
+    case TLS_KRB5_WITH_IDEA_CBC_SHA:
+    case TLS_KRB5_WITH_IDEA_CBC_MD5:
+        cipher = TLS_CIPHER_IDEA_CBC;
+        break;
+    case TLS_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_DSS_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_anon_EXPORT_WITH_DES40_CBC_SHA:
+        cipher = TLS_CIPHER_DES40_CBC;
+        break;
+    case TLS_KRB5_EXPORT_WITH_DES_CBC_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_DES_CBC_40_MD5:
+        cipher = TLS_CIPHER_DES_CBC_40;
+        break;
+    case TLS_RSA_WITH_DES_CBC_SHA:
+    case TLS_DH_DSS_WITH_DES_CBC_SHA:
+    case TLS_DH_RSA_WITH_DES_CBC_SHA:
+    case TLS_DHE_DSS_WITH_DES_CBC_SHA:
+    case TLS_DHE_RSA_WITH_DES_CBC_SHA:
+    case TLS_DH_anon_WITH_DES_CBC_SHA:
+    case TLS_KRB5_WITH_DES_CBC_SHA:
+    case TLS_KRB5_WITH_DES_CBC_MD5:
+        cipher = TLS_CIPHER_DES_CBC;
+        break;
+    case TLS_RSA_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DH_RSA_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DH_anon_WITH_3DES_EDE_CBC_SHA:
+    case TLS_KRB5_WITH_3DES_EDE_CBC_SHA:
+    case TLS_KRB5_WITH_3DES_EDE_CBC_MD5:
+        cipher = TLS_CIPHER_3DES_EDE_CBC;
+        break;
+    case TLS_RSA_WITH_AES_128_CBC_SHA:
+    case TLS_DH_DSS_WITH_AES_128_CBC_SHA:
+    case TLS_DH_RSA_WITH_AES_128_CBC_SHA:
+    case TLS_DHE_DSS_WITH_AES_128_CBC_SHA:
+    case TLS_DHE_RSA_WITH_AES_128_CBC_SHA:
+    case TLS_DH_anon_WITH_AES_128_CBC_SHA:
+        cipher = TLS_CIPHER_AES_128_CBC;
+        break;
+    case TLS_RSA_WITH_AES_256_CBC_SHA:
+    case TLS_DH_DSS_WITH_AES_256_CBC_SHA:
+    case TLS_DH_RSA_WITH_AES_256_CBC_SHA:
+    case TLS_DHE_DSS_WITH_AES_256_CBC_SHA:
+    case TLS_DHE_RSA_WITH_AES_256_CBC_SHA:
+    case TLS_DH_anon_WITH_AES_256_CBC_SHA:
+        cipher = TLS_CIPHER_AES_256_CBC;
+        break;
+    default:
+        cipher = TLS_CIPHER_UNKNOWN;
+    }
+
+    switch (cypher_suite)
+    {
+    case TLS_NULL_WITH_NULL_NULL:
+        hash = TLS_HASH_NULL;
+        break;
+    case TLS_RSA_WITH_NULL_MD5:
+    case TLS_RSA_EXPORT_WITH_RC4_40_MD5:
+    case TLS_RSA_WITH_RC4_128_MD5:
+    case TLS_RSA_EXPORT_WITH_RC2_CBC_40_MD5:
+    case TLS_DH_anon_EXPORT_WITH_RC4_40_MD5:
+    case TLS_DH_anon_WITH_RC4_128_MD5:
+    case TLS_KRB5_WITH_DES_CBC_MD5:
+    case TLS_KRB5_WITH_3DES_EDE_CBC_MD5:
+    case TLS_KRB5_WITH_RC4_128_MD5:
+    case TLS_KRB5_WITH_IDEA_CBC_MD5:
+    case TLS_KRB5_EXPORT_WITH_DES_CBC_40_MD5:
+    case TLS_KRB5_EXPORT_WITH_RC2_CBC_40_MD5:
+    case TLS_KRB5_EXPORT_WITH_RC4_40_MD5:
+        hash = TLS_HASH_MD5;
+        break;
+    case TLS_RSA_WITH_NULL_SHA:
+    case TLS_RSA_WITH_RC4_128_SHA:
+    case TLS_RSA_WITH_IDEA_CBC_SHA:
+    case TLS_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_RSA_WITH_DES_CBC_SHA:
+    case TLS_RSA_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DH_DSS_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_DSS_WITH_DES_CBC_SHA:
+    case TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DH_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_RSA_WITH_DES_CBC_SHA:
+    case TLS_DH_RSA_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DHE_DSS_WITH_DES_CBC_SHA:
+    case TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DHE_RSA_WITH_DES_CBC_SHA:
+    case TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA:
+    case TLS_DH_anon_EXPORT_WITH_DES40_CBC_SHA:
+    case TLS_DH_anon_WITH_DES_CBC_SHA:
+    case TLS_DH_anon_WITH_3DES_EDE_CBC_SHA:
+    case TLS_KRB5_WITH_DES_CBC_SHA:
+    case TLS_KRB5_WITH_3DES_EDE_CBC_SHA:
+    case TLS_KRB5_WITH_RC4_128_SHA:
+    case TLS_KRB5_WITH_IDEA_CBC_SHA:
+    case TLS_KRB5_EXPORT_WITH_DES_CBC_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_RC2_CBC_40_SHA:
+    case TLS_KRB5_EXPORT_WITH_RC4_40_SHA:
+    case TLS_PSK_WITH_NULL_SHA:
+    case TLS_DHE_PSK_WITH_NULL_SHA:
+    case TLS_RSA_PSK_WITH_NULL_SHA:
+    case TLS_RSA_WITH_AES_128_CBC_SHA:
+    case TLS_DH_DSS_WITH_AES_128_CBC_SHA:
+    case TLS_DH_RSA_WITH_AES_128_CBC_SHA:
+    case TLS_DHE_DSS_WITH_AES_128_CBC_SHA:
+    case TLS_DHE_RSA_WITH_AES_128_CBC_SHA:
+    case TLS_DH_anon_WITH_AES_128_CBC_SHA:
+    case TLS_RSA_WITH_AES_256_CBC_SHA:
+    case TLS_DH_DSS_WITH_AES_256_CBC_SHA:
+    case TLS_DH_RSA_WITH_AES_256_CBC_SHA:
+    case TLS_DHE_DSS_WITH_AES_256_CBC_SHA:
+    case TLS_DHE_RSA_WITH_AES_256_CBC_SHA:
+    case TLS_DH_anon_WITH_AES_256_CBC_SHA:
+        hash = TLS_HASH_SHA;
+        break;
+    default:
+        hash = TLS_HASH_UNKNOWN;
+    }
+    if (key_echange != TLS_KEY_EXCHANGE_UNKNOWN)
+    {
+        printf("TLS_%s_", __TLS_KEY_ECHANGE[key_echange]);
+        if (exported)
+            printf("EXPORT_");
+        printf("WITH_%s_%s\n", __TLS_CIPHER[cipher], __TLS_HASH[hash]);
+    }
+    else
+        printf("{%#02X, %#02X}\n", (cypher_suite >> 8) & 0xff, cypher_suite & 0xff);
+}
+
+#endif //TLS_DEBUG_REQUESTS
+
 static HANDLE tlss_create_tcb(TLSS* tlss, HANDLE handle)
 {
     TLSS_TCB* tcb;
@@ -67,6 +424,8 @@ static HANDLE tlss_create_tcb(TLSS* tlss, HANDLE handle)
     tcb->handle = handle;
     tcb->rx = tcb->tx = NULL;
     tcb->state = TLSS_STATE_CLIENT_HELLO;
+    tcb->version = TLS_PROTOCOL_VERSION_UNSUPPORTED;
+    memset(&tcb->client_random, 0x00, sizeof(TLS_RANDOM));
     return tcb_handle;
 }
 
@@ -113,6 +472,7 @@ static inline void tlss_init(TLSS* tlss)
     tlss->io = NULL;
     tlss->tx = NULL;
     tlss->tx_busy = false;
+    //relative time will be set on first clientHello request
     so_create(&tlss->tcbs, sizeof(TLSS_TCB), 1);
 }
 
@@ -191,8 +551,81 @@ static inline bool tlss_rx_alert(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned
 
 static inline bool tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned short len)
 {
-    printd("TODO: ClientHello\n");
+    int i;
+    unsigned short crypto_len;
+    uint8_t* crypto;
+    TLS_CLIENT_HELLO* hello = data;
+    //1. Check state and clientHello header size
+    if ((tcb->state != TLSS_STATE_CLIENT_HELLO) || (len < sizeof(TLS_CLIENT_HELLO)))
+    {
+        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        return true;
+    }
+    //2. Check protocol version
+    if ((hello->version.major < 3) || (hello->version.minor < 1))
+    {
+        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_PROTOCOL_VERSION);
+#if (TLS_DEBUG)
+        printf("TLS: Protocol version too old\n");
+#endif //TLS_DEBUG_REQUESTS
+        return true;
+    }
+    if ((hello->version.major > 3) || (hello->version.minor > 3))
+        tcb->version = TLS_PROTOCOL_1_2;
+    else
+        tcb->version = (TLS_PROTOCOL_VERSION)hello->version.minor;
+    //3. Copy random
+    memcpy(&tcb->client_random, &hello->random, sizeof(TLS_RANDOM));
+    //4. Ignore session, just check size
+    data += sizeof(TLS_CLIENT_HELLO);
+    len -= sizeof(TLS_CLIENT_HELLO);
+    if (len < hello->session_id_length + 2)
+    {
+        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        return true;
+    }
+    data += hello->session_id_length;
+    len -= hello->session_id_length;
+    //5. decode cypher suites and apply
+    crypto_len = be2short(data);
+    data += 2;
+    len -= 2;
+    //also byte for encryption len
+    if (len <= crypto_len)
+    {
+        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        return true;
+    }
+    crypto = data;
+    data += crypto_len;
+    len -= crypto_len;
+    for (i = 0; i < crypto_len; i += 2)
+    {
+        //TODO:
+    }
+    //TODO: decode encryption
+    //TODO: decode extensions
+    tcb->state = TLSS_STATE_SERVER_HELLO;
     dump(data, len);
+    sleep_ms(100);
+#if (TLS_DEBUG_REQUESTS)
+    printf("TLS: clientHello\n");
+    printf("Protocol version: %d.%d\n", hello->version.major - 2, hello->version.minor - 1);
+    printf("Client random: ");
+    tlss_dump(hello->random.gmt_unix_time_be, sizeof(uint32_t));
+    printf(" ");
+    tlss_dump(hello->random.random_bytes, TLS_RANDOM_SIZE);
+    printf("\n");
+    printf("Session ID: ");
+    if (hello->session_id_length == 0)
+        printf("NULL");
+    else
+        tlss_dump((uint8_t*)hello + sizeof(TLS_CLIENT_HELLO), hello->session_id_length);
+    printf("\n");
+    printf("Cypher suites: \n");
+    for (i = 0; i < crypto_len; i += 2)
+        tlss_print_cipher_suite(be2short(crypto + i));
+#endif //TLS_DEBUG_REQUESTS
     return false;
 }
 
@@ -404,6 +837,7 @@ void tlss_main()
 #if (TLS_DEBUG)
     open_stdout();
 #endif //HS_DEBUG
+
     for (;;)
     {
         ipc_read(&ipc);

@@ -23,6 +23,8 @@
 
 //01.01.2015
 #define EPOCH_DATE                          735598
+//01.01.1970
+#define UNIX_EPOCH_DATE                     719162
 
 typedef struct {
     long day;                               //!< day since 01.01.0000 AD. BC is negative: 31.12.-1 is -1
