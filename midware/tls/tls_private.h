@@ -428,7 +428,7 @@ typedef struct {
     TLS_VERSION version;
     TLS_RANDOM random;
     uint8_t session_id_length;
-} TLS_CLIENT_HELLO;
+} TLS_HELLO;
 
 #pragma pack(pop)
 
