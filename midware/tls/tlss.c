@@ -1381,9 +1381,51 @@ static inline void tlss_generate_random_request(TLSS* tlss, HANDLE tcb_handle)
     io_read(tlss->owner, HAL_IO_REQ(HAL_TLS, TLS_GENERATE_RANDOM), tcb_handle, tlss->io, sizeof(TLS_RANDOM));
 }
 
-static inline void tlss_server_hello(TLSS* tlss, TLSS_TCB* tcb)
+static void tlss_allocate_record(TLSS* tlss, TLSS_TCB* tcb, TLS_CONTENT_TYPE content_type)
 {
-    tlss_dump(&tcb->server_random, sizeof(TLS_RANDOM));
+    TLS_RECORD* rec;
+    io_reset(tlss->io);
+    rec = io_data(tlss->io);
+    rec->content_type = content_type;
+    rec->version.major = 3;
+    rec->version.minor = (uint8_t)tcb->version;
+    short2be(rec->record_length_be, 0);
+    tlss->io->data_size = sizeof(TLS_RECORD);
+}
+
+//TODO: tlss_send_record
+
+static void tlss_append_server_hello(TLSS* tlss, TLSS_TCB* tcb)
+{
+    TLS_HANDSHAKE* handshake;
+    TLS_HELLO* hello;
+
+    unsigned short len = sizeof(TLS_HANDSHAKE);
+    handshake = (TLS_HANDSHAKE*)((uint8_t*)io_data(tlss->io) + tlss->io->data_size);
+    handshake->message_type = TLS_HANDSHAKE_SERVER_HELLO;
+    handshake->reserved = 0;
+    short2be(handshake->message_length_be, 0);
+
+    hello = (TLS_HELLO*)((uint8_t*)io_data(tlss->io) + tlss->io->data_size + len);
+    hello->version.major = 3;
+    hello->version.minor = (uint8_t)tcb->version;
+    memcpy(&hello->random, &tcb->server_random, sizeof(TLS_RANDOM));
+    //always NULL session id
+    hello->session_id_length = 0;
+
+    //TODO: cipher suite
+    //TODO: compression
+    //No extensions
+    //TODO: update len at end
+    //TODO: debug info
+}
+
+static inline void tlss_tx_server_hello(TLSS* tlss, TLSS_TCB* tcb)
+{
+    tlss_allocate_record(tlss, tcb, TLS_CONTENT_HANDSHAKE);
+    tlss_append_server_hello(tlss, tcb);
+    //TODO:!!!
+    dump(io_data(tlss->io), tlss->io->data_size);
     printf("\nTODO: server hello\n");
 }
 
@@ -1409,7 +1451,7 @@ static void tlss_process(TLSS* tlss)
         tlss_generate_random_request(tlss, tcb_handle);
         break;
     case TLSS_STATE_SERVER_HELLO:
-        tlss_server_hello(tlss, tcb);
+        tlss_tx_server_hello(tlss, tcb);
         break;
     default:
         printf("TLSS TODO: process %d\n", tcb->state);
@@ -1691,9 +1733,6 @@ static inline bool tlss_rx_handshakes(TLSS* tlss, TLSS_TCB* tcb, void* data, uns
             answered = tlss_rx_client_hello(tlss, tcb, data_cur, len_cur);
             break;
         //TODO: not sure about others this time
-//        TLS_HANDSHAKE_HELLO_REQUEST:
-//        TLS_HANDSHAKE_CERTIFICATE = 11,
-//        TLS_HANDSHAKE_SERVER_KEY_EXCHANGE,
 //        TLS_HANDSHAKE_CERTIFICATE_REQUEST,
 //        TLS_HANDSHAKE_CERTIFICATE_VERIFY,
 //        TLS_HANDSHAKE_CLIENT_KEY_EXCHANGE,
