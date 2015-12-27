@@ -341,7 +341,7 @@ typedef enum {
 } TLS_PROTOCOL_VERSION;
 
 typedef enum {
-    TLS_CONTENT_CHANGE_CYPHER = 20,
+    TLS_CONTENT_CHANGE_CIPHER = 20,
     TLS_CONTENT_ALERT,
     TLS_CONTENT_HANDSHAKE,
     TLS_CONTENT_APP
@@ -359,6 +359,8 @@ typedef enum {
     TLS_HANDSHAKE_CLIENT_KEY_EXCHANGE,
     TLS_HANDSHAKE_FINISHED = 20
 } TLS_HANDSHAKE_TYPE;
+
+#define TLS_CHANGE_CIPHER_SPEC                                      1
 
 typedef enum {
     TLS_ALERT_LEVEL_WARNING = 1,
@@ -407,9 +409,13 @@ typedef struct {
 } TLS_RECORD;
 
 typedef struct {
+    uint8_t size_hi;
+    uint8_t size_lo_be[2];
+} TLS_SIZE;
+
+typedef struct {
     uint8_t message_type;
-    uint8_t reserved;
-    uint8_t message_length_be[2];
+    TLS_SIZE message_length_be;
 } TLS_HANDSHAKE;
 
 typedef struct {

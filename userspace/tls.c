@@ -23,3 +23,7 @@ void tls_close(HANDLE tls)
     ack(tls, HAL_REQ(HAL_TLS, IPC_CLOSE), 0, 0, 0);
 }
 
+void tls_register_cerificate(HANDLE tls, const uint8_t* const cert, unsigned int len)
+{
+    ack(tls, HAL_REQ(HAL_TLS, TLS_REGISTER_CERTIFICATE), 0, (unsigned int)cert, len);
+}
