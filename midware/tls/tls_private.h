@@ -333,6 +333,33 @@
 #define TLS_COMPRESSION_DEFLATE                                     1
 #define TLS_COMPRESSION_LZS                                         64
 
+#define TLS_EXTENSION_SERVER_NAME                                   0
+#define TLS_EXTENSION_MAX_FRAGMENT_LENGTH                           1
+#define TLS_EXTENSION_CLIENT_CERTIFICATE_URL                        2
+#define TLS_EXTENSION_TRUSTED_CA_KEYS                               3
+#define TLS_EXTENSION_TRUSTED_HMAC                                  4
+#define TLS_EXTENSION_STATUS_REQUEST                                5
+#define TLS_EXTENSION_USER_MAPPING                                  6
+#define TLS_EXTENSION_CLIENT_AUTHZ                                  7
+#define TLS_EXTENSION_SERVER_AUTHZ                                  8
+#define TLS_EXTENSION_CERT_TYPE                                     9
+#define TLS_EXTENSION_SUPPORTED_GROUPS                              10
+#define TLS_EXTENSION_EC_POINT_FORMATS                              11
+#define TLS_EXTENSION_SRP                                           12
+#define TLS_EXTENSION_SIGNATURE_ALGORITHMS                          13
+#define TLS_EXTENSION_USE_SRTP                                      14
+#define TLS_EXTENSION_HEARTBEAT                                     15
+#define TLS_EXTENSION_APP_LAYER_PROTOCOL_NEGOTIATION                16
+#define TLS_EXTENSION_STATUS_REQUEST_V2                             17
+#define TLS_EXTENSION_SIGNED_CERTIFICATE_TIMESTAMP                  18
+#define TLS_EXTENSION_CLIENT_CERTIFICATE_TYPE                       19
+#define TLS_EXTENSION_SERVER_CERTIFICATE_TYPE                       20
+#define TLS_EXTENSION_PADDING                                       21
+#define TLS_EXTENSION_ENCRYPT_THEN_MAC                              22
+#define TLS_EXTENSION_EXTENDED_MASTER_SECRET                        23
+#define TLS_EXTENSION_SESSION_TICKET_TLS                            35
+#define TLS_EXTENSION_RENEGOTIATION_INFO                            65281
+
 typedef enum {
     TLS_PROTOCOL_VERSION_UNSUPPORTED = 0,
     TLS_PROTOCOL_1_0,
@@ -435,6 +462,11 @@ typedef struct {
     TLS_RANDOM random;
     uint8_t session_id_length;
 } TLS_HELLO;
+
+typedef struct {
+    uint8_t code_be[2];
+    uint8_t len_be[2];
+} TLS_EXTENSION;
 
 typedef struct {
     TLS_VERSION version;

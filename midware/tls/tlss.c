@@ -40,6 +40,7 @@ typedef struct {
     TLS_RANDOM client_random;
     TLS_RANDOM server_random;
     TLS_PROTOCOL_VERSION version;
+    uint8_t session_id[TLS_SESSION_ID_SIZE];
     TLSS_STATE state;
     uint16_t cipher_suite;
     bool server_secure, client_secure;
@@ -1453,6 +1454,7 @@ static void tlss_append_server_hello(TLSS* tlss, TLSS_TCB* tcb)
 {
     TLS_HANDSHAKE* handshake;
     TLS_HELLO* hello;
+    TLS_EXTENSION* ext;
 
     unsigned short len = sizeof(TLS_HANDSHAKE);
     handshake = (TLS_HANDSHAKE*)((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size);
@@ -1465,10 +1467,12 @@ static void tlss_append_server_hello(TLSS* tlss, TLSS_TCB* tcb)
     hello->version.major = 3;
     hello->version.minor = (uint8_t)tcb->version;
     memcpy(&hello->random, &tcb->server_random, sizeof(TLS_RANDOM));
-    //always NULL session id
-    hello->session_id_length = 0;
+    //session id
+    hello->session_id_length = TLS_SESSION_ID_SIZE;
 
-    //2. No session id, nothing to append
+    //2. Append session id, nothing to append
+    memcpy((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size + len, tcb->session_id, TLS_SESSION_ID_SIZE);
+    len += TLS_SESSION_ID_SIZE;
 
     //3. Append cipher suite
     short2be((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size + len, tcb->cipher_suite);
@@ -1477,9 +1481,16 @@ static void tlss_append_server_hello(TLSS* tlss, TLSS_TCB* tcb)
     *((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size + len) = TLS_COMPRESSION_NULL;
     ++len;
 
-    //5. No extensions to append
-    short2be((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size + len, 0);
+    //5. Append renegotiation_info extension to make openSSL happy
+    short2be((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size + len, sizeof(TLS_EXTENSION) + 1);
     len += 2;
+
+    ext = (TLS_EXTENSION*)((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size + len);
+    len += sizeof(TLS_EXTENSION);
+    short2be(ext->code_be, TLS_EXTENSION_RENEGOTIATION_INFO);
+    short2be(ext->len_be, 1);
+    *((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size + len) = 0x00;
+    ++len;
 
     //6. Update len at end
     tlss_set_size(&handshake->message_length_be, len - sizeof(TLS_HANDSHAKE));
@@ -1493,10 +1504,14 @@ static void tlss_append_server_hello(TLSS* tlss, TLSS_TCB* tcb)
     printf(" ");
     tlss_dump(hello->random.random_bytes, TLS_RANDOM_SIZE);
     printf("\n");
-    printf("Session ID: NULL\n");
+    printf("Session ID: ");
+    tlss_dump(tcb->session_id, TLS_SESSION_ID_SIZE);
+    printf("\n");
     printf("cipher suite: ");
     tlss_print_cipher_suite(TLS_RSA_WITH_AES_128_CBC_SHA);
     printf("Compression method: NULL\n");
+    printf("Extensions:\n");
+    printf("Ext 65281: 00\n");
 #endif //TLS_DEBUG_REQUESTS
 }
 
@@ -1562,6 +1577,12 @@ static void tlss_fsm(TLSS* tlss)
 
     switch (tcb->state)
     {
+    case TLSS_STATE_GENERATE_SERVER_RANDOM:
+        io_read(tlss->owner, HAL_IO_REQ(HAL_TLS, TLS_GENERATE_RANDOM), tcb_handle, tlss->tx, sizeof(TLS_RANDOM));
+        break;
+    case TLSS_STATE_GENERATE_SESSION_ID:
+        io_read(tlss->owner, HAL_IO_REQ(HAL_TLS, TLS_GENERATE_RANDOM), tcb_handle, tlss->tx, TLS_SESSION_ID_SIZE);
+        break;
     case TLSS_STATE_SERVER_HELLO:
         tlss_tx_server_hello(tlss, tcb);
         break;
@@ -1629,6 +1650,12 @@ static inline void tlss_close(TLSS* tlss)
 static inline void tlss_generate_server_random(TLSS* tlss, TLSS_TCB* tcb, void* random)
 {
     memcpy(&tcb->server_random, io_data(tlss->tx), sizeof(TLS_RANDOM));
+    tlss_set_state(tcb, TLSS_STATE_GENERATE_SESSION_ID);
+}
+
+static inline void tlss_generate_session_id(TLSS* tlss, TLSS_TCB* tcb, void* random)
+{
+    memcpy(tcb->session_id, io_data(tlss->tx), TLS_SESSION_ID_SIZE);
     tlss_set_state(tcb, TLSS_STATE_SERVER_HELLO);
 }
 
@@ -1644,6 +1671,9 @@ static inline void tlss_generate_random(TLSS* tlss, HANDLE tcb_handle)
     {
     case TLSS_STATE_GENERATE_SERVER_RANDOM:
         tlss_generate_server_random(tlss, tcb, io_data(tlss->tx));
+        break;
+    case TLSS_STATE_GENERATE_SESSION_ID:
+        tlss_generate_session_id(tlss, tcb, io_data(tlss->tx));
         break;
     default:
         break;
@@ -1776,8 +1806,11 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, HANDLE tcb_handle, void* dat
     uint16_t tmp;
     uint8_t* cipher_suites;
     uint8_t* compression;
+    uint8_t* extensions;
+    uint16_t extensions_len;
     TLS_HELLO* hello;
     TLSS_TCB* tcb = so_get(&tlss->tcbs, tcb_handle);
+    TLS_EXTENSION* ext;
     hello = data;
     //1. Check state and clientHello header size
     if ((tcb->state != TLSS_STATE_CLIENT_HELLO) || (len < sizeof(TLS_HELLO)))
@@ -1845,7 +1878,8 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, HANDLE tcb_handle, void* dat
     compression_len = *((uint8_t*)data);
     ++data;
     --len;
-    if (len < compression_len)
+    //also 2 bytes for extensions len
+    if (len < compression_len + 2)
     {
         tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
         return true;
@@ -1872,7 +1906,35 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, HANDLE tcb_handle, void* dat
         return true;
     }
 
-    //skip extensions
+    //7. Process extensions
+    extensions_len = be2short(data);
+    data += 2;
+    len -= 2;
+    extensions = data;
+    if (len < extensions_len)
+    {
+        tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        return true;
+    }
+
+    for (i = 0; i < extensions_len; i += tmp + sizeof(TLS_EXTENSION))
+    {
+        if (len < sizeof(TLS_EXTENSION))
+        {
+            tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            return true;
+        }
+        ext = (TLS_EXTENSION*)((uint8_t*)extensions + i);
+        len -= sizeof(TLS_EXTENSION);
+        tmp = be2short(ext->len_be);
+        if (len < tmp)
+        {
+            tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            return true;
+        }
+        len -= tmp;
+    }
+
     tlss_set_state(tcb, TLSS_STATE_GENERATE_SERVER_RANDOM);
 #if (TLS_DEBUG_REQUESTS)
     printf("TLS: clientHello\n");
@@ -1903,9 +1965,17 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, HANDLE tcb_handle, void* dat
             printf("*");
         tlss_print_compression_method(i);
     }
+    printf("Extensions:\n");
+    for (i = 0; i < extensions_len; i += tmp + sizeof(TLS_EXTENSION))
+    {
+        ext = (TLS_EXTENSION*)((uint8_t*)extensions + i);
+        tmp = be2short(ext->len_be);
+        printf("Extension %d: ", be2short(ext->code_be));
+        tlss_dump((uint8_t*)extensions + i + sizeof(TLS_EXTENSION), tmp);
+        printf("\n");
+    }
 #endif //TLS_DEBUG_REQUESTS
-    io_read(tlss->owner, HAL_IO_REQ(HAL_TLS, TLS_GENERATE_RANDOM), tcb_handle, tlss->tx, sizeof(TLS_RANDOM));
-    return true;
+    return false;
 }
 
 static inline bool tlss_rx_client_key_exchange(TLSS* tlss, HANDLE tcb_handle, void* data, unsigned short len)
