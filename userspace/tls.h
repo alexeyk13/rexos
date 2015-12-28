@@ -13,6 +13,7 @@
 
 #define TLS_SERVER_RANDOM_SIZE                                          32
 #define TLS_PREMASTER_SIZE                                              128
+#define TLS_SESSION_ID_SIZE                                             32
 
 typedef enum {
     TLS_REGISTER_CERTIFICATE = IPC_USER,

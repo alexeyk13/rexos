@@ -436,6 +436,11 @@ typedef struct {
     uint8_t session_id_length;
 } TLS_HELLO;
 
+typedef struct {
+    TLS_VERSION version;
+    uint8_t secret[46];
+} TLS_PREMASTER;
+
 #pragma pack(pop)
 
 

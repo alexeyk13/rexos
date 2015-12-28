@@ -14,20 +14,23 @@
 #include "../../userspace/so.h"
 #include "../../userspace/tcp.h"
 #include "../../userspace/endian.h"
+#include "../crypto/pkcs.h"
 #include <string.h>
 
 void tlss_main();
 
 typedef enum {
     //TODO: more states to go
-    TLSS_STATE_CLIENT_HELLO,
-    TLSS_STATE_GENERATE_RANDOM,
+    TLSS_STATE_CLIENT_HELLO = 0,
+    TLSS_STATE_GENERATE_SERVER_RANDOM,
+    TLSS_STATE_GENERATE_SESSION_ID,
     TLSS_STATE_SERVER_HELLO,
     TLSS_STATE_CLIENT_KEY_EXCHANGE,
     TLSS_STATE_DECRYPT_PREMASTER,
     TLSS_STATE_SERVER_CHANGE_CIPHER,
     TLSS_STATE_ESTABLISHED,
-    TLSS_STATE_CLOSING
+    TLSS_STATE_CLOSING,
+    TLSS_STATE_MAX
 } TLSS_STATE;
 
 typedef struct {
@@ -131,6 +134,16 @@ typedef enum {
     TLS_HASH_NIL,
     TLS_HASH_UNKNOWN
 } TLS_HASH;
+
+static const char* const __TLSS_STATES[TLSS_STATE_MAX] =           {"CLIENT_HELLO",
+                                                                    "GENERATE_SERVER_RANDOM",
+                                                                    "GENERATE_SESSION_ID",
+                                                                    "SERVER_HELLO",
+                                                                    "CLIENT_KEY_EXCHANGE",
+                                                                    "DECRYPT_PREMASTER",
+                                                                    "SERVER_CHANGE_CIPHER",
+                                                                    "ESTABLISHED",
+                                                                    "CLOSING"};
 
 static const char* const __TLS_KEY_ECHANGE[] =                     {"NULL",
                                                                     "RSA",
@@ -1337,8 +1350,15 @@ static void tlss_print_compression_method(uint8_t compression_method)
         printf("%#02X\n", compression_method);
     }
 }
-
 #endif //TLS_DEBUG_REQUESTS
+
+static void tlss_set_state(TLSS_TCB* tcb, TLSS_STATE new_state)
+{
+#if (TLS_DEBUG_REQUESTS)
+    printf("TLS: %s -> %s\n", __TLSS_STATES[tcb->state], __TLSS_STATES[new_state]);
+#endif //TLS_DEBUG_REQUESTS
+    tcb->state = new_state;
+}
 
 static HANDLE tlss_create_tcb(TLSS* tlss, HANDLE handle)
 {
@@ -1523,10 +1543,7 @@ static inline void tlss_tx_server_hello(TLSS* tlss, TLSS_TCB* tcb)
     tlss_append_server_hello(tlss, tcb);
     tlss_append_certificate(tlss, tcb);
     tlss_append_server_hello_done(tlss, tcb);
-    tcb->state = TLSS_STATE_CLIENT_KEY_EXCHANGE;
-#if (TLS_DEBUG_REQUESTS)
-    printf("TLS: SERVER_HELLO -> CLIENT_KEY_EXCHANGE\n");
-#endif //TLS_DEBUG_REQUESTS
+    tlss_set_state(tcb, TLSS_STATE_CLIENT_KEY_EXCHANGE);
     tlss_send_record(tlss, tcb);
 }
 
@@ -1609,22 +1626,28 @@ static inline void tlss_close(TLSS* tlss)
     tlss->tx = NULL;
 }
 
+static inline void tlss_generate_server_random(TLSS* tlss, TLSS_TCB* tcb, void* random)
+{
+    memcpy(&tcb->server_random, io_data(tlss->tx), sizeof(TLS_RANDOM));
+    tlss_set_state(tcb, TLSS_STATE_SERVER_HELLO);
+}
+
 static inline void tlss_generate_random(TLSS* tlss, HANDLE tcb_handle)
 {
     TLSS_TCB* tcb = so_get(&tlss->tcbs, tcb_handle);
     //closed already
     if (tcb == NULL)
         return;
-    if (tcb->state != TLSS_STATE_GENERATE_RANDOM)
+    if (tlss->tx->data_size < TLS_RANDOM_SIZE)
         return;
-    if (tlss->tx->data_size < sizeof(TLS_RANDOM))
-        return;
-    memcpy(&tcb->server_random, io_data(tlss->tx), sizeof(TLS_RANDOM));
-    tcb->state = TLSS_STATE_SERVER_HELLO;
-
-#if (TLS_DEBUG_REQUESTS)
-    printf("TLS: GENERATE_RANDOM -> SERVER_HELLO\n");
-#endif //TLS_DEBUG_REQUESTS
+    switch (tcb->state)
+    {
+    case TLSS_STATE_GENERATE_SERVER_RANDOM:
+        tlss_generate_server_random(tlss, tcb, io_data(tlss->tx));
+        break;
+    default:
+        break;
+    }
     tlss_fsm(tlss);
 }
 
@@ -1646,6 +1669,8 @@ static inline void tlss_register_certificate(TLSS* tlss, uint8_t* cert, unsigned
 
 static inline void tlss_premaster_decrypt(TLSS* tlss, HANDLE tcb_handle)
 {
+    int len;
+    TLS_PREMASTER premaster;
     TLSS_TCB* tcb = so_get(&tlss->tcbs, tcb_handle);
     //closed already
     if (tcb == NULL)
@@ -1655,17 +1680,27 @@ static inline void tlss_premaster_decrypt(TLSS* tlss, HANDLE tcb_handle)
     if (tlss->tx->data_size < sizeof(TLS_PREMASTER_SIZE))
         return;
 
+    len = eme_pkcs1_v1_15_decode(io_data(tlss->tx), TLS_PREMASTER_SIZE, &premaster, sizeof(TLS_PREMASTER));
+    if (len < 0)
+    {
+        tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_DECRYPTION_FAILED);
+#if (TLS_DEBUG)
+        printf("TLS: premaster decryption failed\n");
+#endif //TLS_DEBUG
+        return;
+    }
+#if (TLS_DEBUG_SECRETS)
+    printf("TLS: Premaster: ");
+    tlss_dump(&premaster, sizeof(TLS_PREMASTER));
+    printf("\n");
+#endif //TLS_DEBUG_SECRETS
+
     //TODO: generate master secret
 
-    //TODO: remove me
-    printf("remove me: decrypted premaster:\n");
-    tlss_dump(io_data(tlss->tx), TLS_PREMASTER_SIZE);
-    printf("\n");
+    //secure erase premaster
+    memset(&premaster, 0x00, sizeof(TLS_PREMASTER));
 
-    tcb->state = TLSS_STATE_CLIENT_KEY_EXCHANGE;
-#if (TLS_DEBUG_REQUESTS)
-    printf("TLS: DECRYPT_PREMASTER -> CLIENT_KEY_EXCHANGE\n");
-#endif //TLS_DEBUG_REQUESTS
+    tlss_set_state(tcb, TLSS_STATE_CLIENT_KEY_EXCHANGE);
     tlss_fsm(tlss);
 }
 
@@ -1838,7 +1873,7 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, HANDLE tcb_handle, void* dat
     }
 
     //skip extensions
-    tcb->state = TLSS_STATE_GENERATE_RANDOM;
+    tlss_set_state(tcb, TLSS_STATE_GENERATE_SERVER_RANDOM);
 #if (TLS_DEBUG_REQUESTS)
     printf("TLS: clientHello\n");
     printf("Protocol version: %d.%d\n", hello->version.major - 2, hello->version.minor - 1);
@@ -1868,7 +1903,6 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, HANDLE tcb_handle, void* dat
             printf("*");
         tlss_print_compression_method(i);
     }
-    printf("TLS: CLIENT_HELLO -> GENERATE_RANDOM\n");
 #endif //TLS_DEBUG_REQUESTS
     io_read(tlss->owner, HAL_IO_REQ(HAL_TLS, TLS_GENERATE_RANDOM), tcb_handle, tlss->tx, sizeof(TLS_RANDOM));
     return true;
@@ -1885,15 +1919,10 @@ static inline bool tlss_rx_client_key_exchange(TLSS* tlss, HANDLE tcb_handle, vo
     io_reset(tlss->tx);
     memcpy(io_data(tlss->tx), (uint8_t*)data + 2, TLS_PREMASTER_SIZE);
     tlss->tx->data_size = TLS_PREMASTER_SIZE;
-    tcb->state = TLSS_STATE_DECRYPT_PREMASTER;
+    tlss_set_state(tcb, TLSS_STATE_DECRYPT_PREMASTER);
 #if (TLS_DEBUG_REQUESTS)
     printf("TLS: clientKeyExchange\n");
-    printf("TLS: CLIENT_KEY_EXCHANGE -> DECRYPT_PREMASTER\n");
 #endif //TLS_DEBUG_REQUESTS
-    //TODO: remove me
-    printf("remove me: encrypted premaster:\n");
-    tlss_dump(io_data(tlss->tx), TLS_PREMASTER_SIZE);
-    printf("\n");
 
     io_write(tlss->owner, HAL_IO_REQ(HAL_TLS, TLS_PREMASTER_DECRYPT), tcb_handle, tlss->tx);
     return true;
