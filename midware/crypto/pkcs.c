@@ -26,3 +26,17 @@ int eme_pkcs1_v1_15_decode(const void* em, unsigned int em_size, void* m, unsign
     memcpy(m, emc + offset, em_size - offset);
     return em_size - offset;
 }
+
+int pkcs7_decode(void* em_m, unsigned int size)
+{
+    int i, padding;
+    if (!size)
+        return -1;
+    padding = ((uint8_t*)em_m)[size - 1];
+    if (padding > size)
+        return -1;
+    for (i = size - padding; i < size - 1; ++i)
+        if (((uint8_t*)em_m)[i] != padding)
+            return -1;
+    return size - padding;
+}

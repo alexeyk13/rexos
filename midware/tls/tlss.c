@@ -15,6 +15,7 @@
 #include "../../userspace/so.h"
 #include "../../userspace/tcp.h"
 #include "../../userspace/endian.h"
+#include "../crypto/aes.h"
 #include <string.h>
 
 void tlss_main();
@@ -40,7 +41,7 @@ typedef struct {
     TLS_RANDOM client_random;
     TLS_RANDOM server_random;
     TLS_PROTOCOL_VERSION version;
-    TLS_AES_SHA1_KEY_BLOCK key_block;
+    TLS_KEY_BLOCK key_block;
     uint8_t master_secret[TLS_MASTER_SECRET_SIZE];
     uint8_t session_id[TLS_SESSION_ID_SIZE];
     TLSS_STATE state;
@@ -1720,7 +1721,7 @@ static inline void tlss_premaster_decrypt(TLSS* tlss, HANDLE tcb_handle)
     tlss_dump(tcb->master_secret, TLS_MASTER_SECRET_SIZE);
     printf("\n");
 #endif //TLS_DEBUG_SECRETS
-    process_info();
+    tls_decode_key_block(tcb->master_secret, &tcb->client_random, &tcb->server_random, &tcb->key_block);
 
     tlss_set_state(tcb, TLSS_STATE_CLIENT_KEY_EXCHANGE);
     tlss_fsm(tlss);
@@ -2046,7 +2047,7 @@ static void tlss_tcp_rx(TLSS* tlss, HANDLE handle)
 {
     bool answered;
     TLS_RECORD* rec;
-    unsigned short len;
+    int len;
     void* data;
     TLSS_TCB* tcb;
     HANDLE tcb_handle = tlss_find_tcb_handle(tlss, handle);
@@ -2083,10 +2084,17 @@ static void tlss_tcp_rx(TLSS* tlss, HANDLE handle)
         tcb = so_get(&tlss->tcbs, tcb_handle);
         if (tcb->client_secure)
         {
-            printf("TODO: cipher record decrypt\n");
-            tlss_dump(data, len);
-            printf("\n");
-            printf("HANG\n");
+            len = tls_decrypt(&tcb->key_block, data, len, io_data(tlss->tx));
+            data = io_data(tlss->tx);
+            if (len < 0)
+            {
+                tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_DECRYPTION_FAILED);
+                break;
+            }
+            printd("TLS decrypt:\n");
+            dump(data, len);
+
+            printd("HANG\n");
             for (;;) {}
         }
         switch (rec->content_type)

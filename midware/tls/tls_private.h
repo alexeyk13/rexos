@@ -474,14 +474,6 @@ typedef struct {
     uint8_t secret[46];
 } TLS_PREMASTER;
 
-typedef struct {
-    uint8_t client_mac[32];
-    uint8_t server_mac[32];
-    uint8_t client_key[16];
-    uint8_t server_key[16];
-    uint8_t client_iv[16];
-    uint8_t server_iv[16];
-} TLS_AES_SHA1_KEY_BLOCK;
 #pragma pack(pop)
 
 
