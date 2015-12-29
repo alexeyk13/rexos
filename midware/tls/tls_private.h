@@ -451,6 +451,7 @@ typedef struct {
 } TLS_ALERT;
 
 #define TLS_RANDOM_SIZE                             28
+#define TLS_MASTER_SECRET_SIZE                      48
 
 typedef struct {
     uint8_t gmt_unix_time_be[4];
@@ -473,6 +474,14 @@ typedef struct {
     uint8_t secret[46];
 } TLS_PREMASTER;
 
+typedef struct {
+    uint8_t client_mac[32];
+    uint8_t server_mac[32];
+    uint8_t client_key[16];
+    uint8_t server_key[16];
+    uint8_t client_iv[16];
+    uint8_t server_iv[16];
+} TLS_AES_SHA1_KEY_BLOCK;
 #pragma pack(pop)
 
 

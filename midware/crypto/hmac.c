@@ -10,7 +10,7 @@
 #define IPAD                        0x36363636
 #define OPAD                        0x5c5c5c5c
 
-void hmac_setup(HMAC_CTX* ctx, const HMAC_HASH_STRUCT* hash_struct, void* hash_ctx, void* key, unsigned int key_size)
+void hmac_setup(HMAC_CTX* ctx, const HMAC_HASH_STRUCT* hash_struct, void* hash_ctx, const void* key, unsigned int key_size)
 {
     int i;
     memset(ctx->ipad, 0x00, HMAC64_BLOCK_SIZE);
@@ -37,7 +37,7 @@ void hmac_init(HMAC_CTX* ctx)
     ctx->hash_struct->hash_update(ctx->hash_ctx, ctx->ipad, HMAC64_BLOCK_SIZE);
 }
 
-void hmac_update(HMAC_CTX* ctx, void* data, unsigned int size)
+void hmac_update(HMAC_CTX* ctx, const void* data, unsigned int size)
 {
     ctx->hash_struct->hash_update(ctx->hash_ctx, data, size);
 }

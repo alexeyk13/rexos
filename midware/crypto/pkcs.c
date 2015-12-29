@@ -8,9 +8,9 @@
 #include <stdint.h>
 #include <string.h>
 
-int eme_pkcs1_v1_15_decode(void* em, unsigned int em_size, void* m, unsigned int m_max)
+int eme_pkcs1_v1_15_decode(const void* em, unsigned int em_size, void* m, unsigned int m_max)
 {
-    uint8_t* emc = em;
+    const uint8_t* emc = em;
     int offset;
     //EM = 0x00 || 0x02 || PS || 0x00 || M
     if (em_size < 3)

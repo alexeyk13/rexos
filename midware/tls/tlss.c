@@ -5,6 +5,7 @@
 */
 
 #include "tls_private.h"
+#include "tls_cipher.h"
 #include "sys_config.h"
 #include "../../userspace/tls.h"
 #include "../../userspace/process.h"
@@ -14,7 +15,6 @@
 #include "../../userspace/so.h"
 #include "../../userspace/tcp.h"
 #include "../../userspace/endian.h"
-#include "../crypto/pkcs.h"
 #include <string.h>
 
 void tlss_main();
@@ -40,6 +40,8 @@ typedef struct {
     TLS_RANDOM client_random;
     TLS_RANDOM server_random;
     TLS_PROTOCOL_VERSION version;
+    TLS_AES_SHA1_KEY_BLOCK key_block;
+    uint8_t master_secret[TLS_MASTER_SECRET_SIZE];
     uint8_t session_id[TLS_SESSION_ID_SIZE];
     TLSS_STATE state;
     uint16_t cipher_suite;
@@ -1372,14 +1374,11 @@ static HANDLE tlss_create_tcb(TLSS* tlss, HANDLE handle)
     if (tcb_handle == INVALID_HANDLE)
         return INVALID_HANDLE;
     tcb = so_get(&tlss->tcbs, tcb_handle);
+    memset(tcb, 0x00, sizeof(TLSS_TCB));
     tcb->handle = handle;
-    tcb->rx = tcb->tx = NULL;
     tcb->state = TLSS_STATE_CLIENT_HELLO;
     tcb->version = TLS_PROTOCOL_VERSION_UNSUPPORTED;
     tcb->cipher_suite = TLS_NULL_WITH_NULL_NULL;
-    tcb->server_secure = tcb->client_secure = false;
-    memset(&tcb->client_random, 0x00, sizeof(TLS_RANDOM));
-    memset(&tcb->server_random, 0x00, sizeof(TLS_RANDOM));
     return tcb_handle;
 }
 
@@ -1699,8 +1698,6 @@ static inline void tlss_register_certificate(TLSS* tlss, uint8_t* cert, unsigned
 
 static inline void tlss_premaster_decrypt(TLSS* tlss, HANDLE tcb_handle)
 {
-    int len;
-    TLS_PREMASTER premaster;
     TLSS_TCB* tcb = so_get(&tlss->tcbs, tcb_handle);
     //closed already
     if (tcb == NULL)
@@ -1710,8 +1707,7 @@ static inline void tlss_premaster_decrypt(TLSS* tlss, HANDLE tcb_handle)
     if (tlss->tx->data_size < sizeof(TLS_PREMASTER_SIZE))
         return;
 
-    len = eme_pkcs1_v1_15_decode(io_data(tlss->tx), TLS_PREMASTER_SIZE, &premaster, sizeof(TLS_PREMASTER));
-    if (len < 0)
+    if (!tls_decode_master(io_data(tlss->tx), &tcb->client_random, &tcb->server_random, tcb->master_secret))
     {
         tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_DECRYPTION_FAILED);
 #if (TLS_DEBUG)
@@ -1720,15 +1716,11 @@ static inline void tlss_premaster_decrypt(TLSS* tlss, HANDLE tcb_handle)
         return;
     }
 #if (TLS_DEBUG_SECRETS)
-    printf("TLS: Premaster: ");
-    tlss_dump(&premaster, sizeof(TLS_PREMASTER));
+    printf("TLS: master secret: ");
+    tlss_dump(tcb->master_secret, TLS_MASTER_SECRET_SIZE);
     printf("\n");
 #endif //TLS_DEBUG_SECRETS
-
-    //TODO: generate master secret
-
-    //secure erase premaster
-    memset(&premaster, 0x00, sizeof(TLS_PREMASTER));
+    process_info();
 
     tlss_set_state(tcb, TLSS_STATE_CLIENT_KEY_EXCHANGE);
     tlss_fsm(tlss);

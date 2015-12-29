@@ -7,6 +7,6 @@
 #ifndef PKCS_H
 #define PKCS_H
 
-int eme_pkcs1_v1_15_decode(void* em, unsigned int em_size, void* m, unsigned int m_max);
+int eme_pkcs1_v1_15_decode(const void *em, unsigned int em_size, void* m, unsigned int m_max);
 
 #endif // PKCS_H

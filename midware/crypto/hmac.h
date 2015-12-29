@@ -15,7 +15,7 @@
 #define HMAC128_ROUNDS                                 (128 >> 2)
 
 typedef void (*HASH_INIT)(void*);
-typedef void (*HASH_UPDATE)(void*, void*, unsigned int);
+typedef void (*HASH_UPDATE)(void*, const void*, unsigned int);
 typedef void (*HASH_FINAL)(void*, void*);
 
 typedef struct {
@@ -33,9 +33,9 @@ typedef struct {
     //doesn't storing key itself for memory saving
 } HMAC_CTX;
 
-void hmac_setup(HMAC_CTX* ctx, const HMAC_HASH_STRUCT* hash_struct, void* hash_ctx, void* key, unsigned int key_size);
+void hmac_setup(HMAC_CTX* ctx, const HMAC_HASH_STRUCT* hash_struct, void* hash_ctx, const void *key, unsigned int key_size);
 void hmac_init(HMAC_CTX* ctx);
-void hmac_update(HMAC_CTX* ctx, void* data, unsigned int size);
+void hmac_update(HMAC_CTX* ctx, const void *data, unsigned int size);
 void hmac_final(HMAC_CTX* ctx, void* hmac);
 
 #endif //HMAC_H
