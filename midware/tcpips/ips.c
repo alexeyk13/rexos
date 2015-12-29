@@ -554,7 +554,9 @@ void ips_rx(TCPIPS* tcpips, IO* io)
     ip_stack = io_push(io, sizeof(IP_STACK));
 
     ip_stack->hdr_size = (hdr->ver_ihl & 0xf) << 2;
+#if (IP_FRAGMENTATION)
     ip_stack->is_long = false;
+#endif //IP_FRAGMENTATION
 #if (IP_CHECKSUM)
     //drop if checksum is invalid
     if (ip_checksum(io_data(io), ip_stack->hdr_size))
