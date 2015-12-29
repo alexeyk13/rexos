@@ -11,21 +11,33 @@
 #include <stdint.h>
 #include "../crypto/aes.h"
 #include "../crypto/sha1.h"
+#include "../crypto/sha256.h"
 #include "../crypto/hmac.h"
+#include "tls_private.h"
+
+#define TLS_MAC_FAILED                                  -21
+#define TLS_DECRYPT_FAILED                              -20
 
 typedef struct {
-    HMAC_CTX client_hmac_ctx;
-    HMAC_CTX server_hmac_ctx;
-    SHA1_CTX client_hash_ctx;
-    SHA1_CTX server_hash_ctx;
-    AES_KEY client_key;
-    AES_KEY server_key;
-    unsigned long client_sequence, server_sequence;
+    unsigned short iv_size;
+    unsigned short hash_size;
+    HMAC_CTX rx_hmac_ctx;
+    HMAC_CTX tx_hmac_ctx;
+    SHA1_CTX rx_hash_ctx;
+    SHA1_CTX tx_hash_ctx;
+    AES_KEY rx_key;
+    AES_KEY tx_key;
+    SHA256_CTX handshake_hash;
+    unsigned long rx_sequence, tx_sequence;
 } TLS_KEY_BLOCK;
+
+void tls_cipher_init(TLS_KEY_BLOCK* key_block);
+void tls_hash_handshake(TLS_KEY_BLOCK* key_block, const void* data, unsigned int len);
+bool tls_compare_client_finished(void* master, TLS_KEY_BLOCK* key_block, const void* data, unsigned int len);
 
 bool tls_decode_master(const void* premaster, const void* client_random, const void* server_random, void* out);
 void tls_decode_key_block(const void* master, const void* client_random, const void* server_random, TLS_KEY_BLOCK* key_block);
 
-int tls_decrypt(TLS_KEY_BLOCK* key_block, void* in, unsigned int len, void* out);
+int tls_decrypt(TLS_KEY_BLOCK* key_block, TLS_CONTENT_TYPE content_type, void* in, unsigned int len, void* out);
 
 #endif // TLS_CIPHER_H

@@ -5,11 +5,8 @@
 */
 
 #include "tls_cipher.h"
-#include "tls_private.h"
 #include "../../userspace/tls.h"
 #include "../../userspace/endian.h"
-#include "../crypto/sha256.h"
-#include "../crypto/hmac.h"
 #include "../crypto/pkcs.h"
 #include <string.h>
 
@@ -31,9 +28,10 @@ typedef struct {
 
 #define MASTER_LABEL_LEN                                        13
 static const uint8_t __MASTER_LABEL[MASTER_LABEL_LEN] =         "master secret";
-
 #define KEY_BLOCK_LABEL_LEN                                     13
 static const uint8_t __KEY_BLOCK_LABEL[KEY_BLOCK_LABEL_LEN ] =  "key expansion";
+#define CLIENT_LABEL_LEN                                        15
+static const uint8_t __CLIENT_LABEL[CLIENT_LABEL_LEN ] =        "client finished";
 
 static void p_hash(const void* key, unsigned int key_len, const void* seed1, unsigned int seed1_size,
                                                           const void* seed2, unsigned int seed2_size,
@@ -82,6 +80,27 @@ static void p_hash(const void* key, unsigned int key_len, const void* seed1, uns
     memset(&hmac_ctx, 0x00, sizeof(HMAC_CTX));
 }
 
+void tls_cipher_init(TLS_KEY_BLOCK* key_block)
+{
+    sha256_init(&key_block->handshake_hash);
+}
+
+void tls_hash_handshake(TLS_KEY_BLOCK* key_block, const void* data, unsigned int len)
+{
+    sha256_update(&key_block->handshake_hash, data, len);
+}
+
+bool tls_compare_client_finished(void* master, TLS_KEY_BLOCK* key_block, const void* data, unsigned int len)
+{
+    uint8_t dig[12];
+    uint8_t hash[32];
+    //TODO:
+    sha256_final(&key_block->handshake_hash, hash);
+    p_hash(master, TLS_MASTER_SECRET_SIZE, __CLIENT_LABEL, CLIENT_LABEL_LEN, hash, 32, NULL, 0, dig, 12);
+    dump(dig, 12);
+    return true;
+}
+
 bool tls_decode_master(const void* premaster, const void* client_random, const void* server_random, void* out)
 {
     if (eme_pkcs1_v1_15_decode(premaster, TLS_PREMASTER_SIZE, out, sizeof(TLS_PREMASTER)) < sizeof(TLS_PREMASTER))
@@ -90,51 +109,51 @@ bool tls_decode_master(const void* premaster, const void* client_random, const v
     return true;
 }
 
-
 void tls_decode_key_block(const void* master, const void* client_random, const void* server_random, TLS_KEY_BLOCK *key_block)
 {
     TLS_AES_SHA1_KEY_BLOCK raw;
     p_hash(master, TLS_MASTER_SECRET_SIZE, __KEY_BLOCK_LABEL, KEY_BLOCK_LABEL_LEN, server_random, 32, client_random, 32, &raw, sizeof(TLS_AES_SHA1_KEY_BLOCK));
-    hmac_setup(&key_block->client_hmac_ctx, &__HMAC_SHA1, &key_block->client_hash_ctx, raw.client_mac, SHA1_BLOCK_SIZE);
-    hmac_setup(&key_block->server_hmac_ctx, &__HMAC_SHA1, &key_block->server_hash_ctx, raw.server_mac, SHA1_BLOCK_SIZE);
-    AES_set_decrypt_key(raw.client_key, 128, &key_block->client_key);
-    AES_set_encrypt_key(raw.server_key, 128, &key_block->server_key);
-    key_block->client_sequence = key_block->server_sequence = 0;
+    hmac_setup(&key_block->rx_hmac_ctx, &__HMAC_SHA1, &key_block->rx_hash_ctx, raw.client_mac, SHA1_BLOCK_SIZE);
+    hmac_setup(&key_block->tx_hmac_ctx, &__HMAC_SHA1, &key_block->tx_hash_ctx, raw.server_mac, SHA1_BLOCK_SIZE);
+    AES_set_decrypt_key(raw.client_key, 128, &key_block->rx_key);
+    AES_set_encrypt_key(raw.server_key, 128, &key_block->tx_key);
+    key_block->rx_sequence = key_block->tx_sequence = 0;
+    key_block->iv_size = AES_BLOCK_SIZE;
+    key_block->hash_size = SHA1_BLOCK_SIZE;
 }
 
-int tls_decrypt(TLS_KEY_BLOCK* key_block, void* in, unsigned int len, void* out)
+int tls_decrypt(TLS_KEY_BLOCK* key_block, TLS_CONTENT_TYPE content_type, void* in, unsigned int len, void* out)
 {
     int raw_len, m_len;
     TLS_HMAC_HEADER hdr;
-    uint8_t mac[SHA1_BLOCK_SIZE];
-    if ((len < 2 * AES_BLOCK_SIZE) || (len % AES_BLOCK_SIZE))
-        return -1;
-    raw_len = len - AES_BLOCK_SIZE;
-    AES_cbc_encrypt((uint8_t*)in + AES_BLOCK_SIZE, out, raw_len, &key_block->client_key, in, AES_DECRYPT);
+    uint8_t mac[key_block->hash_size];
+    if ((len <= key_block->iv_size) || (len % key_block->iv_size))
+        return TLS_DECRYPT_FAILED;
+    raw_len = len - key_block->iv_size;
+    AES_cbc_encrypt((uint8_t*)in + key_block->iv_size, out, raw_len, &key_block->rx_key, in, AES_DECRYPT);
     m_len = pkcs7_decode(out, raw_len);
     if (m_len <= 0)
-        return -1;
+        return TLS_DECRYPT_FAILED;
     //padding byte itself
     if (((uint8_t*)out)[m_len - 1] != raw_len - m_len)
-        return -1;
+        return TLS_DECRYPT_FAILED;
     --m_len;
-    if (m_len < SHA1_BLOCK_SIZE)
-        return -1;
+    if (m_len < key_block->hash_size)
+        return TLS_DECRYPT_FAILED;
+    m_len -= key_block->hash_size;
 
+    //check MAC
     int2be(hdr.seq_hi_be, 0);
-    //TODO: increment here
-    int2be(hdr.seq_lo_be, key_block->client_sequence);
-    //TODO:
-    hdr.record.content_type = TLS_CONTENT_HANDSHAKE;
+    int2be(hdr.seq_lo_be, key_block->rx_sequence++);
+    hdr.record.content_type = content_type;
     hdr.record.version.major = 3;
     hdr.record.version.minor = 3;
-    short2be(hdr.record.record_length_be, m_len - SHA1_BLOCK_SIZE);
-    hmac_init(&key_block->client_hmac_ctx);
-    hmac_update(&key_block->client_hmac_ctx, &hdr, sizeof(TLS_HMAC_HEADER));
-    hmac_update(&key_block->client_hmac_ctx, out, m_len - SHA1_BLOCK_SIZE);
-    hmac_final(&key_block->client_hmac_ctx, mac);
-    dump(mac, 20);
-    process_info();
-    //TODO: mac check
+    short2be(hdr.record.record_length_be, m_len);
+    hmac_init(&key_block->rx_hmac_ctx);
+    hmac_update(&key_block->rx_hmac_ctx, &hdr, sizeof(TLS_HMAC_HEADER));
+    hmac_update(&key_block->rx_hmac_ctx, out, m_len);
+    hmac_final(&key_block->rx_hmac_ctx, mac);
+    if (memcmp((uint8_t*)out + m_len, mac, key_block->hash_size))
+        return TLS_MAC_FAILED;
     return m_len;
 }

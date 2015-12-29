@@ -28,7 +28,7 @@ typedef enum {
     TLSS_STATE_SERVER_HELLO,
     TLSS_STATE_CLIENT_KEY_EXCHANGE,
     TLSS_STATE_DECRYPT_PREMASTER,
-    TLSS_STATE_SERVER_CHANGE_CIPHER,
+    TLSS_STATE_SERVER_KEY_EXCHANGE,
     TLSS_STATE_ESTABLISHED,
     TLSS_STATE_CLOSING,
     TLSS_STATE_MAX
@@ -145,7 +145,7 @@ static const char* const __TLSS_STATES[TLSS_STATE_MAX] =           {"CLIENT_HELL
                                                                     "SERVER_HELLO",
                                                                     "CLIENT_KEY_EXCHANGE",
                                                                     "DECRYPT_PREMASTER",
-                                                                    "SERVER_CHANGE_CIPHER",
+                                                                    "SERVER_KEY_EXCHANGE",
                                                                     "ESTABLISHED",
                                                                     "CLOSING"};
 
@@ -1380,6 +1380,7 @@ static HANDLE tlss_create_tcb(TLSS* tlss, HANDLE handle)
     tcb->state = TLSS_STATE_CLIENT_HELLO;
     tcb->version = TLS_PROTOCOL_VERSION_UNSUPPORTED;
     tcb->cipher_suite = TLS_NULL_WITH_NULL_NULL;
+    tls_cipher_init(&tcb->key_block);
     return tcb_handle;
 }
 
@@ -1494,6 +1495,7 @@ static void tlss_append_server_hello(TLSS* tlss, TLSS_TCB* tcb)
 
     //6. Update len at end
     tlss_set_size(&handshake->message_length_be, len - sizeof(TLS_HANDSHAKE));
+    tls_hash_handshake(&tcb->key_block, (uint8_t*)io_data(tlss->tx) + tlss->tx->data_size, len);
     tlss->tx->data_size += len;
 
 #if (TLS_DEBUG_REQUESTS)
@@ -1518,23 +1520,27 @@ static void tlss_append_server_hello(TLSS* tlss, TLSS_TCB* tcb)
 static void tlss_append_certificate(TLSS* tlss, TLSS_TCB* tcb)
 {
     TLS_HANDSHAKE* handshake;
+    unsigned int len;
     //1. Handshake record
     handshake = (TLS_HANDSHAKE*)((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size);
     handshake->message_type = TLS_HANDSHAKE_CERTIFICATE;
-    tlss_set_size(&handshake->message_length_be, 2 * sizeof(TLS_SIZE) + tlss->cert_len);
-    tlss->tx->data_size += sizeof(TLS_HANDSHAKE);
+    tlss_set_size(&handshake->message_length_be, 0);
+    len = sizeof(TLS_HANDSHAKE);
 
     //2. Certificate list
-    tlss_set_size((TLS_SIZE*)((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size), sizeof(TLS_SIZE) + tlss->cert_len);
-    tlss->tx->data_size += sizeof(TLS_SIZE);
+    tlss_set_size((TLS_SIZE*)((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size + len), sizeof(TLS_SIZE) + tlss->cert_len);
+    len += sizeof(TLS_SIZE);
 
     //3. Certificate list
-    tlss_set_size((TLS_SIZE*)((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size), tlss->cert_len);
-    tlss->tx->data_size += sizeof(TLS_SIZE);
+    tlss_set_size((TLS_SIZE*)((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size + len), tlss->cert_len);
+    len += sizeof(TLS_SIZE);
 
     //4. Certificate itself
-    memcpy((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size, tlss->cert, tlss->cert_len);
-    tlss->tx->data_size += tlss->cert_len;
+    memcpy((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size + len, tlss->cert, tlss->cert_len);
+    len += tlss->cert_len;
+    tlss_set_size(&handshake->message_length_be, len - sizeof(TLS_HANDSHAKE));
+    tls_hash_handshake(&tcb->key_block, (uint8_t*)io_data(tlss->tx) + tlss->tx->data_size, len);
+    tlss->tx->data_size += len;
 #if (TLS_DEBUG_REQUESTS)
     printf("TLS: certificate\n");
 #endif //TLS_DEBUG_REQUESTS
@@ -1546,6 +1552,7 @@ static void tlss_append_server_hello_done(TLSS* tlss, TLSS_TCB* tcb)
     handshake = (TLS_HANDSHAKE*)((uint8_t*)io_data(tlss->tx) + tlss->tx->data_size);
     handshake->message_type = TLS_HANDSHAKE_SERVER_HELLO_DONE;
     tlss_set_size(&handshake->message_length_be, 0);
+    tls_hash_handshake(&tcb->key_block, (uint8_t*)io_data(tlss->tx) + tlss->tx->data_size, sizeof(TLS_HANDSHAKE));
     tlss->tx->data_size += sizeof(TLS_HANDSHAKE);
 #if (TLS_DEBUG_REQUESTS)
     printf("TLS: serverHelloDone\n");
@@ -1991,12 +1998,39 @@ static inline bool tlss_rx_client_key_exchange(TLSS* tlss, HANDLE tcb_handle, vo
     return true;
 }
 
+static inline bool tlss_rx_finished(TLSS* tlss, HANDLE tcb_handle, void* data, unsigned short len)
+{
+    TLSS_TCB* tcb = so_get(&tlss->tcbs, tcb_handle);
+/*    if ((tcb->state != TLSS_STATE_CLIENT_KEY_EXCHANGE) || (len < TLS_PREMASTER_SIZE + 2) || (be2short(data) != TLS_PREMASTER_SIZE))
+    {
+        tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        return true;
+    }
+    io_reset(tlss->tx);
+    memcpy(io_data(tlss->tx), (uint8_t*)data + 2, TLS_PREMASTER_SIZE);
+    tlss->tx->data_size = TLS_PREMASTER_SIZE;*/
+    sleep_ms(100);
+    dump(data, len);
+    tls_compare_client_finished(tcb->master_secret, &tcb->key_block, data, len);
+
+    tlss_set_state(tcb, TLSS_STATE_SERVER_KEY_EXCHANGE);
+#if (TLS_DEBUG_REQUESTS)
+    printf("TLS: (client) finished\n");
+#endif //TLS_DEBUG_REQUESTS
+
+    printf("HANG\n");
+    for (;;) {}
+//    io_write(tlss->owner, HAL_IO_REQ(HAL_TLS, TLS_PREMASTER_DECRYPT), tcb_handle, tlss->tx);
+    return true;
+}
+
 static inline bool tlss_rx_handshakes(TLSS* tlss, HANDLE tcb_handle, void* data, unsigned short len)
 {
     unsigned short offset, len_cur;
     TLS_HANDSHAKE* handshake;
     void* data_cur;
     bool answered;
+    TLSS_TCB* tcb = so_get(&tlss->tcbs, tcb_handle);
     //iterate through handshake messages
     for (offset = 0; offset < len; offset += len_cur + sizeof(TLS_HANDSHAKE))
     {
@@ -2021,8 +2055,9 @@ static inline bool tlss_rx_handshakes(TLSS* tlss, HANDLE tcb_handle, void* data,
         case TLS_HANDSHAKE_CLIENT_KEY_EXCHANGE:
             answered = tlss_rx_client_key_exchange(tlss, tcb_handle, data_cur, len_cur);
             break;
-        //TODO: not sure about others this time
-//        TLS_HANDSHAKE_FINISHED = 20
+        case TLS_HANDSHAKE_FINISHED:
+            answered = tlss_rx_finished(tlss, tcb_handle, data_cur, len_cur);
+            break;
         default:
 #if (TLS_DEBUG)
             printf("TLS: unexpected handshake type: %d\n", handshake->message_type);
@@ -2030,6 +2065,7 @@ static inline bool tlss_rx_handshakes(TLSS* tlss, HANDLE tcb_handle, void* data,
             tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
             answered = true;
         }
+        tls_hash_handshake(&tcb->key_block, (uint8_t*)data + offset, len_cur + sizeof(TLS_HANDSHAKE));
         if (answered)
             return true;
     }
@@ -2084,18 +2120,19 @@ static void tlss_tcp_rx(TLSS* tlss, HANDLE handle)
         tcb = so_get(&tlss->tcbs, tcb_handle);
         if (tcb->client_secure)
         {
-            len = tls_decrypt(&tcb->key_block, data, len, io_data(tlss->tx));
+            len = tls_decrypt(&tcb->key_block, rec->content_type, data, len, io_data(tlss->tx));
             data = io_data(tlss->tx);
             if (len < 0)
             {
-                tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_DECRYPTION_FAILED);
+                tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, -len);
+#if (TLS_DEBUG)
+                if (len == TLS_DECRYPT_FAILED)
+                    printf("TLS: Decrypt record failed\n");
+                else
+                    printf("TLS: Record MAC check failed\n");
+#endif //TLS_DEBUG
                 break;
             }
-            printd("TLS decrypt:\n");
-            dump(data, len);
-
-            printd("HANG\n");
-            for (;;) {}
         }
         switch (rec->content_type)
         {
