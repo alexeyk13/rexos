@@ -29,15 +29,15 @@ typedef struct {
     AES_KEY tx_key;
     SHA256_CTX handshake_hash;
     unsigned long rx_sequence, tx_sequence;
-} TLS_KEY_BLOCK;
+} TLS_CIPHER;
 
-void tls_cipher_init(TLS_KEY_BLOCK* key_block);
-void tls_hash_handshake(TLS_KEY_BLOCK* key_block, const void* data, unsigned int len);
-bool tls_compare_client_finished(void* master, TLS_KEY_BLOCK* key_block, const void* data, unsigned int len);
+void tls_cipher_init(TLS_CIPHER* tls_cipher);
+void tls_cipher_hash_handshake(TLS_CIPHER* tls_cipher, const void* data, unsigned int len);
+bool tls_cipher_compare_client_finished(void* master, TLS_CIPHER* tls_cipher, const void* data, unsigned int len);
 
-bool tls_decode_master(const void* premaster, const void* client_random, const void* server_random, void* out);
-void tls_decode_key_block(const void* master, const void* client_random, const void* server_random, TLS_KEY_BLOCK* key_block);
+bool tls_cipher_decode_master(const void* premaster, const void* client_random, const void* server_random, void* out);
+void tls_cipher_decode_tls_cipher(const void* master, const void* client_random, const void* server_random, TLS_CIPHER* tls_cipher);
 
-int tls_decrypt(TLS_KEY_BLOCK* key_block, TLS_CONTENT_TYPE content_type, void* in, unsigned int len, void* out);
+int tls_cipher_decrypt(TLS_CIPHER* tls_cipher, TLS_CONTENT_TYPE content_type, void* in, unsigned int len);
 
 #endif // TLS_CIPHER_H

@@ -8,6 +8,7 @@
 #define TLS_PRIVATE_H
 
 #include <stdint.h>
+#include "../../userspace/tls.h"
 
 #define TLS_NULL_WITH_NULL_NULL                                     0x0000
 #define TLS_RSA_WITH_NULL_MD5                                       0x0001
@@ -450,17 +451,9 @@ typedef struct {
     uint8_t alert_description;
 } TLS_ALERT;
 
-#define TLS_RANDOM_SIZE                             28
-#define TLS_MASTER_SECRET_SIZE                      48
-
-typedef struct {
-    uint8_t gmt_unix_time_be[4];
-    uint8_t random_bytes[TLS_RANDOM_SIZE];
-} TLS_RANDOM;
-
 typedef struct {
     TLS_VERSION version;
-    TLS_RANDOM random;
+    uint8_t random[TLS_RANDOM_SIZE];
     uint8_t session_id_length;
 } TLS_HELLO;
 
@@ -468,11 +461,6 @@ typedef struct {
     uint8_t code_be[2];
     uint8_t len_be[2];
 } TLS_EXTENSION;
-
-typedef struct {
-    TLS_VERSION version;
-    uint8_t secret[46];
-} TLS_PREMASTER;
 
 #pragma pack(pop)
 

@@ -12,7 +12,10 @@
 #include "ipc.h"
 
 #define TLS_SERVER_RANDOM_SIZE                                          32
-#define TLS_PREMASTER_SIZE                                              128
+#define TLS_RANDOM_SIZE                                                 32
+#define TLS_RAW_PREMASTER_SIZE                                          128
+#define TLS_PREMASTER_SIZE                                              48
+#define TLS_MASTER_SIZE                                                 48
 #define TLS_SESSION_ID_SIZE                                             32
 
 typedef enum {
