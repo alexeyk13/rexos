@@ -90,29 +90,36 @@ void tls_cipher_hash_handshake(TLS_CIPHER* tls_cipher, const void* data, unsigne
     sha256_update(&tls_cipher->handshake_hash, data, len);
 }
 
-bool tls_cipher_compare_client_finished(void* master, TLS_CIPHER* tls_cipher, const void* data, unsigned int len)
+bool tls_cipher_compare_client_finished(TLS_CIPHER* tls_cipher, const void* data, unsigned int len)
 {
     uint8_t dig[12];
     uint8_t hash[SHA256_BLOCK_SIZE];
     //TODO:
     sha256_final(&tls_cipher->handshake_hash, hash);
-    p_hash(master, TLS_MASTER_SIZE, __CLIENT_LABEL, CLIENT_LABEL_LEN, hash, SHA256_BLOCK_SIZE, NULL, 0, dig, 12);
+    p_hash(tls_cipher->master, TLS_MASTER_SIZE, __CLIENT_LABEL, CLIENT_LABEL_LEN, hash, SHA256_BLOCK_SIZE, NULL, 0, dig, 12);
     dump(dig, 12);
     return true;
 }
 
-bool tls_cipher_decode_master(const void* premaster, const void* client_random, const void* server_random, void* out)
-{
-    if (eme_pkcs1_v1_15_decode(premaster, TLS_RAW_PREMASTER_SIZE, out, TLS_PREMASTER_SIZE) < sizeof(TLS_PREMASTER_SIZE))
-        return false;
-    p_hash(out, TLS_PREMASTER_SIZE, __MASTER_LABEL, MASTER_LABEL_LEN, client_random, 32, server_random, 32, out, TLS_MASTER_SIZE);
-    return true;
-}
-
-void tls_cipher_decode_tls_cipher(const void* master, const void* client_random, const void* server_random, TLS_CIPHER *tls_cipher)
+bool tls_cipher_decode_key_block(const void* premaster, TLS_CIPHER *tls_cipher)
 {
     TLS_AES_SHA1_KEY_BLOCK raw;
-    p_hash(master, TLS_MASTER_SIZE, __KEY_BLOCK_LABEL, KEY_BLOCK_LABEL_LEN, server_random, 32, client_random, 32, &raw, sizeof(TLS_AES_SHA1_KEY_BLOCK));
+
+    //decode pkcs padding
+    if (eme_pkcs1_v1_15_decode(premaster, TLS_RAW_PREMASTER_SIZE, tls_cipher->master, TLS_PREMASTER_SIZE) < sizeof(TLS_PREMASTER_SIZE))
+        return false;
+    //decode master from premaster
+    p_hash(tls_cipher->master, TLS_PREMASTER_SIZE, __MASTER_LABEL, MASTER_LABEL_LEN,
+                               tls_cipher->client_random, TLS_RANDOM_SIZE,
+                               tls_cipher->server_random, TLS_RANDOM_SIZE,
+                               tls_cipher->master, TLS_MASTER_SIZE);
+
+    //genarate raw key block. Server here goes first
+    p_hash(tls_cipher->master, TLS_MASTER_SIZE, __KEY_BLOCK_LABEL, KEY_BLOCK_LABEL_LEN,
+                                tls_cipher->server_random, TLS_RANDOM_SIZE,
+                                tls_cipher->client_random, TLS_RANDOM_SIZE,
+                                &raw, sizeof(TLS_AES_SHA1_KEY_BLOCK));
+
     hmac_setup(&tls_cipher->rx_hmac_ctx, &__HMAC_SHA1, &tls_cipher->rx_hash_ctx, raw.client_mac, SHA1_BLOCK_SIZE);
     hmac_setup(&tls_cipher->tx_hmac_ctx, &__HMAC_SHA1, &tls_cipher->tx_hash_ctx, raw.server_mac, SHA1_BLOCK_SIZE);
     AES_set_decrypt_key(raw.client_key, 128, &tls_cipher->rx_key);
@@ -120,6 +127,7 @@ void tls_cipher_decode_tls_cipher(const void* master, const void* client_random,
     tls_cipher->rx_sequence = tls_cipher->tx_sequence = 0;
     tls_cipher->iv_size = AES_BLOCK_SIZE;
     tls_cipher->hash_size = SHA1_BLOCK_SIZE;
+    return true;
 }
 
 int tls_cipher_decrypt(TLS_CIPHER* tls_cipher, TLS_CONTENT_TYPE content_type, void* in, unsigned int len)

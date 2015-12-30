@@ -38,11 +38,8 @@ typedef struct {
     HANDLE handle;
     IO* rx;
     IO* tx;
-    uint8_t client_random[TLS_RANDOM_SIZE];
-    uint8_t server_random[TLS_RANDOM_SIZE];
     TLS_PROTOCOL_VERSION version;
     TLS_CIPHER tls_cipher;
-    uint8_t master_secret[TLS_MASTER_SIZE];
     uint8_t session_id[TLS_SESSION_ID_SIZE];
     TLSS_STATE state;
     uint16_t cipher_suite;
@@ -1472,7 +1469,7 @@ static void tlss_append_server_hello(TLSS* tlss, TLSS_TCB* tcb)
     len += sizeof(TLS_HELLO);
     hello->version.major = 3;
     hello->version.minor = (uint8_t)tcb->version;
-    memcpy(&hello->random, &tcb->server_random, TLS_RANDOM_SIZE);
+    memcpy(&hello->random, tcb->tls_cipher.server_random, TLS_RANDOM_SIZE);
     //session id
     hello->session_id_length = TLS_SESSION_ID_SIZE;
 
@@ -1655,7 +1652,7 @@ static inline void tlss_close(TLSS* tlss)
 
 static inline void tlss_generate_server_random(TLSS* tlss, TLSS_TCB* tcb, void* random)
 {
-    memcpy(&tcb->server_random, io_data(tlss->tx), TLS_RANDOM_SIZE);
+    memcpy(tcb->tls_cipher.server_random, io_data(tlss->tx), TLS_RANDOM_SIZE);
     tlss_set_state(tcb, TLSS_STATE_GENERATE_SESSION_ID);
 }
 
@@ -1714,7 +1711,7 @@ static inline void tlss_premaster_decrypt(TLSS* tlss, HANDLE tcb_handle)
     if (tlss->tx->data_size < sizeof(TLS_RAW_PREMASTER_SIZE))
         return;
 
-    if (!tls_cipher_decode_master(io_data(tlss->tx), &tcb->client_random, &tcb->server_random, tcb->master_secret))
+    if (!tls_cipher_decode_key_block(io_data(tlss->tx), &tcb->tls_cipher))
     {
         tlss_tx_alert(tlss, tcb_handle, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_DECRYPTION_FAILED);
 #if (TLS_DEBUG)
@@ -1724,10 +1721,8 @@ static inline void tlss_premaster_decrypt(TLSS* tlss, HANDLE tcb_handle)
     }
 #if (TLS_DEBUG_SECRETS)
     printf("TLS: master secret:\n");
-    tlss_dump(tcb->master_secret, TLS_MASTER_SIZE);
+    tlss_dump(tcb->tls_cipher.master, TLS_MASTER_SIZE);
 #endif //TLS_DEBUG_SECRETS
-    tls_cipher_decode_tls_cipher(tcb->master_secret, &tcb->client_random, &tcb->server_random, &tcb->tls_cipher);
-
     tlss_set_state(tcb, TLSS_STATE_CLIENT_KEY_EXCHANGE);
     tlss_fsm(tlss);
 }
@@ -1830,7 +1825,7 @@ static inline bool tlss_rx_client_hello(TLSS* tlss, HANDLE tcb_handle, void* dat
     else
         tcb->version = (TLS_PROTOCOL_VERSION)hello->version.minor;
     //3. Copy random
-    memcpy(&tcb->client_random, &hello->random, TLS_RANDOM_SIZE);
+    memcpy(tcb->tls_cipher.client_random, &hello->random, TLS_RANDOM_SIZE);
     //4. Ignore session, just check size
     data += sizeof(TLS_HELLO);
     len -= sizeof(TLS_HELLO);
@@ -2004,7 +1999,7 @@ static inline bool tlss_rx_finished(TLSS* tlss, HANDLE tcb_handle, void* data, u
     tlss->tx->data_size = TLS_PREMASTER_SIZE;*/
     sleep_ms(100);
     dump(data, len);
-    tls_cipher_compare_client_finished(tcb->master_secret, &tcb->tls_cipher, data, len);
+    tls_cipher_compare_client_finished(&tcb->tls_cipher, data, len);
 
     tlss_set_state(tcb, TLSS_STATE_SERVER_KEY_EXCHANGE);
 #if (TLS_DEBUG_REQUESTS)

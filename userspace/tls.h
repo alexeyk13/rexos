@@ -11,7 +11,6 @@
 #include "types.h"
 #include "ipc.h"
 
-#define TLS_SERVER_RANDOM_SIZE                                          32
 #define TLS_RANDOM_SIZE                                                 32
 #define TLS_RAW_PREMASTER_SIZE                                          128
 #define TLS_PREMASTER_SIZE                                              48

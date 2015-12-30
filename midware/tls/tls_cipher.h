@@ -19,6 +19,9 @@
 #define TLS_DECRYPT_FAILED                              -20
 
 typedef struct {
+    uint8_t client_random[TLS_RANDOM_SIZE];
+    uint8_t server_random[TLS_RANDOM_SIZE];
+    uint8_t master[TLS_MASTER_SIZE];
     unsigned short iv_size;
     unsigned short hash_size;
     HMAC_CTX rx_hmac_ctx;
@@ -33,10 +36,9 @@ typedef struct {
 
 void tls_cipher_init(TLS_CIPHER* tls_cipher);
 void tls_cipher_hash_handshake(TLS_CIPHER* tls_cipher, const void* data, unsigned int len);
-bool tls_cipher_compare_client_finished(void* master, TLS_CIPHER* tls_cipher, const void* data, unsigned int len);
+bool tls_cipher_compare_client_finished(TLS_CIPHER* tls_cipher, const void* data, unsigned int len);
 
-bool tls_cipher_decode_master(const void* premaster, const void* client_random, const void* server_random, void* out);
-void tls_cipher_decode_tls_cipher(const void* master, const void* client_random, const void* server_random, TLS_CIPHER* tls_cipher);
+bool tls_cipher_decode_key_block(const void* premaster, TLS_CIPHER *tls_cipher);
 
 int tls_cipher_decrypt(TLS_CIPHER* tls_cipher, TLS_CONTENT_TYPE content_type, void* in, unsigned int len);
 
