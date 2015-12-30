@@ -40,3 +40,14 @@ int pkcs7_decode(void* em_m, unsigned int size)
             return -1;
     return size - padding;
 }
+
+unsigned int pkcs7_encode(void* m, unsigned int size, unsigned int block_size)
+{
+    int i;
+    uint8_t pad_len = block_size - (size % block_size);
+    if (pad_len == 0)
+        pad_len = block_size;
+    for (i = 0; i < pad_len; ++i)
+        ((uint8_t*)m)[size + i] = pad_len;
+    return size + pad_len;
+}

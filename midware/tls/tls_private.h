@@ -389,6 +389,7 @@ typedef enum {
 } TLS_HANDSHAKE_TYPE;
 
 #define TLS_CHANGE_CIPHER_SPEC                                      1
+#define TLS_FINISHED_DIGEST_SIZE                                    12
 
 typedef enum {
     TLS_ALERT_LEVEL_WARNING = 1,
@@ -463,7 +464,6 @@ typedef struct {
 } TLS_EXTENSION;
 
 #pragma pack(pop)
-
 
 
 #endif // TLS_PRIVATE_H
