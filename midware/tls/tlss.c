@@ -28,6 +28,7 @@ typedef enum {
     TLSS_STATE_CLIENT_KEY_EXCHANGE,
     TLSS_STATE_DECRYPT_PREMASTER,
     TLSS_STATE_CLIENT_CHANGE_CIPHER_SPEC,
+    TLSS_STATE_GENERATE_IV_SEED,
     TLSS_STATE_SERVER_CHANGE_CIPHER_SPEC,
     TLSS_STATE_READY,
     TLSS_STATE_PENDING,
@@ -57,7 +58,7 @@ typedef struct {
     IO* rx;
     IO* tx;
     SO tcbs;
-    bool rx_busy, tx_busy, decrypted;
+    bool rx_busy, tx_busy;
 } TLSS;
 
 const REX __TLSS = {
@@ -145,6 +146,7 @@ static const char* const __TLSS_STATES[TLSS_STATE_MAX] =           {"CLIENT_HELL
                                                                     "CLIENT_KEY_EXCHANGE",
                                                                     "DECRYPT_PREMASTER",
                                                                     "CLIENT_CHANGE_CIPHER_SPEC",
+                                                                    "GENERATE_IV_SEED",
                                                                     "SERVER_CHANGE_CIPHER_SPEC",
                                                                     "READY",
                                                                     "PENDING",
@@ -1883,7 +1885,7 @@ static inline void tlss_rx_finished(TLSS* tlss, TLSS_TCB* tcb, void* data, unsig
         return;
     }
 
-    tlss_set_state(tcb, TLSS_STATE_SERVER_CHANGE_CIPHER_SPEC);
+    tlss_set_state(tcb, TLSS_STATE_GENERATE_IV_SEED);
 #if (TLS_DEBUG_REQUESTS)
     printf("TLS: (client) finished\n");
 #endif //TLS_DEBUG_REQUESTS
@@ -2087,6 +2089,9 @@ static void tlss_fsm(TLSS* tlss)
         case TLSS_STATE_GENERATE_SESSION_ID:
             io_read(tlss->owner, HAL_IO_REQ(HAL_TLS, TLS_GENERATE_RANDOM), tlss->tcb_handle, tlss->tx, TLS_SESSION_ID_SIZE);
             return;
+        case TLSS_STATE_GENERATE_IV_SEED:
+            io_read(tlss->owner, HAL_IO_REQ(HAL_TLS, TLS_GENERATE_RANDOM), tlss->tcb_handle, tlss->tx, TLS_IV_SEED_SIZE);
+            return;
         case TLSS_STATE_SERVER_HELLO:
             tlss_tx_server_hello(tlss, tcb);
             break;
@@ -2116,7 +2121,6 @@ static inline void tlss_init(TLSS* tlss)
     tlss->rx = NULL;
     tlss->tx = NULL;
     tlss->tx_busy = tlss->rx_busy = false;
-    tlss->decrypted = false;
     tlss->cert = NULL;
     tlss->cert_len = 0;
     tlss->offset = 0;
@@ -2173,6 +2177,12 @@ static inline void tlss_generate_session_id(TLSS* tlss, TLSS_TCB* tcb, void* ran
     tlss_set_state(tcb, TLSS_STATE_SERVER_HELLO);
 }
 
+static inline void tlss_generate_iv_seed(TLSS* tlss, TLSS_TCB* tcb, void* random)
+{
+    memcpy(tcb->tls_cipher.iv_seed, io_data(tlss->tx), TLS_IV_SEED_SIZE);
+    tlss_set_state(tcb, TLSS_STATE_SERVER_CHANGE_CIPHER_SPEC);
+}
+
 static inline void tlss_generate_random(TLSS* tlss, HANDLE tcb_handle)
 {
     TLSS_TCB* tcb;
@@ -2190,6 +2200,9 @@ static inline void tlss_generate_random(TLSS* tlss, HANDLE tcb_handle)
             break;
         case TLSS_STATE_GENERATE_SESSION_ID:
             tlss_generate_session_id(tlss, tcb, io_data(tlss->tx));
+            break;
+        case TLSS_STATE_GENERATE_IV_SEED:
+            tlss_generate_iv_seed(tlss, tcb, io_data(tlss->tx));
             break;
         default:
             break;

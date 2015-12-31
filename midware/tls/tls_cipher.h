@@ -32,7 +32,7 @@ typedef struct {
     AES_KEY tx_key;
     SHA256_CTX handshake_hash;
     unsigned int rx_sequence_lo, tx_sequence_lo, rx_sequence_hi, tx_sequence_hi;
-    uint8_t tx_iv[AES_BLOCK_SIZE];
+    uint8_t iv_seed[TLS_IV_SEED_SIZE];
 } TLS_CIPHER;
 
 typedef enum {

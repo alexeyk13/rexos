@@ -33,6 +33,8 @@ static const uint8_t __KEY_BLOCK_LABEL[KEY_BLOCK_LABEL_LEN ] =  "key expansion";
 #define FINISHED_LABEL_LEN                                      15
 static const uint8_t __CLIENT_LABEL[FINISHED_LABEL_LEN ] =      "client finished";
 static const uint8_t __SERVER_LABEL[FINISHED_LABEL_LEN ] =      "server finished";
+#define IV_LABEL_LEN                                            14
+static const uint8_t __IV_LABEL[IV_LABEL_LEN ] =                "iv block round";
 
 static void p_hash(const void* key, unsigned int key_len, const void* seed1, unsigned int seed1_size,
                                                           const void* seed2, unsigned int seed2_size,
@@ -138,8 +140,6 @@ bool tls_cipher_decode_key_block(const void* premaster, TLS_CIPHER *tls_cipher)
     tls_cipher->rx_sequence_hi = tls_cipher->tx_sequence_hi = tls_cipher->rx_sequence_lo = tls_cipher->tx_sequence_lo = 0;
     tls_cipher->block_size = AES_BLOCK_SIZE;
     tls_cipher->hash_size = SHA1_BLOCK_SIZE;
-    //TODO: generate iv seed
-    memset(tls_cipher->tx_iv, 0x00, tls_cipher->block_size);
     return true;
 }
 
@@ -191,9 +191,12 @@ unsigned int tls_cipher_encrypt(TLS_CIPHER* tls_cipher, TLS_CONTENT_TYPE content
     raw_len = len;
 
     //1. generate and copy IV
-    //TODO: real iv generation
-    memset(tls_cipher->tx_iv, 0x00, tls_cipher->block_size);
-    memcpy(in, tls_cipher->tx_iv, tls_cipher->block_size);
+    //left part will also be rounded by next encrypt
+    p_hash(tls_cipher->iv_seed, TLS_IV_SEED_SIZE, __IV_LABEL, IV_LABEL_LEN,
+                                &tls_cipher->rx_sequence_lo, sizeof(unsigned int),
+                                &tls_cipher->tx_sequence_lo, sizeof(unsigned int),
+                                tls_cipher->iv_seed, TLS_IV_SEED_SIZE);
+    memcpy(in, tls_cipher->iv_seed, tls_cipher->block_size);
 
     //2. generate MAC
     int2be(hdr.seq_hi_be, tls_cipher->tx_sequence_hi);
@@ -219,7 +222,7 @@ unsigned int tls_cipher_encrypt(TLS_CIPHER* tls_cipher, TLS_CONTENT_TYPE content
     raw_len = pkcs7_encode(data, raw_len, tls_cipher->block_size);
 
     //4. Encrypt
-    AES_cbc_encrypt(data, data, raw_len, &tls_cipher->tx_key, tls_cipher->tx_iv, AES_ENCRYPT);
+    AES_cbc_encrypt(data, data, raw_len, &tls_cipher->tx_key, tls_cipher->iv_seed, AES_ENCRYPT);
 
     return tls_cipher->block_size + raw_len;
 }
