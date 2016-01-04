@@ -49,10 +49,10 @@
 
 #define USBD_IO_SIZE                                        128
 
-#define USBD_CDC_ACM_CLASS                                  0
+#define USBD_CDC_ACM_CLASS                                  1
 #define USBD_RNDIS_CLASS                                    0
 #define USBD_HID_KBD_CLASS                                  0
-#define USBD_CCID_CLASS                                     1
+#define USBD_CCID_CLASS                                     0
 #define USBD_MSC_CLASS                                      0
 
 //----------------------- CDC ACM Device class ----------------------------------------
@@ -184,13 +184,24 @@
 #define TCP_DEBUG_PACKETS                                   0
 
 //---------------------------- HTTP server---------------------------------------------
-#define HS_PROCESS_SIZE                                     1200
-#define HS_PROCESS_PRIORITY                                 160
+#define HS_PROCESS_SIZE                                     900
+#define HS_PROCESS_PRIORITY                                 161
 
-#define HS_DEBUG                                            1
+#define HS_DEBUG                                            0
 #define HS_DEBUG_HEAD                                       0
-#define HS_MAX_CONNECTIONS                                  2
 //URL and header must fit completely in IO. Default to MSS
 #define HS_IO_SIZE                                          1460
+
+//---------------------------- TLS server---------------------------------------------
+//cryptography can take much space.
+#define TLS_PROCESS_SIZE                                    3048
+#define TLS_PROCESS_PRIORITY                                160
+
+#define TLS_DEBUG                                           1
+#define TLS_DEBUG_REQUESTS                                  1
+#define TLS_DEBUG_FLOW                                      0
+//DON'T FORGET TO REMOVE IN PRODUCTION!!!
+#define TLS_DEBUG_SECRETS                                   0
+#define TLS_IO_SIZE                                         1460
 
 #endif // SYS_CONFIG_H
