@@ -41,7 +41,10 @@ typedef struct {
     HANDLE handle;
     IO* rx;
     IO* tx;
-    unsigned int rx_size;
+#if (TLS_DEBUG)
+    IP remote_addr;
+#endif //TLS_DEBUG
+    unsigned int rx_size, tx_offset;
     TLS_PROTOCOL_VERSION version;
     TLS_CIPHER tls_cipher;
     uint8_t session_id[TLS_SESSION_ID_SIZE];
@@ -1391,6 +1394,7 @@ static HANDLE tlss_create_tcb(TLSS* tlss, HANDLE handle)
     tcb->state = TLSS_STATE_CLIENT_HELLO;
     tcb->version = TLS_PROTOCOL_VERSION_UNSUPPORTED;
     tcb->cipher_suite = TLS_NULL_WITH_NULL_NULL;
+    tcb->tls_cipher.max_data_size = TLS_IO_SIZE - sizeof(TLS_RECORD);
     tls_cipher_init(&tcb->tls_cipher);
     return tcb_handle;
 }
@@ -1521,13 +1525,22 @@ static void tlss_send_record(TLSS* tlss, TLSS_TCB* tcb, unsigned int len)
 
 static void tlss_user_tx(TLSS* tlss, HANDLE tcb_handle, TLSS_TCB* tcb)
 {
+    unsigned int to_write;
     void* data = tlss_allocate_record(tlss, tcb, TLS_CONTENT_APP);
-    //TODO: check size here!!!!
-    memcpy(data, io_data(tcb->tx), tcb->tx->data_size);
-    tlss_send_record(tlss, tcb, tcb->tx->data_size);
+
+    to_write = tcb->tx->data_size - tcb->tx_offset;
+    if (to_write > tcb->tls_cipher.max_data_size)
+        to_write = tcb->tls_cipher.max_data_size;
+
+    memcpy(data, (uint8_t*)io_data(tcb->tx) + tcb->tx_offset, to_write);
+    tcb->tx_offset += to_write;
+    tlss_send_record(tlss, tcb, to_write);
     tlss_tcp_tx(tlss, tcb);
-    io_complete(tlss->user, HAL_IO_CMD(HAL_TCP, IPC_WRITE), tcb_handle, tcb->tx);
-    tcb->tx = NULL;
+    if (tcb->tx_offset >= tcb->tx->data_size)
+    {
+        io_complete(tlss->user, HAL_IO_CMD(HAL_TCP, IPC_WRITE), tcb_handle, tcb->tx);
+        tcb->tx = NULL;
+    }
 }
 
 static unsigned int tlss_append_server_hello(TLSS* tlss, TLSS_TCB* tcb, void* data)
@@ -1580,8 +1593,10 @@ static unsigned int tlss_append_server_hello(TLSS* tlss, TLSS_TCB* tcb, void* da
 #if (TLS_DEBUG_REQUESTS)
     printf("TLS: serverHello\n");
     printf("Protocol version: 1.%d\n", hello->version.minor - 1);
+#if (TLS_DEBUG_SECRETS)
     printf("Server random:\n");
     tlss_dump(hello->random, TLS_RANDOM_SIZE);
+#endif //TLS_DEBUG_SECRETS
     printf("Session ID:\n");
     tlss_dump(tcb->session_id, TLS_SESSION_ID_SIZE);
     printf("cipher suite: ");
@@ -1704,7 +1719,10 @@ static void tlss_tx_alert(TLSS* tlss, TLSS_TCB* tcb, TLS_ALERT_LEVEL alert_level
     alert->alert_level = alert_level;
     alert->alert_description = alert_description;
 #if (TLS_DEBUG)
-    printf("TLS: tx %s alert: %d\n", alert->alert_level == TLS_ALERT_LEVEL_WARNING ? "warning" : "fatal", alert->alert_description);
+    if (alert_description == TLS_ALERT_CLOSE_NOTIFY)
+        printf("TLS: tx close notify\n");
+    else
+        printf("TLS: tx %s alert: %d\n", alert->alert_level == TLS_ALERT_LEVEL_WARNING ? "warning" : "fatal", alert->alert_description);
 #endif //TLS_DEBUG
     tlss_send_record(tlss, tcb, sizeof(TLS_ALERT));
     tlss_tcp_tx(tlss, tcb);
@@ -1749,7 +1767,7 @@ static inline void tlss_rx_alert(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned
         {
             //tx close notify
             tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_WARNING, TLS_ALERT_CLOSE_NOTIFY);
-            tlss_set_state(tcb, TLSS_STATE_CLOSE_NOTIFY);
+            tlss_set_state(tcb, TLSS_STATE_CLOSING);
         }
     }
     else
@@ -1791,8 +1809,16 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     }
     if ((hello->version.major > 3) || (hello->version.minor > 3))
         tcb->version = TLS_PROTOCOL_1_2;
+    else if ((hello->version.major < 3) || (hello->version.minor < 3))
+    {
+#if (TLS_DEBUG)
+        printf("TLS: protocol version 1.2 not supported by client, closing\n");
+#endif //TLS_DEBUG
+        tlss_fatal(tlss, tcb, TLS_ALERT_PROTOCOL_VERSION);
+        return;
+    }
     else
-        tcb->version = (TLS_PROTOCOL_VERSION)hello->version.minor;
+        tcb->version = TLS_PROTOCOL_1_2;
     //3. Copy random
     memcpy(tcb->tls_cipher.client_random, &hello->random, TLS_RANDOM_SIZE);
     //4. Ignore session, just check size
@@ -1901,8 +1927,10 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
 #if (TLS_DEBUG_REQUESTS)
     printf("TLS: clientHello\n");
     printf("Protocol version: %d.%d\n", hello->version.major - 2, hello->version.minor - 1);
+#if (TLS_DEBUG_SECRETS)
     printf("Client random:\n");
     tlss_dump(hello->random, TLS_RANDOM_SIZE);
+#endif //TLS_DEBUG_SECRETS
     printf("Session ID:\n");
     if (hello->session_id_length == 0)
         printf("NULL\n");
@@ -2030,14 +2058,9 @@ static inline void tlss_rx_app(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned i
         memcpy(io_data(tcb->rx), data, to_read);
         tcb->rx->data_size = to_read;
         stack = io_push(tcb->rx, sizeof(TCP_STACK));
-        if (to_read == len)
-            stack->flags = TCP_PSH;
-        else
-        {
-            stack->flags = 0;
-            data = (uint8_t*)data + to_read;
-            len -= to_read;
-        }
+        stack->flags = 0;
+        data = (uint8_t*)data + to_read;
+        len -= to_read;
         io_complete(tlss->user, HAL_IO_CMD(HAL_TCP, IPC_READ), tlss->tcb_handle, tcb->rx);
         tcb->rx = NULL;
     }
@@ -2229,15 +2252,14 @@ static inline void tlss_open(TLSS* tlss, HANDLE tcpip, HANDLE owner)
 
 static inline void tlss_close(TLSS* tlss)
 {
+    HANDLE tcb_handle;
     if (tlss->tcpip == INVALID_HANDLE)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    //TODO: flush & close all handles
-    //TODO: do it in flush:
-    tlss->tcb_handle = INVALID_HANDLE;
-    //
+    while ((tcb_handle = so_first(&tlss->tcbs)) != INVALID_HANDLE)
+        tlss_close_session(tlss, tcb_handle, true);
     tlss->tcpip = INVALID_HANDLE;
     tlss->owner = INVALID_HANDLE;
     io_destroy(tlss->rx);
@@ -2365,6 +2387,9 @@ static inline void tlss_request(TLSS* tlss, IPC* ipc)
 
 static inline void tlss_tcp_open(TLSS* tlss, HANDLE handle)
 {
+#if (TLS_DEBUG)
+    TLSS_TCB* tcb;
+#endif //TLS_DEBUG
     HANDLE tcb_handle = tlss_create_tcb(tlss, handle);
     if (tcb_handle == INVALID_HANDLE)
     {
@@ -2372,10 +2397,10 @@ static inline void tlss_tcp_open(TLSS* tlss, HANDLE handle)
         return;
     }
 #if (TLS_DEBUG)
-    //TODO:
-///    tcp_get_remote_addr(hss->tcpip, handle, &session->remote_addr);
+    tcb = so_get(&tlss->tcbs, tcb_handle);
+    tcp_get_remote_addr(tlss->tcpip, handle, &tcb->remote_addr);
     printf("TLS: new session from ");
-///    ip_print(&session->remote_addr);
+    ip_print(&tcb->remote_addr);
     printf("\n");
 #endif //TLS_DEBUG
     tlss_fsm(tlss);
@@ -2397,10 +2422,8 @@ static inline void tlss_tcp_close(TLSS* tlss, HANDLE handle)
     //close may arrive earlier than transmit complete
     if (tcb->state != TLSS_STATE_CLOSING)
     {
-        //TODO:
-    ///    tcp_get_remote_addr(hss->tcpip, handle, &session->remote_addr);
-            printf("TLS: unexpected session close\n ");
-    ///    ip_print(&session->remote_addr);
+        printf("TLS: unexpected session close: %d\n ", tcb->state);
+        ip_print(&tcb->remote_addr);
         printf("\n");
     }
 #endif //TLS_DEBUG
@@ -2534,6 +2557,20 @@ static inline void tlss_user_get_local_port(TLSS* tlss, IPC* ipc)
     ipc->param2 = tcp_get_local_port(tlss->tcpip, tcb->handle);
 }
 
+static inline void tlss_user_close(TLSS* tlss, HANDLE tcb_handle)
+{
+    TLSS_TCB* tcb = so_get(&tlss->tcbs, tcb_handle);
+    if (tcb == NULL)
+    {
+        error(ERROR_NOT_ACTIVE);
+        return;
+    }
+    tlss_flush(tlss, tcb_handle);
+    tlss_set_state(tcb, TLSS_STATE_CLOSE_NOTIFY);
+    tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_WARNING, TLS_ALERT_CLOSE_NOTIFY);
+    error(ERROR_SYNC);
+}
+
 static inline void tlss_user_read(TLSS* tlss, HANDLE tcb_handle, IO* io, unsigned int size)
 {
     TLSS_TCB* tcb;
@@ -2556,10 +2593,7 @@ static inline void tlss_user_read(TLSS* tlss, HANDLE tcb_handle, IO* io, unsigne
             to_read = size;
         memcpy(io_data(io), tlss->pending_data, to_read);
         stack = io_push(io, sizeof(TCP_STACK));
-        if (to_read == tlss->pending_len)
-            stack->flags = TCP_PSH;
-        else
-            stack->flags = 0;
+        stack->flags = 0;
         io->data_size = to_read;
         io_complete(tlss->user, HAL_IO_CMD(HAL_TCP, IPC_READ), tcb_handle, io);
 
@@ -2592,6 +2626,7 @@ static inline void tlss_user_write(TLSS* tlss, HANDLE tcb_handle, IO* io)
         error(ERROR_IN_PROGRESS);
         return;
     }
+    tcb->tx_offset = 0;
     tcb->tx = io;
     if (!tlss->tx_busy)
         tlss_user_tx(tlss, tcb_handle, tcb);
@@ -2628,8 +2663,8 @@ static inline void tlss_user_request(TLSS* tlss, IPC* ipc)
     case TCP_GET_LOCAL_PORT:
         tlss_user_get_local_port(tlss, ipc);
         break;
-///    case IPC_CLOSE:
-        //TODO:
+    case IPC_CLOSE:
+        tlss_user_close(tlss, (HANDLE)ipc->param1);
     case IPC_READ:
         tlss_user_read(tlss, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3);
         break;

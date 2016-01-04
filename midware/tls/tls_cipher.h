@@ -24,6 +24,7 @@ typedef struct {
     uint8_t master[TLS_MASTER_SIZE];
     unsigned short block_size;
     unsigned short hash_size;
+    unsigned short max_data_size;
     HMAC_CTX rx_hmac_ctx;
     HMAC_CTX tx_hmac_ctx;
     SHA1_CTX rx_hash_ctx;

@@ -140,6 +140,8 @@ bool tls_cipher_decode_key_block(const void* premaster, TLS_CIPHER *tls_cipher)
     tls_cipher->rx_sequence_hi = tls_cipher->tx_sequence_hi = tls_cipher->rx_sequence_lo = tls_cipher->tx_sequence_lo = 0;
     tls_cipher->block_size = AES_BLOCK_SIZE;
     tls_cipher->hash_size = SHA1_BLOCK_SIZE;
+    //MAC, IV, padding (same as IV), extra padding byte
+    tls_cipher->max_data_size -= tls_cipher->hash_size + 2 * tls_cipher->block_size + 1;
     return true;
 }
 
