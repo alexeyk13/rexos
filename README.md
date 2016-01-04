@@ -30,6 +30,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * GUI library: canvas, font, graphics, utf8 decoding
   * single-linked list, double linked list, ring buffer, 
   * rand
+  * cryptography: AES, AES-CBC, SHA1, SHA256, HMAC-SHA1, HMAC-SHA256
 - Device stacks:
   * USB device stack with USB composite and vendor requests support
   * USB device CDC ACM class
@@ -43,6 +44,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * ICMP: ECHO and flow control
   * ARP: timeouts and static routes support
   * HTTP Server (beta)
+  * TLS 1.2 Server (beta)
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -83,6 +85,11 @@ ARM7 features:
 
 History
 =======
+
+0.4.2
+- Some cryptography: AES, AES-CBC, SHA1, SHA256, HMAC-SHA1, HMAC-SHA256
+- TLS 1.2 support (beta). Transparent to TCP/IP stack
+
 0.4.1
 - USB RNDIS class support
 - USB interface associations descriptor support
