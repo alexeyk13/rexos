@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2015, Alexey Kramarenko
+    Copyright (c) 2011-2016, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -32,6 +32,7 @@ typedef enum {
     TLSS_STATE_SERVER_CHANGE_CIPHER_SPEC,
     TLSS_STATE_READY,
     TLSS_STATE_PENDING,
+    TLSS_STATE_CLOSE_NOTIFY,
     TLSS_STATE_CLOSING,
     TLSS_STATE_MAX
 } TLSS_STATE;
@@ -150,6 +151,7 @@ static const char* const __TLSS_STATES[TLSS_STATE_MAX] =           {"CLIENT_HELL
                                                                     "SERVER_CHANGE_CIPHER_SPEC",
                                                                     "READY",
                                                                     "PENDING",
+                                                                    "CLOSE_NOTIFY",
                                                                     "CLOSING"};
 
 static const char* const __TLS_KEY_ECHANGE[] =                     {"NULL",
@@ -1393,7 +1395,15 @@ static HANDLE tlss_create_tcb(TLSS* tlss, HANDLE handle)
     return tcb_handle;
 }
 
-//TODO: tlss_destroy_tcb
+static void tlss_destroy_tcb(TLSS* tlss, HANDLE tcb_handle)
+{
+    TLSS_TCB* tcb = so_get(&tlss->tcbs, tcb_handle);
+#if (TLS_DEBUG_FLOW)
+    printf("TLS: %s -> 0\n", __TLSS_STATES[tcb->state]);
+#endif //TLS_DEBUG_FLOW
+    memset(tcb, 0x00, sizeof(TLSS_TCB));
+    so_free(&tlss->tcbs, tcb_handle);
+}
 
 static HANDLE tlss_find_tcb_handle(TLSS* tlss, HANDLE handle)
 {
@@ -1406,6 +1416,40 @@ static HANDLE tlss_find_tcb_handle(TLSS* tlss, HANDLE handle)
             return tcb_handle;
     }
     return tcb_handle;
+}
+
+static void tlss_flush(TLSS* tlss, HANDLE tcb_handle)
+{
+    TLSS_TCB* tcb = so_get(&tlss->tcbs, tcb_handle);
+    if (tcb->rx != NULL)
+    {
+        io_complete_ex(tlss->user, HAL_IO_CMD(HAL_TCP, IPC_READ), tlss->tcb_handle, tcb->rx, ERROR_IO_CANCELLED);
+        tcb->rx = NULL;
+    }
+    if (tcb->tx != NULL)
+    {
+        io_complete_ex(tlss->user, HAL_IO_CMD(HAL_TCP, IPC_WRITE), tlss->tcb_handle, tcb->tx, ERROR_IO_CANCELLED);
+        tcb->tx = NULL;
+    }
+    if (tcb->state == TLSS_STATE_PENDING)
+        tcb->state = TLSS_STATE_READY;
+    //active session
+    if (tlss->tcb_handle == tcb_handle)
+        tlss->tcb_handle = INVALID_HANDLE;
+    if (tcb->state == TLSS_STATE_READY)
+        tcp_flush(tlss->tcpip, tcb->handle);
+}
+
+static void tlss_close_session(TLSS* tlss, HANDLE tcb_handle, bool close_tcp)
+{
+    TLSS_TCB* tcb = so_get(&tlss->tcbs, tcb_handle);
+    tlss_flush(tlss, tcb_handle);
+    if (close_tcp)
+        tcp_close(tlss->tcpip, tcb->handle);
+    //inform user on connection close if established before
+    if (tcb->server_secure)
+        ipc_post_inline(tlss->user, HAL_CMD(HAL_TCP, IPC_CLOSE), tlss->tcb_handle, tlss->tcb_handle, 0);
+    tlss_destroy_tcb(tlss, tcb_handle);
 }
 
 static void tlss_tcp_rx(TLSS* tlss)
@@ -1656,15 +1700,27 @@ static inline void tlss_tx_server_change_cipher_spec(TLSS* tlss, TLSS_TCB* tcb)
 
 static void tlss_tx_alert(TLSS* tlss, TLSS_TCB* tcb, TLS_ALERT_LEVEL alert_level, TLS_ALERT_DESCRIPTION alert_description)
 {
+    TLS_ALERT* alert = tlss_allocate_record(tlss, tcb, TLS_CONTENT_ALERT);
+    alert->alert_level = alert_level;
+    alert->alert_description = alert_description;
+#if (TLS_DEBUG)
+    printf("TLS: tx %s alert: %d\n", alert->alert_level == TLS_ALERT_LEVEL_WARNING ? "warning" : "fatal", alert->alert_description);
+#endif //TLS_DEBUG
+    tlss_send_record(tlss, tcb, sizeof(TLS_ALERT));
+    tlss_tcp_tx(tlss, tcb);
+}
+
+static void tlss_fatal(TLSS* tlss, TLSS_TCB* tcb, TLS_ALERT_DESCRIPTION alert_description)
+{
     tcb->state = TLSS_STATE_CLOSING;
-    printd("TODO: TLS alert\n");
+    tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, alert_description);
 }
 
 static inline void tlss_rx_change_cipher(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned int len)
 {
     if ((tcb->state != TLSS_STATE_CLIENT_CHANGE_CIPHER_SPEC) || (len != 1) || (*((uint8_t*)data) != TLS_CHANGE_CIPHER_SPEC) || (tcb->client_secure))
     {
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
         return;
     }
     tcb->client_secure = true;
@@ -1675,9 +1731,34 @@ static inline void tlss_rx_change_cipher(TLSS* tlss, TLSS_TCB* tcb, void* data, 
 
 static inline void tlss_rx_alert(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned int len)
 {
-    printd("TODO: alert\n");
-    dump(data, len);
-    tcb->state = TLSS_STATE_CLOSING;
+    TLS_ALERT* alert = data;
+    if (len < sizeof(TLS_ALERT))
+    {
+        tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
+        return;
+    }
+    if (alert->alert_description == TLS_ALERT_CLOSE_NOTIFY)
+    {
+#if (TLS_DEBUG)
+        printf("TLS: rx close_notify\n");
+#endif //TLS_DEBUG
+        //rx answer on our close notify
+        if (tcb->state == TLSS_STATE_CLOSE_NOTIFY)
+            tlss_close_session(tlss, tlss->tcb_handle, true);
+        else
+        {
+            //tx close notify
+            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_WARNING, TLS_ALERT_CLOSE_NOTIFY);
+            tlss_set_state(tcb, TLSS_STATE_CLOSE_NOTIFY);
+        }
+    }
+    else
+    {
+#if (TLS_DEBUG)
+        printf("TLS: rx %s alert: %d\n", alert->alert_level == TLS_ALERT_LEVEL_WARNING ? "warning" : "fatal", alert->alert_description);
+#endif //TLS_DEBUG
+        tlss_close_session(tlss, tlss->tcb_handle, true);
+    }
 }
 
 static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, unsigned int len)
@@ -1696,7 +1777,7 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     //1. Check state and clientHello header size
     if ((tcb->state != TLSS_STATE_CLIENT_HELLO) || (len < sizeof(TLS_HELLO)))
     {
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
         return;
     }
     //2. Check protocol version
@@ -1705,7 +1786,7 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
 #if (TLS_DEBUG)
         printf("TLS: Protocol version too old\n");
 #endif //TLS_DEBUG_REQUESTS
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_PROTOCOL_VERSION);
+        tlss_fatal(tlss, tcb, TLS_ALERT_PROTOCOL_VERSION);
         return;
     }
     if ((hello->version.major > 3) || (hello->version.minor > 3))
@@ -1719,7 +1800,7 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     len -= sizeof(TLS_HELLO);
     if (len < hello->session_id_length + 2)
     {
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
         return;
     }
     data += hello->session_id_length;
@@ -1731,7 +1812,7 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     //also byte for compression len
     if (len <= cipher_suites_len)
     {
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
         return;
     }
     cipher_suites = data;
@@ -1752,7 +1833,7 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
 #if (TLS_DEBUG)
         printf("TLS: Supported cipher suite not found\n");
 #endif //TLS_DEBUG_REQUESTS
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_HANDSHAKE_FAILURE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_HANDSHAKE_FAILURE);
         return;
     }
     //6. Decode and check compression
@@ -1762,7 +1843,7 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     //also 2 bytes for extensions len
     if (len < compression_len + 2)
     {
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
         return;
     }
     compression = data;
@@ -1783,7 +1864,7 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
 #if (TLS_DEBUG)
         printf("TLS: Supported compression method not found\n");
 #endif //TLS_DEBUG_REQUESTS
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_HANDSHAKE_FAILURE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_HANDSHAKE_FAILURE);
         return;
     }
 
@@ -1794,7 +1875,7 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     extensions = data;
     if (len < extensions_len)
     {
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
         return;
     }
 
@@ -1802,7 +1883,7 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
     {
         if (len < sizeof(TLS_EXTENSION))
         {
-            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
             return;
         }
         ext = (TLS_EXTENSION*)((uint8_t*)extensions + i);
@@ -1810,7 +1891,7 @@ static inline void tlss_rx_client_hello(TLSS* tlss, TLSS_TCB* tcb, void* data, u
         tmp = be2short(ext->len_be);
         if (len < tmp)
         {
-            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
             return;
         }
         len -= tmp;
@@ -1857,7 +1938,7 @@ static inline void tlss_rx_client_key_exchange(TLSS* tlss, TLSS_TCB* tcb, void* 
 {
     if ((tcb->state != TLSS_STATE_CLIENT_KEY_EXCHANGE) || (len < TLS_RAW_PREMASTER_SIZE + 2) || (be2short(data) != TLS_RAW_PREMASTER_SIZE))
     {
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
         return;
     }
     io_reset(tlss->tx);
@@ -1873,7 +1954,7 @@ static inline void tlss_rx_finished(TLSS* tlss, TLSS_TCB* tcb, void* data, unsig
 {
     if ((tcb->state != TLSS_STATE_CLIENT_CHANGE_CIPHER_SPEC) || (len != TLS_FINISHED_DIGEST_SIZE) || (!tcb->client_secure))
     {
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
         return;
     }
     if (!tls_cipher_compare_finished(&tcb->tls_cipher, TLS_CLIENT_FINISHED, data))
@@ -1881,7 +1962,7 @@ static inline void tlss_rx_finished(TLSS* tlss, TLSS_TCB* tcb, void* data, unsig
 #if (TLS_DEBUG)
         printf("TLS: (client) finished data mismatch\n");
 #endif //TLS_DEBUG
-        tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_HANDSHAKE_FAILURE);
+        tlss_fatal(tlss, tcb, TLS_ALERT_HANDSHAKE_FAILURE);
         return;
     }
 
@@ -1901,14 +1982,14 @@ static inline void tlss_rx_handshakes(TLSS* tlss, TLSS_TCB* tcb, void* data, uns
     {
         if (len - offset < sizeof(TLS_HANDSHAKE))
         {
-            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
             return;
         }
         handshake = (TLS_HANDSHAKE*)((uint8_t*)data + offset);
         len_cur = tlss_get_size(&handshake->message_length_be);
         if (len_cur + sizeof(TLS_HANDSHAKE) > len - offset)
         {
-            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
             return;
         }
         data_cur = (uint8_t*)data + offset + sizeof(TLS_HANDSHAKE);
@@ -1927,7 +2008,7 @@ static inline void tlss_rx_handshakes(TLSS* tlss, TLSS_TCB* tcb, void* data, uns
 #if (TLS_DEBUG)
             printf("TLS: unexpected handshake type: %d\n", handshake->message_type);
 #endif //TLS_DEBUG
-            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
             return;
         }
         tls_cipher_hash_handshake(&tcb->tls_cipher, (uint8_t*)data + offset, len_cur + sizeof(TLS_HANDSHAKE));
@@ -1989,9 +2070,10 @@ static inline bool tlss_rx_next(TLSS* tlss, TLSS_TCB* tcb)
     int len;
     void* data;
     if (tlss->offset >= tlss->rx->data_size)
+        tlss->tcb_handle = INVALID_HANDLE;
+    if (tlss->tcb_handle == INVALID_HANDLE)
     {
         //read next record(s)
-        tlss->tcb_handle = INVALID_HANDLE;
         tlss_tcp_rx(tlss);
         if (!tlss->tx_busy)
             tlss_process_user_tx(tlss);
@@ -2002,21 +2084,21 @@ static inline bool tlss_rx_next(TLSS* tlss, TLSS_TCB* tcb)
         //Empty records disabled by TLS
         if ((tlss->rx->data_size - tlss->offset) <= sizeof(TLS_RECORD))
         {
-            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
             break;
         }
         rec = (TLS_RECORD*)((uint8_t*)io_data(tlss->rx) + tlss->offset);
         //check TLS 1.0 - 1.2
         if ((rec->version.major != 3) || (rec->version.minor == 0) || (rec->version.minor > 3))
         {
-            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_PROTOCOL_VERSION);
+            tlss_fatal(tlss, tcb, TLS_ALERT_PROTOCOL_VERSION);
             break;
         }
         len = be2short(rec->record_length_be);
         tlss->offset += sizeof(TLS_RECORD);
         if (len > tlss->rx->data_size - tlss->offset)
         {
-            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
             break;
         }
         data = (uint8_t*)io_data(tlss->rx) + tlss->offset;
@@ -2027,7 +2109,7 @@ static inline bool tlss_rx_next(TLSS* tlss, TLSS_TCB* tcb)
             data += tcb->tls_cipher.block_size;
             if (len < 0)
             {
-                tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, -len);
+                tlss_fatal(tlss, tcb, -len);
 #if (TLS_DEBUG)
                 if (len == TLS_DECRYPT_FAILED)
                     printf("TLS: Decrypt record failed\n");
@@ -2055,7 +2137,7 @@ static inline bool tlss_rx_next(TLSS* tlss, TLSS_TCB* tcb)
 #if (TLS_DEBUG)
             printf("TLS: unexpected message type: %d\n", rec->content_type);
 #endif //TLS_DEBUG
-            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_UNEXPECTED_MESSAGE);
+            tlss_fatal(tlss, tcb, TLS_ALERT_UNEXPECTED_MESSAGE);
         }
     } while (false);
     return true;
@@ -2073,14 +2155,15 @@ static void tlss_fsm(TLSS* tlss)
         tlss_tcp_rx(tlss);
         return;
     }
-    //can't process if user sending data on other connection at the same time
-    //tcp_tx_complete will recall FSM
-    if (tlss->tx_busy)
-        return;
     tcb = so_get(&tlss->tcbs, tlss->tcb_handle);
 
     for (;;)
     {
+        //can't process if user sending data on other connection at the same time
+        //tcp_tx_complete will recall FSM
+        if (tlss->tx_busy)
+            return;
+
         switch (tcb->state)
         {
         case TLSS_STATE_GENERATE_SERVER_RANDOM:
@@ -2101,8 +2184,6 @@ static void tlss_fsm(TLSS* tlss)
         case TLSS_STATE_SERVER_CHANGE_CIPHER_SPEC:
             tlss_tx_server_change_cipher_spec(tlss, tcb);
             break;
-        case TLSS_STATE_CLOSING:
-            //handle will be closed after tx complete
         case TLSS_STATE_PENDING:
             return;
         default:
@@ -2241,7 +2322,7 @@ static inline void tlss_premaster_decrypt(TLSS* tlss, HANDLE tcb_handle)
             break;
         if (!tls_cipher_decode_key_block(io_data(tlss->tx), &tcb->tls_cipher))
         {
-            tlss_tx_alert(tlss, tcb, TLS_ALERT_LEVEL_FATAL, TLS_ALERT_DECRYPTION_FAILED);
+            tlss_fatal(tlss, tcb, TLS_ALERT_DECRYPTION_FAILED);
 #if (TLS_DEBUG)
             printf("TLS: premaster decryption failed\n");
 #endif //TLS_DEBUG
@@ -2291,6 +2372,7 @@ static inline void tlss_tcp_open(TLSS* tlss, HANDLE handle)
         return;
     }
 #if (TLS_DEBUG)
+    //TODO:
 ///    tcp_get_remote_addr(hss->tcpip, handle, &session->remote_addr);
     printf("TLS: new session from ");
 ///    ip_print(&session->remote_addr);
@@ -2299,37 +2381,61 @@ static inline void tlss_tcp_open(TLSS* tlss, HANDLE handle)
     tlss_fsm(tlss);
 }
 
-static void tlss_tcp_rx_complete(TLSS* tlss, HANDLE handle)
+static inline void tlss_tcp_close(TLSS* tlss, HANDLE handle)
+{
+#if (TLS_DEBUG)
+    TLSS_TCB* tcb;
+#endif //TLS_DEBUG
+
+    HANDLE tcb_handle = tlss_find_tcb_handle(tlss, handle);
+    //closed before, normal processing, ignore message
+    if (tcb_handle == INVALID_HANDLE)
+        return;
+
+#if (TLS_DEBUG)
+    tcb = so_get(&tlss->tcbs, tcb_handle);
+    //close may arrive earlier than transmit complete
+    if (tcb->state != TLSS_STATE_CLOSING)
+    {
+        //TODO:
+    ///    tcp_get_remote_addr(hss->tcpip, handle, &session->remote_addr);
+            printf("TLS: unexpected session close\n ");
+    ///    ip_print(&session->remote_addr);
+        printf("\n");
+    }
+#endif //TLS_DEBUG
+    tlss_close_session(tlss, tcb_handle, false);
+    tlss_fsm(tlss);
+}
+
+static void tlss_tcp_rx_complete(TLSS* tlss, HANDLE handle, int size)
 {
     tlss->rx_busy = false;
-    tlss->tcb_handle = tlss_find_tcb_handle(tlss, handle);
-    //closed before
-    if (tlss->tcb_handle == INVALID_HANDLE)
+    if (size < 0)
     {
         tlss_tcp_rx(tlss);
         return;
     }
+    tlss->tcb_handle = tlss_find_tcb_handle(tlss, handle);
     tlss_fsm(tlss);
 }
 
-static inline void tlss_tcp_tx_complete(TLSS* tlss)
+static inline void tlss_tcp_tx_complete(TLSS* tlss, HANDLE handle)
 {
+    HANDLE tcb_handle;
     TLSS_TCB* tcb;
     io_reset(tlss->tx);
     tlss->tx_busy = false;
-    if (tlss->tcb_handle != INVALID_HANDLE)
+    tcb_handle = tlss_find_tcb_handle(tlss, handle);
+
+    //doesn't matter delivered close or closed by other side first
+    if (tcb_handle != INVALID_HANDLE)
     {
-        tcb = so_get(&tlss->tcbs, tlss->tcb_handle);
+        tcb = so_get(&tlss->tcbs, tcb_handle);
         if (tcb->state == TLSS_STATE_CLOSING)
-        {
-            tcp_close(tlss->tcpip, tcb->handle);
-            //TODO: tlss_destroy_tcb
-#if (TLS_DEBUG_FLOW)
-            printf("TLS: CLOSING -> 0\n");
-#endif //TLS_DEBUG_FLOW
-            tlss->tcb_handle = INVALID_HANDLE;
-        }
+            tlss_close_session(tlss, tlss->tcb_handle, true);
     }
+    //wakeup if some data write pending
     tlss_fsm(tlss);
 }
 
@@ -2340,16 +2446,16 @@ static inline void tlss_tcp_request(TLSS* tlss, IPC* ipc)
     case IPC_OPEN:
         tlss_tcp_open(tlss, (HANDLE)ipc->param1);
         break;
-///    case IPC_CLOSE:
-        //TODO:
+    case IPC_CLOSE:
+        tlss_tcp_close(tlss, (HANDLE)ipc->param1);
+        break;
     case IPC_READ:
-        tlss_tcp_rx_complete(tlss, (HANDLE)ipc->param1);
+        tlss_tcp_rx_complete(tlss, (HANDLE)ipc->param1, (int)ipc->param3);
         break;
     case IPC_WRITE:
-        tlss_tcp_tx_complete(tlss);
+        tlss_tcp_tx_complete(tlss, (HANDLE)ipc->param1);
         break;
     default:
-        printf("got from tcp\n");
         error(ERROR_NOT_SUPPORTED);
     }
 }
@@ -2492,6 +2598,17 @@ static inline void tlss_user_write(TLSS* tlss, HANDLE tcb_handle, IO* io)
     error(ERROR_SYNC);
 }
 
+static inline void tlss_user_flush(TLSS* tlss, HANDLE handle)
+{
+    HANDLE tcb_handle = tlss_find_tcb_handle(tlss, handle);
+    if (tcb_handle == INVALID_HANDLE)
+    {
+        error(ERROR_NOT_ACTIVE);
+        return;
+    }
+    tlss_flush(tlss, tcb_handle);
+}
+
 static inline void tlss_user_request(TLSS* tlss, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -2519,8 +2636,9 @@ static inline void tlss_user_request(TLSS* tlss, IPC* ipc)
     case IPC_WRITE:
         tlss_user_write(tlss, (HANDLE)ipc->param1, (IO*)ipc->param2);
         break;
-///    case IPC_FLUSH:
-        //TODO:
+    case IPC_FLUSH:
+        tlss_user_flush(tlss, (HANDLE)ipc->param1);
+        break;
     default:
         printf("tls user request\n");
         for (;;) {}
