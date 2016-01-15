@@ -20,6 +20,7 @@
 #include "lpc_otg.h"
 #endif //LPC11Uxx
 #include "lpc_eep.h"
+#include "lpc_sd.h"
 
 
 typedef struct _CORE {
@@ -37,6 +38,9 @@ typedef struct _CORE {
 #else //LPC18xx
     OTG_DRV otg;
 #endif //LPC11Uxx
+#endif
+#if (LPC_SD_DRIVER)
+    SD_DRV sd;
 #endif
 }CORE;
 

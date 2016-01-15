@@ -128,7 +128,7 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 {
     USB_INTERFACE_DESCRIPTOR* iface;
     USB_ENDPOINT_DESCRIPTOR* ep;
-    CCID_DESCRIPTOR_TYPE* ccid_descriptor;
+    CCID_DESCRIPTOR* ccid_descriptor;
     CCIDD* ccidd;
     unsigned int status_ep_size;
 
@@ -136,7 +136,7 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
     {
         if (iface->bInterfaceClass == CCID_INTERFACE_CLASS)
         {
-            ccid_descriptor = (CCID_DESCRIPTOR_TYPE*)usb_interface_get_first_descriptor(cfg, iface, USB_FUNCTIONAL_DESCRIPTOR);
+            ccid_descriptor = (CCID_DESCRIPTOR*)usb_interface_get_first_descriptor(cfg, iface, USB_FUNCTIONAL_DESCRIPTOR);
             ccidd = malloc(sizeof(CCIDD));
             if (ccidd == NULL || ccid_descriptor == NULL)
                 return;

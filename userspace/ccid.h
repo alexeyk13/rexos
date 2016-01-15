@@ -115,7 +115,7 @@ typedef struct {
                                                                                            01h PIN Verification supported
                                                                                            02h PIN Modification supported */
     uint8_t bMaxCCIDBusySlots;                                                          /* Maximum number5 of slots which can be simultaneously busy */
-} CCID_DESCRIPTOR_TYPE;
+} CCID_DESCRIPTOR;
 
 #define CCID_VOLTAGE_5_0V                               0x1
 #define CCID_VOLTAGE_3_0V                               0x2
