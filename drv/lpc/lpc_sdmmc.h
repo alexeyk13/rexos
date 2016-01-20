@@ -8,9 +8,10 @@
 #define LPC_SDMMC_H
 
 #include "lpc_core.h"
+#include "../sdmmcs.h"
 
 typedef struct  {
-    int stub;
+    SDMMCS sdmmcs;
 } SDMMC_DRV;
 
 void lpc_sdmmc_init(CORE* core);
