@@ -45,7 +45,7 @@ typedef enum {
     HAL_ETH,
     HAL_FLASH,
     HAL_EEPROM,
-    HAL_SD,
+    HAL_SDMMC,
     //device stacks
     HAL_USBD,
     HAL_USBD_IFACE,

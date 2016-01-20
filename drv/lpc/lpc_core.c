@@ -19,7 +19,7 @@
 #include "lpc_otg.h"
 #endif //LPC11Uxx
 #include "lpc_eep.h"
-#include "lpc_sd.h"
+#include "lpc_sdmmc.h"
 
 void lpc_core();
 
@@ -77,11 +77,11 @@ void lpc_core_loop(CORE* core)
             lpc_eep_request(core, &ipc);
             break;
 #endif //LPC_EEPROM_DRIVER
-#if (LPC_SD_DRIVER)
-        case HAL_SD:
-            lpc_sd_request(core, &ipc);
+#if (LPC_SDMMC_DRIVER)
+        case HAL_SDMMC:
+            lpc_sdmmc_request(core, &ipc);
             break;
-#endif //LPC_I2C_DRIVER
+#endif //LPC_SDMMC_DRIVER
         default:
             error(ERROR_NOT_SUPPORTED);
             break;
@@ -104,9 +104,9 @@ void lpc_core()
 #if (LPC_I2C_DRIVER)
     lpc_i2c_init(&core);
 #endif //LPC_I2C_DRIVER
-#if (LPC_SD_DRIVER)
-    lpc_sd_init(&core);
-#endif //LPC_SD_DRIVER
+#if (LPC_SDMMC_DRIVER)
+    lpc_sdmmc_init(&core);
+#endif //LPC_SDMMC_DRIVER
 #if (MONOLITH_USB)
 #ifdef LPC11Uxx
     lpc_usb_init(&core);

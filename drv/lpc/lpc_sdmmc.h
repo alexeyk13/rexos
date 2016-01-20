@@ -4,16 +4,16 @@
     All rights reserved.
 */
 
-#ifndef LPC_SD_H
-#define LPC_SD_H
+#ifndef LPC_SDMMC_H
+#define LPC_SDMMC_H
 
 #include "lpc_core.h"
 
 typedef struct  {
     int stub;
-} SD_DRV;
+} SDMMC_DRV;
 
-void lpc_sd_init(CORE* core);
-void lpc_sd_request(CORE* core, IPC* ipc);
+void lpc_sdmmc_init(CORE* core);
+void lpc_sdmmc_request(CORE* core, IPC* ipc);
 
-#endif // LPC_SD_H
+#endif // LPC_SDMMC_H

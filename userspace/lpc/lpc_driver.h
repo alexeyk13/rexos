@@ -132,6 +132,7 @@ typedef enum {
     PF_8,     PF_9,  PF_10, PF_11, PF_12, PF_13, PF_14, PF_15,
     PF_16,    PF_17, PF_18, PF_19, PF_20, PF_21, PF_22, PF_23,
     PF_24,    PF_25, PF_26, PF_27, PF_28, PF_29, PF_30, PF_31,
+    CLK_0 = 0x300, CLK_1, CLK_2, CLK_3,
     PIN_MAX
 } PIN;
 #endif

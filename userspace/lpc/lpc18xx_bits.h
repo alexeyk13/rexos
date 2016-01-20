@@ -1456,4 +1456,24 @@ typedef struct {                                /*!< (@ 0x4000e000) EEPROM Struc
 #define CREG_CREG6_ETHMODE_MII                  (0x0 << 0)
 #define CREG_CREG6_ETHMODE_RMII                 (0x4 << 0)
 
+/******************************************************************************/
+/*                                                                            */
+/*                                 SDMMC                                      */
+/*                                                                            */
+/******************************************************************************/
+
+/*********  Bit definition for CLKSRC register  *******************************/
+#define SDMMC_CLKSRC_CLK_SOURCE00               (0x0 << 0)
+#define SDMMC_CLKSRC_CLK_SOURCE01               (0x1 << 0)
+#define SDMMC_CLKSRC_CLK_SOURCE02               (0x2 << 0)
+#define SDMMC_CLKSRC_CLK_SOURCE03               (0x3 << 0)
+
+/*********  Bit definition for CLKENA register  *******************************/
+#define SDMMC_CLKENA_CCLK_ENABLE                (0x1 << 0)
+#define SDMMC_CLKENA_CCLK_LOW_POWER             (0x1 << 16)
+
+/*********  Bit definition for CTYPE register  ********************************/
+#define SDMMC_CTYPE_CARD_WIDTH0                 (0x1 << 0)
+#define SDMMC_CTYPE_CARD_WIDTH1                 (0x1 << 16)
+
 #endif // LPC18UXX_BITS_H
