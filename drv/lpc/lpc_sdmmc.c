@@ -18,7 +18,7 @@
 
 void lpc_sdmmc_init(CORE* core)
 {
-    sdmmcs_init(&core->sdmmc.sdmmcs);
+    sdmmcs_init(&core->sdmmc.sdmmcs, core);
 }
 
 static void lpc_sdmmc_start_cmd(unsigned int cmd)
@@ -66,8 +66,10 @@ SDMMC_ERROR sdmmcs_send_cmd(void* param, uint8_t cmd, uint32_t arg, void* resp, 
     switch (resp_type)
     {
     case SDMMC_NO_RESPONSE:
-        //TODO: 0 - init
-        lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk);
+        if (cmd == SDMMC_CMD_GO_IDLE_STATE)
+            lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk | SDMMC_CMD_SEND_INITIALIZATION_Msk);
+        else
+            lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk);
         break;
     case SDMMC_RESPONSE_R2:
         lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk | SDMMC_CMD_RESPONSE_EXPECT_Msk | SDMMC_CMD_RESPONSE_LENGTH_Msk |
@@ -121,7 +123,7 @@ void lpc_sdmmc_open(CORE* core)
     LPC_SDMMC->INTMASK = 0;
     LPC_SDMMC->RINTSTS = 0x1ffff;
 
-    if (!sdmmcs_open(&core->sdmmc.sdmmcs, core))
+    if (!sdmmcs_open(&core->sdmmc.sdmmcs))
         return;
 
     //TODO: setup DMA, buffer offset
