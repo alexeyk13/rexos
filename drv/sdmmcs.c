@@ -121,7 +121,7 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
             {
                 sdmmcs->card_type = SDMMC_CARD_HD;
 #if (SDMMC_DEBUG)
-                printd("SDMMC: Found HC(XC) card\n");
+                printd("SDMMC: Found HC/XC card\n");
 #endif //SDMMC_DEBUG
             }
             else if (v2)
@@ -148,6 +148,24 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
     return false;
 }
 
+bool sdmmcs_card_address(SDMMCS* sdmmcs)
+{
+    uint8_t cid[16];
+    if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_ALL_SEND_CID, 0, cid, SDMMC_RESPONSE_R2))
+        return false;
+
+    dump(cid, 16);
+
+    printd("SD_CARD CID.MID: %#.2x\n", cid[15]);
+    printd("SD_CARD CID.OID: %c%c\n", cid[14], cid[13]);
+    printd("SD_CARD CID.PNM: %c%c%c%c%c\n", cid[12], cid[11], cid[10], cid[9], cid[8]);
+    printd("SD_CARD CID.PRV: %x.%x\n", cid[7] >> 4, cid[7] & 0xf);
+//    printd("SD_CARD CID.PSN: %.8x\n", (cid[2] << 4) | (cid[3] >> 24));
+    printd("SD_CARD CID.MDT: %d,%d\n", cid[1] & 0xf, (((cid[1] >> 4) & 0xf) ) + 2000);
+
+    return true;
+}
+
 bool sdmmcs_open(SDMMCS* sdmmcs)
 {
     sdmmcs_set_clock(sdmmcs->param, 400000);
@@ -157,6 +175,9 @@ bool sdmmcs_open(SDMMCS* sdmmcs)
         return false;
 
     if (!sdmmcs_card_init(sdmmcs))
+        return false;
+
+    if (!sdmmcs_card_address(sdmmcs))
         return false;
 
     return true;
