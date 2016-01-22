@@ -152,12 +152,30 @@ typedef enum {
     SDMMC_ERROR_HARDWARE_FAILURE
 } SDMMC_ERROR;
 
+#pragma pack(push, 1)
+
+typedef struct {
+    uint8_t crc7;
+    uint16_t mdt;
+    uint32_t psn;
+    uint8_t prv;
+    char pnm[5];
+    char oid[2];
+    uint8_t mid;
+} CID;
+
+#pragma pack(pop)
+
 typedef struct {
     SDMMC_CARD_TYPE card_type;
     SDMMC_ERROR last_error;
     void* param;
     uint32_t r1;
+    //may be usefull for serial No generation
+    CID cid;
+    uint16_t rca;
 } SDMMCS;
+
 
 //prototypes, that must be defined by driver
 extern void sdmmcs_set_clock(void* param, unsigned int speed);

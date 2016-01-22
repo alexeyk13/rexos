@@ -9,11 +9,11 @@
 #include "../userspace/types.h"
 #include "../userspace/process.h"
 #include "sys_config.h"
+#include <string.h>
 
 void sdmmcs_init(SDMMCS* sdmmcs, void *param)
 {
     sdmmcs->card_type = SDMMC_NO_CARD;
-    sdmmcs->last_error = SDMMC_ERROR_OK;
     sdmmcs->param = param;
 }
 
@@ -52,6 +52,34 @@ static inline bool sdmmcs_cmd_r1(SDMMCS* sdmmcs, uint8_t cmd, uint32_t arg)
 static inline bool sdmmcs_cmd_r1b(SDMMCS* sdmmcs, uint8_t cmd, uint32_t arg)
 {
     return sdmmcs_cmd_r1x(sdmmcs, cmd, arg, SDMMC_RESPONSE_R1B);
+}
+
+static bool sdmmcs_cmd_r6(SDMMCS* sdmmcs, uint8_t cmd, uint32_t arg)
+{
+    unsigned int retry;
+    unsigned int r6;
+    for (retry = 0; retry < 3; ++retry)
+    {
+        if (!sdmmcs_cmd(sdmmcs, cmd, arg, &r6, SDMMC_RESPONSE_R6))
+            return false;
+        //r6 status -> r1 status
+        sdmmcs->r1 = r6 & 0x1fff;
+        if (r6 & (1<< 13))
+            sdmmcs->r1 |= 1 << 19;
+        if (r6 & (1 << 14))
+            sdmmcs->r1 |= 1 << 22;
+        if (r6 & (1 << 15))
+            sdmmcs->r1 |= 1 << 23;
+
+        if (sdmmcs->r1 & (SDMMC_R1_FATAL_ERROR | SDMMC_R1_APP_ERROR))
+            return false;
+        if ((sdmmcs->r1 & SDMMC_R1_COM_CRC_ERROR) == 0)
+        {
+            sdmmcs->rca = r6 >> 16;
+            return true;
+        }
+    }
+    return false;
 }
 
 static bool sdmmcs_acmd(SDMMCS* sdmmcs, uint8_t acmd, uint32_t arg, void* resp, SDMMC_RESPONSE_TYPE resp_type)
@@ -150,24 +178,35 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
 
 bool sdmmcs_card_address(SDMMCS* sdmmcs)
 {
-    uint8_t cid[16];
-    if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_ALL_SEND_CID, 0, cid, SDMMC_RESPONSE_R2))
+    if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_ALL_SEND_CID, 0, &sdmmcs->cid, SDMMC_RESPONSE_R2))
         return false;
 
-    dump(cid, 16);
+#if (SDMMC_DEBUG)
+    printd("SDMMC CID:\n");
+    printd("MID: %#02x\n", sdmmcs->cid.mid);
+    printd("OID: %c%c\n", sdmmcs->cid.oid[1],  sdmmcs->cid.oid[0]);
+    printd("PNM: %c%c%c%c%c\n", sdmmcs->cid.pnm[4], sdmmcs->cid.pnm[3], sdmmcs->cid.pnm[2], sdmmcs->cid.pnm[1], sdmmcs->cid.pnm[0]);
+    printd("PRV: %x.%x\n", sdmmcs->cid.prv >> 4, sdmmcs->cid.prv & 0xf);
+    printd("PSN: %08x\n", sdmmcs->cid.psn);
+    printd("MDT: %d,%d\n", sdmmcs->cid.mdt & 0xf, ((sdmmcs->cid.mdt >> 4) & 0xff) + 2000);
+#endif //SDMMC_DEBUG
 
-    printd("SD_CARD CID.MID: %#.2x\n", cid[15]);
-    printd("SD_CARD CID.OID: %c%c\n", cid[14], cid[13]);
-    printd("SD_CARD CID.PNM: %c%c%c%c%c\n", cid[12], cid[11], cid[10], cid[9], cid[8]);
-    printd("SD_CARD CID.PRV: %x.%x\n", cid[7] >> 4, cid[7] & 0xf);
-//    printd("SD_CARD CID.PSN: %.8x\n", (cid[2] << 4) | (cid[3] >> 24));
-    printd("SD_CARD CID.MDT: %d,%d\n", cid[1] & 0xf, (((cid[1] >> 4) & 0xf) ) + 2000);
+    if (!sdmmcs_cmd_r6(sdmmcs, SDMMC_CMD_SEND_RELATIVE_ADDR, 0))
+        return false;
+#if (SDMMC_DEBUG)
+    printd("SDMMC RCA: %04X\n", sdmmcs->rca);
+#endif //SDMMC_DEBUG
 
     return true;
 }
 
 bool sdmmcs_open(SDMMCS* sdmmcs)
 {
+    sdmmcs->card_type = SDMMC_NO_CARD;
+    sdmmcs->last_error = SDMMC_ERROR_OK;
+    memset(&sdmmcs->cid, 0x00, sizeof(CID));
+    sdmmcs->rca = 0x0000;
+
     sdmmcs_set_clock(sdmmcs->param, 400000);
     sdmmcs_set_bus_width(sdmmcs->param, 1);
 
