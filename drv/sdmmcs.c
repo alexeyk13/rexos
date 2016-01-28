@@ -273,6 +273,24 @@ static inline bool sdmmcs_card_read_csd(SDMMCS* sdmmcs)
     return true;
 }
 
+static inline bool sdmmcs_card_select(SDMMCS* sdmmcs)
+{
+    if (!sdmmcs_cmd_r1b(sdmmcs, SDMMC_CMD_SELECT_DESELECT_CARD, ARG_RCA(sdmmcs)))
+    {
+#if (SDMMC_DEBUG)
+        printd("SDMMC: card selection failure\n");
+#endif //SDMMC_DEBUG
+        return false;
+    }
+
+    sdmmcs_set_clock(sdmmcs->param, sdmmcs->max_clock);
+
+    //TODO: set bus width, disable pullap?
+
+    return true;
+}
+
+
 bool sdmmcs_open(SDMMCS* sdmmcs)
 {
     sdmmcs->card_type = SDMMC_NO_CARD;
@@ -295,6 +313,9 @@ bool sdmmcs_open(SDMMCS* sdmmcs)
         return false;
 
     if (!sdmmcs_card_read_csd(sdmmcs))
+        return false;
+
+    if (!sdmmcs_card_select(sdmmcs))
         return false;
 
     return true;

@@ -15,6 +15,8 @@
 #define LPC_SDMMC_CMD_FLAGS                         (SDMMC_RINTSTS_RE_Msk | SDMMC_RINTSTS_CDONE_Msk | SDMMC_RINTSTS_RCRC_Msk | SDMMC_RINTSTS_RTO_BAR_Msk | \
                                                      SDMMC_RINTSTS_SBE_Msk | SDMMC_RINTSTS_EBE_Msk | SDMMC_RINTSTS_HLE_Msk)
 
+#define LPC_MAX_CLOCK                               52000000
+
 
 void lpc_sdmmc_init(CORE* core)
 {
@@ -47,6 +49,8 @@ void sdmmcs_set_bus_width(void* param, int width)
 
 void sdmmcs_set_clock(void* param, unsigned int speed)
 {
+    if (speed > LPC_MAX_CLOCK)
+        speed = LPC_MAX_CLOCK;
     LPC_SDMMC->CLKENA = 0;
     lpc_sdmmc_start_cmd(SDMMC_CMD_UPDATE_CLOCK_REGISTERS_ONLY_Msk | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk);
 
