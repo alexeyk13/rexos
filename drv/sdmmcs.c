@@ -11,6 +11,8 @@
 #include "sys_config.h"
 #include <string.h>
 
+#define ARG_RCA(sdmmcs)                         ((uint32_t)((sdmmcs)->rca) << 16)
+
 void sdmmcs_init(SDMMCS* sdmmcs, void *param)
 {
     sdmmcs->card_type = SDMMC_NO_CARD;
@@ -176,7 +178,7 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
     return false;
 }
 
-bool sdmmcs_card_address(SDMMCS* sdmmcs)
+static inline bool sdmmcs_card_address(SDMMCS* sdmmcs)
 {
     if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_ALL_SEND_CID, 0, &sdmmcs->cid, SDMMC_RESPONSE_R2))
         return false;
@@ -200,6 +202,57 @@ bool sdmmcs_card_address(SDMMCS* sdmmcs)
     return true;
 }
 
+static inline bool sdmmcs_card_configure(SDMMCS* sdmmcs)
+{
+    uint8_t csd[16];
+    uint32_t c_size, mult;
+#if (SDMMC_DEBUG)
+    unsigned int capacity;
+    char c;
+#endif //SDMMC_DEBUG
+    if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_SEND_CSD, ARG_RCA(sdmmcs), csd, SDMMC_RESPONSE_R2))
+        return false;
+    if ((csd[15] >> 6) == 0x01)
+    {
+#if (SDMMC_DEBUG)
+        printd("SDMMC: CSD v2\n");
+#endif //SDMMC_DEBUG
+        sdmmcs->secor_size = 512;
+        c_size = ((((uint32_t)csd[8]) & 0x3f) << 16) | (((uint32_t)csd[7]) << 8) | (((uint32_t)csd[6]) << 0);
+        sdmmcs->num_sectors = (c_size + 1) * 1024;
+    }
+    else
+    {
+#if (SDMMC_DEBUG)
+        printd("SDMMC: CSD v1\n");
+#endif //SDMMC_DEBUG
+        c_size = ((((uint32_t)csd[9]) & 0x03) << 10) | (((uint32_t)csd[8]) << 2) | (((uint32_t)csd[7]) >> 6);
+        mult = (((uint32_t)csd[5]) >> 7) | ((((uint32_t)csd[6]) & 0x03) << 1);
+        sdmmcs->num_sectors = (c_size + 1) * (1 << (mult + 2));
+        sdmmcs->secor_size = 1 << (((uint32_t)csd[10]) & 0x0f);
+    }
+
+#if (SDMMC_DEBUG)
+    capacity = (((sdmmcs->num_sectors / 1024) * sdmmcs->secor_size) * 10) / 1024;
+    if (capacity < 10240)
+        c = 'M';
+    else
+    {
+        capacity /= 1024;
+        if (capacity < 10240)
+            c = 'G';
+        else
+        {
+            capacity /= 1024;
+            c = 'T';
+        }
+    }
+    printd("Capacity: %d.%d%cB\n", capacity / 10, capacity % 10, c);
+#endif //SDMMC_DEBUG
+    dump (csd, 16);
+    return true;
+}
+
 bool sdmmcs_open(SDMMCS* sdmmcs)
 {
     sdmmcs->card_type = SDMMC_NO_CARD;
@@ -217,6 +270,9 @@ bool sdmmcs_open(SDMMCS* sdmmcs)
         return false;
 
     if (!sdmmcs_card_address(sdmmcs))
+        return false;
+
+    if (!sdmmcs_card_configure(sdmmcs))
         return false;
 
     return true;

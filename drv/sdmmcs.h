@@ -170,10 +170,12 @@ typedef struct {
     SDMMC_CARD_TYPE card_type;
     SDMMC_ERROR last_error;
     void* param;
+    uint32_t num_sectors;
     uint32_t r1;
     //may be usefull for serial No generation
     CID cid;
     uint16_t rca;
+    uint16_t secor_size;
 } SDMMCS;
 
 
