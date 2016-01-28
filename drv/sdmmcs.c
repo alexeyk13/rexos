@@ -202,7 +202,7 @@ static inline bool sdmmcs_card_address(SDMMCS* sdmmcs)
     return true;
 }
 
-static inline bool sdmmcs_card_configure(SDMMCS* sdmmcs)
+static inline bool sdmmcs_card_read_csd(SDMMCS* sdmmcs)
 {
     uint8_t csd[16];
     uint32_t c_size, mult;
@@ -231,7 +231,25 @@ static inline bool sdmmcs_card_configure(SDMMCS* sdmmcs)
         sdmmcs->num_sectors = (c_size + 1) * (1 << (mult + 2));
         sdmmcs->secor_size = 1 << (((uint32_t)csd[10]) & 0x0f);
     }
-
+    switch(csd[12])
+    {
+    case 0x32:
+        sdmmcs->max_clock = 25000000;
+        break;
+    case 0x5a:
+        sdmmcs->max_clock = 50000000;
+        break;
+    case 0x0b:
+        sdmmcs->max_clock = 100000000;
+        break;
+    case 0x2b:
+        sdmmcs->max_clock = 200000000;
+        break;
+    default:
+        return false;
+    }
+    if (csd[1] & 0x30)
+        sdmmcs->write_protected = true;
 #if (SDMMC_DEBUG)
     capacity = (((sdmmcs->num_sectors / 1024) * sdmmcs->secor_size) * 10) / 1024;
     if (capacity < 10240)
@@ -248,8 +266,10 @@ static inline bool sdmmcs_card_configure(SDMMCS* sdmmcs)
         }
     }
     printd("Capacity: %d.%d%cB\n", capacity / 10, capacity % 10, c);
+    printd("Max clock: %dMHz\n", sdmmcs->max_clock / 1000000);
+    if (sdmmcs->write_protected)
+        printd("Data is write protected\n");
 #endif //SDMMC_DEBUG
-    dump (csd, 16);
     return true;
 }
 
@@ -259,6 +279,8 @@ bool sdmmcs_open(SDMMCS* sdmmcs)
     sdmmcs->last_error = SDMMC_ERROR_OK;
     memset(&sdmmcs->cid, 0x00, sizeof(CID));
     sdmmcs->rca = 0x0000;
+    sdmmcs->num_sectors = sdmmcs->secor_size = sdmmcs->max_clock = 0;
+    sdmmcs->write_protected = false;
 
     sdmmcs_set_clock(sdmmcs->param, 400000);
     sdmmcs_set_bus_width(sdmmcs->param, 1);
@@ -272,7 +294,7 @@ bool sdmmcs_open(SDMMCS* sdmmcs)
     if (!sdmmcs_card_address(sdmmcs))
         return false;
 
-    if (!sdmmcs_card_configure(sdmmcs))
+    if (!sdmmcs_card_read_csd(sdmmcs))
         return false;
 
     return true;
