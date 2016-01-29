@@ -1476,4 +1476,14 @@ typedef struct {                                /*!< (@ 0x4000e000) EEPROM Struc
 #define SDMMC_CTYPE_CARD_WIDTH0                 (0x1 << 0)
 #define SDMMC_CTYPE_CARD_WIDTH1                 (0x1 << 16)
 
+/*********  Bit definition for FIFOTH register  ********************************/
+#define SDMMC_FIFOTH_DMA_MTS_1                  (0 << 28)
+#define SDMMC_FIFOTH_DMA_MTS_4                  (1 << 28)
+#define SDMMC_FIFOTH_DMA_MTS_8                  (2 << 28)
+#define SDMMC_FIFOTH_DMA_MTS_16                 (3 << 28)
+#define SDMMC_FIFOTH_DMA_MTS_32                 (4 << 28)
+#define SDMMC_FIFOTH_DMA_MTS_64                 (5 << 28)
+#define SDMMC_FIFOTH_DMA_MTS_128                (6 << 28)
+#define SDMMC_FIFOTH_DMA_MTS_256                (7 << 28)
+
 #endif // LPC18UXX_BITS_H

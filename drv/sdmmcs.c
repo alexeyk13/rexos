@@ -56,6 +56,11 @@ static inline bool sdmmcs_cmd_r1b(SDMMCS* sdmmcs, uint8_t cmd, uint32_t arg)
     return sdmmcs_cmd_r1x(sdmmcs, cmd, arg, SDMMC_RESPONSE_R1B);
 }
 
+static inline bool sdmmcs_cmd_r1d(SDMMCS* sdmmcs, uint8_t cmd, uint32_t arg)
+{
+    return sdmmcs_cmd_r1x(sdmmcs, cmd, arg, SDMMC_RESPONSE_R1D);
+}
+
 static bool sdmmcs_cmd_r6(SDMMCS* sdmmcs, uint8_t cmd, uint32_t arg)
 {
     unsigned int retry;
@@ -105,6 +110,7 @@ static inline bool sdmmcs_reset(SDMMCS* sdmmcs)
 #if (SDMMC_DEBUG)
         printd("SDMMC: Hardware failure\n");
 #endif //SDMMC_DEBUG
+        error(ERROR_HARDWARE);
         return false;
     }
     return true;
@@ -121,6 +127,7 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
 #if (SDMMC_DEBUG)
             printd("SDMMC: Unsupported voltage\n");
 #endif //SDMMC_DEBUG
+            error(ERROR_HARDWARE);
             return false;
         }
         if ((resp & IF_COND_CHECK_PATTERN_MASK) != IF_COND_CHECK_PATTERN)
@@ -128,6 +135,7 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
 #if (SDMMC_DEBUG)
             printd("SDMMC: Pattern failure. Unsupported or broken card\n");
 #endif //SDMMC_DEBUG
+            error(ERROR_HARDWARE);
             return false;
         }
         v2 = true;
@@ -143,6 +151,7 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
 #if (SDMMC_DEBUG)
             printd("SDMMC: Not SD card or no card\n");
 #endif //SDMMC_DEBUG
+            error(ERROR_NOT_FOUND);
             return false;
         }
         if (resp & OP_COND_BUSY)
@@ -175,13 +184,17 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
 #if (SDMMC_DEBUG)
     printd("SDMMC: Card init timeout\n");
 #endif //SDMMC_DEBUG
+    error(ERROR_TIMEOUT);
     return false;
 }
 
 static inline bool sdmmcs_card_address(SDMMCS* sdmmcs)
 {
     if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_ALL_SEND_CID, 0, &sdmmcs->cid, SDMMC_RESPONSE_R2))
+    {
+        error(ERROR_HARDWARE);
         return false;
+    }
 
 #if (SDMMC_DEBUG)
     printd("SDMMC CID:\n");
@@ -194,7 +207,10 @@ static inline bool sdmmcs_card_address(SDMMCS* sdmmcs)
 #endif //SDMMC_DEBUG
 
     if (!sdmmcs_cmd_r6(sdmmcs, SDMMC_CMD_SEND_RELATIVE_ADDR, 0))
+    {
+        error(ERROR_HARDWARE);
         return false;
+    }
 #if (SDMMC_DEBUG)
     printd("SDMMC RCA: %04X\n", sdmmcs->rca);
 #endif //SDMMC_DEBUG
@@ -211,13 +227,16 @@ static inline bool sdmmcs_card_read_csd(SDMMCS* sdmmcs)
     char c;
 #endif //SDMMC_DEBUG
     if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_SEND_CSD, ARG_RCA(sdmmcs), csd, SDMMC_RESPONSE_R2))
+    {
+        error(ERROR_HARDWARE);
         return false;
+    }
     if ((csd[15] >> 6) == 0x01)
     {
 #if (SDMMC_DEBUG)
         printd("SDMMC: CSD v2\n");
 #endif //SDMMC_DEBUG
-        sdmmcs->secor_size = 512;
+        sdmmcs->sector_size = 512;
         c_size = ((((uint32_t)csd[8]) & 0x3f) << 16) | (((uint32_t)csd[7]) << 8) | (((uint32_t)csd[6]) << 0);
         sdmmcs->num_sectors = (c_size + 1) * 1024;
     }
@@ -229,7 +248,7 @@ static inline bool sdmmcs_card_read_csd(SDMMCS* sdmmcs)
         c_size = ((((uint32_t)csd[9]) & 0x03) << 10) | (((uint32_t)csd[8]) << 2) | (((uint32_t)csd[7]) >> 6);
         mult = (((uint32_t)csd[5]) >> 7) | ((((uint32_t)csd[6]) & 0x03) << 1);
         sdmmcs->num_sectors = (c_size + 1) * (1 << (mult + 2));
-        sdmmcs->secor_size = 1 << (((uint32_t)csd[10]) & 0x0f);
+        sdmmcs->sector_size = 1 << (((uint32_t)csd[10]) & 0x0f);
     }
     switch(csd[12])
     {
@@ -246,12 +265,13 @@ static inline bool sdmmcs_card_read_csd(SDMMCS* sdmmcs)
         sdmmcs->max_clock = 200000000;
         break;
     default:
+        error(ERROR_NOT_SUPPORTED);
         return false;
     }
     if (csd[1] & 0x30)
         sdmmcs->write_protected = true;
 #if (SDMMC_DEBUG)
-    capacity = (((sdmmcs->num_sectors / 1024) * sdmmcs->secor_size) * 10) / 1024;
+    capacity = (((sdmmcs->num_sectors / 1024) * sdmmcs->sector_size) * 10) / 1024;
     if (capacity < 10240)
         c = 'M';
     else
@@ -280,16 +300,38 @@ static inline bool sdmmcs_card_select(SDMMCS* sdmmcs)
 #if (SDMMC_DEBUG)
         printd("SDMMC: card selection failure\n");
 #endif //SDMMC_DEBUG
+        error(ERROR_HARDWARE);
         return false;
     }
 
     sdmmcs_set_clock(sdmmcs->param, sdmmcs->max_clock);
 
+    //TODO: set block len for sdsc
     //TODO: set bus width, disable pullap?
+    //TODO: read scr? check for CMD23
 
     return true;
 }
 
+static void sdmmcs_set_r1_error(SDMMCS* sdmmcs)
+{
+    if (sdmmcs->r1 & SDMMC_R1_CARD_ECC_FAILED)
+    {
+        error(ERROR_CRC);
+        return;
+    }
+    if (sdmmcs->r1 & SDMMC_R1_FATAL_ERROR)
+    {
+        error(ERROR_HARDWARE);
+        return;
+    }
+    if (sdmmcs->r1 & SDMMC_R1_APP_ERROR)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    error(ERROR_TIMEOUT);
+}
 
 bool sdmmcs_open(SDMMCS* sdmmcs)
 {
@@ -297,7 +339,7 @@ bool sdmmcs_open(SDMMCS* sdmmcs)
     sdmmcs->last_error = SDMMC_ERROR_OK;
     memset(&sdmmcs->cid, 0x00, sizeof(CID));
     sdmmcs->rca = 0x0000;
-    sdmmcs->num_sectors = sdmmcs->secor_size = sdmmcs->max_clock = 0;
+    sdmmcs->num_sectors = sdmmcs->sector_size = sdmmcs->max_clock = 0;
     sdmmcs->write_protected = false;
 
     sdmmcs_set_clock(sdmmcs->param, 400000);
@@ -318,5 +360,18 @@ bool sdmmcs_open(SDMMCS* sdmmcs)
     if (!sdmmcs_card_select(sdmmcs))
         return false;
 
+    return true;
+}
+
+bool sdmmcs_read_single_block(SDMMCS* sdmmcs, unsigned int block)
+{
+    uint32_t addr = block;
+    if (sdmmcs->card_type == SDMMC_CARD_SD_V1 || sdmmcs->card_type == SDMMC_CARD_SD_V2)
+        addr *= sdmmcs->sector_size;
+    if (!sdmmcs_cmd_r1d(sdmmcs, SDMMC_CMD_READ_SINGLE_BLOCK, addr))
+    {
+        sdmmcs_set_r1_error(sdmmcs);
+        return false;
+    }
     return true;
 }

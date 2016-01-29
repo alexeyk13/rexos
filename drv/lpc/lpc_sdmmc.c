@@ -11,16 +11,41 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/lpc/lpc_driver.h"
+#include "../../userspace/storage.h"
+#include "../../userspace/stdlib.h"
 
 #define LPC_SDMMC_CMD_FLAGS                         (SDMMC_RINTSTS_RE_Msk | SDMMC_RINTSTS_CDONE_Msk | SDMMC_RINTSTS_RCRC_Msk | SDMMC_RINTSTS_RTO_BAR_Msk | \
                                                      SDMMC_RINTSTS_SBE_Msk | SDMMC_RINTSTS_EBE_Msk | SDMMC_RINTSTS_HLE_Msk)
 
 #define LPC_MAX_CLOCK                               52000000
 
+void lpc_sdmmc_on_isr(int vector, void* param)
+{
+    CORE* core = (CORE*)param;
+    if (LPC_SDMMC->IDSTS & SDMMC_IDSTS_NIS_Msk)
+    {
+        //TODO: if not CMD23 set, stop transmission here
+        if (core->sdmmc.process != INVALID_HANDLE)
+        {
+            core->sdmmc.io->data_size = core->sdmmc.count * core->sdmmc.sdmmcs.sector_size;
+            iio_complete(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, core->sdmmc.state == SDMMC_STATE_RX ? IPC_READ : IPC_WRITE), 0, core->sdmmc.io);
+            core->sdmmc.io = NULL;
+            core->sdmmc.process = INVALID_HANDLE;
+            core->sdmmc.state = SDMMC_STATE_IDLE;
+        }
+        LPC_SDMMC->IDSTS = SDMMC_IDSTS_RI_Msk | SDMMC_IDSTS_TI_Msk | SDMMC_IDSTS_NIS_Msk;
+    }
+    //TODO: abnormal processing
+}
 
 void lpc_sdmmc_init(CORE* core)
 {
     sdmmcs_init(&core->sdmmc.sdmmcs, core);
+    core->sdmmc.active = false;
+    core->sdmmc.io = NULL;
+    core->sdmmc.process = INVALID_HANDLE;
+    core->sdmmc.state = SDMMC_STATE_IDLE;
+    core->sdmmc.descr = NULL;
 }
 
 static void lpc_sdmmc_start_cmd(unsigned int cmd)
@@ -82,6 +107,10 @@ SDMMC_ERROR sdmmcs_send_cmd(void* param, uint8_t cmd, uint32_t arg, void* resp, 
     case SDMMC_RESPONSE_R3:
         lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk | SDMMC_CMD_RESPONSE_EXPECT_Msk);
         break;
+    case SDMMC_RESPONSE_R1D:
+        lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk | SDMMC_CMD_RESPONSE_EXPECT_Msk | SDMMC_CMD_DATA_EXPECTED_Msk |
+                                           SDMMC_CMD_CHECK_RESPONSE_CRC_Msk);
+        break;
     default:
         lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk | SDMMC_CMD_RESPONSE_EXPECT_Msk | SDMMC_CMD_CHECK_RESPONSE_CRC_Msk);
         break;
@@ -109,8 +138,13 @@ SDMMC_ERROR sdmmcs_send_cmd(void* param, uint8_t cmd, uint32_t arg, void* resp, 
     return SDMMC_ERROR_OK;
 }
 
-void lpc_sdmmc_open(CORE* core)
+static inline void lpc_sdmmc_open(CORE* core)
 {
+    if (core->sdmmc.active)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
     //enable SDIO bus interface to PLL1
     LPC_CGU->BASE_SDIO_CLK = CGU_BASE_SDIO_CLK_PD_Pos;
     LPC_CGU->BASE_SDIO_CLK |= CGU_CLK_PLL1;
@@ -126,16 +160,67 @@ void lpc_sdmmc_open(CORE* core)
     //mask and clear pending suspious interrupts
     LPC_SDMMC->INTMASK = 0;
     LPC_SDMMC->RINTSTS = 0x1ffff;
+    LPC_SDMMC->IDSTS = 0x337;
 
     if (!sdmmcs_open(&core->sdmmc.sdmmcs))
         return;
+    //it's critical to call malloc here, because of align
+    core->sdmmc.descr = malloc(4 * sizeof(uint32_t));
+    //TODO: setup block size here
 
-    //TODO: setup DMA, buffer offset
+    //recommended values
+    LPC_SDMMC->FIFOTH = (8 << SDMMC_FIFOTH_TX_WMARK_Pos) | (7 << SDMMC_FIFOTH_RX_WMARK_Pos) | SDMMC_FIFOTH_DMA_MTS_8;
+
+    //enable internal DMA
+    LPC_SDMMC->BMOD = SDMMC_BMOD_DE_Msk | SDMMC_BMOD_FB_Msk;
     LPC_SDMMC->CTRL |= SDMMC_CTRL_USE_INTERNAL_DMAC_Msk;
 
-    //TODO: setup interrupt vector, enable generic interrupts
+
+    //setup interrupt vector
+    irq_register(SDIO_IRQn, lpc_sdmmc_on_isr, (void*)core);
+    NVIC_EnableIRQ(SDIO_IRQn);
+    NVIC_SetPriority(SDIO_IRQn, 3);
+
+    //Enable interrupts
+    LPC_SDMMC->IDINTEN = SDMMC_IDINTEN_TI_Msk | SDMMC_IDINTEN_RI_Msk | SDMMC_IDINTEN_CES_Msk | SDMMC_IDINTEN_NIS_Msk | SDMMC_IDINTEN_AIS_Msk ;
     //enable global interrupt mask
     LPC_SDMMC->CTRL |= SDMMC_CTRL_INT_ENABLE_Msk;
+
+    core->sdmmc.active = true;
+}
+
+static inline void lpc_sdmmc_read(CORE* core, HANDLE process, IO* io)
+{
+    STORAGE_STACK* stack = io_stack(io);
+    io->data_size = 0;
+    io_pop(io, sizeof(STORAGE_STACK));
+    if (!core->sdmmc.active)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (core->sdmmc.state != SDMMC_STATE_IDLE)
+    {
+        error(ERROR_IN_PROGRESS);
+        return;
+    }
+    core->sdmmc.count = stack->count;
+    core->sdmmc.io = io;
+    core->sdmmc.process = process;
+
+    //configure descriptor
+    //TODO: bits definition
+    core->sdmmc.descr[0] = (1 << 2) | (1 << 3) | (1 << 4);
+    LPC_SDMMC->BYTCNT = core->sdmmc.descr[1] = 512 * stack->count;
+    core->sdmmc.descr[2] = (unsigned int)io_data(io);
+    core->sdmmc.descr[3] = 0x00000000;
+    //give buffer to DMA
+    LPC_SDMMC->DBADDR = (unsigned int)core->sdmmc.descr;
+    core->sdmmc.descr[0] |= (1 << 31);
+    LPC_SDMMC->PLDMND = 1;
+    core->sdmmc.state = SDMMC_STATE_RX;
+    if (sdmmcs_read_single_block(&core->sdmmc.sdmmcs, stack->sector))
+        error(ERROR_SYNC);
 }
 
 void lpc_sdmmc_request(CORE* core, IPC* ipc)
@@ -148,7 +233,8 @@ void lpc_sdmmc_request(CORE* core, IPC* ipc)
     case IPC_CLOSE:
         //TODO:
     case IPC_READ:
-        //TODO:
+        lpc_sdmmc_read(core, ipc->process, (IO*)ipc->param2);
+        break;
     case IPC_WRITE:
         //TODO:
     default:

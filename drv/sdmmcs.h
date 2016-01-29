@@ -136,6 +136,7 @@ typedef enum {
     SDMMC_NO_RESPONSE,
     SDMMC_RESPONSE_R1,
     SDMMC_RESPONSE_R1B,
+    SDMMC_RESPONSE_R1D,
     SDMMC_RESPONSE_R2,
     SDMMC_RESPONSE_R3,
     SDMMC_RESPONSE_R4,
@@ -175,7 +176,7 @@ typedef struct {
     //may be usefull for serial No generation
     CID cid;
     uint16_t rca;
-    uint16_t secor_size;
+    uint16_t sector_size;
     bool write_protected;
 } SDMMCS;
 
@@ -187,5 +188,7 @@ extern SDMMC_ERROR sdmmcs_send_cmd(void* param, uint8_t cmd, uint32_t arg, void*
 
 void sdmmcs_init(SDMMCS* sdmmcs, void* param);
 bool sdmmcs_open(SDMMCS* sdmmcs);
+//driver is responsable for data transfer configuring prior to cmd execution
+bool sdmmcs_read_single_block(SDMMCS* sdmmcs, unsigned int block);
 
 #endif // SDMMCS_H

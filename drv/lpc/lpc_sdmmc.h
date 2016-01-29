@@ -9,9 +9,22 @@
 
 #include "lpc_core.h"
 #include "../sdmmcs.h"
+#include "../../userspace/io.h"
+
+typedef enum {
+    SDMMC_STATE_IDLE,
+    SDMMC_STATE_RX,
+    SDMMC_STATE_TX
+} SDMMC_STATE;
 
 typedef struct  {
     SDMMCS sdmmcs;
+    SDMMC_STATE state;
+    uint32_t* descr;
+    IO* io;
+    HANDLE process;
+    unsigned int count;
+    bool active;
 } SDMMC_DRV;
 
 void lpc_sdmmc_init(CORE* core);
