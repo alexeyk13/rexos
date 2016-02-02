@@ -17,7 +17,9 @@
 #define LPC_SDMMC_CMD_FLAGS                         (SDMMC_RINTSTS_RE_Msk | SDMMC_RINTSTS_CDONE_Msk | SDMMC_RINTSTS_RCRC_Msk | SDMMC_RINTSTS_RTO_BAR_Msk | \
                                                      SDMMC_RINTSTS_SBE_Msk | SDMMC_RINTSTS_EBE_Msk | SDMMC_RINTSTS_HLE_Msk)
 
-#define LPC_MAX_CLOCK                               52000000
+#define LPC_SDMMC_MAX_CLOCK                         52000000
+#define LPC_SDMMC_BLOCK_SIZE                        (7 * 1024)
+#define LPC_SDMMC_TOTAL_SIZE                        ((LPC_SDMMC_BLOCK_SIZE) * (LPC_SDMMC_DESCR_COUNT))
 
 #pragma pack(push, 1)
 typedef struct _LPC_SDMMC_DESCR{
@@ -35,7 +37,7 @@ void lpc_sdmmc_on_isr(int vector, void* param)
     {
         if (core->sdmmc.process != INVALID_HANDLE)
         {
-            core->sdmmc.io->data_size = core->sdmmc.count * core->sdmmc.sdmmcs.sector_size;
+            core->sdmmc.io->data_size = core->sdmmc.total;
             iio_complete(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, core->sdmmc.state == SDMMC_STATE_RX ? IPC_READ : IPC_WRITE), 0, core->sdmmc.io);
             core->sdmmc.io = NULL;
             core->sdmmc.process = INVALID_HANDLE;
@@ -86,8 +88,8 @@ void sdmmcs_set_bus_width(void* param, int width)
 
 void sdmmcs_set_clock(void* param, unsigned int speed)
 {
-    if (speed > LPC_MAX_CLOCK)
-        speed = LPC_MAX_CLOCK;
+    if (speed > LPC_SDMMC_MAX_CLOCK)
+        speed = LPC_SDMMC_MAX_CLOCK;
     LPC_SDMMC->CLKENA = 0;
     lpc_sdmmc_start_cmd(SDMMC_CMD_UPDATE_CLOCK_REGISTERS_ONLY_Msk | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk);
 
@@ -204,6 +206,7 @@ static inline void lpc_sdmmc_open(CORE* core)
         return;
     //it's critical to call malloc here, because of align
     core->sdmmc.descr = malloc(LPC_SDMMC_DESCR_COUNT * sizeof(LPC_SDMMC_DESCR));
+    LPC_SDMMC->DBADDR = (unsigned int)(&(core->sdmmc.descr[0]));
     //TODO: setup block size here
 
     //recommended values
@@ -212,7 +215,6 @@ static inline void lpc_sdmmc_open(CORE* core)
     //enable internal DMA
     LPC_SDMMC->BMOD = SDMMC_BMOD_DE_Msk | SDMMC_BMOD_FB_Msk;
     LPC_SDMMC->CTRL |= SDMMC_CTRL_USE_INTERNAL_DMAC_Msk;
-
 
     //setup interrupt vector
     irq_register(SDIO_IRQn, lpc_sdmmc_on_isr, (void*)core);
@@ -229,6 +231,7 @@ static inline void lpc_sdmmc_open(CORE* core)
 
 static inline void lpc_sdmmc_read(CORE* core, HANDLE process, IO* io)
 {
+    unsigned int i, left;
     STORAGE_STACK* stack = io_stack(io);
     io->data_size = 0;
     io_pop(io, sizeof(STORAGE_STACK));
@@ -242,27 +245,48 @@ static inline void lpc_sdmmc_read(CORE* core, HANDLE process, IO* io)
         error(ERROR_IN_PROGRESS);
         return;
     }
-    core->sdmmc.count = stack->count;
+    core->sdmmc.total = stack->count * core->sdmmc.sdmmcs.sector_size;
+    if (core->sdmmc.total > LPC_SDMMC_TOTAL_SIZE)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
     core->sdmmc.io = io;
     core->sdmmc.process = process;
 
-    //configure descriptor
-    //TODO: bits definition
-    core->sdmmc.descr[0].ctl = (1 << 2) | (1 << 3) | (1 << 4);
-    LPC_SDMMC->BYTCNT = core->sdmmc.descr[0].size = 512 * stack->count;
-    core->sdmmc.descr[0].buf1 = io_data(io);
-    core->sdmmc.descr[0].buf2 = NULL;
+    //configure descriptors
+    for (i = 0, left = core->sdmmc.total; left; ++i)
+    {
+        //TODO: bits definition
+        core->sdmmc.descr[i].ctl = (1 << 4);
+        if (i == 0)
+        {
+            core->sdmmc.descr[i].ctl |= (1 << 3);
+            core->sdmmc.descr[i].buf1 = (uint8_t*)io_data(io);
+        }
+        else
+            core->sdmmc.descr[i].buf1 = (uint8_t*)core->sdmmc.descr[i - 1].buf1 + LPC_SDMMC_BLOCK_SIZE;
+        if (left > LPC_SDMMC_BLOCK_SIZE)
+        {
+            core->sdmmc.descr[i].ctl |= (1 << 1);
+            core->sdmmc.descr[i].size = LPC_SDMMC_BLOCK_SIZE;
+            core->sdmmc.descr[i].buf2 = &(core->sdmmc.descr[i + 1]);
+            left -= LPC_SDMMC_BLOCK_SIZE;
+        }
+        else
+        {
+            core->sdmmc.descr[i].size = left;
+            core->sdmmc.descr[i].buf2 = NULL;
+            core->sdmmc.descr[i].ctl |= (1 << 2);
+            left = 0;
+        }
+        core->sdmmc.descr[i].ctl |= (1 << 31);
+    }
 
-    //give buffer to DMA
-    LPC_SDMMC->DBADDR = (unsigned int)(&(core->sdmmc.descr[0]));
-    core->sdmmc.descr[0].ctl |= (1 << 31);
-    LPC_SDMMC->PLDMND = 1;
+    LPC_SDMMC->BYTCNT = core->sdmmc.total;
     core->sdmmc.state = SDMMC_STATE_RX;
     if (sdmmcs_read_multiple_blocks(&core->sdmmc.sdmmcs, stack->sector, stack->count))
         error(ERROR_SYNC);
-    else
-        printd("fail here: %d\n", get_last_error());
-
 }
 
 void lpc_sdmmc_request(CORE* core, IPC* ipc)

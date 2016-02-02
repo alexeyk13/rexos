@@ -25,7 +25,7 @@ typedef struct  {
     struct _LPC_SDMMC_DESCR* descr;
     IO* io;
     HANDLE process;
-    unsigned int count;
+    unsigned int total;
     bool active;
 } SDMMC_DRV;
 
