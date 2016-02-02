@@ -19,12 +19,20 @@
 
 #define LPC_MAX_CLOCK                               52000000
 
+#pragma pack(push, 1)
+typedef struct _LPC_SDMMC_DESCR{
+    uint32_t ctl;
+    uint32_t size;
+    void* buf1;
+    void* buf2;
+} LPC_SDMMC_DESCR;
+#pragma pack(pop)
+
 void lpc_sdmmc_on_isr(int vector, void* param)
 {
     CORE* core = (CORE*)param;
     if (LPC_SDMMC->IDSTS & SDMMC_IDSTS_NIS_Msk)
     {
-        //TODO: if not CMD23 set, stop transmission here
         if (core->sdmmc.process != INVALID_HANDLE)
         {
             core->sdmmc.io->data_size = core->sdmmc.count * core->sdmmc.sdmmcs.sector_size;
@@ -35,7 +43,11 @@ void lpc_sdmmc_on_isr(int vector, void* param)
         }
         LPC_SDMMC->IDSTS = SDMMC_IDSTS_RI_Msk | SDMMC_IDSTS_TI_Msk | SDMMC_IDSTS_NIS_Msk;
     }
-    //TODO: abnormal processing
+    if (LPC_SDMMC->IDSTS & SDMMC_IDSTS_AIS_Msk)
+    {
+        //TODO: abnormal processing
+        iprintd("ABNORMAL state\n");
+    }
 }
 
 void lpc_sdmmc_init(CORE* core)
@@ -89,32 +101,58 @@ void sdmmcs_set_clock(void* param, unsigned int speed)
 
 SDMMC_ERROR sdmmcs_send_cmd(void* param, uint8_t cmd, uint32_t arg, void* resp, SDMMC_RESPONSE_TYPE resp_type)
 {
+    uint32_t reg;
     //clear pending interrupts
     LPC_SDMMC->RINTSTS = LPC_SDMMC_CMD_FLAGS;
     LPC_SDMMC->CMDARG = arg;
-    switch (resp_type)
+
+    reg = (cmd & 0x3f);
+    //only transfer stop comm doesn't require to wait completion
+    if (cmd != SDMMC_CMD_STOP_TRANSMISSION)
+        reg |= SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk;
+    switch (cmd)
     {
-    case SDMMC_NO_RESPONSE:
-        if (cmd == SDMMC_CMD_GO_IDLE_STATE)
-            lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk | SDMMC_CMD_SEND_INITIALIZATION_Msk);
-        else
-            lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk);
+    case SDMMC_CMD_GO_IDLE_STATE:
+        //extra initialization time
+        reg |= SDMMC_CMD_SEND_INITIALIZATION_Msk;
         break;
-    case SDMMC_RESPONSE_R2:
-        lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk | SDMMC_CMD_RESPONSE_EXPECT_Msk | SDMMC_CMD_RESPONSE_LENGTH_Msk |
-                                                                              SDMMC_CMD_CHECK_RESPONSE_CRC_Msk);
+    case SDMMC_CMD_STOP_TRANSMISSION:
+        //dear LPC team, pls fix bit name
+        reg |= SDMMC_CMD_STOP_ABORT_CMd_Msk;
         break;
-    case SDMMC_RESPONSE_R3:
-        lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk | SDMMC_CMD_RESPONSE_EXPECT_Msk);
-        break;
-    case SDMMC_RESPONSE_R1D:
-        lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk | SDMMC_CMD_RESPONSE_EXPECT_Msk | SDMMC_CMD_DATA_EXPECTED_Msk |
-                                           SDMMC_CMD_CHECK_RESPONSE_CRC_Msk);
+    case SDMMC_CMD_WRITE_SINGLE_BLOCK:
+    case SDMMC_CMD_WRITE_MULTIPLE_BLOCK:
+        reg |= SDMMC_CMD_READ_WRITE_Msk;
+        //follow down
+    case SDMMC_CMD_READ_SINGLE_BLOCK:
+    case SDMMC_CMD_READ_MULTIPLE_BLOCK:
+        reg |= SDMMC_CMD_DATA_EXPECTED_Msk;
+        switch (cmd)
+        {
+        case SDMMC_CMD_WRITE_MULTIPLE_BLOCK:
+        case SDMMC_CMD_READ_MULTIPLE_BLOCK:
+            //host will automatically issue CMD12 at end of data phase.
+            reg |= SDMMC_CMD_SEND_AUTO_STOP_Msk;
+            break;
+        default:
+            break;
+        }
         break;
     default:
-        lpc_sdmmc_start_cmd((cmd & 0x3f) | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk | SDMMC_CMD_RESPONSE_EXPECT_Msk | SDMMC_CMD_CHECK_RESPONSE_CRC_Msk);
         break;
     }
+    if (resp_type != SDMMC_NO_RESPONSE)
+    {
+        reg |= SDMMC_CMD_RESPONSE_EXPECT_Msk;
+        if (resp_type != SDMMC_RESPONSE_R3)
+        {
+            reg |= SDMMC_CMD_CHECK_RESPONSE_CRC_Msk;
+            if (resp_type == SDMMC_RESPONSE_R2)
+                reg |= SDMMC_CMD_RESPONSE_LENGTH_Msk;
+        }
+    }
+
+    lpc_sdmmc_start_cmd(reg);
     while ((LPC_SDMMC->RINTSTS & LPC_SDMMC_CMD_FLAGS) == 0) {}
     if (LPC_SDMMC->RINTSTS & (SDMMC_RINTSTS_SBE_Msk | SDMMC_RINTSTS_EBE_Msk | SDMMC_RINTSTS_HLE_Msk))
         return SDMMC_ERROR_HARDWARE_FAILURE;
@@ -165,7 +203,7 @@ static inline void lpc_sdmmc_open(CORE* core)
     if (!sdmmcs_open(&core->sdmmc.sdmmcs))
         return;
     //it's critical to call malloc here, because of align
-    core->sdmmc.descr = malloc(4 * sizeof(uint32_t));
+    core->sdmmc.descr = malloc(LPC_SDMMC_DESCR_COUNT * sizeof(LPC_SDMMC_DESCR));
     //TODO: setup block size here
 
     //recommended values
@@ -210,17 +248,21 @@ static inline void lpc_sdmmc_read(CORE* core, HANDLE process, IO* io)
 
     //configure descriptor
     //TODO: bits definition
-    core->sdmmc.descr[0] = (1 << 2) | (1 << 3) | (1 << 4);
-    LPC_SDMMC->BYTCNT = core->sdmmc.descr[1] = 512 * stack->count;
-    core->sdmmc.descr[2] = (unsigned int)io_data(io);
-    core->sdmmc.descr[3] = 0x00000000;
+    core->sdmmc.descr[0].ctl = (1 << 2) | (1 << 3) | (1 << 4);
+    LPC_SDMMC->BYTCNT = core->sdmmc.descr[0].size = 512 * stack->count;
+    core->sdmmc.descr[0].buf1 = io_data(io);
+    core->sdmmc.descr[0].buf2 = NULL;
+
     //give buffer to DMA
-    LPC_SDMMC->DBADDR = (unsigned int)core->sdmmc.descr;
-    core->sdmmc.descr[0] |= (1 << 31);
+    LPC_SDMMC->DBADDR = (unsigned int)(&(core->sdmmc.descr[0]));
+    core->sdmmc.descr[0].ctl |= (1 << 31);
     LPC_SDMMC->PLDMND = 1;
     core->sdmmc.state = SDMMC_STATE_RX;
-    if (sdmmcs_read_single_block(&core->sdmmc.sdmmcs, stack->sector))
+    if (sdmmcs_read_multiple_blocks(&core->sdmmc.sdmmcs, stack->sector, stack->count))
         error(ERROR_SYNC);
+    else
+        printd("fail here: %d\n", get_last_error());
+
 }
 
 void lpc_sdmmc_request(CORE* core, IPC* ipc)

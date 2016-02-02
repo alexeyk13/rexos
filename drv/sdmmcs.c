@@ -56,11 +56,6 @@ static inline bool sdmmcs_cmd_r1b(SDMMCS* sdmmcs, uint8_t cmd, uint32_t arg)
     return sdmmcs_cmd_r1x(sdmmcs, cmd, arg, SDMMC_RESPONSE_R1B);
 }
 
-static inline bool sdmmcs_cmd_r1d(SDMMCS* sdmmcs, uint8_t cmd, uint32_t arg)
-{
-    return sdmmcs_cmd_r1x(sdmmcs, cmd, arg, SDMMC_RESPONSE_R1D);
-}
-
 static bool sdmmcs_cmd_r6(SDMMCS* sdmmcs, uint8_t cmd, uint32_t arg)
 {
     unsigned int retry;
@@ -95,7 +90,7 @@ static bool sdmmcs_acmd(SDMMCS* sdmmcs, uint8_t acmd, uint32_t arg, void* resp, 
     for (retry = 0; retry < 3; ++retry)
     {
         //TODO: RCA here
-        if (!sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_APP_CMD, 0))
+        if (!sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_APP_CMD, ARG_RCA(sdmmcs)))
             return false;
         if (sdmmcs->r1 & SDMMC_R1_APP_CMD)
             return sdmmcs_cmd(sdmmcs, acmd, arg, resp, resp_type);
@@ -306,9 +301,14 @@ static inline bool sdmmcs_card_select(SDMMCS* sdmmcs)
 
     sdmmcs_set_clock(sdmmcs->param, sdmmcs->max_clock);
 
+    //disable pullap on DAT3
+    if (!sdmmcs_acmd(sdmmcs, SDMMC_ACMD_SET_CLR_CARD_DETECT, 0x00, &sdmmcs->r1, SDMMC_RESPONSE_R1))
+        return false;
+    //set 4 bit bus
+    if (sdmmcs_acmd(sdmmcs, SDMMC_ACMD_SET_BUS_WIDTH, 0x2, &sdmmcs->r1, SDMMC_RESPONSE_R1))
+        sdmmcs_set_bus_width(sdmmcs->param, 4);
+
     //TODO: set block len for sdsc
-    //TODO: set bus width, disable pullap?
-    //TODO: read scr? check for CMD23
 
     return true;
 }
@@ -368,10 +368,28 @@ bool sdmmcs_read_single_block(SDMMCS* sdmmcs, unsigned int block)
     uint32_t addr = block;
     if (sdmmcs->card_type == SDMMC_CARD_SD_V1 || sdmmcs->card_type == SDMMC_CARD_SD_V2)
         addr *= sdmmcs->sector_size;
-    if (!sdmmcs_cmd_r1d(sdmmcs, SDMMC_CMD_READ_SINGLE_BLOCK, addr))
+    if (!sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_READ_SINGLE_BLOCK, addr))
     {
         sdmmcs_set_r1_error(sdmmcs);
         return false;
     }
     return true;
+}
+
+bool sdmmcs_read_multiple_blocks(SDMMCS* sdmmcs, unsigned int block, unsigned int count)
+{
+    uint32_t addr = block;
+    if (sdmmcs->card_type == SDMMC_CARD_SD_V1 || sdmmcs->card_type == SDMMC_CARD_SD_V2)
+        addr *= sdmmcs->sector_size;
+    if (!sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_READ_MULTIPLE_BLOCK, addr))
+    {
+        sdmmcs_set_r1_error(sdmmcs);
+        return false;
+    }
+    return true;
+}
+
+void sdmmcs_stop_transmission(SDMMCS* sdmmcs)
+{
+    sdmmcs_cmd_r1b(sdmmcs, SDMMC_CMD_STOP_TRANSMISSION, 0x00);
 }

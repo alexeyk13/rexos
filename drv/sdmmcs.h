@@ -136,7 +136,6 @@ typedef enum {
     SDMMC_NO_RESPONSE,
     SDMMC_RESPONSE_R1,
     SDMMC_RESPONSE_R1B,
-    SDMMC_RESPONSE_R1D,
     SDMMC_RESPONSE_R2,
     SDMMC_RESPONSE_R3,
     SDMMC_RESPONSE_R4,
@@ -190,5 +189,8 @@ void sdmmcs_init(SDMMCS* sdmmcs, void* param);
 bool sdmmcs_open(SDMMCS* sdmmcs);
 //driver is responsable for data transfer configuring prior to cmd execution
 bool sdmmcs_read_single_block(SDMMCS* sdmmcs, unsigned int block);
+bool sdmmcs_read_multiple_blocks(SDMMCS* sdmmcs, unsigned int block, unsigned int count);
+
+void sdmmcs_stop_transmission(SDMMCS* sdmmcs);
 
 #endif // SDMMCS_H

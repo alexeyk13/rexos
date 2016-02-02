@@ -17,10 +17,12 @@ typedef enum {
     SDMMC_STATE_TX
 } SDMMC_STATE;
 
+typedef struct _LPC_SDMMC_DESCR LPC_SDMMC_DESCR;
+
 typedef struct  {
     SDMMCS sdmmcs;
     SDMMC_STATE state;
-    uint32_t* descr;
+    struct _LPC_SDMMC_DESCR* descr;
     IO* io;
     HANDLE process;
     unsigned int count;
