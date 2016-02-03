@@ -186,6 +186,7 @@ extern void sdmmcs_set_bus_width(void* param, int width);
 extern SDMMC_ERROR sdmmcs_send_cmd(void* param, uint8_t cmd, uint32_t arg, void* resp, SDMMC_RESPONSE_TYPE resp_type);
 
 void sdmmcs_init(SDMMCS* sdmmcs, void* param);
+bool sdmmcs_reset(SDMMCS* sdmmcs);
 bool sdmmcs_open(SDMMCS* sdmmcs);
 //driver is responsable for data transfer configuring prior to cmd execution
 bool sdmmcs_read(SDMMCS* sdmmcs, unsigned int block, unsigned int count);

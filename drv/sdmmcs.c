@@ -109,7 +109,7 @@ static bool sdmmcs_acmd_r1(SDMMCS* sdmmcs, uint8_t acmd, uint32_t arg)
     return false;
 }
 
-static inline bool sdmmcs_reset(SDMMCS* sdmmcs)
+bool sdmmcs_reset(SDMMCS* sdmmcs)
 {
     if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_GO_IDLE_STATE, 0, NULL, SDMMC_NO_RESPONSE))
     {

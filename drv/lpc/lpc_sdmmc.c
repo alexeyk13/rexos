@@ -229,6 +229,27 @@ SDMMC_ERROR sdmmcs_send_cmd(void* param, uint8_t cmd, uint32_t arg, void* resp, 
     return SDMMC_ERROR_OK;
 }
 
+static void lpc_sdmmc_flush(CORE* core)
+{
+    IO* io;
+    HANDLE process;
+    SDMMC_STATE state = SDMMC_STATE_IDLE;
+    __disable_irq();
+    if (core->sdmmc.state != SDMMC_STATE_IDLE)
+    {
+        process = core->sdmmc.process;
+        io = core->sdmmc.io;
+        state = core->sdmmc.state;
+        core->sdmmc.state = SDMMC_STATE_IDLE;
+    }
+    __enable_irq();
+    if (state != SDMMC_STATE_IDLE)
+    {
+        sdmmcs_stop(&core->sdmmc.sdmmcs);
+        io_complete_ex(process, HAL_IO_CMD(HAL_SDMMC, state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), 0, io, ERROR_IO_CANCELLED);
+    }
+}
+
 static inline void lpc_sdmmc_open(CORE* core)
 {
     if (core->sdmmc.active)
@@ -279,6 +300,29 @@ static inline void lpc_sdmmc_open(CORE* core)
     LPC_SDMMC->CTRL |= SDMMC_CTRL_INT_ENABLE_Msk;
 
     core->sdmmc.active = true;
+}
+
+static inline void lpc_sdmmc_close(CORE* core)
+{
+    if (core->sdmmc.active)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    //disable interrupts
+    NVIC_DisableIRQ(SDIO_IRQn);
+
+    lpc_sdmmc_flush(core);
+    sdmmcs_reset(&core->sdmmc.sdmmcs);
+
+    irq_unregister(SDIO_IRQn);
+    //mask all interrupts
+    LPC_SDMMC->CTRL &= ~SDMMC_CTRL_INT_ENABLE_Msk;
+    LPC_SDMMC->INTMASK = 0;
+
+    free(core->sdmmc.descr);
+    core->sdmmc.descr = NULL;
+    core->sdmmc.active = false;
 }
 
 static void lpc_sdmmc_prepare_descriptors(CORE* core)
@@ -437,12 +481,16 @@ void lpc_sdmmc_request(CORE* core, IPC* ipc)
         lpc_sdmmc_open(core);
         break;
     case IPC_CLOSE:
-        //TODO:
+        lpc_sdmmc_close(core);
+        break;
     case IPC_READ:
         lpc_sdmmc_io(core, ipc->process, (IO*)ipc->param2, true);
         break;
     case IPC_WRITE:
         lpc_sdmmc_io(core, ipc->process, (IO*)ipc->param2, false);
+        break;
+    case IPC_FLUSH:
+        lpc_sdmmc_flush(core);
         break;
     case LPC_SDMMC_VERIFY:
         lpc_sdmmc_verify(core);
@@ -450,5 +498,4 @@ void lpc_sdmmc_request(CORE* core, IPC* ipc)
     default:
         error(ERROR_NOT_SUPPORTED);
     }
-    //TODO: cancel io
 }
