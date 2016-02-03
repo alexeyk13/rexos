@@ -30,31 +30,61 @@ bool storage_read_sync(HAL hal, HANDLE process, IO* io, unsigned int sector, uns
     return (io_read_sync(process, HAL_IO_REQ(hal, IPC_READ), 0, io, count) == count * STORAGE_SECTOR_SIZE);
 }
 
-static void storage_write_internal(HAL hal, HANDLE process, IO* io, unsigned int sector, unsigned int flags)
+static void storage_write_internal(HAL hal, HANDLE process, IO* io, unsigned int sector, unsigned int count, unsigned int flags)
 {
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
-    stack->count = io->data_size / STORAGE_SECTOR_SIZE;
+    stack->count = count;
     stack->flags = flags;
     io_write(process, HAL_IO_REQ(hal, IPC_WRITE), 0, io);
 }
 
-static bool storage_write_sync_internal(HAL hal, HANDLE process, IO* io, unsigned int sector, unsigned int flags)
+static bool storage_write_sync_internal(HAL hal, HANDLE process, IO* io, unsigned int sector, unsigned int count, unsigned int flags)
 {
-    unsigned int count;
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
-    count = stack->count = io->data_size / STORAGE_SECTOR_SIZE;
+    stack->count = count;
     stack->flags = flags;
     return (io_write_sync(process, HAL_IO_REQ(hal, IPC_WRITE), 0, io) == count * STORAGE_SECTOR_SIZE);
 }
 
-bool storage_write_sync(HAL hal, HANDLE process, IO* io, unsigned int sector)
-{
-    return storage_write_sync_internal(hal, process, io, sector, STORAGE_FLAG_WRITE);
-}
-
 void storage_write(HAL hal, HANDLE process, IO* io, unsigned int sector)
 {
-    storage_write_internal(hal, process, io, sector, STORAGE_FLAG_WRITE);
+    storage_write_internal(hal, process, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_WRITE);
 }
+
+bool storage_write_sync(HAL hal, HANDLE process, IO* io, unsigned int sector)
+{
+    return storage_write_sync_internal(hal, process, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_WRITE);
+}
+
+void storage_erase(HAL hal, HANDLE process, IO* io, unsigned int sector, unsigned int count)
+{
+    storage_write_internal(hal, process, io, sector, count, 0);
+}
+
+bool storage_erase_sync(HAL hal, HANDLE process, IO* io, unsigned int sector, unsigned int count)
+{
+    return storage_write_sync_internal(hal, process, io, sector, count, 0);
+}
+
+void storage_verify(HAL hal, HANDLE process, IO* io, unsigned int sector)
+{
+    storage_write_internal(hal, process, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_VERIFY);
+}
+
+bool storage_verify_sync(HAL hal, HANDLE process, IO* io, unsigned int sector)
+{
+    return storage_write_sync_internal(hal, process, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_VERIFY);
+}
+
+void storage_write_verify(HAL hal, HANDLE process, IO* io, unsigned int sector)
+{
+    storage_write_internal(hal, process, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_WRITE | STORAGE_FLAG_VERIFY);
+}
+
+bool storage_write_verify_sync(HAL hal, HANDLE process, IO* io, unsigned int sector)
+{
+    return storage_write_sync_internal(hal, process, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_WRITE | STORAGE_FLAG_VERIFY);
+}
+

@@ -420,7 +420,10 @@ bool sdmmcs_write(SDMMCS* sdmmcs, unsigned int block, unsigned int count)
     if (count > 1)
     {
         if (!sdmmcs_acmd_r1(sdmmcs, SDMMC_ACMD_SET_WR_BLK_ERASE_COUNT, count))
+        {
+            sdmmcs_set_r1_error(sdmmcs);
             return false;
+        }
     }
     if (!sdmmcs_cmd_r1(sdmmcs, count == 1 ? SDMMC_CMD_WRITE_SINGLE_BLOCK : SDMMC_CMD_WRITE_MULTIPLE_BLOCK, addr))
     {
@@ -429,6 +432,30 @@ bool sdmmcs_write(SDMMCS* sdmmcs, unsigned int block, unsigned int count)
     }
     sdmmcs->writed_before = true;
     return true;
+}
+
+bool sdmmcs_erase(SDMMCS* sdmmcs, unsigned int block, unsigned int count)
+{
+    uint32_t start, end;
+    start = block;
+    if (sdmmcs->card_type == SDMMC_CARD_SD_V1 || sdmmcs->card_type == SDMMC_CARD_SD_V2)
+    {
+        start *= sdmmcs->sector_size;
+        end = start + count * sdmmcs->sector_size - 1;
+    }
+    else
+        end = block + count - 1;
+    if (!sdmmcs_wait_for_ready(sdmmcs))
+        return false;
+    if (sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_ERASE_WR_BLK_START_ADDR, start) &&
+        sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_ERASE_WR_BLK_END_ADDR, end) &&
+        sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_ERASE, 0))
+    {
+        sdmmcs->writed_before = true;
+        return true;
+    }
+    sdmmcs_set_r1_error(sdmmcs);
+    return false;
 }
 
 void sdmmcs_stop(SDMMCS* sdmmcs)

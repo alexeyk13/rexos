@@ -190,6 +190,7 @@ bool sdmmcs_open(SDMMCS* sdmmcs);
 //driver is responsable for data transfer configuring prior to cmd execution
 bool sdmmcs_read(SDMMCS* sdmmcs, unsigned int block, unsigned int count);
 bool sdmmcs_write(SDMMCS* sdmmcs, unsigned int block, unsigned int count);
+bool sdmmcs_erase(SDMMCS* sdmmcs, unsigned int block, unsigned int count);
 void sdmmcs_stop(SDMMCS* sdmmcs);
 
 #endif // SDMMCS_H

@@ -13,6 +13,11 @@
 #include "../../userspace/lpc/lpc_driver.h"
 #include "../../userspace/storage.h"
 #include "../../userspace/stdlib.h"
+#include <string.h>
+
+typedef enum {
+    LPC_SDMMC_VERIFY = STORAGE_IPC_MAX
+} LPC_SDMMC_IPCS;
 
 #define LPC_SDMMC_CMD_FLAGS                         (SDMMC_RINTSTS_RE_Msk | SDMMC_RINTSTS_CDONE_Msk | SDMMC_RINTSTS_RCRC_Msk | SDMMC_RINTSTS_RTO_BAR_Msk | \
                                                      SDMMC_RINTSTS_SBE_Msk | SDMMC_RINTSTS_EBE_Msk | SDMMC_RINTSTS_HLE_Msk)
@@ -34,7 +39,7 @@ static void lpc_sdmmc_error(CORE* core, int error)
 {
     if (core->sdmmc.state != SDMMC_STATE_IDLE)
     {
-        iio_complete_ex(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, core->sdmmc.state == SDMMC_STATE_RX ? IPC_READ : IPC_WRITE), 0, core->sdmmc.io, error);
+        iio_complete_ex(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, core->sdmmc.state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), 0, core->sdmmc.io, error);
         core->sdmmc.io = NULL;
         core->sdmmc.process = INVALID_HANDLE;
         core->sdmmc.state = SDMMC_STATE_IDLE;
@@ -46,13 +51,24 @@ void lpc_sdmmc_on_isr(int vector, void* param)
     CORE* core = (CORE*)param;
     if (LPC_SDMMC->IDSTS & SDMMC_IDSTS_NIS_Msk)
     {
-        if (core->sdmmc.state != SDMMC_STATE_IDLE)
+        switch (core->sdmmc.state)
         {
-            core->sdmmc.io->data_size = core->sdmmc.total;
-            iio_complete(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, core->sdmmc.state == SDMMC_STATE_RX ? IPC_READ : IPC_WRITE), 0, core->sdmmc.io);
+        case SDMMC_STATE_READ:
+        case SDMMC_STATE_WRITE:
+            if (core->sdmmc.state == SDMMC_STATE_READ)
+                core->sdmmc.io->data_size = core->sdmmc.total;
+            iio_complete(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, core->sdmmc.state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), 0, core->sdmmc.io);
             core->sdmmc.io = NULL;
             core->sdmmc.process = INVALID_HANDLE;
             core->sdmmc.state = SDMMC_STATE_IDLE;
+            break;
+        case SDMMC_STATE_VERIFY:
+        case SDMMC_STATE_WRITE_VERIFY:
+            //write is taking some also as hash, so it's better to switch to userspace for completion
+            ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_SDMMC, LPC_SDMMC_VERIFY), 0, 0, 0);
+            break;
+        default:
+            break;
         }
         LPC_SDMMC->IDSTS = SDMMC_IDSTS_RI_Msk | SDMMC_IDSTS_TI_Msk | SDMMC_IDSTS_NIS_Msk;
     }
@@ -265,32 +281,9 @@ static inline void lpc_sdmmc_open(CORE* core)
     core->sdmmc.active = true;
 }
 
-static inline void lpc_sdmmc_io(CORE* core, HANDLE process, IO* io, bool read)
+static void lpc_sdmmc_prepare_descriptors(CORE* core)
 {
     unsigned int i, left;
-    STORAGE_STACK* stack = io_stack(io);
-    io->data_size = 0;
-    io_pop(io, sizeof(STORAGE_STACK));
-    if (!core->sdmmc.active)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
-    if (core->sdmmc.state != SDMMC_STATE_IDLE)
-    {
-        error(ERROR_IN_PROGRESS);
-        return;
-    }
-    core->sdmmc.total = stack->count * core->sdmmc.sdmmcs.sector_size;
-    if (core->sdmmc.total > LPC_SDMMC_TOTAL_SIZE)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
-    core->sdmmc.io = io;
-    core->sdmmc.process = process;
-
-    //configure descriptors
     for (i = 0, left = core->sdmmc.total; left; ++i)
     {
         //Second address pointer to next descriptor
@@ -299,7 +292,7 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, IO* io, bool read)
         {
             //first descriptor in chain
             core->sdmmc.descr[i].ctl |= SDMMC_DESC0_FS_Msk;
-            core->sdmmc.descr[i].buf1 = (uint8_t*)io_data(io);
+            core->sdmmc.descr[i].buf1 = (uint8_t*)io_data(core->sdmmc.io);
         }
         else
             core->sdmmc.descr[i].buf1 = (uint8_t*)core->sdmmc.descr[i - 1].buf1 + LPC_SDMMC_BLOCK_SIZE;
@@ -323,18 +316,117 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, IO* io, bool read)
     }
 
     LPC_SDMMC->BYTCNT = core->sdmmc.total;
+}
+
+static inline void lpc_sdmmc_io(CORE* core, HANDLE process, IO* io, bool read)
+{
+    SHA1_CTX sha1;
+    STORAGE_STACK* stack = io_stack(io);
+    io_pop(io, sizeof(STORAGE_STACK));
+    if (!core->sdmmc.active)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (core->sdmmc.state != SDMMC_STATE_IDLE)
+    {
+        error(ERROR_IN_PROGRESS);
+        return;
+    }
+    core->sdmmc.total = stack->count * core->sdmmc.sdmmcs.sector_size;
+    //erase
+    if (!read && (stack->flags == 0))
+    {
+        if (!sdmmcs_erase(&core->sdmmc.sdmmcs, stack->sector, stack->count))
+            return;
+        io_complete_ex(process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), 0, io, stack->count * core->sdmmc.sdmmcs.sector_size);
+        error(ERROR_SYNC);
+        return;
+    }
+    if (core->sdmmc.total > LPC_SDMMC_TOTAL_SIZE)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    core->sdmmc.io = io;
+    core->sdmmc.process = process;
+
+    lpc_sdmmc_prepare_descriptors(core);
+
     if (read)
     {
-        core->sdmmc.state = SDMMC_STATE_RX;
+        io->data_size = 0;
+        core->sdmmc.state = SDMMC_STATE_READ;
         if (sdmmcs_read(&core->sdmmc.sdmmcs, stack->sector, stack->count))
             error(ERROR_SYNC);
     }
     else
     {
-        core->sdmmc.state = SDMMC_STATE_TX;
-        if (sdmmcs_write(&core->sdmmc.sdmmcs, stack->sector, stack->count))
-            error(ERROR_SYNC);
+        if (stack->flags == STORAGE_FLAG_WRITE)
+        {
+            core->sdmmc.state = SDMMC_STATE_WRITE;
+            if (sdmmcs_write(&core->sdmmc.sdmmcs, stack->sector, stack->count))
+                error(ERROR_SYNC);
+        }
+        else
+        {
+            //verify/verify write
+            sha1_init(&sha1);
+            sha1_update(&sha1, io_data(io), core->sdmmc.total);
+            sha1_final(&sha1, core->sdmmc.hash);
+            core->sdmmc.sector = stack->sector;
+            switch (stack->flags)
+            {
+            case STORAGE_FLAG_VERIFY:
+                core->sdmmc.state = SDMMC_STATE_VERIFY;
+                if (sdmmcs_read(&core->sdmmc.sdmmcs, stack->sector, stack->count))
+                    error(ERROR_SYNC);
+                break;
+            case (STORAGE_FLAG_VERIFY | STORAGE_FLAG_WRITE):
+                core->sdmmc.state = SDMMC_STATE_WRITE_VERIFY;
+                if (sdmmcs_write(&core->sdmmc.sdmmcs, stack->sector, stack->count))
+                    error(ERROR_SYNC);
+                break;
+            default:
+                error(ERROR_NOT_SUPPORTED);
+                return;
+            }
+        }
     }
+}
+
+static inline void lpc_sdmmc_verify(CORE* core)
+{
+    SHA1_CTX sha1;
+    uint8_t hash_in[SHA1_BLOCK_SIZE];
+    if ((core->sdmmc.state != SDMMC_STATE_VERIFY) && (core->sdmmc.state != SDMMC_STATE_WRITE_VERIFY))
+        return;
+    sha1_init(&sha1);
+    sha1_update(&sha1, io_data(core->sdmmc.io), core->sdmmc.total);
+    sha1_final(&sha1, core->sdmmc.state == SDMMC_STATE_VERIFY ? hash_in : core->sdmmc.hash);
+
+    if (core->sdmmc.state == SDMMC_STATE_WRITE_VERIFY)
+    {
+        core->sdmmc.state = SDMMC_STATE_VERIFY;
+        lpc_sdmmc_prepare_descriptors(core);
+        if (sdmmcs_read(&core->sdmmc.sdmmcs, core->sdmmc.sector, core->sdmmc.total / core->sdmmc.sdmmcs.sector_size))
+            return;
+    }
+    else
+    {
+        if (memcmp(core->sdmmc.hash, hash_in, SHA1_BLOCK_SIZE) == 0)
+        {
+            io_complete(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), 0, core->sdmmc.io);
+            core->sdmmc.io = NULL;
+            core->sdmmc.process = INVALID_HANDLE;
+            core->sdmmc.state = SDMMC_STATE_IDLE;
+            return;
+        }
+    }
+    io_complete_ex(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), 0, core->sdmmc.io, get_last_error());
+    core->sdmmc.io = NULL;
+    core->sdmmc.process = INVALID_HANDLE;
+    core->sdmmc.state = SDMMC_STATE_IDLE;
 }
 
 void lpc_sdmmc_request(CORE* core, IPC* ipc)
@@ -352,7 +444,11 @@ void lpc_sdmmc_request(CORE* core, IPC* ipc)
     case IPC_WRITE:
         lpc_sdmmc_io(core, ipc->process, (IO*)ipc->param2, false);
         break;
+    case LPC_SDMMC_VERIFY:
+        lpc_sdmmc_verify(core);
+        break;
     default:
         error(ERROR_NOT_SUPPORTED);
     }
+    //TODO: cancel io
 }

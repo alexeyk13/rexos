@@ -17,6 +17,9 @@
 #define STORAGE_FLAG_WRITE                                              (1 << 0)
 #define STORAGE_FLAG_VERIFY                                             (1 << 1)
 
+//reserved for future storage interface
+#define STORAGE_IPC_MAX                                                 (IPC_USER)
+
 typedef struct {
     unsigned int sector;
     unsigned int count;
@@ -28,6 +31,11 @@ void storage_read(HAL hal, HANDLE process, IO* io, unsigned int sector, unsigned
 bool storage_read_sync(HAL hal, HANDLE process, IO* io, unsigned int sector, unsigned int count);
 void storage_write(HAL hal, HANDLE process, IO* io, unsigned int sector);
 bool storage_write_sync(HAL hal, HANDLE process, IO* io, unsigned int sector);
-//TODO: erase, verify, write_verify
+void storage_erase(HAL hal, HANDLE process, IO* io, unsigned int sector, unsigned int count);
+bool storage_erase_sync(HAL hal, HANDLE process, IO* io, unsigned int sector, unsigned int count);
+void storage_verify(HAL hal, HANDLE process, IO* io, unsigned int sector);
+bool storage_verify_sync(HAL hal, HANDLE process, IO* io, unsigned int sector);
+void storage_write_verify(HAL hal, HANDLE process, IO* io, unsigned int sector);
+bool storage_write_verify_sync(HAL hal, HANDLE process, IO* io, unsigned int sector);
 
 #endif // STORAGE_H

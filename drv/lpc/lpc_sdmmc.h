@@ -10,11 +10,14 @@
 #include "lpc_core.h"
 #include "../sdmmcs.h"
 #include "../../userspace/io.h"
+#include "../../midware/crypto/sha1.h"
 
 typedef enum {
     SDMMC_STATE_IDLE,
-    SDMMC_STATE_RX,
-    SDMMC_STATE_TX
+    SDMMC_STATE_READ,
+    SDMMC_STATE_WRITE,
+    SDMMC_STATE_VERIFY,
+    SDMMC_STATE_WRITE_VERIFY
 } SDMMC_STATE;
 
 typedef struct _LPC_SDMMC_DESCR LPC_SDMMC_DESCR;
@@ -25,7 +28,8 @@ typedef struct  {
     struct _LPC_SDMMC_DESCR* descr;
     IO* io;
     HANDLE process;
-    unsigned int total;
+    unsigned int sector, total;
+    uint8_t hash[SHA1_BLOCK_SIZE];
     bool active;
 } SDMMC_DRV;
 
