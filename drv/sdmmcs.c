@@ -98,6 +98,17 @@ static bool sdmmcs_acmd(SDMMCS* sdmmcs, uint8_t acmd, uint32_t arg, void* resp, 
     return false;
 }
 
+static bool sdmmcs_acmd_r1(SDMMCS* sdmmcs, uint8_t acmd, uint32_t arg)
+{
+    if (!sdmmcs_acmd(sdmmcs, acmd, arg, &sdmmcs->r1, SDMMC_RESPONSE_R1))
+        return false;
+    if (sdmmcs->r1 & (SDMMC_R1_FATAL_ERROR | SDMMC_R1_APP_ERROR))
+        return false;
+    if ((sdmmcs->r1 & SDMMC_R1_COM_CRC_ERROR) == 0)
+        return true;
+    return false;
+}
+
 static inline bool sdmmcs_reset(SDMMCS* sdmmcs)
 {
     if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_GO_IDLE_STATE, 0, NULL, SDMMC_NO_RESPONSE))
@@ -302,10 +313,10 @@ static inline bool sdmmcs_card_select(SDMMCS* sdmmcs)
     sdmmcs_set_clock(sdmmcs->param, sdmmcs->max_clock);
 
     //disable pullap on DAT3
-    if (!sdmmcs_acmd(sdmmcs, SDMMC_ACMD_SET_CLR_CARD_DETECT, 0x00, &sdmmcs->r1, SDMMC_RESPONSE_R1))
+    if (!sdmmcs_acmd_r1(sdmmcs, SDMMC_ACMD_SET_CLR_CARD_DETECT, 0x00))
         return false;
     //set 4 bit bus
-    if (sdmmcs_acmd(sdmmcs, SDMMC_ACMD_SET_BUS_WIDTH, 0x2, &sdmmcs->r1, SDMMC_RESPONSE_R1))
+    if (sdmmcs_acmd_r1(sdmmcs, SDMMC_ACMD_SET_BUS_WIDTH, 0x2))
         sdmmcs_set_bus_width(sdmmcs->param, 4);
 
     //TODO: set block len for sdsc
@@ -406,6 +417,11 @@ bool sdmmcs_write(SDMMCS* sdmmcs, unsigned int block, unsigned int count)
         addr *= sdmmcs->sector_size;
     if (!sdmmcs_wait_for_ready(sdmmcs))
         return false;
+    if (count > 1)
+    {
+        if (!sdmmcs_acmd_r1(sdmmcs, SDMMC_ACMD_SET_WR_BLK_ERASE_COUNT, count))
+            return false;
+    }
     if (!sdmmcs_cmd_r1(sdmmcs, count == 1 ? SDMMC_CMD_WRITE_SINGLE_BLOCK : SDMMC_CMD_WRITE_MULTIPLE_BLOCK, addr))
     {
         sdmmcs_set_r1_error(sdmmcs);
