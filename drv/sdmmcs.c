@@ -89,7 +89,6 @@ static bool sdmmcs_acmd(SDMMCS* sdmmcs, uint8_t acmd, uint32_t arg, void* resp, 
     unsigned int retry;
     for (retry = 0; retry < 3; ++retry)
     {
-        //TODO: RCA here
         if (!sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_APP_CMD, ARG_RCA(sdmmcs)))
             return false;
         if (sdmmcs->r1 & SDMMC_R1_APP_CMD)
@@ -318,8 +317,6 @@ static inline bool sdmmcs_card_select(SDMMCS* sdmmcs)
     //set 4 bit bus
     if (sdmmcs_acmd_r1(sdmmcs, SDMMC_ACMD_SET_BUS_WIDTH, 0x2))
         sdmmcs_set_bus_width(sdmmcs->param, 4);
-
-    //TODO: set block len for sdsc
 
     return true;
 }

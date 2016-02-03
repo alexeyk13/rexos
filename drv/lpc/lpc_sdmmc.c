@@ -279,7 +279,7 @@ static inline void lpc_sdmmc_open(CORE* core)
     //it's critical to call malloc here, because of align
     core->sdmmc.descr = malloc(LPC_SDMMC_DESCR_COUNT * sizeof(LPC_SDMMC_DESCR));
     LPC_SDMMC->DBADDR = (unsigned int)(&(core->sdmmc.descr[0]));
-    //TODO: setup block size here
+    LPC_SDMMC->BLKSIZ = core->sdmmc.sdmmcs.sector_size;
 
     //recommended values
     LPC_SDMMC->FIFOTH = (8 << SDMMC_FIFOTH_TX_WMARK_Pos) | (7 << SDMMC_FIFOTH_RX_WMARK_Pos) | SDMMC_FIFOTH_DMA_MTS_8;
