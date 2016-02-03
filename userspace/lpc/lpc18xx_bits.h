@@ -1486,4 +1486,19 @@ typedef struct {                                /*!< (@ 0x4000e000) EEPROM Struc
 #define SDMMC_FIFOTH_DMA_MTS_128                (6 << 28)
 #define SDMMC_FIFOTH_DMA_MTS_256                (7 << 28)
 
+/*********  Bit definition for DESC0 descriptor  ********************************/
+#define SDMMC_DESC0_DIC_Msk                     (1 << 1)
+#define SDMMC_DESC0_LD_Msk                      (1 << 2)
+#define SDMMC_DESC0_FS_Msk                      (1 << 3)
+#define SDMMC_DESC0_CH_Msk                      (1 << 4)
+#define SDMMC_DESC0_ER_Msk                      (1 << 5)
+#define SDMMC_DESC0_CES_Msk                     (1 << 30)
+#define SDMMC_DESC0_OWN_Msk                     (1 << 31)
+
+/*********  Bit definition for DESC1 descriptor  ********************************/
+#define SDMMC_DESC1_BS1_Pos                     0
+#define SDMMC_DESC1_BS1_Msk                     (0x1fff << 0)
+#define SDMMC_DESC1_BS2_Pos                     13
+#define SDMMC_DESC1_BS2_Msk                     (0x1fff << 13)
+
 #endif // LPC18UXX_BITS_H

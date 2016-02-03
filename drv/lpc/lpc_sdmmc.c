@@ -30,12 +30,23 @@ typedef struct _LPC_SDMMC_DESCR{
 } LPC_SDMMC_DESCR;
 #pragma pack(pop)
 
+static void lpc_sdmmc_error(CORE* core, int error)
+{
+    if (core->sdmmc.state != SDMMC_STATE_IDLE)
+    {
+        iio_complete_ex(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, core->sdmmc.state == SDMMC_STATE_RX ? IPC_READ : IPC_WRITE), 0, core->sdmmc.io, error);
+        core->sdmmc.io = NULL;
+        core->sdmmc.process = INVALID_HANDLE;
+        core->sdmmc.state = SDMMC_STATE_IDLE;
+    }
+}
+
 void lpc_sdmmc_on_isr(int vector, void* param)
 {
     CORE* core = (CORE*)param;
     if (LPC_SDMMC->IDSTS & SDMMC_IDSTS_NIS_Msk)
     {
-        if (core->sdmmc.process != INVALID_HANDLE)
+        if (core->sdmmc.state != SDMMC_STATE_IDLE)
         {
             core->sdmmc.io->data_size = core->sdmmc.total;
             iio_complete(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, core->sdmmc.state == SDMMC_STATE_RX ? IPC_READ : IPC_WRITE), 0, core->sdmmc.io);
@@ -47,8 +58,32 @@ void lpc_sdmmc_on_isr(int vector, void* param)
     }
     if (LPC_SDMMC->IDSTS & SDMMC_IDSTS_AIS_Msk)
     {
-        //TODO: abnormal processing
-        iprintd("ABNORMAL state\n");
+
+        if (LPC_SDMMC->IDSTS & SDMMC_IDSTS_FBE_Msk)
+        {
+            lpc_sdmmc_error(core, ERROR_HARDWARE);
+            LPC_SDMMC->IDSTS = SDMMC_IDSTS_FBE_Msk;
+        }
+        if (LPC_SDMMC->IDSTS & SDMMC_IDSTS_CES_Msk)
+        {
+            if (LPC_SDMMC->RINTSTS & SDMMC_RINTSTS_DRTO_BDS_Msk)
+            {
+                lpc_sdmmc_error(core, ERROR_TIMEOUT);
+                LPC_SDMMC->RINTSTS = SDMMC_RINTSTS_DRTO_BDS_Msk;
+            }
+            if (LPC_SDMMC->RINTSTS & SDMMC_RINTSTS_DCRC_Msk)
+            {
+                lpc_sdmmc_error(core, ERROR_CRC);
+                LPC_SDMMC->RINTSTS = SDMMC_RINTSTS_DCRC_Msk;
+            }
+            if (LPC_SDMMC->RINTSTS & (SDMMC_RINTSTS_SBE_Msk | SDMMC_RINTSTS_EBE_Msk))
+            {
+                lpc_sdmmc_error(core, ERROR_HARDWARE);
+                LPC_SDMMC->RINTSTS = SDMMC_RINTSTS_SBE_Msk | SDMMC_RINTSTS_EBE_Msk;
+            }
+            LPC_SDMMC->IDSTS = SDMMC_IDSTS_CES_Msk;
+        }
+        LPC_SDMMC->IDSTS = SDMMC_IDSTS_AIS_Msk;
     }
 }
 
@@ -222,14 +257,15 @@ static inline void lpc_sdmmc_open(CORE* core)
     NVIC_SetPriority(SDIO_IRQn, 3);
 
     //Enable interrupts
-    LPC_SDMMC->IDINTEN = SDMMC_IDINTEN_TI_Msk | SDMMC_IDINTEN_RI_Msk | SDMMC_IDINTEN_CES_Msk | SDMMC_IDINTEN_NIS_Msk | SDMMC_IDINTEN_AIS_Msk ;
+    LPC_SDMMC->IDINTEN = SDMMC_IDINTEN_TI_Msk | SDMMC_IDINTEN_RI_Msk | SDMMC_IDINTEN_CES_Msk | SDMMC_IDINTEN_FBE_Msk |
+                         SDMMC_IDINTEN_NIS_Msk | SDMMC_IDINTEN_AIS_Msk ;
     //enable global interrupt mask
     LPC_SDMMC->CTRL |= SDMMC_CTRL_INT_ENABLE_Msk;
 
     core->sdmmc.active = true;
 }
 
-static inline void lpc_sdmmc_read(CORE* core, HANDLE process, IO* io)
+static inline void lpc_sdmmc_io(CORE* core, HANDLE process, IO* io, bool read)
 {
     unsigned int i, left;
     STORAGE_STACK* stack = io_stack(io);
@@ -257,36 +293,48 @@ static inline void lpc_sdmmc_read(CORE* core, HANDLE process, IO* io)
     //configure descriptors
     for (i = 0, left = core->sdmmc.total; left; ++i)
     {
-        //TODO: bits definition
-        core->sdmmc.descr[i].ctl = (1 << 4);
+        //Second address pointer to next descriptor
+        core->sdmmc.descr[i].ctl = SDMMC_DESC0_CH_Msk;
         if (i == 0)
         {
-            core->sdmmc.descr[i].ctl |= (1 << 3);
+            //first descriptor in chain
+            core->sdmmc.descr[i].ctl |= SDMMC_DESC0_FS_Msk;
             core->sdmmc.descr[i].buf1 = (uint8_t*)io_data(io);
         }
         else
             core->sdmmc.descr[i].buf1 = (uint8_t*)core->sdmmc.descr[i - 1].buf1 + LPC_SDMMC_BLOCK_SIZE;
         if (left > LPC_SDMMC_BLOCK_SIZE)
         {
-            core->sdmmc.descr[i].ctl |= (1 << 1);
-            core->sdmmc.descr[i].size = LPC_SDMMC_BLOCK_SIZE;
+            //only last will trigger interrupt
+            core->sdmmc.descr[i].ctl |= SDMMC_DESC0_DIC_Msk;
+            core->sdmmc.descr[i].size = (LPC_SDMMC_BLOCK_SIZE << SDMMC_DESC1_BS1_Pos) & SDMMC_DESC1_BS1_Msk;
             core->sdmmc.descr[i].buf2 = &(core->sdmmc.descr[i + 1]);
             left -= LPC_SDMMC_BLOCK_SIZE;
         }
         else
         {
-            core->sdmmc.descr[i].size = left;
+            core->sdmmc.descr[i].size = (left << SDMMC_DESC1_BS1_Pos) & SDMMC_DESC1_BS1_Msk;
             core->sdmmc.descr[i].buf2 = NULL;
-            core->sdmmc.descr[i].ctl |= (1 << 2);
+            //last descriptor in chain
+            core->sdmmc.descr[i].ctl |= SDMMC_DESC0_LD_Msk;
             left = 0;
         }
-        core->sdmmc.descr[i].ctl |= (1 << 31);
+        core->sdmmc.descr[i].ctl |= SDMMC_DESC0_OWN_Msk;
     }
 
     LPC_SDMMC->BYTCNT = core->sdmmc.total;
-    core->sdmmc.state = SDMMC_STATE_RX;
-    if (sdmmcs_read_multiple_blocks(&core->sdmmc.sdmmcs, stack->sector, stack->count))
-        error(ERROR_SYNC);
+    if (read)
+    {
+        core->sdmmc.state = SDMMC_STATE_RX;
+        if (sdmmcs_read(&core->sdmmc.sdmmcs, stack->sector, stack->count))
+            error(ERROR_SYNC);
+    }
+    else
+    {
+        core->sdmmc.state = SDMMC_STATE_TX;
+        if (sdmmcs_write(&core->sdmmc.sdmmcs, stack->sector, stack->count))
+            error(ERROR_SYNC);
+    }
 }
 
 void lpc_sdmmc_request(CORE* core, IPC* ipc)
@@ -299,10 +347,11 @@ void lpc_sdmmc_request(CORE* core, IPC* ipc)
     case IPC_CLOSE:
         //TODO:
     case IPC_READ:
-        lpc_sdmmc_read(core, ipc->process, (IO*)ipc->param2);
+        lpc_sdmmc_io(core, ipc->process, (IO*)ipc->param2, true);
         break;
     case IPC_WRITE:
-        //TODO:
+        lpc_sdmmc_io(core, ipc->process, (IO*)ipc->param2, false);
+        break;
     default:
         error(ERROR_NOT_SUPPORTED);
     }

@@ -333,6 +333,25 @@ static void sdmmcs_set_r1_error(SDMMCS* sdmmcs)
     error(ERROR_TIMEOUT);
 }
 
+static bool sdmmcs_wait_for_ready(SDMMCS* sdmmcs)
+{
+    int retries;
+    if (!sdmmcs->writed_before)
+        return true;
+    //recovery, based on TOSHIBA recomendations
+    for (retries = 1000 * 10; retries; --retries)
+    {
+        if (sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_SEND_STATUS, ARG_RCA(sdmmcs)))
+        {
+            if ((sdmmcs->r1 & SDMMC_R1_CURRENT_STATE_MSK) == SDMMC_R1_STATE_TRAN)
+                return true;
+        }
+        sleep_us(100);
+    }
+    error(ERROR_TIMEOUT);
+    return false;
+}
+
 bool sdmmcs_open(SDMMCS* sdmmcs)
 {
     sdmmcs->card_type = SDMMC_NO_CARD;
@@ -341,6 +360,7 @@ bool sdmmcs_open(SDMMCS* sdmmcs)
     sdmmcs->rca = 0x0000;
     sdmmcs->num_sectors = sdmmcs->sector_size = sdmmcs->max_clock = 0;
     sdmmcs->write_protected = false;
+    sdmmcs->writed_before = false;
 
     sdmmcs_set_clock(sdmmcs->param, 400000);
     sdmmcs_set_bus_width(sdmmcs->param, 1);
@@ -363,33 +383,39 @@ bool sdmmcs_open(SDMMCS* sdmmcs)
     return true;
 }
 
-bool sdmmcs_read_single_block(SDMMCS* sdmmcs, unsigned int block)
+bool sdmmcs_read(SDMMCS* sdmmcs, unsigned int block, unsigned int count)
 {
     uint32_t addr = block;
     if (sdmmcs->card_type == SDMMC_CARD_SD_V1 || sdmmcs->card_type == SDMMC_CARD_SD_V2)
         addr *= sdmmcs->sector_size;
-    if (!sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_READ_SINGLE_BLOCK, addr))
+    if (!sdmmcs_wait_for_ready(sdmmcs))
+        return false;
+    if (!sdmmcs_cmd_r1(sdmmcs, count == 1 ? SDMMC_CMD_READ_SINGLE_BLOCK : SDMMC_CMD_READ_MULTIPLE_BLOCK, addr))
     {
         sdmmcs_set_r1_error(sdmmcs);
         return false;
     }
+    sdmmcs->writed_before = false;
     return true;
 }
 
-bool sdmmcs_read_multiple_blocks(SDMMCS* sdmmcs, unsigned int block, unsigned int count)
+bool sdmmcs_write(SDMMCS* sdmmcs, unsigned int block, unsigned int count)
 {
     uint32_t addr = block;
     if (sdmmcs->card_type == SDMMC_CARD_SD_V1 || sdmmcs->card_type == SDMMC_CARD_SD_V2)
         addr *= sdmmcs->sector_size;
-    if (!sdmmcs_cmd_r1(sdmmcs, SDMMC_CMD_READ_MULTIPLE_BLOCK, addr))
+    if (!sdmmcs_wait_for_ready(sdmmcs))
+        return false;
+    if (!sdmmcs_cmd_r1(sdmmcs, count == 1 ? SDMMC_CMD_WRITE_SINGLE_BLOCK : SDMMC_CMD_WRITE_MULTIPLE_BLOCK, addr))
     {
         sdmmcs_set_r1_error(sdmmcs);
         return false;
     }
+    sdmmcs->writed_before = true;
     return true;
 }
 
-void sdmmcs_stop_transmission(SDMMCS* sdmmcs)
+void sdmmcs_stop(SDMMCS* sdmmcs)
 {
     sdmmcs_cmd_r1b(sdmmcs, SDMMC_CMD_STOP_TRANSMISSION, 0x00);
 }

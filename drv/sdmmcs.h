@@ -176,7 +176,7 @@ typedef struct {
     CID cid;
     uint16_t rca;
     uint16_t sector_size;
-    bool write_protected;
+    bool write_protected, writed_before;
 } SDMMCS;
 
 
@@ -188,9 +188,8 @@ extern SDMMC_ERROR sdmmcs_send_cmd(void* param, uint8_t cmd, uint32_t arg, void*
 void sdmmcs_init(SDMMCS* sdmmcs, void* param);
 bool sdmmcs_open(SDMMCS* sdmmcs);
 //driver is responsable for data transfer configuring prior to cmd execution
-bool sdmmcs_read_single_block(SDMMCS* sdmmcs, unsigned int block);
-bool sdmmcs_read_multiple_blocks(SDMMCS* sdmmcs, unsigned int block, unsigned int count);
-
-void sdmmcs_stop_transmission(SDMMCS* sdmmcs);
+bool sdmmcs_read(SDMMCS* sdmmcs, unsigned int block, unsigned int count);
+bool sdmmcs_write(SDMMCS* sdmmcs, unsigned int block, unsigned int count);
+void sdmmcs_stop(SDMMCS* sdmmcs);
 
 #endif // SDMMCS_H
