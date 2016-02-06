@@ -54,8 +54,9 @@ typedef struct _USBD {
     USB_SPEED speed;
     uint8_t ep0_size;
     uint8_t configuration;
-    ARRAY *descriptors;
-    ARRAY *ifaces;
+    ARRAY* descriptors;
+    ARRAY* ifaces;
+    ARRAY* cfgs;
     uint8_t ep_iface[USB_EP_COUNT_MAX];
     uint8_t ifacecnt;
 } USBD;
@@ -65,8 +66,15 @@ typedef struct {
     void* param;
 } USBD_IFACE_ENTRY;
 
+typedef struct {
+    uint16_t cfg, iface;
+    unsigned int size;
+    void* data;
+} USBD_CFG;
+
 #define IFACE(usbd, iface)                          ((USBD_IFACE_ENTRY*)array_at((usbd)->ifaces, iface))
 #define DESCRIPTOR(usbd, i)                         ((USBD_DESCRIPTOR*)array_at((usbd)->descriptors, i))
+#define CFG(usbd, i)                                ((USBD_CFG*)array_at((usbd)->cfgs, i))
 
 #define USBD_INVALID_INTERFACE                      0xff
 
@@ -229,6 +237,36 @@ static USB_GENERIC_DESCRIPTOR* usbd_descriptor(USBD* usbd, unsigned int type, un
     if (idx < 0)
         return NULL;
     return *(DESCRIPTOR(usbd, idx)->d);
+}
+
+static int usbd_get_cfg_internal(USBD* usbd, uint8_t cfg, uint8_t iface)
+{
+    int i;
+    for (i = 0; i < array_size(usbd->cfgs); ++i)
+    {
+        if (CFG(usbd, i)->cfg == cfg && CFG(usbd, i)->iface == iface)
+            return i;
+    }
+    return -1;
+}
+
+int usbd_get_cfg(USBD* usbd, uint8_t iface)
+{
+    return usbd_get_cfg_internal(usbd, usbd->configuration, iface);
+}
+
+void* usbd_get_cfg_data(USBD* usbd, int i)
+{
+    if (i >= 0 && i < array_size(usbd->cfgs))
+        return CFG(usbd, i)->data;
+    return NULL;
+}
+
+int usbd_get_cfg_data_size(USBD* usbd, int i)
+{
+    if (i >= 0 && i < array_size(usbd->cfgs))
+        return CFG(usbd, i)->size;
+    return -1;
 }
 
 void usbd_stub_class_state_change(USBD* usbd, void* param)
@@ -1047,6 +1085,7 @@ static inline void usbd_init(USBD* usbd)
     array_create(&usbd->ifaces, sizeof(USBD_IFACE_ENTRY), 1);
     //at least 5: manufacturer, product, string 0, device, configuration
     array_create(&usbd->descriptors, sizeof(USBD_DESCRIPTOR), 5);
+    array_create(&usbd->cfgs, sizeof(USBD_CFG), 1);
 
     usbd->ifacecnt = 0;
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
@@ -1083,6 +1122,40 @@ static inline void usbd_vendor_response(USBD* usbd, IO* io, int res)
 }
 #endif //USBD_VSR
 
+static inline void usbd_device_register_configuration(USBD* usbd, uint16_t cfg, uint16_t iface, IO* io)
+{
+    USBD_CFG* rec;
+    int i = usbd_get_cfg_internal(usbd, cfg, iface);
+    if (i >= 0)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    array_append(&usbd->cfgs);
+    rec = CFG(usbd, array_size(usbd->cfgs) - 1);
+    rec->cfg = cfg;
+    rec->iface = iface;
+    rec->data = malloc(io->data_size);
+    if ((rec->data = malloc(io->data_size)) == NULL)
+    {
+        array_remove(&usbd->cfgs, array_size(usbd->cfgs) - 1);
+        return;
+    }
+    memcpy(rec->data, io_data(io), io->data_size);
+    rec->size = io->data_size;
+}
+
+static inline void usbd_device_unregister_configuration(USBD* usbd, uint16_t cfg, uint16_t iface)
+{
+    int i = usbd_get_cfg_internal(usbd, cfg, iface);
+    if (i < 0)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    array_remove(&usbd->cfgs, i);
+}
+
 static inline void usbd_device_request(USBD* usbd, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -1101,6 +1174,12 @@ static inline void usbd_device_request(USBD* usbd, IPC* ipc)
         break;
     case USBD_GET_STATE:
         ipc->param2 = usbd->state;
+        break;
+    case USBD_REGISTER_CONFIGURATION:
+        usbd_device_register_configuration(usbd, ipc->param1 >> 16, ipc->param1 & 0xffff, (IO*)ipc->param2);
+        break;
+    case USBD_UNREGISTER_CONFIGURATION:
+        usbd_device_unregister_configuration(usbd, ipc->param1 >> 16, ipc->param1 & 0xffff);
         break;
 #if (USBD_VSR)
     case USBD_VENDOR_REQUEST:

@@ -146,3 +146,21 @@ HANDLE usbd_create(USB_PORT_TYPE port, unsigned int process_size, unsigned int p
     rex.fn = usbd;
     return process_create(&rex);
 }
+
+bool usbd_register_configuration(HANDLE usbd, uint16_t cfg, uint16_t iface, void* d, unsigned int size)
+{
+    IO* io = io_create(size);
+    if (io == NULL)
+        return false;
+    memcpy(io_data(io), d, size);
+    io->data_size = size;
+
+    io_write_sync(usbd, HAL_IO_REQ(HAL_USBD, USBD_REGISTER_CONFIGURATION), (cfg << 16) | iface, io);
+    io_destroy(io);
+    return get_last_error() == ERROR_OK;
+}
+
+bool usbd_unregister_configuration(HANDLE usbd, uint16_t cfg, uint16_t iface)
+{
+    return get(usbd, HAL_CMD(HAL_USBD, USBD_UNREGISTER_CONFIGURATION), (cfg << 16) | iface, 0, 0) >= 0;
+}

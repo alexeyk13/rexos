@@ -41,6 +41,9 @@ void usbd_usb_ep_set_stall(USBD* usbd, unsigned int num);
 void usbd_usb_ep_clear_stall(USBD* usbd, unsigned int num);
 void usbd_usb_ep_write(USBD* usbd, unsigned int ep_num, IO* io);
 void usbd_usb_ep_read(USBD* usbd, unsigned int ep_num, IO* io, unsigned int size);
+int usbd_get_cfg(USBD* usbd, uint8_t iface);
+void* usbd_get_cfg_data(USBD* usbd, int i);
+int usbd_get_cfg_data_size(USBD* usbd, int i);
 #if (USBD_DEBUG)
 void usbd_dump(const uint8_t* buf, unsigned int size, const char* header);
 #endif
