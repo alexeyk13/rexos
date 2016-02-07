@@ -147,7 +147,7 @@ HANDLE usbd_create(USB_PORT_TYPE port, unsigned int process_size, unsigned int p
     return process_create(&rex);
 }
 
-bool usbd_register_configuration(HANDLE usbd, uint16_t cfg, uint16_t iface, void* d, unsigned int size)
+bool usbd_register_configuration(HANDLE usbd, uint16_t cfg, uint16_t iface, const void* d, unsigned int size)
 {
     IO* io = io_create(size);
     if (io == NULL)

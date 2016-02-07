@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include "../../userspace/io.h"
+#include "../../userspace/scsi.h"
 
 typedef struct _SCSIS SCSIS;
 
@@ -18,7 +19,6 @@ typedef enum {
     SCSIS_REQUEST_VERIFY,
     SCSIS_REQUEST_WRITE_VERIFY,
     //scsis storage requests
-    SCSIS_REQUEST_GET_STORAGE_DESCRIPTOR,
     SCSIS_REQUEST_GET_MEDIA_DESCRIPTOR,
     //scsis host requests
     SCSIS_REQUEST_PASS,
@@ -28,7 +28,7 @@ typedef enum {
 
 typedef void (*SCSIS_CB)(void*, IO*, SCSIS_REQUEST);
 
-SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param);
+SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param, SCSI_STORAGE_DESCRIPTOR* storage_descriptor);
 void scsis_destroy(SCSIS* scsis);
 
 //host interface

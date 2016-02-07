@@ -45,7 +45,6 @@ typedef struct {
     char* revision;
     uint16_t flags;
     uint8_t scsi_device_type;
-    uint8_t align;
 } SCSI_STORAGE_DESCRIPTOR;
 
 typedef struct {

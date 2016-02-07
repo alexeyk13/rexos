@@ -233,7 +233,6 @@
 typedef enum {
     SCSIS_STATE_IDLE = 0,
     SCSIS_STATE_COMPLETE,
-    SCSIS_STATE_STORAGE_DESCRIPTOR_REQUEST,
     SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST,
     SCSIS_STATE_READ,
     SCSIS_STATE_WRITE,
@@ -248,7 +247,7 @@ typedef struct {
 } SCSIS_ERROR;
 
 typedef struct _SCSIS {
-    SCSI_STORAGE_DESCRIPTOR** storage;
+    SCSI_STORAGE_DESCRIPTOR* storage_descriptor;
     SCSI_MEDIA_DESCRIPTOR** media;
     SCSIS_STATE state;
     SCSIS_ERROR errors[SCSI_SENSE_DEPTH];
@@ -272,7 +271,6 @@ void scsis_fatal(SCSIS* scsis);
 void scsis_fail(SCSIS* scsis, uint8_t key_sense, uint16_t ascq);
 void scsis_pass(SCSIS* scsis);
 
-bool scsis_get_storage_descriptor(SCSIS* scsis);
 bool scsis_get_media_descriptor(SCSIS* scsis);
 //failure if no media inserted
 bool scsis_get_media(SCSIS* scsis);

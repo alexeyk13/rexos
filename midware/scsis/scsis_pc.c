@@ -24,9 +24,9 @@ static inline void scsis_pc_standart_inquiry(SCSIS* scsis)
     scsis->io->data_size = 36;
     memset(data, 0, scsis->io->data_size);
     //0: peripheral qualifier: device present, peripheral device type
-    data[0] = (*scsis->storage)->scsi_device_type & SCSI_PERIPHERAL_DEVICE_TYPE_MASK;
+    data[0] = scsis->storage_descriptor->scsi_device_type & SCSI_PERIPHERAL_DEVICE_TYPE_MASK;
     //1: removable, lu_cong
-    data[1] = (((*scsis->storage)->flags & SCSI_STORAGE_DESCRIPTOR_REMOVABLE) ? (1 << 7) : 0);
+    data[1] = ((scsis->storage_descriptor->flags & SCSI_STORAGE_DESCRIPTOR_REMOVABLE) ? (1 << 7) : 0);
     //2: version. SPC4
     data[2] = 0x6;
     //3: normaca, hisup, response data formata
@@ -37,9 +37,9 @@ static inline void scsis_pc_standart_inquiry(SCSIS* scsis)
     //6: ENC_SERV, VS, MULTI_P, ADDR16
     //7: WBUS16, SYNC, CMD_QUE, VS
 
-    strncpy((char*)(data + 8), (*scsis->storage)->vendor, 8);
-    strncpy((char*)(data + 16), (*scsis->storage)->product, 16);
-    strncpy((char*)(data + 32), (*scsis->storage)->revision, 4);
+    strncpy((char*)(data + 8), scsis->storage_descriptor->vendor, 8);
+    strncpy((char*)(data + 16), scsis->storage_descriptor->product, 16);
+    strncpy((char*)(data + 32), scsis->storage_descriptor->revision, 4);
     for (i = 8; i < 36; ++i)
         if (data[i] < ' ' || data[i] > '~')
             data[i] = ' ';
@@ -55,7 +55,7 @@ static inline void scsis_pc_vpd_00(SCSIS* scsis)
 #endif //SCSI_DEBUG_REQUESTS
     scsis->io->data_size = 6;
 
-    data[0] = (*scsis->storage)->scsi_device_type & SCSI_PERIPHERAL_DEVICE_TYPE_MASK;
+    data[0] = scsis->storage_descriptor->scsi_device_type & SCSI_PERIPHERAL_DEVICE_TYPE_MASK;
     data[1] = INQUIRY_VITAL_PAGE_SUPPORTED_PAGES;
     short2be(data + 2, scsis->io->data_size - 4);
 
@@ -71,24 +71,22 @@ static inline void scsis_pc_vpd_83(SCSIS* scsis)
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI inquiry VPD device info\n");
 #endif //SCSI_DEBUG_REQUESTS
-    scsis->io->data_size = 4 + 2 + ((strlen((*scsis->storage)->product) + 4) & ~3);
+    scsis->io->data_size = 4 + 2 + ((strlen(scsis->storage_descriptor->product) + 4) & ~3);
     memset(data, 0, scsis->io->data_size);
 
-    data[0] = (*scsis->storage)->scsi_device_type & SCSI_PERIPHERAL_DEVICE_TYPE_MASK;
+    data[0] = scsis->storage_descriptor->scsi_device_type & SCSI_PERIPHERAL_DEVICE_TYPE_MASK;
     data[1] = INQUIRY_VITAL_PAGE_DEVICE_INFO;
     short2be(data + 2, scsis->io->data_size - 4);
 
     //ASCII data
     page[0] = 0x02;
     page[1] = IVPD_ASSOCIATION_DESIGNATOR_DEVICE | IVPD_DESIGNATOR_TYPE_SCSI_NAME_STRING;
-    strcpy((char*)page + 2, (*scsis->storage)->product);
+    strcpy((char*)page + 2, scsis->storage_descriptor->product);
 }
 
 void scsis_pc_inquiry(SCSIS* scsis, uint8_t* req)
 {
     unsigned int len;
-    if (!scsis_get_storage_descriptor(scsis))
-        return;
     len = be2short(req + 3);
     if (req[1] & SCSI_INQUIRY_EVPD)
     {
@@ -144,8 +142,6 @@ void scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req)
     bool dbd, res;
     if (!scsis_get_media_descriptor(scsis))
         return;
-    if (!scsis_get_storage_descriptor(scsis))
-        return;
     res = false;
     psp = ((req[2] & 0x3f) << 8) | req[3];
     dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
@@ -154,7 +150,7 @@ void scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req)
     printf("SCSI mode sense (6) page, subpage: %#04X, dbd: %d\n", psp, dbd);
 #endif //SCSI_DEBUG_REQUESTS
     scsis->io->data_size = 4;
-    switch ((*scsis->storage)->scsi_device_type)
+    switch (scsis->storage_descriptor->scsi_device_type)
     {
     case SCSI_PERIPHERAL_DEVICE_TYPE_DIRECT_ACCESS:
         scsis_bc_mode_sense_fill_header(scsis, dbd);
@@ -197,8 +193,6 @@ void scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req)
     bool dbd, llbaa, res;
     if (!scsis_get_media_descriptor(scsis))
         return;
-    if (!scsis_get_storage_descriptor(scsis))
-        return;
     res = false;
     psp = ((req[2] & 0x3f) << 8) | req[3];
     dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
@@ -208,7 +202,7 @@ void scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req)
     printf("SCSI mode sense (10) page, subpage: %#04X, dbd: %d, llbaa: %d\n", psp, dbd, llbaa);
 #endif //SCSI_DEBUG_REQUESTS
     scsis->io->data_size = 4;
-    switch ((*scsis->storage)->scsi_device_type)
+    switch (scsis->storage_descriptor->scsi_device_type)
     {
     case SCSI_PERIPHERAL_DEVICE_TYPE_DIRECT_ACCESS:
         scsis_bc_mode_sense_fill_header_long(scsis, dbd, llbaa);

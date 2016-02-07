@@ -12,10 +12,9 @@
 #include "sys_config.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/stdio.h"
-#include "../../userspace/scsi.h"
 #include "../../userspace/endian.h"
 
-SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param)
+SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param, SCSI_STORAGE_DESCRIPTOR *storage_descriptor)
 {
     SCSIS* scsis = malloc(sizeof(SCSIS));
     if (scsis == NULL)
@@ -30,6 +29,7 @@ SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param)
     scsis->cb_host = cb_host;
     scsis->cb_storage = cb_storage;
     scsis->param = param;
+    scsis->storage_descriptor = storage_descriptor;
     scsis_error_init(scsis);
     scsis_reset(scsis);
     return scsis;
@@ -38,7 +38,6 @@ SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param)
 void scsis_destroy(SCSIS* scsis)
 {
     io_destroy(scsis->io);
-    free(scsis->storage);
     free(scsis->media);
     free(scsis);
 }
@@ -46,7 +45,6 @@ void scsis_destroy(SCSIS* scsis)
 void scsis_reset(SCSIS* scsis)
 {
     scsis->state = SCSIS_STATE_IDLE;
-    scsis->storage = NULL;
     scsis->media = NULL;
 }
 
@@ -173,7 +171,6 @@ void scsis_request(SCSIS* scsis, uint8_t* req)
     switch (scsis->state)
     {
     case SCSIS_STATE_IDLE:
-    case SCSIS_STATE_STORAGE_DESCRIPTOR_REQUEST:
     case SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST:
         scsis_request_internal(scsis, req);
         break;

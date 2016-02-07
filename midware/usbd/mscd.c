@@ -191,9 +191,6 @@ void mscd_storage_cb(void* param, IO* io, SCSIS_REQUEST request)
     case SCSIS_REQUEST_VERIFY:
         usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_VERIFY), io, size);
         break;
-    case SCSIS_REQUEST_GET_STORAGE_DESCRIPTOR:
-        usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_GET_STORAGE_DESCRIPTOR), io, 0);
-        break;
     case SCSIS_REQUEST_GET_MEDIA_DESCRIPTOR:
         usbd_io_user(mscd->usbd, mscd->iface_num, cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_GET_MEDIA_DESCRIPTOR), io, 0);
         break;
@@ -209,6 +206,8 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 {
     USB_INTERFACE_DESCRIPTOR* iface;
     USB_ENDPOINT_DESCRIPTOR* ep;
+    void* storage_descriptor;
+    int idx;
     unsigned int ep_num, ep_size, iface_num;
     ep_num = 0;
 
@@ -228,6 +227,15 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
     //No MSC interface
     if (ep_num == 0)
         return;
+    idx = usbd_get_cfg(usbd, iface_num);
+    storage_descriptor = usbd_get_cfg_data(usbd, idx);
+    if (storage_descriptor == NULL || usbd_get_cfg_data_size(usbd, idx) < (int)(sizeof(SCSI_STORAGE_DESCRIPTOR)))
+    {
+#if (USBD_MSC_DEBUG_ERRORS)
+        printf("MSCD: Failed to read user configuration\n");
+#endif //USBD_MSC_DEBUG_ERRORS
+        return;
+    }
     MSCD* mscd = (MSCD*)malloc(sizeof(MSCD));
     if (mscd == NULL)
         return;
@@ -238,7 +246,7 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
     mscd->usbd = usbd;
 
     mscd->control = io_create(ep_size);
-    mscd->scsis = scsis_create(mscd_host_cb, mscd_storage_cb, mscd);
+    mscd->scsis = scsis_create(mscd_host_cb, mscd_storage_cb, mscd, storage_descriptor);
     if (mscd->control == NULL || mscd->scsis == NULL)
     {
         mscd_destroy(mscd);
@@ -430,7 +438,6 @@ void mscd_class_request(USBD* usbd, void* param, IPC* ipc)
     else
         switch (HAL_ITEM(ipc->cmd))
         {
-        case USB_MSC_GET_STORAGE_DESCRIPTOR:
         case USB_MSC_GET_MEDIA_DESCRIPTOR:
             //make another request with complete descriptor
             mscd_scsi_request(usbd, mscd);

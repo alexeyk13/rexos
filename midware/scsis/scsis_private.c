@@ -73,50 +73,6 @@ void scsis_pass(SCSIS* scsis)
     scsis_host_request(scsis, SCSIS_REQUEST_PASS);
 }
 
-bool scsis_get_storage_descriptor(SCSIS* scsis)
-{
-    if (scsis->storage)
-        return true;
-
-    switch (scsis->state)
-    {
-    case SCSIS_STATE_STORAGE_DESCRIPTOR_REQUEST:
-        if (scsis->io->data_size < sizeof(void*))
-        {
-#if (SCSI_DEBUG_ERRORS)
-            printf("SCSI: invalid storage descriptor response\n");
-#endif //SCSI_DEBUG_ERRORS
-            scsis_fatal(scsis);
-            return false;
-        }
-        scsis->storage = malloc(scsis->io->data_size);
-        if (scsis->storage == NULL)
-        {
-#if (SCSI_DEBUG_ERRORS)
-            printf("SCSI: out of memory\n");
-#endif //SCSI_DEBUG_ERRORS
-            scsis_fatal(scsis);
-            return false;
-        }
-        memcpy(scsis->storage, io_data(scsis->io), scsis->io->data_size);
-        if (*(scsis->storage) == NULL)
-            *(scsis->storage) = ((void*)(scsis->storage)) + sizeof(void*);
-        scsis->state = SCSIS_STATE_IDLE;
-        break;
-    case SCSIS_STATE_IDLE:
-        scsis->state = SCSIS_STATE_STORAGE_DESCRIPTOR_REQUEST;
-        scsis_storage_request(scsis, SCSIS_REQUEST_GET_STORAGE_DESCRIPTOR);
-        return false;
-    default:
-#if (SCSI_DEBUG_ERRORS)
-        printf("SCSI: invalid state on descriptor request: %d\n", scsis->state);
-#endif //SCSI_DEBUG_ERRORS
-        scsis_fatal(scsis);
-        return false;
-    }
-    return true;
-}
-
 bool scsis_get_media_descriptor(SCSIS* scsis)
 {
     if (scsis->media)

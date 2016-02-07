@@ -281,7 +281,7 @@ bool usbd_register_descriptor(HANDLE usbd, const void* d, unsigned int index, un
 bool usbd_register_const_descriptor(HANDLE usbd, const void* d, unsigned int index, unsigned int lang);
 bool usbd_register_ascii_string(HANDLE usbd, unsigned int index, unsigned int lang, const char* str);
 HANDLE usbd_create(USB_PORT_TYPE port, unsigned int process_size, unsigned int priority);
-bool usbd_register_configuration(HANDLE usbd, uint16_t cfg, uint16_t iface, void* d, unsigned int size);
+bool usbd_register_configuration(HANDLE usbd, uint16_t cfg, uint16_t iface, const void* d, unsigned int size);
 bool usbd_unregister_configuration(HANDLE usbd, uint16_t cfg, uint16_t iface);
 
 #endif // USB_H
