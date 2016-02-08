@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include "sys_config.h"
+#include "ipc.h"
 
 #define SCSI_PERIPHERAL_DEVICE_TYPE_DIRECT_ACCESS                       (0 << 0)
 #define SCSI_PERIPHERAL_DEVICE_TYPE_SEQUENTAL_ACCESS                    (1 << 0)
@@ -37,6 +38,8 @@ typedef enum {
 } SCSI_REQUEST;
 
 typedef struct {
+    HAL hal;
+    HANDLE storage, user;
     char* vendor;
     char* product;
     char* revision;

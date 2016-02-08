@@ -122,7 +122,7 @@ static void mscd_phase_error(USBD* usbd, MSCD* mscd)
 static void mscd_scsi_request(USBD* usbd, MSCD* mscd)
 {
     CBW* cbw = io_data(mscd->control);
-    scsis_request(mscd->scsis, cbw->CBWCB);
+    scsis_request_cmd(mscd->scsis, cbw->CBWCB);
 }
 
 void mscd_host_cb(void* param, IO* io, SCSIS_REQUEST request)

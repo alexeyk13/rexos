@@ -49,7 +49,7 @@ void scsis_reset(SCSIS* scsis)
     scsis_media_removed(scsis);
 }
 
-static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
+static inline void scsis_request_cmd_internal(SCSIS* scsis, uint8_t* req)
 {
     switch (req[0])
     {
@@ -167,13 +167,13 @@ static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
     }
 }
 
-void scsis_request(SCSIS* scsis, uint8_t* req)
+void scsis_request_cmd(SCSIS* scsis, uint8_t* req)
 {
     switch (scsis->state)
     {
     case SCSIS_STATE_IDLE:
     case SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST:
-        scsis_request_internal(scsis, req);
+        scsis_request_cmd_internal(scsis, req);
         break;
     default:
         //io in progress

@@ -33,7 +33,7 @@ void scsis_destroy(SCSIS* scsis);
 
 //host interface
 void scsis_reset(SCSIS* scsis);
-void scsis_request(SCSIS* scsis, uint8_t* req);
+void scsis_request_cmd(SCSIS* scsis, uint8_t* req);
 void scsis_host_io_complete(SCSIS* scsis);
 bool scsis_ready(SCSIS* scsis);
 
