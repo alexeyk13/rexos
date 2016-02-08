@@ -195,7 +195,8 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
 
 static inline bool sdmmcs_card_address(SDMMCS* sdmmcs)
 {
-    if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_ALL_SEND_CID, 0, &sdmmcs->cid, SDMMC_RESPONSE_R2))
+    CID cid;
+    if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_ALL_SEND_CID, 0, &cid, SDMMC_RESPONSE_R2))
     {
         error(ERROR_HARDWARE);
         return false;
@@ -203,14 +204,15 @@ static inline bool sdmmcs_card_address(SDMMCS* sdmmcs)
 
 #if (SDMMC_DEBUG)
     printd("SDMMC CID:\n");
-    printd("MID: %#02x\n", sdmmcs->cid.mid);
-    printd("OID: %c%c\n", sdmmcs->cid.oid[1],  sdmmcs->cid.oid[0]);
-    printd("PNM: %c%c%c%c%c\n", sdmmcs->cid.pnm[4], sdmmcs->cid.pnm[3], sdmmcs->cid.pnm[2], sdmmcs->cid.pnm[1], sdmmcs->cid.pnm[0]);
-    printd("PRV: %x.%x\n", sdmmcs->cid.prv >> 4, sdmmcs->cid.prv & 0xf);
-    printd("PSN: %08x\n", sdmmcs->cid.psn);
-    printd("MDT: %d,%d\n", sdmmcs->cid.mdt & 0xf, ((sdmmcs->cid.mdt >> 4) & 0xff) + 2000);
+    printd("MID: %#02x\n", cid.mid);
+    printd("OID: %c%c\n", cid.oid[1],  cid.oid[0]);
+    printd("PNM: %c%c%c%c%c\n", cid.pnm[4], cid.pnm[3], cid.pnm[2], cid.pnm[1], cid.pnm[0]);
+    printd("PRV: %x.%x\n", cid.prv >> 4, cid.prv & 0xf);
+    printd("PSN: %08x\n", cid.psn);
+    printd("MDT: %d,%d\n", cid.mdt & 0xf, ((cid.mdt >> 4) & 0xff) + 2000);
 #endif //SDMMC_DEBUG
 
+    sdmmcs->serial = cid.psn;
     if (!sdmmcs_cmd_r6(sdmmcs, SDMMC_CMD_SEND_RELATIVE_ADDR, 0))
     {
         error(ERROR_HARDWARE);
@@ -364,7 +366,7 @@ bool sdmmcs_open(SDMMCS* sdmmcs)
 {
     sdmmcs->card_type = SDMMC_NO_CARD;
     sdmmcs->last_error = SDMMC_ERROR_OK;
-    memset(&sdmmcs->cid, 0x00, sizeof(CID));
+    sdmmcs->serial = 0x00000000;
     sdmmcs->rca = 0x0000;
     sdmmcs->num_sectors = sdmmcs->sector_size = sdmmcs->max_clock = 0;
     sdmmcs->write_protected = false;

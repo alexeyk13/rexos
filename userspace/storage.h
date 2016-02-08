@@ -17,8 +17,12 @@
 #define STORAGE_FLAG_WRITE                                              (1 << 0)
 #define STORAGE_FLAG_VERIFY                                             (1 << 1)
 
-//reserved for future storage interface
-#define STORAGE_IPC_MAX                                                 (IPC_USER)
+typedef enum {
+    STORAGE_GET_MEDIA_DESCRIPTOR = IPC_USER,
+    STORAGE_NOTIFY_STATE_CHANGE,
+    STORAGE_CANCEL_NOTIFY_STATE_CHANGE,
+    STORAGE_IPC_MAX
+} STORAGE_IPCS;
 
 typedef struct {
     uint32_t num_sectors;
@@ -36,6 +40,8 @@ typedef struct {
 } STORAGE_STACK;
 
 bool storage_open(HAL hal, HANDLE process, HANDLE user);
+void storage_get_media_descriptor(HAL hal, HANDLE process, HANDLE user, IO* io);
+STORAGE_MEDIA_DESCRIPTOR* storage_get_media_descriptor_sync(HAL hal, HANDLE process, HANDLE user, IO* io);
 void storage_read(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count);
 bool storage_read_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count);
 void storage_write(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector);

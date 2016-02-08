@@ -172,8 +172,7 @@ typedef struct {
     void* param;
     uint32_t num_sectors, max_clock;
     uint32_t r1;
-    //may be usefull for serial No generation
-    CID cid;
+    uint32_t serial;
     uint16_t rca;
     uint16_t sector_size;
     bool write_protected, writed_before;

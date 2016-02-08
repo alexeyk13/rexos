@@ -481,6 +481,30 @@ static inline void lpc_sdmmc_verify(CORE* core)
     core->sdmmc.state = SDMMC_STATE_IDLE;
 }
 
+static inline void lpc_sdmmc_get_media_descriptor(CORE* core, HANDLE process, HANDLE user, IO* io)
+{
+    STORAGE_MEDIA_DESCRIPTOR* media;
+    if (!core->sdmmc.active)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (user != core->sdmmc.user)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    media = io_data(io);
+    media->num_sectors = core->sdmmc.sdmmcs.num_sectors;
+    //SDSC/HC
+    media->num_sectors_hi = 0;
+    media->sector_size = core->sdmmc.sdmmcs.sector_size;
+    sprintf(STORAGE_MEDIA_SERIAL(media), "%08X", core->sdmmc.sdmmcs.serial);
+    io->data_size = sizeof(STORAGE_MEDIA_DESCRIPTOR) + 8 + 1;
+    io_complete(process, HAL_IO_CMD(HAL_SDMMC, STORAGE_GET_MEDIA_DESCRIPTOR), core->sdmmc.user, io);
+    error(ERROR_SYNC);
+}
+
 void lpc_sdmmc_request(CORE* core, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -502,6 +526,9 @@ void lpc_sdmmc_request(CORE* core, IPC* ipc)
         break;
     case LPC_SDMMC_VERIFY:
         lpc_sdmmc_verify(core);
+        break;
+    case STORAGE_GET_MEDIA_DESCRIPTOR:
+        lpc_sdmmc_get_media_descriptor(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

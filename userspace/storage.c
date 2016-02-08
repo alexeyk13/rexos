@@ -14,6 +14,19 @@ bool storage_open(HAL hal, HANDLE process, HANDLE user)
     return get_last_error() == ERROR_OK;
 }
 
+void storage_get_media_descriptor(HAL hal, HANDLE process, HANDLE user, IO* io)
+{
+    io_read(process, HAL_IO_REQ(hal, STORAGE_GET_MEDIA_DESCRIPTOR), user, io, sizeof(STORAGE_MEDIA_DESCRIPTOR));
+}
+
+STORAGE_MEDIA_DESCRIPTOR* storage_get_media_descriptor_sync(HAL hal, HANDLE process, HANDLE user, IO* io)
+{
+    if (io_read_sync(process, HAL_IO_REQ(hal, STORAGE_GET_MEDIA_DESCRIPTOR), user, io, sizeof(STORAGE_MEDIA_DESCRIPTOR)) <
+            sizeof(STORAGE_MEDIA_DESCRIPTOR))
+        return NULL;
+    return io_data(io);
+}
+
 void storage_read(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count)
 {
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
