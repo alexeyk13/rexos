@@ -81,7 +81,7 @@ bool scsis_get_media_descriptor(SCSIS* scsis)
     switch (scsis->state)
     {
     case SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST:
-        if (scsis->io->data_size < sizeof(void*))
+        if (scsis->io->data_size < sizeof(STORAGE_MEDIA_DESCRIPTOR))
         {
 #if (SCSI_DEBUG_ERRORS)
             printf("SCSI: invalid media descriptor response\n");
@@ -99,8 +99,6 @@ bool scsis_get_media_descriptor(SCSIS* scsis)
             return false;
         }
         memcpy(scsis->media, io_data(scsis->io), scsis->io->data_size);
-        if (*(scsis->media) == NULL)
-            *(scsis->media) = ((void*)(scsis->media)) + sizeof(void*);
         scsis->state = SCSIS_STATE_IDLE;
         break;
     case SCSIS_STATE_IDLE:

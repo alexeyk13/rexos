@@ -27,7 +27,7 @@ typedef struct  {
     SDMMC_STATE state;
     struct _LPC_SDMMC_DESCR* descr;
     IO* io;
-    HANDLE process;
+    HANDLE process, user;
     unsigned int sector, total;
     uint8_t hash[SHA1_BLOCK_SIZE];
     bool active;

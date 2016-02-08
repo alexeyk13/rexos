@@ -26,12 +26,12 @@ void scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req)
         scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
         return;
     }
-    if (((*scsis->media)->num_sectors_hi) || ((*scsis->media)->num_sectors < lba))
+    if ((scsis->media->num_sectors_hi) || (scsis->media->num_sectors < lba))
         lba = 0xffffffff;
     else
-        lba = (*scsis->media)->num_sectors - 1;
+        lba = scsis->media->num_sectors - 1;
     int2be(io_data(scsis->io) + 0, lba);
-    int2be(io_data(scsis->io) + 4, (*scsis->media)->sector_size);
+    int2be(io_data(scsis->io) + 4, scsis->media->sector_size);
     scsis->io->data_size = 8;
 
     scsis->state = SCSIS_STATE_COMPLETE;
@@ -55,24 +55,24 @@ void scsis_bc_read_capacity16(SCSIS* scsis, uint8_t* req)
         scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
         return;
     }
-    if (((*scsis->media)->num_sectors_hi < lba_hi) || (((*scsis->media)->num_sectors_hi == lba_hi) && ((*scsis->media)->num_sectors_hi < lba_hi)))
+    if ((scsis->media->num_sectors_hi < lba_hi) || ((scsis->media->num_sectors_hi == lba_hi) && (scsis->media->num_sectors_hi < lba_hi)))
         lba_hi = lba = 0xffffffff;
     else
     {
-        lba_hi = (*scsis->media)->num_sectors_hi;
-        if ((*scsis->media)->num_sectors == 0)
+        lba_hi = scsis->media->num_sectors_hi;
+        if (scsis->media->num_sectors == 0)
         {
             lba = 0xffffffff;
             --lba_hi;
         }
         else
-            lba = (*scsis->media)->num_sectors - 1;
+            lba = scsis->media->num_sectors - 1;
     }
     scsis->io->data_size = 32;
     memset(io_data(scsis->io), 0, scsis->io->data_size);
     int2be(io_data(scsis->io) + 0, lba_hi);
     int2be(io_data(scsis->io) + 4, lba);
-    int2be(io_data(scsis->io) + 8, (*scsis->media)->sector_size);
+    int2be(io_data(scsis->io) + 8, scsis->media->sector_size);
     if (scsis->io->data_size > len)
         scsis->io->data_size = len;
 
@@ -92,7 +92,7 @@ static void scsis_io(SCSIS* scsis)
         scsis_pass(scsis);
         return;
     }
-    scsis->count_cur = SCSI_IO_SIZE / (*scsis->media)->sector_size;
+    scsis->count_cur = SCSI_IO_SIZE / scsis->media->sector_size;
     if (scsis->count_cur == 0)
     {
 #if (SCSI_DEBUG_ERRORS)
@@ -102,7 +102,7 @@ static void scsis_io(SCSIS* scsis)
     }
     if (scsis->count < scsis->count_cur)
         scsis->count_cur = scsis->count;
-    stack->size = scsis->count_cur * (*scsis->media)->sector_size;
+    stack->size = scsis->count_cur * scsis->media->sector_size;
     stack->lba = scsis->lba;
 #if (SCSI_LONG_LBA)
     stack->lba_hi = scsis->lba_hi;
@@ -162,7 +162,7 @@ static bool scsis_bc_io_response_check(SCSIS* scsis)
         }
         return false;
     }
-    if (stack->size != scsis->count_cur * (*scsis->media)->sector_size)
+    if (stack->size != scsis->count_cur * scsis->media->sector_size)
     {
         scsis_fatal(scsis);
         return false;
@@ -516,8 +516,8 @@ static unsigned short scsis_bc_append_block_descriptors(SCSIS* scsis)
     uint8_t* buf = io_data(scsis->io) + scsis->io->data_size;
     if (scsis->media)
     {
-        int2be(buf, (*scsis->media)->num_sectors_hi ?  0xffffffff : (*scsis->media)->num_sectors);
-        int2be(buf + 4, (*scsis->media)->sector_size);
+        int2be(buf, scsis->media->num_sectors_hi ?  0xffffffff : scsis->media->num_sectors);
+        int2be(buf + 4, scsis->media->sector_size);
     }
     else
     {
@@ -537,9 +537,9 @@ static inline unsigned short scsis_bc_append_block_descriptors_long_lba(SCSIS* s
     uint8_t* buf = io_data(scsis->io) + scsis->io->data_size;
     if (scsis->media)
     {
-        int2be(buf, (*scsis->media)->num_sectors_hi);
-        int2be(buf + 4, (*scsis->media)->num_sectors);
-        int2be(buf + 12, (*scsis->media)->sector_size);
+        int2be(buf, scsis->media->num_sectors_hi);
+        int2be(buf + 4, scsis->media->num_sectors);
+        int2be(buf + 12, scsis->media->sector_size);
     }
     else
     {
@@ -580,7 +580,7 @@ void scsis_bc_mode_sense_fill_header_long(SCSIS* scsis, bool dbd, bool long_lba)
     header[5] = 0;
     if (!dbd)
     {
-        if (long_lba && (*scsis->media)->num_sectors_hi)
+        if (long_lba && scsis->media->num_sectors_hi)
         {
             len = scsis_bc_append_block_descriptors_long_lba(scsis);
             //LONGLBA

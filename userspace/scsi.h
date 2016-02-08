@@ -29,13 +29,10 @@
 #define SCSI_PERIPHERAL_DEVICE_TYPE_WELL_KNOWN_LU                       (0x1e << 0)
 #define SCSI_PERIPHERAL_DEVICE_TYPE_NO_DEVICE                           (0x1f << 0)
 
-#pragma pack(push, 1)
-
 typedef enum {
     SCSI_REQUEST_READ = 0,
     SCSI_REQUEST_WRITE,
     SCSI_REQUEST_VERIFY,
-    SCSI_REQUEST_STORAGE_DESCRIPTOR,
     SCSI_REQUEST_MEDIA_DESCRIPTOR
 } SCSI_REQUEST;
 
@@ -47,13 +44,6 @@ typedef struct {
     uint8_t scsi_device_type;
 } SCSI_STORAGE_DESCRIPTOR;
 
-typedef struct {
-    uint32_t num_sectors;
-    uint32_t num_sectors_hi;
-    uint32_t sector_size;
-    char* serial;
-} SCSI_MEDIA_DESCRIPTOR;
-
 #define SCSI_STORAGE_DESCRIPTOR_REMOVABLE                               (1 << 0)
 
 typedef struct {
@@ -64,7 +54,5 @@ typedef struct {
     unsigned int lba_hi;
 #endif //SCSI_LONG_LBA
 } SCSI_STACK;
-
-#pragma pack(pop)
 
 #endif // SCSI_H

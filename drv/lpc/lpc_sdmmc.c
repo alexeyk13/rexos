@@ -57,7 +57,7 @@ void lpc_sdmmc_on_isr(int vector, void* param)
         case SDMMC_STATE_WRITE:
             if (core->sdmmc.state == SDMMC_STATE_READ)
                 core->sdmmc.io->data_size = core->sdmmc.total;
-            iio_complete(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, core->sdmmc.state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), 0, core->sdmmc.io);
+            iio_complete(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, core->sdmmc.state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), core->sdmmc.user, core->sdmmc.io);
             core->sdmmc.io = NULL;
             core->sdmmc.process = INVALID_HANDLE;
             core->sdmmc.state = SDMMC_STATE_IDLE;
@@ -109,6 +109,7 @@ void lpc_sdmmc_init(CORE* core)
     core->sdmmc.active = false;
     core->sdmmc.io = NULL;
     core->sdmmc.process = INVALID_HANDLE;
+    core->sdmmc.user = INVALID_HANDLE;
     core->sdmmc.state = SDMMC_STATE_IDLE;
     core->sdmmc.descr = NULL;
 }
@@ -246,11 +247,11 @@ static void lpc_sdmmc_flush(CORE* core)
     if (state != SDMMC_STATE_IDLE)
     {
         sdmmcs_stop(&core->sdmmc.sdmmcs);
-        io_complete_ex(process, HAL_IO_CMD(HAL_SDMMC, state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), 0, io, ERROR_IO_CANCELLED);
+        io_complete_ex(process, HAL_IO_CMD(HAL_SDMMC, state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), core->sdmmc.user, io, ERROR_IO_CANCELLED);
     }
 }
 
-static inline void lpc_sdmmc_open(CORE* core)
+static inline void lpc_sdmmc_open(CORE* core, HANDLE user)
 {
     if (core->sdmmc.active)
     {
@@ -299,6 +300,7 @@ static inline void lpc_sdmmc_open(CORE* core)
     //enable global interrupt mask
     LPC_SDMMC->CTRL |= SDMMC_CTRL_INT_ENABLE_Msk;
 
+    core->sdmmc.user = user;
     core->sdmmc.active = true;
 }
 
@@ -323,6 +325,7 @@ static inline void lpc_sdmmc_close(CORE* core)
     free(core->sdmmc.descr);
     core->sdmmc.descr = NULL;
     core->sdmmc.active = false;
+    core->sdmmc.user = INVALID_HANDLE;
 }
 
 static void lpc_sdmmc_prepare_descriptors(CORE* core)
@@ -362,7 +365,7 @@ static void lpc_sdmmc_prepare_descriptors(CORE* core)
     LPC_SDMMC->BYTCNT = core->sdmmc.total;
 }
 
-static inline void lpc_sdmmc_io(CORE* core, HANDLE process, IO* io, bool read)
+static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io, bool read)
 {
     SHA1_CTX sha1;
     STORAGE_STACK* stack = io_stack(io);
@@ -377,13 +380,18 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, IO* io, bool read)
         error(ERROR_IN_PROGRESS);
         return;
     }
+    if (user != core->sdmmc.user)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
     core->sdmmc.total = stack->count * core->sdmmc.sdmmcs.sector_size;
     //erase
     if (!read && (stack->flags == 0))
     {
         if (!sdmmcs_erase(&core->sdmmc.sdmmcs, stack->sector, stack->count))
             return;
-        io_complete_ex(process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), 0, io, stack->count * core->sdmmc.sdmmcs.sector_size);
+        io_complete_ex(process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), core->sdmmc.user, io, stack->count * core->sdmmc.sdmmcs.sector_size);
         error(ERROR_SYNC);
         return;
     }
@@ -460,14 +468,14 @@ static inline void lpc_sdmmc_verify(CORE* core)
     {
         if (memcmp(core->sdmmc.hash, hash_in, SHA1_BLOCK_SIZE) == 0)
         {
-            io_complete(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), 0, core->sdmmc.io);
+            io_complete(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), core->sdmmc.user, core->sdmmc.io);
             core->sdmmc.io = NULL;
             core->sdmmc.process = INVALID_HANDLE;
             core->sdmmc.state = SDMMC_STATE_IDLE;
             return;
         }
     }
-    io_complete_ex(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), 0, core->sdmmc.io, get_last_error());
+    io_complete_ex(core->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), core->sdmmc.user, core->sdmmc.io, get_last_error());
     core->sdmmc.io = NULL;
     core->sdmmc.process = INVALID_HANDLE;
     core->sdmmc.state = SDMMC_STATE_IDLE;
@@ -478,16 +486,16 @@ void lpc_sdmmc_request(CORE* core, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        lpc_sdmmc_open(core);
+        lpc_sdmmc_open(core, (HANDLE)ipc->param1);
         break;
     case IPC_CLOSE:
         lpc_sdmmc_close(core);
         break;
     case IPC_READ:
-        lpc_sdmmc_io(core, ipc->process, (IO*)ipc->param2, true);
+        lpc_sdmmc_io(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, true);
         break;
     case IPC_WRITE:
-        lpc_sdmmc_io(core, ipc->process, (IO*)ipc->param2, false);
+        lpc_sdmmc_io(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, false);
         break;
     case IPC_FLUSH:
         lpc_sdmmc_flush(core);

@@ -30,22 +30,23 @@ SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param, SCSI_STO
     scsis->cb_storage = cb_storage;
     scsis->param = param;
     scsis->storage_descriptor = storage_descriptor;
+    scsis->media = NULL;
     scsis_error_init(scsis);
-    scsis_reset(scsis);
+    scsis->state = SCSIS_STATE_IDLE;
     return scsis;
 }
 
 void scsis_destroy(SCSIS* scsis)
 {
     io_destroy(scsis->io);
-    free(scsis->media);
+    scsis_media_removed(scsis);
     free(scsis);
 }
 
 void scsis_reset(SCSIS* scsis)
 {
     scsis->state = SCSIS_STATE_IDLE;
-    scsis->media = NULL;
+    scsis_media_removed(scsis);
 }
 
 static inline void scsis_request_internal(SCSIS* scsis, uint8_t* req)
@@ -210,6 +211,7 @@ bool scsis_ready(SCSIS* scsis)
 
 void scsis_media_removed(SCSIS* scsis)
 {
+    free(scsis->media);
     scsis->media = NULL;
 }
 

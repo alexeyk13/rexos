@@ -12,6 +12,7 @@
 #include "../../userspace/rb.h"
 #include "../../userspace/io.h"
 #include "../../userspace/scsi.h"
+#include "../../userspace/storage.h"
 #include "sys_config.h"
 #include "scsis.h"
 
@@ -248,7 +249,7 @@ typedef struct {
 
 typedef struct _SCSIS {
     SCSI_STORAGE_DESCRIPTOR* storage_descriptor;
-    SCSI_MEDIA_DESCRIPTOR** media;
+    STORAGE_MEDIA_DESCRIPTOR* media;
     SCSIS_STATE state;
     SCSIS_ERROR errors[SCSI_SENSE_DEPTH];
     RB rb_error;
