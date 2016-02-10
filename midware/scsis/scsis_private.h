@@ -232,9 +232,11 @@
 #define ASCQ_COMMAND_PHASE_ERROR                                        0x4a00
 
 typedef enum {
+    //waiting for request
     SCSIS_STATE_IDLE = 0,
+    //IO request sent, but not confirmed
     SCSIS_STATE_COMPLETE,
-    SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST,
+    //all following - IO in progress
     SCSIS_STATE_READ,
     SCSIS_STATE_WRITE,
     SCSIS_STATE_VERIFY,
@@ -261,6 +263,7 @@ typedef struct _SCSIS {
 #if (SCSI_LONG_LBA)
     unsigned int lba_hi;
 #endif //SCSI_LONG_LBA
+    bool need_media;
 } SCSIS;
 
 void scsis_error_init(SCSIS* scsis);
@@ -268,11 +271,11 @@ void scsis_error(SCSIS* scsis, uint8_t key_sense, uint16_t ascq);
 void scsis_error_get(SCSIS* scsis, SCSIS_ERROR* err);
 void scsis_host_request(SCSIS* scsis, SCSIS_REQUEST request);
 void scsis_storage_request(SCSIS* scsis, SCSIS_REQUEST request);
+//todo: remove me
 void scsis_fatal(SCSIS* scsis);
 void scsis_fail(SCSIS* scsis, uint8_t key_sense, uint16_t ascq);
 void scsis_pass(SCSIS* scsis);
 
-bool scsis_get_media_descriptor(SCSIS* scsis);
 //failure if no media inserted
 bool scsis_get_media(SCSIS* scsis);
 

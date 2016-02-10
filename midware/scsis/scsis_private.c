@@ -54,6 +54,7 @@ void scsis_storage_request(SCSIS* scsis, SCSIS_REQUEST request)
     scsis->cb_storage(scsis->param, scsis->io, request);
 }
 
+//remove me
 void scsis_fatal(SCSIS* scsis)
 {
     scsis_reset(scsis);
@@ -65,60 +66,32 @@ void scsis_fail(SCSIS* scsis, uint8_t key_sense, uint16_t ascq)
     scsis_error(scsis, key_sense, ascq);
     scsis->state = SCSIS_STATE_IDLE;
     scsis_host_request(scsis, SCSIS_REQUEST_FAIL);
+    if (scsis->need_media)
+        storage_get_media_descriptor(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user, scsis->io);
 }
 
 void scsis_pass(SCSIS* scsis)
 {
-    scsis->state = SCSIS_STATE_IDLE;
-    scsis_host_request(scsis, SCSIS_REQUEST_PASS);
-}
-
-bool scsis_get_media_descriptor(SCSIS* scsis)
-{
-    if (scsis->media)
-        return true;
-
-    switch (scsis->state)
+#if (SCSI_WRITE_CACHE)
+    //pass already sent on write
+    if (scsis->state == SCSIS_STATE_WRITE || scsis->state == SCSIS_STATE_WRITE_VERIFY)
     {
-    case SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST:
-        if (scsis->io->data_size < sizeof(STORAGE_MEDIA_DESCRIPTOR))
-        {
-#if (SCSI_DEBUG_ERRORS)
-            printf("SCSI: invalid media descriptor response\n");
-#endif //SCSI_DEBUG_ERRORS
-            scsis_fatal(scsis);
-            return false;
-        }
-        scsis->media = malloc(scsis->io->data_size);
-        if (scsis->media == NULL)
-        {
-#if (SCSI_DEBUG_ERRORS)
-            printf("SCSI: out of memory\n");
-#endif //SCSI_DEBUG_ERRORS
-            scsis_fatal(scsis);
-            return false;
-        }
-        memcpy(scsis->media, io_data(scsis->io), scsis->io->data_size);
         scsis->state = SCSIS_STATE_IDLE;
-        break;
-    case SCSIS_STATE_IDLE:
-        scsis->state = SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST;
-        scsis_storage_request(scsis, SCSIS_REQUEST_GET_MEDIA_DESCRIPTOR);
-        return false;
-    default:
-#if (SCSI_DEBUG_ERRORS)
-        printf("SCSI: invalid state on descriptor request: %d\n", scsis->state);
-#endif //SCSI_DEBUG_ERRORS
-        scsis_fatal(scsis);
-        return false;
+        if (!scsis->need_media)
+            scsis_host_request(scsis, SCSIS_REQUEST_READY);
     }
-    return true;
+    else
+#endif //SCSI_WRITE_CACHE
+    {
+        scsis->state = SCSIS_STATE_IDLE;
+        scsis_host_request(scsis, SCSIS_REQUEST_PASS);
+    }
+    if (scsis->need_media)
+        storage_get_media_descriptor(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user, scsis->io);
 }
 
 bool scsis_get_media(SCSIS* scsis)
 {
-    if (!scsis_get_media_descriptor(scsis))
-        return false;
     if (scsis->media == NULL)
     {
         scsis_fail(scsis, SENSE_KEY_NOT_READY, ASCQ_MEDIUM_NOT_PRESENT);

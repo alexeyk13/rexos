@@ -116,15 +116,11 @@ void scsis_pc_inquiry(SCSIS* scsis, uint8_t* req)
 
 void scsis_pc_test_unit_ready(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media_descriptor(scsis))
-        return;
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI test unit ready: %d\n", scsis->media ? 1 : 0);
 #endif //SCSI_DEBUG_REQUESTS
-    if (scsis->media)
+    if (scsis_get_media(scsis))
         scsis_pass(scsis);
-    else
-        scsis_fail(scsis, SENSE_KEY_NOT_READY, ASCQ_MEDIUM_NOT_PRESENT);
 }
 
 /*
@@ -140,8 +136,6 @@ void scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req)
 {
     unsigned int psp, len;
     bool dbd, res;
-    if (!scsis_get_media_descriptor(scsis))
-        return;
     res = false;
     psp = ((req[2] & 0x3f) << 8) | req[3];
     dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
@@ -191,8 +185,6 @@ void scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req)
 {
     unsigned int psp, len;
     bool dbd, llbaa, res;
-    if (!scsis_get_media_descriptor(scsis))
-        return;
     res = false;
     psp = ((req[2] & 0x3f) << 8) | req[3];
     dbd = (req[1] & SCSI_MODE_SENSE_DBD) ? true : false;
@@ -226,8 +218,6 @@ void scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req)
 
 void scsis_pc_mode_select6(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media_descriptor(scsis))
-        return;
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI mode select (6)\n");
 #endif //SCSI_DEBUG_REQUESTS
@@ -238,8 +228,6 @@ void scsis_pc_mode_select6(SCSIS* scsis, uint8_t* req)
 #if (SCSI_LONG_LBA)
 void scsis_pc_mode_select10(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media_descriptor(scsis))
-        return;
 #if (SCSI_DEBUG_REQUESTS)
     printf("SCSI mode select (10)\n");
 #endif //SCSI_DEBUG_REQUESTS

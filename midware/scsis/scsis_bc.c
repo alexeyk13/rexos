@@ -93,13 +93,6 @@ static void scsis_io(SCSIS* scsis)
         return;
     }
     scsis->count_cur = SCSI_IO_SIZE / scsis->media->sector_size;
-    if (scsis->count_cur == 0)
-    {
-#if (SCSI_DEBUG_ERRORS)
-        printf("SCSI: failure due to inproper configuration\n");
-#endif //SCSI_DEBUG_ERRORS
-        scsis_fatal(scsis);
-    }
     if (scsis->count < scsis->count_cur)
         scsis->count_cur = scsis->count;
     stack->size = scsis->count_cur * scsis->media->sector_size;
@@ -201,15 +194,6 @@ void scsis_bc_host_io_complete(SCSIS* scsis)
 
 void scsis_bc_storage_io_complete(SCSIS* scsis)
 {
-#if (SCSI_READ_CACHE)
-    //async IO completed directly
-    if (scsis->state == SCSIS_STATE_READ && ((SCSI_STACK*)io_stack(scsis->io))->size == ERROR_IO_ASYNC_COMPLETE)
-    {
-        scsis_io(scsis);
-        return;
-    }
-#endif //SCSI_READ_CACHE
-
     if (!scsis_bc_io_response_check(scsis))
         return;
     switch (scsis->state)
@@ -600,12 +584,6 @@ static void scsis_bc_mode_sense_add_caching_page(SCSIS* scsis)
     data[0] = MODE_SENSE_PSP_CACHING >> 8;
     data[1] = 20 - 2;
 
-#if (SCSI_READ_CACHE)
-    data[2] = 0;
-#else
-    //RCD
-    data[2] = 1 << 0;
-#endif //SCSI_READ_CACHE
 #if (SCSI_WRITE_CACHE)
     data[2] |= 1 << 2;
 #endif //SCSI_WRITE_CACHE

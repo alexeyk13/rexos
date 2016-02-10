@@ -13,6 +13,15 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/endian.h"
+#include <string.h>
+
+static void scsis_request_media(SCSIS* scsis)
+{
+    //TODO: only if not removable
+    scsis->need_media = true;
+    if (scsis->state == SCSIS_STATE_IDLE)
+        storage_get_media_descriptor(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user, scsis->io);
+}
 
 SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param, SCSI_STORAGE_DESCRIPTOR *storage_descriptor)
 {
@@ -31,8 +40,9 @@ SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param, SCSI_STO
     scsis->param = param;
     scsis->storage_descriptor = storage_descriptor;
     scsis->media = NULL;
-    scsis_error_init(scsis);
     scsis->state = SCSIS_STATE_IDLE;
+    scsis_error_init(scsis);
+    scsis_request_media(scsis);
     return scsis;
 }
 
@@ -46,7 +56,6 @@ void scsis_destroy(SCSIS* scsis)
 void scsis_reset(SCSIS* scsis)
 {
     scsis->state = SCSIS_STATE_IDLE;
-    scsis_media_removed(scsis);
 }
 
 static inline void scsis_request_cmd_internal(SCSIS* scsis, uint8_t* req)
@@ -167,21 +176,20 @@ static inline void scsis_request_cmd_internal(SCSIS* scsis, uint8_t* req)
     }
 }
 
-void scsis_request_cmd(SCSIS* scsis, uint8_t* req)
+bool scsis_ready(SCSIS* scsis)
 {
-    switch (scsis->state)
+    return (scsis->state == SCSIS_STATE_IDLE && scsis->need_media == false);
+}
+
+bool scsis_request_cmd(SCSIS* scsis, uint8_t* req)
+{
+    if (scsis_ready(scsis))
     {
-    case SCSIS_STATE_IDLE:
-    case SCSIS_STATE_MEDIA_DESCRIPTOR_REQUEST:
         scsis_request_cmd_internal(scsis, req);
-        break;
-    default:
-        //io in progress
-#if (SCSI_DEBUG_ERRORS)
-        printf("SCSI invalid state on request: %d\n", scsis->state);
-#endif //SCSI_DEBUG_ERRORS
-        scsis_fatal(scsis);
+        return true;
     }
+    //request is queued, when ready scsi stack will call host by callback
+    return false;
 }
 
 void scsis_host_io_complete(SCSIS* scsis)
@@ -197,16 +205,45 @@ void scsis_host_io_complete(SCSIS* scsis)
         scsis_bc_host_io_complete(scsis);
         break;
     default:
-#if (SCSI_DEBUG_ERRORS)
-        printf("SCSI invalid state on host io complete: %d\n", scsis->state);
-#endif //SCSI_DEBUG_ERRORS
-        scsis_fatal(scsis);
+        //completed before. Just ignore
+        //TODO: or not?
+        scsis->state = SCSIS_STATE_IDLE;
     }
 }
 
-bool scsis_ready(SCSIS* scsis)
+static inline void scsis_get_media_descriptor(SCSIS* scsis, int size)
 {
-    return scsis->state == SCSIS_STATE_IDLE;
+    scsis->need_media = false;
+    do {
+        if (size < (int)sizeof(STORAGE_MEDIA_DESCRIPTOR))
+            //unsupported request? No media.
+            break;
+
+        if ((scsis->media = malloc(scsis->io->data_size)) == NULL)
+            //out of memory, no media
+            break;
+        memcpy(scsis->media, io_data(scsis->io), scsis->io->data_size);
+    } while (false);
+    //media descriptor responded, inform host on ready state
+    scsis_host_request(scsis, SCSIS_REQUEST_READY);
+}
+
+void scsis_request(SCSIS* scsis, IPC* ipc)
+{
+    if (HAL_GROUP(ipc->cmd) != scsis->storage_descriptor->hal)
+    {
+        error(ERROR_NOT_SUPPORTED);
+        return;
+    }
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    //TODO: storage IO here
+    case STORAGE_GET_MEDIA_DESCRIPTOR:
+        scsis_get_media_descriptor(scsis, (int)ipc->param3);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+    }
 }
 
 void scsis_media_removed(SCSIS* scsis)
@@ -225,9 +262,7 @@ void scsis_storage_io_complete(SCSIS* scsis)
         scsis_bc_storage_io_complete(scsis);
         break;
     default:
-#if (SCSI_DEBUG_ERRORS)
-        printf("SCSI invalid state on storage io complete: %d\n", scsis->state);
-#endif //SCSI_DEBUG_ERRORS
-        scsis_fatal(scsis);
+        break;
+        //TODO: this will be refactored
     }
 }

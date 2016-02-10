@@ -18,11 +18,10 @@ typedef enum {
     SCSIS_REQUEST_WRITE,
     SCSIS_REQUEST_VERIFY,
     SCSIS_REQUEST_WRITE_VERIFY,
-    //scsis storage requests
-    SCSIS_REQUEST_GET_MEDIA_DESCRIPTOR,
     //scsis host requests
     SCSIS_REQUEST_PASS,
     SCSIS_REQUEST_FAIL,
+    SCSIS_REQUEST_READY,
     SCSIS_REQUEST_INTERNAL_ERROR
 } SCSIS_REQUEST;
 
@@ -33,9 +32,10 @@ void scsis_destroy(SCSIS* scsis);
 
 //host interface
 void scsis_reset(SCSIS* scsis);
-void scsis_request_cmd(SCSIS* scsis, uint8_t* req);
-void scsis_host_io_complete(SCSIS* scsis);
 bool scsis_ready(SCSIS* scsis);
+bool scsis_request_cmd(SCSIS* scsis, uint8_t* req);
+void scsis_host_io_complete(SCSIS* scsis);
+void scsis_request(SCSIS* scsis, IPC* ipc);
 
 //storage interface
 void scsis_media_removed(SCSIS* scsis);
