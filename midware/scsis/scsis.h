@@ -14,31 +14,33 @@
 typedef struct _SCSIS SCSIS;
 
 typedef enum {
-    SCSIS_REQUEST_READ = 0,
-    SCSIS_REQUEST_WRITE,
-    SCSIS_REQUEST_VERIFY,
-    SCSIS_REQUEST_WRITE_VERIFY,
-    //scsis host requests
-    SCSIS_REQUEST_PASS,
-    SCSIS_REQUEST_FAIL,
-    SCSIS_REQUEST_READY,
-    SCSIS_REQUEST_INTERNAL_ERROR
-} SCSIS_REQUEST;
+    //request to read or write more data
+    SCSIS_RESPONSE_READ = 0,
+    SCSIS_RESPONSE_WRITE,
+    //operation completed: pass or fail
+    SCSIS_RESPONSE_PASS,
+    SCSIS_RESPONSE_FAIL,
+    //ready for next after asynchronous write complete
+    SCSIS_RESPONSE_READY,
+    //TODO: this will be removed
+    SCSIS_RESPONSE_VERIFY,
+    SCSIS_RESPONSE_WRITE_VERIFY,
+} SCSIS_RESPONSE;
 
-typedef void (*SCSIS_CB)(void*, IO*, SCSIS_REQUEST);
+typedef void (*SCSIS_CB)(void*, IO*, SCSIS_RESPONSE, unsigned int);
 
-SCSIS* scsis_create(SCSIS_CB cb_host, SCSIS_CB cb_storage, void* param, SCSI_STORAGE_DESCRIPTOR* storage_descriptor);
+SCSIS* scsis_create(SCSIS_CB cb_host, void* param, SCSI_STORAGE_DESCRIPTOR* storage_descriptor);
 void scsis_destroy(SCSIS* scsis);
 
 //host interface
 void scsis_reset(SCSIS* scsis);
-bool scsis_ready(SCSIS* scsis);
+bool scsis_is_ready(SCSIS* scsis);
 bool scsis_request_cmd(SCSIS* scsis, uint8_t* req);
-void scsis_host_io_complete(SCSIS* scsis);
+void scsis_host_io_complete(SCSIS* scsis, int resp_size);
 void scsis_request(SCSIS* scsis, IPC* ipc);
 
+//TODO: move to request
 //storage interface
 void scsis_media_removed(SCSIS* scsis);
-void scsis_storage_io_complete(SCSIS* scsis);
 
 #endif // SCSIS_H

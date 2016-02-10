@@ -35,7 +35,7 @@ void scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req)
     scsis->io->data_size = 8;
 
     scsis->state = SCSIS_STATE_COMPLETE;
-    scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+    scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
 }
 
 #if (SCSI_LONG_LBA)
@@ -77,13 +77,22 @@ void scsis_bc_read_capacity16(SCSIS* scsis, uint8_t* req)
         scsis->io->data_size = len;
 
     scsis->state = SCSIS_STATE_COMPLETE;
-    scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+    scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
 }
 #endif //SCSI_LONG_LBA
 
+static inline void scsis_storage_read(SCSIS* scsis)
+{
+    STORAGE_STACK* stack = io_push(scsis->io, sizeof(STORAGE_STACK));
+    stack->sector = scsis->lba;
+    stack->count = scsis->count_cur;
+    stack->flags = 0;
+    io_read(scsis->storage_descriptor->storage, HAL_IO_REQ(scsis->storage_descriptor->hal, IPC_READ), scsis->storage_descriptor->user, scsis->io,
+                scsis->count_cur * scsis->media->sector_size);
+}
+
 static void scsis_io(SCSIS* scsis)
 {
-    SCSI_STACK* stack = io_stack(scsis->io);
     if (!scsis_get_media(scsis))
         return;
     //request completed
@@ -95,8 +104,6 @@ static void scsis_io(SCSIS* scsis)
     scsis->count_cur = SCSI_IO_SIZE / scsis->media->sector_size;
     if (scsis->count < scsis->count_cur)
         scsis->count_cur = scsis->count;
-    stack->size = scsis->count_cur * scsis->media->sector_size;
-    stack->lba = scsis->lba;
 #if (SCSI_LONG_LBA)
     stack->lba_hi = scsis->lba_hi;
 #endif //SCSI_LONG_LBA
@@ -111,31 +118,27 @@ static void scsis_io(SCSIS* scsis)
     switch (scsis->state)
     {
     case SCSIS_STATE_READ:
-        scsis_storage_request(scsis, SCSIS_REQUEST_READ);
+        scsis_storage_read(scsis);
         break;
     case SCSIS_STATE_WRITE:
 #if (SCSI_VERIFY_SUPPORTED)
     case SCSIS_STATE_VERIFY:
     case SCSIS_STATE_WRITE_VERIFY:
 #endif //SCSI_VERIFY_SUPPORTED
-        scsis_host_request(scsis, SCSIS_REQUEST_READ);
+        scsis_cb_host(scsis, SCSIS_RESPONSE_READ, scsis->count_cur * scsis->media->sector_size);
         break;
     default:
-#if (SCSI_DEBUG_ERRORS)
-        printf("SCSI: invalid state on io: %d\n", scsis->state);
-#endif //SCSI_DEBUG_ERRORS
-        scsis_fatal(scsis);
+        break;
     }
 }
 
-static bool scsis_bc_io_response_check(SCSIS* scsis)
+static bool scsis_bc_io_response_check(SCSIS* scsis, int size)
 {
-    SCSI_STACK* stack = io_stack(scsis->io);
     if (!scsis_get_media(scsis))
         return false;
-    if (stack->size < 0)
+    if (size < 0)
     {
-        switch (stack->size)
+        switch (size)
         {
         case ERROR_CRC:
             scsis_fail(scsis, SENSE_KEY_MEDIUM_ERROR, ASCQ_LOGICAL_UNIT_COMMUNICATION_CRC_ERROR);
@@ -155,17 +158,26 @@ static bool scsis_bc_io_response_check(SCSIS* scsis)
         }
         return false;
     }
-    if (stack->size != scsis->count_cur * scsis->media->sector_size)
+    else if (size != scsis->count_cur * scsis->media->sector_size)
     {
-        scsis_fatal(scsis);
+        scsis_fail(scsis, SENSE_KEY_HARDWARE_ERROR, ASCQ_LOGICAL_UNIT_COMMUNICATION_FAILURE);
         return false;
     }
     return true;
 }
 
-void scsis_bc_host_io_complete(SCSIS* scsis)
+static inline void scsis_storage_write(SCSIS* scsis, unsigned int flags)
 {
-    if (!scsis_bc_io_response_check(scsis))
+    STORAGE_STACK* stack = io_push(scsis->io, sizeof(STORAGE_STACK));
+    stack->sector = scsis->lba;
+    stack->count = scsis->count_cur;
+    stack->flags = flags;
+    io_write(scsis->storage_descriptor->storage, HAL_IO_REQ(scsis->storage_descriptor->hal, IPC_WRITE), scsis->storage_descriptor->user, scsis->io);
+}
+
+void scsis_bc_host_io_complete(SCSIS* scsis, int resp_size)
+{
+    if (!scsis_bc_io_response_check(scsis, resp_size))
         return;
     switch (scsis->state)
     {
@@ -175,16 +187,16 @@ void scsis_bc_host_io_complete(SCSIS* scsis)
     case SCSIS_STATE_WRITE:
 #if (SCSI_WRITE_CACHE)
         if (scsis->count <= scsis->count_cur)
-            scsis_host_request(scsis, SCSIS_REQUEST_PASS);
+            scsis_cb_host(scsis, SCSIS_RESPONSE_PASS, 0);
 #endif //SCSI_WRITE_CACHE
-        scsis_storage_request(scsis, SCSIS_REQUEST_WRITE);
+        scsis_storage_write(scsis, STORAGE_FLAG_WRITE);
         break;
 #if (SCSI_VERIFY_SUPPORTED)
     case SCSIS_STATE_VERIFY:
-        scsis_storage_request(scsis, SCSIS_REQUEST_VERIFY);
+        scsis_storage_write(scsis, STORAGE_FLAG_VERIFY);
         break;
     case SCSIS_STATE_WRITE_VERIFY:
-        scsis_storage_request(scsis, SCSIS_REQUEST_WRITE_VERIFY);
+        scsis_storage_write(scsis, STORAGE_FLAG_WRITE | STORAGE_FLAG_VERIFY);
         break;
 #endif //SCSI_VERIFY_SUPPORTED
     default:
@@ -192,14 +204,14 @@ void scsis_bc_host_io_complete(SCSIS* scsis)
     }
 }
 
-void scsis_bc_storage_io_complete(SCSIS* scsis)
+void scsis_bc_storage_io_complete(SCSIS* scsis, int resp_size)
 {
-    if (!scsis_bc_io_response_check(scsis))
+    if (!scsis_bc_io_response_check(scsis, resp_size))
         return;
     switch (scsis->state)
     {
     case SCSIS_STATE_READ:
-        scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+        scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
         break;
     case SCSIS_STATE_WRITE:
 #if (SCSI_VERIFY_SUPPORTED)
@@ -214,8 +226,6 @@ void scsis_bc_storage_io_complete(SCSIS* scsis)
 }
 void scsis_bc_read6(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = ((req[1] & 0x1f) << 16) | be2short(req + 2);
 #if (SCSI_LONG_LBA)
     scsis->lba_hi = 0;
@@ -232,8 +242,6 @@ void scsis_bc_read6(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_read10(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
 #if (SCSI_LONG_LBA)
     scsis->lba_hi = 0;
@@ -248,8 +256,6 @@ void scsis_bc_read10(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_read12(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
 #if (SCSI_LONG_LBA)
     scsis->lba_hi = 0;
@@ -264,8 +270,6 @@ void scsis_bc_read12(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_write6(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = ((req[1] & 0x1f) << 16) | be2short(req + 2);
 #if (SCSI_LONG_LBA)
     scsis->lba_hi = 0;
@@ -282,8 +286,6 @@ void scsis_bc_write6(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_write10(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
 #if (SCSI_LONG_LBA)
     scsis->lba_hi = 0;
@@ -298,8 +300,6 @@ void scsis_bc_write10(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_write12(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
 #if (SCSI_LONG_LBA)
     scsis->lba_hi = 0;
@@ -315,8 +315,6 @@ void scsis_bc_write12(SCSIS* scsis, uint8_t* req)
 #if (SCSI_VERIFY_SUPPORTED)
 void scsis_bc_verify10(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
 #if (SCSI_LONG_LBA)
     scsis->lba_hi = 0;
@@ -331,8 +329,6 @@ void scsis_bc_verify10(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_verify12(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
 #if (SCSI_LONG_LBA)
     scsis->lba_hi = 0;
@@ -347,8 +343,6 @@ void scsis_bc_verify12(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_write_verify10(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
 #if (SCSI_LONG_LBA)
     scsis->lba_hi = 0;
@@ -363,8 +357,6 @@ void scsis_bc_write_verify10(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_write_verify12(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
 #if (SCSI_LONG_LBA)
     scsis->lba_hi = 0;
@@ -381,8 +373,6 @@ void scsis_bc_write_verify12(SCSIS* scsis, uint8_t* req)
 #if (SCSI_LONG_LBA)
 void scsis_bc_read16(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
     scsis->lba_hi = be2int(req + 6);
     scsis->count = be2short(req + 10);
@@ -395,8 +385,6 @@ void scsis_bc_read16(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_read32(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 12);
     scsis->lba_hi = be2int(req + 16);
     scsis->count = be2short(req + 28);
@@ -409,8 +397,6 @@ void scsis_bc_read32(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_write16(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
     scsis->lba_hi = be2int(req + 6);
     scsis->count = be2short(req + 10);
@@ -423,8 +409,6 @@ void scsis_bc_write16(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_write32(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 12);
     scsis->lba_hi = be2int(req + 16);
     scsis->count = be2short(req + 28);
@@ -438,8 +422,6 @@ void scsis_bc_write32(SCSIS* scsis, uint8_t* req)
 #if (SCSI_VERIFY_SUPPORTED)
 void scsis_bc_verify16(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
     scsis->lba_hi = be2int(req + 6);
     scsis->count = be2short(req + 10);
@@ -452,8 +434,6 @@ void scsis_bc_verify16(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_verify32(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 12);
     scsis->lba_hi = be2int(req + 16);
     scsis->count = be2short(req + 28);
@@ -466,8 +446,6 @@ void scsis_bc_verify32(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_write_verify16(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 2);
     scsis->lba_hi = be2int(req + 6);
     scsis->count = be2short(req + 10);
@@ -480,8 +458,6 @@ void scsis_bc_write_verify16(SCSIS* scsis, uint8_t* req)
 
 void scsis_bc_write_verify32(SCSIS* scsis, uint8_t* req)
 {
-    if (!scsis_get_media(scsis))
-        return;
     scsis->lba = be2int(req + 12);
     scsis->lba_hi = be2int(req + 16);
     scsis->count = be2short(req + 28);

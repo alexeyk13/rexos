@@ -257,7 +257,6 @@ typedef struct _SCSIS {
     RB rb_error;
     IO* io;
     SCSIS_CB cb_host;
-    SCSIS_CB cb_storage;
     void* param;
     unsigned int lba, count, count_cur;
 #if (SCSI_LONG_LBA)
@@ -267,14 +266,12 @@ typedef struct _SCSIS {
 } SCSIS;
 
 void scsis_error_init(SCSIS* scsis);
-void scsis_error(SCSIS* scsis, uint8_t key_sense, uint16_t ascq);
+void scsis_error_put(SCSIS* scsis, uint8_t key_sense, uint16_t ascq);
 void scsis_error_get(SCSIS* scsis, SCSIS_ERROR* err);
-void scsis_host_request(SCSIS* scsis, SCSIS_REQUEST request);
-void scsis_storage_request(SCSIS* scsis, SCSIS_REQUEST request);
-//todo: remove me
-void scsis_fatal(SCSIS* scsis);
+void scsis_cb_host(SCSIS* scsis, SCSIS_RESPONSE response, unsigned int size);
 void scsis_fail(SCSIS* scsis, uint8_t key_sense, uint16_t ascq);
 void scsis_pass(SCSIS* scsis);
+
 
 //failure if no media inserted
 bool scsis_get_media(SCSIS* scsis);

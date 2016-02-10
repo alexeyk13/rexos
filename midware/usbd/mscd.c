@@ -86,7 +86,7 @@ static void mscd_write_csw(USBD* usbd, MSCD* mscd)
 
 static void mscd_cbw_process(MSCD* mscd)
 {
-    if (scsis_ready(mscd->scsis))
+    if (scsis_is_ready(mscd->scsis))
     {
         mscd->state = MSCD_STATE_PROCESSING;
         scsis_request_cmd(mscd->scsis, mscd->cbw->CBWCB);
@@ -112,66 +112,38 @@ static void mscd_request_processed(USBD* usbd, MSCD* mscd)
         mscd_write_csw(usbd, mscd);
 }
 
-void mscd_host_cb(void* param, IO* io, SCSIS_REQUEST request)
+void mscd_host_cb(void* param, IO* io, SCSIS_RESPONSE response, unsigned int size)
 {
     MSCD* mscd = param;
-    unsigned int size;
 
-    switch (request)
+    switch (response)
     {
-    case SCSIS_REQUEST_READ:
-        size = ((SCSI_STACK*)io_stack(io))->size;
+    case SCSIS_RESPONSE_READ:
         if (size > mscd->residue)
             size = mscd->residue;
         mscd->residue -= size;
         //some hardware required to be multiple of MPS
         usbd_usb_ep_read(mscd->usbd, mscd->ep_num, io, (size + mscd->ep_size - 1) & ~(mscd->ep_size - 1));
         break;
-    case SCSIS_REQUEST_WRITE:
+    case SCSIS_RESPONSE_WRITE:
         if (io->data_size > mscd->residue)
             io->data_size = mscd->residue;
         mscd->residue -= io->data_size;
         usbd_usb_ep_write(mscd->usbd, mscd->ep_num, io);
         break;
-    case SCSIS_REQUEST_PASS:
+    case SCSIS_RESPONSE_PASS:
         mscd->csw_status = MSC_CSW_COMMAND_PASSED;
         mscd_request_processed(mscd->usbd, mscd);
         break;
-    case SCSIS_REQUEST_FAIL:
+    case SCSIS_RESPONSE_FAIL:
         mscd->csw_status = MSC_CSW_COMMAND_FAILED;
         mscd_request_processed(mscd->usbd, mscd);
         break;
-    case SCSIS_REQUEST_READY:
+    case SCSIS_RESPONSE_READY:
         if (mscd->state == MSCD_STATE_CBW)
             mscd_cbw_process(mscd);
         break;
     default:
-        break;
-    }
-}
-
-//TODO: will be refactored and removed
-void mscd_storage_cb(void* param, IO* io, SCSIS_REQUEST request)
-{
-    MSCD* mscd = param;
-    unsigned int size = ((SCSI_STACK*)(io_stack(io)))->size;
-
-    //just forward to user
-    switch (request)
-    {
-    case SCSIS_REQUEST_READ:
-        usbd_io_user(mscd->usbd, mscd->iface_num, mscd->cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_READ), io, size);
-        break;
-    case SCSIS_REQUEST_WRITE:
-        usbd_io_user(mscd->usbd, mscd->iface_num, mscd->cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_WRITE), io, size);
-        break;
-    case SCSIS_REQUEST_VERIFY:
-        usbd_io_user(mscd->usbd, mscd->iface_num, mscd->cbw->bCBWLUN, HAL_IO_REQ(HAL_USBD_IFACE, USB_MSC_VERIFY), io, size);
-        break;
-    default:
-#if (USBD_MSC_DEBUG_ERRORS)
-        printf("USB MSC: invalid scsis storage request %d\n", request);
-#endif //USBD_MSC_DEBUG_ERRORS
         break;
     }
 }
@@ -220,7 +192,7 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
     mscd->usbd = usbd;
 
     mscd->control = io_create(ep_size);
-    mscd->scsis = scsis_create(mscd_host_cb, mscd_storage_cb, mscd, storage_descriptor);
+    mscd->scsis = scsis_create(mscd_host_cb, mscd, storage_descriptor);
     if (mscd->control == NULL || mscd->scsis == NULL)
     {
         mscd_destroy(mscd);
@@ -322,7 +294,7 @@ static inline void mscd_cbw_rx(USBD* usbd, MSCD* mscd)
     mscd_cbw_process(mscd);
 }
 
-static inline void mscd_usb_io_complete(USBD* usbd, MSCD* mscd)
+static inline void mscd_usb_io_complete(USBD* usbd, MSCD* mscd, int resp_size)
 {
     switch (mscd->state)
     {
@@ -330,7 +302,7 @@ static inline void mscd_usb_io_complete(USBD* usbd, MSCD* mscd)
         mscd_cbw_rx(usbd, mscd);
         break;
     case MSCD_STATE_PROCESSING:
-        scsis_host_io_complete(mscd->scsis);
+        scsis_host_io_complete(mscd->scsis, resp_size);
         break;
     case MSCD_STATE_ZLP:
         mscd_write_csw(usbd, mscd);
@@ -349,7 +321,7 @@ static inline void mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
     {
     case IPC_WRITE:
     case IPC_READ:
-        mscd_usb_io_complete(usbd, mscd);
+        mscd_usb_io_complete(usbd, mscd, (int)ipc->param3);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -361,12 +333,6 @@ static inline void mscd_iface_request(USBD* usbd, MSCD* mscd, IPC* ipc)
     //TODO: will be refactored
     switch (HAL_ITEM(ipc->cmd))
     {
-    case USB_MSC_READ:
-    case USB_MSC_WRITE:
-    case USB_MSC_VERIFY:
-        //just forward response to storage
-        scsis_storage_io_complete(mscd->scsis);
-        break;
     case USB_MSC_MEDIA_REMOVED:
         scsis_media_removed(mscd->scsis);
         break;

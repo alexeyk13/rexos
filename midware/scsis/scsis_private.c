@@ -15,7 +15,7 @@ void scsis_error_init(SCSIS* scsis)
     rb_init(&scsis->rb_error, SCSI_SENSE_DEPTH);
 }
 
-void scsis_error(SCSIS* scsis, uint8_t key_sense, uint16_t ascq)
+void scsis_error_put(SCSIS* scsis, uint8_t key_sense, uint16_t ascq)
 {
     unsigned int idx;
     if (rb_is_full(&scsis->rb_error))
@@ -44,50 +44,38 @@ void scsis_error_get(SCSIS* scsis, SCSIS_ERROR *err)
     }
 }
 
-void scsis_host_request(SCSIS* scsis, SCSIS_REQUEST request)
+void scsis_cb_host(SCSIS* scsis, SCSIS_RESPONSE response, unsigned int size)
 {
-    scsis->cb_host(scsis->param, scsis->io, request);
+    scsis->cb_host(scsis->param, scsis->io, response, size);
 }
 
-void scsis_storage_request(SCSIS* scsis, SCSIS_REQUEST request)
+static void scsis_done(SCSIS* scsis, SCSIS_RESPONSE resp)
 {
-    scsis->cb_storage(scsis->param, scsis->io, request);
-}
-
-//remove me
-void scsis_fatal(SCSIS* scsis)
-{
-    scsis_reset(scsis);
-    scsis_host_request(scsis, SCSIS_REQUEST_INTERNAL_ERROR);
+    bool was_ready = false;
+#if (SCSI_WRITE_CACHE)
+    if (scsis->state == SCSIS_STATE_WRITE && (scsis->count == 0))
+        was_ready = true;
+#endif //SCSI_WRITE_CACHE
+    scsis->state = SCSIS_STATE_IDLE;
+    //pass already sent on write
+    if (was_ready)
+        if (!scsis->need_media)
+            scsis_cb_host(scsis, SCSIS_RESPONSE_READY, 0);
+    if (scsis->need_media)
+        storage_get_media_descriptor(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user, scsis->io);
+    if (!was_ready)
+        scsis_cb_host(scsis, resp, 0);
 }
 
 void scsis_fail(SCSIS* scsis, uint8_t key_sense, uint16_t ascq)
 {
-    scsis_error(scsis, key_sense, ascq);
-    scsis->state = SCSIS_STATE_IDLE;
-    scsis_host_request(scsis, SCSIS_REQUEST_FAIL);
-    if (scsis->need_media)
-        storage_get_media_descriptor(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user, scsis->io);
+    scsis_error_put(scsis, key_sense, ascq);
+    scsis_done(scsis, SCSIS_RESPONSE_FAIL);
 }
 
 void scsis_pass(SCSIS* scsis)
 {
-#if (SCSI_WRITE_CACHE)
-    //pass already sent on write
-    if (scsis->state == SCSIS_STATE_WRITE || scsis->state == SCSIS_STATE_WRITE_VERIFY)
-    {
-        scsis->state = SCSIS_STATE_IDLE;
-        if (!scsis->need_media)
-            scsis_host_request(scsis, SCSIS_REQUEST_READY);
-    }
-    else
-#endif //SCSI_WRITE_CACHE
-    {
-        scsis->state = SCSIS_STATE_IDLE;
-        scsis_host_request(scsis, SCSIS_REQUEST_PASS);
-    }
-    if (scsis->need_media)
-        storage_get_media_descriptor(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user, scsis->io);
+    scsis_done(scsis, SCSIS_RESPONSE_PASS);
 }
 
 bool scsis_get_media(SCSIS* scsis)

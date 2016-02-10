@@ -49,13 +49,4 @@ typedef struct {
 
 #define SCSI_STORAGE_DESCRIPTOR_REMOVABLE                               (1 << 0)
 
-typedef struct {
-    unsigned int lba;
-    //or error code on failure
-    int size;
-#if (SCSI_LONG_LBA)
-    unsigned int lba_hi;
-#endif //SCSI_LONG_LBA
-} SCSI_STACK;
-
 #endif // SCSI_H

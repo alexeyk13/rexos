@@ -14,8 +14,8 @@
 #include "scsis.h"
 #include <stdbool.h>
 
-void scsis_bc_host_io_complete(SCSIS* scsis);
-void scsis_bc_storage_io_complete(SCSIS* scsis);
+void scsis_bc_host_io_complete(SCSIS* scsis, int resp_size);
+void scsis_bc_storage_io_complete(SCSIS* scsis, int resp_size);
 
 void scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read_capacity16(SCSIS* scsis, uint8_t* req);

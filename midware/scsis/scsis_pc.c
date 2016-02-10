@@ -111,7 +111,7 @@ void scsis_pc_inquiry(SCSIS* scsis, uint8_t* req)
     if (scsis->io->data_size > len)
         scsis->io->data_size = len;
     scsis->state = SCSIS_STATE_COMPLETE;
-    scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+    scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
 }
 
 void scsis_pc_test_unit_ready(SCSIS* scsis, uint8_t* req)
@@ -163,7 +163,7 @@ void scsis_pc_mode_sense6(SCSIS* scsis, uint8_t* req)
             scsis->io->data_size = len;
         *(uint8_t*)io_data(scsis->io) = scsis->io->data_size - 1;
         scsis->state = SCSIS_STATE_COMPLETE;
-        scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+        scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
     }
 }
 
@@ -211,7 +211,7 @@ void scsis_pc_mode_sense10(SCSIS* scsis, uint8_t* req)
             scsis->io->data_size = len;
         short2be(io_data(scsis->io), scsis->io->data_size - 1);
         scsis->state = SCSIS_STATE_COMPLETE;
-        scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+        scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
     }
 }
 #endif //SCSI_LONG_LBA
@@ -258,5 +258,5 @@ void scsis_pc_request_sense(SCSIS* scsis, uint8_t* req)
     page[13] = (err.ascq >> 0) & 0xff;
 
     scsis->state = SCSIS_STATE_COMPLETE;
-    scsis_host_request(scsis, SCSIS_REQUEST_WRITE);
+    scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
 }

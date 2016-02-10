@@ -24,12 +24,8 @@
 
 typedef enum {
     //TODO: refactor to storage interface
-    //requests from host
-    USB_MSC_READ = IPC_USER,
-    USB_MSC_WRITE,
-    USB_MSC_VERIFY,
     //storage informing
-    USB_MSC_MEDIA_REMOVED
+    USB_MSC_MEDIA_REMOVED = IPC_USER
 } USB_MSC_IPC;
 
 #endif // MSC_H
