@@ -21,10 +21,7 @@ typedef enum {
     SCSIS_RESPONSE_PASS,
     SCSIS_RESPONSE_FAIL,
     //ready for next after asynchronous write complete
-    SCSIS_RESPONSE_READY,
-    //TODO: this will be removed
-    SCSIS_RESPONSE_VERIFY,
-    SCSIS_RESPONSE_WRITE_VERIFY,
+    SCSIS_RESPONSE_READY
 } SCSIS_RESPONSE;
 
 typedef void (*SCSIS_CB)(void*, IO*, SCSIS_RESPONSE, unsigned int);
