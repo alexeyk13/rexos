@@ -17,10 +17,15 @@
 
 static void scsis_request_media(SCSIS* scsis)
 {
-    //TODO: only if not removable
     scsis->need_media = true;
     if (scsis->state == SCSIS_STATE_IDLE)
         storage_get_media_descriptor(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user, scsis->io);
+}
+
+static void scsis_media_removed(SCSIS* scsis)
+{
+    free(scsis->media);
+    scsis->media = NULL;
 }
 
 SCSIS* scsis_create(SCSIS_CB cb_host, void* param, SCSI_STORAGE_DESCRIPTOR *storage_descriptor)
@@ -40,12 +45,17 @@ SCSIS* scsis_create(SCSIS_CB cb_host, void* param, SCSI_STORAGE_DESCRIPTOR *stor
     scsis->media = NULL;
     scsis->state = SCSIS_STATE_IDLE;
     scsis_error_init(scsis);
-    scsis_request_media(scsis);
+    if (scsis->storage_descriptor->flags & SCSI_STORAGE_DESCRIPTOR_REMOVABLE)
+        storage_request_notify_state_change(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user);
+    else
+        scsis_request_media(scsis);
     return scsis;
 }
 
 void scsis_destroy(SCSIS* scsis)
 {
+    if (scsis->storage_descriptor->flags & SCSI_STORAGE_DESCRIPTOR_REMOVABLE)
+        storage_cancel_notify_state_change(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user);
     io_destroy(scsis->io);
     scsis_media_removed(scsis);
     free(scsis);
@@ -222,25 +232,28 @@ void scsis_request(SCSIS* scsis, IPC* ipc)
         error(ERROR_NOT_SUPPORTED);
         return;
     }
-    if (HAL_ITEM(ipc->cmd) == STORAGE_GET_MEDIA_DESCRIPTOR)
-        scsis_get_media_descriptor(scsis, (int)ipc->param3);
-    //IDLE - means resetted before - ignore message
-    else if (scsis->state != SCSIS_STATE_IDLE)
+    switch (HAL_ITEM(ipc->cmd))
     {
-        switch (HAL_ITEM(ipc->cmd))
-        {
-        case IPC_READ:
-        case IPC_WRITE:
+    case IPC_READ:
+    case IPC_WRITE:
+        //IDLE - means resetted before - ignore IO messages
+        if (scsis->state != SCSIS_STATE_IDLE)
             scsis_bc_storage_io_complete(scsis, (int)ipc->param3);
-            break;
-        default:
-            error(ERROR_NOT_SUPPORTED);
+        break;
+    case STORAGE_GET_MEDIA_DESCRIPTOR:
+        scsis_get_media_descriptor(scsis, (int)ipc->param3);
+        break;
+    case STORAGE_NOTIFY_STATE_CHANGE:
+        if (scsis->storage_descriptor->flags & SCSI_STORAGE_DESCRIPTOR_REMOVABLE)
+        {
+            if (scsis->media != NULL)
+                scsis_media_removed(scsis);
+            else
+                scsis_request_media(scsis);
+            storage_request_notify_state_change(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user);
         }
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
     }
-}
-
-void scsis_media_removed(SCSIS* scsis)
-{
-    free(scsis->media);
-    scsis->media = NULL;
 }

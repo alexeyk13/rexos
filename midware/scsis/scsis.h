@@ -36,8 +36,4 @@ bool scsis_request_cmd(SCSIS* scsis, uint8_t* req);
 void scsis_host_io_complete(SCSIS* scsis, int resp_size);
 void scsis_request(SCSIS* scsis, IPC* ipc);
 
-//TODO: move to request
-//storage interface
-void scsis_media_removed(SCSIS* scsis);
-
 #endif // SCSIS_H

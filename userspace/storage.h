@@ -41,6 +41,8 @@ typedef struct {
 
 bool storage_open(HAL hal, HANDLE process, HANDLE user);
 void storage_get_media_descriptor(HAL hal, HANDLE process, HANDLE user, IO* io);
+void storage_request_notify_state_change(HAL hal, HANDLE process, HANDLE user);
+void storage_cancel_notify_state_change(HAL hal, HANDLE process, HANDLE user);
 STORAGE_MEDIA_DESCRIPTOR* storage_get_media_descriptor_sync(HAL hal, HANDLE process, HANDLE user, IO* io);
 void storage_read(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count);
 bool storage_read_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count);

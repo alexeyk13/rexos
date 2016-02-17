@@ -19,6 +19,16 @@ void storage_get_media_descriptor(HAL hal, HANDLE process, HANDLE user, IO* io)
     io_read(process, HAL_IO_REQ(hal, STORAGE_GET_MEDIA_DESCRIPTOR), user, io, sizeof(STORAGE_MEDIA_DESCRIPTOR));
 }
 
+void storage_request_notify_state_change(HAL hal, HANDLE process, HANDLE user)
+{
+    ipc_post_inline(process, HAL_REQ(hal, STORAGE_NOTIFY_STATE_CHANGE), user, 0, 0);
+}
+
+void storage_cancel_notify_state_change(HAL hal, HANDLE process, HANDLE user)
+{
+    ipc_post_inline(process, HAL_CMD(hal, STORAGE_CANCEL_NOTIFY_STATE_CHANGE), user, 0, 0);
+}
+
 STORAGE_MEDIA_DESCRIPTOR* storage_get_media_descriptor_sync(HAL hal, HANDLE process, HANDLE user, IO* io)
 {
     if (io_read_sync(process, HAL_IO_REQ(hal, STORAGE_GET_MEDIA_DESCRIPTOR), user, io, sizeof(STORAGE_MEDIA_DESCRIPTOR)) <

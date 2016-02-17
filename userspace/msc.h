@@ -22,10 +22,4 @@
 #define MSC_PROTOCOL_CBI_NO_INTERRUPT                                                   0x01
 #define MSC_PROTOCOL_BULK_ONLY                                                          0x50
 
-typedef enum {
-    //TODO: refactor to storage interface
-    //storage informing
-    USB_MSC_MEDIA_REMOVED = IPC_USER
-} USB_MSC_IPC;
-
 #endif // MSC_H

@@ -328,19 +328,6 @@ static inline void mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
     }
 }
 
-static inline void mscd_iface_request(USBD* usbd, MSCD* mscd, IPC* ipc)
-{
-    //TODO: will be refactored
-    switch (HAL_ITEM(ipc->cmd))
-    {
-    case USB_MSC_MEDIA_REMOVED:
-        scsis_media_removed(mscd->scsis);
-        break;
-    default:
-        error(ERROR_NOT_SUPPORTED);
-    }
-}
-
 void mscd_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     MSCD* mscd = (MSCD*)param;
@@ -348,9 +335,6 @@ void mscd_class_request(USBD* usbd, void* param, IPC* ipc)
     {
     case HAL_USB:
         mscd_driver_event(usbd, mscd, ipc);
-        break;
-    case HAL_USBD_IFACE:
-        mscd_iface_request(usbd, mscd, ipc);
         break;
     default:
         scsis_request(mscd->scsis, ipc);
