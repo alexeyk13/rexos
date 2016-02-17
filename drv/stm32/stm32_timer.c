@@ -284,7 +284,7 @@ unsigned int hpet_elapsed(void* param)
 void second_pulse_isr(int vector, void* param)
 {
     TIMER_REGS[SECOND_PULSE_TIMER]->SR &= ~TIM_SR_UIF;
-    timer_second_pulse();
+    systime_second_pulse();
 }
 #endif //STM32_RTC_DRIVER
 
