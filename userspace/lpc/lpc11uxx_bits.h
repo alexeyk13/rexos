@@ -667,6 +667,10 @@
 #define USART0_SCICTRL_XTRAGUARD_Msk               (0xff << 8)
 #define USART0_SCICTRL_XTRAGUARD_Pos               8
 
+//LPC18xx compatibility mode
+#define USART0_SCICTRL_GUARDTIME_Msk                USART0_SCICTRL_XTRAGUARD_Msk
+#define USART0_SCICTRL_GUARDTIME_Pos                USART0_SCICTRL_XTRAGUARD_Pos
+
 /**********  Bit definition for RS485CTRL register  ***************************/
 #define USART0_RS485CTRL_NMMEN_Msk                 (1 << 0)
 #define USART0_RS485CTRL_RXDIS_Msk                 (1 << 1)
