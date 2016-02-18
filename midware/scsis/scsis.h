@@ -26,7 +26,7 @@ typedef enum {
 
 typedef void (*SCSIS_CB)(void*, IO*, SCSIS_RESPONSE, unsigned int);
 
-SCSIS* scsis_create(SCSIS_CB cb_host, void* param, SCSI_STORAGE_DESCRIPTOR* storage_descriptor);
+SCSIS* scsis_create(SCSIS_CB cb_host, void* param, SCSI_STORAGE_DESCRIPTOR* storage_descriptor, IO* io);
 void scsis_destroy(SCSIS* scsis);
 
 //host interface

@@ -28,20 +28,15 @@ static void scsis_media_removed(SCSIS* scsis)
     scsis->media = NULL;
 }
 
-SCSIS* scsis_create(SCSIS_CB cb_host, void* param, SCSI_STORAGE_DESCRIPTOR *storage_descriptor)
+SCSIS* scsis_create(SCSIS_CB cb_host, void* param, SCSI_STORAGE_DESCRIPTOR *storage_descriptor, IO* io)
 {
     SCSIS* scsis = malloc(sizeof(SCSIS));
     if (scsis == NULL)
         return NULL;
-    scsis->io = io_create(SCSI_IO_SIZE + sizeof(STORAGE_STACK));
-    if (scsis->io == NULL)
-    {
-        free(scsis);
-        return NULL;
-    }
     scsis->cb_host = cb_host;
     scsis->param = param;
     scsis->storage_descriptor = storage_descriptor;
+    scsis->io = io;
     scsis->media = NULL;
     scsis->state = SCSIS_STATE_IDLE;
     scsis_error_init(scsis);
@@ -56,7 +51,6 @@ void scsis_destroy(SCSIS* scsis)
 {
     if (scsis->storage_descriptor->flags & SCSI_STORAGE_DESCRIPTOR_REMOVABLE)
         storage_cancel_notify_state_change(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user);
-    io_destroy(scsis->io);
     scsis_media_removed(scsis);
     free(scsis);
 }

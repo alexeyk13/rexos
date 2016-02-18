@@ -93,6 +93,7 @@ static inline void scsis_storage_read(SCSIS* scsis)
 
 static void scsis_io(SCSIS* scsis)
 {
+    scsis->io->data_size = 0;
 #if (SCSI_LONG_LBA)
     uint32_t lba_old = scsis->lba;
 #endif //SCSI_LONG_LBA
@@ -110,7 +111,7 @@ static void scsis_io(SCSIS* scsis)
         ++scsis->lba_hi;
 #endif //SCSI_LONG_LBA
 
-    scsis->count_cur = SCSI_IO_SIZE / scsis->media->sector_size;
+    scsis->count_cur = (io_get_free(scsis->io) - sizeof(STORAGE_STACK)) / scsis->media->sector_size;
     if (scsis->count < scsis->count_cur)
         scsis->count_cur = scsis->count;
 

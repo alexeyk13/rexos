@@ -12,6 +12,7 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/msc.h"
 #include "../../userspace/scsi.h"
+#include "../../userspace/storage.h"
 #include "../scsis/scsis.h"
 #include <stdint.h>
 #include "usb.h"
@@ -29,6 +30,7 @@ typedef struct {
     uint8_t ep_num, iface_num;
     uint16_t ep_size;
     IO* control;
+    IO* data;
     MSCD_STATE state;
     unsigned int residue, tag, csw_status;
     USBD* usbd;
@@ -41,6 +43,7 @@ typedef struct {
 static void mscd_destroy(MSCD* mscd)
 {
     scsis_destroy(mscd->scsis);
+    io_destroy(mscd->data);
     io_destroy(mscd->control);
     free(mscd);
 }
@@ -192,9 +195,13 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
     mscd->usbd = usbd;
 
     mscd->control = io_create(ep_size);
-    mscd->scsis = scsis_create(mscd_host_cb, mscd, storage_descriptor);
-    if (mscd->control == NULL || mscd->scsis == NULL)
+    mscd->data = io_create(USBD_MSC_IO_SIZE + sizeof(STORAGE_STACK));
+    mscd->scsis = scsis_create(mscd_host_cb, mscd, storage_descriptor, mscd->data);
+    if (mscd->control == NULL || mscd->data == NULL || mscd->scsis == NULL)
     {
+#if (USBD_MSC_DEBUG_ERRORS)
+        printf("MSCD: Out of memory\n");
+#endif //USBD_MSC_DEBUG_ERRORS
         mscd_destroy(mscd);
         return;
     }
