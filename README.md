@@ -45,6 +45,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * ARP: timeouts and static routes support
   * HTTP Server (beta)
   * TLS 1.2 Server (beta)
+  * SD/MMC host stack
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -71,6 +72,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * DAC: STM32F1, STM32L0
   * USB: STM32F1_CL, STM32L0, LPC11Uxx, LPC18xx
   * ETH: STM32F1, LPC18xx
+  * SD/MMC: LPC18xx
   * МЭЛТ mt12864j LCD display
 
 Cortex-M3 features:
@@ -85,6 +87,14 @@ ARM7 features:
 
 History
 =======
+
+0.4.3
+- SD/MMC host interface
+- HAL type independent storage interface
+- SCSI refactoring for making storage interface compatible
+- USB device configuration templates
+- USB MSC transparent storage interface
+- LPC18xx SD/MMC driver
 
 0.4.2
 - Some cryptography: AES, AES-CBC, SHA1, SHA256, HMAC-SHA1, HMAC-SHA256

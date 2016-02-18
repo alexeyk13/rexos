@@ -75,5 +75,9 @@
 //-------------------------------------- ETH ----------------------------------------------
 #define LPC_ETH_PROCESS_SIZE                512
 #define LPC_ETH_MII                         0
+//-------------------------------------- SDMMC ------------------------------------------------
+#define LPC_SDMMC_DRIVER                    0
+//each is 7 KB
+#define LPC_SDMMC_DESCR_COUNT               3
 
 #endif //LPC_CONFIG_H

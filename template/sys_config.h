@@ -95,8 +95,6 @@
 #define SCSI_VERIFY_SUPPORTED                               0
 //send PASS before data was written
 #define SCSI_WRITE_CACHE                                    1
-//write cache directly from application to usbd
-#define SCSI_READ_CACHE                                     1
 //SATA over SCSI. Just stub for more verbose error processing
 //Found on some linux recent kernels
 #define SCSI_SAT                                            0
@@ -199,5 +197,7 @@
 //DON'T FORGET TO REMOVE IN PRODUCTION!!!
 #define TLS_DEBUG_SECRETS                                   0
 #define TLS_IO_SIZE                                         1460
+//--------------------------------- SDMMC ---------------------------------------------
+#define SDMMC_DEBUG                                         1
 
 #endif // SYS_CONFIG_H
