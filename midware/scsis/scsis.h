@@ -20,20 +20,21 @@ typedef enum {
     //operation completed: pass or fail
     SCSIS_RESPONSE_PASS,
     SCSIS_RESPONSE_FAIL,
-    //ready for next after asynchronous write complete
-    SCSIS_RESPONSE_READY
+    SCSIS_RESPONSE_NEED_IO,
+    SCSIS_RESPONSE_RELEASE_IO
 } SCSIS_RESPONSE;
 
-typedef void (*SCSIS_CB)(void*, IO*, SCSIS_RESPONSE, unsigned int);
+typedef void (*SCSIS_CB)(void*, unsigned int, SCSIS_RESPONSE, unsigned int);
 
-SCSIS* scsis_create(SCSIS_CB cb_host, void* param, SCSI_STORAGE_DESCRIPTOR* storage_descriptor, IO* io);
+SCSIS* scsis_create(SCSIS_CB cb_host, void* param, unsigned int id, SCSI_STORAGE_DESCRIPTOR* storage_descriptor);
 void scsis_destroy(SCSIS* scsis);
 
 //host interface
+void scsis_init(SCSIS* scsis);
 void scsis_reset(SCSIS* scsis);
-bool scsis_is_ready(SCSIS* scsis);
-bool scsis_request_cmd(SCSIS* scsis, uint8_t* req);
+void scsis_request_cmd(SCSIS* scsis, IO* io, uint8_t* req);
 void scsis_host_io_complete(SCSIS* scsis, int resp_size);
+void scsis_host_give_io(SCSIS* scsis, IO* io);
 void scsis_request(SCSIS* scsis, IPC* ipc);
 
 #endif // SCSIS_H

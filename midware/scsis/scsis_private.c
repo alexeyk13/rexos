@@ -46,7 +46,7 @@ void scsis_error_get(SCSIS* scsis, SCSIS_ERROR *err)
 
 void scsis_cb_host(SCSIS* scsis, SCSIS_RESPONSE response, unsigned int size)
 {
-    scsis->cb_host(scsis->param, scsis->io, response, size);
+    scsis->cb_host(scsis->param, scsis->id, response, size);
 }
 
 static void scsis_done(SCSIS* scsis, SCSIS_RESPONSE resp)
@@ -57,12 +57,14 @@ static void scsis_done(SCSIS* scsis, SCSIS_RESPONSE resp)
         was_ready = true;
 #endif //SCSI_WRITE_CACHE
     scsis->state = SCSIS_STATE_IDLE;
-    //pass already sent on write
-    if (was_ready)
-        if (!scsis->need_media)
-            scsis_cb_host(scsis, SCSIS_RESPONSE_READY, 0);
     if (scsis->need_media)
         storage_get_media_descriptor(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user, scsis->io);
+    else
+    {
+        scsis->io = NULL;
+        scsis_cb_host(scsis, SCSIS_RESPONSE_RELEASE_IO, 0);
+    }
+    //pass already sent on write
     if (!was_ready)
         scsis_cb_host(scsis, resp, 0);
 }

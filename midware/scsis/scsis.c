@@ -19,7 +19,12 @@ static void scsis_request_media(SCSIS* scsis)
 {
     scsis->need_media = true;
     if (scsis->state == SCSIS_STATE_IDLE)
-        storage_get_media_descriptor(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user, scsis->io);
+    {
+        if (scsis->io != NULL)
+            storage_get_media_descriptor(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user, scsis->io);
+        else
+            scsis_cb_host(scsis, SCSIS_RESPONSE_NEED_IO, 0);
+    }
 }
 
 static void scsis_media_removed(SCSIS* scsis)
@@ -28,22 +33,18 @@ static void scsis_media_removed(SCSIS* scsis)
     scsis->media = NULL;
 }
 
-SCSIS* scsis_create(SCSIS_CB cb_host, void* param, SCSI_STORAGE_DESCRIPTOR *storage_descriptor, IO* io)
+SCSIS* scsis_create(SCSIS_CB cb_host, void* param, unsigned int id, SCSI_STORAGE_DESCRIPTOR *storage_descriptor)
 {
     SCSIS* scsis = malloc(sizeof(SCSIS));
     if (scsis == NULL)
         return NULL;
     scsis->cb_host = cb_host;
     scsis->param = param;
+    scsis->id = id;
     scsis->storage_descriptor = storage_descriptor;
-    scsis->io = io;
+    scsis->io = NULL;
     scsis->media = NULL;
     scsis->state = SCSIS_STATE_IDLE;
-    scsis_error_init(scsis);
-    if (scsis->storage_descriptor->flags & SCSI_STORAGE_DESCRIPTOR_REMOVABLE)
-        storage_request_notify_state_change(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user);
-    else
-        scsis_request_media(scsis);
     return scsis;
 }
 
@@ -55,13 +56,25 @@ void scsis_destroy(SCSIS* scsis)
     free(scsis);
 }
 
+void scsis_init(SCSIS* scsis)
+{
+    scsis_error_init(scsis);
+    if (scsis->storage_descriptor->flags & SCSI_STORAGE_DESCRIPTOR_REMOVABLE)
+        storage_request_notify_state_change(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user);
+    else
+        scsis_request_media(scsis);
+}
+
 void scsis_reset(SCSIS* scsis)
 {
+    scsis->need_media = false;
+    scsis->io = NULL;
     scsis->state = SCSIS_STATE_IDLE;
 }
 
-static inline void scsis_request_cmd_internal(SCSIS* scsis, uint8_t* req)
+void scsis_request_cmd(SCSIS* scsis, IO* io, uint8_t* req)
 {
+    scsis->io = io;
     switch (req[0])
     {
     case SCSI_SPC_CMD_MODE_SENSE6:
@@ -178,28 +191,18 @@ static inline void scsis_request_cmd_internal(SCSIS* scsis, uint8_t* req)
     }
 }
 
-bool scsis_is_ready(SCSIS* scsis)
-{
-    return (scsis->state == SCSIS_STATE_IDLE && scsis->need_media == false);
-}
-
-bool scsis_request_cmd(SCSIS* scsis, uint8_t* req)
-{
-    if (scsis_is_ready(scsis))
-    {
-        scsis_request_cmd_internal(scsis, req);
-        return true;
-    }
-    //request is queued, when ready scsi stack will call host by callback
-    return false;
-}
-
 void scsis_host_io_complete(SCSIS* scsis, int resp_size)
 {
     if (scsis->state == SCSIS_STATE_COMPLETE)
         scsis_pass(scsis);
     else
         scsis_bc_host_io_complete(scsis, resp_size);
+}
+
+void scsis_host_give_io(SCSIS* scsis, IO* io)
+{
+    scsis->io = io;
+    scsis_request_media(scsis);
 }
 
 static inline void scsis_get_media_descriptor(SCSIS* scsis, int size)
@@ -216,7 +219,8 @@ static inline void scsis_get_media_descriptor(SCSIS* scsis, int size)
         memcpy(scsis->media, io_data(scsis->io), scsis->io->data_size);
     } while (false);
     //media descriptor responded, inform host on ready state
-    scsis_cb_host(scsis, SCSIS_RESPONSE_READY, 0);
+    scsis->io = NULL;
+    scsis_cb_host(scsis, SCSIS_RESPONSE_RELEASE_IO, 0);
 }
 
 void scsis_request(SCSIS* scsis, IPC* ipc)

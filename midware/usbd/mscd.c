@@ -27,22 +27,30 @@ typedef enum  {
 } MSCD_STATE;
 
 typedef struct {
-    uint8_t ep_num, iface_num;
-    uint16_t ep_size;
     IO* control;
     IO* data;
+    uint8_t ep_num, iface_num;
+    uint16_t ep_size;
     MSCD_STATE state;
-    unsigned int residue, tag, csw_status;
+    unsigned int residue, tag, csw_status, lun_count;
     USBD* usbd;
 
     CBW* cbw;
-    //for multiple LUN each scsi for each LUN
-    SCSIS* scsis;
+    uint32_t io_busy_mask;
+    int io_owner;
+    //SCSIS* for each lun is following
 } MSCD;
+
+#define MSCD_SCSI(mscd)                            ((SCSIS**)((uint8_t*)(mscd) + sizeof(MSCD)))
 
 static void mscd_destroy(MSCD* mscd)
 {
-    scsis_destroy(mscd->scsis);
+    int i;
+    for (i = 0; i < mscd->lun_count; ++i)
+    {
+        if (MSCD_SCSI(mscd)[i] != NULL)
+            scsis_destroy(MSCD_SCSI(mscd)[i]);
+    }
     io_destroy(mscd->data);
     io_destroy(mscd->control);
     free(mscd);
@@ -50,9 +58,13 @@ static void mscd_destroy(MSCD* mscd)
 
 static void mscd_flush(USBD* usbd, MSCD* mscd)
 {
+    int i;
     usbd_usb_ep_flush(usbd, mscd->ep_num);
     usbd_usb_ep_flush(usbd, USB_EP_IN | mscd->ep_num);
-    scsis_reset(mscd->scsis);
+    for (i = 0; i < mscd->lun_count; ++i)
+        scsis_reset(MSCD_SCSI(mscd)[i]);
+    mscd->io_busy_mask = 0;
+    mscd->io_owner = 0xff;
     mscd->state = MSCD_STATE_IDLE;
 }
 
@@ -87,12 +99,18 @@ static void mscd_write_csw(USBD* usbd, MSCD* mscd)
 #endif //USBD_MSC_DEBUG_IO
 }
 
-static void mscd_cbw_process(MSCD* mscd)
+static void mscd_cbw_process(USBD* usbd, MSCD* mscd)
 {
-    if (scsis_is_ready(mscd->scsis))
+    if (mscd->cbw->bCBWLUN >= mscd->lun_count)
+    {
+        mscd_fatal(usbd, mscd);
+        return;
+    }
+    if (mscd->io_owner < 0)
     {
         mscd->state = MSCD_STATE_PROCESSING;
-        scsis_request_cmd(mscd->scsis, mscd->cbw->CBWCB);
+        mscd->io_owner = mscd->cbw->bCBWLUN;
+        scsis_request_cmd(MSCD_SCSI(mscd)[mscd->io_owner], mscd->data, mscd->cbw->CBWCB);
     }
 }
 
@@ -115,10 +133,30 @@ static void mscd_request_processed(USBD* usbd, MSCD* mscd)
         mscd_write_csw(usbd, mscd);
 }
 
-void mscd_host_cb(void* param, IO* io, SCSIS_RESPONSE response, unsigned int size)
+static void mscd_release_io(MSCD* mscd)
+{
+    int i;
+    mscd->io_owner = -1;
+    if (mscd->io_busy_mask)
+    {
+        for (i = 0; i < mscd->lun_count; ++i)
+        {
+            if (mscd->io_busy_mask & (1 << i))
+            {
+                mscd->io_owner = i;
+                mscd->io_busy_mask &= ~(1 << i);
+                scsis_host_give_io(MSCD_SCSI(mscd)[i], mscd->data);
+                return;
+            }
+        }
+    }
+    if (mscd->state == MSCD_STATE_CBW)
+        mscd_cbw_process(mscd->usbd, mscd);
+}
+
+void mscd_host_cb(void* param, unsigned int id, SCSIS_RESPONSE response, unsigned int size)
 {
     MSCD* mscd = param;
-
     switch (response)
     {
     case SCSIS_RESPONSE_READ:
@@ -126,13 +164,13 @@ void mscd_host_cb(void* param, IO* io, SCSIS_RESPONSE response, unsigned int siz
             size = mscd->residue;
         mscd->residue -= size;
         //some hardware required to be multiple of MPS
-        usbd_usb_ep_read(mscd->usbd, mscd->ep_num, io, (size + mscd->ep_size - 1) & ~(mscd->ep_size - 1));
+        usbd_usb_ep_read(mscd->usbd, mscd->ep_num, mscd->data, (size + mscd->ep_size - 1) & ~(mscd->ep_size - 1));
         break;
     case SCSIS_RESPONSE_WRITE:
-        if (io->data_size > mscd->residue)
-            io->data_size = mscd->residue;
-        mscd->residue -= io->data_size;
-        usbd_usb_ep_write(mscd->usbd, mscd->ep_num, io);
+        if (mscd->data->data_size > mscd->residue)
+            mscd->data->data_size = mscd->residue;
+        mscd->residue -= mscd->data->data_size;
+        usbd_usb_ep_write(mscd->usbd, mscd->ep_num, mscd->data);
         break;
     case SCSIS_RESPONSE_PASS:
         mscd->csw_status = MSC_CSW_COMMAND_PASSED;
@@ -142,9 +180,17 @@ void mscd_host_cb(void* param, IO* io, SCSIS_RESPONSE response, unsigned int siz
         mscd->csw_status = MSC_CSW_COMMAND_FAILED;
         mscd_request_processed(mscd->usbd, mscd);
         break;
-    case SCSIS_RESPONSE_READY:
-        if (mscd->state == MSCD_STATE_CBW)
-            mscd_cbw_process(mscd);
+    case SCSIS_RESPONSE_NEED_IO:
+        if (mscd->io_owner < 0)
+        {
+            mscd->io_owner = id;
+            scsis_host_give_io(MSCD_SCSI(mscd)[id], mscd->data);
+        }
+        else
+            mscd->io_busy_mask |= 1 << id;
+        break;
+    case SCSIS_RESPONSE_RELEASE_IO:
+        mscd_release_io(mscd);
         break;
     default:
         break;
@@ -155,9 +201,9 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 {
     USB_INTERFACE_DESCRIPTOR* iface;
     USB_ENDPOINT_DESCRIPTOR* ep;
-    void* storage_descriptor;
-    int idx;
-    unsigned int ep_num, ep_size, iface_num;
+    void* config;
+    int i;
+    unsigned int ep_num, ep_size, iface_num, lun_count;
     ep_num = 0;
 
     //check control/data ep here
@@ -176,16 +222,19 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
     //No MSC interface
     if (ep_num == 0)
         return;
-    idx = usbd_get_cfg(usbd, iface_num);
-    storage_descriptor = usbd_get_cfg_data(usbd, idx);
-    if (storage_descriptor == NULL || usbd_get_cfg_data_size(usbd, idx) < (int)(sizeof(SCSI_STORAGE_DESCRIPTOR)))
+    i = usbd_get_cfg(usbd, iface_num);
+    config = usbd_get_cfg_data(usbd, i);
+    lun_count = 0;
+    if (usbd_get_cfg_data_size(usbd, i) > (int)sizeof(uint32_t))
+        lun_count = MSC_LUN_COUNT(config);
+    if ((config == NULL) || (usbd_get_cfg_data_size(usbd, i) < (int)((sizeof(SCSI_STORAGE_DESCRIPTOR)) * lun_count + sizeof(uint32_t))) || (lun_count == 0))
     {
 #if (USBD_MSC_DEBUG_ERRORS)
         printf("MSCD: Failed to read user configuration\n");
 #endif //USBD_MSC_DEBUG_ERRORS
         return;
     }
-    MSCD* mscd = (MSCD*)malloc(sizeof(MSCD));
+    MSCD* mscd = (MSCD*)malloc(sizeof(MSCD) + sizeof(void*) * lun_count);
     if (mscd == NULL)
         return;
 
@@ -196,8 +245,13 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 
     mscd->control = io_create(ep_size);
     mscd->data = io_create(USBD_MSC_IO_SIZE + sizeof(STORAGE_STACK));
-    mscd->scsis = scsis_create(mscd_host_cb, mscd, storage_descriptor, mscd->data);
-    if (mscd->control == NULL || mscd->data == NULL || mscd->scsis == NULL)
+    mscd->lun_count = lun_count;
+    mscd->io_busy_mask = 0x00000000;
+    mscd->io_owner = -1;
+    mscd->cbw = io_data(mscd->control);
+    for (i = 0; i < mscd->lun_count; ++i)
+        MSCD_SCSI(mscd)[i] = scsis_create(mscd_host_cb, mscd, i, MSC_LUN_CONFIGURATION(config, i));
+    if (mscd->control == NULL || mscd->data == NULL || MSCD_SCSI(mscd)[mscd->lun_count - 1] == NULL)
     {
 #if (USBD_MSC_DEBUG_ERRORS)
         printf("MSCD: Out of memory\n");
@@ -205,6 +259,9 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
         mscd_destroy(mscd);
         return;
     }
+
+    for (i = 0; i < mscd->lun_count; ++i)
+        scsis_init(MSCD_SCSI(mscd)[i]);
 
 #if (USBD_MSC_DEBUG_REQUESTS)
     printf("Found USB MSCD class, EP%d, size: %d, iface: %d\n", ep_num, ep_size, iface_num);
@@ -216,7 +273,6 @@ void mscd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
     usbd_usb_ep_open(usbd, USB_EP_IN | ep_num, USB_EP_BULK, ep_size);
     usbd_usb_ep_open(usbd, ep_num, USB_EP_BULK, ep_size);
 
-    mscd->cbw = io_data(mscd->control);
     mscd_read_cbw(usbd, mscd);
 }
 
@@ -246,10 +302,10 @@ void mscd_class_resume(USBD* usbd, void* param)
 
 static inline int mscd_get_max_lun(USBD* usbd, MSCD* mscd, IO* io)
 {
-    *((uint8_t*)io_data(io)) = USBD_MSC_LUN_COUNT - 1;
+    *((uint8_t*)io_data(io)) = mscd->lun_count - 1;
     io->data_size = sizeof(uint8_t);
 #if (USBD_MSC_DEBUG_REQUESTS)
-    printf("MSCD: Get Max Lun - %d\n", USBD_MSC_LUN_COUNT - 1);
+    printf("MSCD: Get Max Lun - %d\n", mscd->lun_count - 1);
 #endif //USBD_MSC_DEBUG_REQUESTS
     return sizeof(uint8_t);
 }
@@ -298,7 +354,7 @@ static inline void mscd_cbw_rx(USBD* usbd, MSCD* mscd)
     mscd->state = MSCD_STATE_CBW;
     mscd->residue = mscd->cbw->dCBWDataTransferLength;
     mscd->tag = mscd->cbw->dCBWTag;
-    mscd_cbw_process(mscd);
+    mscd_cbw_process(usbd, mscd);
 }
 
 static inline void mscd_usb_io_complete(USBD* usbd, MSCD* mscd, int resp_size)
@@ -309,7 +365,7 @@ static inline void mscd_usb_io_complete(USBD* usbd, MSCD* mscd, int resp_size)
         mscd_cbw_rx(usbd, mscd);
         break;
     case MSCD_STATE_PROCESSING:
-        scsis_host_io_complete(mscd->scsis, resp_size);
+        scsis_host_io_complete(MSCD_SCSI(mscd)[mscd->io_owner], resp_size);
         break;
     case MSCD_STATE_ZLP:
         mscd_write_csw(usbd, mscd);
@@ -318,6 +374,7 @@ static inline void mscd_usb_io_complete(USBD* usbd, MSCD* mscd, int resp_size)
         mscd_read_cbw(usbd, mscd);
         break;
     default:
+        mscd_release_io(mscd);
         break;
     }
 }
@@ -344,7 +401,10 @@ void mscd_class_request(USBD* usbd, void* param, IPC* ipc)
         mscd_driver_event(usbd, mscd, ipc);
         break;
     default:
-        scsis_request(mscd->scsis, ipc);
+        if (USBD_IFACE_ITEM(ipc->param1) == mscd->io_owner)
+            scsis_request(MSCD_SCSI(mscd)[mscd->io_owner], ipc);
+        else
+            mscd_release_io(mscd);
     }
 }
 

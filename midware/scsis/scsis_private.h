@@ -258,7 +258,7 @@ typedef struct _SCSIS {
     IO* io;
     SCSIS_CB cb_host;
     void* param;
-    unsigned int lba, count, count_cur;
+    unsigned int lba, count, count_cur, id;
 #if (SCSI_LONG_LBA)
     unsigned int lba_hi;
 #endif //SCSI_LONG_LBA
