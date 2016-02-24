@@ -21,7 +21,6 @@ typedef struct {
     IO* io;
     IO* status_io;
     CCIDD_STATE state;
-    unsigned int request;
     uint16_t data_ep_size;
     uint8_t data_ep, status_ep, iface, seq, status_busy, slot_status, aborting;
 } CCIDD;
@@ -117,9 +116,7 @@ static void ccidd_send_params(USBD* usbd, CCIDD* ccidd, uint8_t error, uint8_t s
 static void ccidd_user_request(USBD* usbd, CCIDD* ccidd, unsigned int req, uint8_t param)
 {
     //hide ccid message to user
-    ccidd->io->data_offset += sizeof(CCID_MESSAGE);
-    ccidd->io->data_size -= sizeof(CCID_MESSAGE);
-    ccidd->request = req;
+    io_hide(ccidd->io, sizeof(CCID_MESSAGE));
     usbd_io_user(usbd, ccidd->iface, 0, HAL_IO_REQ(HAL_USBD_IFACE, req), ccidd->io, param);
     ccidd->state = CCIDD_STATE_CARD_REQUEST;
 }
@@ -314,7 +311,7 @@ static inline void ccidd_xfer_block(USBD* usbd, CCIDD* ccidd)
 static inline void ccidd_get_params(USBD* usbd, CCIDD* ccidd)
 {
 #if (USBD_CCID_DEBUG_REQUESTS)
-        printf("CCIDD: get params\n");
+    printf("CCIDD: get params\n");
 #endif //USBD_CCID_DEBUG_REQUESTS
     ccidd_user_request(usbd, ccidd, USB_CCID_GET_PARAMS, 0);
 }
@@ -373,7 +370,7 @@ static inline void ccidd_msg_process(USBD* usbd, CCIDD* ccidd)
 
 static inline void ccidd_abort(USBD* usbd, CCIDD* ccidd)
 {
-    ccidd->io->data_offset = 0;
+    io_reset(ccidd->io);
     CCID_MESSAGE* msg = io_data(ccidd->io);
     if (msg->bSeq == ccidd->seq && msg->bMessageType == PC_TO_RDR_ABORT)
     {
@@ -387,6 +384,7 @@ static inline void ccidd_abort(USBD* usbd, CCIDD* ccidd)
 static inline void ccidd_rx_complete(USBD* usbd, CCIDD* ccidd)
 {
     unsigned int len;
+    io_show(ccidd->io);
     switch (ccidd->state)
     {
     case CCIDD_STATE_IDLE:
@@ -396,8 +394,7 @@ static inline void ccidd_rx_complete(USBD* usbd, CCIDD* ccidd)
             //more than one frame
             if (len  + sizeof(CCID_MESSAGE) > ccidd->data_ep_size)
             {
-                ccidd->io->data_size -= ccidd->data_ep_size;
-                ccidd->io->data_offset += ccidd->data_ep_size;
+                io_hide(ccidd->io, ccidd->data_ep_size);
                 ccidd->state = CCIDD_STATE_RX;
                 //some hardware required to be multiple of MPS
                 usbd_usb_ep_read(usbd, ccidd->data_ep, ccidd->io, (len  + sizeof(CCID_MESSAGE) - 1) & ~(ccidd->data_ep_size - 1));
@@ -409,8 +406,6 @@ static inline void ccidd_rx_complete(USBD* usbd, CCIDD* ccidd)
             ccidd_rx(usbd, ccidd);
         break;
     case CCIDD_STATE_RX:
-        ccidd->io->data_size += ccidd->data_ep_size;
-        ccidd->io->data_offset -= ccidd->data_ep_size;
         ccidd_msg_process(usbd, ccidd);
         break;
     default:
@@ -549,8 +544,7 @@ static inline void ccidd_user_response(USBD* usbd, CCIDD* ccidd, IPC* ipc)
     //ignore on abort
     if (ccidd->aborting)
         return;
-    ccidd->io->data_offset -= sizeof(CCID_MESSAGE);
-    ccidd->io->data_size += sizeof(CCID_MESSAGE);
+    io_show(ccidd->io);
     switch (HAL_ITEM(ipc->cmd))
     {
     case USB_CCID_POWER_ON:
