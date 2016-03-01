@@ -38,12 +38,13 @@ typedef enum {
 } SCSI_REQUEST;
 
 typedef struct {
-    HAL hal;
     HANDLE storage, user;
     char* vendor;
     char* product;
     char* revision;
+    unsigned int hidden_sectors;
     uint16_t flags;
+    HAL hal;
     uint8_t scsi_device_type;
 } SCSI_STORAGE_DESCRIPTOR;
 

@@ -55,7 +55,7 @@ void scsis_bc_read_capacity16(SCSIS* scsis, uint8_t* req)
         scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
         return;
     }
-    if ((scsis->media->num_sectors_hi < lba_hi) || ((scsis->media->num_sectors_hi == lba_hi) && (scsis->media->num_sectors_hi < lba_hi)))
+    if ((scsis->media->num_sectors_hi < lba_hi) || ((scsis->media->num_sectors_hi == lba_hi) && (scsis->media->num_sectors < lba)))
         lba_hi = lba = 0xffffffff;
     else
     {

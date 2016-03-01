@@ -217,6 +217,13 @@ static inline void scsis_get_media_descriptor(SCSIS* scsis, int size)
             //out of memory, no media
             break;
         memcpy(scsis->media, io_data(scsis->io), scsis->io->data_size);
+        if (scsis->storage_descriptor->hidden_sectors > scsis->media->num_sectors)
+        {
+            --scsis->media->num_sectors_hi;
+            scsis->media->num_sectors = 0xffffffff - scsis->storage_descriptor->hidden_sectors + scsis->media->num_sectors + 1;
+        }
+        else
+            scsis->media->num_sectors -= scsis->storage_descriptor->hidden_sectors;
     } while (false);
     //media descriptor responded, inform host on ready state
     scsis->io = NULL;
