@@ -414,14 +414,17 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io,
     }
     else
     {
-        if (stack->flags == STORAGE_FLAG_WRITE)
+        switch (stack->flags)
         {
+        case STORAGE_FLAG_ERASE_ONLY:
+            sdmmcs_erase(&core->sdmmc.sdmmcs, stack->sector, stack->count);
+            break;
+        case STORAGE_FLAG_WRITE:
             core->sdmmc.state = SDMMC_STATE_WRITE;
             if (sdmmcs_write(&core->sdmmc.sdmmcs, stack->sector, stack->count))
                 error(ERROR_SYNC);
-        }
-        else
-        {
+            break;
+        default:
             //verify/verify write
             sha1_init(&sha1);
             sha1_update(&sha1, io_data(io), core->sdmmc.total);
