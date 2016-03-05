@@ -42,7 +42,7 @@ void storage_read(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sec
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
     stack->count = count;
-    io_read(process, HAL_IO_REQ(hal, IPC_READ), user, io, count);
+    io_read(process, HAL_IO_REQ(hal, IPC_READ), user, io, count * STORAGE_SECTOR_SIZE);
 }
 
 bool storage_read_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count)
@@ -50,7 +50,7 @@ bool storage_read_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned in
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
     stack->count = count;
-    return (io_read_sync(process, HAL_IO_REQ(hal, IPC_READ), user, io, count) == count * STORAGE_SECTOR_SIZE);
+    return (io_read_sync(process, HAL_IO_REQ(hal, IPC_READ), user, io, count * STORAGE_SECTOR_SIZE) == count * STORAGE_SECTOR_SIZE);
 }
 
 static void storage_write_internal(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count, unsigned int flags)
