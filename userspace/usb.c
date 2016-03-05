@@ -162,5 +162,5 @@ bool usbd_register_configuration(HANDLE usbd, uint16_t cfg, uint16_t iface, cons
 
 bool usbd_unregister_configuration(HANDLE usbd, uint16_t cfg, uint16_t iface)
 {
-    return get(usbd, HAL_CMD(HAL_USBD, USBD_UNREGISTER_CONFIGURATION), (cfg << 16) | iface, 0, 0) >= 0;
+    return get(usbd, HAL_REQ(HAL_USBD, USBD_UNREGISTER_CONFIGURATION), (cfg << 16) | iface, 0, 0) >= 0;
 }

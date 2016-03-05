@@ -1135,7 +1135,6 @@ static inline void usbd_device_register_configuration(USBD* usbd, uint16_t cfg, 
     rec = CFG(usbd, array_size(usbd->cfgs) - 1);
     rec->cfg = cfg;
     rec->iface = iface;
-    rec->data = malloc(io->data_size);
     if ((rec->data = malloc(io->data_size)) == NULL)
     {
         array_remove(&usbd->cfgs, array_size(usbd->cfgs) - 1);
@@ -1148,11 +1147,14 @@ static inline void usbd_device_register_configuration(USBD* usbd, uint16_t cfg, 
 static inline void usbd_device_unregister_configuration(USBD* usbd, uint16_t cfg, uint16_t iface)
 {
     int i = usbd_get_cfg_internal(usbd, cfg, iface);
+    USBD_CFG* rec;
     if (i < 0)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
     }
+    rec = CFG(usbd, array_size(usbd->cfgs) - 1);
+    free(rec->data);
     array_remove(&usbd->cfgs, i);
 }
 
