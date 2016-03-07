@@ -111,3 +111,7 @@ bool storage_write_verify_sync(HAL hal, HANDLE process, HANDLE user, IO* io, uns
     return storage_write_sync_internal(hal, process, user, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_WRITE | STORAGE_FLAG_VERIFY);
 }
 
+void storage_request_activity_notify(HAL hal, HANDLE process, HANDLE user)
+{
+    ipc_post_inline(process, HAL_REQ(hal, STORAGE_NOTIFY_ACTIVITY), user, 0, 0);
+}

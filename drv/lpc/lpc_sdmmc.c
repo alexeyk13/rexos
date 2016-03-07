@@ -112,6 +112,7 @@ void lpc_sdmmc_init(CORE* core)
     core->sdmmc.user = INVALID_HANDLE;
     core->sdmmc.state = SDMMC_STATE_IDLE;
     core->sdmmc.descr = NULL;
+    core->sdmmc.activity = INVALID_HANDLE;
 }
 
 static void lpc_sdmmc_start_cmd(unsigned int cmd)
@@ -400,6 +401,11 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io,
         error(ERROR_INVALID_PARAMS);
         return;
     }
+    if ((core->sdmmc.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
+    {
+        ipc_post_inline(core->sdmmc.activity, HAL_CMD(HAL_SDMMC, STORAGE_NOTIFY_ACTIVITY), core->sdmmc.user, read ? 0 : STORAGE_FLAG_WRITE, 0);
+        core->sdmmc.activity = INVALID_HANDLE;
+    }
     core->sdmmc.io = io;
     core->sdmmc.process = process;
 
@@ -508,6 +514,17 @@ static inline void lpc_sdmmc_get_media_descriptor(CORE* core, HANDLE process, HA
     error(ERROR_SYNC);
 }
 
+static inline void lpc_sdmmc_request_notify_activity(CORE* core, HANDLE process)
+{
+    if (core->sdmmc.activity != INVALID_HANDLE)
+    {
+        error(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+    core->sdmmc.activity = process;
+    error(ERROR_SYNC);
+}
+
 void lpc_sdmmc_request(CORE* core, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -532,6 +549,9 @@ void lpc_sdmmc_request(CORE* core, IPC* ipc)
         break;
     case STORAGE_GET_MEDIA_DESCRIPTOR:
         lpc_sdmmc_get_media_descriptor(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2);
+        break;
+    case STORAGE_NOTIFY_ACTIVITY:
+        lpc_sdmmc_request_notify_activity(core, ipc->process);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

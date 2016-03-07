@@ -17,10 +17,13 @@
 #define STORAGE_FLAG_WRITE                                              (1 << 0)
 #define STORAGE_FLAG_VERIFY                                             (1 << 1)
 
+#define STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST                         (1 << 31)
+
 typedef enum {
     STORAGE_GET_MEDIA_DESCRIPTOR = IPC_USER,
     STORAGE_NOTIFY_STATE_CHANGE,
     STORAGE_CANCEL_NOTIFY_STATE_CHANGE,
+    STORAGE_NOTIFY_ACTIVITY,
     STORAGE_IPC_MAX
 } STORAGE_IPCS;
 
@@ -54,5 +57,6 @@ void storage_verify(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int s
 bool storage_verify_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector);
 void storage_write_verify(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector);
 bool storage_write_verify_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector);
+void storage_request_activity_notify(HAL hal, HANDLE process, HANDLE user);
 
 #endif // STORAGE_H
