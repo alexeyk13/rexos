@@ -406,6 +406,7 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io,
         ipc_post_inline(core->sdmmc.activity, HAL_CMD(HAL_SDMMC, STORAGE_NOTIFY_ACTIVITY), core->sdmmc.user, read ? 0 : STORAGE_FLAG_WRITE, 0);
         core->sdmmc.activity = INVALID_HANDLE;
     }
+    stack->flags &= ~STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST;
     core->sdmmc.io = io;
     core->sdmmc.process = process;
 
