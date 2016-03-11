@@ -366,9 +366,10 @@ static void lpc_sdmmc_prepare_descriptors(CORE* core)
     LPC_SDMMC->BYTCNT = core->sdmmc.total;
 }
 
-static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io, bool read)
+static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io, unsigned int size, bool read)
 {
     SHA1_CTX sha1;
+    unsigned int count;
     STORAGE_STACK* stack = io_stack(io);
     io_pop(io, sizeof(STORAGE_STACK));
     if (!core->sdmmc.active)
@@ -381,19 +382,17 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io,
         error(ERROR_IN_PROGRESS);
         return;
     }
-    if (user != core->sdmmc.user)
+    if ((user != core->sdmmc.user) || (size == 0) || (size % core->sdmmc.sdmmcs.sector_size))
     {
         error(ERROR_INVALID_PARAMS);
         return;
     }
-    core->sdmmc.total = stack->count * core->sdmmc.sdmmcs.sector_size;
+    count = size / core->sdmmc.sdmmcs.sector_size;
+    core->sdmmc.total = size;
     //erase
-    if (!read && (stack->flags == 0))
+    if (!read && ((stack->flags & STORAGE_MASK_MODE) == 0))
     {
-        if (!sdmmcs_erase(&core->sdmmc.sdmmcs, stack->sector, stack->count))
-            return;
-        io_complete_ex(process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), core->sdmmc.user, io, stack->count * core->sdmmc.sdmmcs.sector_size);
-        error(ERROR_SYNC);
+        sdmmcs_erase(&core->sdmmc.sdmmcs, stack->sector, count);
         return;
     }
     if (core->sdmmc.total > LPC_SDMMC_TOTAL_SIZE)
@@ -406,7 +405,6 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io,
         ipc_post_inline(core->sdmmc.activity, HAL_CMD(HAL_SDMMC, STORAGE_NOTIFY_ACTIVITY), core->sdmmc.user, read ? 0 : STORAGE_FLAG_WRITE, 0);
         core->sdmmc.activity = INVALID_HANDLE;
     }
-    stack->flags &= ~STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST;
     core->sdmmc.io = io;
     core->sdmmc.process = process;
 
@@ -416,19 +414,19 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io,
     {
         io->data_size = 0;
         core->sdmmc.state = SDMMC_STATE_READ;
-        if (sdmmcs_read(&core->sdmmc.sdmmcs, stack->sector, stack->count))
+        if (sdmmcs_read(&core->sdmmc.sdmmcs, stack->sector, count))
             error(ERROR_SYNC);
     }
     else
     {
-        switch (stack->flags)
+        switch (stack->flags & STORAGE_MASK_MODE)
         {
         case STORAGE_FLAG_ERASE_ONLY:
-            sdmmcs_erase(&core->sdmmc.sdmmcs, stack->sector, stack->count);
+            sdmmcs_erase(&core->sdmmc.sdmmcs, stack->sector, count);
             break;
         case STORAGE_FLAG_WRITE:
             core->sdmmc.state = SDMMC_STATE_WRITE;
-            if (sdmmcs_write(&core->sdmmc.sdmmcs, stack->sector, stack->count))
+            if (sdmmcs_write(&core->sdmmc.sdmmcs, stack->sector, count))
                 error(ERROR_SYNC);
             break;
         default:
@@ -437,16 +435,16 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io,
             sha1_update(&sha1, io_data(io), core->sdmmc.total);
             sha1_final(&sha1, core->sdmmc.hash);
             core->sdmmc.sector = stack->sector;
-            switch (stack->flags)
+            switch (stack->flags & STORAGE_MASK_MODE)
             {
             case STORAGE_FLAG_VERIFY:
                 core->sdmmc.state = SDMMC_STATE_VERIFY;
-                if (sdmmcs_read(&core->sdmmc.sdmmcs, stack->sector, stack->count))
+                if (sdmmcs_read(&core->sdmmc.sdmmcs, stack->sector, count))
                     error(ERROR_SYNC);
                 break;
             case (STORAGE_FLAG_VERIFY | STORAGE_FLAG_WRITE):
                 core->sdmmc.state = SDMMC_STATE_WRITE_VERIFY;
-                if (sdmmcs_write(&core->sdmmc.sdmmcs, stack->sector, stack->count))
+                if (sdmmcs_write(&core->sdmmc.sdmmcs, stack->sector, count))
                     error(ERROR_SYNC);
                 break;
             default:
@@ -537,10 +535,10 @@ void lpc_sdmmc_request(CORE* core, IPC* ipc)
         lpc_sdmmc_close(core);
         break;
     case IPC_READ:
-        lpc_sdmmc_io(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, true);
+        lpc_sdmmc_io(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3, true);
         break;
     case IPC_WRITE:
-        lpc_sdmmc_io(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, false);
+        lpc_sdmmc_io(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3, false);
         break;
     case IPC_FLUSH:
         lpc_sdmmc_flush(core);

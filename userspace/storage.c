@@ -37,78 +37,74 @@ STORAGE_MEDIA_DESCRIPTOR* storage_get_media_descriptor_sync(HAL hal, HANDLE proc
     return io_data(io);
 }
 
-void storage_read(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count)
+void storage_read(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int size)
 {
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
-    stack->count = count;
-    io_read(process, HAL_IO_REQ(hal, IPC_READ), user, io, count * STORAGE_SECTOR_SIZE);
+    io_read(process, HAL_IO_REQ(hal, IPC_READ), user, io, size);
 }
 
-bool storage_read_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count)
+bool storage_read_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int size)
 {
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
-    stack->count = count;
-    return (io_read_sync(process, HAL_IO_REQ(hal, IPC_READ), user, io, count * STORAGE_SECTOR_SIZE) == count * STORAGE_SECTOR_SIZE);
+    return (io_read_sync(process, HAL_IO_REQ(hal, IPC_READ), user, io, size) == size);
 }
 
 static void storage_write_internal(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count, unsigned int flags)
 {
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
-    stack->count = count;
     stack->flags = flags;
     io_write(process, HAL_IO_REQ(hal, IPC_WRITE), user, io);
 }
 
-static bool storage_write_sync_internal(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count, unsigned int flags)
+static bool storage_write_sync_internal(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int size, unsigned int flags)
 {
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
-    stack->count = count;
     stack->flags = flags;
-    return (io_write_sync(process, HAL_IO_REQ(hal, IPC_WRITE), user, io) == count * STORAGE_SECTOR_SIZE);
+    return (io_read_sync(process, HAL_IO_REQ(hal, IPC_WRITE), user, io, size) == size);
 }
 
 void storage_write(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector)
 {
-    storage_write_internal(hal, process, user, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_WRITE);
+    storage_write_internal(hal, process, user, io, sector, io->data_size, STORAGE_FLAG_WRITE);
 }
 
 bool storage_write_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector)
 {
-    return storage_write_sync_internal(hal, process, user, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_WRITE);
+    return storage_write_sync_internal(hal, process, user, io, sector, io->data_size, STORAGE_FLAG_WRITE);
 }
 
-void storage_erase(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count)
+void storage_erase(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int size)
 {
-    storage_write_internal(hal, process, user, io, sector, count, 0);
+    storage_write_internal(hal, process, user, io, sector, size, 0);
 }
 
-bool storage_erase_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int count)
+bool storage_erase_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector, unsigned int size)
 {
-    return storage_write_sync_internal(hal, process, user, io, sector, count, 0);
+    return storage_write_sync_internal(hal, process, user, io, sector, size, 0);
 }
 
 void storage_verify(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector)
 {
-    storage_write_internal(hal, process, user, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_VERIFY);
+    storage_write_internal(hal, process, user, io, sector, io->data_size, STORAGE_FLAG_VERIFY);
 }
 
 bool storage_verify_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector)
 {
-    return storage_write_sync_internal(hal, process, user, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_VERIFY);
+    return storage_write_sync_internal(hal, process, user, io, sector, io->data_size, STORAGE_FLAG_VERIFY);
 }
 
 void storage_write_verify(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector)
 {
-    storage_write_internal(hal, process, user, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_WRITE | STORAGE_FLAG_VERIFY);
+    storage_write_internal(hal, process, user, io, sector, io->data_size, STORAGE_FLAG_WRITE | STORAGE_FLAG_VERIFY);
 }
 
 bool storage_write_verify_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector)
 {
-    return storage_write_sync_internal(hal, process, user, io, sector, io->data_size / STORAGE_SECTOR_SIZE, STORAGE_FLAG_WRITE | STORAGE_FLAG_VERIFY);
+    return storage_write_sync_internal(hal, process, user, io, sector, io->data_size, STORAGE_FLAG_WRITE | STORAGE_FLAG_VERIFY);
 }
 
 void storage_request_activity_notify(HAL hal, HANDLE process, HANDLE user)

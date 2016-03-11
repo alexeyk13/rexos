@@ -81,16 +81,6 @@ void scsis_bc_read_capacity16(SCSIS* scsis, uint8_t* req)
 }
 #endif //SCSI_LONG_LBA
 
-static inline void scsis_storage_read(SCSIS* scsis)
-{
-    STORAGE_STACK* stack = io_push(scsis->io, sizeof(STORAGE_STACK));
-    stack->sector = scsis->lba;
-    stack->count = scsis->count_cur;
-    stack->flags = 0;
-    io_read(scsis->storage_descriptor->storage, HAL_IO_REQ(scsis->storage_descriptor->hal, IPC_READ), scsis->storage_descriptor->user, scsis->io,
-                scsis->count_cur * scsis->media->sector_size);
-}
-
 static void scsis_io(SCSIS* scsis)
 {
     scsis->io->data_size = 0;
@@ -120,7 +110,8 @@ static void scsis_io(SCSIS* scsis)
     switch (scsis->state)
     {
     case SCSIS_STATE_READ:
-        scsis_storage_read(scsis);
+        storage_read(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user,
+                     scsis->io, scsis->lba, scsis->count_cur * scsis->media->sector_size);
         break;
     case SCSIS_STATE_WRITE:
 #if (SCSI_VERIFY_SUPPORTED)
@@ -168,15 +159,6 @@ static bool scsis_bc_io_response_check(SCSIS* scsis, int size)
     return true;
 }
 
-static inline void scsis_storage_write(SCSIS* scsis, unsigned int flags)
-{
-    STORAGE_STACK* stack = io_push(scsis->io, sizeof(STORAGE_STACK));
-    stack->sector = scsis->lba;
-    stack->count = scsis->count_cur;
-    stack->flags = flags;
-    io_write(scsis->storage_descriptor->storage, HAL_IO_REQ(scsis->storage_descriptor->hal, IPC_WRITE), scsis->storage_descriptor->user, scsis->io);
-}
-
 void scsis_bc_host_io_complete(SCSIS* scsis, int resp_size)
 {
     if (!scsis_bc_io_response_check(scsis, resp_size))
@@ -191,14 +173,17 @@ void scsis_bc_host_io_complete(SCSIS* scsis, int resp_size)
         if (scsis->count == 0)
             scsis_cb_host(scsis, SCSIS_RESPONSE_PASS, 0);
 #endif //SCSI_WRITE_CACHE
-        scsis_storage_write(scsis, STORAGE_FLAG_WRITE);
+        storage_write(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user,
+                      scsis->io, scsis->lba);
         break;
 #if (SCSI_VERIFY_SUPPORTED)
     case SCSIS_STATE_VERIFY:
-        scsis_storage_write(scsis, STORAGE_FLAG_VERIFY);
+        storage_verify(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user,
+                      scsis->io, scsis->lba);
         break;
     case SCSIS_STATE_WRITE_VERIFY:
-        scsis_storage_write(scsis, STORAGE_FLAG_WRITE | STORAGE_FLAG_VERIFY);
+        storage_write_verify(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user,
+                      scsis->io, scsis->lba);
         break;
 #endif //SCSI_VERIFY_SUPPORTED
     default:
