@@ -9,6 +9,7 @@
 #include "scsis_pc.h"
 #include "scsis_bc.h"
 #include "scsis_sat.h"
+#include "scsis_mmc.h"
 #include "sys_config.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/stdio.h"
@@ -182,6 +183,14 @@ void scsis_request_cmd(SCSIS* scsis, IO* io, uint8_t* req)
         scsis_sat_ata_pass_through16(scsis, req);
         break;
 #endif //SCSI_SAT
+#if (SCSI_MMC)
+    case SCSI_MMC_CMD_READ_TOC:
+        scsis_mmc_read_toc(scsis, req);
+        break;
+    case SCSI_MMC_CMD_GET_CONFIGURATION:
+        scsis_mmc_get_configuration(scsis, req);
+        break;
+#endif //SCSI_MMC
     default:
 #if (SCSI_DEBUG_ERRORS)
         printf("SCSI: unknown cmd opcode: %02xh\n", req[0]);

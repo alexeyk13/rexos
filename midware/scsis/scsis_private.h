@@ -111,6 +111,8 @@
 #define SCSI_SBC_CMD_READ_DEFECT_DATA12                                     0xb7
 //------------------------------- SCSI MMC --------------------------------------------------
 #define SCSI_MMC_CMD_READ_FORMAT_CAPACITY                                   0x23
+#define SCSI_MMC_CMD_READ_TOC                                               0x43
+#define SCSI_MMC_CMD_GET_CONFIGURATION                                      0x46
 
 //------------------------------- SCSI SAT --------------------------------------------------
 #define SCSI_SAT_CMD_ATA_PASS_THROUGH16                                     0x85
