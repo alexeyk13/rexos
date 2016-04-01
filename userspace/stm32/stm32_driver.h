@@ -7,7 +7,7 @@
 #ifndef STM32_DRIVER_H
 #define STM32_DRIVER_H
 
-#include "core/stm32.h"
+#include "stm32.h"
 #include "stm32_config.h"
 #include "adc.h"
 #include "power.h"

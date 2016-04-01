@@ -11,7 +11,7 @@
     core.h - core functions and model decoder. Alternatively you can specify in defines: SRAM_BASE, SRAM_SIZE, FLASH_BASE, core and vendor.
 */
 
-#include "stm32.h"
+#include "../stm32/stm32.h"
 #include "../lpc/lpc.h"
 
 #ifdef CORTEX_M

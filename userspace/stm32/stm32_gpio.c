@@ -4,10 +4,10 @@
     All rights reserved.
 */
 
-#include "lib_gpio.h"
-#include "../userspace/stm32_driver.h"
+#include "../gpio.h"
+#include "stm32_driver.h"
 
-void stm32_lib_gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
+void gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
 {
 #if defined(STM32F1)
     switch (mode)
@@ -44,7 +44,7 @@ void stm32_lib_gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
 #endif
 }
 
-void stm32_lib_gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int mask)
+void gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int mask)
 {
     unsigned int bit;
     unsigned int cur = mask;
@@ -52,16 +52,16 @@ void stm32_lib_gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int 
     {
         bit = 31 - __builtin_clz(cur);
         cur &= ~(1 << bit);
-        stm32_lib_gpio_enable_pin(GPIO_MAKE_PIN(port, bit), mode);
+        gpio_enable_pin(GPIO_MAKE_PIN(port, bit), mode);
     }
 }
 
-void stm32_lib_gpio_disable_pin(unsigned int pin)
+void gpio_disable_pin(unsigned int pin)
 {
     ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), pin, 0, 0);
 }
 
-void stm32_lib_gpio_disable_mask(unsigned int port, unsigned int mask)
+void gpio_disable_mask(unsigned int port, unsigned int mask)
 {
     unsigned int bit;
     unsigned int cur = mask;
@@ -69,11 +69,11 @@ void stm32_lib_gpio_disable_mask(unsigned int port, unsigned int mask)
     {
         bit = 31 - __builtin_clz(cur);
         cur &= ~(1 << bit);
-        stm32_lib_gpio_disable_pin(GPIO_MAKE_PIN(port, bit));
+        gpio_disable_pin(GPIO_MAKE_PIN(port, bit));
     }
 }
 
-void stm32_lib_gpio_set_pin(unsigned int pin)
+void gpio_set_pin(unsigned int pin)
 {
 #if defined(STM32F1) || defined (STM32L0)
     GPIO[GPIO_PORT(pin)]->BSRR = 1 << GPIO_PIN(pin);
@@ -82,7 +82,7 @@ void stm32_lib_gpio_set_pin(unsigned int pin)
 #endif
 }
 
-void stm32_lib_gpio_set_mask(unsigned int port, unsigned int mask)
+void gpio_set_mask(unsigned int port, unsigned int mask)
 {
 #if defined(STM32F1) || defined (STM32L0)
     GPIO[port]->BSRR = mask;
@@ -91,7 +91,7 @@ void stm32_lib_gpio_set_mask(unsigned int port, unsigned int mask)
 #endif
 }
 
-void stm32_lib_gpio_reset_pin(unsigned int pin)
+void gpio_reset_pin(unsigned int pin)
 {
 #if defined(STM32F1) || defined (STM32L0)
     GPIO[GPIO_PORT(pin)]->BRR = 1 << GPIO_PIN(pin);
@@ -100,7 +100,7 @@ void stm32_lib_gpio_reset_pin(unsigned int pin)
 #endif
 }
 
-void stm32_lib_gpio_reset_mask(unsigned int port, unsigned int mask)
+void gpio_reset_mask(unsigned int port, unsigned int mask)
 {
 #if defined(STM32F1) || defined (STM32L0)
     GPIO[port]->BRR = mask;
@@ -109,17 +109,17 @@ void stm32_lib_gpio_reset_mask(unsigned int port, unsigned int mask)
 #endif
 }
 
-bool stm32_lib_gpio_get_pin(unsigned int pin)
+bool gpio_get_pin(unsigned int pin)
 {
     return (GPIO[GPIO_PORT(pin)]->IDR >> GPIO_PIN(pin)) & 1;
 }
 
-unsigned int stm32_lib_gpio_get_mask(unsigned port, unsigned int mask)
+unsigned int gpio_get_mask(unsigned port, unsigned int mask)
 {
     return GPIO[port]->IDR & mask;
 }
 
-void stm32_lib_gpio_set_data_out(unsigned int port, unsigned int wide)
+void gpio_set_data_out(unsigned int port, unsigned int wide)
 {
 #if defined(STM32F1)
     unsigned int mask = (1 << ((((wide - 1) & 7) + 1) << 2)) - 1;
@@ -138,7 +138,7 @@ void stm32_lib_gpio_set_data_out(unsigned int port, unsigned int wide)
 #endif
 }
 
-void stm32_lib_gpio_set_data_in(unsigned int port, unsigned int wide)
+void gpio_set_data_in(unsigned int port, unsigned int wide)
 {
 #if defined(STM32F1)
     unsigned int mask = (1 << ((((wide - 1) & 7) + 1) << 2)) - 1;
@@ -155,18 +155,3 @@ void stm32_lib_gpio_set_data_in(unsigned int port, unsigned int wide)
     GPIO[port]->MODER &= ~mask;
 #endif
 }
-
-const LIB_GPIO __LIB_GPIO = {
-    stm32_lib_gpio_enable_pin,
-    stm32_lib_gpio_enable_mask,
-    stm32_lib_gpio_disable_pin,
-    stm32_lib_gpio_disable_mask,
-    stm32_lib_gpio_set_pin,
-    stm32_lib_gpio_set_mask,
-    stm32_lib_gpio_reset_pin,
-    stm32_lib_gpio_reset_mask,
-    stm32_lib_gpio_get_pin,
-    stm32_lib_gpio_get_mask,
-    stm32_lib_gpio_set_data_out,
-    stm32_lib_gpio_set_data_in
-};

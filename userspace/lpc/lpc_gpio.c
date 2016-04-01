@@ -4,9 +4,9 @@
     All rights reserved.
 */
 
-#include "lib_gpio.h"
-#include "../userspace/lpc/lpc_driver.h"
-#include "../userspace/object.h"
+#include "lpc_driver.h"
+#include "../object.h"
+#include "../gpio.h"
 #include "sys_config.h"
 
 #if defined(LPC11Uxx)
@@ -67,7 +67,7 @@ static const uint16_t __GPIO_PIN[PIO_MAX] =
 #define PIN_RAW(gpio)                   (__GPIO_PIN[(gpio)])
 #endif
 
-void lpc_lib_gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
+void gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
 {
     unsigned int param = 0;
 #ifdef LPC11Uxx
@@ -122,7 +122,7 @@ void lpc_lib_gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
         LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
 }
 
-void lpc_lib_gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int mask)
+void gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int mask)
 {
     unsigned int bit;
     unsigned int cur = mask;
@@ -130,17 +130,17 @@ void lpc_lib_gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int ma
     {
         bit = 31 - __builtin_clz(cur);
         cur &= ~(1 << bit);
-        lpc_lib_gpio_enable_pin(GPIO_MAKE_PIN(port, bit), mode);
+        gpio_enable_pin(GPIO_MAKE_PIN(port, bit), mode);
     }
 }
 
-void lpc_lib_gpio_disable_pin(unsigned int pin)
+void gpio_disable_pin(unsigned int pin)
 {
     LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
     ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, LPC_PIN_DISABLE), PIN_RAW(pin), 0, 0);
 }
 
-void lpc_lib_gpio_disable_mask(unsigned int port, unsigned int mask)
+void gpio_disable_mask(unsigned int port, unsigned int mask)
 {
     unsigned int bit;
     unsigned int cur = mask;
@@ -148,61 +148,46 @@ void lpc_lib_gpio_disable_mask(unsigned int port, unsigned int mask)
     {
         bit = 31 - __builtin_clz(cur);
         cur &= ~(1 << bit);
-        lpc_lib_gpio_disable_pin(GPIO_MAKE_PIN(port, bit));
+        gpio_disable_pin(GPIO_MAKE_PIN(port, bit));
     }
 }
 
-void lpc_lib_gpio_set_pin(unsigned int pin)
+void gpio_set_pin(unsigned int pin)
 {
     LPC_GPIO->B[pin] = 1;
 }
 
-void lpc_lib_gpio_set_mask(unsigned int port, unsigned int mask)
+void gpio_set_mask(unsigned int port, unsigned int mask)
 {
     LPC_GPIO->SET[port] = mask;
 }
 
-void lpc_lib_gpio_reset_pin(unsigned int pin)
+void gpio_reset_pin(unsigned int pin)
 {
     LPC_GPIO->B[pin] = 0;
 }
 
-void lpc_lib_gpio_reset_mask(unsigned int port, unsigned int mask)
+void gpio_reset_mask(unsigned int port, unsigned int mask)
 {
     LPC_GPIO->CLR[port] = mask;
 }
 
-bool lpc_lib_gpio_get_pin(unsigned int pin)
+bool gpio_get_pin(unsigned int pin)
 {
     return LPC_GPIO->B[pin] & 1;
 }
 
-unsigned int lpc_lib_gpio_get_mask(unsigned port, unsigned int mask)
+unsigned int gpio_get_mask(unsigned port, unsigned int mask)
 {
     return LPC_GPIO->PIN[port] & mask;
 }
 
-void lpc_lib_gpio_set_data_out(unsigned int port, unsigned int wide)
+void gpio_set_data_out(unsigned int port, unsigned int wide)
 {
     LPC_GPIO->DIR[port] |= (1 << wide) - 1;
 }
 
-void lpc_lib_gpio_set_data_in(unsigned int port, unsigned int wide)
+void gpio_set_data_in(unsigned int port, unsigned int wide)
 {
     LPC_GPIO->DIR[port] &= ~((1 << wide) - 1);
 }
-
-const LIB_GPIO __LIB_GPIO = {
-    lpc_lib_gpio_enable_pin,
-    lpc_lib_gpio_enable_mask,
-    lpc_lib_gpio_disable_pin,
-    lpc_lib_gpio_disable_mask,
-    lpc_lib_gpio_set_pin,
-    lpc_lib_gpio_set_mask,
-    lpc_lib_gpio_reset_pin,
-    lpc_lib_gpio_reset_mask,
-    lpc_lib_gpio_get_pin,
-    lpc_lib_gpio_get_mask,
-    lpc_lib_gpio_set_data_out,
-    lpc_lib_gpio_set_data_in
-};
