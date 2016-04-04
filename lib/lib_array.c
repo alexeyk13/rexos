@@ -4,12 +4,10 @@
     All rights reserved.
 */
 
-#include "array.h"
-#include "stdlib.h"
-#include "process.h"
-#include "svc.h"
+#include "lib_array.h"
+#include "../userspace/stdlib.h"
+#include "../userspace/error.h"
 #include <string.h>
-
 
 typedef struct _ARRAY {
     unsigned int size, reserved, data_size;
@@ -17,7 +15,7 @@ typedef struct _ARRAY {
 
 #define ARRAY_DATA(ar)                      (((void*)(ar)) + sizeof(ARRAY))
 
-ARRAY* array_create(ARRAY** ar, unsigned int data_size, unsigned int reserved)
+ARRAY* lib_array_create(ARRAY** ar, unsigned int data_size, unsigned int reserved)
 {
     *ar = malloc(sizeof(ARRAY) + data_size * reserved);
     if (*ar)
@@ -29,13 +27,13 @@ ARRAY* array_create(ARRAY** ar, unsigned int data_size, unsigned int reserved)
     return (*ar);
 }
 
-void array_destroy(ARRAY **ar)
+void lib_array_destroy(ARRAY **ar)
 {
     free(*ar);
     *ar = NULL;
 }
 
-void* array_at(ARRAY* ar, unsigned int index)
+void* lib_array_at(ARRAY* ar, unsigned int index)
 {
     if (ar == NULL)
         return NULL;
@@ -47,14 +45,14 @@ void* array_at(ARRAY* ar, unsigned int index)
     return ARRAY_DATA(ar) + index * ar->data_size;
 }
 
-unsigned int array_size(ARRAY* ar)
+unsigned int lib_array_size(ARRAY* ar)
 {
     if (ar == NULL)
         return 0;
     return ar->size;
 }
 
-void* array_append(ARRAY **ar)
+void* lib_array_append(ARRAY **ar)
 {
     ARRAY* tmp;
     if (*ar == NULL)
@@ -71,10 +69,10 @@ void* array_append(ARRAY **ar)
             return NULL;
         (*ar) = tmp;
     }
-    return array_at(*ar, (*ar)->size - 1);
+    return lib_array_at(*ar, (*ar)->size - 1);
 }
 
-void* array_insert(ARRAY **ar, unsigned int index)
+void* lib_array_insert(ARRAY **ar, unsigned int index)
 {
     if (array_append(ar) == NULL)
         return NULL;
@@ -84,10 +82,10 @@ void* array_insert(ARRAY **ar, unsigned int index)
         return (*ar);
     }
     memmove(ARRAY_DATA(*ar) + (index + 1) * (*ar)->data_size, ARRAY_DATA(*ar) + index * (*ar)->data_size, ((*ar)->size - index - 1) * (*ar)->data_size);
-    return array_at(*ar, index);
+    return lib_array_at(*ar, index);
 }
 
-ARRAY* array_clear(ARRAY **ar)
+ARRAY* lib_array_clear(ARRAY **ar)
 {
     if (*ar == NULL)
         return NULL;
@@ -95,7 +93,7 @@ ARRAY* array_clear(ARRAY **ar)
     return (*ar);
 }
 
-ARRAY* array_remove(ARRAY** ar, unsigned int index)
+ARRAY* lib_array_remove(ARRAY** ar, unsigned int index)
 {
     if (*ar == NULL)
         return NULL;
@@ -109,7 +107,7 @@ ARRAY* array_remove(ARRAY** ar, unsigned int index)
     return (*ar);
 }
 
-ARRAY* array_squeeze(ARRAY** ar)
+ARRAY* lib_array_squeeze(ARRAY** ar)
 {
     if (*ar == NULL)
         return NULL;
@@ -117,3 +115,15 @@ ARRAY* array_squeeze(ARRAY** ar)
     (*ar)->reserved = (*ar)->size;
     return (*ar);
 }
+
+const LIB_ARRAY __LIB_ARRAY = {
+    lib_array_create,
+    lib_array_destroy,
+    lib_array_at,
+    lib_array_size,
+    lib_array_append,
+    lib_array_insert,
+    lib_array_clear,
+    lib_array_remove,
+    lib_array_squeeze
+};
