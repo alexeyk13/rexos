@@ -11,6 +11,7 @@
 #include "lib_stdio.h"
 #include "lib_systime.h"
 #include "lib_array.h"
+#include "lib_so.h"
 
 void lib_stub ()
 {
@@ -27,7 +28,9 @@ const void *const __LIB[] = {
     //lib_systime.h
     (const void *const)&__LIB_SYSTIME,
     //lib_array.h
-    (const void *const)&__LIB_ARRAY
+    (const void *const)&__LIB_ARRAY,
+    //lib_so.h
+    (const void *const)&__LIB_SO
 };
 
 

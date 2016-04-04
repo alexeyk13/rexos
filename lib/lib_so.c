@@ -4,9 +4,8 @@
     All rights reserved.
 */
 
-#include "so.h"
-#include "error.h"
-#include "process.h"
+#include "lib_so.h"
+#include "../userspace/error.h"
 
 #define SO_INDEX(handle)                        ((handle) >> 8)
 #define SO_SEQUENCE(handle)                     ((handle) & 0xff)
@@ -15,7 +14,7 @@
 #define SO_AT(so, index)                        (*((HANDLE*)array_at((so)->ar, (index))))
 #define SO_DATA(so, index)                      ((void*)((uint8_t*)array_at((so)->ar, (index)) + sizeof(HANDLE)))
 
-SO* so_create(SO* so, unsigned int data_size, unsigned int reserved)
+SO* lib_so_create(SO* so, unsigned int data_size, unsigned int reserved)
 {
     if (!array_create(&so->ar, data_size + sizeof(HANDLE), reserved))
         return NULL;
@@ -23,12 +22,12 @@ SO* so_create(SO* so, unsigned int data_size, unsigned int reserved)
     return so;
 }
 
-void so_destroy(SO* so)
+void lib_so_destroy(SO* so)
 {
     array_destroy(&so->ar);
 }
 
-HANDLE so_allocate(SO* so)
+HANDLE lib_so_allocate(SO* so)
 {
     HANDLE handle = INVALID_HANDLE;
     //no free, append array
@@ -47,7 +46,7 @@ HANDLE so_allocate(SO* so)
     return handle;
 }
 
-bool so_check_handle(SO* so, HANDLE handle)
+bool lib_so_check_handle(SO* so, HANDLE handle)
 {
     if (SO_INDEX(handle) >= array_size(so->ar))
     {
@@ -67,23 +66,23 @@ bool so_check_handle(SO* so, HANDLE handle)
     return true;
 }
 
-void so_free(SO* so, HANDLE handle)
+void lib_so_free(SO* so, HANDLE handle)
 {
-    if (!so_check_handle(so, handle))
+    if (!lib_so_check_handle(so, handle))
         return;
     *(unsigned int*)SO_DATA(so, SO_INDEX(handle)) = so->first_free;
     so->first_free = SO_INDEX(handle);
     SO_AT(so, so->first_free) = SO_HANDLE(SO_FREE, SO_SEQUENCE(handle) + 1);
 }
 
-void* so_get(SO* so, HANDLE handle)
+void* lib_so_get(SO* so, HANDLE handle)
 {
-    if (!so_check_handle(so, handle))
+    if (!lib_so_check_handle(so, handle))
         return NULL;
     return SO_DATA(so, SO_INDEX(handle));
 }
 
-HANDLE so_first(SO* so)
+HANDLE lib_so_first(SO* so)
 {
     int i;
     for (i = 0; i < array_size(so->ar); ++i)
@@ -94,7 +93,7 @@ HANDLE so_first(SO* so)
     return INVALID_HANDLE;
 }
 
-HANDLE so_next(SO* so, HANDLE prev)
+HANDLE lib_so_next(SO* so, HANDLE prev)
 {
     int i;
     for (i = SO_INDEX(prev) + 1; i < array_size(so->ar); ++i)
@@ -105,7 +104,7 @@ HANDLE so_next(SO* so, HANDLE prev)
     return INVALID_HANDLE;
 }
 
-unsigned int so_count(SO* so)
+unsigned int lib_so_count(SO* so)
 {
     unsigned int idx;
     unsigned int res = array_size(so->ar);
@@ -115,3 +114,15 @@ unsigned int so_count(SO* so)
         --res;
     return res;
 }
+
+const LIB_SO __LIB_SO = {
+    lib_so_create,
+    lib_so_destroy,
+    lib_so_allocate,
+    lib_so_check_handle,
+    lib_so_free,
+    lib_so_get,
+    lib_so_first,
+    lib_so_next,
+    lib_so_count
+};
