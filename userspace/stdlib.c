@@ -6,15 +6,16 @@
 
 #include "stdlib.h"
 #include "systime.h"
+#include "svc.h"
 
 void* malloc(size_t size)
 {
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&__PROCESS->pool, size);
+    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&__PROCESS->pool, size, get_sp());
 }
 
 void* realloc(void* ptr, size_t size)
 {
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_realloc(&__PROCESS->pool, ptr, size);
+    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_realloc(&__PROCESS->pool, ptr, size, get_sp());
 }
 
 void free(void* ptr)

@@ -11,14 +11,14 @@
 #include "kernel_config.h"
 
 void pool_init(POOL* pool, void* data);
-void* pool_malloc(POOL* pool, size_t size);
-void* pool_realloc(POOL* pool, void* ptr, size_t size);
+void* pool_malloc(POOL* pool, size_t size, void *sp);
+void* pool_realloc(POOL* pool, void* ptr, size_t size, void* sp);
 void pool_free(POOL* pool, void* ptr);
 
 #if (KERNEL_PROFILING)
 void* pool_free_ptr(POOL* pool);
 bool pool_check(POOL* pool, void *sp);
-void pool_stat(POOL* pool, POOL_STAT* stat, void* sp);
+void pool_stat(POOL* pool, POOL_STAT* stat, void *sp);
 #endif
 
 #endif // POOL_H

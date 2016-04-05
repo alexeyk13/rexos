@@ -18,14 +18,14 @@
     \param size: data size in bytes
     \retval pointer on success, NULL on out of memory conditiion
 */
-void* kmalloc_internal(int size);
+void* kmalloc_internal(size_t size);
 
 /**
     \brief allocate memory in system pool
     \param size: data size in bytes
     \retval pointer on success, NULL on out of memory conditiion
 */
-void* kmalloc(int size);
+void* kmalloc(size_t size);
 
 /**
     \brief re-allocate memory in system pool. No LIB wrapper
@@ -33,7 +33,7 @@ void* kmalloc(int size);
     \param size: new size in bytes
     \retval pointer on success, NULL on out of memory conditiion
 */
-void* krealloc_internal(void* ptr, int size);
+void* krealloc_internal(void* ptr, size_t size);
 
 /**
     \brief re-allocate memory in system pool
@@ -41,7 +41,7 @@ void* krealloc_internal(void* ptr, int size);
     \param size: new size in bytes
     \retval pointer on success, NULL on out of memory conditiion
 */
-void* krealloc(void* ptr, int size);
+void* krealloc(void* ptr, size_t size);
 
 /**
     \brief free memory in system pool. No LIB wrapper
@@ -58,5 +58,7 @@ void kfree_internal(void *ptr);
 void kfree(void *ptr);
 
 /** \} */ // end of memory group
+
+extern const STD_MEM __KSTD_MEM;
 
 #endif // KSTDLIB_H

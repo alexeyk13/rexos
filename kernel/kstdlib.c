@@ -8,13 +8,14 @@
 #include "../userspace/process.h"
 #include "../lib/lib_lib.h"
 #include "../userspace/stdlib.h"
+#include "../userspace/svc.h"
 
-void* kmalloc_internal(int size)
+void* kmalloc_internal(size_t size)
 {
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&__KERNEL->paged, size);
+    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&__KERNEL->paged, size, get_sp());
 }
 
-void* kmalloc(int size)
+void* kmalloc(size_t size)
 {
     void* res;
     LIB_ENTER
@@ -23,12 +24,12 @@ void* kmalloc(int size)
     return res;
 }
 
-void* krealloc_internal(void* ptr, int size)
+void* krealloc_internal(void* ptr, size_t size)
 {
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_realloc(&__KERNEL->paged, ptr, size);
+    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_realloc(&__KERNEL->paged, ptr, size, get_sp());
 }
 
-void* krealloc(void* ptr, int size)
+void* krealloc(void* ptr, size_t size)
 {
     void* res;
     LIB_ENTER
@@ -48,3 +49,9 @@ void kfree(void *ptr)
     kfree_internal(ptr);
     LIB_EXIT
 }
+
+const STD_MEM __KSTD_MEM = {
+    kmalloc_internal,
+    krealloc_internal,
+    kfree_internal
+};

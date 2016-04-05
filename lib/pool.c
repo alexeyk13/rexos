@@ -6,9 +6,8 @@
 
 #include "pool.h"
 #include "../userspace/error.h"
-#include <string.h>
-#include "../userspace/svc.h"
 #include "../userspace/process.h"
+#include <string.h>
 
 #if (KERNEL_RANGE_CHECKING)
 
@@ -82,7 +81,7 @@ void pool_init(POOL* pool, void* data)
     pool->free_slot = NULL;
 }
 
-static inline bool grow(POOL* pool, size_t size)
+static bool grow(POOL* pool, size_t size, void* sp)
 {
     register void *new_last;
     if (NEXT_SLOT(pool->last_slot) != NULL)
@@ -93,7 +92,7 @@ static inline bool grow(POOL* pool, size_t size)
 
     new_last = (void*)(NUM(pool->last_slot) + SLOT_HEADER_SIZE + size + SLOT_FOOTER_SIZE);
     //check uint overflow and compare with stack
-    if (NUM(new_last) < NUM(pool->last_slot) || NUM(new_last) >= NUM(get_sp()))
+    if (NUM(new_last) < NUM(pool->last_slot) || NUM(new_last) >= NUM(sp))
     {
         error(ERROR_OUT_OF_MEMORY);
         return false;
@@ -110,7 +109,7 @@ static inline bool grow(POOL* pool, size_t size)
     return true;
 }
 
-void* pool_malloc(POOL* pool, size_t size)
+void* pool_malloc(POOL* pool, size_t size, void* sp)
 {
     size_t len;
     register void *free_before, *next_slot, *new_slot, *cur;
@@ -157,13 +156,13 @@ void* pool_malloc(POOL* pool, size_t size)
             }
         }
         //try to allocate more space
-        if (!grow(pool, len))
+        if (!grow(pool, len, sp))
             break;
     }
     return NULL;
 }
 
-void* pool_realloc(POOL* pool, void* ptr, size_t size)
+void* pool_realloc(POOL* pool, void* ptr, size_t size, void *sp)
 {
     register void *next, *p, *n;
     void *res;
@@ -172,7 +171,7 @@ void* pool_realloc(POOL* pool, void* ptr, size_t size)
     int i;
 
     if (ptr == NULL)
-        return pool_malloc(pool, len);
+        return pool_malloc(pool, len, sp);
     next = NEXT_SLOT(ptr);
     if (len == 0)
     {
@@ -204,7 +203,7 @@ void* pool_realloc(POOL* pool, void* ptr, size_t size)
         //at end of pool? grow!
         if (len <= cur_size || next != pool->last_slot)
             break;
-        if (!grow(pool, len - cur_size))
+        if (!grow(pool, len - cur_size, sp))
             break;
     }
 
@@ -226,7 +225,7 @@ void* pool_realloc(POOL* pool, void* ptr, size_t size)
     }
 
     //can't extend. Allocate in other place and copy.
-    res = pool_malloc(pool, size);
+    res = pool_malloc(pool, size, sp);
     if (res)
     {
         memcpy(res, ptr, cur_size);
