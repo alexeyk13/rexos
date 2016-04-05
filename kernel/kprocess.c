@@ -5,7 +5,7 @@
 */
 
 #include "kprocess.h"
-#include "kmalloc.h"
+#include "kstdlib.h"
 #include "string.h"
 #include "kstream.h"
 #include "kernel.h"
@@ -131,7 +131,9 @@ void kprocess_abnormal_exit()
 void kprocess_create(const REX* rex, KPROCESS** kprocess)
 {
     unsigned int sys_size;
+    disable_interrupts();
     *kprocess = kmalloc(sizeof(KPROCESS));
+    enable_interrupts();
     memset((*kprocess), 0, sizeof(KPROCESS));
     //allocate kprocess object
     if (*kprocess != NULL)
@@ -140,7 +142,9 @@ void kprocess_create(const REX* rex, KPROCESS** kprocess)
         if ((rex->flags & REX_FLAG_PERSISTENT_NAME) == 0)
             sys_size += strlen(rex->name) + 1;
         sys_size = (sys_size + 3) & ~3;
+        disable_interrupts();
         (*kprocess)->process = kmalloc(rex->size + sys_size);
+        enable_interrupts();
         if ((*kprocess)->process)
         {
 #if (KERNEL_PROFILING)
@@ -179,7 +183,9 @@ void kprocess_create(const REX* rex, KPROCESS** kprocess)
         }
         else
         {
+            disable_interrupts();
             kfree(*kprocess);
+            enable_interrupts();
             (*kprocess) = NULL;
             error(ERROR_OUT_OF_PAGED_MEMORY);
         }
@@ -304,8 +310,10 @@ void kprocess_destroy(KPROCESS* kprocess)
 #endif
     enable_interrupts();
     //release memory, occupied by kprocess
+    disable_interrupts();
     kfree(kprocess->process);
     kfree(kprocess);
+    enable_interrupts();
 }
 
 void kprocess_sleep(KPROCESS* kprocess, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)

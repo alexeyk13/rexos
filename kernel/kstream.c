@@ -6,7 +6,7 @@
 
 #include "kstream.h"
 #include "kernel.h"
-#include "kmalloc.h"
+#include "kstdlib.h"
 #include "kipc.h"
 #include "../userspace/error.h"
 #include <string.h>
@@ -72,17 +72,23 @@ void kstream_create(STREAM** stream, unsigned int size)
 {
     KPROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, stream, sizeof(void*));
+    disable_interrupts();
     *stream = kmalloc(sizeof(STREAM));
+    enable_interrupts();
     if ((*stream) == NULL)
     {
         kprocess_error(process, ERROR_OUT_OF_SYSTEM_MEMORY);
         return;
     }
     //allocate stream data
+    disable_interrupts();
     (*stream)->data = kmalloc(size);
+    enable_interrupts();
     if ((*stream)->data == NULL)
     {
+        disable_interrupts();
         kfree(*stream);
+        enable_interrupts();
         (*stream) = NULL;
         kprocess_error(process, ERROR_OUT_OF_PAGED_MEMORY);
         return;
@@ -104,7 +110,9 @@ void kstream_open(STREAM* stream, STREAM_HANDLE** handle)
     CHECK_HANDLE(stream, sizeof(STREAM));
     CHECK_MAGIC(stream, MAGIC_STREAM);
     CHECK_ADDRESS(process, handle, sizeof(void*));
+    disable_interrupts();
     *handle = kmalloc(sizeof(STREAM_HANDLE));
+    enable_interrupts();
     if (*handle != NULL)
     {
         DO_MAGIC((*handle), MAGIC_STREAM_HANDLE);
@@ -137,7 +145,9 @@ void kstream_close(STREAM_HANDLE* handle)
     default:
         break;
     }
+    disable_interrupts();
     kfree(handle);
+    enable_interrupts();
 }
 
 void kstream_get_size(STREAM* stream, unsigned int *size)
@@ -367,6 +377,8 @@ void kstream_destroy(STREAM* stream)
     CLEAR_MAGIC(stream);
     kstream_destroy_handle(stream, (DLIST**)&stream->write_waiters);
     kstream_destroy_handle(stream, (DLIST**)&stream->read_waiters);
+    disable_interrupts();
     kfree(stream->data);
     kfree(stream);
+    enable_interrupts();
 }

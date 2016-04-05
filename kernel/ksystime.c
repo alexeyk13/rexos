@@ -10,7 +10,7 @@
 #include "kernel.h"
 #include <string.h>
 #include "../userspace/error.h"
-#include "kmalloc.h"
+#include "kstdlib.h"
 #include "kipc.h"
 
 #define FREE_RUN                                        2000000
@@ -192,7 +192,9 @@ void ksystime_soft_timer_create(SOFT_TIMER** timer, unsigned int param, HAL hal)
 {
     KPROCESS* process = kprocess_get_current();
     CHECK_ADDRESS(process, timer, sizeof(void*));
+    disable_interrupts();
     *timer = kmalloc(sizeof(SOFT_TIMER));
+    enable_interrupts();
     if ((*timer) == NULL)
     {
         kprocess_error(process, ERROR_OUT_OF_SYSTEM_MEMORY);
@@ -212,7 +214,9 @@ void ksystime_soft_timer_destroy(SOFT_TIMER *timer)
     CHECK_HANDLE(timer, sizeof(SOFT_TIMER));
     CHECK_MAGIC(timer, MAGIC_TIMER);
     CLEAR_MAGIC(timer);
+    disable_interrupts();
     kfree(timer);
+    enable_interrupts();
 }
 
 void ksystime_soft_timer_start(SOFT_TIMER* timer, SYSTIME* time)

@@ -6,7 +6,7 @@
 
 #include "kio.h"
 #include "kprocess.h"
-#include "kmalloc.h"
+#include "kstdlib.h"
 #include "kernel_config.h"
 
 void kio_create(IO** io, unsigned int size)
@@ -14,13 +14,17 @@ void kio_create(IO** io, unsigned int size)
     KIO* kio;
     KPROCESS* kprocess = kprocess_get_current();
     CHECK_ADDRESS(kprocess, io, sizeof(void*));
+    disable_interrupts();
     kio = (KIO*)kmalloc(sizeof(KIO));
+    enable_interrupts();
     if (kio != NULL)
     {
         DO_MAGIC(kio, MAGIC_KIO);
         kio->owner = kio->granted = kprocess;
         kio->kill_flag = false;
+        disable_interrupts();
         (*io) = kio->io = (IO*)kmalloc(size + sizeof(IO));
+        enable_interrupts();
         if (kio->io == NULL)
         {
             kfree(kio);
@@ -36,8 +40,10 @@ void kio_create(IO** io, unsigned int size)
 static void kio_destroy_internal(KIO* kio)
 {
     CLEAR_MAGIC(kio);
+    disable_interrupts();
     kfree(kio->io);
     kfree(kio);
+    enable_interrupts();
 }
 
 bool kio_send(KIO* kio, KPROCESS* receiver)

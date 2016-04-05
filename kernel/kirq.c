@@ -6,7 +6,7 @@
 
 #include "kirq.h"
 #include "kernel.h"
-#include "kmalloc.h"
+#include "kstdlib.h"
 #include "../userspace/error.h"
 
 void kirq_stub(int vector, void* param)
@@ -86,7 +86,9 @@ void kirq_register(int vector, IRQ handler, void* param)
         kprocess_error_current(ERROR_ALREADY_CONFIGURED);
         return;
     }
+    disable_interrupts();
     __KERNEL->irqs[vector] = kmalloc(sizeof(KIRQ));
+    enable_interrupts();
     if (__KERNEL->irqs[vector] == NULL)
     {
         __KERNEL->irqs[vector] = (KIRQ_P)&__KIRQ_STUB;
@@ -102,7 +104,9 @@ void kirq_unregister(int vector)
 {
     if (__KERNEL->irqs[vector]->process == kprocess_get_current())
     {
+        disable_interrupts();
         kfree(__KERNEL->irqs[vector]);
+        enable_interrupts();
         __KERNEL->irqs[vector] = (KIRQ_P)&__KIRQ_STUB;
     }
     else
