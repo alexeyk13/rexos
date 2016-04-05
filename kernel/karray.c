@@ -25,11 +25,16 @@ void karray_destroy(ARRAY** ar)
     LIB_EXIT
 }
 
+void* karray_at_internal(ARRAY* ar, unsigned int index)
+{
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_at(ar, &__KSTD_MEM, index);
+}
+
 void* karray_at(ARRAY* ar, unsigned int index)
 {
     void* res;
     LIB_ENTER
-    res = ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_at(ar, &__KSTD_MEM, index);
+    res = karray_at_internal(ar, index);
     LIB_EXIT
     return res;
 }

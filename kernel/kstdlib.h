@@ -57,6 +57,8 @@ void kfree_internal(void *ptr);
 */
 void kfree(void *ptr);
 
+void kstdlib_init();
+
 /** \} */ // end of memory group
 
 extern const STD_MEM __KSTD_MEM;

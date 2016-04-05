@@ -44,6 +44,7 @@
 #include "kirq.h"
 #include "../lib/pool.h"
 #include "../userspace/rb.h"
+#include "../userspace/array.h"
 
 #ifndef IRQ_VECTORS_COUNT
 #error IRQ_VECTORS_COUNT is not decoded. Please specify it manually in Makefile
@@ -99,8 +100,8 @@ typedef struct {
     KTIMER* timers;
     //HPET value, set before call
     unsigned int hpet_value;
-    //----------------------- paged memory related ---------------------
-    POOL paged;
+    //--------------------------- memory pools -------------------------
+    ARRAY* pools;
     //-------------------------- kernel objects ------------------------
     HANDLE objects[KERNEL_OBJECTS_COUNT];
 } KERNEL;

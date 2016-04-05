@@ -5,6 +5,7 @@
 */
 
 #include "kprocess.h"
+#include "karray.h"
 #include "kstdlib.h"
 #include "string.h"
 #include "kstream.h"
@@ -447,7 +448,8 @@ static inline void kernel_stat()
 #endif
     POOL_STAT stat;
     LIB_ENTER;
-    ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_stat(&__KERNEL->paged, &stat, get_sp());
+    //TODO: more pools here
+    ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_stat(karray_at(__KERNEL->pools, 0), &stat, get_sp());
     LIB_EXIT;
 
     printk("%-20.20s         ", __KERNEL_NAME);

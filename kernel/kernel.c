@@ -13,6 +13,7 @@
 #include "kprocess.h"
 #include "kio.h"
 #include "kobject.h"
+#include "kstdlib.h"
 
 #include "../userspace/error.h"
 #include "../lib/lib_lib.h"
@@ -203,8 +204,8 @@ void startup()
     //initialize irq subsystem
     kirq_init();
 
-    //initialize paged area
-    pool_init(&__KERNEL->paged, (void*)(SRAM_BASE + KERNEL_GLOBAL_SIZE + sizeof(KERNEL)));
+    //initialize main pool
+    kstdlib_init();
 
     //initilize system time
     ksystime_init();
