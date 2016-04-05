@@ -6,7 +6,21 @@
 
 #include "stdlib.h"
 #include "systime.h"
-#include "process.h"
+
+void* malloc(size_t size)
+{
+    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&__PROCESS->pool, size);
+}
+
+void* realloc(void* ptr, size_t size)
+{
+    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_realloc(&__PROCESS->pool, ptr, size);
+}
+
+void free(void* ptr)
+{
+    ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_free(&__PROCESS->pool, ptr);
+}
 
 unsigned int srand()
 {
@@ -30,3 +44,9 @@ unsigned int rand(unsigned int* seed)
     (*seed) ^= uptime.usec;
     return (*seed);
 }
+
+const STD_MEM __STD_MEM = {
+    malloc,
+    realloc,
+    free
+};

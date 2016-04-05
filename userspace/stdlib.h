@@ -8,7 +8,7 @@
 #define STDLIB_H
 
 #include "lib.h"
-#include "svc.h"
+#include "types.h"
 #include "process.h"
 
 typedef struct {
@@ -20,7 +20,15 @@ typedef struct {
     void (*pool_free)(POOL*, void*);
     bool (*pool_check)(POOL*, void*);
     void (*pool_stat)(POOL*, POOL_STAT*, void*);
-}LIB_STD;
+} LIB_STD;
+
+typedef struct {
+    void* (*fn_malloc)(size_t);
+    void* (*fn_realloc)(void*, size_t);
+    void (*fn_free)(void*);
+} STD_MEM;
+
+extern const STD_MEM __STD_MEM;
 
 /** \addtogroup stdlib embedded uStdlib
  */
@@ -30,20 +38,14 @@ typedef struct {
     \param size: data size in bytes
     \retval pointer on success, NULL on out of memory conditiion
 */
-__STATIC_INLINE void* malloc(int size)
-{
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&__PROCESS->pool, size);
-}
+void* malloc(size_t size);
 
 /**
     \brief allocate memory in current process's pool
     \param size: data size in bytes
     \retval pointer on success, NULL on out of memory conditiion
 */
-__STATIC_INLINE void* realloc(void* ptr, int size)
-{
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_realloc(&__PROCESS->pool, ptr, size);
-}
+void* realloc(void* ptr, size_t size);
 
 /**
     \brief free memory in current process's pool
@@ -51,10 +53,7 @@ __STATIC_INLINE void* realloc(void* ptr, int size)
     \param ptr: pointer to allocated data
     \retval none
 */
-__STATIC_INLINE void free(void* ptr)
-{
-    ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_free(&__PROCESS->pool, ptr);
-}
+void free(void* ptr);
 
 /** \addtogroup lib_printf embedded stdio
     \{
