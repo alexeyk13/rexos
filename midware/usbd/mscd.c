@@ -157,6 +157,7 @@ static void mscd_release_io(MSCD* mscd)
 void mscd_host_cb(void* param, unsigned int id, SCSIS_RESPONSE response, unsigned int size)
 {
     MSCD* mscd = param;
+
     switch (response)
     {
     case SCSIS_RESPONSE_READ:

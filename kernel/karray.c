@@ -39,11 +39,16 @@ void* karray_at(ARRAY* ar, unsigned int index)
     return res;
 }
 
+unsigned int karray_size_internal(ARRAY* ar)
+{
+    return ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_size(ar, &__KSTD_MEM);
+}
+
 unsigned int karray_size(ARRAY* ar)
 {
     unsigned int res;
     LIB_ENTER
-    res = ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_size(ar, &__KSTD_MEM);
+    res = karray_size_internal(ar);
     LIB_EXIT
     return res;
 }

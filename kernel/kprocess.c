@@ -443,29 +443,56 @@ void process_stat(KPROCESS* kprocess)
 
 static inline void kernel_stat()
 {
+    int i;
+    KPOOL* kpool;
+    unsigned int total_size;
+    bool damaged;
 #if (KERNEL_PROCESS_STAT)
     SYSTIME uptime;
 #endif
-    POOL_STAT stat;
-    LIB_ENTER;
-    //TODO: more pools here
-    ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_stat(karray_at(__KERNEL->pools, 0), &stat, get_sp());
-    LIB_EXIT;
+    POOL_STAT stat, total;
+    memset(&total, 0x00, sizeof(POOL_STAT));
+    total_size = 0;
+    damaged = false;
+    for (i = 0; i < karray_size_internal(__KERNEL->pools); ++i)
+    {
+        kpool = kpool_at(i);
+        kpool_stat(i, &stat);
+        printk("%#08X                         ", kpool->base);
+        printk("%4b ", kpool->size);
+
+        if (__KERNEL->error != ERROR_OK)
+        {
+            printk(DAMAGED);
+            __KERNEL->error = ERROR_OK;
+            damaged = true;
+        }
+        else
+        {
+            printk("%3b(%02d)  ", stat.used, stat.used_slots);
+            printk("%3b/%3b(%02d)", stat.free, stat.largest_free, stat.free_slots);
+        }
+        printk("\n");
+        total_size += kpool->size;
+        total.used += stat.used;
+        total.used_slots += stat.used_slots;
+        total.free += stat.free;
+        total.free_slots += stat.free_slots;
+        if (stat.largest_free > total.largest_free)
+            total.largest_free = stat.largest_free;
+    }
 
     printk("%-20.20s         ", __KERNEL_NAME);
 
     printk("%4b  ", stack_used(SRAM_BASE + SRAM_SIZE - KERNEL_STACK_MAX, SRAM_BASE + SRAM_SIZE));
-    printk("%4b ", SRAM_SIZE - KERNEL_GLOBAL_SIZE - sizeof(KERNEL));
+    printk("%4b ", total_size);
 
-    if (__KERNEL->error != ERROR_OK)
-    {
+    if (damaged)
         printk(DAMAGED);
-        __KERNEL->error = ERROR_OK;
-    }
     else
     {
-        printk("%3b(%02d)  ", stat.used, stat.used_slots);
-        printk("%3b/%3b(%02d)", stat.free, stat.largest_free, stat.free_slots);
+        printk("%3b(%02d)  ", total.used, total.used_slots);
+        printk("%3b/%3b(%02d)", total.free, total.largest_free, total.free_slots);
     }
 
 #if (KERNEL_PROCESS_STAT)

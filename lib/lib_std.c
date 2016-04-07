@@ -17,6 +17,7 @@ const LIB_STD __LIB_STD = {
     //pool.h
     pool_init,
     pool_malloc,
+    pool_slot_size,
     pool_realloc,
     pool_free,
 #if (KERNEL_PROFILING)

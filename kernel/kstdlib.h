@@ -9,6 +9,12 @@
 
 #include "kernel.h"
 
+typedef struct {
+    unsigned int base;
+    unsigned int size;
+    POOL pool;
+} KPOOL;
+
 /** \addtogroup memory kernel memory management
     \{
  */
@@ -57,10 +63,17 @@ void kfree_internal(void *ptr);
 */
 void kfree(void *ptr);
 
-void kstdlib_init();
 
 /** \} */ // end of memory group
 
 extern const STD_MEM __KSTD_MEM;
+
+//called from kernel
+void kstdlib_init();
+KPOOL* kpool_at(unsigned int idx);
+void kpool_stat(unsigned int idx, POOL_STAT* stat);
+
+//called from svc
+void kstdlib_add_pool(unsigned int base, unsigned int size);
 
 #endif // KSTDLIB_H

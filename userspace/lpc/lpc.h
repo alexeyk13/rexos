@@ -275,6 +275,21 @@
 //40k
 #define SRAM1_SIZE                      0xa000
 
+#define AHB_SRAM1_BASE                  0x20000000
+
+#if defined(LPC1810) || defined(LPC1812) || defined(LPC1813) || defined(LPC1820) || defined(LPC1822) || defined(LPC1823)
+//16k
+#define AHB_SRAM1_SIZE                  0x4000
+#else
+//32k+16k
+#define AHB_SRAM1_SIZE                  0xc000
+#define AHB_SRAM_ONE_PIECE
+#endif
+
+#define AHB_SRAM2_BASE                  0x2000C000
+//16k
+#define AHB_SRAM2_SIZE                  0x4000
+
 #endif
 
 //SRAM0 only, SRAM1 and any external memory is not used in system configuration

@@ -80,6 +80,7 @@ typedef enum {
     SVC_OBJECT_SET,
     SVC_OBJECT_GET,
 
+    SVC_ADD_POOL,
     SVC_SETUP_DBG,
     SVC_PRINTD,
     SVC_TEST
@@ -124,6 +125,18 @@ extern void svc_call(unsigned int num, unsigned int param1, unsigned int param2,
 /** \addtogroup sys sys
     \{
  */
+
+/**
+    \brief add pool
+    \param base: base address
+    \param size: pool size
+    \retval none
+*/
+__STATIC_INLINE void svc_add_pool(unsigned int base, unsigned int size)
+{
+    svc_call(SVC_ADD_POOL, base, size, 0);
+}
+
 
 /**
     \brief setup kernel stdout for debug reasons

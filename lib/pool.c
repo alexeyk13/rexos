@@ -162,6 +162,13 @@ void* pool_malloc(POOL* pool, size_t size, void* sp)
     return NULL;
 }
 
+size_t pool_slot_size(POOL* poll, void* ptr)
+{
+    if (ptr == NULL)
+        return 0;
+    return NUM(NEXT_SLOT(ptr)) - NUM(ptr) - SLOT_HEADER_SIZE - SLOT_FOOTER_SIZE;
+}
+
 void* pool_realloc(POOL* pool, void* ptr, size_t size, void *sp)
 {
     register void *next, *p, *n;
@@ -178,6 +185,7 @@ void* pool_realloc(POOL* pool, void* ptr, size_t size, void *sp)
         pool_free(pool, ptr);
         return NULL;
     }
+    cur_size = pool_slot_size(pool, ptr);
 
     for (i = 0; i < 2; ++i)
     {
@@ -199,7 +207,6 @@ void* pool_realloc(POOL* pool, void* ptr, size_t size, void *sp)
             }
         }
 
-        cur_size = NUM(next) - NUM(ptr) - SLOT_HEADER_SIZE - SLOT_FOOTER_SIZE;
         //at end of pool? grow!
         if (len <= cur_size || next != pool->last_slot)
             break;

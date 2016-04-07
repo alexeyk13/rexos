@@ -16,6 +16,7 @@ typedef struct {
     int (*utoa)(char*, unsigned long, int, bool);
     void (*pool_init)(POOL*, void*);
     void* (*pool_malloc)(POOL*, size_t, void*);
+    size_t(*pool_slot_size)(POOL*, void*);
     void* (*pool_realloc)(POOL*, void*, size_t, void*);
     void (*pool_free)(POOL*, void*);
     bool (*pool_check)(POOL*, void*);

@@ -166,6 +166,9 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kobject_get(param1, (HANDLE*)param2);
         break;
     //other - dbg, stdout/in
+    case SVC_ADD_POOL:
+        kstdlib_add_pool(param1, param2);
+        break;
     case SVC_SETUP_DBG:
         if (__KERNEL->stdout != stdout_stub)
             kprocess_error_current(ERROR_INVALID_SVC);

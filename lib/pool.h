@@ -12,6 +12,7 @@
 
 void pool_init(POOL* pool, void* data);
 void* pool_malloc(POOL* pool, size_t size, void *sp);
+size_t pool_slot_size(POOL* poll, void* ptr);
 void* pool_realloc(POOL* pool, void* ptr, size_t size, void* sp);
 void pool_free(POOL* pool, void* ptr);
 

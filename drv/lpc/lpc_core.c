@@ -10,6 +10,7 @@
 #include "lpc_pin.h"
 //#include "lpc_power.h"
 #include "../../userspace/object.h"
+#include "../../userspace/svc.h"
 
 #include "lpc_uart.h"
 #include "lpc_i2c.h"
@@ -94,6 +95,32 @@ void lpc_core()
 {
     CORE core;
     object_set_self(SYS_OBJ_CORE);
+
+    //manage pools
+#if defined(LPC18xx)
+    //Local SRAM1
+    svc_add_pool(SRAM1_BASE, SRAM1_SIZE);
+
+#ifdef AHB_SRAM_ONE_PIECE
+    //AHB SRAM1 + SRAM2/ETB SRAM. Shared with USB
+#if (LPC_USB_USE_BOTH)
+    svc_add_pool(AHB_SRAM1_BASE, AHB_SRAM1_SIZE + AHB_SRAM2_SIZE - 2048 * 2);
+#else
+    svc_add_pool(AHB_SRAM1_BASE, AHB_SRAM1_SIZE + AHB_SRAM2_SIZE - 2048);
+#endif //LPC_USB_USE_BOTH
+#else
+    //AHB SRAM1
+    svc_add_pool(AHB_SRAM1_BASE, AHB_SRAM1_SIZE);
+
+    //AHB SRAM2/ETB SRAM. Shared with USB
+#if (LPC_USB_USE_BOTH)
+    svc_add_pool(AHB_SRAM2_BASE, AHB_SRAM2_SIZE - 2048 * 2);
+#else
+    svc_add_pool(AHB_SRAM2_BASE, AHB_SRAM2_SIZE - 2048);
+#endif //LPC_USB_USE_BOTH
+#endif //AHB_SRAM_ONE_PIECE
+
+#endif //LPC18xx
 
     lpc_power_init(&core);
     lpc_pin_init(&core);

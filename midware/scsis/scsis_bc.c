@@ -195,6 +195,7 @@ void scsis_bc_storage_io_complete(SCSIS* scsis, int resp_size)
 {
     if (!scsis_bc_io_response_check(scsis, resp_size))
         return;
+
     switch (scsis->state)
     {
     case SCSIS_STATE_READ:
