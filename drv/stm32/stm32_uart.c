@@ -7,7 +7,7 @@
 #include "stm32_uart.h"
 #include "stm32_power.h"
 #include "../../userspace/sys.h"
-#include "../../userspace/stm32_driver.h"
+#include "../../userspace/stm32/stm32_driver.h"
 #include "error.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/stdio.h"

@@ -16,7 +16,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Independent system and drivers in userspace
 - Syncronization: ipc, stream, io
 - Soft timers
-- Embedded dynamic memory manager, for every process
+- Embedded dynamic memory manager, for every process.
 - Safe and MPU ready. All supervisor-specific calls are wrapped around 
   swi/svc calls for context rising.
 - Lib-level libraries:
@@ -36,9 +36,9 @@ unavailable, another HPET timer can be used for RTC emulation
   * USB device CDC ACM class
   * USB device HID Boot Keyboard class
   * USB device CCID class
-  * USB device MSC class
+  * USB device MSC class with multiple LUN and DVD-ROM support
   * USB device RNDIS class
-  * SCSI stack: SPC5, SBC3
+  * SCSI stack: SPC5, SBC3, MMC6
   * TCP/IP: MAC level 802.3, RFC768, RFC791, RFC792,  RFC793, RFC826
   * IP: fragmentation supported
   * ICMP: ECHO and flow control
@@ -87,6 +87,17 @@ ARM7 features:
 
 History
 =======
+
+0.4.4
+- USB Mass storage multiple LUN support
+- MMC6 SCSI
+- USB Mass storage DVD-ROM support
+- GPIO now userspace library
+- Dynamic arrays in kernel by lib layer (Array, SO)
+- Multiple system pools support with dynamic configuration
+- LPC OTG driver DTD conveyor to support IO's more than 20KB
+- LPC18xx every memory chunk is transparent available for user
+- Extended pool statistics in process_info()
 
 0.4.3
 - SD/MMC host interface

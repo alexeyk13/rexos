@@ -5,7 +5,7 @@
 */
 
 #include "stm32_pin.h"
-#include "../../userspace/stm32_driver.h"
+#include "../../userspace/stm32/stm32_driver.h"
 #include "stm32_core_private.h"
 #include "sys_config.h"
 #include <string.h>

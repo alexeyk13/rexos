@@ -8,7 +8,7 @@
 #define STM32_POWER_H
 
 #include "stm32_core.h"
-#include "../../userspace/stm32_driver.h"
+#include "../../userspace/stm32/stm32_driver.h"
 
 typedef struct {
     int write_count;

@@ -149,7 +149,7 @@ void kprocess_create(const REX* rex, KPROCESS** kprocess)
         if ((*kprocess)->process)
         {
 #if (KERNEL_PROFILING)
-            memset((*kprocess)->process, MAGIC_UNINITIALIZED_BYTE, rex->size);
+            memset((*kprocess)->process, MAGIC_UNINITIALIZED_BYTE, rex->size + sys_size);
 #endif
             DO_MAGIC((*kprocess), MAGIC_PROCESS);
             (*kprocess)->flags = 0;

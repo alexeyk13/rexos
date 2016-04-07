@@ -6,7 +6,7 @@
 
 #include "stm32_timer.h"
 #include "sys_config.h"
-#include "../../userspace/stm32_driver.h"
+#include "../../userspace/stm32/stm32_driver.h"
 #include "stm32_power.h"
 #include "stm32_core_private.h"
 #include "../../userspace/error.h"

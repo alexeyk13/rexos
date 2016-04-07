@@ -9,7 +9,7 @@
 
 #include "stm32_config.h"
 #include "stm32_core.h"
-#include "../../userspace/stm32_driver.h"
+#include "../../userspace/stm32/stm32_driver.h"
 #include "../../userspace/adc.h"
 
 typedef struct {

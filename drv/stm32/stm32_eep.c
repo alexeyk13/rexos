@@ -8,7 +8,7 @@
 #include "stm32_core_private.h"
 #include "stm32_config.h"
 #include "../../userspace/io.h"
-#include "../../userspace/stm32_driver.h"
+#include "../../userspace/stm32/stm32_driver.h"
 #include "string.h"
 
 #define PEKEY1                          0x89ABCDEF

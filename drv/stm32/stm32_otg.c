@@ -6,7 +6,7 @@
 
 #include "stm32_otg.h"
 #include "stm32_regsusb.h"
-#include "../../userspace/stm32_driver.h"
+#include "../../userspace/stm32/stm32_driver.h"
 #include "stm32_power.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/usb.h"

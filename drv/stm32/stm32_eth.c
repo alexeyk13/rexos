@@ -11,7 +11,7 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/systime.h"
-#include "../../userspace/stm32_driver.h"
+#include "../../userspace/stm32/stm32_driver.h"
 #include "../eth_phy.h"
 #include "stm32_pin.h"
 #include "stm32_power.h"

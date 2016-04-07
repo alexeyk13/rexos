@@ -8,7 +8,7 @@
 #include "../../userspace/sys.h"
 #include "../../userspace/usb.h"
 #include "../../userspace/irq.h"
-#include "../../userspace/stm32_driver.h"
+#include "../../userspace/stm32/stm32_driver.h"
 #include "stm32_power.h"
 #include <string.h>
 #include "../../userspace/stdlib.h"

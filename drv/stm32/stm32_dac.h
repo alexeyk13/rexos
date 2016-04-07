@@ -8,7 +8,7 @@
 #define STM32_DAC_H
 
 #include "../../userspace/sys.h"
-#include "../../userspace/stm32_driver.h"
+#include "../../userspace/stm32/stm32_driver.h"
 #include "../../userspace/dac.h"
 #include "../../userspace/io.h"
 #include "stm32_config.h"
