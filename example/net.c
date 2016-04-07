@@ -12,7 +12,7 @@
 #include "../../rexos/userspace/icmp.h"
 #include "../../rexos/userspace/tcp.h"
 #include "../../rexos/userspace/tcpip.h"
-#include "../../rexos/userspace/stm32_driver.h"
+#include "../../rexos/userspace/stm32/stm32_driver.h"
 #include "../../rexos/userspace/stdio.h"
 #include <string.h>
 
