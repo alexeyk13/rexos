@@ -14,6 +14,10 @@
 #include "lpc_pin.h"
 #include <string.h>
 
+//each is 16KB, 96KB limited by LPC18xx RAM size.
+#define USB_DTD_COUNT           6
+#define USB_DTD_CHUNK           0x4000
+
 #if (MONOLITH_USB)
 
 #define ack_pin                 lpc_pin_request_inside
@@ -92,9 +96,9 @@ static inline DQH* ep_dqh(USB_PORT_TYPE port, unsigned int num)
     return &(((DQH*)__USB_REGS[port]->ENDPOINTLISTADDR)[USB_EP_NUM(num) * 2 + ((num & USB_EP_IN) ? 1 : 0)]);
 }
 
-static inline DTD* ep_dtd(USB_PORT_TYPE port, unsigned int num)
+static inline DTD* ep_dtd(USB_PORT_TYPE port, unsigned int num, unsigned int i)
 {
-    return &(((DTD*)(__USB_REGS[port]->ENDPOINTLISTADDR + sizeof(DQH) * USB_EP_COUNT_MAX * 2))[USB_EP_NUM(num) * 2 + ((num & USB_EP_IN) ? 1 : 0)]);
+    return &(((DTD*)(__USB_REGS[port]->ENDPOINTLISTADDR + sizeof(DQH) * USB_EP_COUNT_MAX * 2))[(USB_EP_NUM(num) * 2 + ((num & USB_EP_IN) ? 1 : 0)) * USB_DTD_COUNT + i]);
 }
 
 static void lpc_otg_bus_reset(USB_PORT_TYPE port, SHARED_OTG_DRV* drv)
@@ -168,7 +172,7 @@ static inline void lpc_otg_out(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, int ep_n
     EP* ep = drv->otg.otg[port]->out[ep_num];
     if (ep->io)
     {
-        ep->io->data_size = drv->otg.otg[port]->read_size[ep_num] - ((ep_dtd(port, ep_num)->size_flags & USB0_DTD_SIZE_FLAGS_SIZE_Msk) >> USB0_DTD_SIZE_FLAGS_SIZE_Pos);
+        ep->io->data_size = drv->otg.otg[port]->read_size[ep_num] - ((ep_dtd(port, ep_num, 0)->size_flags & USB0_DTD_SIZE_FLAGS_SIZE_Msk) >> USB0_DTD_SIZE_FLAGS_SIZE_Pos);
         iio_complete(drv->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, IPC_READ), USB_HANDLE(port, ep_num), ep->io);
         ep->io = NULL;
     }
@@ -377,6 +381,7 @@ static void lpc_otg_close_ep(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, int num)
 
 static void lpc_otg_io(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, IPC* ipc, bool read)
 {
+    unsigned int i, size;
     unsigned int num = USB_NUM(ipc->param1);
     DTD* dtd;
     DQH* dqh;
@@ -391,27 +396,47 @@ static void lpc_otg_io(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, IPC* ipc, bool r
         error(ERROR_IN_PROGRESS);
         return;
     }
-    ep->io = (IO*)ipc->param2;
-    //prepare DTD
-    dtd = ep_dtd(port, num);
-
-    dtd->next = USB0_DQH_NEXT_T_Msk;
     if (read)
-    {
-        dtd->size_flags = ipc->param3 << USB0_DTD_SIZE_FLAGS_SIZE_Pos;
-        drv->otg.otg[port]->read_size[USB_EP_NUM(num)] = ipc->param3;
-    }
+        size = drv->otg.otg[port]->read_size[USB_EP_NUM(num)] = ipc->param3;
     else
-        dtd->size_flags = ep->io->data_size << USB0_DTD_SIZE_FLAGS_SIZE_Pos;
-    dtd->size_flags |= USB0_DTD_SIZE_FLAGS_IOC_Msk | USB0_DTD_SIZE_FLAGS_ACTIVE_Msk;
-    dtd->buf[0] = io_data(ep->io);
-    dtd->buf[1] = (void*)(((unsigned int)(dtd->buf[0]) + 0x1000) & 0xfffff000);
-    dtd->buf[2] = dtd->buf[1] + 0x1000;
-    dtd->buf[3] = dtd->buf[1] + 0x2000;
-    dtd->buf[4] = dtd->buf[1] + 0x3000;
+        size = ((IO*)ipc->param2)->data_size;
+    if (size > USB_DTD_CHUNK * USB_DTD_COUNT)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    ep->io = (IO*)ipc->param2;
+
+    i = 0;
+    do {
+        //prepare DTD
+        dtd = ep_dtd(port, num, i);
+
+        if (size > USB_DTD_CHUNK)
+        {
+            dtd->size_flags = (USB_DTD_CHUNK << USB0_DTD_SIZE_FLAGS_SIZE_Pos) | USB0_DTD_SIZE_FLAGS_ACTIVE_Msk;
+            dtd->next = (unsigned int)ep_dtd(port, num, i + 1);
+            size -= USB_DTD_CHUNK;
+        }
+        else
+        {
+            dtd->next = USB0_DQH_NEXT_T_Msk;
+            dtd->size_flags = (size << USB0_DTD_SIZE_FLAGS_SIZE_Pos) | USB0_DTD_SIZE_FLAGS_IOC_Msk | USB0_DTD_SIZE_FLAGS_ACTIVE_Msk;
+            size = 0;
+        }
+
+        dtd->buf[0] = (uint8_t*)io_data(ep->io) + i * USB_DTD_CHUNK;
+        dtd->buf[1] = (void*)(((unsigned int)(dtd->buf[0]) + 0x1000) & 0xfffff000);
+        dtd->buf[2] = dtd->buf[1] + 0x1000;
+        dtd->buf[3] = dtd->buf[1] + 0x2000;
+        dtd->buf[4] = dtd->buf[1] + 0x3000;
+
+        ++i;
+    } while (size);
+
     //insert in EQH
     dqh = ep_dqh(port, num);
-    dqh->next = dtd;
+    dqh->next = ep_dtd(port, num, 0);
     dqh->shadow_size_flags &= ~USB0_DTD_SIZE_FLAGS_STATUS_Msk;
     if (USB_EP_NUM(num) == 0)
         //required before EP0 transfers
@@ -499,10 +524,10 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, 
 
 #if (LPC_USB_USE_BOTH)
     if (port == USB_1)
-        __USB_REGS[port]->ENDPOINTLISTADDR = SRAM1_BASE + 2048;
+        __USB_REGS[port]->ENDPOINTLISTADDR = AHB_SRAM2_BASE + AHB_SRAM2_SIZE - 2 * 2048;
     else
 #endif //LPC_USB_USE_BOTH
-        __USB_REGS[port]->ENDPOINTLISTADDR = SRAM1_BASE;
+        __USB_REGS[port]->ENDPOINTLISTADDR = AHB_SRAM2_BASE + AHB_SRAM2_SIZE - 2 * 2048;
 
     memset((void*)__USB_REGS[port]->ENDPOINTLISTADDR, 0, (sizeof(DQH) + sizeof(DTD)) * USB_EP_COUNT_MAX * 2);
 
