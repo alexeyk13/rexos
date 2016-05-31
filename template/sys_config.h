@@ -79,8 +79,8 @@
 #define USBD_MSC_DEBUG_REQUESTS                             0
 #define USBD_MSC_DEBUG_IO                                   0
 
-//only one LUN supported for now
-#define USBD_MSC_LUN_COUNT                                  1
+//Generally sector_size * num_sectors
+#define USBD_MSC_IO_SIZE                                    (36 * 1024)
 //----------------------------- CCIDD class -------------------------------------------
 #define USBD_CCID_REMOVABLE_CARD                            0
 
@@ -98,8 +98,8 @@
 //SATA over SCSI. Just stub for more verbose error processing
 //Found on some linux recent kernels
 #define SCSI_SAT                                            0
-//exclude SCSI stack. Generally sector_size * num_sectors
-#define SCSI_IO_SIZE                                        4096
+//SCSI MMC command set. Required for CD-ROM support
+#define SCSI_MMC                                            1
 
 #define SCSI_DEBUG_REQUESTS                                 0
 #define SCSI_DEBUG_ERRORS                                   0
