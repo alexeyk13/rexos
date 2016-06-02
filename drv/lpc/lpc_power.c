@@ -194,6 +194,10 @@ static inline void lpc_setup_clock()
     __NOP();
     __NOP();
     __NOP();
+
+    //6. Tune flash accelerator.
+    LPC_CREG->FLASHCFGA = CREG_FLASHCFG_MAGIC_Msk | (8 << CREG_FLASHCFG_FLASHTIM_Pos) | CREG_FLASHCFG_POW_Msk;
+    LPC_CREG->FLASHCFGB = CREG_FLASHCFG_MAGIC_Msk | (8 << CREG_FLASHCFG_FLASHTIM_Pos) | CREG_FLASHCFG_POW_Msk;
 }
 
 static unsigned int lpc_get_source_clock(unsigned int source);
