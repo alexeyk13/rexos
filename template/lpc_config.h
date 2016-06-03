@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2014, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -9,10 +9,9 @@
 
 //------------------------------------- CORE ----------------------------------------------
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
-#define LPC_CORE_PROCESS_SIZE               780
+#define LPC_CORE_PROCESS_SIZE               1200
 
-//UART driver is monolith. Enable for size, disable for perfomance
-#define MONOLITH_UART                       1
+//Enable for size, disable for perfomance
 #define MONOLITH_USB                        1
 //------------------------------------- power ---------------------------------------------
 //save few bytes here
@@ -23,7 +22,17 @@
 #define HSE_BYPASS                          0
 #define PLL_M                               15
 #define PLL_N                               1
-#define PLL_P                               2
+//P == 1 means bypass post divider
+#define PLL_P                               1
+
+//M3 clock divider for HI/LO power modes. Base clock is PLL1 out.
+//HI divider generally operates on PLL1 out.
+#define POWER_HI_DIVIDER                    1
+//MID divider is used when HI clock > 110MHz for step-up clock adjustment, required by datasheet
+//MID divider must be in range 90MHz<=MID<=110MHz. If HI clock is less or equal 110MHz, mid divider
+//can be disabled by setting to 0.
+#define POWER_MID_DIVIDER                   2
+#define POWER_LO_DIVIDER                    6
 
 //------------------------------------- timer ---------------------------------------------
 //Second pulse generation timer. Use 32 bit for fine tune.
@@ -72,12 +81,10 @@
 //in some application slave devices may hang bus for infinite time.
 //Set this value greater than 0 to solve problem. Soft timers is required.
 #define LPC_I2C_TIMEOUT_MS                  3000
-//-------------------------------------- ETH ----------------------------------------------
-#define LPC_ETH_PROCESS_SIZE                512
-#define LPC_ETH_MII                         0
+
 //-------------------------------------- SDMMC ------------------------------------------------
-#define LPC_SDMMC_DRIVER                    0
+#define LPC_SDMMC_DRIVER                    1
 //each is 7 KB
-#define LPC_SDMMC_DESCR_COUNT               3
+#define LPC_SDMMC_DESCR_COUNT               9
 
 #endif //LPC_CONFIG_H
