@@ -234,6 +234,9 @@ static void lpc_eth_close(ETH_DRV* drv)
     timer_destroy(drv->timer);
     drv->timer = INVALID_HANDLE;
 
+    LPC_CGU->BASE_PHY_TX_CLK = CGU_BASE_PHY_TX_CLK_PD_Msk;
+    LPC_CGU->BASE_PHY_RX_CLK = CGU_BASE_PHY_RX_CLK_PD_Msk;
+
     //switch to unconfigured state
     drv->tcpip = INVALID_HANDLE;
     drv->connected = false;
@@ -252,18 +255,18 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
 
     //setup PHY interface type and reset ETHERNET
     LPC_CREG->CREG6 &= ~CREG_CREG6_ETHMODE_Msk;
-    LPC_CGU->BASE_PHY_TX_CLK = CGU_BASE_PHY_TX_CLK_PD_Pos;
+    LPC_CGU->BASE_PHY_TX_CLK = CGU_BASE_PHY_TX_CLK_PD_Msk;
     LPC_CGU->BASE_PHY_TX_CLK |= CGU_CLK_ENET_TX;
-    LPC_CGU->BASE_PHY_TX_CLK &= ~CGU_BASE_PHY_TX_CLK_PD_Pos;
+    LPC_CGU->BASE_PHY_TX_CLK &= ~CGU_BASE_PHY_TX_CLK_PD_Msk;
 
 #if (LPC_ETH_MII)
-    LPC_CGU->BASE_PHY_RX_CLK = CGU_BASE_PHY_RX_CLK_PD_Pos;
+    LPC_CGU->BASE_PHY_RX_CLK = CGU_BASE_PHY_RX_CLK_PD_Msk;
     LPC_CGU->BASE_PHY_RX_CLK |= CGU_CLK_ENET_RX;
-    LPC_CGU->BASE_PHY_RX_CLK &= ~CGU_BASE_PHY_RX_CLK_PD_Pos;
+    LPC_CGU->BASE_PHY_RX_CLK &= ~CGU_BASE_PHY_RX_CLK_PD_Msk;
 #else
-    LPC_CGU->BASE_PHY_RX_CLK = CGU_BASE_PHY_RX_CLK_PD_Pos;
+    LPC_CGU->BASE_PHY_RX_CLK = CGU_BASE_PHY_RX_CLK_PD_Msk;
     LPC_CGU->BASE_PHY_RX_CLK |= CGU_CLK_ENET_TX;
-    LPC_CGU->BASE_PHY_RX_CLK &= ~CGU_BASE_PHY_RX_CLK_PD_Pos;
+    LPC_CGU->BASE_PHY_RX_CLK &= ~CGU_BASE_PHY_RX_CLK_PD_Msk;
     LPC_CREG->CREG6 |= CREG_CREG6_ETHMODE_RMII;
 #endif //LPC_ETH_MII
     LPC_RGU->RESET_CTRL0 = RGU_RESET_CTRL0_ETHERNET_RST_Msk;

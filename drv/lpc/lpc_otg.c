@@ -472,7 +472,6 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, 
         LPC_CCU1->CLK_USB1_CFG &= ~CCU1_CLK_USB1_CFG_RUN_Msk;
 #else
         //configure IDIVA divider
-        LPC_CGU->IDIVA_CTRL = CGU_IDIVA_CTRL_PD_Msk;
         LPC_CGU->IDIVA_CTRL |= ((IDIV_A - 1) << CGU_IDIVA_CTRL_IDIV_Pos) | CGU_CLK_PLL1;
         LPC_CGU->IDIVA_CTRL &= ~CGU_IDIVA_CTRL_PD_Msk;
         //connect USB1 to IDIVA
@@ -489,6 +488,10 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, SHARED_OTG_DRV* drv, 
     else
 #endif //defined(LPC183x) || defined(LPC185x)
     {
+        //Clock registers
+        LPC_CGU->BASE_USB0_CLK |= CGU_CLK_PLL0USB;
+        LPC_CGU->BASE_USB0_CLK &= ~CGU_BASE_USB0_CLK_PD_Msk;
+
         //power on. Turn USB0 PLL 0n
         LPC_CGU->PLL0USB_CTRL = CGU_PLL0USB_CTRL_PD_Msk;
         LPC_CGU->PLL0USB_CTRL |= CGU_PLL0USB_CTRL_DIRECTI_Msk | CGU_CLK_HSE | CGU_PLL0USB_CTRL_DIRECTO_Msk;
@@ -586,6 +589,8 @@ static inline void lpc_otg_close_device(USB_PORT_TYPE port, SHARED_OTG_DRV* drv)
         LPC_CREG->CREG0 |= CREG_CREG0_USB0PHY_Msk;
         //disable USB0PLL
         LPC_CGU->PLL0USB_CTRL = CGU_PLL0USB_CTRL_PD_Msk;
+
+        LPC_CGU->BASE_USB0_CLK = CGU_BASE_USB0_CLK_PD_Msk;
     }
 
     //free object

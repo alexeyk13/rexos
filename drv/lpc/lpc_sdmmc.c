@@ -260,9 +260,9 @@ static inline void lpc_sdmmc_open(CORE* core, HANDLE user)
         return;
     }
     //enable SDIO bus interface to PLL1
-    LPC_CGU->BASE_SDIO_CLK = CGU_BASE_SDIO_CLK_PD_Pos;
+    LPC_CGU->BASE_SDIO_CLK = CGU_BASE_SDIO_CLK_PD_Msk;
     LPC_CGU->BASE_SDIO_CLK |= CGU_CLK_PLL1;
-    LPC_CGU->BASE_SDIO_CLK &= ~CGU_BASE_SDIO_CLK_PD_Pos;
+    LPC_CGU->BASE_SDIO_CLK &= ~CGU_BASE_SDIO_CLK_PD_Msk;
 
     //According to datasheet, we need to set SDDELAY here. But there is no SDDELAY register in CMSIS libs. WTF?
 
@@ -322,6 +322,7 @@ static inline void lpc_sdmmc_close(CORE* core)
     //mask all interrupts
     LPC_SDMMC->CTRL &= ~SDMMC_CTRL_INT_ENABLE_Msk;
     LPC_SDMMC->INTMASK = 0;
+    LPC_CGU->BASE_SDIO_CLK = CGU_BASE_SDIO_CLK_PD_Msk;
 
     free(core->sdmmc.descr);
     core->sdmmc.descr = NULL;

@@ -19,5 +19,8 @@ typedef struct {
 void lpc_timer_init(CORE* core);
 bool lpc_timer_request(CORE* core, IPC* ipc);
 
+//for power profile switching
+void lpc_timer_suspend(CORE* core);
+void lpc_timer_adjust(CORE* core);
 
 #endif // LPC_TIMER_H

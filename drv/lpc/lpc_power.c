@@ -6,6 +6,7 @@
 
 #include "lpc_power.h"
 #include "lpc_core_private.h"
+#include "sys_config.h"
 
 #define IRC_VALUE                               12000000
 
@@ -136,6 +137,22 @@ static void delay_clks(unsigned int clks)
         __NOP();
 }
 
+static void lpc_power_switch_core_clock(unsigned int divider)
+{
+#if (POWER_MID_DIVIDER)
+    //switch to MID clock frequency
+    LPC_CGU->IDIVB_CTRL = (LPC_CGU->IDIVB_CTRL & ~CGU_IDIVB_CTRL_IDIV_Msk) | ((POWER_MID_DIVIDER - 1) << CGU_IDIVB_CTRL_IDIV_Pos);
+    //need to wait 50us before switching to HI/LO freq.
+    delay_clks(90 * 50);
+#endif //POWER_MID_DIVIDER
+    LPC_CGU->IDIVB_CTRL = (LPC_CGU->IDIVB_CTRL & ~CGU_IDIVB_CTRL_IDIV_Msk) | ((divider - 1) << CGU_IDIVB_CTRL_IDIV_Pos);
+    //Wait till stabilization
+    __NOP();
+    __NOP();
+    __NOP();
+}
+
+
 static inline void lpc_setup_clock()
 {
     int i;
@@ -193,31 +210,51 @@ static inline void lpc_setup_clock()
     }
 
     //4. configure IDIVB divider
-    LPC_CGU->IDIVB_CTRL = CGU_IDIVB_CTRL_PD_Msk | CGU_IDIVB_CTRL_AUTOBLOCK_Msk;
-#if (POWER_MID_DIVIDER)
-    LPC_CGU->IDIVB_CTRL |= ((POWER_MID_DIVIDER - 1) << CGU_IDIVB_CTRL_IDIV_Pos) | CGU_CLK_PLL1;
-#else
-    LPC_CGU->IDIVB_CTRL |= ((POWER_HI_DIVIDER - 1) << CGU_IDIVB_CTRL_IDIV_Pos) | CGU_CLK_PLL1;
-#endif //POWER_MID_DIVIDER
+    LPC_CGU->IDIVB_CTRL = CGU_IDIVB_CTRL_PD_Msk;
+    LPC_CGU->IDIVB_CTRL |= ((POWER_LO_DIVIDER - 1) << CGU_IDIVB_CTRL_IDIV_Pos) | CGU_IDIVB_CTRL_AUTOBLOCK_Msk | CGU_CLK_PLL1;
     LPC_CGU->IDIVB_CTRL &= ~CGU_IDIVB_CTRL_PD_Msk;
     //5. connect M3 clock to IDIVB
     LPC_CGU->BASE_M3_CLK = CGU_CLK_IDIVB;
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
 
-    //5.1. Step-up clock raise
-#if (POWER_MID_DIVIDER)
-    //need to wait 50us before switching to HI freq.
-    delay_clks(90 * 50);
-    //switch to HI clock frequency
-    LPC_CGU->IDIVB_CTRL = (LPC_CGU->IDIVB_CTRL & ~CGU_IDIVB_CTRL_IDIV_Msk) | ((POWER_HI_DIVIDER - 1) << CGU_IDIVB_CTRL_IDIV_Pos);
-#endif //POWER_MID_DIVIDER
-    //6. Wait till stabilization
-    __NOP();
-    __NOP();
-    __NOP();
+#if !((POWER_MANAGEMENT_SUPPORT) && (LOW_POWER_ON_STARTUP))
+    lpc_power_switch_core_clock(POWER_HI_DIVIDER);
+#endif
 
     //6. Tune flash accelerator.
     LPC_CREG->FLASHCFGA = CREG_FLASHCFG_MAGIC_Msk | (8 << CREG_FLASHCFG_FLASHTIM_Pos) | CREG_FLASHCFG_POW_Msk;
     LPC_CREG->FLASHCFGB = CREG_FLASHCFG_MAGIC_Msk | (8 << CREG_FLASHCFG_FLASHTIM_Pos) | CREG_FLASHCFG_POW_Msk;
+
+    //7. Power down unused hardware
+    LPC_CGU->IDIVA_CTRL = CGU_IDIVA_CTRL_PD_Msk;
+    LPC_CGU->IDIVC_CTRL = CGU_IDIVC_CTRL_PD_Msk;
+    LPC_CGU->IDIVD_CTRL = CGU_IDIVD_CTRL_PD_Msk;
+    LPC_CGU->IDIVE_CTRL = CGU_IDIVE_CTRL_PD_Msk;
+    LPC_CGU->BASE_USB0_CLK = CGU_BASE_USB0_CLK_PD_Msk;
+    LPC_CGU->BASE_SPIFI_CLK = CGU_BASE_SPIFI_CLK_PD_Msk;
+    LPC_CGU->BASE_SDIO_CLK = CGU_BASE_SDIO_CLK_PD_Msk;
+    LPC_CGU->BASE_SSP0_CLK = CGU_BASE_SSP0_CLK_PD_Msk;
+    LPC_CGU->BASE_SSP1_CLK = CGU_BASE_SSP1_CLK_PD_Msk;
+    LPC_CGU->BASE_UART0_CLK = CGU_BASE_UART0_CLK_PD_Msk;
+    LPC_CGU->BASE_UART1_CLK = CGU_BASE_UART1_CLK_PD_Msk;
+    LPC_CGU->BASE_UART2_CLK = CGU_BASE_UART2_CLK_PD_Msk;
+    LPC_CGU->BASE_UART3_CLK = CGU_BASE_UART3_CLK_PD_Msk;
+    LPC_CGU->BASE_OUT_CLK = CGU_BASE_OUT_CLK_PD_Msk;
+    LPC_CGU->BASE_CGU_OUT0_CLK = CGU_BASE_CGU_OUT0_CLK_PD_Msk;
+    LPC_CGU->BASE_CGU_OUT1_CLK = CGU_BASE_CGU_OUT1_CLK_PD_Msk;
+
+#if defined(LPC183x) || defined(LPC185x)
+    LPC_CGU->BASE_USB1_CLK = CGU_BASE_USB1_CLK_PD_Msk;
+    LPC_CGU->BASE_PHY_RX_CLK = CGU_BASE_PHY_RX_CLK_PD_Msk;
+    LPC_CGU->BASE_PHY_TX_CLK = CGU_BASE_PHY_TX_CLK_PD_Msk;
+#endif //defined(LPC183x) || defined(LPC185x)
+
+#if defined(LPC185x)
+    LPC_CGU->BASE_LCD_CLK = CGU_BASE_LCD_CLK_PD_Msk;
+#endif //defined(LPC183x) || defined(LPC185x)
 }
 
 static unsigned int lpc_get_source_clock(unsigned int source);
@@ -250,7 +287,7 @@ static unsigned int lpc_get_source_clock(unsigned int source)
     case CGU_CLK_IDIVC:
     case CGU_CLK_IDIVD:
     case CGU_CLK_IDIVE:
-        return lpc_get_source_clock(CGU_IDIVx_CTRL[(source - CGU_CLK_IDIVA) >> CGU_CLK_CLK_SEL_POS] & CGU_IDIVx_CTRL_CLK_SEL_Msk) *
+        return lpc_get_source_clock(CGU_IDIVx_CTRL[(source - CGU_CLK_IDIVA) >> CGU_CLK_CLK_SEL_POS] & CGU_IDIVx_CTRL_CLK_SEL_Msk) /
                 (((CGU_IDIVx_CTRL[(source - CGU_CLK_IDIVA) >> CGU_CLK_CLK_SEL_POS] & CGU_IDIVx_CTRL_IDIV_Msk) >> CGU_IDIVx_CTRL_IDIV_Pos) + 1);
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -283,6 +320,38 @@ static inline void lpc_decode_reset_reason(CORE* core)
     LPC_EVENTROUTER->CLR_STAT = EVENTROUTER_CLR_STAT_RESET_CLRST_Msk;
 }
 #endif //LPC_DECODE_RESET
+
+#if (POWER_MANAGEMENT_SUPPORT)
+static inline void lpc_power_hi(CORE* core)
+{
+    lpc_timer_suspend(core);
+    lpc_power_switch_core_clock(POWER_HI_DIVIDER);
+    lpc_timer_adjust(core);
+}
+
+static inline void lpc_power_lo(CORE* core)
+{
+    lpc_timer_suspend(core);
+    lpc_power_switch_core_clock(POWER_LO_DIVIDER);
+    lpc_timer_adjust(core);
+}
+
+static inline void lpc_power_set_mode(CORE* core, POWER_MODE mode)
+{
+    switch (mode)
+    {
+    case POWER_MODE_HIGH:
+        lpc_power_hi(core);
+        break;
+    case POWER_MODE_LOW:
+        lpc_power_lo(core);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+    }
+}
+#endif //(POWER_MANAGEMENT_SUPPORT)
+
 #endif //LPC11Uxx
 
 #if (LPC_DECODE_RESET)
@@ -296,8 +365,8 @@ unsigned int lpc_power_get_clock_inside(POWER_CLOCK_TYPE clock_type)
 {
     switch (clock_type)
     {
-    case POWER_BUS_CLOCK:
 #ifdef LPC18xx
+    case POWER_BUS_CLOCK:
         return lpc_get_pll1_clock();
 #endif //LPC18xx
     case POWER_CORE_CLOCK:
@@ -328,6 +397,12 @@ void lpc_power_request(CORE* core, IPC* ipc)
         ipc->param2 = lpc_get_reset_reason(core);
         break;
 #endif //LPC_DECODE_RESET
+#if (POWER_MANAGEMENT_SUPPORT)
+    case POWER_SET_MODE:
+        //no return
+        lpc_power_set_mode(core, ipc->param1);
+        break;
+#endif //POWER_MANAGEMENT_SUPPORT
     default:
         error(ERROR_NOT_SUPPORTED);
     }

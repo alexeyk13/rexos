@@ -375,7 +375,9 @@ static inline void lpc_uart_open(CORE* drv, UART_PORT port, unsigned int mode)
     LPC_SYSCON->SYSAHBCLKCTRL |= 1 << __UART_POWER_PINS[port];
 #else //LPC18xx
     //map PLL1 output to UART clock
-    ((uint32_t*)LPC_CGU_UART0_CLOCK_BASE)[port] = CGU_CLK_PLL1;
+    ((uint32_t*)LPC_CGU_UART0_CLOCK_BASE)[port] = CGU_BASE_UART0_CLK_PD_Msk;
+    ((uint32_t*)LPC_CGU_UART0_CLOCK_BASE)[port] |= CGU_CLK_PLL1;
+    ((uint32_t*)LPC_CGU_UART0_CLOCK_BASE)[port] &= ~CGU_BASE_UART0_CLK_PD_Msk;
 #endif //LPC11Uxx
     //remove reset state. Only for LPC11U6x
 #ifdef LPC11U6x
@@ -510,6 +512,8 @@ static inline void lpc_uart_close(CORE* drv, UART_PORT port)
     }
 #ifdef LPC11Uxx
     LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << __UART_POWER_PINS[port]);
+#else
+    ((uint32_t*)LPC_CGU_UART0_CLOCK_BASE)[port] = CGU_BASE_UART0_CLK_PD_Msk;
 #endif //LPC11Uxx
 
     lpc_uart_flush(drv, port);

@@ -37,6 +37,7 @@
 #define CGU_CLK_ENET_TX                         (3 << 24)
 #define CGU_CLK_GP_CLKIN                        (4 << 24)
 #define CGU_CLK_HSE                             (6 << 24)
+#define CGU_CLK_PLL0USB                         (7 << 24)
 #define CGU_CLK_PLL0AUDIO                       (8 << 24)
 #define CGU_CLK_PLL1                            (9 << 24)
 #define CGU_CLK_IDIVA                           (0xc << 24)
