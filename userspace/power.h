@@ -8,8 +8,6 @@
 #define POWER_H
 
 #include "ipc.h"
-#include "cc_macro.h"
-#include "sys_config.h"
 
 typedef enum {
     POWER_MODE_HIGH = 0,
@@ -21,12 +19,18 @@ typedef enum {
 
 typedef enum {
     POWER_SET_MODE = IPC_USER,
+    POWER_GET_CLOCK,
     POWER_MAX
 } POWER_IPCS;
 
-__STATIC_INLINE void power_set_mode(POWER_MODE mode)
-{
-    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_POWER, POWER_SET_MODE), mode, 0, 0);
-}
+typedef enum {
+    POWER_CORE_CLOCK = 0,
+    POWER_BUS_CLOCK,
+    POWER_CLOCK_MAX
+} POWER_CLOCK_TYPE;
+
+void power_set_mode(POWER_MODE mode);
+unsigned int power_get_clock(POWER_CLOCK_TYPE clock_type);
+unsigned int power_get_core_clock();
 
 #endif // POWER_H

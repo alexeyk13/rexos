@@ -10,6 +10,7 @@
 #include "lpc.h"
 #include "lpc_config.h"
 #include "../process.h"
+#include "../power.h"
 
 extern const REX __LPC_CORE;
 extern const REX __LPC_ETH;
@@ -189,8 +190,8 @@ typedef enum {
 
 //------------------------------------------------ Power ---------------------------------------------------------------------
 typedef enum {
-    LPC_POWER_GET_CORE_CLOCK = IPC_USER,
-    LPC_POWER_GET_RESET_REASON
+    LPC_POWER_GET_RESET_REASON = POWER_MAX,
+    LPC_POWER_MAX
 } LPC_POWER_IPCS;
 
 typedef enum {

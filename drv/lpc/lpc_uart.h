@@ -13,9 +13,7 @@
 #include "../../userspace/io.h"
 #include "../../userspace/rb.h"
 #include "lpc_config.h"
-#if (MONOLITH_UART)
 #include "lpc_core.h"
-#endif
 
 typedef struct {
     HANDLE tx_stream, tx_handle, rx_stream, rx_handle;
@@ -51,17 +49,7 @@ typedef struct {
 #endif
 } UART_DRV;
 
-#if (MONOLITH_UART)
-#define SHARED_UART_DRV                    CORE
-#else
-
-typedef struct {
-    UART_DRV uart;
-} SHARED_UART_DRV;
-
-#endif
-
-void lpc_uart_init(SHARED_UART_DRV* drv);
-void lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc);
+void lpc_uart_init(CORE* drv);
+void lpc_uart_request(CORE* drv, IPC* ipc);
 
 #endif // LPC_UART_H

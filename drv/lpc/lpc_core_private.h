@@ -26,9 +26,7 @@
 typedef struct _CORE {
     POWER_DRV power;
     TIMER_DRV timer;
-#if (MONOLITH_UART)
     UART_DRV uart;
-#endif
 #if (LPC_I2C_DRIVER)
     I2C_DRV i2c;
 #endif

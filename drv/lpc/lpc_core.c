@@ -54,11 +54,9 @@ void lpc_core_loop(CORE* core)
         case HAL_TIMER:
             lpc_timer_request(core, &ipc);
             break;
-#if (MONOLITH_UART)
         case HAL_UART:
             lpc_uart_request(core, &ipc);
             break;
-#endif //MONOLITH_UART
 #if (LPC_I2C_DRIVER)
         case HAL_I2C:
             lpc_i2c_request(core, &ipc);
@@ -125,9 +123,7 @@ void lpc_core()
     lpc_power_init(&core);
     lpc_pin_init(&core);
     lpc_timer_init(&core);
-#if (MONOLITH_UART)
     lpc_uart_init(&core);
-#endif
 #if (LPC_I2C_DRIVER)
     lpc_i2c_init(&core);
 #endif //LPC_I2C_DRIVER

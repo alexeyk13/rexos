@@ -41,12 +41,10 @@ typedef enum {
 #if (MONOLITH_USB)
 
 #define ack_pin                 lpc_pin_request_inside
-#define ack_power               lpc_power_request_inside
 
 #else
 
 #define ack_pin                 lpc_core_request_outside
-#define ack_power               lpc_core_request_outside
 
 void lpc_usb();
 

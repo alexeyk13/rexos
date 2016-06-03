@@ -147,7 +147,7 @@ void sdmmcs_set_clock(void* param, unsigned int speed)
     lpc_sdmmc_start_cmd(SDMMC_CMD_UPDATE_CLOCK_REGISTERS_ONLY_Msk | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk);
 
     LPC_SDMMC->CLKDIV &= ~SDMMC_CLKDIV_CLK_DIVIDER0_Msk;
-    LPC_SDMMC->CLKDIV |= (((lpc_power_get_core_clock_inside((CORE*)param) / speed + 1) >> 1) << SDMMC_CLKDIV_CLK_DIVIDER0_Pos) & SDMMC_CLKDIV_CLK_DIVIDER0_Msk;
+    LPC_SDMMC->CLKDIV |= (((lpc_power_get_clock_inside(POWER_BUS_CLOCK) / speed + 1) >> 1) << SDMMC_CLKDIV_CLK_DIVIDER0_Pos) & SDMMC_CLKDIV_CLK_DIVIDER0_Msk;
     lpc_sdmmc_start_cmd(SDMMC_CMD_UPDATE_CLOCK_REGISTERS_ONLY_Msk | SDMMC_CMD_WAIT_PRVDATA_COMPLETE_Msk);
 
     LPC_SDMMC->CLKENA |= SDMMC_CLKENA_CCLK_ENABLE;

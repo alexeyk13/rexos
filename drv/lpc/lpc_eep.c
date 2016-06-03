@@ -10,8 +10,6 @@
 #include "../../userspace/io.h"
 #include "lpc_power.h"
 
-#define get_core_clock                              lpc_power_get_core_clock_inside
-
 #ifdef LPC18xx
 
 #define EEP_BASE                                    0x20040000
@@ -50,7 +48,8 @@ static inline void lpc_eep_read(CORE* core, IPC* ipc)
     req[1] = ipc->param1;
     req[2] = (unsigned int)io_data(io);
     req[3] = ipc->param3;
-    req[4] = lpc_power_get_core_clock_inside(core) / 1000;
+    //EEPROM operates on M3 clock
+    req[4] = lpc_power_get_core_clock_inside() / 1000;
     iap(req, resp);
     if (resp[0] != 0)
     {
@@ -92,7 +91,8 @@ static inline void lpc_eep_write(CORE* core, IPC* ipc)
     req[1] = ipc->param1;
     req[2] = (unsigned int)io_data(io);
     req[3] = io->data_size;
-    req[4] = lpc_power_get_core_clock_inside(core) / 1000;
+    //EEPROM operates on M3 clock
+    req[4] = lpc_power_get_core_clock_inside() / 1000;
     iap(req, resp);
     if (resp[0] != 0)
     {
@@ -106,7 +106,8 @@ static inline void lpc_eep_write(CORE* core, IPC* ipc)
 void lpc_eep_init(CORE* core)
 {
     LPC_EEPROM->PWRDWN |= LPC_EEPROM_PWRDWN_Msk;
-    LPC_EEPROM->CLKDIV = get_core_clock(core) / EEP_CLK - 1;
+    //EEPROM operates on M3 clock
+    LPC_EEPROM->CLKDIV = lpc_power_get_core_clock_inside() / EEP_CLK - 1;
     sleep_us(100);
     LPC_EEPROM->PWRDWN &= ~LPC_EEPROM_PWRDWN_Msk;
 }

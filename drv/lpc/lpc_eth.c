@@ -11,14 +11,13 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/systime.h"
+#include "../../userspace/power.h"
 #include "../../userspace/lpc/lpc_driver.h"
 #include "../eth_phy.h"
 #include "lpc_pin.h"
 #include "lpc_power.h"
 #include <stdbool.h>
 #include <string.h>
-
-#define get_core_clock               lpc_power_get_core_clock_outside
 
 void lpc_eth();
 
@@ -311,7 +310,7 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
 #endif
 
     //configure SMI
-    clock = get_core_clock(drv);
+    clock = power_get_clock(POWER_BUS_CLOCK);
     if (clock > 250000000)
         LPC_ETHERNET->MAC_MII_ADDR |= 5 << ETHERNET_MAC_MII_ADDR_CR_Pos;
     else if (clock > 150000000)

@@ -110,7 +110,8 @@ static void lpc_timer_start_master_clk(CORE* core, TIMER timer, unsigned int psc
 
 static void lpc_timer_start_master_us(CORE* core, TIMER timer, unsigned int us)
 {
-    unsigned int clock = lpc_power_get_core_clock_inside(core);
+    //timers operate on M3 clock
+    unsigned int clock = lpc_power_get_core_clock_inside();
 #ifdef LPC11Uxx
     unsigned int psc, cnt, clk;
     if (timer < TC32B0)

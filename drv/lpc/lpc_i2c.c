@@ -12,7 +12,6 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/systime.h"
 
-#define get_core_clock                              lpc_power_get_core_clock_inside
 #define ack_pin                                     lpc_pin_request_inside
 
 #define I2C_NORMAL_CLOCK                            100000
@@ -267,7 +266,7 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int spe
 
 #endif //LPC11Uxx
     //setup clock
-    __I2C_REGS[port]->SCLL = __I2C_REGS[port]->SCLH = get_core_clock(core) / (speed) / 2;
+    __I2C_REGS[port]->SCLL = __I2C_REGS[port]->SCLH = lpc_power_get_clock_inside(POWER_BUS_CLOCK) / (speed) / 2;
     //reset state machine
     __I2C_REGS[port]->CONCLR = I2C_CLEAR;
     //enable interrupt

@@ -29,6 +29,8 @@
 /*                                                                            */
 /******************************************************************************/
 
+#define CGU_CLK_CLK_SEL_POS                     24
+
 #define CGU_CLK_LSE                             (0 << 24)
 #define CGU_CLK_IRC                             (1 << 24)
 #define CGU_CLK_ENET_RX                         (2 << 24)
@@ -42,6 +44,13 @@
 #define CGU_CLK_IDIVC                           (0xe << 24)
 #define CGU_CLK_IDIVD                           (0xf << 24)
 #define CGU_CLK_IDIVE                           (0x10 << 24)
+
+#define CGU_IDIVx_CTRL_BASE                     0x40050048
+#define CGU_IDIVx_CTRL                          ((unsigned int*)(CGU_IDIVx_CTRL_BASE))
+#define CGU_IDIVx_CTRL_CLK_SEL_Msk              (0x1f << 24)
+#define CGU_IDIVx_CTRL_IDIV_Msk                 (0xff << 2)
+#define CGU_IDIVx_CTRL_IDIV_Pos                 2
+
 
 /******************************************************************************/
 /*                                                                            */

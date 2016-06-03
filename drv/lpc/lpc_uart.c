@@ -10,32 +10,7 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/stream.h"
 #include "../../userspace/stdlib.h"
-
-#if (MONOLITH_UART)
 #include "lpc_core_private.h"
-
-#define get_core_clock        lpc_power_get_core_clock_inside
-
-#else
-
-#define get_core_clock        lpc_power_get_core_clock_outside
-
-void lpc_uart();
-
-const REX __LPC_UART = {
-    //name
-    "LPC uart",
-    //size
-    LPC_UART_PROCESS_SIZE,
-    //priority - driver priority.
-    89,
-    //flags
-    PROCESS_FLAGS_ACTIVE | REX_FLAG_PERSISTENT_NAME,
-    //function
-    lpc_uart
-};
-
-#endif
 
 typedef enum {
     IPC_UART_ISR_TX = IPC_UART_MAX,
@@ -71,7 +46,7 @@ static const LPC_USARTn_Type_P __USART_REGS[UARTS_COUNT] =      {LPC_USART0, (LP
 
 #endif
 
-static bool lpc_uart_rx_isr(SHARED_UART_DRV* drv, UART_PORT port, uint8_t c)
+static bool lpc_uart_rx_isr(CORE* drv, UART_PORT port, uint8_t c)
 {
     bool res = true;
     UART* uart = drv->uart.uarts[port];
@@ -107,7 +82,7 @@ static bool lpc_uart_rx_isr(SHARED_UART_DRV* drv, UART_PORT port, uint8_t c)
     return res;
 }
 
-static bool lpc_uart_tx_isr(SHARED_UART_DRV* drv, UART_PORT port, uint8_t* c)
+static bool lpc_uart_tx_isr(CORE* drv, UART_PORT port, uint8_t* c)
 {
     IPC ipc;
     bool res = false;
@@ -162,7 +137,7 @@ void lpc_uart_on_isr(int vector, void* param)
     uint8_t c;
     bool more;
     UART_PORT port = UART_0;
-    SHARED_UART_DRV* drv = (SHARED_UART_DRV*)param;
+    CORE* drv = (CORE*)param;
     if (vector != __UART_VECTORS[UART_0])
         for (i = 1; i < UARTS_COUNT; ++i)
             if (vector == __UART_VECTORS[i])
@@ -211,7 +186,7 @@ void lpc_uart4_on_isr(int vector, void* param)
     bool more;
     //find port by vector
     UART_PORT port;
-    SHARED_UART_DRV* drv = (SHARED_UART_DRV*)param;
+    CORE* drv = (CORE*)param;
     if (vector == __UART_VECTORS[1])
         port = UART_1;
     else
@@ -255,7 +230,7 @@ void lpc_uart4_on_isr(int vector, void* param)
 }
 #endif
 
-static inline void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, IPC* ipc)
+static inline void lpc_uart_set_baudrate(CORE* drv, UART_PORT port, IPC* ipc)
 {
     BAUD baudrate;
     if (drv->uart.uarts[port] == NULL)
@@ -264,7 +239,7 @@ static inline void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, I
         return;
     }
     uart_decode_baudrate(ipc, &baudrate);
-    unsigned int divider = get_core_clock(drv) / (((__USART_REGS[port]->OSR >> 4) & 0x7ff) + 1 ) / baudrate.baud;
+    unsigned int divider = lpc_power_get_clock_inside(POWER_BUS_CLOCK) / (((__USART_REGS[port]->OSR >> 4) & 0x7ff) + 1 ) / baudrate.baud;
 #ifdef LPC11U6x
     if (port > UART_0)
     {
@@ -300,7 +275,7 @@ static inline void lpc_uart_set_baudrate(SHARED_UART_DRV* drv, UART_PORT port, I
     }
 }
 
-static void lpc_uart_destroy(SHARED_UART_DRV* drv, UART_PORT port)
+static void lpc_uart_destroy(CORE* drv, UART_PORT port)
 {
 #if (UART_IO_MODE_SUPPORT)
     if (drv->uart.uarts[port]->io_mode)
@@ -319,7 +294,7 @@ static void lpc_uart_destroy(SHARED_UART_DRV* drv, UART_PORT port)
     drv->uart.uarts[port] = NULL;
 }
 
-static inline bool lpc_uart_open_stream(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
+static inline bool lpc_uart_open_stream(CORE* drv, UART_PORT port, unsigned int mode)
 {
     drv->uart.uarts[port]->s.tx_stream = INVALID_HANDLE;
     drv->uart.uarts[port]->s.tx_handle = INVALID_HANDLE;
@@ -348,7 +323,7 @@ static inline bool lpc_uart_open_stream(SHARED_UART_DRV* drv, UART_PORT port, un
 }
 
 #if (UART_IO_MODE_SUPPORT)
-static inline bool lpc_uart_open_io(SHARED_UART_DRV* drv, UART_PORT port)
+static inline bool lpc_uart_open_io(CORE* drv, UART_PORT port)
 {
     UART_IO* i = &(drv->uart.uarts[port]->i);
     i->tx_io = i->rx_io = NULL;
@@ -362,7 +337,7 @@ static inline bool lpc_uart_open_io(SHARED_UART_DRV* drv, UART_PORT port)
 }
 #endif //UART_IO_MODE_SUPPORT
 
-static inline void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned int mode)
+static inline void lpc_uart_open(CORE* drv, UART_PORT port, unsigned int mode)
 {
     bool ok;
     if (drv->uart.uarts[port] != NULL)
@@ -439,7 +414,7 @@ static inline void lpc_uart_open(SHARED_UART_DRV* drv, UART_PORT port, unsigned 
     NVIC_SetPriority(__UART_VECTORS[port], 2);
 }
 
-static void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
+static void lpc_uart_flush(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
@@ -496,7 +471,7 @@ static void lpc_uart_flush(SHARED_UART_DRV* drv, UART_PORT port)
     drv->uart.uarts[port]->error = ERROR_OK;
 }
 
-static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
+static inline void lpc_uart_close(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
@@ -541,7 +516,7 @@ static inline void lpc_uart_close(SHARED_UART_DRV* drv, UART_PORT port)
     lpc_uart_destroy(drv, port);
 }
 
-static inline HANDLE lpc_uart_get_tx_stream(SHARED_UART_DRV* drv, UART_PORT port)
+static inline HANDLE lpc_uart_get_tx_stream(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
@@ -558,7 +533,7 @@ static inline HANDLE lpc_uart_get_tx_stream(SHARED_UART_DRV* drv, UART_PORT port
     return drv->uart.uarts[port]->s.tx_stream;
 }
 
-static inline HANDLE lpc_uart_get_rx_stream(SHARED_UART_DRV* drv, UART_PORT port)
+static inline HANDLE lpc_uart_get_rx_stream(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
@@ -575,7 +550,7 @@ static inline HANDLE lpc_uart_get_rx_stream(SHARED_UART_DRV* drv, UART_PORT port
     return drv->uart.uarts[port]->s.rx_stream;
 }
 
-static inline uint16_t lpc_uart_get_last_error(SHARED_UART_DRV* drv, UART_PORT port)
+static inline uint16_t lpc_uart_get_last_error(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
@@ -585,7 +560,7 @@ static inline uint16_t lpc_uart_get_last_error(SHARED_UART_DRV* drv, UART_PORT p
     return drv->uart.uarts[port]->error;
 }
 
-static inline void lpc_uart_clear_error(SHARED_UART_DRV* drv, UART_PORT port)
+static inline void lpc_uart_clear_error(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
@@ -597,7 +572,7 @@ static inline void lpc_uart_clear_error(SHARED_UART_DRV* drv, UART_PORT port)
 
 void uart_write_kernel(const char *const buf, unsigned int size, void* param);
 
-static inline void lpc_uart_write(SHARED_UART_DRV* drv, UART_PORT port, unsigned int total)
+static inline void lpc_uart_write(CORE* drv, UART_PORT port, unsigned int total)
 {
     if (total)
         drv->uart.uarts[port]->s.tx_total = total;
@@ -635,7 +610,7 @@ static inline void lpc_uart_write(SHARED_UART_DRV* drv, UART_PORT port, unsigned
 
 }
 
-static inline void lpc_uart_read(SHARED_UART_DRV* drv, UART_PORT port, char c)
+static inline void lpc_uart_read(CORE* drv, UART_PORT port, char c)
 {
     //caching calls to svc
     if (drv->uart.uarts[port]->s.rx_free == 0)
@@ -649,7 +624,7 @@ static inline void lpc_uart_read(SHARED_UART_DRV* drv, UART_PORT port, char c)
 }
 
 #if (UART_IO_MODE_SUPPORT)
-static inline void lpc_uart_io_read(SHARED_UART_DRV* drv, UART_PORT port, IPC* ipc)
+static inline void lpc_uart_io_read(CORE* drv, UART_PORT port, IPC* ipc)
 {
     UART* uart = drv->uart.uarts[port];
     IO* io;
@@ -688,7 +663,7 @@ static inline void lpc_uart_io_read(SHARED_UART_DRV* drv, UART_PORT port, IPC* i
     error(ERROR_SYNC);
 }
 
-static inline void lpc_uart_io_write(SHARED_UART_DRV* drv, UART_PORT port, IPC* ipc)
+static inline void lpc_uart_io_write(CORE* drv, UART_PORT port, IPC* ipc)
 {
     UART* uart = drv->uart.uarts[port];
     IO* io;
@@ -729,7 +704,7 @@ static inline void lpc_uart_io_write(SHARED_UART_DRV* drv, UART_PORT port, IPC* 
     error(ERROR_SYNC);
 }
 
-static inline void lpc_uart_io_read_timeout(SHARED_UART_DRV* drv, UART_PORT port)
+static inline void lpc_uart_io_read_timeout(CORE* drv, UART_PORT port)
 {
     IO* io = NULL;
     UART* uart = drv->uart.uarts[port];
@@ -775,13 +750,13 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
     NVIC_EnableIRQ(__UART_VECTORS[port]);
 }
 
-static inline void lpc_uart_setup_printk(SHARED_UART_DRV* drv, UART_PORT port)
+static inline void lpc_uart_setup_printk(CORE* drv, UART_PORT port)
 {
     //setup kernel printk dbg
     setup_dbg(uart_write_kernel, (void*)port);
 }
 
-void lpc_uart_init(SHARED_UART_DRV* drv)
+void lpc_uart_init(CORE* drv)
 {
     int i;
 #if defined(LPC11U6x)
@@ -795,7 +770,7 @@ void lpc_uart_init(SHARED_UART_DRV* drv)
         drv->uart.uarts[i] = NULL;
 }
 
-void lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
+void lpc_uart_request(CORE* drv, IPC* ipc)
 {
     UART_PORT port = ipc->param1;
     if (port >= UARTS_COUNT)
@@ -861,7 +836,7 @@ void lpc_uart_request(SHARED_UART_DRV* drv, IPC* ipc)
 #if !(MONOLITH_UART)
 void lpc_uart()
 {
-    SHARED_UART_DRV drv;
+    CORE drv;
     IPC ipc;
     object_set_self(SYS_OBJ_UART);
     lpc_uart_init(&drv);
