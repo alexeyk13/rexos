@@ -383,19 +383,24 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io,
         error(ERROR_IN_PROGRESS);
         return;
     }
-    if ((user != core->sdmmc.user) || (size == 0) || (size % core->sdmmc.sdmmcs.sector_size))
+    if ((user != core->sdmmc.user) || (size == 0))
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    //erase
+    if (!read && ((stack->flags & STORAGE_MASK_MODE) == 0))
+    {
+        sdmmcs_erase(&core->sdmmc.sdmmcs, stack->sector, size);
+        return;
+    }
+    if (size % core->sdmmc.sdmmcs.sector_size)
     {
         error(ERROR_INVALID_PARAMS);
         return;
     }
     count = size / core->sdmmc.sdmmcs.sector_size;
     core->sdmmc.total = size;
-    //erase
-    if (!read && ((stack->flags & STORAGE_MASK_MODE) == 0))
-    {
-        sdmmcs_erase(&core->sdmmc.sdmmcs, stack->sector, count);
-        return;
-    }
     if (core->sdmmc.total > LPC_SDMMC_TOTAL_SIZE)
     {
         error(ERROR_INVALID_PARAMS);
@@ -422,9 +427,6 @@ static inline void lpc_sdmmc_io(CORE* core, HANDLE process, HANDLE user, IO* io,
     {
         switch (stack->flags & STORAGE_MASK_MODE)
         {
-        case STORAGE_FLAG_ERASE_ONLY:
-            sdmmcs_erase(&core->sdmmc.sdmmcs, stack->sector, count);
-            break;
         case STORAGE_FLAG_WRITE:
             core->sdmmc.state = SDMMC_STATE_WRITE;
             if (sdmmcs_write(&core->sdmmc.sdmmcs, stack->sector, count))
