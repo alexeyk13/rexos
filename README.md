@@ -88,6 +88,11 @@ ARM7 features:
 History
 =======
 
+0.4.5
+- LPC18xx power profiling support
+- HAL syntax for frequencies request
+- Minor fixes in LPC18xx drivers
+
 0.4.4
 - USB Mass storage multiple LUN support
 - MMC6 SCSI
