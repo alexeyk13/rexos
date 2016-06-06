@@ -233,7 +233,7 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int spe
     if (i2c->timer == INVALID_HANDLE)
     {
         free(i2c);
-        i2c = NULL;
+        core->i2c.i2cs[port] = NULL;
         return;
     }
     i2c->timer_need_stop = false;
@@ -257,7 +257,7 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int spe
     }
     else
     {
-        //connect APB2 to PLL1
+        //connect APB3 to PLL1
         LPC_CGU->BASE_APB3_CLK = CGU_BASE_APB3_CLK_PD_Pos;
         LPC_CGU->BASE_APB3_CLK |= CGU_CLK_PLL1;
         LPC_CGU->BASE_APB3_CLK &= ~CGU_BASE_APB3_CLK_PD_Pos;
@@ -296,6 +296,12 @@ void lpc_i2c_close(CORE* core, I2C_PORT port)
     if (port == I2C_0)
         LPC_SCU->SFSI2C0 = 0;
 #endif //LPC11Uxx
+
+#if (LPC_I2C_TIMEOUT_MS)
+    timer_destroy(i2c->timer);
+#endif
+    free(i2c);
+    core->i2c.i2cs[port] = NULL;
 }
 
 static void lpc_i2c_io(CORE* core, IPC* ipc, bool read)
