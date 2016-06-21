@@ -23,8 +23,7 @@ USERSPACE                   = $(REXOS)/userspace
 LIB                         = $(REXOS)/lib
 LDS_SCRIPT                  = $(KERNEL)/arm.ld.S
 #----------------------------------------------------------
-LIBS_DIR                    = ../3rdparty
-CMSIS_DIR                   = $(LIBS_DIR)/CMSIS
+CMSIS_DIR                   = $(REXOS)/3rdparty/CMSIS
 #CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32L0xx
 CMSIS_DEVICE_DIR            = $(CMSIS_DIR)/Device/ST/STM32F10x
 #CMSIS_DEVICE_DIR           = $(CMSIS_DIR)/Device/ST/STM32F2xx
