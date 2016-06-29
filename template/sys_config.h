@@ -7,49 +7,51 @@
 #ifndef SYS_CONFIG_H
 #define SYS_CONFIG_H
 
+/*
+    config.h - userspace config
+ */
+
 //----------------------------- objects ----------------------------------------------
 //make sure, you know what are you doing, before change
 #define SYS_OBJ_STDOUT                                      0
 #define SYS_OBJ_CORE                                        1
-#define SYS_OBJ_ETH                                         2
 
 #define SYS_OBJ_UART                                        SYS_OBJ_CORE
-#define SYS_OBJ_USB                                         SYS_OBJ_CORE
-#define SYS_OBJ_STDIN                                       INVALID_HANDLE
-#define SYS_OBJ_TCPIP                                       INVALID_HANDLE
+#define SYS_OBJ_USB                                         INVALID_HANDLE
 #define SYS_OBJ_ADC                                         INVALID_HANDLE
 #define SYS_OBJ_DAC                                         INVALID_HANDLE
-
+#define SYS_OBJ_STDIN                                       INVALID_HANDLE
+#define SYS_OBJ_ETH                                         INVALID_HANDLE
 //------------------------------ POWER -----------------------------------------------
 //depends on hardware implementation
-#define POWER_MANAGEMENT_SUPPORT                            0
-#define LOW_POWER_ON_STARTUP                                0
+#define POWER_MANAGEMENT                            0
 //------------------------------- UART -----------------------------------------------
 //default values
 #define UART_CHAR_TIMEOUT_MS                                10000
 #define UART_INTERLEAVED_TIMEOUT_MS                         4
 //-------------------------------- USB -----------------------------------------------
-#define USB_EP_COUNT_MAX                                    5
+#define USB_EP_COUNT_MAX                                    4
 //low-level USB debug. Turn on only in case of IO problems
-#define USB_DEBUG_ERRORS                                    0
-//support for high speed, qualifier, other speed, test, etc
+#define USB_DEBUG_ERRORS                                    1
 #define USB_TEST_MODE_SUPPORT                               0
 
 //----------------------------- USB device--------------------------------------------
 //all other device-related debug depends on this
-#define USBD_DEBUG                                          1
+#define USBD_DEBUG                                          0
 #define USBD_DEBUG_ERRORS                                   0
 #define USBD_DEBUG_REQUESTS                                 0
+//enable only for USB driver development
+#define USBD_DEBUG_FLOW                                     0
 
 //vendor-specific requests support
-#define USBD_VSR                                            1
+#define USBD_VSR                                            0
 
-#define USBD_IO_SIZE                                        256
+#define USBD_IO_SIZE                                        128
 
-#define USBD_CDC_ACM_CLASS                                  0
-#define USBD_RNDIS_CLASS                                    1
+#define USBD_CDC_ACM_CLASS                                  1
+#define USBD_RNDIS_CLASS                                    0
 #define USBD_HID_KBD_CLASS                                  0
-#define USBD_CCID_CLASS                                     1
+#define USBD_CCID_CLASS                                     0
 #define USBD_MSC_CLASS                                      0
 
 //----------------------- CDC ACM Device class ----------------------------------------
@@ -74,13 +76,6 @@
 #define USBD_HID_DEBUG_REQUESTS                             0
 #define USBD_HID_DEBUG_IO                                   0
 
-//------------------------------ MSCD class -------------------------------------------
-#define USBD_MSC_DEBUG_ERRORS                               0
-#define USBD_MSC_DEBUG_REQUESTS                             0
-#define USBD_MSC_DEBUG_IO                                   0
-
-//Generally sector_size * num_sectors
-#define USBD_MSC_IO_SIZE                                    (36 * 1024)
 //----------------------------- CCIDD class -------------------------------------------
 #define USBD_CCID_REMOVABLE_CARD                            0
 
@@ -88,6 +83,13 @@
 #define USBD_CCID_DEBUG_REQUESTS                            0
 #define USBD_CCID_DEBUG_IO                                  0
 
+//------------------------------ MSCD class -------------------------------------------
+#define USBD_MSC_DEBUG_ERRORS                               0
+#define USBD_MSC_DEBUG_REQUESTS                             0
+#define USBD_MSC_DEBUG_IO                                   0
+
+//only one LUN supported for now
+#define USBD_MSC_LUN_COUNT                                  1
 //-------------------------------- SCSI ----------------------------------------------
 #define SCSI_SENSE_DEPTH                                    10
 //can be disabled for flash memory saving
@@ -98,19 +100,19 @@
 //SATA over SCSI. Just stub for more verbose error processing
 //Found on some linux recent kernels
 #define SCSI_SAT                                            0
-//SCSI MMC command set. Required for CD-ROM support
-#define SCSI_MMC                                            1
+//exclude SCSI stack. Generally sector_size * num_sectors
+#define SCSI_IO_SIZE                                        512
 
-#define SCSI_DEBUG_REQUESTS                                 0
-#define SCSI_DEBUG_ERRORS                                   0
+#define SCSI_DEBUG_REQUESTS                                 1
+#define SCSI_DEBUG_ERRORS                                   1
 
 //------------------------------ PIN board -------------------------------------------
-#define PINBOARD_PROCESS_SIZE                               400
+#define PINBOARD_PROCESS_SIZE                               500
 #define PINBOARD_POLL_TIME_MS                               100
 //--------------------------------- DAC ----------------------------------------------
 #define SAMPLE                                              uint16_t
 //disable for some flash saving
-#define WAVEGEN_SQUARE                                      0
+#define WAVEGEN_SQUARE                                      1
 #define WAVEGEN_TRIANGLE                                    0
 #define WAVEGEN_SINE                                        0
 //--------------------------------- ETH ----------------------------------------------
@@ -122,11 +124,11 @@
 #define TCPIP_DEBUG_ERRORS                                  1
 
 #define TCPIP_MTU                                           1500
-#define TCPIP_MAX_FRAMES_COUNT                              8
+#define TCPIP_MAX_FRAMES_COUNT                              10
 
 //----------------------------- TCP/IP MAC --------------------------------------------
 //software MAC filter. Turn on in case of hardware is not supporting
-#define MAC_FILTER                                          1
+#define MAC_FILTER                                          0
 #define MAC_FIREWALL                                        1
 #define TCPIP_MAC_DEBUG                                     0
 
@@ -146,7 +148,7 @@
 //set, if not supported by hardware
 #define IP_CHECKSUM                                         1
 
-#define IP_FRAGMENTATION                                    0
+#define IP_FRAGMENTATION                                    1
 #define IP_FRAGMENTATION_ASSEMBLY_TIMEOUT                   10
 //must be less TCPIP_MTU * TCPIP_MAX_FRAMES_COUNT
 #define IP_MAX_LONG_SIZE                                    5000
@@ -172,7 +174,8 @@
 #define TCP_RETRY_COUNT                                     3
 #define TCP_KEEP_ALIVE                                      0
 #define TCP_TIMEOUT                                         30000
-#define TCP_HANDLES_LIMIT                                   1
+//0 - don't limit
+#define TCP_HANDLES_LIMIT                                   10
 //Low-level debug. only for development
 #define TCP_DEBUG_FLOW                                      0
 #define TCP_DEBUG_PACKETS                                   0

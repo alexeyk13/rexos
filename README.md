@@ -63,9 +63,9 @@ unavailable, another HPET timer can be used for RTC emulation
   * cortex-m4
   * ARM7
 - Drivers:
-  * core (PIN/GPIO, UART, TIMER, POWER): STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx, LPC18xx
-  * rtc: STM32F1, STM32F2, STM32F4, STM32L0
-  * wdt: STM32F1, STM32F2, STM32F4, STM32L0
+  * core (PIN/GPIO, UART, TIMER, POWER): STM32F0, STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx, LPC18xx
+  * rtc: STM32F0, STM32F1, STM32F2, STM32F4, STM32L0
+  * wdt: STM32F0, STM32F1, STM32F2, STM32F4, STM32L0
   * EEPROM: LPC11Uxx, STM32L0
   * I2C: LPC1Uxx, LPC18xx
   * ADC: STM32F1, STM32L0
@@ -87,6 +87,9 @@ ARM7 features:
 
 History
 =======
+0.4.6
+- STM32 F0 support
+- STM32 HAL interface for clocks query
 
 0.4.5
 - LPC18xx power profiling support

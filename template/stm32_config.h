@@ -7,13 +7,19 @@
 #ifndef STM32_CONFIG_H
 #define STM32_CONFIG_H
 
+//---------------------- fast drivers definitions -----------------------------------
+#define STM32_ADC_DRIVER                        0
+#define STM32_DAC_DRIVER                        0
+#define STM32_WDT_DRIVER                        0
+#define STM32_EEP_DRIVER                        0
+#define STM32_UART_DRIVER                       1
+#define STM32_RTC_DRIVER                        0
 //------------------------------ CORE ------------------------------------------------
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
 #define STM32_CORE_PROCESS_SIZE                 1024
 
 //UART driver is monolith. Enable for size, disable for perfomance
-#define MONOLITH_UART                           1
-#define MONOLITH_USB                            1
+#define MONOLITH_USB                            0
 
 //disable only for power saving if no EXTI or remap is used
 #define SYSCFG_ENABLED                          1
@@ -23,15 +29,16 @@
 //save few bytes here
 #define STM32_DECODE_RESET                      0
 //0 meaning HSI. If not defined, 25MHz will be defined by default by ST lib
-#define HSE_VALUE                               24000000
+#define HSE_VALUE                               0
 #define HSE_BYPASS                              0
 //0 meaning HSE
-#define LSE_VALUE                               32768
+#define LSE_VALUE                               0
 //STM32L0
 #define MSI_RANGE                               6
 
+//STM32F1, F0
+#define PLL_MUL                                 12
 //STM32F1
-#define PLL_MUL                                 6
 #define PLL_DIV                                 2
 //STM32L0
 //#define PLL_MUL                                 12
@@ -53,16 +60,13 @@
 #define UART_TX_BUF_SIZE                        16
 //generally UART is used as stdout/stdio, so fine-tuning is required only on hi load
 #define UART_STREAM_SIZE                        32
-//Sizeof UART process. Remember, that process itself requires around 450 bytes. Only for stand-alone UART driver
-#define STM32_UART_PROCESS_SIZE                 410 + (50 + UART_TX_BUF_SIZE) * 1
 //------------------------------ TIMER -----------------------------------------------
-#define HPET_TIMER                              TIM_2
+#define HPET_TIMER                              TIM_14
 //only required if no STM32_RTC_DRIVER is set
-#define SECOND_PULSE_TIMER                      TIM_3
+#define SECOND_PULSE_TIMER                      TIM_15
 //disable to save few bytes
 #define TIMER_IO                                1
 //------------------------------- ADC ------------------------------------------------
-#define STM32_ADC_DRIVER                        0
 //In L0 series - select HSI16 as clock source
 #define STM32_ADC_ASYNCRONOUS_CLOCK             0
 // Avg Slope, refer to datasheet
@@ -71,7 +75,6 @@
 #define V25_MV                                  1400
 
 //------------------------------- DAC ------------------------------------------------
-#define STM32_DAC_DRIVER                        0
 #define DAC_BOFF                                0
 
 //DAC streaming support with DMA. Can be disabled for flash saving
@@ -96,10 +99,6 @@
 //------------------------------- WDT ------------------------------------------------
 //if set by STM32 Option Bits, WDT is started by hardware on power-up
 #define HARDWARE_WATCHDOG                       0
-//WDT module enable
-#define STM32_WDT_DRIVER                        0
-//------------------------------- RTC ------------------------------------------------
-#define STM32_RTC_DRIVER                        1
 //------------------------------- ETH -----------------------------------------------
 #define STM32_ETH_PROCESS_SIZE                  512
 

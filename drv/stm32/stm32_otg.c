@@ -32,7 +32,7 @@ typedef enum {
 
 #if (MONOLITH_USB)
 
-#define GET_CORE_CLOCK          stm32_power_get_clock_inside(core, POWER_CORE_CLOCK)
+#define GET_CORE_CLOCK          stm32_power_get_clock_inside(drv, POWER_CORE_CLOCK)
 #define ack_pin                 stm32_pin_request_inside
 
 #else

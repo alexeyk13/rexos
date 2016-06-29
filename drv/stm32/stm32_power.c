@@ -131,7 +131,7 @@ static inline int stm32_power_get_pll_clock()
     int pllmul2;
     if (RCC->CFGR & (1 << 16))
     {
-        if (RCC->CFGR2 & PLLSRC_BIT)
+        if (RCC->CFGR2 & (1 << 16))
         {
             pllmul2 = ((RCC->CFGR2 >> 8) & 0xf) + 2;
             if (pllmul2 == PLL2_MUL_20)
@@ -525,7 +525,6 @@ static void stm32_power_set_clock_source(STM32_CLOCK_SOURCE_TYPE src)
 #if (POWER_MANAGEMENT)
 static void stm32_power_update_core_clock(CORE* core, STM32_CLOCK_SOURCE_TYPE src)
 {
-    unsigned int sw, core_clock;
     __disable_irq();
     //turn off all peripheral clocking
     unsigned int apb1 = RCC->APB1ENR;
