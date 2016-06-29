@@ -15,6 +15,7 @@
 #include "../../rexos/userspace/wdt.h"
 #include "../../rexos/userspace/uart.h"
 #include "../../rexos/userspace/process.h"
+#include "../../rexos/userspace/power.h"
 #include "../../rexos/midware/pinboard.h"
 #include "app_private.h"
 #include "comm.h"
@@ -57,7 +58,7 @@ static inline void stat()
     diff = systime_elapsed_us(&uptime);
     printf("average switch time: %d.%dus\n", diff / TEST_ROUNDS, (diff / (TEST_ROUNDS / 10)) % 10);
 
-    printf("core clock: %d\n", get_handle(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_POWER, STM32_POWER_GET_CLOCK), STM32_CLOCK_CORE, 0, 0));
+    printf("core clock: %d\n", power_get_core_clock());
     process_info();
 }
 

@@ -24,8 +24,7 @@
 #define SYS_OBJ_STDIN                                       INVALID_HANDLE
 //------------------------------ POWER -----------------------------------------------
 //depends on hardware implementation
-#define POWER_MANAGEMENT_SUPPORT                            1
-#define LOW_POWER_ON_STARTUP                                0
+#define POWER_MANAGEMENT                                    1
 //------------------------------- UART -----------------------------------------------
 //default values
 #define UART_CHAR_TIMEOUT_MS                                10000
