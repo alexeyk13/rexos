@@ -26,9 +26,9 @@ typedef struct {
 void stm32_timer_init(CORE* core);
 void stm32_timer_request(CORE* core, IPC* ipc);
 
-#if (POWER_MANAGEMENT_SUPPORT)
+#if (POWER_MANAGEMENT)
 void stm32_timer_pm_event(CORE* core);
-#endif //POWER_MANAGEMENT_SUPPORT
+#endif //POWER_MANAGEMENT
 
 __STATIC_INLINE unsigned int stm32_timer_request_inside(CORE* core, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
 {

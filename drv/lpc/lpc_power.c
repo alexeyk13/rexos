@@ -220,10 +220,6 @@ static inline void lpc_setup_clock()
     __NOP();
     __NOP();
 
-#if !((POWER_MANAGEMENT_SUPPORT) && (LOW_POWER_ON_STARTUP))
-    lpc_power_switch_core_clock(POWER_HI_DIVIDER);
-#endif
-
     //6. Tune flash accelerator.
     LPC_CREG->FLASHCFGA = CREG_FLASHCFG_MAGIC_Msk | (8 << CREG_FLASHCFG_FLASHTIM_Pos) | CREG_FLASHCFG_POW_Msk;
     LPC_CREG->FLASHCFGB = CREG_FLASHCFG_MAGIC_Msk | (8 << CREG_FLASHCFG_FLASHTIM_Pos) | CREG_FLASHCFG_POW_Msk;
@@ -321,7 +317,7 @@ static inline void lpc_decode_reset_reason(CORE* core)
 }
 #endif //LPC_DECODE_RESET
 
-#if (POWER_MANAGEMENT_SUPPORT)
+#if (POWER_MANAGEMENT)
 static inline void lpc_power_hi(CORE* core)
 {
     lpc_timer_suspend(core);
@@ -350,7 +346,7 @@ static inline void lpc_power_set_mode(CORE* core, POWER_MODE mode)
         error(ERROR_NOT_SUPPORTED);
     }
 }
-#endif //(POWER_MANAGEMENT_SUPPORT)
+#endif //(POWER_MANAGEMENT)
 
 #endif //LPC11Uxx
 
@@ -397,12 +393,12 @@ void lpc_power_request(CORE* core, IPC* ipc)
         ipc->param2 = lpc_get_reset_reason(core);
         break;
 #endif //LPC_DECODE_RESET
-#if (POWER_MANAGEMENT_SUPPORT)
+#if (POWER_MANAGEMENT)
     case POWER_SET_MODE:
         //no return
         lpc_power_set_mode(core, ipc->param1);
         break;
-#endif //POWER_MANAGEMENT_SUPPORT
+#endif //POWER_MANAGEMENT
     default:
         error(ERROR_NOT_SUPPORTED);
     }

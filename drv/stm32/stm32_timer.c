@@ -12,6 +12,7 @@
 #include "../../userspace/error.h"
 #include "../../userspace/systime.h"
 #include "../../userspace/irq.h"
+#include "../../userspace/power.h"
 #include <string.h>
 
 #define APB1                                    (unsigned int*)((unsigned int)RCC_BASE + offsetof(RCC_TypeDef, APB1ENR))
@@ -39,6 +40,36 @@ const TIM_TypeDef_P TIMER_REGS[TIMERS_COUNT] =  {TIM2, TIM6, TIM21, TIM22};
 const int TIMER_VECTORS[TIMERS_COUNT] =         {15,   17,   20,    22};
 const int TIMER_POWER_BIT[TIMERS_COUNT] =       {0,    4,    2,     5};
 const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB1, APB1, APB2,  APB2};
+#elif defined (STM32F0)
+#define TIMERS_COUNT                            TIM_MAX
+
+//ALL have TIM1, TIM3
+#ifndef TIM2
+#define TIM2                                    0
+#endif
+#ifndef TIM6
+#define TIM6                                    0
+#endif
+#ifndef TIM7
+#define TIM7                                    0
+#endif
+#ifndef TIM14
+#define TIM14                                   0
+#endif
+#ifndef TIM15
+#define TIM15                                   0
+#endif
+#ifndef TIM16
+#define TIM16                                   0
+#endif
+#ifndef TIM17
+#define TIM17                                   0
+#endif
+
+const TIM_TypeDef_P TIMER_REGS[TIMERS_COUNT] =  {TIM1, TIM2, TIM3, TIM6, TIM7, TIM14, TIM15, TIM16, TIM17};
+const int TIMER_VECTORS[TIMERS_COUNT] =         {13,   15,   16,     17,   18,    19,    20,    21,    22};
+const int TIMER_POWER_BIT[TIMERS_COUNT] =       {11,   0,    1,       4,    5,     8,    16,    17,    18};
+const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB2, APB1, APB1, APB1, APB1,  APB1,  APB2,  APB2,  APB2};
 #endif
 
 void stm32_timer_open(CORE *core, TIMER_NUM num, unsigned int flags)
@@ -116,27 +147,11 @@ void stm32_timer_close(CORE *core, TIMER_NUM num)
 static unsigned int stm32_timer_get_clock(CORE* core, TIMER_NUM num)
 {
     unsigned int ahb, apb;
-    ahb = stm32_power_get_clock_inside(core, STM32_CLOCK_AHB);
-    switch (num)
-    {
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
-    case TIM_1:
-    case TIM_8:
-    case TIM_9:
-    case TIM_10:
-    case TIM_11:
-    case TIM_15:
-    case TIM_16:
-    case TIM_17:
-#else
-    case TIM_21:
-    case TIM_22:
-#endif
+    ahb = stm32_power_get_clock_inside(core, POWER_BUS_CLOCK);
+    if (TIMER_POWER_PORT[num] == APB2)
         apb = stm32_power_get_clock_inside(core, STM32_CLOCK_APB2);
-        break;
-    default:
+    else
         apb = stm32_power_get_clock_inside(core, STM32_CLOCK_APB1);
-    }
     if (ahb != apb)
         apb <<= 1;
     return apb;
@@ -288,7 +303,7 @@ void second_pulse_isr(int vector, void* param)
 }
 #endif //STM32_RTC_DRIVER
 
-#if (POWER_MANAGEMENT_SUPPORT)
+#if (POWER_MANAGEMENT)
 void stm32_timer_pm_event(CORE* core)
 {
     core->timer.hpet_uspsc = stm32_timer_get_clock(core, HPET_TIMER) / 1000000;
@@ -297,7 +312,7 @@ void stm32_timer_pm_event(CORE* core)
     stm32_timer_start(core, SECOND_PULSE_TIMER, TIMER_VALUE_HZ, 1);
 #endif //STM32_RTC_DRIVER
 }
-#endif //POWER_MANAGEMENT_SUPPORT
+#endif //POWER_MANAGEMENT
 
 void stm32_timer_init(CORE *core)
 {

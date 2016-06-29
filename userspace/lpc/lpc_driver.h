@@ -211,6 +211,9 @@ typedef enum {
     UART_2,
     UART_3,
     UART_4,
+    UART_5,
+    UART_6,
+    UART_7,
     UART_MAX
 }UART_PORT;
 

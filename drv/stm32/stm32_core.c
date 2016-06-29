@@ -66,11 +66,11 @@ void stm32_core_loop(CORE* core)
             stm32_wdt_request(&ipc);
             break;
 #endif //STM32_WDT_DRIVER
-#if (MONOLITH_UART)
+#if (STM32_UART_DRIVER)
         case HAL_UART:
             stm32_uart_request(core, &ipc);
             break;
-#endif //MONOLITH_UART
+#endif //STM32_UART_DRIVER
 #if (STM32_ADC_DRIVER)
         case HAL_ADC:
             stm32_adc_request(core, &ipc);
@@ -120,9 +120,9 @@ void stm32_core()
 #if (STM32_WDT_DRIVER)
     stm32_wdt_init();
 #endif //STM32_WDT_DRIVER
-#if (MONOLITH_UART)
+#if (STM32_UART_DRIVER)
     stm32_uart_init(&core);
-#endif
+#endif //STM32_UART_DRIVER
 #if (STM32_ADC_DRIVER)
     stm32_adc_init(&core);
 #endif //STM32_ADC_DRIVER

@@ -25,9 +25,9 @@ typedef struct _CORE {
     GPIO_DRV gpio;
     TIMER_DRV timer;
     POWER_DRV power;
-#if (MONOLITH_UART)
+#if (STM32_UART_DRIVER)
     UART_DRV uart;
-#endif
+#endif //STM32_UART_DRIVER
 #if (STM32_ADC_DRIVER)
     ADC_DRV adc;
 #endif //STM32_ADC_DRIVER

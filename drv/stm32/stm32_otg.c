@@ -14,6 +14,7 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"
+#include "../../userspace/power.h"
 #include <string.h>
 #if (MONOLITH_USB)
 #include "stm32_core_private.h"
@@ -31,15 +32,13 @@ typedef enum {
 
 #if (MONOLITH_USB)
 
-#define get_clock               stm32_power_get_clock_inside
+#define GET_CORE_CLOCK          stm32_power_get_clock_inside(core, POWER_CORE_CLOCK)
 #define ack_pin                 stm32_pin_request_inside
-#define ack_power               stm32_power_request_inside
 
 #else
 
-#define get_clock               stm32_power_get_clock_outside
+#define GET_CORE_CLOCK          power_get_core_clock()
 #define ack_pin                 stm32_core_request_outside
-#define ack_power               stm32_core_request_outside
 
 void stm32_otg();
 
@@ -274,7 +273,7 @@ void stm32_otg_open_device(SHARED_USB_DRV* drv, HANDLE device)
     ack_pin(drv, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), A10, STM32_GPIO_MODE_INPUT_PULL, true);
 
     //enable clock, setup prescaller
-    switch (get_clock(drv, STM32_CLOCK_CORE))
+    switch (GET_CORE_CLOCK)
     {
     case 72000000:
         RCC->CFGR &= ~(1 << 22);
@@ -312,7 +311,7 @@ void stm32_otg_open_device(SHARED_USB_DRV* drv, HANDLE device)
 
     //refer to programming manual: 1. Setup AHB
     OTG_FS_GENERAL->AHBCFG = (OTG_FS_GENERAL_AHBCFG_GINT) | (OTG_FS_GENERAL_AHBCFG_TXFELVL);
-    trdt = get_clock(drv, STM32_CLOCK_CORE) == 72000000 ? 9 : 5;
+    trdt = GET_CORE_CLOCK == 72000000 ? 9 : 5;
     //2. Setup USB turn-around time
     OTG_FS_GENERAL->USBCFG = OTG_FS_GENERAL_USBCFG_FDMOD | (trdt << OTG_FS_GENERAL_USBCFG_TRDT_POS) | OTG_FS_GENERAL_USBCFG_PHYSEL | (17 << OTG_FS_GENERAL_USBCFG_TOCAL_POS);
 

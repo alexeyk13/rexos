@@ -13,11 +13,6 @@
 #include "../../userspace/adc.h"
 
 typedef struct {
-    uint8_t samplerate;
-} ADC_CHANNEL_DRV;
-
-typedef struct {
-    ADC_CHANNEL_DRV channels[ADC_CHANNELS_COUNT];
     bool active;
 } ADC_DRV;
 

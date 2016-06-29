@@ -20,9 +20,9 @@ typedef enum {
     ADC_IPC_MAX
 } ADC_IPCS;
 
-__STATIC_INLINE int adc_get(int channel)
+__STATIC_INLINE int adc_get(unsigned int channel, unsigned int samplerate)
 {
-    return get_handle(object_get(SYS_OBJ_ADC), HAL_REQ(HAL_ADC, ADC_GET), channel, 0, 0);
+    return get_handle(object_get(SYS_OBJ_ADC), HAL_REQ(HAL_ADC, ADC_GET), channel, samplerate, 0);
 }
 
 #endif // ADC_H

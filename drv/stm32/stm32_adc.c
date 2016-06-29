@@ -60,24 +60,8 @@ static inline void stm32_adc_open_device(CORE* core)
     core->adc.active = true;
 }
 
-static inline void stm32_adc_open_channel(CORE* core, STM32_ADC_CHANNEL channel, uint8_t rate)
+static inline void stm32_adc_open_channel(CORE* core, STM32_ADC_CHANNEL channel)
 {
-    if (channel >= ADC_CHANNELS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
-    if (!core->adc.active)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
-    if (core->adc.channels[channel].samplerate != STM32_ADC_CHANNEL_INVALID_SAMPLERATE)
-    {
-        error(ERROR_ALREADY_CONFIGURED);
-        return;
-    }
-    core->adc.channels[channel].samplerate = rate;
     //enable pin
 #ifdef STM32F1
     if (channel < STM32_ADC_REGULAR_CHANNELS_COUNT)
@@ -105,17 +89,6 @@ static inline void stm32_adc_open_channel(CORE* core, STM32_ADC_CHANNEL channel,
 
 static inline void stm32_adc_close_channel(CORE* core, STM32_ADC_CHANNEL channel)
 {
-    if (channel >= ADC_CHANNELS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
-    if (core->adc.channels[channel].samplerate == STM32_ADC_CHANNEL_INVALID_SAMPLERATE)
-    {
-        error(ERROR_ALREADY_CONFIGURED);
-        return;
-    }
-    core->adc.channels[channel].samplerate = STM32_ADC_CHANNEL_INVALID_SAMPLERATE;
     //disable pin
     if (channel < STM32_ADC_REGULAR_CHANNELS_COUNT)
         stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), ADC_PINS[channel], 0, 0);
@@ -200,20 +173,10 @@ static inline void stm32_adc_set_sample_rate(int chan, int sample_rate)
 }
 #endif //STM32F1
 
-static int stm32_adc_get(CORE* core, STM32_ADC_CHANNEL channel)
+static int stm32_adc_get(CORE* core, STM32_ADC_CHANNEL channel, unsigned int samplerate)
 {
-    if (channel >= ADC_CHANNELS_COUNT)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return -1;
-    }
-    if (!core->adc.active || core->adc.channels[channel].samplerate == STM32_ADC_CHANNEL_INVALID_SAMPLERATE)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return -1;
-    }
 #ifdef STM32F1
-    stm32_adc_set_sample_rate(channel, core->adc.channels[channel].samplerate);
+    stm32_adc_set_sample_rate(channel, samplerate);
 
     //sequence len = 1
     ADC1->SQR1 = ADC_SQR_LEN(1);
@@ -226,7 +189,7 @@ static int stm32_adc_get(CORE* core, STM32_ADC_CHANNEL channel)
 
     return ADC1->DR;
 #elif defined STM32L0
-    ADC1->SMPR = core->adc.channels[channel].samplerate;
+    ADC1->SMPR = samplerate;
     ADC1->CHSELR = 1 << channel;
     ADC1->CR |= ADC_CR_ADSTART;
     while ((ADC1->ISR & ADC_ISR_EOC) == 0) {}
@@ -240,13 +203,13 @@ void stm32_adc_request(CORE* core, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case ADC_GET:
-        ipc->param2 = stm32_adc_get(core, ipc->param1);
+        ipc->param2 = stm32_adc_get(core, ipc->param1, ipc->param2);
         break;
     case IPC_OPEN:
         if (ipc->param1 == STM32_ADC_DEVICE)
             stm32_adc_open_device(core);
         else
-            stm32_adc_open_channel(core, ipc->param1, ipc->param2);
+            stm32_adc_open_channel(core, ipc->param1);
         break;
     case IPC_CLOSE:
         if (ipc->param1 == STM32_ADC_DEVICE)

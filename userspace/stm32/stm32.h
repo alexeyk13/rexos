@@ -7,6 +7,312 @@
 #ifndef STM32_H
 #define STM32_H
 
+//---------------------------------------------------------------------------- STM32 F0 ----------------------------------------------------------------------------------------------------------
+#if defined(STM32F030F4)
+#define STM32F030x4
+#endif
+
+#if defined(STM32F030C6) || defined(STM32F030K6)
+#define STM32F030x6
+#endif
+
+#if defined(STM32F030C8) || defined(STM32F030R8)
+#define STM32F030x8
+#endif
+
+#if defined(STM32F030CC) || defined(STM32F030RC)
+#define STM32F030xC
+#endif
+
+#if defined(STM32F031C4) || defined(STM32F031F4) || defined(STM32F031G4) || defined(STM32F031K4)
+#define STM32F031x4
+#endif
+
+#if defined(STM32F031C6) || defined(STM32F031E6) || defined(STM32F031F6) || defined(STM32F031G6) || defined(STM32F031K6)
+#define STM32F031x6
+#endif
+
+#if defined(STM32F038C6) || defined(STM32F038E6) || defined(STM32F038F6) || defined(STM32F038G6) || defined(STM32F038K6)
+#define STM32F038x6
+#endif
+
+#if defined(STM32F042F4) || defined(STM32F042G4) || defined(STM32F042K4) || defined(STM32F042T4) || defined(STM32F042C4)
+#define STM32F042x4
+#endif
+
+#if defined(STM32F042F6) || defined(STM32F042G6) || defined(STM32F042K6) || defined(STM32F042T6) || defined(STM32F042C6)
+#define STM32F042x6
+#endif
+
+#if defined(STM32F048G6) || defined(STM32F048T6) || defined(STM32F048C6)
+#define STM32F048x6
+#endif
+
+#if defined(STM32F051C4) || defined(STM32F031K4) || defined(STM32F031R4)
+#define STM32F051x4
+#endif
+
+#if defined(STM32F051C6) || defined(STM32F031K6) || defined(STM32F031R6)
+#define STM32F051x6
+#endif
+
+#if defined(STM32F051C8) || defined(STM32F051K8) || defined(STM32F051R8) || defined(STM32F051T8)
+#define STM32F051x8
+#endif
+
+#if defined(STM32F058C8) || defined(STM32F058R8) || defined(STM32F058T8)
+#define STM32F058x8
+#endif
+
+#if defined(STM32F070C6) || defined(STM32F070F6)
+#define STM32F070x6
+#endif
+
+#if defined(STM32F070CB) || defined(STM32F070RB)
+#define STM32F070xB
+#endif
+
+#if defined(STM32F071C8) || defined(STM32F071V8)
+#define STM32F071x8
+#endif
+
+#if defined(STM32F071CB) || defined(STM32F071RB) || defined(STM32F071VB)
+#define STM32F071xB
+#endif
+
+#if defined(STM32F072C8) || defined(STM32F072R8) || defined(STM32F072V8)
+#define STM32F072x8
+#endif
+
+#if defined(STM32F072CB) || defined(STM32F072RB) || defined(STM32F072VB)
+#define STM32F072xB
+#endif
+
+#if defined(STM32F078CB) || defined(STM32F078RB) || defined(STM32F078VB)
+#define STM32F078xB
+#endif
+
+#if defined(STM32F091CB) || defined(STM32F091RB) || defined(STM32F091VB)
+#define STM32F091xB
+#endif
+
+#if defined(STM32F091CC) || defined(STM32F091RC) || defined(STM32F091VC)
+#define STM32F091xC
+#endif
+
+#if defined(STM32F098CC) || defined(STM32F098RC) || defined(STM32F098VC)
+#define STM32F098xC
+#endif
+
+#if defined(STM32F030x4) || defined(STM32F030x6) ||defined(STM32F030x8) || defined(STM32F030xC)
+#define STM32F030
+#if defined(STM32F030x4) || defined(STM32F030x6)
+#define SRAM_SIZE           0x1000
+#define UARTS_COUNT         1
+#define IRQ_VECTORS_COUNT   28
+#elif defined(STM32F030x8)
+#define SRAM_SIZE           0x2000
+#define UARTS_COUNT         2
+#define IRQ_VECTORS_COUNT   29
+#else
+#define SRAM_SIZE           0x8000
+#define UARTS_COUNT         6
+#define IRQ_VECTORS_COUNT   30
+#endif
+#endif
+
+#if defined(STM32F031x4) || defined(STM32F031x6)
+#define STM32F031
+#define SRAM_SIZE           0x1000
+#define UARTS_COUNT         1
+#define IRQ_VECTORS_COUNT   28
+#endif
+
+#if defined(STM32F038x6)
+#define STM32F038
+#define SRAM_SIZE           0x1000
+#define UARTS_COUNT         1
+#define IRQ_VECTORS_COUNT   28
+#endif
+
+#if defined(STM32F042x4) || defined(STM32F042x6)
+#define STM32F042
+#define SRAM_SIZE           0x1800
+#define UARTS_COUNT         2
+#define IRQ_VECTORS_COUNT   32
+#endif
+
+#if defined(STM32F048x6)
+#define STM32F048
+#define SRAM_SIZE           0x1800
+#define UARTS_COUNT         2
+#define IRQ_VECTORS_COUNT   32
+#endif
+
+#if defined(STM32F051x4) || defined(STM32F051x6) || defined(STM32F051x8)
+#define STM32F051
+#define SRAM_SIZE           0x2000
+#if defined(STM32F051x4)
+#define UARTS_COUNT         1
+#else
+#define UARTS_COUNT         2
+#endif
+#define IRQ_VECTORS_COUNT   31
+#endif
+
+#if defined(STM32F058x8)
+#define STM32F058
+#define SRAM_SIZE           0x2000
+#define UARTS_COUNT         2
+#define IRQ_VECTORS_COUNT   31
+#endif
+
+#if defined(STM32F070x6) || defined(STM32F070xB)
+#define STM32F070
+#if defined(STM32F070x6)
+#define SRAM_SIZE           0x1800
+#define UARTS_COUNT         2
+#else
+#define SRAM_SIZE           0x4000
+#define UARTS_COUNT         4
+#endif
+#define IRQ_VECTORS_COUNT   32
+#endif
+
+#if defined(STM32F071x8) || defined(STM32F071xB)
+#define STM32F071
+#define SRAM_SIZE           0x4000
+#define UARTS_COUNT         4
+#define IRQ_VECTORS_COUNT   31
+#endif
+
+#if defined(STM32F072x8) || defined(STM32F072xB)
+#define STM32F072
+#define SRAM_SIZE           0x4000
+#define UARTS_COUNT         4
+#define IRQ_VECTORS_COUNT   32
+#endif
+
+#if defined(STM32F078xB)
+#define STM32F078
+#define SRAM_SIZE           0x4000
+#define UARTS_COUNT         4
+#define IRQ_VECTORS_COUNT   32
+#endif
+
+#if defined(STM32F091xB) || defined(STM32F091xC)
+#define STM32F091
+#define SRAM_SIZE           0x8000
+#if defined(STM32F091CC) || defined(STM32F091CB)
+#define UARTS_COUNT         6
+#else
+#define UARTS_COUNT         8
+#endif
+#define IRQ_VECTORS_COUNT   31
+#endif
+
+#if defined(STM32F098xC)
+#define STM32F098
+#define SRAM_SIZE           0x8000
+#if defined(STM32F098CC)
+#define UARTS_COUNT         6
+#else
+#define UARTS_COUNT         8
+#endif
+#define IRQ_VECTORS_COUNT   31
+#endif
+
+#if defined(STM32F030) || defined(STM32F070)
+#define STM32F0x0
+#endif
+
+#if defined(STM32F031) || defined(STM32F051) || defined(STM32F071) || defined(STM32F091)
+#define STM32F0x1
+#endif
+
+#if defined(STM32F042) || defined(STM32F072)
+#define STM32F0x2
+#endif
+
+#if defined(STM32F038) || defined(STM32F048) || defined(STM32F058) || defined(STM32F078) || defined(STM32F078)
+#define STM32F0x8
+#endif
+
+#if defined(STM32F030x4) || defined(STM32F031x4) || defined(STM32F042x4) || defined(STM32F051x4)
+#define FLASH_SIZE          0x4000
+#endif
+
+#if defined(STM32F030x6) || defined(STM32F031x6) || defined(STM32F038x6) || defined(STM32F042x6) || defined(STM32F048x6) || defined(STM32F070x6) || defined(STM32F051x6)
+#define FLASH_SIZE          0x8000
+#endif
+
+#if defined(STM32F030x8) || defined(STM32F051x8) || defined(STM32F058x8) || defined(STM32F071x8) || defined(STM32F072x8)
+#define FLASH_SIZE          0x10000
+#endif
+
+#if defined(STM32F070xB) || defined(STM32F071xB) || defined(STM32F072xB) || defined(STM32F078xB) || defined(STM32F091xB)
+#define FLASH_SIZE          0x20000
+#endif
+
+#if defined(STM32F030xC) || defined(STM32F091xC) || defined(STM32F098xC)
+#define FLASH_SIZE          0x40000
+#endif
+
+#if defined(STM32F0x0) || defined(STM32F0x1) || defined(STM32F0x2) || defined(STM32F0x8)
+#define STM32F0
+//All models have A, B, C, F
+#define GPIO_COUNT          6
+#endif
+
+//required for ST header compatibility
+#if defined(STM32F030x4)
+#define STM32F030x6
+#endif
+
+#if defined(STM32F031x4)
+#define STM32F031x6
+#endif
+
+#if defined(STM32F038x6)
+#define STM32F038xx
+#endif
+
+#if defined(STM32F042x4)
+#define STM32F042x6
+#endif
+
+#if defined(STM32F048x6)
+#define STM32F048xx
+#endif
+
+#if defined(STM32F051x4) || defined(STM32F051x6)
+#define STM32F051x8
+#endif
+
+#if defined(STM32F058x8)
+#define STM32F058xx
+#endif
+
+#if defined(STM32F071x8)
+#define STM32F071xB
+#endif
+
+#if defined(STM32F072x8)
+#define STM32F072xB
+#endif
+
+#if defined(STM32F078xB)
+#define STM32F078xx
+#endif
+
+#if defined(STM32F091xB)
+#define STM32F091xC
+#endif
+
+#if defined(STM32F098xC)
+#define STM32F098xx
+#endif
+
 //---------------------------------------------------------------------------- STM32 F1 ----------------------------------------------------------------------------------------------------------
 #if defined(STM32F100C4) || defined(STM32F100C6) || defined(STM32F100C8) || defined(STM32F100CB) \
  || defined(STM32F100R4) || defined(STM32F100R6) || defined(STM32F100R8) || defined(STM32F100RB) || defined(STM32F100RC) || defined(STM32F100RD) || defined(STM32F100RE) \
@@ -209,9 +515,7 @@
 #define STM32F1
 //it's what defined in STM32F1xxx.h. Real count may be less.
 #define GPIO_COUNT                                              7
-#define ADC_CHANNELS_COUNT                                      18
 #define DAC_CHANNELS_COUNT                                      2
-#define DMA_COUNT                                               2
 
 #if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL)
 #define UARTS_COUNT                                             2
@@ -464,10 +768,7 @@
 #define SRAM_SIZE           0x2000
 #define GPIO_COUNT          3
 #define UARTS_COUNT         2
-#define ADC_CHANNELS_COUNT  19
 #define DAC_CHANNELS_COUNT  1
-#define DMA_COUNT           1
-
 
 #if defined(STM32L051xx) || defined(STM32L061xx)
 #define IRQ_VECTORS_COUNT   30
@@ -485,12 +786,12 @@
 #endif
 #endif //STM32F1 || STM32F2 || STM32F4
 
-#if defined(STM32L0)
+#if defined(STM32L0) || defined(STM32F0)
 #define STM32
 #ifndef CORTEX_M0
 #define CORTEX_M0
 #endif
-#endif //STM32L0
+#endif //STM32L0 || STM32F0
 
 #if defined(CORTEX_M3) || defined(CORTEX_M0)
 #ifndef CORTEX_M
@@ -513,7 +814,9 @@
 #undef FLASH_BASE
 
 #include "stm32_config.h"
-#if defined(STM32F1)
+#if defined(STM32F0)
+#include "stm32f0xx.h"
+#elif defined(STM32F1)
 #include "stm32f10x.h"
 #elif defined(STM32F2)
 #include "stm32f2xx.h"

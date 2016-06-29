@@ -30,28 +30,12 @@ extern const REX __STM32_ETH;
 #define STANDBY_WKUP_PIN2                       (1 << 9)
 
 typedef enum {
-    STM32_CLOCK_SOURCE_DMA = 0,
-    STM32_CLOCK_SOURCE_CORE,
-    //only if HSE value is set
-    STM32_CLOCK_SOURCE_HSE,
-    STM32_CLOCK_SOURCE_HSI,
-    STM32_CLOCK_SOURCE_MSI,
-    STM32_CLOCK_SOURCE_PLL,
-    //only F2/F4. RFU.
-    STM32_CLOCK_SOURCE_PLL2
-} STM32_CLOCK_SOURCE_TYPE;
-
-typedef enum {
-    STM32_POWER_GET_CLOCK = POWER_MAX,
-    STM32_POWER_SET_CLOCK_SOURCE,
     //if enabled
-    STM32_POWER_GET_RESET_REASON,
+    STM32_POWER_GET_RESET_REASON = POWER_MAX
 } STM32_POWER_IPCS;
 
 typedef enum {
-    STM32_CLOCK_CORE,
-    STM32_CLOCK_AHB,
-    STM32_CLOCK_APB1,
+    STM32_CLOCK_APB1 = POWER_CLOCK_MAX,
     STM32_CLOCK_APB2,
     STM32_CLOCK_ADC
 } STM32_POWER_CLOCKS;
@@ -142,7 +126,7 @@ typedef enum {
     STM32_GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_50MHZ = 0xf
 }STM32_GPIO_MODE;
 
-#elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
+#elif defined(STM32F0) || defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
 
 #define STM32_GPIO_MODE_INPUT                   (0x0 << 0)
 #define STM32_GPIO_MODE_OUTPUT                  (0x1 << 0)
@@ -160,7 +144,9 @@ typedef enum {
 #else
 #define GPIO_SPEED_LOW                          (0x0 << 3)
 #define GPIO_SPEED_MEDIUM                       (0x1 << 3)
+#if defined(STM32F2) || defined(STM32F4)
 #define GPIO_SPEED_FAST                         (0x2 << 3)
+#endif //defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
 #define GPIO_SPEED_HIGH                         (0x3 << 3)
 #endif
 
@@ -202,7 +188,27 @@ extern const GPIO_TypeDef_P GPIO[];
 
 //------------------------------------------------- timer ---------------------------------------------------------------------
 
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+#if defined(STM32L0)
+typedef enum {
+    TIM_2 = 0,
+    TIM_6,
+    TIM_21,
+    TIM_22
+}TIMER_NUM;
+#elif defined(STM32F0)
+typedef enum {
+    TIM_1 = 0,
+    TIM_2,
+    TIM_3,
+    TIM_6,
+    TIM_7,
+    TIM_14,
+    TIM_15,
+    TIM_16,
+    TIM_17,
+    TIM_MAX
+}TIMER_NUM;
+#else
 typedef enum {
     TIM_1 = 0,
     TIM_2,
@@ -224,13 +230,6 @@ typedef enum {
     TIM_18,
     TIM_19,
     TIM_20
-}TIMER_NUM;
-#elif defined(STM32L0)
-typedef enum {
-    TIM_2 = 0,
-    TIM_6,
-    TIM_21,
-    TIM_22
 }TIMER_NUM;
 #endif
 
@@ -297,7 +296,7 @@ typedef enum {
 
 __STATIC_INLINE int stm32_adc_temp(int vref, int res)
 {
-    return (V25_MV * 1000 - ADC2uV(adc_get(STM32_ADC_TEMP), vref, res)) * 10 / AVG_SLOPE + 25l * 10l;
+    return (V25_MV * 1000 - ADC2uV(adc_get(STM32_ADC_TEMP, STM32_ADC_SMPR_239_5), vref, res)) * 10 / AVG_SLOPE + 25l * 10l;
 }
 
 #endif // STM32_DRIVER_H

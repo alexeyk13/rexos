@@ -11,15 +11,13 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/systime.h"
+#include "../../userspace/power.h"
 #include "../../userspace/stm32/stm32_driver.h"
 #include "../eth_phy.h"
 #include "stm32_pin.h"
 #include "stm32_power.h"
 #include <stdbool.h>
 #include <string.h>
-
-#define get_clock               stm32_power_get_clock_outside
-#define ack_power               stm32_core_request_outside
 
 void stm32_eth();
 
@@ -284,7 +282,7 @@ static inline void stm32_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_
 #endif
 
     //configure clock for SMI
-    clock = get_clock(drv, STM32_CLOCK_AHB);
+    clock = power_get_clock(POWER_BUS_CLOCK);
     if (clock <= 35000000)
         ETH->MACMIIAR = ETH_MACMIIAR_CR_Div16;
     else if (clock <= 60000000)

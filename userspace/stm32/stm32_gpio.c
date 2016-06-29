@@ -25,7 +25,7 @@ void gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
         ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT_PULL, false);
         break;
     }
-#elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
+#else
     switch (mode)
     {
     case GPIO_MODE_OUT:
@@ -75,36 +75,36 @@ void gpio_disable_mask(unsigned int port, unsigned int mask)
 
 void gpio_set_pin(unsigned int pin)
 {
-#if defined(STM32F1) || defined (STM32L0)
+#if defined(STM32F1) || defined (STM32L0) || defined(STM32F0)
     GPIO[GPIO_PORT(pin)]->BSRR = 1 << GPIO_PIN(pin);
-#elif defined(STM32F2) || defined(STM32F4)
+#else
     GPIO[GPIO_PORT(pin)]->BSRRL = 1 << GPIO_PIN(pin);
 #endif
 }
 
 void gpio_set_mask(unsigned int port, unsigned int mask)
 {
-#if defined(STM32F1) || defined (STM32L0)
+#if defined(STM32F1) || defined (STM32L0) || defined(STM32F0)
     GPIO[port]->BSRR = mask;
-#elif defined(STM32F2) || defined(STM32F4)
+#else
     GPIO[port]->BSRRL = mask;
 #endif
 }
 
 void gpio_reset_pin(unsigned int pin)
 {
-#if defined(STM32F1) || defined (STM32L0)
-    GPIO[GPIO_PORT(pin)]->BRR = 1 << GPIO_PIN(pin);
-#elif defined(STM32F2) || defined(STM32F4)
+#if defined(STM32F1) || defined (STM32L0) || defined(STM32F0)
+    GPIO[GPIO_PORT(pin)]->BSRR = 1 << (GPIO_PIN(pin) + 16);
+#else
     GPIO[GPIO_PORT(pin)]->BSRRH = 1 << GPIO_PIN(pin);
 #endif
 }
 
 void gpio_reset_mask(unsigned int port, unsigned int mask)
 {
-#if defined(STM32F1) || defined (STM32L0)
-    GPIO[port]->BRR = mask;
-#elif defined(STM32F2) || defined(STM32F4)
+#if defined(STM32F1) || defined (STM32L0) || defined(STM32F0)
+    GPIO[port]->BSRR = mask << 16;
+#else
     GPIO[port]->BSRRH = mask;
 #endif
 }
@@ -131,7 +131,7 @@ void gpio_set_data_out(unsigned int port, unsigned int wide)
         GPIO[port]->CRH &= ~mask;
         GPIO[port]->CRH |= (0x33333333 & mask);
     }
-#elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
+#else
     unsigned int mask = (1 << (wide << 1)) - 1;
     GPIO[port]->MODER &= ~mask;
     GPIO[port]->MODER |= (0x55555555 & mask);
@@ -150,7 +150,7 @@ void gpio_set_data_in(unsigned int port, unsigned int wide)
         GPIO[port]->CRH &= ~mask;
         GPIO[port]->CRH |= (0x44444444 & mask);
     }
-#elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
+#else
     unsigned int mask = (1 << (wide << 1)) - 1;
     GPIO[port]->MODER &= ~mask;
 #endif

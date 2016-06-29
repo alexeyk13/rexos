@@ -18,13 +18,17 @@
 #define RTC_EXTI_LINE                               20
 #endif
 
+//bug in F0 CMSIS
+#ifndef RTC_CR_WUTIE
+#define RTC_CR_WUTIE                                (1 << 14)
+#endif
+
 void stm32_rtc_isr(int vector, void* param)
 {
 #if defined(STM32F1)
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     RTC->CRL = 0;
 #else
-    EXTI->PR = 1 << RTC_EXTI_LINE;
     RTC->ISR &= ~RTC_ISR_WUTF;
 #endif
     systime_second_pulse();
@@ -35,15 +39,24 @@ static inline void backup_on()
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     //enable BACKUP interface
     RCC->APB1ENR |= RCC_APB1ENR_BKPEN;
-#elif defined(STM32L0)
+#endif
     PWR->CR |= PWR_CR_DBP;
+#if defined(STM32L0) || defined(STM32F0)
     //HSE as clock source can cause faults on pin reset, so reset backup domain is required
 #if !(LSE_VALUE)
+#if defined(STM32L0)
     RCC->CSR |= RCC_CSR_RTCRST;
     __NOP();
     __NOP();
     __NOP();
     RCC->CSR &= ~RCC_CSR_RTCRST;
+#else
+    RCC->BDCR |= RCC_BDCR_BDRST;
+    __NOP();
+    __NOP();
+    __NOP();
+    RCC->BDCR &= ~RCC_BDCR_BDRST;
+#endif
 #endif
 
     __disable_irq();
@@ -51,21 +64,19 @@ static inline void backup_on()
     RTC->WPR = 0x53;
     __enable_irq();
 #endif
-    PWR->CR |= PWR_CR_DBP;
 }
 
 static inline void backup_off()
 {
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
-    //disable POWER and BACKUP interface
-    PWR->CR &= ~PWR_CR_DBP;
-    RCC->APB1ENR &= ~RCC_APB1ENR_BKPEN;
-#elif defined(STM32L0)
+#if defined(STM32L0) || defined(STM32F0)
     __disable_irq();
     RTC->WPR = 0x00;
     RTC->WPR = 0xff;
     __enable_irq();
+#endif
     PWR->CR &= ~PWR_CR_DBP;
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+    RCC->APB1ENR &= ~RCC_APB1ENR_BKPEN;
 #endif
 }
 
@@ -90,14 +101,19 @@ static void leave_configuration()
 #endif
 }
 
-void stm32_rtc_init()
+static inline bool stm32_is_backup_domain_reset()
 {
-    backup_on();
+#if defined(STM32F1) || defined(STM32F0)
+    return ((RCC->BDCR & RCC_BDCR_RTCEN) == 0);
+#else
+    return ((RCC->CSR & RCC_CSR_RTCEN) == 0);
+#endif
+}
 
-    //backup domain reset?
-#if defined(STM32F1)
-    if (RCC->BDCR == 0)
-    {
+#if (LSE_VALUE)
+static inline void stm32_rtc_on()
+{
+#if defined(STM32F1) || defined(STM32F0)
         //turn on 32khz oscillator
         RCC->BDCR |= RCC_BDCR_LSEON;
         while ((RCC->BDCR & RCC_BDCR_LSERDY) == 0) {}
@@ -105,76 +121,97 @@ void stm32_rtc_init()
         RCC->BDCR |= (01ul << 8ul);
         //turn on RTC
         RCC->BDCR |= RCC_BDCR_RTCEN;
-
-        enter_configuration();
-
-        //prescaller to 1 sec
-        RTC->PRLH = (LSE_VALUE >> 16) & 0xf;
-        RTC->PRLL = (LSE_VALUE & 0xffff) - 1;
-
-        //reset counter & alarm
-        RTC->CNTH = 0;
-        RTC->CNTL = 0;
-        RTC->ALRH = 0;
-        RTC->ALRL = 0;
-
-        leave_configuration();
-    }
-
-    //wait for APB1<->RTC_CORE sync
-    RTC->CRL &= RTC_CRL_RSF;
-    while ((RTC->CRL & RTC_CRL_RSF) == 0) {}
-
-    //enable second pulse
-    while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
-    RTC->CRH |= RTC_CRH_SECIE;
 #else
-
-    if ((RCC->CSR & RCC_CSR_RTCEN) == 0)
-    {
-        RCC->CSR &= ~(3 << 16);
-
-#if (LSE_VALUE)
         //turn on 32khz oscillator
         RCC->CSR |= RCC_CSR_LSEON;
         while ((RCC->CSR & RCC_CSR_LSERDY) == 0) {}
         //select LSE as clock source
         RCC->CSR |= RCC_CSR_RTCSEL_LSE;
+        //turn on RTC
+        RCC->CSR |= RCC_CSR_RTCEN;
+#endif
+}
+#else
+static inline void stm32_rtc_on()
+{
+#if defined(STM32F1) || defined(STM32F0)
+        //select HSE as clock source
+        RCC->BDCR |= (03ul << 8ul);
+        //turn on RTC
+        RCC->BDCR |= RCC_BDCR_RTCEN;
 #else
         //select HSE as clock source
         RCC->CSR |= RCC_CSR_RTCSEL_HSE;
-#endif
         //turn on RTC
         RCC->CSR |= RCC_CSR_RTCEN;
-        enter_configuration();
+#endif
+}
+#endif //LSE_VALUE
 
-        //prescaller to 1 sec
-#if (LSE_VALUE)
-        RTC->PRER = ((128 - 1) << 16) | (LSE_VALUE / 128 - 1);
+static inline void stm32_rtc_configure()
+{
+    enter_configuration();
+
+#if defined(STM32F1)
+    //prescaller to 1 sec
+    RTC->PRLH = (LSE_VALUE >> 16) & 0xf;
+    RTC->PRLL = (LSE_VALUE & 0xffff) - 1;
+
+    //reset counter & alarm
+    RTC->CNTH = 0;
+    RTC->CNTL = 0;
+    RTC->ALRH = 0;
+    RTC->ALRL = 0;
 #else
-        RTC->PRER = ((64 - 1) << 16) | (1000000 / 64 - 1);
+
+    //prescaller to 1 sec
+#if (LSE_VALUE)
+    RTC->PRER = ((128 - 1) << 16) | (LSE_VALUE / 128 - 1);
+#else
+    RTC->PRER = ((64 - 1) << 16) | (1000000 / 64 - 1);
 #endif
 
-        //00:00
-        RTC->TR = 0;
-        //01.01.2015, thursday
-        RTC->DR = 0x00158101;
-        //setup second tick
-        RTC->CR &= ~RTC_CR_WUTE;
-        while ((RTC->ISR & RTC_ISR_WUTWF) == 0) {}
-        RTC->CR |= 4;
-        RTC->WUTR = 0;
-    }
-    else
-        enter_configuration();
-    RTC->CR |= RTC_CR_WUTE | RTC_CR_WUTIE;
+    //00:00
+    RTC->TR = 0;
+    //01.01.2015, thursday
+    RTC->DR = 0x00158101;
+    //setup second tick
+    RTC->CR &= ~RTC_CR_WUTE;
+    while ((RTC->ISR & RTC_ISR_WUTWF) == 0) {}
+    RTC->CR |= 4;
+    RTC->WUTR = 0;
+#endif
+
     leave_configuration();
+}
 
+static inline void stm32_rtc_enable_second_pulse()
+{
+#if defined(STM32F1)
+    //wait for APB1<->RTC_CORE sync
+   RTC->CRL &= RTC_CRL_RSF;
+   while ((RTC->CRL & RTC_CRL_RSF) == 0) {}
+   //enable second pulse
+   while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
+   RTC->CRH |= RTC_CRH_SECIE;
+#else
+    RTC->CR |= RTC_CR_WUTE | RTC_CR_WUTIE;
     RTC->ISR &= ~RTC_ISR_WUTF;
-    //setup EXTI for second pulse
-    EXTI->IMR |= 1 << RTC_EXTI_LINE;
-    EXTI->RTSR |= 1 << RTC_EXTI_LINE;
 #endif
+}
+
+void stm32_rtc_init()
+{
+    backup_on();
+
+    //backup domain reset?
+    if (stm32_is_backup_domain_reset())
+    {
+        stm32_rtc_on();
+        stm32_rtc_configure();
+    }
+    stm32_rtc_enable_second_pulse();
+
     irq_register(RTC_IRQn, stm32_rtc_isr, NULL);
     NVIC_EnableIRQ(RTC_IRQn);
     NVIC_SetPriority(RTC_IRQn, 13);
@@ -255,9 +292,9 @@ void stm32_rtc_disable()
 #if defined(STM32F1)
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     RTC->CRH = 0;
-#else //STM32F1
-    enter_configuration();
+#elif defined(STM32L0)
     RTC->CR &= ~(RTC_CR_WUTE | RTC_CR_WUTIE | RTC_CR_TSE | RTC_CR_TSIE | RTC_CR_ALRAE | RTC_CR_ALRAIE | RTC_CR_ALRBE | RTC_CR_ALRBIE);
-    leave_configuration();
+#else
+    RTC->CR &= ~(RTC_CR_WUTE | RTC_CR_WUTIE | RTC_CR_TSE | RTC_CR_TSIE | RTC_CR_ALRAE | RTC_CR_ALRAIE);
 #endif
 }

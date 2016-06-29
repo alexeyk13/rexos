@@ -10,10 +10,25 @@
 #include "sys_config.h"
 #include <string.h>
 
+//ALL STM32 has ports A, B, C
+#ifndef GPIOD
+#define GPIOD                                                   0
+#endif
+#ifndef GPIOE
+#define GPIOE                                                   0
+#endif
+#ifndef GPIOF
+#define GPIOF                                                   0
+#endif
+
 #if defined(STM32F1)
 const GPIO_TypeDef_P GPIO[GPIO_COUNT] =							{GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF, GPIOG};
 static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {2, 3, 4, 5, 6, 7, 8};
 #define GPIO_POWER_PORT                                         RCC->APB2ENR
+#elif defined(STM32F0)
+const GPIO_TypeDef_P GPIO[GPIO_COUNT] =							{GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF};
+static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {17, 18, 19, 20, 21, 22};
+#define GPIO_POWER_PORT                                         RCC->AHBENR
 #elif defined(STM32F2)
 const GPIO_TypeDef_P GPIO[GPIO_COUNT] =							{GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF, GPIOG, GPIOH, GPIOI};
 static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {0, 1, 2, 3, 4, 5, 6, 7, 8};
@@ -43,7 +58,7 @@ void stm32_gpio_enable_pin(GPIO_DRV* gpio, PIN pin, STM32_GPIO_MODE mode, bool p
 }
 
 
-#elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
+#else
 #define GPIO_SET_MODE(pin, mode)                                GPIO[GPIO_PORT(pin)]->MODER &= ~(3 << (GPIO_PIN(pin) * 2)); \
                                                                 GPIO[GPIO_PORT(pin)]->MODER |= ((mode) << (GPIO_PIN(pin) * 2))
 
@@ -100,7 +115,7 @@ void stm32_gpio_disable_pin(GPIO_DRV* gpio, PIN pin)
 {
 #if defined(STM32F1)
     GPIO_CR_SET(pin, GPIO_MODE_IN_FLOAT);
-#elif defined(STM32F2) || defined(STM32F4) || defined(STM3L0)
+#else
     GPIO_SET_MODE(pin, STM32_GPIO_MODE_INPUT >> 0);
 #if defined(STM32L0)
     GPIO_SET_SPEED(pin, GPIO_SPEED_VERY_LOW >> 3);
@@ -143,7 +158,7 @@ void stm32_pin_request(CORE* core, IPC* ipc)
     case STM32_GPIO_ENABLE_PIN:
 #if defined(STM32F1)
         stm32_gpio_enable_pin(&core->gpio, (PIN)ipc->param1, (STM32_GPIO_MODE)ipc->param2, ipc->param3);
-#elif defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
+#else
         stm32_gpio_enable_pin(&core->gpio, (PIN)ipc->param1, ipc->param2, (AF)ipc->param3);
 #endif
         break;

@@ -342,7 +342,7 @@ bool lpc_timer_request(CORE* core, IPC* ipc)
     return true;
 }
 
-#if (POWER_MANAGEMENT_SUPPORT)
+#if (POWER_MANAGEMENT)
 void lpc_timer_suspend(CORE* core)
 {
     __TIMER_REGS[SECOND_TIMER]->TCR &= ~TIMER0_TCR_CEN_Msk;
@@ -353,4 +353,4 @@ void lpc_timer_adjust(CORE* core)
     __TIMER_REGS[SECOND_TIMER]->PR = (lpc_power_get_core_clock_inside() / S1_US) - 1;
     __TIMER_REGS[SECOND_TIMER]->TCR |= TIMER0_TCR_CEN_Msk;
 }
-#endif //(POWER_MANAGEMENT_SUPPORT)
+#endif //(POWER_MANAGEMENT)

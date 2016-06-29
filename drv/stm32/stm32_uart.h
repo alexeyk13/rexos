@@ -14,11 +14,10 @@
 #include "../../userspace/process.h"
 #include "../../userspace/uart.h"
 #include "../../userspace/sys.h"
+#include "../../userspace/stm32/stm32_driver.h"
 #include "stm32_config.h"
 #include "sys_config.h"
-#if (MONOLITH_UART)
 #include "stm32_core.h"
-#endif
 
 typedef struct {
     uint16_t error;
@@ -32,23 +31,12 @@ typedef struct {
 
 typedef struct {
     UART* uarts[UARTS_COUNT];
+#if defined(STM32F0) && (UARTS_COUNT > 3)
+    unsigned char isr3_cnt;
+#endif
 } UART_DRV;
 
-#if (MONOLITH_UART)
-#define SHARED_UART_DRV                    CORE
-#else
-
-typedef struct {
-    UART_DRV uart;
-} SHARED_UART_DRV;
-
-#endif
-
-void stm32_uart_init(SHARED_UART_DRV* drv);
-void stm32_uart_request(SHARED_UART_DRV* drv, IPC* ipc);
-
-#if !(MONOLITH_UART)
-extern const REX __STM32_UART;
-#endif
+void stm32_uart_init(CORE* core);
+void stm32_uart_request(CORE* core, IPC* ipc);
 
 #endif // STM32_UART_H

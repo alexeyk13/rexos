@@ -31,16 +31,9 @@ typedef enum {
 }STM32_USB_IPCS;
 
 #if (MONOLITH_USB)
-
-#define get_clock               stm32_power_get_clock_inside
 #define ack_pin                 stm32_pin_request_inside
-#define ack_power               stm32_power_request_inside
-
 #else
-
-#define get_clock               stm32_power_get_clock_outside
 #define ack_pin                 stm32_core_request_outside
-#define ack_power               stm32_core_request_outside
 
 void stm32_usb();
 
