@@ -141,7 +141,7 @@ const CONFIGURATION __CONFIGURATION_DESCRIPTOR = {
         },
         {
             sizeof(USB_ENDPOINT_DESCRIPTOR),                                /*bLength*/
-            sizeof(USB_ENDPOINT_DESCRIPTOR),                                /*bDescriptorType*/
+            USB_ENDPOINT_DESCRIPTOR_TYPE,                                   /*bDescriptorType*/
             0x00 | 0x1,                                                     /*bEndpointAddress*/
             0x02,                                                           /*bmAttributes*/
             64,                                                             /*wMaxPacketSize*/
