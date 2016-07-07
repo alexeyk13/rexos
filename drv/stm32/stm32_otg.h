@@ -12,9 +12,7 @@
 #include "../../userspace/io.h"
 #include "stm32_config.h"
 #include "sys_config.h"
-#if (MONOLITH_USB)
 #include "stm32_core.h"
-#endif
 
 typedef struct {
     IO* io;
@@ -29,22 +27,8 @@ typedef struct {
   EP* in[USB_EP_COUNT_MAX];
 } USB_DRV;
 
-#if (MONOLITH_USB)
-#define SHARED_USB_DRV                    CORE
-#else
 
-typedef struct {
-    USB_DRV usb;
-} SHARED_USB_DRV;
-
-#endif
-
-
-void stm32_otg_init(SHARED_USB_DRV* drv);
-void stm32_otg_request(SHARED_USB_DRV* drv, IPC* ipc);
-
-#if !(MONOLITH_USB)
-extern const REX __STM32_OTG;
-#endif
+void stm32_otg_init(CORE* core);
+void stm32_otg_request(CORE* core, IPC* ipc);
 
 #endif // STM32_OTG_H

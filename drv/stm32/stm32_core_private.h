@@ -15,10 +15,10 @@
 #include "stm32_uart.h"
 #include "stm32_dac.h"
 #include "stm32_adc.h"
-#ifdef STM32L0
-#include "stm32_usb.h"
-#else
+#ifdef STM32F10X_CL
 #include "stm32_otg.h"
+#else
+#include "stm32_usb.h"
 #endif
 
 typedef struct _CORE {
@@ -34,9 +34,9 @@ typedef struct _CORE {
 #if (STM32_DAC_DRIVER)
     DAC_DRV dac;
 #endif //STM32_DAC_DRIVER
-#if (MONOLITH_USB)
+#if (STM32_USB_DRIVER)
     USB_DRV usb;
-#endif
+#endif //STM32_USB_DRIVER
 }CORE;
 
 #endif // STM32_CORE_PRIVATE_H
