@@ -44,14 +44,6 @@
 //------------------------------------- EEPROM --------------------------------------------
 #define LPC_EEPROM_DRIVER                   1
 
-//-------------------------------------- UART ---------------------------------------------
-#define UART_STREAM_SIZE                    32
-
-#define LPC_UART_PROCESS_SIZE               512
-//size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
-#define UART_BUF_SIZE                       16
-#define UART_IO_MODE_SUPPORT                1
-#define UART_IO_PREBUFFER                   0
 //-------------------------------------- USB ----------------------------------------------
 //Maximum packet size for USB.
 //Full speed: 64 if no isochronous transfers, else max 1024

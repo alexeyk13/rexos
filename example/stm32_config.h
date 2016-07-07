@@ -14,12 +14,10 @@
 #define STM32_EEP_DRIVER                        0
 #define STM32_UART_DRIVER                       1
 #define STM32_RTC_DRIVER                        1
+#define STM32_USB_DRIVER                        1
 //------------------------------ CORE ------------------------------------------------
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
 #define STM32_CORE_PROCESS_SIZE                 1024
-
-//UART driver is monolith. Enable for size, disable for perfomance
-#define MONOLITH_USB                            1
 
 //disable only for power saving if no EXTI or remap is used
 #define SYSCFG_ENABLED                          1
@@ -53,12 +51,6 @@
 #define PLL_P                                   0
 
 #define STANDBY_WKUP                            0
-//------------------------------ UART ------------------------------------------------
-//size of every uart internal tx buf. Increasing this you will get less irq ans ipc calls, but faster processing
-//remember, that process itself requires around 256 bytes
-#define UART_TX_BUF_SIZE                        16
-//generally UART is used as stdout/stdio, so fine-tuning is required only on hi load
-#define UART_STREAM_SIZE                        32
 //------------------------------ TIMER -----------------------------------------------
 #define HPET_TIMER                              TIM_2
 //only required if no STM32_RTC_DRIVER is set
@@ -93,8 +85,6 @@
 //Full speed: 64 if no isochronous transfers, else  1024
 //High speed(STM32F2+): 64 if no high-speed bulk transfers, 512 in other case. 1024 in case of isochronous or high-speed interrupts
 #define STM32_USB_MPS                           64
-//Sizeof USB process stack. Remember, that process itself requires around 512 bytes
-#define STM32_USB_PROCESS_SIZE                  600
 //------------------------------- WDT ------------------------------------------------
 //if set by STM32 Option Bits, WDT is started by hardware on power-up
 #define HARDWARE_WATCHDOG                       0

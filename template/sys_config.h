@@ -16,8 +16,7 @@
 #define SYS_OBJ_STDOUT                                      0
 #define SYS_OBJ_CORE                                        1
 
-#define SYS_OBJ_UART                                        SYS_OBJ_CORE
-#define SYS_OBJ_USB                                         INVALID_HANDLE
+#define SYS_OBJ_USB                                         SYS_OBJ_CORE
 #define SYS_OBJ_ADC                                         INVALID_HANDLE
 #define SYS_OBJ_DAC                                         INVALID_HANDLE
 #define SYS_OBJ_STDIN                                       INVALID_HANDLE
@@ -26,13 +25,19 @@
 //depends on hardware implementation
 #define POWER_MANAGEMENT                            0
 //------------------------------- UART -----------------------------------------------
-//default values
+//disable for some memory saving if not blocking IO is required
+#define UART_IO_MODE_SUPPORT                                0
+//values for IO mode
 #define UART_CHAR_TIMEOUT_MS                                10000
 #define UART_INTERLEAVED_TIMEOUT_MS                         4
+//size of every uart internal buf. Increasing this you will get less irq ans ipc calls, but faster processing
+#define UART_BUF_SIZE                           16
+//generally UART is used as stdout/stdio, so fine-tuning is required only on hi load
+#define UART_STREAM_SIZE                        32
 //-------------------------------- USB -----------------------------------------------
 #define USB_EP_COUNT_MAX                                    4
 //low-level USB debug. Turn on only in case of IO problems
-#define USB_DEBUG_ERRORS                                    1
+#define USB_DEBUG_ERRORS                                    0
 #define USB_TEST_MODE_SUPPORT                               0
 
 //----------------------------- USB device--------------------------------------------
@@ -60,7 +65,7 @@
 #define USBD_CDC_ACM_RX_STREAM_SIZE                         32
 #define USBD_CDC_ACM_FLOW_CONTROL                           1
 
-#define USBD_CDC_ACM_DEBUG                                  1
+#define USBD_CDC_ACM_DEBUG                                  0
 #define USBD_CDC_ACM_DEBUG_FLOW                             0
 
 //------------------------ RNDIS Device class -----------------------------------------
