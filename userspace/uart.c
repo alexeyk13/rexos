@@ -24,27 +24,27 @@ void uart_decode_baudrate(IPC* ipc, BAUD* baudrate)
 
 void uart_setup_printk(int num)
 {
-    ack(object_get(SYS_OBJ_UART), HAL_REQ(HAL_UART, IPC_UART_SETUP_PRINTK), num, 0, 0);
+    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_UART, IPC_UART_SETUP_PRINTK), num, 0, 0);
 }
 
 void uart_setup_stdout(int num)
 {
-    object_set(SYS_OBJ_STDOUT, get_handle(object_get(SYS_OBJ_UART), HAL_REQ(HAL_UART, IPC_GET_TX_STREAM), num, 0, 0));
+    object_set(SYS_OBJ_STDOUT, get_handle(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_UART, IPC_GET_TX_STREAM), num, 0, 0));
 }
 
 void uart_setup_stdin(int num)
 {
-    object_set(SYS_OBJ_STDIN, get_handle(object_get(SYS_OBJ_UART), HAL_REQ(HAL_UART, IPC_GET_RX_STREAM), num, 0, 0));
+    object_set(SYS_OBJ_STDIN, get_handle(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_UART, IPC_GET_RX_STREAM), num, 0, 0));
 }
 
 bool uart_open(int num, unsigned int mode)
 {
-    return get_handle(object_get(SYS_OBJ_UART), HAL_REQ(HAL_UART, IPC_OPEN), num, mode, 0) != INVALID_HANDLE;
+    return get_handle(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_UART, IPC_OPEN), num, mode, 0) != INVALID_HANDLE;
 }
 
 void uart_close(int num)
 {
-    ack(object_get(SYS_OBJ_UART), HAL_REQ(HAL_UART, IPC_CLOSE), num, 0, 0);
+    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_UART, IPC_CLOSE), num, 0, 0);
 }
 
 void uart_set_baudrate(int num, BAUD* baudrate)
@@ -53,11 +53,11 @@ void uart_set_baudrate(int num, BAUD* baudrate)
     uart_encode_baudrate(baudrate, &ipc);
     ipc.cmd = HAL_REQ(HAL_UART, IPC_UART_SET_BAUDRATE);
     ipc.param1 = num;
-    ipc.process = object_get(SYS_OBJ_UART);
+    ipc.process = object_get(SYS_OBJ_CORE);
     call(&ipc);
 }
 
 void uart_flush(int num)
 {
-    ack(object_get(SYS_OBJ_UART), HAL_REQ(HAL_UART, IPC_FLUSH), num, 0, 0);
+    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_UART, IPC_FLUSH), num, 0, 0);
 }

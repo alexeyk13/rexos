@@ -836,20 +836,3 @@ void lpc_uart_request(CORE* drv, IPC* ipc)
         break;
     }
 }
-
-#if !(MONOLITH_UART)
-void lpc_uart()
-{
-    CORE drv;
-    IPC ipc;
-    object_set_self(SYS_OBJ_UART);
-    lpc_uart_init(&drv);
-    for (;;)
-    {
-        error(ERROR_OK);
-        ipc_read(&ipc);
-        lpc_uart_request(&drv, &ipc);
-        ipc_write(&ipc);
-    }
-}
-#endif
