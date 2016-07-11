@@ -33,8 +33,6 @@ typedef struct {
     unsigned int rx_max, tx_processed;
     HANDLE tx_process, rx_process, rx_timer;
     unsigned int rx_char_timeout, rx_interleaved_timeout;
-    char rx_buf[UART_BUF_SIZE];
-    RB rx_rb;
 } UART_IO;
 
 typedef struct {

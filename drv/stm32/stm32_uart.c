@@ -85,11 +85,80 @@ static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USA
 #define USART_SR_RXNE       USART_ISR_RXNE
 #endif
 
+static inline bool stm32_uart_on_tx_isr(CORE* core, UART_PORT port, uint8_t* c)
+{
+    bool res = false;
+    UART* uart = core->uart.uarts[port];
+#if (UART_IO_MODE_SUPPORT)
+    if (uart->io_mode)
+    {
+        if (uart->i.tx_io)
+        {
+            if (uart->i.tx_processed < uart->i.tx_io->data_size)
+            {
+                *c = ((uint8_t*)io_data(uart->i.tx_io))[uart->i.tx_processed++];
+                res = true;
+            }
+            //no more
+            if (uart->i.tx_processed >= uart->i.tx_io->data_size)
+            {
+                iio_complete(uart->i.tx_process, HAL_IO_CMD(HAL_UART, IPC_WRITE), port, uart->i.tx_io);
+                uart->i.tx_io = NULL;
+            }
+        }
+    }
+    else
+#endif //UART_IO_MODE_SUPPORT
+    if (uart->s.tx_chunk_size)
+    {
+        //no more
+        if (uart->s.tx_chunk_pos < uart->s.tx_chunk_size)
+        {
+            *c = uart->s.tx_buf[uart->s.tx_chunk_pos++];
+            res = true;
+        }
+        else
+        {
+            uart->s.tx_chunk_size = 0;
+            ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_UART, IPC_UART_ISR_TX), port, 0, 0);
+        }
+    }
+    return res;
+}
+
+static inline bool stm32_uart_on_rx_isr(CORE* core, UART_PORT port, uint8_t c)
+{
+    bool res = true;
+    UART* uart = core->uart.uarts[port];
+#if (UART_IO_MODE_SUPPORT)
+    if (uart->io_mode)
+    {
+        timer_istop(uart->i.rx_timer);
+        if (uart->i.rx_io)
+        {
+            ((uint8_t*)io_data(uart->i.rx_io))[uart->i.rx_io->data_size++] = c;
+            //max size limit
+            if (uart->i.rx_io->data_size >= uart->i.rx_max)
+            {
+                iio_complete(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, uart->i.rx_io);
+                uart->i.rx_io = NULL;
+                res = false;
+            }
+            else
+                timer_istart_ms(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
+        }
+    }
+    else
+#endif //UART_IO_MODE_SUPPORT
+        ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_UART, IPC_UART_ISR_RX), port, 0, c);
+    return res;
+}
+
 void stm32_uart_on_isr(int vector, void* param)
 {
-    IPC ipc;
     //find port by vector
     UART_PORT port;
+    uint8_t c;
 #if defined(STM32L0) || defined(STM32F0)
     unsigned int sr = 0;
 #else
@@ -122,31 +191,6 @@ void stm32_uart_on_isr(int vector, void* param)
     sr = UART_REGS[port]->SR;
 #endif
 
-    //transmit more
-    if ((UART_REGS[port]->CR1 & USART_CR1_TXEIE) && (sr & USART_SR_TXE) && core->uart.uarts[port]->s.tx_chunk_size)
-    {
-#if defined(STM32L0) || defined(STM32F0)
-        UART_REGS[port]->TDR = core->uart.uarts[port]->s.tx_buf[core->uart.uarts[port]->s.tx_chunk_pos++];
-#else
-        UART_REGS[port]->DR = core->uart.uarts[port]->s.tx_buf[core->uart.uarts[port]->s.tx_chunk_pos++];
-#endif
-        //no more
-        if (core->uart.uarts[port]->s.tx_chunk_pos >= core->uart.uarts[port]->s.tx_chunk_size)
-        {
-            core->uart.uarts[port]->s.tx_chunk_pos = core->uart.uarts[port]->s.tx_chunk_size = 0;
-            ipc.process = process_iget_current();
-            ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
-            ipc.param1 = port;
-            ipc.param3 = 0;
-            ipc_ipost(&ipc);
-            UART_REGS[port]->CR1 &= ~USART_CR1_TXEIE;
-            UART_REGS[port]->CR1 |= USART_CR1_TCIE;
-
-        }
-    }
-    //transmission completed and no more data. Disable transmitter
-    else if ((UART_REGS[port]->CR1 & USART_CR1_TCIE) && (sr & USART_SR_TC))
-        UART_REGS[port]->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
     //decode error, if any
     if (sr & (USART_SR_PE | USART_SR_FE | USART_SR_NE | USART_SR_ORE))
     {
@@ -166,20 +210,41 @@ void stm32_uart_on_isr(int vector, void* param)
             else if  (sr & USART_SR_NE)
                 core->uart.uarts[port]->error = ERROR_LINE_NOISE;
         }
+        return;
     }
 
+    //transmit more
+    if (UART_REGS[port]->CR1 & USART_CR1_TXEIE)
+    {
+        if (sr & USART_SR_TXE)
+        {
+            if (stm32_uart_on_tx_isr(core, port, &c))
+#if defined(STM32L0) || defined(STM32F0)
+                UART_REGS[port]->TDR = c;
+#else
+                UART_REGS[port]->DR = c;
+#endif
+            else
+            {
+                UART_REGS[port]->CR1 &= ~USART_CR1_TXEIE;
+                UART_REGS[port]->CR1 |= USART_CR1_TCIE;
+            }
+        }
+    }
+    //transmission completed and no more data. Disable transmitter
+    else if ((UART_REGS[port]->CR1 & USART_CR1_TCIE) && (sr & USART_SR_TC))
+        UART_REGS[port]->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
+
     //receive data
-    if (sr & USART_SR_RXNE)
+    if ((UART_REGS[port]->CR1 & USART_CR1_RXNEIE) && (sr & USART_SR_RXNE))
     {
 #if defined(STM32L0) || defined(STM32F0)
-        ipc.param3 = UART_REGS[port]->RDR;
+        c = UART_REGS[port]->RDR;
 #else
-        ipc.param3 = UART_REGS[port]->DR;
+        c = UART_REGS[port]->DR;
 #endif
-        ipc.process = process_iget_current();
-        ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_RX);
-        ipc.param1 = port;
-        ipc_ipost(&ipc);
+        if (!stm32_uart_on_rx_isr(core, port, c))
+            UART_REGS[port]->CR1 &= ~USART_CR1_RXNEIE;
     }
 }
 
@@ -261,8 +326,117 @@ static inline void stm32_uart_set_baudrate(CORE* core, UART_PORT port, IPC* ipc)
     UART_REGS[port]->CR3 |= USART_CR3_EIE;
 }
 
-void stm32_uart_open(CORE* core, UART_PORT port, unsigned int mode)
+static void stm32_uart_flush_internal(CORE* core, UART_PORT port)
 {
+#if (UART_IO_MODE_SUPPORT)
+    if (core->uart.uarts[port]->io_mode)
+    {
+        //disable receiver interrupt
+        UART_REGS[port]->CR1 &= ~USART_CR1_RXNEIE;
+        IO* rx_io;
+        IO* tx_io;
+        __disable_irq();
+        rx_io = core->uart.uarts[port]->i.rx_io;
+        core->uart.uarts[port]->i.rx_io = NULL;
+        tx_io = core->uart.uarts[port]->i.tx_io;
+        core->uart.uarts[port]->i.tx_io = NULL;
+        __enable_irq();
+        if (rx_io)
+            io_complete_ex(core->uart.uarts[port]->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, rx_io, ERROR_IO_CANCELLED);
+        if (tx_io)
+            io_complete_ex(core->uart.uarts[port]->i.tx_process, HAL_IO_CMD(HAL_UART, IPC_WRITE), port, tx_io, ERROR_IO_CANCELLED);
+        timer_stop(core->uart.uarts[port]->i.rx_timer, port, HAL_UART);
+    }
+    else
+#endif //UART_IO_MODE_SUPPORT
+    {
+        if (core->uart.uarts[port]->s.tx_stream != INVALID_HANDLE)
+        {
+            stream_flush(core->uart.uarts[port]->s.tx_stream);
+            stream_listen(core->uart.uarts[port]->s.tx_stream, port, HAL_UART);
+            core->uart.uarts[port]->s.tx_total = 0;
+            __disable_irq();
+            core->uart.uarts[port]->s.tx_chunk_pos = core->uart.uarts[port]->s.tx_chunk_size = 0;
+            __enable_irq();
+        }
+        if (core->uart.uarts[port]->s.rx_stream != INVALID_HANDLE)
+            stream_flush(core->uart.uarts[port]->s.rx_stream);
+    }
+    core->uart.uarts[port]->error = ERROR_OK;
+}
+
+static void stm32_uart_destroy(CORE* core, UART_PORT port)
+{
+#if (UART_IO_MODE_SUPPORT)
+    if (core->uart.uarts[port]->io_mode)
+    {
+        timer_destroy(core->uart.uarts[port]->i.rx_timer);
+    }
+    else
+#endif //UART_IO_MODE_SUPPORT
+    {
+        //rx
+        stream_close(core->uart.uarts[port]->s.rx_handle);
+        stream_destroy(core->uart.uarts[port]->s.rx_stream);
+        //tx
+        stream_close(core->uart.uarts[port]->s.tx_handle);
+        stream_destroy(core->uart.uarts[port]->s.tx_stream);
+    }
+
+    free(core->uart.uarts[port]);
+    core->uart.uarts[port] = NULL;
+}
+
+static inline bool stm32_uart_open_stream(UART* uart, UART_PORT port, unsigned int mode)
+{
+    uart->s.tx_stream = INVALID_HANDLE;
+    uart->s.tx_handle = INVALID_HANDLE;
+    uart->s.rx_stream = INVALID_HANDLE;
+    uart->s.rx_handle = INVALID_HANDLE;
+    uart->s.tx_total = 0;
+    uart->s.tx_chunk_pos = uart->s.tx_chunk_size = 0;
+
+    if (mode & UART_TX_STREAM)
+    {
+        if ((uart->s.tx_stream = stream_create(UART_STREAM_SIZE)) == INVALID_HANDLE)
+            return false;
+        if ((uart->s.tx_handle = stream_open(uart->s.tx_stream)) == INVALID_HANDLE)
+            return false;
+        stream_listen(uart->s.tx_stream, port, HAL_UART);
+    }
+    if (mode & UART_RX_STREAM)
+    {
+        if ((uart->s.rx_stream = stream_create(UART_STREAM_SIZE)) == INVALID_HANDLE)
+            return false;
+        if ((uart->s.rx_handle = stream_open(uart->s.rx_stream)) == INVALID_HANDLE)
+            return false;
+        uart->s.rx_free = stream_get_free(uart->s.rx_stream);
+        //enable receiver
+        UART_REGS[port]->CR1 |= USART_CR1_RE | USART_CR1_RXNEIE;
+    }
+    return true;
+}
+
+#if (UART_IO_MODE_SUPPORT)
+static inline bool stm32_uart_open_io(UART* uart, UART_PORT port)
+{
+    uart->i.tx_io = uart->i.rx_io = NULL;
+    uart->i.rx_timer = timer_create(port, HAL_UART);
+    uart->i.rx_char_timeout = UART_CHAR_TIMEOUT_MS;
+    uart->i.rx_interleaved_timeout = UART_INTERLEAVED_TIMEOUT_MS;
+    if (uart->i.rx_timer != INVALID_HANDLE)
+    {
+        //enable receiver
+        UART_REGS[port]->CR1 |= USART_CR1_RE;
+        return true;
+    }
+    return false;
+}
+#endif //UART_IO_MODE_SUPPORT
+
+static inline void stm32_uart_open(CORE* core, UART_PORT port, unsigned int mode)
+{
+    bool ok;
     if (core->uart.uarts[port] != NULL)
     {
         error(ERROR_ALREADY_CONFIGURED);
@@ -270,60 +444,26 @@ void stm32_uart_open(CORE* core, UART_PORT port, unsigned int mode)
     }
     core->uart.uarts[port] = malloc(sizeof(UART));
     if (core->uart.uarts[port] == NULL)
+        return;
+    core->uart.uarts[port]->error = ERROR_OK;
+    core->uart.uarts[port]->io_mode = ((mode & UART_MODE) == UART_MODE_IO);
+
+    if (core->uart.uarts[port]->io_mode)
     {
-        error(ERROR_OUT_OF_MEMORY);
+#if (UART_IO_MODE_SUPPORT)
+        ok = stm32_uart_open_io(core->uart.uarts[port], port);
+#else
+        ok = false;
+#endif //UART_IO_MODE_SUPPORT
+    }
+    else
+        ok = stm32_uart_open_stream(core->uart.uarts[port], port, mode);
+    if (!ok)
+    {
+        stm32_uart_destroy(core, port);
         return;
     }
-    core->uart.uarts[port]->error = ERROR_OK;
-    core->uart.uarts[port]->s.tx_stream = INVALID_HANDLE;
-    core->uart.uarts[port]->s.tx_handle = INVALID_HANDLE;
-    core->uart.uarts[port]->s.rx_stream = INVALID_HANDLE;
-    core->uart.uarts[port]->s.rx_handle = INVALID_HANDLE;
-    core->uart.uarts[port]->s.tx_total = 0;
-    core->uart.uarts[port]->s.tx_chunk_pos = core->uart.uarts[port]->s.tx_chunk_size = 0;
 
-    if (mode & UART_TX_STREAM)
-    {
-        core->uart.uarts[port]->s.tx_stream = stream_create(UART_STREAM_SIZE);
-        if (core->uart.uarts[port]->s.tx_stream == INVALID_HANDLE)
-        {
-            free(core->uart.uarts[port]);
-            core->uart.uarts[port] = NULL;
-            return;
-        }
-        core->uart.uarts[port]->s.tx_handle = stream_open(core->uart.uarts[port]->s.tx_stream);
-        if (core->uart.uarts[port]->s.tx_handle == INVALID_HANDLE)
-        {
-            stream_destroy(core->uart.uarts[port]->s.tx_stream);
-            free(core->uart.uarts[port]);
-            core->uart.uarts[port] = NULL;
-            return;
-        }
-        stream_listen(core->uart.uarts[port]->s.tx_stream, port, HAL_UART);
-    }
-    if (mode & UART_RX_STREAM)
-    {
-        core->uart.uarts[port]->s.rx_stream = stream_create(UART_STREAM_SIZE);
-        if (core->uart.uarts[port]->s.rx_stream == INVALID_HANDLE)
-        {
-            stream_close(core->uart.uarts[port]->s.tx_handle);
-            stream_destroy(core->uart.uarts[port]->s.tx_stream);
-            free(core->uart.uarts[port]);
-            core->uart.uarts[port] = NULL;
-            return;
-        }
-        core->uart.uarts[port]->s.rx_handle = stream_open(core->uart.uarts[port]->s.rx_stream);
-        if (core->uart.uarts[port]->s.rx_handle == INVALID_HANDLE)
-        {
-            stream_destroy(core->uart.uarts[port]->s.rx_stream);
-            stream_close(core->uart.uarts[port]->s.tx_handle);
-            stream_destroy(core->uart.uarts[port]->s.tx_stream);
-            free(core->uart.uarts[port]);
-            core->uart.uarts[port] = NULL;
-            return;
-        }
-        core->uart.uarts[port]->s.rx_free = stream_get_free(core->uart.uarts[port]->s.rx_stream);
-    }
     //power up
     if (port == UART_1 || port >= UART_6)
         RCC->APB2ENR |= 1 << UART_POWER_PINS[port];
@@ -332,9 +472,6 @@ void stm32_uart_open(CORE* core, UART_PORT port, unsigned int mode)
 
     //enable core
     UART_REGS[port]->CR1 |= USART_CR1_UE;
-    //enable receiver
-    if (mode & UART_RX_STREAM)
-        UART_REGS[port]->CR1 |= USART_CR1_RE | USART_CR1_RXNEIE;
 
     //enable interrupts
 #if defined(STM32F0) && (UARTS_COUNT > 3)
@@ -363,30 +500,16 @@ static inline void stm32_uart_close(CORE* core, UART_PORT port)
         irq_unregister(UART_VECTORS[port]);
     }
 
-    //rx
-    if (core->uart.uarts[port]->s.rx_stream != INVALID_HANDLE)
-    {
-        UART_REGS[port]->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE);
-        stream_close(core->uart.uarts[port]->s.rx_handle);
-        stream_destroy(core->uart.uarts[port]->s.rx_stream);
-    }
-    //tx
-    if (core->uart.uarts[port]->s.tx_stream != INVALID_HANDLE)
-    {
-        stream_close(core->uart.uarts[port]->s.tx_handle);
-        stream_destroy(core->uart.uarts[port]->s.tx_stream);
-    }
-
     //disable core
-    UART_REGS[port]->CR1 &= ~USART_CR1_UE;
+    UART_REGS[port]->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE | USART_CR1_UE);
     //power down
     if (port == UART_1 || port >= UART_6)
         RCC->APB2ENR &= ~(1 << UART_POWER_PINS[port]);
     else
         RCC->APB1ENR &= ~(1 << UART_POWER_PINS[port]);
 
-    free(core->uart.uarts[port]);
-    core->uart.uarts[port] = NULL;
+    stm32_uart_flush_internal(core, port);
+    stm32_uart_destroy(core, port);
 }
 
 static inline void stm32_uart_flush(CORE* core, UART_PORT port)
@@ -396,18 +519,7 @@ static inline void stm32_uart_flush(CORE* core, UART_PORT port)
         error(ERROR_NOT_ACTIVE);
         return;
     }
-    if (core->uart.uarts[port]->s.tx_stream != INVALID_HANDLE)
-    {
-        stream_flush(core->uart.uarts[port]->s.tx_stream);
-        stream_listen(core->uart.uarts[port]->s.tx_stream, port, HAL_UART);
-        core->uart.uarts[port]->s.tx_total = 0;
-        __disable_irq();
-        core->uart.uarts[port]->s.tx_chunk_pos = core->uart.uarts[port]->s.tx_chunk_size = 0;
-        __enable_irq();
-    }
-    if (core->uart.uarts[port]->s.rx_stream != INVALID_HANDLE)
-        stream_flush(core->uart.uarts[port]->s.rx_stream);
-    core->uart.uarts[port]->error = ERROR_OK;
+    stm32_uart_flush_internal(core, port);
 }
 
 static inline HANDLE stm32_uart_get_tx_stream(CORE* core, UART_PORT port)
@@ -494,6 +606,87 @@ static inline void stm32_uart_read(CORE* core, UART_PORT port, char c)
     }
 }
 
+#if (UART_IO_MODE_SUPPORT)
+static inline void stm32_uart_io_read(CORE* core, UART_PORT port, IPC* ipc)
+{
+    UART* uart = core->uart.uarts[port];
+    IO* io;
+    if (uart == NULL)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (!uart->io_mode)
+    {
+        error(ERROR_INVALID_STATE);
+        return;
+    }
+    if (uart->i.rx_io)
+    {
+        error(ERROR_IN_PROGRESS);
+        return;
+    }
+    io = (IO*)ipc->param2;
+    uart->i.rx_process = ipc->process;
+    uart->i.rx_max = ipc->param3;
+    io->data_size = 0;
+    timer_start_ms(uart->i.rx_timer, uart->i.rx_char_timeout);
+    uart->i.rx_io = io;
+    UART_REGS[port]->CR1 |= USART_CR1_RXNEIE;
+    error(ERROR_SYNC);
+}
+
+static inline void stm32_uart_io_write(CORE* core, UART_PORT port, IPC* ipc)
+{
+    UART* uart = core->uart.uarts[port];
+    IO* io;
+    if (uart == NULL)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    if (!uart->io_mode)
+    {
+        error(ERROR_INVALID_STATE);
+        return;
+    }
+    if (uart->i.tx_io)
+    {
+        error(ERROR_IN_PROGRESS);
+        return;
+    }
+    io = (IO*)ipc->param2;
+    uart->i.tx_process = ipc->process;
+    uart->i.tx_processed = 0;
+    uart->i.tx_io = io;
+    //start
+    UART_REGS[port]->CR1 |= USART_CR1_TE | USART_CR1_TXEIE;
+    error(ERROR_SYNC);
+}
+
+static inline void stm32_uart_io_read_timeout(CORE* core, UART_PORT port)
+{
+    IO* io = NULL;
+    UART* uart = core->uart.uarts[port];
+    timer_stop(uart->i.rx_timer, port, HAL_UART);
+    __disable_irq();
+    if (uart->i.rx_io)
+    {
+        io = uart->i.rx_io;
+        uart->i.rx_io = NULL;
+    }
+    __enable_irq();
+    if (io)
+    {
+        if (io->data_size)
+            io_complete(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io);
+        else
+            //no data? timeout
+            io_complete_ex(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io, ERROR_TIMEOUT);
+    }
+}
+#endif //UART_IO_MODE_SUPPORT
+
 void stm32_uart_request(CORE* core, IPC* ipc)
 {
     UART_PORT port = (UART_PORT)ipc->param1;
@@ -542,13 +735,13 @@ void stm32_uart_request(CORE* core, IPC* ipc)
         break;
 #if (UART_IO_MODE_SUPPORT)
     case IPC_READ:
-        stm32_uart_io_read(drv, port, ipc);
+        stm32_uart_io_read(core, port, ipc);
         break;
     case IPC_WRITE:
-        stm32_uart_io_write(drv, port, ipc);
+        stm32_uart_io_write(core, port, ipc);
         break;
     case IPC_TIMEOUT:
-        stm32_uart_io_read_timeout(drv, port);
+        stm32_uart_io_read_timeout(core, port);
         break;
 #endif //UART_IO_MODE_SUPPORT
     default:

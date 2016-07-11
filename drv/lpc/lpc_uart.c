@@ -84,7 +84,6 @@ static bool lpc_uart_rx_isr(CORE* drv, UART_PORT port, uint8_t c)
 
 static bool lpc_uart_tx_isr(CORE* drv, UART_PORT port, uint8_t* c)
 {
-    IPC ipc;
     bool res = false;
     UART* uart = drv->uart.uarts[port];
 #if (UART_IO_MODE_SUPPORT)
@@ -119,11 +118,7 @@ static bool lpc_uart_tx_isr(CORE* drv, UART_PORT port, uint8_t* c)
             if (uart->s.tx_chunk_pos >= uart->s.tx_chunk_size)
             {
                 uart->s.tx_chunk_size = 0;
-                ipc.process = process_iget_current();
-                ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_ISR_TX);
-                ipc.param1 = port;
-                ipc.param3 = 0;
-                ipc_ipost(&ipc);
+                ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_UART, IPC_UART_ISR_TX), port, 0, 0);
             }
         }
     }
