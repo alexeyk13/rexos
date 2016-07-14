@@ -70,7 +70,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * I2C: LPC1Uxx, LPC18xx
   * ADC: STM32F1, STM32L0
   * DAC: STM32F1, STM32L0
-  * USB: STM32F1_CL, STM32L0, LPC11Uxx, LPC18xx
+  * USB: STM32F1_CL, STM32F0, STM32L0, LPC11Uxx, LPC18xx
   * ETH: STM32F1, LPC18xx
   * SD/MMC: LPC18xx
   * МЭЛТ mt12864j LCD display
@@ -87,6 +87,11 @@ ARM7 features:
 
 History
 =======
+0.4.7
+- STM32F0 USB driver
+- STM32F0 UART IO mode driver
+- USB drivers now part of CORE drivers, no more dedicated SYS_OBJ_USB handle
+
 0.4.6
 - STM32 F0 support
 - STM32 HAL interface for clocks query
