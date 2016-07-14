@@ -16,7 +16,6 @@
 #define SYS_OBJ_STDOUT                                      0
 #define SYS_OBJ_CORE                                        1
 
-#define SYS_OBJ_USB                                         SYS_OBJ_CORE
 #define SYS_OBJ_ADC                                         INVALID_HANDLE
 #define SYS_OBJ_DAC                                         INVALID_HANDLE
 #define SYS_OBJ_STDIN                                       INVALID_HANDLE

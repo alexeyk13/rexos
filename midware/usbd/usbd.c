@@ -1079,7 +1079,7 @@ static inline void usbd_init(USBD* usbd)
 {
     int i;
     usbd->user = INVALID_HANDLE;
-    usbd->usb = object_get(SYS_OBJ_USB);
+    usbd->usb = object_get(SYS_OBJ_CORE);
     usbd->io = NULL;
     usbd->suspended = false;
     array_create(&usbd->ifaces, sizeof(USBD_IFACE_ENTRY), 1);
