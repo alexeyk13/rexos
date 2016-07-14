@@ -23,6 +23,9 @@
 #define SYSCFG_ENABLED                          1
 //stupid F1 series only. Remap mask. See datasheet
 #define STM32F1_MAPR                            (AFIO_MAPR_USART2_REMAP)
+//------------------------------- UART -----------------------------------------------
+//in any half duplex mode
+#define STM32_UART_DISABLE_ECHO                 0
 //------------------------------ POWER -----------------------------------------------
 //save few bytes here
 #define STM32_DECODE_RESET                      0

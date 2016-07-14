@@ -83,9 +83,6 @@ static inline void comm_usbd_stream_rx(APP* app, unsigned int size)
 
 void comm_init(APP *app)
 {
-#if !(MONOLITH_USB)
-    process_create(&__STM32_USBL);
-#endif
     app->comm.rx = app->comm.tx = app->comm.rx_stream = INVALID_HANDLE;
 
     //setup >usbd
