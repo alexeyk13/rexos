@@ -122,8 +122,8 @@ static inline bool stm32_uart_on_tx_isr(CORE* core, UART_PORT port)
 
 static inline void stm32_uart_on_rx_isr(CORE* core, UART_PORT port, uint8_t c)
 {
-    UART* uart = core->uart.uarts[port];
 #if (UART_IO_MODE_SUPPORT)
+    UART* uart = core->uart.uarts[port];
     if (uart->io_mode)
     {
 #if (STM32_UART_DISABLE_ECHO)
@@ -447,7 +447,9 @@ static inline void stm32_uart_open(CORE* core, UART_PORT port, unsigned int mode
     if (core->uart.uarts[port] == NULL)
         return;
     core->uart.uarts[port]->error = ERROR_OK;
+#if (UART_IO_MODE_SUPPORT)
     core->uart.uarts[port]->io_mode = ((mode & UART_MODE) == UART_MODE_IO);
+#endif //UART_IO_MODE_SUPPORT
 
     //power up (required prior to reg work)
     if (port == UART_1 || port >= UART_6)
@@ -456,15 +458,11 @@ static inline void stm32_uart_open(CORE* core, UART_PORT port, unsigned int mode
         RCC->APB1ENR |= 1 << UART_POWER_PINS[port];
     UART_REGS[port]->CR1 = 0;
 
-    if (core->uart.uarts[port]->io_mode)
-    {
 #if (UART_IO_MODE_SUPPORT)
+    if (core->uart.uarts[port]->io_mode)
         ok = stm32_uart_open_io(core->uart.uarts[port], port);
-#else
-        ok = false;
-#endif //UART_IO_MODE_SUPPORT
-    }
     else
+#endif //UART_IO_MODE_SUPPORT
         ok = stm32_uart_open_stream(core->uart.uarts[port], port, mode);
     if (!ok)
     {

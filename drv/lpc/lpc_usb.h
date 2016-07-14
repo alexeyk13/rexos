@@ -11,9 +11,7 @@
 #include "../../userspace/ipc.h"
 #include "../../userspace/io.h"
 #include "lpc_config.h"
-#if (MONOLITH_USB)
 #include "lpc_core.h"
-#endif
 
 typedef struct {
     IO* io;
@@ -30,17 +28,7 @@ typedef struct {
   uint8_t addr;
 } USB_DRV;
 
-#if (MONOLITH_USB)
-#define SHARED_USB_DRV                    CORE
-#else
-
-typedef struct {
-    USB_DRV usb;
-} SHARED_USB_DRV;
-
-#endif
-
-void lpc_usb_init(SHARED_USB_DRV* drv);
-void lpc_usb_request(SHARED_USB_DRV* drv, IPC* ipc);
+void lpc_usb_init(CORE* core);
+void lpc_usb_request(CORE* core, IPC* ipc);
 
 #endif // LPC_USB_H

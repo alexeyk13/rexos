@@ -15,13 +15,6 @@
 extern const REX __LPC_CORE;
 extern const REX __LPC_ETH;
 
-#if !(MONOLITH_USB)
-extern const REX __LPC_USB;
-#endif
-#if !(MONOLITH_UART)
-extern const REX __LPC_UART;
-#endif
-
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 typedef enum {
     LPC_PIN_ENABLE = IPC_USER,

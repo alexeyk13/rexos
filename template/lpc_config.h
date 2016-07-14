@@ -7,12 +7,15 @@
 #ifndef LPC_CONFIG_H
 #define LPC_CONFIG_H
 
+//---------------------- fast drivers definitions -----------------------------------
+#define LPC_I2C_DRIVER                      0
+#define LPC_SDMMC_DRIVER                    1
+#define LPC_EEPROM_DRIVER                   1
+#define LPC_UART_DRIVER                     1
+#define LPC_USB_DRIVER                      1
 //------------------------------------- CORE ----------------------------------------------
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
 #define LPC_CORE_PROCESS_SIZE               1200
-
-//Enable for size, disable for perfomance
-#define MONOLITH_USB                        1
 //------------------------------------- power ---------------------------------------------
 //save few bytes here
 #define LPC_DECODE_RESET                    0
@@ -41,16 +44,11 @@
 #define SECOND_CHANNEL                      TIMER_CHANNEL0
 #define HPET_CHANNEL                        TIMER_CHANNEL1
 
-//------------------------------------- EEPROM --------------------------------------------
-#define LPC_EEPROM_DRIVER                   1
-
 //-------------------------------------- USB ----------------------------------------------
 //Maximum packet size for USB.
 //Full speed: 64 if no isochronous transfers, else max 1024
 //must be 64 byte align for buffer allocation
 #define LPC_USB_MPS                         512
-//Sizeof USB process stack. Remember, that process itself requires around 512 bytes
-#define LPC_USB_PROCESS_SIZE                550
 
 //indirect values for LPC18xx. Read details from datasheet
 #define USBPLL_M                            0x06167FFA
@@ -68,14 +66,11 @@
 //enable if both USB_0 and USB_1 used same time
 #define LPC_USB_USE_BOTH                    0
 //-------------------------------------- I2C ----------------------------------------------
-#define LPC_I2C_DRIVER                      0
-
 //in some application slave devices may hang bus for infinite time.
 //Set this value greater than 0 to solve problem. Soft timers is required.
 #define LPC_I2C_TIMEOUT_MS                  3000
 
 //-------------------------------------- SDMMC ------------------------------------------------
-#define LPC_SDMMC_DRIVER                    1
 //each is 7 KB
 #define LPC_SDMMC_DESCR_COUNT               9
 

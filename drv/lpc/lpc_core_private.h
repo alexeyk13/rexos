@@ -26,17 +26,19 @@
 typedef struct _CORE {
     POWER_DRV power;
     TIMER_DRV timer;
+#if (LPC_UART_DRIVER)
     UART_DRV uart;
+#endif //LPC_UART_DRIVER
 #if (LPC_I2C_DRIVER)
     I2C_DRV i2c;
 #endif
-#if (MONOLITH_USB)
+#if (LPC_USB_DRIVER)
 #ifdef LPC11Uxx
     USB_DRV usb;
 #else //LPC18xx
     OTG_DRV otg;
 #endif //LPC11Uxx
-#endif
+#endif //LPC_USB_DRIVER
 #if (LPC_SDMMC_DRIVER)
     SDMMC_DRV sdmmc;
 #endif
