@@ -7,9 +7,9 @@
 #ifndef ADC_H
 #define ADC_H
 
-#include "sys.h"
 #include "ipc.h"
 #include "cc_macro.h"
+#include "object.h"
 #include "sys_config.h"
 
 #define ADC2uV(raw, vref, res)                                                 ((raw) * (vref) * 100 / (1 << (res)) * 10ul)
