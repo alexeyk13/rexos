@@ -11,25 +11,24 @@
 #include "../../userspace/irq.h"
 #include "../../userspace/stm32/stm32_driver.h"
 
-#define I2C_CR2_NBYTES_Pos                              16
-#define I2C_CR2_NBYTES_Msk                              (0xff << 16)
-
+#define I2C_CR2_NBYTES_Pos                                              16
+#define I2C_CR2_NBYTES_Msk                                              (0xff << 16)
 
 typedef I2C_TypeDef* I2C_TypeDef_P;
 #if (I2C_COUNT > 1)
-static const I2C_TypeDef_P __I2C_REGS[] =               {I2C1, I2C2};
-static const uint8_t __I2C_VECTORS[] =                  {23, 24};
-static const uint8_t __I2C_POWER_PINS[] =               {21, 22};
+static const I2C_TypeDef_P __I2C_REGS[] =                               {I2C1, I2C2};
+static const uint8_t __I2C_VECTORS[] =                                  {23, 24};
+static const uint8_t __I2C_POWER_PINS[] =                               {21, 22};
 #else
-static const I2C_TypeDef_P __I2C_REGS[] =               {I2C1};
-static const uint8_t __I2C_VECTORS[] =                  {23};
-static const uint8_t __I2C_POWER_PINS[] =               {21};
+static const I2C_TypeDef_P __I2C_REGS[] =                               {I2C1};
+static const uint8_t __I2C_VECTORS[] =                                  {23};
+static const uint8_t __I2C_POWER_PINS[] =                               {21};
 #endif
 
 //values from datasheet
-#define I2C_TIMING_NORMAL_SPEED                         ((1 << 28) | (0x13 << 0) | (0xf << 8) | (0x2 << 16) | (0x4 << 20))
-#define I2C_TIMING_FAST_SPEED                           ((0 << 28) | (0x9 << 0) | (0x3 << 8) | (0x1 << 16) | (0x3 << 20))
-#define I2C_TIMING_FAST_PLUS_SPEED                      ((0 << 28) | (0x6 << 0) | (0x3 << 8) | (0x0 << 16) | (0x1 << 20))
+#define I2C_TIMING_NORMAL_SPEED                                         ((1 << 28) | (0x13 << 0) | (0xf << 8) | (0x2 << 16) | (0x4 << 20))
+#define I2C_TIMING_FAST_SPEED                                           ((0 << 28) | (0x9 << 0) | (0x3 << 8) | (0x1 << 16) | (0x3 << 20))
+#define I2C_TIMING_FAST_PLUS_SPEED                                      ((0 << 28) | (0x6 << 0) | (0x3 << 8) | (0x0 << 16) | (0x1 << 20))
 
 void stm32_i2c_init(CORE* core)
 {
@@ -183,9 +182,7 @@ static inline void stm32_i2c_on_tx_isr(I2C* i2c, I2C_PORT port)
             }
         }
         else
-        {
             stm32_i2c_on_error_isr(i2c, port, ERROR_NAK);
-        }
         break;
     }
 }
@@ -207,7 +204,6 @@ void stm32_i2c_on_isr(int vector, void* param)
         stm32_i2c_on_error_isr(i2c, port, ERROR_HARDWARE);
         return;
     }
-
 
     switch (i2c->io_mode)
     {
