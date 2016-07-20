@@ -16,6 +16,7 @@
 #include "stm32_adc.h"
 #include "stm32_dac.h"
 #include "stm32_eep.h"
+#include "stm32_i2c.h"
 #ifdef STM32F10X_CL
 #include "stm32_otg.h"
 #else
@@ -84,6 +85,11 @@ void stm32_core_loop(CORE* core)
             stm32_eep_request(core, &ipc);
             break;
 #endif //STM32_EEP_DRIVER
+#if (STM32_I2C_DRIVER)
+        case HAL_I2C:
+            stm32_i2c_request(core, &ipc);
+            break;
+#endif //STM32_I2C_DRIVER
 #if (STM32_USB_DRIVER)
         case HAL_USB:
 #ifdef STM32F10X_CL
@@ -130,6 +136,9 @@ void stm32_core()
 #if (STM32_EEP_DRIVER)
     stm32_eep_init(&core);
 #endif //STM32_EEP_DRIVER
+#if (STM32_I2C_DRIVER)
+    stm32_i2c_init(&core);
+#endif //STM32_I2C_DRIVER
 #if (STM32_USB_DRIVER)
 #ifdef STM32F10X_CL
     stm32_otg_init(&core);

@@ -8,17 +8,17 @@
 #include "object.h"
 #include "sys_config.h"
 
-bool i2c_open(I2C_PORT port, unsigned int mode, unsigned int speed)
+bool i2c_open(int port, unsigned int mode, unsigned int speed)
 {
     return get_handle(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_I2C, IPC_OPEN), port, mode, speed) != INVALID_HANDLE;
 }
 
-void i2c_close(I2C_PORT port)
+void i2c_close(int port)
 {
     ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_I2C, IPC_CLOSE), port, 0, 0);
 }
 
-int i2c_read(I2C_PORT port, uint8_t sla, IO* io, unsigned int max_size)
+int i2c_read(int port, uint8_t sla, IO* io, unsigned int max_size)
 {
     int res;
     I2C_STACK* stack = io_push(io, sizeof(I2C_STACK));
@@ -29,7 +29,7 @@ int i2c_read(I2C_PORT port, uint8_t sla, IO* io, unsigned int max_size)
     return res;
 }
 
-int i2c_read_len(I2C_PORT port, uint8_t sla, IO* io, unsigned int max_size)
+int i2c_read_len(int port, uint8_t sla, IO* io, unsigned int max_size)
 {
     int res;
     I2C_STACK* stack = io_push(io, sizeof(I2C_STACK));
@@ -40,7 +40,7 @@ int i2c_read_len(I2C_PORT port, uint8_t sla, IO* io, unsigned int max_size)
     return res;
 }
 
-int i2c_read_addr(I2C_PORT port, uint8_t sla, uint8_t addr, IO* io, unsigned int max_size)
+int i2c_read_addr(int port, uint8_t sla, uint8_t addr, IO* io, unsigned int max_size)
 {
     int res;
     I2C_STACK* stack = io_push(io, sizeof(I2C_STACK));
@@ -52,7 +52,7 @@ int i2c_read_addr(I2C_PORT port, uint8_t sla, uint8_t addr, IO* io, unsigned int
     return res;
 }
 
-int i2c_read_addr_len(I2C_PORT port, uint8_t sla, uint8_t addr, IO* io, unsigned int max_size)
+int i2c_read_addr_len(int port, uint8_t sla, uint8_t addr, IO* io, unsigned int max_size)
 {
     int res;
     I2C_STACK* stack = io_push(io, sizeof(I2C_STACK));
@@ -64,7 +64,7 @@ int i2c_read_addr_len(I2C_PORT port, uint8_t sla, uint8_t addr, IO* io, unsigned
     return res;
 }
 
-int i2c_write(I2C_PORT port, uint8_t sla, IO* io)
+int i2c_write(int port, uint8_t sla, IO* io)
 {
     int res;
     I2C_STACK* stack = io_push(io, sizeof(I2C_STACK));
@@ -75,7 +75,7 @@ int i2c_write(I2C_PORT port, uint8_t sla, IO* io)
     return res;
 }
 
-int i2c_write_len(I2C_PORT port, uint8_t sla, IO* io)
+int i2c_write_len(int port, uint8_t sla, IO* io)
 {
     int res;
     I2C_STACK* stack = io_push(io, sizeof(I2C_STACK));
@@ -86,7 +86,7 @@ int i2c_write_len(I2C_PORT port, uint8_t sla, IO* io)
     return res;
 }
 
-int i2c_write_addr(I2C_PORT port, uint8_t sla, uint8_t addr, IO* io)
+int i2c_write_addr(int port, uint8_t sla, uint8_t addr, IO* io)
 {
     int res;
     I2C_STACK* stack = io_push(io, sizeof(I2C_STACK));
@@ -98,7 +98,7 @@ int i2c_write_addr(I2C_PORT port, uint8_t sla, uint8_t addr, IO* io)
     return res;
 }
 
-int i2c_write_addr_len(I2C_PORT port, uint8_t sla, uint8_t addr, IO* io)
+int i2c_write_addr_len(int port, uint8_t sla, uint8_t addr, IO* io)
 {
     int res;
     I2C_STACK* stack = io_push(io, sizeof(I2C_STACK));

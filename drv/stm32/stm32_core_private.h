@@ -15,6 +15,7 @@
 #include "stm32_uart.h"
 #include "stm32_dac.h"
 #include "stm32_adc.h"
+#include "stm32_i2c.h"
 #ifdef STM32F10X_CL
 #include "stm32_otg.h"
 #else
@@ -34,6 +35,9 @@ typedef struct _CORE {
 #if (STM32_DAC_DRIVER)
     DAC_DRV dac;
 #endif //STM32_DAC_DRIVER
+#if (STM32_I2C_DRIVER)
+    I2C_DRV i2c;
+#endif //STM32_I2C_DRIVER
 #if (STM32_USB_DRIVER)
     USB_DRV usb;
 #endif //STM32_USB_DRIVER

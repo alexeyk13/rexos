@@ -109,14 +109,17 @@
 #if defined(STM32F030x4) || defined(STM32F030x6)
 #define SRAM_SIZE           0x1000
 #define UARTS_COUNT         1
+#define I2C_COUNT           1
 #define IRQ_VECTORS_COUNT   28
 #elif defined(STM32F030x8)
 #define SRAM_SIZE           0x2000
 #define UARTS_COUNT         2
+#define I2C_COUNT           2
 #define IRQ_VECTORS_COUNT   29
 #else
 #define SRAM_SIZE           0x8000
 #define UARTS_COUNT         6
+#define I2C_COUNT           2
 #define IRQ_VECTORS_COUNT   30
 #endif
 #endif
@@ -126,6 +129,7 @@
 #define SRAM_SIZE           0x1000
 #define UARTS_COUNT         1
 #define IRQ_VECTORS_COUNT   28
+#define I2C_COUNT           1
 #endif
 
 #if defined(STM32F038x6)
@@ -133,6 +137,7 @@
 #define SRAM_SIZE           0x1000
 #define UARTS_COUNT         1
 #define IRQ_VECTORS_COUNT   28
+#define I2C_COUNT           1
 #endif
 
 #if defined(STM32F042x4) || defined(STM32F042x6)
@@ -140,6 +145,7 @@
 #define SRAM_SIZE           0x1800
 #define UARTS_COUNT         2
 #define IRQ_VECTORS_COUNT   32
+#define I2C_COUNT           1
 #endif
 
 #if defined(STM32F048x6)
@@ -147,7 +153,9 @@
 #define SRAM_SIZE           0x1800
 #define UARTS_COUNT         2
 #define IRQ_VECTORS_COUNT   32
+#define I2C_COUNT           1
 #endif
+
 
 #if defined(STM32F051x4) || defined(STM32F051x6) || defined(STM32F051x8)
 #define STM32F051
@@ -158,12 +166,18 @@
 #define UARTS_COUNT         2
 #endif
 #define IRQ_VECTORS_COUNT   31
+#if defined(STM32F051C8) || defined(STM32F051R8)
+#define I2C_COUNT           2
+#else
+#define I2C_COUNT           1
+#endif
 #endif
 
 #if defined(STM32F058x8)
 #define STM32F058
 #define SRAM_SIZE           0x2000
 #define UARTS_COUNT         2
+#define I2C_COUNT           2
 #define IRQ_VECTORS_COUNT   31
 #endif
 
@@ -172,9 +186,11 @@
 #if defined(STM32F070x6)
 #define SRAM_SIZE           0x1800
 #define UARTS_COUNT         2
+#define I2C_COUNT           1
 #else
 #define SRAM_SIZE           0x4000
 #define UARTS_COUNT         4
+#define I2C_COUNT           2
 #endif
 #define IRQ_VECTORS_COUNT   32
 #endif
@@ -184,6 +200,7 @@
 #define SRAM_SIZE           0x4000
 #define UARTS_COUNT         4
 #define IRQ_VECTORS_COUNT   31
+#define I2C_COUNT           2
 #endif
 
 #if defined(STM32F072x8) || defined(STM32F072xB)
@@ -191,6 +208,7 @@
 #define SRAM_SIZE           0x4000
 #define UARTS_COUNT         4
 #define IRQ_VECTORS_COUNT   32
+#define I2C_COUNT           2
 #endif
 
 #if defined(STM32F078xB)
@@ -198,6 +216,7 @@
 #define SRAM_SIZE           0x4000
 #define UARTS_COUNT         4
 #define IRQ_VECTORS_COUNT   32
+#define I2C_COUNT           2
 #endif
 
 #if defined(STM32F091xB) || defined(STM32F091xC)
@@ -209,6 +228,7 @@
 #define UARTS_COUNT         8
 #endif
 #define IRQ_VECTORS_COUNT   31
+#define I2C_COUNT           2
 #endif
 
 #if defined(STM32F098xC)
@@ -220,6 +240,7 @@
 #define UARTS_COUNT         8
 #endif
 #define IRQ_VECTORS_COUNT   31
+#define I2C_COUNT           2
 #endif
 
 #if defined(STM32F030) || defined(STM32F070)

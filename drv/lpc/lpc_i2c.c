@@ -14,9 +14,6 @@
 
 #define ack_pin                                     lpc_pin_request_inside
 
-#define I2C_NORMAL_CLOCK                            100000
-#define I2C_FAST_CLOCK                              400000
-
 #if defined(LPC11U6x)
 static const uint8_t __I2C_VECTORS[] =              {15, 10};
 typedef LPC_I2C_Type* LPC_I2C_Type_P;
