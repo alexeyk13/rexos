@@ -9,6 +9,7 @@
 #include "kstdlib.h"
 #include "string.h"
 #include "kstream.h"
+#include "kio.h"
 #include "kernel.h"
 #if (KERNEL_BD)
 #include "kdirect.h"

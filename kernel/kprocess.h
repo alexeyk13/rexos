@@ -45,12 +45,12 @@ void kprocess_get_current_svc(KPROCESS** var);
 
 //called from other places in kernel, IRQ disabled
 void kprocess_sleep(KPROCESS* kprocess, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object);
-void kprocess_wakeup(KPROCESS* kprocess);
 void kprocess_set_current_priority(KPROCESS* kprocess, unsigned int priority);
 
 void kprocess_destroy_current();
 
 //called from other places in kernel, IRQ enabled
+void kprocess_wakeup(KPROCESS* kprocess);
 bool kprocess_check_address(KPROCESS* kprocess, void* addr, unsigned int size);
 void kprocess_error(KPROCESS* kprocess, int error);
 void kprocess_error_current(int error);

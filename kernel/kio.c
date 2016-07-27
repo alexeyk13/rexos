@@ -40,10 +40,8 @@ void kio_create(IO** io, unsigned int size)
 static void kio_destroy_internal(KIO* kio)
 {
     CLEAR_MAGIC(kio);
-    disable_interrupts();
     kfree(kio->io);
     kfree(kio);
-    enable_interrupts();
 }
 
 bool kio_send(KIO* kio, KPROCESS* receiver)
@@ -55,12 +53,12 @@ bool kio_send(KIO* kio, KPROCESS* receiver)
         return false;
     }
     //user released IO
-    if (kio->kill_flag)
+    if ((kio->kill_flag) && (receiver == kio->owner))
     {
+        disable_interrupts();
         kio_destroy_internal(kio);
-        kprocess_error(receiver, ERROR_SYNC_OBJECT_DESTROYED);
-        //always deliver IPC, even if IO is destroyed
-        return true;
+        enable_interrupts();
+        return false;
     }
     kio->granted = receiver;
     return true;
@@ -68,7 +66,6 @@ bool kio_send(KIO* kio, KPROCESS* receiver)
 
 void kio_destroy(IO *io)
 {
-    bool kill = true;
     if (io == NULL)
         return;
     KIO* kio = (KIO*)io->kio;
@@ -82,12 +79,9 @@ void kio_destroy(IO *io)
         return;
     }
     disable_interrupts();
-    if (kio->granted != kio->owner)
-    {
-        kio->kill_flag = true;
-        kill = false;
-    }
-    enable_interrupts();
-    if (kill)
+    if (kio->granted == kio->owner)
         kio_destroy_internal(kio);
+    else
+        kio->kill_flag = true;
+    enable_interrupts();
 }
