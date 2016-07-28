@@ -9,6 +9,13 @@
 #include "kstdlib.h"
 #include "kernel_config.h"
 
+static void kio_destroy_internal(KIO* kio)
+{
+    CLEAR_MAGIC(kio);
+    kfree(kio->io);
+    kfree(kio);
+}
+
 void kio_create(IO** io, unsigned int size)
 {
     KIO* kio;
@@ -25,10 +32,13 @@ void kio_create(IO** io, unsigned int size)
         disable_interrupts();
         (*io) = kio->io = (IO*)kmalloc(size + sizeof(IO));
         enable_interrupts();
-        if (kio->io == NULL)
+        if ((kio->io) == NULL)
         {
-            kfree(kio);
+            disable_interrupts();
+            kio_destroy_internal(kio);
+            enable_interrupts();
             kprocess_error(kprocess, ERROR_OUT_OF_PAGED_MEMORY);
+            return;
         }
         kio->io->kio = (HANDLE)kio;
         kio->io->size = size + sizeof(IO);
@@ -37,15 +47,9 @@ void kio_create(IO** io, unsigned int size)
         kprocess_error(kprocess, ERROR_OUT_OF_SYSTEM_MEMORY);
 }
 
-static void kio_destroy_internal(KIO* kio)
-{
-    CLEAR_MAGIC(kio);
-    kfree(kio->io);
-    kfree(kio);
-}
-
 bool kio_send(KIO* kio, KPROCESS* receiver)
 {
+    IPC ipc;
     KPROCESS* kprocess = kprocess_get_current();
     if (kprocess != kio->granted)
     {
@@ -58,6 +62,9 @@ bool kio_send(KIO* kio, KPROCESS* receiver)
         disable_interrupts();
         kio_destroy_internal(kio);
         enable_interrupts();
+        ipc.process = (HANDLE)receiver;
+        ipc.cmd = HAL_CMD(HAL_SYSTEM, IPC_SYNC);
+        kipc_post_process(&ipc, (KPROCESS*)KERNEL_HANDLE);
         return false;
     }
     kio->granted = receiver;
@@ -66,6 +73,7 @@ bool kio_send(KIO* kio, KPROCESS* receiver)
 
 void kio_destroy(IO *io)
 {
+    bool kill_flag = false;
     if (io == NULL)
         return;
     KIO* kio = (KIO*)io->kio;
@@ -82,6 +90,11 @@ void kio_destroy(IO *io)
     if (kio->granted == kio->owner)
         kio_destroy_internal(kio);
     else
+    {
         kio->kill_flag = true;
+        kill_flag = true;
+    }
     enable_interrupts();
+    if (kill_flag)
+        kprocess_error(kprocess, ERROR_BUSY);
 }
