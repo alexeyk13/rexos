@@ -299,7 +299,7 @@ static inline int stm32_power_get_pll_clock()
 {
     int pllsrc = HSI_VALUE / 2;
 #if (HSE_VALUE)
-    if (RCC->PLLCFGR & (1 << 16))
+    if (RCC->CFGR & (1 << 16))
         pllsrc = HSE_VALUE;
 #endif
     return pllsrc  * (((RCC->CFGR >> 18) & 0xf) + 2);

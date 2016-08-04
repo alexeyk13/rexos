@@ -72,7 +72,6 @@ static void stm32_usb_tx(CORE* core, unsigned int ep_num)
         size = ep->mps;
     USB_BUFFER_DESCRIPTORS[ep_num].COUNT_TX = size;
     memcpy16((void*)(USB_BUFFER_DESCRIPTORS[ep_num].ADDR_TX + USB_PMAADDR), io_data(ep->io) + ep->size, size);
-    ep->size += size;
 }
 
 bool stm32_usb_ep_flush(CORE* core, unsigned int num)
@@ -178,15 +177,22 @@ static inline void stm32_usb_tx_isr(CORE* core, unsigned int ep_num)
 
     if (ep->io_active)
     {
-        stm32_usb_tx(core, ep_num);
+        ep->size += USB_BUFFER_DESCRIPTORS[ep_num].COUNT_TX;
         if (ep->size >= ep->io->data_size)
         {
+            ep_toggle_bits(ep_num, USB_EPTX_STAT, USB_EP_TX_NAK);
             iio_complete(core->usb.device, HAL_IO_CMD(HAL_USB, IPC_WRITE), USB_HANDLE(USB_0, USB_EP_IN | ep_num), ep->io);
             ep->io = NULL;
             ep->io_active = false;
         }
-        ep_toggle_bits(ep_num, USB_EPTX_STAT, USB_EP_TX_VALID);
+        else
+        {
+            stm32_usb_tx(core, ep_num);
+            ep_toggle_bits(ep_num, USB_EPTX_STAT, USB_EP_TX_VALID);
+        }
     }
+    else
+        ep_toggle_bits(ep_num, USB_EPTX_STAT, USB_EP_TX_NAK);
     *ep_reg_data(ep_num) = (*ep_reg_data(ep_num)) & USB_EPREG_MASK & ~USB_EP_CTR_TX;
 }
 
@@ -200,6 +206,7 @@ static inline void stm32_usb_rx_isr(CORE* core, unsigned int ep_num)
 
     if (ep->io->data_size >= ep->size || size < ep->mps)
     {
+        ep_toggle_bits(ep_num, USB_EPRX_STAT, USB_EP_RX_NAK);
         iio_complete(core->usb.device, HAL_IO_CMD(HAL_USB, IPC_READ), USB_HANDLE(USB_0, ep_num), ep->io);
         ep->io = NULL;
         ep->io_active = false;
@@ -292,13 +299,17 @@ void stm32_usb_open_device(CORE* core, HANDLE device)
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;
 
 #if defined(STM32F0)
-    //setup CRS
-    RCC->APB1ENR |= RCC_APB1ENR_CRSEN;
-    CRS->CR |= CRS_CR_CEN;
-    CRS->CR |= CRS_CR_AUTOTRIMEN;
+#if (HSE_VALUE)
+    RCC->CFGR3 |= RCC_CFGR3_USBSW;
+#else
     //Turn USB HSI On (crystall less)
     RCC->CR2 |= RCC_CR2_HSI48ON;
     while ((RCC->CR2 & RCC_CR2_HSI48RDY) == 0) {}
+    //setup CRS
+    RCC->APB1ENR |= RCC_APB1ENR_CRSEN;
+    CRS->CR |= CRS_CR_AUTOTRIMEN;
+    CRS->CR |= CRS_CR_CEN;
+#endif //HSE_VALUE
 #endif //STM32F0
 
     //power up and wait tStartup
