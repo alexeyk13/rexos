@@ -181,7 +181,7 @@ static void lpc_otg_on_isr(int vector, void* param)
     IPC ipc;
 #endif //USB_DEBUG_ERRORS
     int i;
-    CORE* core = (SHARED_OTG_DRV*)param;
+    CORE* core = param;
     USB_PORT_TYPE port = USB_0;
     if (vector != __USB_VECTORS[0])
         port = USB_1;
