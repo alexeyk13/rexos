@@ -61,6 +61,7 @@ typedef enum {
     HAL_HTTP,
     HAL_TLS,
     HAL_PINBOARD,
+    HAL_VFS,
     //application level
     HAL_APP
 } HAL;

@@ -46,9 +46,8 @@
 #define ERROR_IO_BUFFER_TOO_SMALL                       (ERROR_IO - 4)
 #define ERROR_IO_CANCELLED                              (ERROR_IO - 5)
 #define ERROR_FOLDER_NOT_EMPTY                          (ERROR_IO - 6)
-#define ERROR_NOT_MOUNTED                               (ERROR_IO - 7)
-#define ERROR_ALREADY_MOUNTED                           (ERROR_IO - 8)
-#define ERROR_IO_ASYNC_COMPLETE                         (ERROR_IO - 9)
+#define ERROR_IO_ASYNC_COMPLETE                         (ERROR_IO - 7)
+#define ERROR_IO_FAIL                                   (ERROR_IO - 8)
 
 #define ERROR_MEMORY                                    -200
 #define ERROR_OUT_OF_MEMORY                             (ERROR_MEMORY - 1)
