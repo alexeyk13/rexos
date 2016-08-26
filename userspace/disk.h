@@ -36,14 +36,27 @@ typedef struct {
 } FAT_BOOT_SECTOR_HEADER_TYPE;
 
 typedef struct {
+    //DOS 2.0 BPB
     uint16_t sector_size;
     uint8_t cluster_size;
-    uint16_t reserved;
+    uint16_t reserved_sectors;
     uint8_t fat_count;
     uint16_t root_count;
     uint16_t sectors_short;
-    uint8_t mediat_descriptor;
+    uint8_t media_type;
     uint16_t fat_sectors;
+    //DOS 3.31 BPB
+    uint16_t sectors_per_track;
+    uint16_t heads;
+    uint32_t hidden;
+    uint32_t sectors;
+    //EPBP
+    uint8_t drive_num;
+    uint8_t reserved;
+    uint8_t ext_signature;
+    uint32_t serial;
+    char label[11];
+    char fs_type[8];
 } FAT_BOOT_SECTOR_BPB_TYPE;
 #pragma pack(pop)
 
