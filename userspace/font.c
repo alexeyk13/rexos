@@ -5,7 +5,7 @@
 */
 
 #include "font.h"
-#include "utf8.h"
+#include "utf.h"
 #include "error.h"
 #include "process.h"
 #include "font.h"
