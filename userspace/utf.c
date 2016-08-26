@@ -4,7 +4,7 @@
     All rights reserved.
 */
 
-#include "utf8.h"
+#include "utf.h"
 
 unsigned int utf8_char_len(const char* utf8)
 {
@@ -42,4 +42,28 @@ unsigned int utf8_len(const char* utf8)
         ++cnt;
     }
     return cnt;
+}
+
+unsigned int utf16_len(const uint16_t* utf16)
+{
+    unsigned int i;
+    for (i = 0;; ++i)
+        if (utf16[i] == 0)
+            return i + 1;
+}
+
+unsigned int utf16_to_latin1(const uint16_t* utf16, uint8_t* latin1)
+{
+    unsigned int i;
+    for (i = 0;; ++i)
+    {
+        if (utf16[i] == 0x0000)
+            break;
+        if (utf16[i] > 0xff)
+            latin1[i] = '?';
+        else
+            latin1[i] = (utf16[i] & 0xff);
+    }
+    latin1[i] = '\x0';
+    return i;
 }
