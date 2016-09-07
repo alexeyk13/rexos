@@ -27,12 +27,18 @@
 #define FAT_FILE_ATTR_DEVICE                                0x40
 #define FAT_FILE_ATTR_RESERVED                              0x80
 #define FAT_FILE_ATTR_LFN                                   0x0f
+#define FAT_FILE_ATTR_REAL_MASK                             0xff
+#define FAT_FILE_ATTR_DOT_OR_DOT_DOT                        0x100
 
 #define FAT_FILE_SYS_ATTR_NAME_LOWER_CASE                   (1 << 3)
 #define FAT_FILE_SYS_ATTR_EXT_LOWER_CASE                    (1 << 4)
 
 #define FAT_LFN_SEQ_LAST                                    (1 << 6)
 #define FAT_LFN_SEQ_MASK                                    0x1f
+
+#define FAT_CLUSTER_RESERVED                                0xfff8
+#define FAT_CLUSTER_LAST                                    0xffff
+#define FAT_CLUSTER_FREE                                    0x0000
 
 #pragma pack(push, 1)
 typedef struct {
