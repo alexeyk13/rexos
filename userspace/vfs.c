@@ -140,6 +140,16 @@ int vfs_read_sync(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io, unsigned i
     return io_read_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, IPC_READ), handle, io, size);
 }
 
+void vfs_write(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io)
+{
+    io_write(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, IPC_WRITE), handle, io);
+}
+
+int vfs_write_sync(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io)
+{
+    return io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, IPC_WRITE), handle, io);
+}
+
 void vfs_close(VFS_RECORD_TYPE* vfs_record, HANDLE handle)
 {
     ack(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_CLOSE), handle, 0, 0);

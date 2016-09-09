@@ -16,13 +16,28 @@
 #include "../userspace/disk.h"
 #include "../userspace/so.h"
 #include "../userspace/utf.h"
+#include "../userspace/time.h"
 #include <string.h>
 #include "sys_config.h"
 
 #define FILE_ENTRIES_IN_SECTOR                              (FAT_SECTOR_SIZE / sizeof(FAT_FILE_ENTRY))
-#define FILE_ENTRIES_IN_IO                                  (VFS_IO_SIZE / sizeof(FAT_FILE_ENTRY))
 #define SECTORS_IN_IO                                       (VFS_IO_SIZE / FAT_SECTOR_SIZE)
 #define FAT_ENTRIES_IN_SECTOR                               (FAT_SECTOR_SIZE / 2)
+
+#define FAT_DATE_DAY_POS                                    0
+#define FAT_DATE_DAY_MASK                                   (0x1f << 0)
+#define FAT_DATE_MON_POS                                    5
+#define FAT_DATE_MON_MASK                                   (0xf << 5)
+#define FAT_DATE_YEAR_POS                                   9
+#define FAT_DATE_YEAR_MASK                                  (0x7f << 9)
+#define FAT_DATE_EPOCH_YEAR                                 1980
+
+#define FAT_TIME_HALF_SECONDS_POS                           0
+#define FAT_TIME_HALF_SECONDS_MASK                          (0x1f << 0)
+#define FAT_TIME_MINUTES_POS                                5
+#define FAT_TIME_MINUTES_MASK                               (0x3f << 0)
+#define FAT_TIME_HOURS_POS                                  11
+#define FAT_TIME_HOURS_MASK                                 (0x1f << 0)
 
 typedef struct {
     unsigned int cluster, index, cluster_num;
@@ -36,38 +51,107 @@ typedef struct {
 typedef struct {
     IO* io;
     VFS_VOLUME_TYPE volume;
-    unsigned long sectors_count, cluster_sectors, root_sectors, reserved_sectors, fat_sectors;
+    unsigned long sectors_count, cluster_sectors, root_sectors, reserved_sectors, fat_sectors, cluster_size, clusters_count;
     unsigned long current_sector, current_size;
     SO finds;
     SO file_handles;
 } FAT16_TYPE;
 
 
-static void* fat16_read(FAT16_TYPE* fat16, unsigned long sector, unsigned size)
+static bool fat16_read_sectors(FAT16_TYPE* fat16, unsigned long sector, unsigned size)
 {
     //cache read
-    if (sector >= fat16->current_sector && (fat16->current_sector - sector) * FAT_SECTOR_SIZE + size <= fat16->current_size)
-        return (uint8_t*)io_data(fat16->io) + (fat16->current_sector - sector) * FAT_SECTOR_SIZE;
+    if ((sector == fat16->current_sector) && (fat16->io->data_size == size))
+        return true;
     if (!storage_read_sync(fat16->volume.hal, fat16->volume.process, fat16->volume.user, fat16->io, sector + fat16->volume.first_sector, size))
-    {
-        error(ERROR_IO_FAIL);
-        return NULL;
-    }
-    return io_data(fat16->io);
+        return false;
+    fat16->current_sector = sector;
+    return true;
 }
 
+static bool fat16_write_sectors(FAT16_TYPE* fat16, unsigned long sector, unsigned size)
+{
+    fat16->io->data_size = size;
+    return storage_write_sync(fat16->volume.hal, fat16->volume.process, fat16->volume.user, fat16->io, sector + fat16->volume.first_sector);
+}
+
+/*
+static unsigned short fat16_time_to_fat_date(struct tm* ts)
+{
+    return ((ts->tm_year - FAT_DATE_EPOCH_YEAR) << FAT_DATE_YEAR_POS) | ((ts->tm_mon + 1) << FAT_DATE_MON_POS) | (ts->tm_mday << FAT_DATE_DAY_POS);
+}
+
+static unsigned short fat16_time_to_fat_time(struct tm* ts)
+{
+    return (ts->tm_hour << FAT_TIME_HOURS_POS) | (ts->tm_min << FAT_TIME_MINUTES_POS) | ((ts->tm_sec >> 1) << FAT_DATE_DAY_POS);
+}
+*/
 static unsigned long fat16_cluster_to_sector(FAT16_TYPE* fat16, unsigned long cluster)
 {
     return fat16->reserved_sectors + fat16->fat_sectors * 2 + fat16->root_sectors + (cluster - 2) * fat16->cluster_sectors;
 }
 
-static unsigned long fat16_cluster_value(FAT16_TYPE* fat16, unsigned long cluster)
+static unsigned long fat16_get_fat_value(FAT16_TYPE* fat16, unsigned long cluster)
 {
-    uint16_t* fat_data;
-    fat_data = fat16_read(fat16, fat16->reserved_sectors +  (cluster / FAT_ENTRIES_IN_SECTOR), FAT_SECTOR_SIZE);
-    if (fat_data == NULL)
+    uint16_t* fat;
+    if (!fat16_read_sectors(fat16, fat16->reserved_sectors + (cluster / FAT_ENTRIES_IN_SECTOR), FAT_SECTOR_SIZE))
         return FAT_CLUSTER_RESERVED;
-    return fat_data[cluster % FAT_ENTRIES_IN_SECTOR];
+    fat = io_data(fat16->io);
+    return fat[cluster % FAT_ENTRIES_IN_SECTOR];
+}
+
+static unsigned long fat16_get_fat_next(FAT16_TYPE* fat16, unsigned long cluster)
+{
+    unsigned long next;
+    next = fat16_get_fat_value(fat16, cluster);
+    if (next >= FAT_CLUSTER_RESERVED || next < 2)
+    {
+#if (VFS_DEBUG_ERRORS)
+        printf("FAT16 warning: FAT corrupted\n");
+#endif //VFS_DEBUG_ERRORS
+        error(ERROR_CORRUPTED);
+    }
+    return next;
+}
+
+static unsigned long fat16_get_fat_chain(FAT16_TYPE* fat16, unsigned long first_cluster, unsigned long i)
+{
+    unsigned long res;
+    for(res = first_cluster; i; --i)
+    {
+        res = fat16_get_fat_next(fat16, res);
+        if (res >= FAT_CLUSTER_RESERVED)
+            break;
+    }
+    return res;
+}
+
+static bool fat16_set_fat_value(FAT16_TYPE* fat16, unsigned long cluster, unsigned long value)
+{
+    uint16_t* fat;
+    if (!fat16_read_sectors(fat16, fat16->reserved_sectors + (cluster / FAT_ENTRIES_IN_SECTOR), FAT_SECTOR_SIZE))
+        return false;
+    fat = io_data(fat16->io);
+    fat[cluster % FAT_ENTRIES_IN_SECTOR] = value;
+    //first copy
+    if (!fat16_write_sectors(fat16, fat16->reserved_sectors + (cluster / FAT_ENTRIES_IN_SECTOR), FAT_SECTOR_SIZE))
+        return false;
+    //second copy
+    return fat16_write_sectors(fat16, fat16->reserved_sectors + fat16->fat_sectors + (cluster / FAT_ENTRIES_IN_SECTOR), FAT_SECTOR_SIZE);
+}
+
+static unsigned long fat16_find_free_cluster(FAT16_TYPE* fat16, unsigned long cluster)
+{
+    unsigned long next_free;
+    //after current till last
+    for (next_free = cluster + 1; next_free < fat16->clusters_count;  ++next_free)
+        if (fat16_get_fat_value(fat16, next_free) < FAT_CLUSTER_RESERVED)
+            return next_free;
+    //from first till current -1
+    for (next_free = 2; next_free < cluster;  ++next_free)
+        if (fat16_get_fat_value(fat16, next_free) < FAT_CLUSTER_RESERVED)
+            return next_free;
+    return FAT_CLUSTER_RESERVED;
 }
 
 static unsigned int fat16_strspcpy(char* dst, char* src, unsigned int dst_size, unsigned int src_size, bool lowercase)
@@ -100,10 +184,11 @@ static inline void fat16_init(FAT16_TYPE* fat16)
 static bool fat16_parse_boot(FAT16_TYPE* fat16)
 {
     FAT_BOOT_SECTOR_BPB_TYPE* bpb;
-    void* boot;
-    if ((boot = fat16_read(fat16, 0, FAT_SECTOR_SIZE)) == NULL)
+    uint8_t* boot;
+    if (!fat16_read_sectors(fat16, 0, FAT_SECTOR_SIZE))
         return false;
-    if (*((uint16_t*)((uint8_t*)boot + MBR_MAGIC_OFFSET)) != MBR_MAGIC)
+    boot = io_data(fat16->io);
+    if (*((uint16_t*)(boot + MBR_MAGIC_OFFSET)) != MBR_MAGIC)
     {
         error(ERROR_NOT_SUPPORTED);
 #if (VFS_DEBUG_ERRORS)
@@ -111,7 +196,7 @@ static bool fat16_parse_boot(FAT16_TYPE* fat16)
 #endif //VFS_DEBUG_ERRORS
         return false;
     }
-    bpb = (void*)((uint8_t*)boot + sizeof(FAT_BOOT_SECTOR_HEADER_TYPE));
+    bpb = (void*)(boot + sizeof(FAT_BOOT_SECTOR_HEADER_TYPE));
     if ((bpb->sector_size != FAT_SECTOR_SIZE) || (bpb->fat_count != 2) || (bpb->cluster_size * bpb->sector_size > VFS_IO_SIZE) ||
         (bpb->ext_signature != FAT_BPB_EXT_SIGNATURE) || bpb->reserved_sectors == 0 || bpb->fat_sectors == 0)
     {
@@ -128,7 +213,7 @@ static bool fat16_parse_boot(FAT16_TYPE* fat16)
     fat16->fat_sectors = bpb->fat_sectors;
     if (fat16->sectors_count == 0)
         fat16->sectors_count = bpb->sectors;
-    if (fat16->sectors_count > fat16->volume.sectors_count || fat16->sectors_count == 0)
+    if (fat16->sectors_count > fat16->volume.sectors_count || fat16->sectors_count == 0 || fat16->cluster_sectors == 0)
     {
         error(ERROR_CORRUPTED);
 #if (VFS_DEBUG_ERRORS)
@@ -136,6 +221,8 @@ static bool fat16_parse_boot(FAT16_TYPE* fat16)
 #endif //VFS_DEBUG_ERRORS
         return false;
     }
+    fat16->clusters_count = (fat16->sectors_count - (fat16->reserved_sectors + fat16->fat_sectors * 2 + fat16->root_sectors)) / fat16->cluster_sectors + 2;
+    fat16->cluster_size = fat16->cluster_sectors * FAT_SECTOR_SIZE;
 
 #if (VFS_DEBUG_INFO)
     printf("FAT16 info:\n");
@@ -147,19 +234,17 @@ static bool fat16_parse_boot(FAT16_TYPE* fat16)
     return true;
 }
 
-static FAT_FILE_ENTRY* fat16_read_file_entry_internal(FAT16_TYPE* fat16, FAT16_FIND_TYPE* ff)
+static FAT_FILE_ENTRY* fat16_read_file_entry(FAT16_TYPE* fat16, FAT16_FIND_TYPE* ff)
 {
-    unsigned int cluster_num, sector, idx_cur, size;
+    unsigned int sector_num, cluster_num, sector, idx_cur;
     FAT_FILE_ENTRY* entries;
     if (ff->cluster == VFS_ROOT)
     {
         if (ff->index >= fat16->root_sectors * FILE_ENTRIES_IN_SECTOR)
             return NULL;
-        //actually here not cluster, just block
-        ff->cluster_num = ff->index / FILE_ENTRIES_IN_IO;
-        idx_cur = ff->index - ff->cluster_num * FILE_ENTRIES_IN_IO;
-        sector = fat16->reserved_sectors + fat16->fat_sectors * 2 + ff->cluster_num * SECTORS_IN_IO;
-        size = VFS_IO_SIZE;
+        sector_num = ff->index / FILE_ENTRIES_IN_SECTOR;
+        idx_cur = ff->index - sector_num * FILE_ENTRIES_IN_SECTOR;
+        sector = fat16->reserved_sectors + fat16->fat_sectors * 2 + sector_num;
     }
     else
     {
@@ -167,17 +252,17 @@ static FAT_FILE_ENTRY* fat16_read_file_entry_internal(FAT16_TYPE* fat16, FAT16_F
         if (cluster_num != ff->cluster_num)
         {
             ff->cluster_num = cluster_num;
-            ff->cluster = fat16_cluster_value(fat16, ff->cluster);
-            if (ff->cluster >= FAT_CLUSTER_RESERVED || ff->cluster < 2)
+            ff->cluster = fat16_get_fat_next(fat16, ff->cluster);
+            if (ff->cluster >= FAT_CLUSTER_RESERVED)
                 return NULL;
         }
-        sector = fat16_cluster_to_sector(fat16, ff->cluster);
-        idx_cur = ff->index - ff->cluster_num * (FILE_ENTRIES_IN_SECTOR * fat16->cluster_sectors);
-        size = FAT_SECTOR_SIZE * fat16->cluster_sectors;
+        sector_num = (ff->index - FILE_ENTRIES_IN_SECTOR * fat16->cluster_sectors * cluster_num) / FILE_ENTRIES_IN_SECTOR;
+        sector = fat16_cluster_to_sector(fat16, ff->cluster) + sector_num;
+        idx_cur = ff->index - (cluster_num * fat16->cluster_sectors + sector_num) * FILE_ENTRIES_IN_SECTOR;
     }
-    entries = fat16_read(fat16, sector, size);
-    if (entries == NULL)
+    if (!fat16_read_sectors(fat16, sector, FAT_SECTOR_SIZE))
         return NULL;
+    entries = io_data(fat16->io);
     return entries + idx_cur;
 }
 
@@ -191,7 +276,7 @@ static uint8_t fat16_lfn_checksum(const uint8_t* name_ext)
    return crc;
 }
 
-static bool fat16_read_file_entry_name(FAT16_TYPE* fat16, char* name, FAT16_FIND_TYPE* ff, unsigned int mask, unsigned int ignore_mask)
+static bool fat16_get_file_name(FAT16_TYPE* fat16, char* name, FAT16_FIND_TYPE* ff, unsigned int mask, unsigned int ignore_mask)
 {
     FAT_FILE_ENTRY* entry;
     FAT_LFN_ENTRY* lfn;
@@ -206,7 +291,7 @@ static bool fat16_read_file_entry_name(FAT16_TYPE* fat16, char* name, FAT16_FIND
     size = 0;
     for (;;)
     {
-        entry = fat16_read_file_entry_internal(fat16, ff);
+        entry = fat16_read_file_entry(fat16, ff);
         if (entry == NULL)
             return false;
         if ((uint8_t)(entry->name[0]) == FAT_FILE_ENTRY_EMPTY)
@@ -317,11 +402,8 @@ static bool fat16_find_by_name(FAT16_TYPE* fat16, FAT16_FIND_TYPE* ff, const cha
     ff->index = 0;
     for (;;)
     {
-        if (!fat16_read_file_entry_name(fat16, name_cur, ff, mask, ignore_mask))
-        {
-            error(ERROR_NOT_FOUND);
+        if (!fat16_get_file_name(fat16, name_cur, ff, mask, ignore_mask))
             return false;
-        }
         if (strcmp(name_cur, name) == 0)
             return true;
         ++ff->index;
@@ -334,8 +416,11 @@ static bool fat16_get_by_name(FAT16_TYPE* fat16, unsigned int* folder, const cha
     FAT_FILE_ENTRY* entry;
     ff.cluster = *folder;
     if (!fat16_find_by_name(fat16, &ff, name, mask, ignore_mask))
+    {
+        error(ERROR_NOT_FOUND);
         return false;
-    entry = fat16_read_file_entry_internal(fat16, &ff);
+    }
+    entry = fat16_read_file_entry(fat16, &ff);
     *folder = entry->first_cluster;
     return true;
 }
@@ -376,7 +461,6 @@ static bool fat16_get_by_path(FAT16_TYPE* fat16, char* path, unsigned int* folde
             path[i] = '\x0';
             path += i + 1;
         }
-        // .
         if (strcmp(path_cur, VFS_CURRENT_FOLDER) == 0)
             continue;
         if (strcmp(path_cur, VFS_PARENT_FOLDER) == 0)
@@ -406,6 +490,11 @@ static char* fat16_extract_file_from_path(char* path)
     return file;
 }
 
+static void fat16_close_file(FAT16_TYPE* fat16, HANDLE fh)
+{
+    so_free(&fat16->file_handles, fh);
+}
+
 static void fat16_unmount_internal(FAT16_TYPE* fat16)
 {
     HANDLE handle;
@@ -414,7 +503,7 @@ static void fat16_unmount_internal(FAT16_TYPE* fat16)
         so_free(&fat16->finds, handle);
     //2. free file_handles
     while((handle = so_first(&fat16->file_handles)) != INVALID_HANDLE)
-        so_free(&fat16->file_handles, handle);
+        fat16_close_file(fat16, handle);
     //3. unmount volume
     fat16->volume.process = INVALID_HANDLE;
 }
@@ -481,12 +570,12 @@ static inline void fat16_find_next(FAT16_TYPE* fat16, IPC* ipc)
     ff = so_get(&fat16->finds, ipc->param1);
     if (ff == NULL)
         return;
-    if (!fat16_read_file_entry_name(fat16, find->name, ff, 0, FAT_FILE_ATTR_LABEL | FAT_FILE_ATTR_DOT_OR_DOT_DOT))
+    if (!fat16_get_file_name(fat16, find->name, ff, 0, FAT_FILE_ATTR_LABEL | FAT_FILE_ATTR_DOT_OR_DOT_DOT))
     {
         error(ERROR_NOT_FOUND);
         return;
     }
-    entry = fat16_read_file_entry_internal(fat16, ff);
+    entry = fat16_read_file_entry(fat16, ff);
     find->item = entry->first_cluster;
     find->size = entry->size;
     find->attr = fat16_decode_attr(entry->attr);
@@ -497,7 +586,7 @@ static inline void fat16_find_next(FAT16_TYPE* fat16, IPC* ipc)
     error(ERROR_SYNC);
 }
 
-static inline void fat16_find_close(FAT16_TYPE* fat16, HANDLE fh)
+static void fat16_find_close(FAT16_TYPE* fat16, HANDLE fh)
 {
     so_free(&fat16->finds, fh);
 }
@@ -557,7 +646,7 @@ static inline void fat16_read_volume_label(FAT16_TYPE* fat16, IPC* ipc)
     ff.cluster = VFS_ROOT;
     ff.cluster_num = 0;
     ff.index = 0;
-    if (!fat16_read_file_entry_name(fat16, name, &ff, FAT_FILE_ATTR_LABEL, FAT_FILE_ATTR_DOT_OR_DOT_DOT))
+    if (!fat16_get_file_name(fat16, name, &ff, FAT_FILE_ATTR_LABEL, FAT_FILE_ATTR_DOT_OR_DOT_DOT))
     {
         error(ERROR_NOT_FOUND);
         return;
@@ -588,12 +677,6 @@ static inline void fat16_open_file(FAT16_TYPE* fat16, unsigned int folder, IO* i
         error(ERROR_INVALID_PARAMS);
         return;
     }
-    //TODO: write is not supported for now
-    if (ot->mode & VFS_MODE_WRITE)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
     file = fat16_extract_file_from_path(ot->name);
     if (file == NULL)
     {
@@ -603,7 +686,11 @@ static inline void fat16_open_file(FAT16_TYPE* fat16, unsigned int folder, IO* i
     if (!fat16_get_by_path(fat16, ot->name, &ff.cluster))
         return;
     if (!fat16_find_by_name(fat16, &ff, file, 0, FAT_FILE_ATTR_LABEL | FAT_FILE_ATTR_SUBFOLDER))
+    {
+        //TODO: if mode write, create file
+        error(ERROR_NOT_FOUND);
         return;
+    }
     fh = so_allocate(&fat16->file_handles);
     if (fh == INVALID_HANDLE)
         return;
@@ -612,7 +699,7 @@ static inline void fat16_open_file(FAT16_TYPE* fat16, unsigned int folder, IO* i
     h->ff.cluster_num = ff.cluster_num;
     h->ff.index = ff.index;
     h->pos = 0;
-    entry = fat16_read_file_entry_internal(fat16, &ff);
+    entry = fat16_read_file_entry(fat16, &ff);
     h->first_cluster = h->current_cluster = entry->first_cluster;
     h->size = entry->size;
 
@@ -625,6 +712,7 @@ static inline void fat16_open_file(FAT16_TYPE* fat16, unsigned int folder, IO* i
 static inline void fat16_seek_file(FAT16_TYPE* fat16, HANDLE fh, unsigned int pos)
 {
     FAT16_FILE_HANDLE_TYPE* h;
+    unsigned int cluster_num;
     h = so_get(&fat16->file_handles, fh);
     if (h == NULL)
         return;
@@ -635,13 +723,22 @@ static inline void fat16_seek_file(FAT16_TYPE* fat16, HANDLE fh, unsigned int po
         return;
     }
     h->pos = pos;
+    if (h->pos == h->size)
+        cluster_num = (h->size - 1) / fat16->cluster_size;
+    else
+        cluster_num = h->pos / fat16->cluster_size;
+    h->current_cluster = fat16_get_fat_chain(fat16, h->first_cluster, cluster_num);
+    if (h->current_cluster >= FAT_CLUSTER_RESERVED)
+    {
+        h->current_cluster = h->first_cluster;
+        h->pos = 0;
+    }
 }
 
 static inline void fat16_read_file(FAT16_TYPE* fat16, HANDLE fh, IO* io, unsigned int size, HANDLE process)
 {
     FAT16_FILE_HANDLE_TYPE* h;
-    uint8_t* data;
-    unsigned int cluster_size, cluster_offset, sector_offset, to_read, sector, sectors_to_read, next_cluster;
+    unsigned int cluster_offset, sector_offset, chunk, sector, sectors_count, next_cluster;
     h = so_get(&fat16->file_handles, fh);
     if (h == NULL)
         return;
@@ -653,35 +750,29 @@ static inline void fat16_read_file(FAT16_TYPE* fat16, HANDLE fh, IO* io, unsigne
     if (h->size - h->pos < size)
         size = h->size - h->pos;
     io->data_size = 0;
-    cluster_size = fat16->cluster_sectors * FAT_SECTOR_SIZE;
     while(size)
     {
-        cluster_offset = h->pos % cluster_size;
+        cluster_offset = h->pos % fat16->cluster_size;
         sector_offset = cluster_offset % FAT_SECTOR_SIZE;
         sector = cluster_offset / FAT_SECTOR_SIZE;
-        sectors_to_read = (size + sector_offset + FAT_SECTOR_SIZE - 1) / FAT_SECTOR_SIZE;
-        if (sectors_to_read + sector > fat16->cluster_sectors)
-            sectors_to_read = fat16->cluster_sectors - sector;
-        to_read = sectors_to_read * FAT_SECTOR_SIZE - sector_offset;
-        if (to_read > size)
-            to_read = size;
+        sectors_count = (size + sector_offset + FAT_SECTOR_SIZE - 1) / FAT_SECTOR_SIZE;
+        if (sectors_count + sector > fat16->cluster_sectors)
+            sectors_count = fat16->cluster_sectors - sector;
+        chunk = sectors_count * FAT_SECTOR_SIZE - sector_offset;
+        if (chunk > size)
+            chunk = size;
 
-        data = fat16_read(fat16, fat16_cluster_to_sector(fat16, h->current_cluster) + sector, sectors_to_read * FAT_SECTOR_SIZE);
-        if (data == NULL)
+        if (!fat16_read_sectors(fat16, fat16_cluster_to_sector(fat16, h->current_cluster) + sector, sectors_count * FAT_SECTOR_SIZE))
             return;
-        io_data_append(io, data + sector_offset, to_read);
-        size -= to_read;
-        h->pos += to_read;
-        if ((h->pos < h->size) && ((h->pos % cluster_size) == 0))
+        io_data_append(io, (uint8_t*)io_data(fat16->io) + sector_offset, chunk);
+        size -= chunk;
+        h->pos += chunk;
+        if ((h->pos < h->size) && ((h->pos % fat16->cluster_size) == 0))
         {
-            next_cluster = fat16_cluster_value(fat16, h->current_cluster);
-            if (next_cluster >= FAT_CLUSTER_RESERVED || next_cluster < 2)
+            next_cluster = fat16_get_fat_next(fat16, h->current_cluster);
+            if (next_cluster >= FAT_CLUSTER_RESERVED)
             {
-#if (VFS_DEBUG_ERRORS)
-                printf("FAT16 warning: FAT corrupted\n");
-#endif //VFS_DEBUG_ERRORS
                 h->pos = h->size;
-                error(ERROR_CORRUPTED);
                 return;
             }
             else
@@ -692,9 +783,78 @@ static inline void fat16_read_file(FAT16_TYPE* fat16, HANDLE fh, IO* io, unsigne
     error(ERROR_SYNC);
 }
 
-static inline void fat16_close_file(FAT16_TYPE* fat16, HANDLE fh)
+static inline void fat16_write_file(FAT16_TYPE* fat16, HANDLE fh, IO* io, HANDLE process)
 {
-    so_free(&fat16->file_handles, fh);
+    FAT16_FILE_HANDLE_TYPE* h;
+    uint8_t* data;
+    unsigned int cluster_offset, sector_offset, chunk, sector, sectors_count, next_cluster, size;
+    h = so_get(&fat16->file_handles, fh);
+    if (h == NULL)
+        return;
+    data = io_data(io);
+    for (size = io->data_size; size; size -= chunk)
+    {
+        cluster_offset = h->pos % fat16->cluster_size;
+        sector_offset = cluster_offset % FAT_SECTOR_SIZE;
+        sector = cluster_offset / FAT_SECTOR_SIZE;
+        sectors_count = (size + sector_offset + FAT_SECTOR_SIZE - 1) / FAT_SECTOR_SIZE;
+        if (sectors_count + sector > fat16->cluster_sectors)
+            sectors_count = fat16->cluster_sectors - sector;
+        chunk = sectors_count * FAT_SECTOR_SIZE - sector_offset;
+        if (chunk > size)
+            chunk = size;
+
+        //append cluster. Empty file already have one
+        if ((h->pos == h->size) && (cluster_offset == 0) && h->size)
+        {
+            next_cluster = fat16_find_free_cluster(fat16, h->current_cluster);
+            if (next_cluster >= FAT_CLUSTER_RESERVED)
+            {
+#if (VFS_DEBUG_ERRORS)
+                printf("FAT16 warning: No free space\n");
+#endif //VFS_DEBUG_ERRORS
+                break;
+            }
+            if (!fat16_set_fat_value(fat16, h->current_cluster, next_cluster))
+                break;
+            h->current_cluster = next_cluster;
+        }
+
+        //readout first, no align
+        if (sector_offset || (chunk % FAT_SECTOR_SIZE))
+        {
+            if (!fat16_read_sectors(fat16, fat16_cluster_to_sector(fat16, h->current_cluster) + sector, sectors_count * FAT_SECTOR_SIZE))
+                break;
+        }
+
+        //overwrite data
+        memcpy((uint8_t*)io_data(fat16->io) + sector_offset, data, chunk);
+        data += chunk;
+
+        //writeback
+        if (!fat16_write_sectors(fat16, fat16_cluster_to_sector(fat16, h->current_cluster) + sector, sectors_count * FAT_SECTOR_SIZE))
+            break;
+
+        h->pos += chunk;
+        //append to end of file
+        if (h->pos > h->size)
+            h->size = h->pos;
+
+        if ((h->pos < h->size) && ((h->pos % fat16->cluster_size) == 0))
+        {
+            next_cluster = fat16_get_fat_next(fat16, h->current_cluster);
+            if (next_cluster >= FAT_CLUSTER_RESERVED)
+            {
+                h->pos = h->size;
+                break;
+            }
+            else
+                h->current_cluster = next_cluster;
+        }
+    }
+    //TODO: update file date/time access, size
+    io_complete_ex(process, HAL_IO_CMD(HAL_VFS, IPC_READ), fh, io, io->data_size - size);
+    error(ERROR_SYNC);
 }
 
 static inline void fat16_request(FAT16_TYPE* fat16, IPC* ipc)
@@ -733,6 +893,9 @@ static inline void fat16_request(FAT16_TYPE* fat16, IPC* ipc)
         break;
     case IPC_READ:
         fat16_read_file(fat16, ipc->param1, (IO*)ipc->param2, ipc->param3, ipc->process);
+        break;
+    case IPC_WRITE:
+        fat16_write_file(fat16, ipc->param1, (IO*)ipc->param2, ipc->process);
         break;
     case IPC_CLOSE:
         fat16_close_file(fat16, ipc->param1);

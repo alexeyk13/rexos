@@ -83,6 +83,8 @@ HANDLE vfs_open(VFS_RECORD_TYPE* vfs_record, const char* file_path, unsigned int
 bool vfs_seek(VFS_RECORD_TYPE* vfs_record, HANDLE handle, unsigned int pos);
 void vfs_read(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io, unsigned int size);
 int vfs_read_sync(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io, unsigned int size);
+void vfs_write(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io);
+int vfs_write_sync(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io);
 void vfs_close(VFS_RECORD_TYPE* vfs_record, HANDLE handle);
 
 #endif // VFS_H
