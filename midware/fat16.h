@@ -35,6 +35,7 @@
 
 #define FAT_LFN_SEQ_LAST                                    (1 << 6)
 #define FAT_LFN_SEQ_MASK                                    0x1f
+#define FAT_LFN_CHUNK_SIZE                                  13
 
 #define FAT_CLUSTER_RESERVED                                0xfff8
 #define FAT_CLUSTER_LAST                                    0xffff

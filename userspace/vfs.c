@@ -23,14 +23,11 @@ HANDLE vfs_create(unsigned int process_size, unsigned int priority)
 
 }
 
-bool vfs_mount(HANDLE vfs, VFS_VOLUME_TYPE* volume)
+bool vfs_mount(VFS_RECORD_TYPE* vfs_record, VFS_VOLUME_TYPE* volume)
 {
-    IO* io = io_create(sizeof(VFS_VOLUME_TYPE));
-    if (io == NULL)
-        return false;
-    memcpy(io_data(io), volume, sizeof(VFS_VOLUME_TYPE));
-    io->data_size = sizeof(VFS_VOLUME_TYPE);
-    return io_write_sync(vfs, HAL_IO_REQ(HAL_VFS, VFS_MOUNT), 0, io) == sizeof(VFS_VOLUME_TYPE);
+    memcpy(io_data(vfs_record->io), volume, sizeof(VFS_VOLUME_TYPE));
+    vfs_record->io->data_size = sizeof(VFS_VOLUME_TYPE);
+    return io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_MOUNT), 0, vfs_record->io) == sizeof(VFS_VOLUME_TYPE);
 }
 
 void vfs_unmount(HANDLE vfs)
@@ -112,6 +109,18 @@ char* vfs_read_volume_label(VFS_RECORD_TYPE* vfs_record)
     return (char*)io_data(vfs_record->io);
 }
 
+bool vfs_format(VFS_RECORD_TYPE* vfs_record, VFS_FAT_FORMAT_TYPE* format)
+{
+    int res;
+    memcpy(io_data(vfs_record->io), format, sizeof(VFS_FAT_FORMAT_TYPE));
+    vfs_record->io->data_size = sizeof(VFS_FAT_FORMAT_TYPE);
+    res = io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_FORMAT), 0, vfs_record->io);
+    if (res < 0)
+        return false;
+    vfs_record->current_folder = VFS_ROOT;
+    return true;
+}
+
 HANDLE vfs_open(VFS_RECORD_TYPE* vfs_record, const char* file_path, unsigned int mode)
 {
     int res;
@@ -153,4 +162,22 @@ int vfs_write_sync(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io)
 void vfs_close(VFS_RECORD_TYPE* vfs_record, HANDLE handle)
 {
     ack(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_CLOSE), handle, 0, 0);
+}
+
+bool vfs_remove(VFS_RECORD_TYPE* vfs_record, const char* file_path)
+{
+    int res;
+    strcpy(io_data(vfs_record->io), file_path);
+    vfs_record->io->data_size = strlen(file_path) + 1;
+    res = io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_REMOVE), vfs_record->current_folder, vfs_record->io);
+    return res >= 0;
+}
+
+bool vfs_mk_folder(VFS_RECORD_TYPE* vfs_record, const char* file_path)
+{
+    int res;
+    strcpy(io_data(vfs_record->io), file_path);
+    vfs_record->io->data_size = strlen(file_path) + 1;
+    res = io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_MK_FOLDER), vfs_record->current_folder, vfs_record->io);
+    return res >= 0;
 }

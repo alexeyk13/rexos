@@ -35,7 +35,10 @@ typedef enum {
     VFS_FIND_CLOSE,
     VFS_CD_UP,
     VFS_CD_PATH,
-    VFS_READ_VOLUME_LABEL
+    VFS_READ_VOLUME_LABEL,
+    VFS_REMOVE,
+    VFS_MK_FOLDER,
+    VFS_FORMAT
 } VFS_IPCS;
 
 typedef struct {
@@ -62,8 +65,16 @@ typedef struct {
     char name[VFS_MAX_FILE_PATH + 1];
 } VFS_OPEN_TYPE;
 
+typedef struct {
+    VFS_VOLUME_TYPE volume;
+    unsigned int root_entries;
+    unsigned int cluster_sectors;
+    uint32_t serial;
+    char label[9];
+} VFS_FAT_FORMAT_TYPE;
+
 HANDLE vfs_create(unsigned int process_size, unsigned int priority);
-bool vfs_mount(HANDLE vfs, VFS_VOLUME_TYPE* volume);
+bool vfs_mount(VFS_RECORD_TYPE* vfs_record, VFS_VOLUME_TYPE* volume);
 void vfs_unmount(HANDLE vfs);
 
 bool vfs_record_create(HANDLE vfs, VFS_RECORD_TYPE* vfs_record);
@@ -77,6 +88,7 @@ void vfs_cd(VFS_RECORD_TYPE* vfs_record, unsigned int folder);
 bool vfs_cd_up(VFS_RECORD_TYPE* vfs_record);
 bool vfs_cd_path(VFS_RECORD_TYPE* vfs_record, const char* path);
 char* vfs_read_volume_label(VFS_RECORD_TYPE* vfs_record);
+bool vfs_format(VFS_RECORD_TYPE* vfs_record, VFS_FAT_FORMAT_TYPE* format);
 
 //Only VFS_MODE_READ supported for now
 HANDLE vfs_open(VFS_RECORD_TYPE* vfs_record, const char* file_path, unsigned int mode);
@@ -86,5 +98,7 @@ int vfs_read_sync(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io, unsigned i
 void vfs_write(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io);
 int vfs_write_sync(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io);
 void vfs_close(VFS_RECORD_TYPE* vfs_record, HANDLE handle);
+bool vfs_remove(VFS_RECORD_TYPE* vfs_record, const char* file_path);
+bool vfs_mk_folder(VFS_RECORD_TYPE* vfs_record, const char* file_path);
 
 #endif // VFS_H

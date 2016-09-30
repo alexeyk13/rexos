@@ -46,6 +46,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * HTTP Server (beta)
   * TLS 1.2 Server (beta)
   * SD/MMC host stack
+  * FAT16 file system
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -87,6 +88,10 @@ ARM7 features:
 
 History
 =======
+0.4.8
+- Support of FAT16 file system: read, write, format
+- FAT16 VFS drafts
+
 0.4.7
 - STM32F0 USB driver
 - STM32F0 UART IO mode driver

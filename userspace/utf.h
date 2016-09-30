@@ -14,6 +14,7 @@ uint32_t utf8_to_utf32(const char* utf8);
 unsigned int utf8_len(const char* utf8);
 
 unsigned int utf16_len(const uint16_t* utf16);
-unsigned int utf16_to_latin1(const uint16_t* utf16, uint8_t* latin1);
+unsigned int utf16_to_latin1(const uint16_t* utf16, char *latin1, unsigned int size_max);
+unsigned int latin1_to_utf16(const char* latin1, uint16_t* utf16, unsigned int size_max);
 
 #endif // UTF_H

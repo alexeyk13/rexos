@@ -38,7 +38,7 @@ typedef struct {
 typedef struct {
     //DOS 2.0 BPB
     uint16_t sector_size;
-    uint8_t cluster_size;
+    uint8_t cluster_sectors;
     uint16_t reserved_sectors;
     uint8_t fat_count;
     uint16_t root_count;

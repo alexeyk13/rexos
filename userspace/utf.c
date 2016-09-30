@@ -52,18 +52,38 @@ unsigned int utf16_len(const uint16_t* utf16)
             return i + 1;
 }
 
-unsigned int utf16_to_latin1(const uint16_t* utf16, uint8_t* latin1)
+unsigned int utf16_to_latin1(const uint16_t* utf16, char* latin1, unsigned int size_max)
 {
     unsigned int i;
-    for (i = 0;; ++i)
+    for (i = 0; i < size_max; ++i)
     {
         if (utf16[i] == 0x0000)
-            break;
+        {
+            latin1[i] = '\x0';
+            return i;
+        }
         if (utf16[i] > 0xff)
             latin1[i] = '?';
         else
-            latin1[i] = (utf16[i] & 0xff);
+            latin1[i] = (char)(utf16[i] & 0xff);
     }
-    latin1[i] = '\x0';
+    return i;
+}
+
+unsigned int latin1_to_utf16(const char* latin1, uint16_t* utf16, unsigned int size_max)
+{
+    unsigned int i;
+    for (i = 0; i < size_max; ++i)
+    {
+        if (latin1[i] == 0x00)
+        {
+            utf16[i] = 0x0000;
+            return i;
+        }
+        if ((uint8_t)latin1[i] > 0x7f)
+            utf16[i] = (uint16_t)'?';
+        else
+            utf16[i] = (uint16_t)latin1[i];
+    }
     return i;
 }

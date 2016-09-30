@@ -206,5 +206,15 @@
 #define TLS_IO_SIZE                                         1460
 //--------------------------------- SDMMC ---------------------------------------------
 #define SDMMC_DEBUG                                         1
+//---------------------------------- VFS ----------------------------------------------
+#define VFS_DEBUG_INFO                                      1
+#define VFS_DEBUG_ERRORS                                    1
+#define VFS_MAX_FILE_PATH                                   256
+#define VFS_MAX_HANDLES                                     5
+//At least 1 cluster
+#define VFS_IO_SIZE                                         4096
+
+//01.09.2016 as default if not rtc used
+#define VFS_BASE_DATE                                       736207
 
 #endif // SYS_CONFIG_H
