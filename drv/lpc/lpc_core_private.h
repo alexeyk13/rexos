@@ -21,6 +21,7 @@
 #endif //LPC11Uxx
 #include "lpc_eep.h"
 #include "lpc_sdmmc.h"
+#include "lpc_flash.h"
 
 
 typedef struct _CORE {
@@ -42,6 +43,9 @@ typedef struct _CORE {
 #if (LPC_SDMMC_DRIVER)
     SDMMC_DRV sdmmc;
 #endif
+#if (LPC_FLASH_DRIVER)
+    FLASH_DRV flash;
+#endif //LPC_FLASH_DRIVER
 }CORE;
 
 

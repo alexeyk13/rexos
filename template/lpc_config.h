@@ -13,9 +13,11 @@
 #define LPC_EEPROM_DRIVER                   1
 #define LPC_UART_DRIVER                     1
 #define LPC_USB_DRIVER                      1
+#define LPC_FLASH_DRIVER                    1
 //------------------------------------- CORE ----------------------------------------------
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
 #define LPC_CORE_PROCESS_SIZE               1200
+
 //------------------------------------- power ---------------------------------------------
 //save few bytes here
 #define LPC_DECODE_RESET                    0
@@ -44,6 +46,8 @@
 #define SECOND_CHANNEL                      TIMER_CHANNEL0
 #define HPET_CHANNEL                        TIMER_CHANNEL1
 
+//-------------------------------------- UART ---------------------------------------------
+#define UART_IO_PREBUFFER                   0
 //-------------------------------------- USB ----------------------------------------------
 //Maximum packet size for USB.
 //Full speed: 64 if no isochronous transfers, else max 1024
@@ -73,5 +77,9 @@
 //-------------------------------------- SDMMC ------------------------------------------------
 //each is 7 KB
 #define LPC_SDMMC_DESCR_COUNT               9
+//-------------------------------------- FLASH ------------------------------------------------
+//protect user code if VFS is allocated on flash. Must be page-aligned (512)
+#define LPC_FLASH_USER_CODE_SIZE            (128 * 1024)
+
 
 #endif //LPC_CONFIG_H

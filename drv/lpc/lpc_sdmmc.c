@@ -307,9 +307,9 @@ static inline void lpc_sdmmc_open(CORE* core, HANDLE user)
 
 static inline void lpc_sdmmc_close(CORE* core)
 {
-    if (core->sdmmc.active)
+    if (!core->sdmmc.active)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     //disable interrupts

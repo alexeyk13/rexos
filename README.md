@@ -47,6 +47,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * TLS 1.2 Server (beta)
   * SD/MMC host stack
   * FAT16 file system
+  * Block error rate layer
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -74,6 +75,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * USB: STM32F1_CL, STM32F0, STM32L0, LPC11Uxx, LPC18xx
   * ETH: STM32F1, LPC18xx
   * SD/MMC: LPC18xx
+  * flash: LPC18xx
   * МЭЛТ mt12864j LCD display
 
 Cortex-M3 features:
@@ -88,6 +90,11 @@ ARM7 features:
 
 History
 =======
+0.4.9
+- LPC18xx flash storage interface
+- Block error rate for filesystem over flash support
+- FAT16 minor fixes
+
 0.4.8
 - Support of FAT16 file system: read, write, format
 - FAT16 VFS drafts

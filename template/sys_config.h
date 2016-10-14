@@ -1,42 +1,41 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2015, Alexey Kramarenko
     All rights reserved.
 */
 
 #ifndef SYS_CONFIG_H
 #define SYS_CONFIG_H
 
-/*
-    config.h - userspace config
- */
-
 //----------------------------- objects ----------------------------------------------
 //make sure, you know what are you doing, before change
 #define SYS_OBJ_STDOUT                                      0
 #define SYS_OBJ_CORE                                        1
 
-#define SYS_OBJ_ADC                                         INVALID_HANDLE
-#define SYS_OBJ_DAC                                         INVALID_HANDLE
 #define SYS_OBJ_STDIN                                       INVALID_HANDLE
 #define SYS_OBJ_ETH                                         INVALID_HANDLE
+#define SYS_OBJ_TCPIP                                       INVALID_HANDLE
+#define SYS_OBJ_ADC                                         INVALID_HANDLE
+#define SYS_OBJ_DAC                                         INVALID_HANDLE
+
 //------------------------------ POWER -----------------------------------------------
 //depends on hardware implementation
-#define POWER_MANAGEMENT                            0
+#define POWER_MANAGEMENT                                    1
 //------------------------------- UART -----------------------------------------------
 //disable for some memory saving if not blocking IO is required
-#define UART_IO_MODE_SUPPORT                                0
+#define UART_IO_MODE_SUPPORT                                1
 //values for IO mode
 #define UART_CHAR_TIMEOUT_MS                                10000
 #define UART_INTERLEAVED_TIMEOUT_MS                         4
 //size of every uart internal buf. Increasing this you will get less irq ans ipc calls, but faster processing
-#define UART_BUF_SIZE                           16
+#define UART_BUF_SIZE                                       16
 //generally UART is used as stdout/stdio, so fine-tuning is required only on hi load
-#define UART_STREAM_SIZE                        32
+#define UART_STREAM_SIZE                                    32
 //-------------------------------- USB -----------------------------------------------
 #define USB_EP_COUNT_MAX                                    4
 //low-level USB debug. Turn on only in case of IO problems
 #define USB_DEBUG_ERRORS                                    0
+//support for high speed, qualifier, other speed, test, etc
 #define USB_TEST_MODE_SUPPORT                               0
 
 //----------------------------- USB device--------------------------------------------
@@ -44,18 +43,16 @@
 #define USBD_DEBUG                                          0
 #define USBD_DEBUG_ERRORS                                   0
 #define USBD_DEBUG_REQUESTS                                 0
-//enable only for USB driver development
-#define USBD_DEBUG_FLOW                                     0
 
 //vendor-specific requests support
-#define USBD_VSR                                            0
+#define USBD_VSR                                            1
 
 #define USBD_IO_SIZE                                        128
 
-#define USBD_CDC_ACM_CLASS                                  1
+#define USBD_CDC_ACM_CLASS                                  0
 #define USBD_RNDIS_CLASS                                    0
 #define USBD_HID_KBD_CLASS                                  0
-#define USBD_CCID_CLASS                                     0
+#define USBD_CCID_CLASS                                     1
 #define USBD_MSC_CLASS                                      0
 
 //----------------------- CDC ACM Device class ----------------------------------------
@@ -64,7 +61,7 @@
 #define USBD_CDC_ACM_RX_STREAM_SIZE                         32
 #define USBD_CDC_ACM_FLOW_CONTROL                           1
 
-#define USBD_CDC_ACM_DEBUG                                  0
+#define USBD_CDC_ACM_DEBUG                                  1
 #define USBD_CDC_ACM_DEBUG_FLOW                             0
 
 //------------------------ RNDIS Device class -----------------------------------------
@@ -80,6 +77,13 @@
 #define USBD_HID_DEBUG_REQUESTS                             0
 #define USBD_HID_DEBUG_IO                                   0
 
+//------------------------------ MSCD class -------------------------------------------
+#define USBD_MSC_DEBUG_ERRORS                               0
+#define USBD_MSC_DEBUG_REQUESTS                             0
+#define USBD_MSC_DEBUG_IO                                   0
+
+//Generally sector_size * num_sectors
+#define USBD_MSC_IO_SIZE                                    (36 * 1024)
 //----------------------------- CCIDD class -------------------------------------------
 #define USBD_CCID_REMOVABLE_CARD                            0
 
@@ -87,13 +91,6 @@
 #define USBD_CCID_DEBUG_REQUESTS                            0
 #define USBD_CCID_DEBUG_IO                                  0
 
-//------------------------------ MSCD class -------------------------------------------
-#define USBD_MSC_DEBUG_ERRORS                               0
-#define USBD_MSC_DEBUG_REQUESTS                             0
-#define USBD_MSC_DEBUG_IO                                   0
-
-//only one LUN supported for now
-#define USBD_MSC_LUN_COUNT                                  1
 //-------------------------------- SCSI ----------------------------------------------
 #define SCSI_SENSE_DEPTH                                    10
 //can be disabled for flash memory saving
@@ -104,19 +101,19 @@
 //SATA over SCSI. Just stub for more verbose error processing
 //Found on some linux recent kernels
 #define SCSI_SAT                                            0
-//exclude SCSI stack. Generally sector_size * num_sectors
-#define SCSI_IO_SIZE                                        512
+//SCSI MMC command set. Required for CD-ROM support
+#define SCSI_MMC                                            1
 
-#define SCSI_DEBUG_REQUESTS                                 1
-#define SCSI_DEBUG_ERRORS                                   1
+#define SCSI_DEBUG_REQUESTS                                 0
+#define SCSI_DEBUG_ERRORS                                   0
 
 //------------------------------ PIN board -------------------------------------------
-#define PINBOARD_PROCESS_SIZE                               500
+#define PINBOARD_PROCESS_SIZE                               400
 #define PINBOARD_POLL_TIME_MS                               100
 //--------------------------------- DAC ----------------------------------------------
 #define SAMPLE                                              uint16_t
 //disable for some flash saving
-#define WAVEGEN_SQUARE                                      1
+#define WAVEGEN_SQUARE                                      0
 #define WAVEGEN_TRIANGLE                                    0
 #define WAVEGEN_SINE                                        0
 //--------------------------------- ETH ----------------------------------------------
@@ -128,11 +125,11 @@
 #define TCPIP_DEBUG_ERRORS                                  1
 
 #define TCPIP_MTU                                           1500
-#define TCPIP_MAX_FRAMES_COUNT                              10
+#define TCPIP_MAX_FRAMES_COUNT                              8
 
 //----------------------------- TCP/IP MAC --------------------------------------------
 //software MAC filter. Turn on in case of hardware is not supporting
-#define MAC_FILTER                                          0
+#define MAC_FILTER                                          1
 #define MAC_FIREWALL                                        1
 #define TCPIP_MAC_DEBUG                                     0
 
@@ -152,7 +149,7 @@
 //set, if not supported by hardware
 #define IP_CHECKSUM                                         1
 
-#define IP_FRAGMENTATION                                    1
+#define IP_FRAGMENTATION                                    0
 #define IP_FRAGMENTATION_ASSEMBLY_TIMEOUT                   10
 //must be less TCPIP_MTU * TCPIP_MAX_FRAMES_COUNT
 #define IP_MAX_LONG_SIZE                                    5000
@@ -178,8 +175,7 @@
 #define TCP_RETRY_COUNT                                     3
 #define TCP_KEEP_ALIVE                                      0
 #define TCP_TIMEOUT                                         30000
-//0 - don't limit
-#define TCP_HANDLES_LIMIT                                   10
+#define TCP_HANDLES_LIMIT                                   1
 //Low-level debug. only for development
 #define TCP_DEBUG_FLOW                                      0
 #define TCP_DEBUG_PACKETS                                   0
@@ -204,15 +200,24 @@
 //DON'T FORGET TO REMOVE IN PRODUCTION!!!
 #define TLS_DEBUG_SECRETS                                   0
 #define TLS_IO_SIZE                                         1460
+
 //--------------------------------- SDMMC ---------------------------------------------
 #define SDMMC_DEBUG                                         1
+
 //---------------------------------- VFS ----------------------------------------------
 #define VFS_DEBUG_INFO                                      1
 #define VFS_DEBUG_ERRORS                                    1
 #define VFS_MAX_FILE_PATH                                   256
 #define VFS_MAX_HANDLES                                     5
-//At least 1 cluster
-#define VFS_IO_SIZE                                         4096
+//enable BER support
+#define VFS_BER                                             1
+#define VFS_BER_DEBUG_INFO                                  1
+#define VFS_BER_DEBUG_ERRORS                                1
+
+//align data sectors by cluster start offset (recommended to enable for flash storage)
+#define VFS_CLUSTER_ALIGN                                   1
+//update modify/access time (recommended to disable for flash storage)
+#define VFS_FILE_ATTRIBUTES_UPDATE                          0
 
 //01.09.2016 as default if not rtc used
 #define VFS_BASE_DATE                                       736207

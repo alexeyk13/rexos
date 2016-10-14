@@ -364,7 +364,7 @@ void __format(const char *const fmt, va_list va, WRITE_HANDLER write_handler, vo
                     break;
                 case 'x':
                 case 'X':
-                    if (buf_size && (flags & FLAGS_RADIX_PREFIX))
+                    if (flags & FLAGS_RADIX_PREFIX)
                         write_handler("0x", 2, write_param);
                     //zero padding
                     if (buf_size < precision)

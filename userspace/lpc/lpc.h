@@ -307,22 +307,31 @@
 #if defined(LPC1820) || defined(LPC1830) || defined(LPC1850)
 //96k
 #define SRAM_SIZE                       0x18000
+#define FLASH_SIZE_B                    0x0
 #endif
 
-//Bank A only, Bank B not used in system configuration
 #if defined(LPC1813) || defined(LPC1823) || defined(LPC1833) || defined(LPC1853)
 //256k
 #define FLASH_SIZE                      0x40000
+#define FLASH_SIZE_B                    0x40000
 #endif
 
 #if defined(LPC1815) || defined(LPC1825)
 //384k
 #define FLASH_SIZE                      0x60000
+#define FLASH_SIZE_B                    0x60000
 #endif
 
-#if defined(LPC1812) || defined(LPC1817) || defined(LPC1822) || defined(LPC1827) || defined(LPC1837) || defined(LPC1857)
+#if defined(LPC1812) || defined(LPC1822)
 //512k
 #define FLASH_SIZE                      0x80000
+#define FLASH_SIZE_B                    0x0
+#endif
+
+#if defined(LPC1817) || defined(LPC1827) || defined(LPC1837) || defined(LPC1857)
+//512k
+#define FLASH_SIZE                      0x80000
+#define FLASH_SIZE_B                    0x80000
 #endif
 
 #if defined(LPC1810) || defined(LPC1820) || defined(LPC1830) || defined(LPC1850)
@@ -390,6 +399,8 @@
 #include "LPC18xx.h"
 #include "lpc18xx_bits.h"
 #endif //defined(LPC11Uxx)
+
+
 #endif //LPC
 
 #endif // !defined(LDS) && !defined(__ASSEMBLER__)

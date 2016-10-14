@@ -9,30 +9,18 @@
 #include <string.h>
 #include "stdlib.h"
 
-extern void fat16();
+extern void vfss();
 
 HANDLE vfs_create(unsigned int process_size, unsigned int priority)
 {
     REX rex;
-    rex.name = "FAT16";
+    rex.name = "VFS stack";
     rex.size = process_size;
     rex.priority = priority;
     rex.flags = PROCESS_FLAGS_ACTIVE;
-    rex.fn = fat16;
+    rex.fn = vfss;
     return process_create(&rex);
 
-}
-
-bool vfs_mount(VFS_RECORD_TYPE* vfs_record, VFS_VOLUME_TYPE* volume)
-{
-    memcpy(io_data(vfs_record->io), volume, sizeof(VFS_VOLUME_TYPE));
-    vfs_record->io->data_size = sizeof(VFS_VOLUME_TYPE);
-    return io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_MOUNT), 0, vfs_record->io) == sizeof(VFS_VOLUME_TYPE);
-}
-
-void vfs_unmount(HANDLE vfs)
-{
-    ack(vfs, HAL_REQ(HAL_VFS, VFS_UNMOUNT), 0, 0, 0);
 }
 
 bool vfs_record_create(HANDLE vfs, VFS_RECORD_TYPE *vfs_record)
@@ -49,6 +37,45 @@ bool vfs_record_create(HANDLE vfs, VFS_RECORD_TYPE *vfs_record)
 void vfs_record_destroy(VFS_RECORD_TYPE* vfs_record)
 {
     io_destroy(vfs_record->io);
+}
+
+bool vfs_open_volume(VFS_RECORD_TYPE* vfs_record, VFS_VOLUME_TYPE* volume)
+{
+    memcpy(io_data(vfs_record->io), volume, sizeof(VFS_VOLUME_TYPE));
+    vfs_record->io->data_size = sizeof(VFS_VOLUME_TYPE);
+    return io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, IPC_OPEN), VFS_VOLUME_HANDLE, vfs_record->io) == sizeof(VFS_VOLUME_TYPE);
+}
+
+void vfs_close_volume(VFS_RECORD_TYPE* vfs_record)
+{
+    ack(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_CLOSE), VFS_VOLUME_HANDLE, 0, 0);
+}
+
+bool vfs_open_ber(VFS_RECORD_TYPE* vfs_record, unsigned int block_sectors)
+{
+    return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_OPEN), VFS_BER_HANDLE, block_sectors, 0) >= 0;
+}
+
+void vfs_close_ber(VFS_RECORD_TYPE* vfs_record)
+{
+    ack(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_CLOSE), VFS_BER_HANDLE, 0, 0);
+}
+
+bool vfs_format_ber(VFS_RECORD_TYPE* vfs_record, VFS_BER_FORMAT_TYPE* format)
+{
+    memcpy(io_data(vfs_record->io), format, sizeof(VFS_BER_FORMAT_TYPE));
+    vfs_record->io->data_size = sizeof(VFS_BER_FORMAT_TYPE);
+    return io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_FORMAT), VFS_BER_HANDLE, vfs_record->io) >= 0;
+}
+
+bool vfs_open_fs(VFS_RECORD_TYPE* vfs_record)
+{
+    return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_OPEN), VFS_FS_HANDLE, 0, 0) >= 0;
+}
+
+void vfs_close_fs(VFS_RECORD_TYPE* vfs_record)
+{
+    ack(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_CLOSE), VFS_FS_HANDLE, 0, 0);
 }
 
 HANDLE vfs_find_first(VFS_RECORD_TYPE* vfs_record)
@@ -114,7 +141,7 @@ bool vfs_format(VFS_RECORD_TYPE* vfs_record, VFS_FAT_FORMAT_TYPE* format)
     int res;
     memcpy(io_data(vfs_record->io), format, sizeof(VFS_FAT_FORMAT_TYPE));
     vfs_record->io->data_size = sizeof(VFS_FAT_FORMAT_TYPE);
-    res = io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_FORMAT), 0, vfs_record->io);
+    res = io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_FORMAT), VFS_FS_HANDLE, vfs_record->io);
     if (res < 0)
         return false;
     vfs_record->current_folder = VFS_ROOT;

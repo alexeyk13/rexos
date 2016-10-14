@@ -9,6 +9,7 @@
 #include "lpc_config.h"
 #include "../../userspace/io.h"
 #include "lpc_power.h"
+#include "lpc_iap.h"
 
 #ifdef LPC18xx
 
@@ -17,17 +18,6 @@
 #define EEP_PAGE_SIZE                               0x80
 
 #define EEP_CLK                                     1500000
-
-#else //LPC11Uxx
-
-#define IAP_LOCATION 0x1FFF1FF1
-
-typedef void (*IAP)(unsigned int command[], unsigned int result[]);
-
-static const IAP iap = (IAP)IAP_LOCATION;
-
-#define IAP_CMD_WRITE_EEPROM                        61
-#define IAP_CMD_READ_EEPROM                         62
 
 #endif //LPC18xx
 
@@ -42,20 +32,14 @@ static inline void lpc_eep_read(CORE* core, IPC* ipc)
     }
     io_data_write(io, (void*)(ipc->param1 + EEP_BASE), ipc->param3);
 #else //LPC11Uxx
-    unsigned int req[5];
-    unsigned int resp[1];
-    req[0] = IAP_CMD_READ_EEPROM;
+    LPC_IAP_TYPE iap;
     req[1] = ipc->param1;
     req[2] = (unsigned int)io_data(io);
     req[3] = ipc->param3;
     //EEPROM operates on M3 clock
     req[4] = lpc_power_get_core_clock_inside() / 1000;
-    iap(req, resp);
-    if (resp[0] != 0)
-    {
-        error(ERROR_INVALID_PARAMS);
+    if (!lpc_iap(&iap, IAP_CMD_READ_EEPROM))
         return;
-    }
     io->data_size = ipc->param3;
 #endif //LPC18xx
 }
@@ -85,20 +69,15 @@ static inline void lpc_eep_write(CORE* core, IPC* ipc)
         }
     }
 #else //LPC11Uxx
-    unsigned int req[5];
-    unsigned int resp[1];
-    req[0] = IAP_CMD_WRITE_EEPROM;
+    LPC_IAP_TYPE iap;
     req[1] = ipc->param1;
     req[2] = (unsigned int)io_data(io);
     req[3] = io->data_size;
     //EEPROM operates on M3 clock
     req[4] = lpc_power_get_core_clock_inside() / 1000;
     iap(req, resp);
-    if (resp[0] != 0)
-    {
-        error(ERROR_INVALID_PARAMS);
+    if (!lpc_iap(&iap, IAP_CMD_WRITE_EEPROM))
         return;
-    }
 #endif //LPC18xx
 }
 

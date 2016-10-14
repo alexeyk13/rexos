@@ -50,6 +50,7 @@
 #define ERROR_IO_FAIL                                   (ERROR_IO - 8)
 #define ERROR_CORRUPTED                                 (ERROR_IO - 9)
 #define ERROR_EOF                                       (ERROR_IO - 10)
+#define ERROR_FULL                                      (ERROR_IO - 11)
 
 #define ERROR_MEMORY                                    -200
 #define ERROR_OUT_OF_MEMORY                             (ERROR_MEMORY - 1)

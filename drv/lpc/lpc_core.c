@@ -21,6 +21,7 @@
 #endif //LPC11Uxx
 #include "lpc_eep.h"
 #include "lpc_sdmmc.h"
+#include "lpc_flash.h"
 
 void lpc_core();
 
@@ -83,6 +84,11 @@ void lpc_core_loop(CORE* core)
             lpc_sdmmc_request(core, &ipc);
             break;
 #endif //LPC_SDMMC_DRIVER
+#if (LPC_FLASH_DRIVER)
+        case HAL_FLASH:
+            lpc_flash_request(core, &ipc);
+            break;
+#endif //LPC_FLASH_DRIVER
         default:
             error(ERROR_NOT_SUPPORTED);
             break;
@@ -146,6 +152,9 @@ void lpc_core()
     lpc_eep_init(&core);
 #endif //LPC18xx
 #endif //LPC_EEPROM_DRIVER
+#if (LPC_FLASH_DRIVER)
+    lpc_flash_init(&core);
+#endif //LPC_FLASH_DRIVER
 
     lpc_core_loop(&core);
 }
