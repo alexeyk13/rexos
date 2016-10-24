@@ -197,6 +197,8 @@ bool vfs_remove(VFS_RECORD_TYPE* vfs_record, const char* file_path)
     strcpy(io_data(vfs_record->io), file_path);
     vfs_record->io->data_size = strlen(file_path) + 1;
     res = io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_REMOVE), vfs_record->current_folder, vfs_record->io);
+    if (res >= 0)
+        vfs_record->current_folder = VFS_ROOT;
     return res >= 0;
 }
 

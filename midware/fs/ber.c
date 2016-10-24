@@ -136,7 +136,7 @@ static inline bool ber_write_lblock(VFSS_TYPE* vfss, uint16_t lblock)
 static inline bool ber_update_superblock(VFSS_TYPE* vfss)
 {
     BER_HEADER_TYPE* hdr;
-    uint16_t best_pblock = ber_find_best(vfss, vfss->ber.remap_list[vfss->ber.superblock]);
+    uint16_t best_pblock = ber_find_best(vfss, vfss->ber.superblock);
     if (best_pblock == BER_BLOCK_UNUSED)
         return false;
     vfss->ber.superblock = best_pblock;
