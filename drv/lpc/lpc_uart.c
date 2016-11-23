@@ -227,6 +227,7 @@ void lpc_uart4_on_isr(int vector, void* param)
 
 static inline void lpc_uart_set_baudrate(CORE* drv, UART_PORT port, IPC* ipc)
 {
+    unsigned int clock;
     BAUD baudrate;
     if (drv->uart.uarts[port] == NULL)
     {
@@ -234,7 +235,12 @@ static inline void lpc_uart_set_baudrate(CORE* drv, UART_PORT port, IPC* ipc)
         return;
     }
     uart_decode_baudrate(ipc, &baudrate);
-    unsigned int divider = lpc_power_get_clock_inside(POWER_BUS_CLOCK) / (((__USART_REGS[port]->OSR >> 4) & 0x7ff) + 1 ) / baudrate.baud;
+#ifdef LPC18xx
+    clock = lpc_power_get_clock_inside(POWER_BUS_CLOCK);
+#else //LPC11Uxx
+    clock = lpc_power_get_core_clock_inside();
+#endif //LPC18xx
+    unsigned int divider = clock / (((__USART_REGS[port]->OSR >> 4) & 0x7ff) + 1 ) / baudrate.baud;
 #ifdef LPC11U6x
     if (port > UART_0)
     {
