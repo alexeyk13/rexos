@@ -16,7 +16,9 @@
 #include "stm32_adc.h"
 #include "stm32_dac.h"
 #include "stm32_eep.h"
+#if (STM32_I2C_DRIVER)
 #include "stm32_i2c.h"
+#endif //STM32_I2C_DRIVER
 #ifdef STM32F10X_CL
 #include "stm32_otg.h"
 #else
