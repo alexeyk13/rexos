@@ -222,7 +222,7 @@ static inline void lpc_usb_in(CORE* core, int num)
 void lpc_usb_on_isr(int vector, void* param)
 {
     int i;
-    CORE* core = (SHARED_USB_DRV*)param;
+    CORE* core = param;
     uint32_t sta = LPC_USB->INTSTAT;
     EP* ep;
 
