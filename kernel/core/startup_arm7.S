@@ -38,7 +38,7 @@
 
 /* interrupt vectors */
 
-	.section	.reset, "ax"
+    .section  .isr_vectors, "ax"
 	.code 32
 
 	ldr	pc, (int_table + 0x0)
@@ -60,6 +60,8 @@ int_table:
 	.word  irq_vector
 	.word  fiq_vector
 
+    .section  .reset, "ax"
+    
 /*********************** reset vector handler *********************/
 reset_vector:
 	/* switch to svc mode, if not yet */

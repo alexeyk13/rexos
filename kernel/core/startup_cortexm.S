@@ -59,15 +59,12 @@
 	.extern kirq_stub
 	.extern kirq_enter
 
-	//remove me
-	.extern testprint
-
 /* exported global constant and functions */
 	.global pend_switch_context
 	.global process_setup_context
 
 /* interrupt vectors */
-	.section  .reset, "ax"
+    .section  .isr_vectors, "ax"
 
 int_vectors:
 	.word  (SRAM_BASE + SRAM_SIZE)
@@ -102,6 +99,7 @@ int_vectors:
 	.endr
 
 /*********************** reset vector handler *********************/
+    .section  .reset, "ax"
 	.syntax unified
 #if defined(CORTEX_M3)
 	.cpu cortex-m3
