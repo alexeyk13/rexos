@@ -36,15 +36,20 @@ void vfss_resize_buf(VFSS_TYPE* vfss, unsigned int size)
 
 unsigned int vfss_get_volume_offset(VFSS_TYPE* vfss)
 {
-    return (vfss->volume.sector_mode == SECTOR_MODE_DIRECT) ? vfss->volume.first_sector : 0;
+#if (VFS_BER)
+    if (vfss->volume.sector_mode == SECTOR_MODE_BER)
+        return 0;
+#endif //VFS_BER
+    return vfss->volume.first_sector;
 }
 
 unsigned int vfss_get_volume_sectors(VFSS_TYPE* vfss)
 {
-    if (vfss->volume.sector_mode == SECTOR_MODE_DIRECT)
-        return vfss->volume.sectors_count;
-    else
+#if (VFS_BER)
+    if (vfss->volume.sector_mode == SECTOR_MODE_BER)
         return ber_get_volume_sectors(vfss);
+#endif //VFS_BER
+    return vfss->volume.sectors_count;
 }
 
 void* vfss_read_sectors(VFSS_TYPE* vfss, unsigned long sector, unsigned size)
@@ -53,10 +58,12 @@ void* vfss_read_sectors(VFSS_TYPE* vfss, unsigned long sector, unsigned size)
     //cache read
     if ((sector == vfss->current_sector) && (vfss->io->data_size == size))
         return io_data(vfss->io);
-    if (vfss->volume.sector_mode == SECTOR_MODE_DIRECT)
-        res = storage_read_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->io, sector + vfss->volume.first_sector, size);
-    else
+#if (VFS_BER)
+    if (vfss->volume.sector_mode == SECTOR_MODE_BER)
         res = ber_read_sectors(vfss, sector, size);
+    else
+#endif //VFS_BER
+        res = storage_read_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->io, sector + vfss->volume.first_sector, size);
     if (!res)
         return NULL;
     vfss->current_sector = sector;
@@ -66,13 +73,15 @@ void* vfss_read_sectors(VFSS_TYPE* vfss, unsigned long sector, unsigned size)
 bool vfss_write_sectors(VFSS_TYPE* vfss, unsigned long sector, unsigned size)
 {
     bool res;
-    if (vfss->volume.sector_mode == SECTOR_MODE_DIRECT)
+#if (VFS_BER)
+    if (vfss->volume.sector_mode == SECTOR_MODE_BER)
+        res = ber_write_sectors(vfss, sector, size);
+    else
+#endif //VFS_BER
     {
         vfss->io->data_size = size;
         res = storage_write_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->io, sector + vfss->volume.first_sector);
     }
-    else
-        res = ber_write_sectors(vfss, sector, size);
     if (res)
         vfss->current_sector = sector;
     return res;
