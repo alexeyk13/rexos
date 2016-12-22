@@ -40,8 +40,7 @@
 
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
-#include "kprocess.h"
-#include "kirq.h"
+#include "kprocess_private.h"
 #include "../lib/pool.h"
 #include "../userspace/rb.h"
 #include "../userspace/array.h"
@@ -60,24 +59,23 @@
 
 // will be aligned to pass MPU requirements
 typedef struct {
-    //first param same as userspace for library calls error handling
-    int error;
-    STDOUT stdout;
-    void* stdout_param;
-
     //----------------------process specific-----------------------------
     //for context-switching
     //This values are used in asm context switching. Don't place them more than 128 bytes from start of KERNEL
     //now running process. (Active context).
-    KPROCESS* active_process;
+    void* active_process;
     //next process to run, after leave. For context switch. If NULL - no context switch is required
-    KPROCESS* next_process;
+    void* next_process;
 
     //active processes
     KPROCESS* processes;
 #if (KERNEL_PROCESS_STAT)
     KPROCESS* wait_processes;
 #endif //(KERNEL_PROCESS_STAT)
+    //----------------------- printk support ---------------------------
+    STDOUT stdout;
+    void* stdout_param;
+
     //----------------------- IRQ related ------------------------------
     int context;
     //This values are used in asm. Don't place them more than 128 bytes from start of KERNEL
@@ -88,6 +86,8 @@ typedef struct {
     int irq_pend_list_size;
     char irq_pend_mask[(IRQ_VECTORS_COUNT + 7) / 8];
 #endif
+    //---------------------------- exodriver ---------------------------
+    void* exo;
 
     //------------------------- timer specific -------------------------
     SYSTIME uptime;
@@ -146,6 +146,21 @@ extern void process_setup_context(KPROCESS* process, void (*fn)(void));
 */
 extern void fatal();
 
+/**
+    \brief init exodriver related structures
+    \param none
+    \retval none
+*/
+extern void exodriver_init();
+
+/**
+    \brief process exodriver IPC
+    \param ipc: user IPC
+    \retval none
+*/
+extern void exodriver_post(IPC* ipc);
+
+
 /** \} */ // end of arch_porting group
 
 
@@ -159,6 +174,16 @@ extern void fatal();
     \retval none
 */
 void panic();
+
+/**
+    \brief setup kernel dbg (if not already) from exodriver
+    \param num: sys-call number
+    \param param1: parameter 1. num-specific
+    \param param2: parameter 2. num-specific
+    \param param3: parameter 3. num-specific
+    \retval none
+*/
+void kernel_setup_dbg(STDOUT stdout, void* param);
 
 /**
     \brief main supervisor routine

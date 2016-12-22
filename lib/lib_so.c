@@ -7,6 +7,7 @@
 #include "lib_so.h"
 #include "lib_array.h"
 #include "../userspace/error.h"
+#include "kernel_config.h"
 
 #define SO_INDEX(handle)                        ((handle) >> 8)
 #define SO_SEQUENCE(handle)                     ((handle) & 0xff)
@@ -78,8 +79,10 @@ void lib_so_free(SO* so, const STD_MEM* std_mem, HANDLE handle)
 
 void* lib_so_get(SO* so, const STD_MEM* std_mem, HANDLE handle)
 {
+#if (KERNEL_HANDLE_CHECKING)
     if (!lib_so_check_handle(so, std_mem, handle))
         return NULL;
+#endif //KERNEL_HANDLE_CHECKING
     return SO_DATA(so, std_mem, SO_INDEX(handle));
 }
 

@@ -21,10 +21,10 @@ SECTIONS
 {
 	.text :
 	{
-        KEEP(*(.isr_vectors));
-        KEEP(*(.flashconfig));
-        KEEP(*(.reset));                            /* Startup code */
-		*(.text .text.* .gnu.linkonce.t.*)
+                KEEP(*(.isr_vectors));
+                KEEP(*(.flashconfig));
+                KEEP(*(.reset));							/* Startup code */
+                *(.text .text.* .gnu.linkonce.t.*)
 		*(.glue_7t) *(.glue_7)
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
 		. = ALIGN(4);

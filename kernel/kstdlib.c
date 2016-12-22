@@ -21,10 +21,8 @@ KPOOL* kpool_at(unsigned int idx)
 void kpool_stat(unsigned int idx, POOL_STAT* stat)
 {
     KPOOL* kpool;
-    LIB_ENTER;
     kpool = kpool_at(idx);
     ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_stat(&kpool->pool, stat, idx == 0 ? get_sp() : (void*)kpool->base + kpool->size);
-    LIB_EXIT;
 }
 
 static int kpool_idx(void* ptr)
@@ -48,7 +46,6 @@ void* kmalloc_internal(size_t size)
     for (idx = 0; idx < karray_size_internal(__KERNEL->pools); ++idx)
     {
         kpool = kpool_at(idx);
-        __KERNEL->error = ERROR_OK;
         res = ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&kpool_at(idx)->pool, size, idx == 0 ? get_sp() : (void*)(kpool->base + kpool->size));
         if (res)
             return res;
@@ -59,9 +56,9 @@ void* kmalloc_internal(size_t size)
 void* kmalloc(size_t size)
 {
     void* res;
-    LIB_ENTER
+    disable_interrupts();
     res = kmalloc_internal(size);
-    LIB_EXIT
+    enable_interrupts();
     return res;
 }
 
@@ -85,7 +82,6 @@ void* krealloc_internal(void* ptr, size_t size)
     {
         if (idx == idx_cur)
             continue;
-        __KERNEL->error = ERROR_OK;
         kpool = kpool_at(idx);
         res = ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&kpool_at(idx)->pool, size, idx == 0 ? get_sp() : (void*)(kpool->base + kpool->size));
         if (res != NULL)
@@ -101,9 +97,9 @@ void* krealloc_internal(void* ptr, size_t size)
 void* krealloc(void* ptr, size_t size)
 {
     void* res;
-    LIB_ENTER
+    disable_interrupts();
     res = krealloc_internal(ptr, size);
-    LIB_EXIT
+    enable_interrupts();
     return res;
 }
 
@@ -120,9 +116,9 @@ void kfree_internal(void *ptr)
 
 void kfree(void *ptr)
 {
-    LIB_ENTER
+    disable_interrupts();
     kfree_internal(ptr);
-    LIB_EXIT
+    enable_interrupts();
 }
 
 const STD_MEM __KSTD_MEM = {
@@ -155,7 +151,6 @@ void kstdlib_init()
     __KERNEL->pools = (ARRAY*)&pool;
     //make sure error processing will be passed to valid pointer
     __GLOBAL->process = (PROCESS*)__KERNEL;
-    __KERNEL->error = ERROR_OK;
     //Call lib directly
     ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_create(&ar, &__KSTD_MEM_STARTUP, sizeof(KPOOL), 1);
     kpool0 = ((const LIB_ARRAY*)__GLOBAL->lib[LIB_ID_ARRAY])->lib_array_append(&ar, &__KSTD_MEM_STARTUP);
@@ -175,7 +170,7 @@ void kstdlib_add_pool(unsigned int base, unsigned int size)
         kpool = kpool_at(i);
         if ((base >= kpool->base) && (base + size <= kpool->base + kpool->size))
         {
-            kprocess_error_current(ERROR_ALREADY_CONFIGURED);
+            error(ERROR_ALREADY_CONFIGURED);
             return;
         }
     }

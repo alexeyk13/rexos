@@ -12,15 +12,23 @@
 #include "../userspace/error.h"
 #include "kstdlib.h"
 #include "kipc.h"
+#include "kprocess_private.h"
 
 #define FREE_RUN                                        2000000
+
+typedef struct {
+    MAGIC;
+    KTIMER timer;
+    HANDLE owner;
+    unsigned int param;
+    HAL hal;
+} SOFT_TIMER;
 
 void hpet_start_stub(unsigned int value, void* param)
 {
 #if (KERNEL_DEBUG)
     printk("Warning: HPET start stub called\n");
 #endif //KERNEL_DEBUG
-    kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 void hpet_stop_stub(void* param)
@@ -28,7 +36,6 @@ void hpet_stop_stub(void* param)
 #if (KERNEL_DEBUG)
     printk("Warning: HPET stop stub called\n");
 #endif //KERNEL_DEBUG
-    kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 unsigned int hpet_elapsed_stub(void* param)
@@ -36,7 +43,6 @@ unsigned int hpet_elapsed_stub(void* param)
 #if (KERNEL_DEBUG)
     printk("Warning: HPET elapsed stub called\n");
 #endif //KERNEL_DEBUG
-    kprocess_error_current(ERROR_STUB_CALLED);
     return 0;
 }
 
@@ -132,7 +138,7 @@ void ksystime_hpet_setup(const CB_SVC_TIMER *cb_ktimer, void *cb_ktimer_param)
         __KERNEL->cb_ktimer.start(FREE_RUN, __KERNEL->cb_ktimer_param);
     }
     else
-        kprocess_error_current(ERROR_INVALID_SVC);
+        error(ERROR_INVALID_SVC);
 }
 
 void ksystime_timer_start_internal(KTIMER* timer, SYSTIME *time)
@@ -185,61 +191,51 @@ void ksystime_soft_timer_timeout(void* param)
     ipc.cmd = HAL_CMD(timer->hal, IPC_TIMEOUT);
     ipc.param1 = timer->param;
     ipc.param2 = (unsigned int)timer;
-    kipc_post_process(&ipc, (KPROCESS*)KERNEL_HANDLE);
+    kipc_post(KERNEL_HANDLE, &ipc);
 }
 
-void ksystime_soft_timer_create(SOFT_TIMER** timer, unsigned int param, HAL hal)
+HANDLE ksystime_soft_timer_create(HANDLE process, HANDLE param, HAL hal)
 {
-    KPROCESS* process = kprocess_get_current();
-    CHECK_ADDRESS(process, timer, sizeof(void*));
-    disable_interrupts();
-    *timer = kmalloc(sizeof(SOFT_TIMER));
-    enable_interrupts();
-    if ((*timer) == NULL)
-    {
-        kprocess_error(process, ERROR_OUT_OF_SYSTEM_MEMORY);
-        return;
-    }
-    DO_MAGIC((*timer), MAGIC_TIMER);
-    (*timer)->owner = (HANDLE)process;
-    (*timer)->param = param;
-    (*timer)->hal = hal;
-    ksystime_timer_init_internal(&(*timer)->timer, ksystime_soft_timer_timeout, (*timer));
+    SOFT_TIMER* timer = kmalloc(sizeof(SOFT_TIMER));
+    if (timer == NULL)
+        return INVALID_HANDLE;
+    DO_MAGIC(timer, MAGIC_TIMER);
+    timer->owner = process;
+    timer->param = param;
+    timer->hal = hal;
+    ksystime_timer_init_internal(&timer->timer, ksystime_soft_timer_timeout, timer);
+    return (HANDLE)timer;
 }
 
-void ksystime_soft_timer_destroy(SOFT_TIMER *timer)
+void ksystime_soft_timer_destroy(HANDLE t)
 {
-    if ((HANDLE)timer == INVALID_HANDLE)
+    SOFT_TIMER* timer = (SOFT_TIMER*)t;
+    if (t == INVALID_HANDLE)
         return;
-    CHECK_HANDLE(timer, sizeof(SOFT_TIMER));
     CHECK_MAGIC(timer, MAGIC_TIMER);
     CLEAR_MAGIC(timer);
-    disable_interrupts();
     kfree(timer);
-    enable_interrupts();
 }
 
-void ksystime_soft_timer_start(SOFT_TIMER* timer, SYSTIME* time)
+void ksystime_soft_timer_start(HANDLE t, SYSTIME* time)
 {
     bool active;
-    KPROCESS* process = kprocess_get_current();
-    CHECK_HANDLE(timer, sizeof(SOFT_TIMER));
+    SOFT_TIMER* timer = (SOFT_TIMER*)t;
     CHECK_MAGIC(timer, MAGIC_TIMER);
-    CHECK_ADDRESS(process, time, sizeof(SYSTIME));
     disable_interrupts();
     active = timer->timer.active;
     enable_interrupts();
     if (active)
     {
-        kprocess_error(process, ERROR_ALREADY_CONFIGURED);
+        error(ERROR_ALREADY_CONFIGURED);
         return;
     }
     ksystime_timer_start_internal(&timer->timer, time);
 }
 
-void ksystime_soft_timer_stop(SOFT_TIMER* timer)
+void ksystime_soft_timer_stop(HANDLE t)
 {
-    CHECK_HANDLE(timer, sizeof(SOFT_TIMER));
+    SOFT_TIMER* timer = (SOFT_TIMER*)t;
     CHECK_MAGIC(timer, MAGIC_TIMER);
     //in case it shouting right now
     disable_interrupts();

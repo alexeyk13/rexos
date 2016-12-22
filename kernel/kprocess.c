@@ -5,12 +5,14 @@
 */
 
 #include "kprocess.h"
+#include "kprocess_private.h"
 #include "karray.h"
 #include "kstdlib.h"
 #include "string.h"
 #include "kstream.h"
 #include "kio.h"
 #include "kernel.h"
+#include "ksystime.h"
 #if (KERNEL_BD)
 #include "kdirect.h"
 #endif //KERNEL_BD
@@ -31,8 +33,6 @@ const char *const DAMAGED="     !!!DAMAGED!!!     ";
 static inline void switch_to_process(KPROCESS* kprocess)
 {
     __KERNEL->next_process = kprocess;
-    if (kprocess != NULL)
-        __GLOBAL->process = kprocess->process;
     pend_switch_context();
 }
 
@@ -93,20 +93,21 @@ void kprocess_remove_from_active_list(KPROCESS* kprocess)
 #endif
 }
 
-void kprocess_wakeup_internal(KPROCESS* kprocess)
+void kprocess_wakeup(HANDLE p)
 {
-    if  (kprocess->flags & PROCESS_FLAGS_WAITING)
+    KPROCESS* process = (KPROCESS*)p;
+    if  (process->flags & PROCESS_FLAGS_WAITING)
     {
         //if timer is still active, kill him
-        ksystime_timer_stop_internal(&kprocess->timer);
-        kprocess->flags &= ~PROCESS_SYNC_MASK;
+        ksystime_timer_stop_internal(&process->timer);
+        process->flags &= ~PROCESS_SYNC_MASK;
 
-        switch (kprocess->flags & PROCESS_MODE_MASK)
+        switch (process->flags & PROCESS_MODE_MASK)
         {
         case PROCESS_MODE_WAITING:
-            kprocess_add_to_active_list(kprocess);
+            kprocess_add_to_active_list(process);
         case PROCESS_MODE_WAITING_FROZEN:
-            kprocess->flags &= ~PROCESS_FLAGS_WAITING;
+            process->flags &= ~PROCESS_FLAGS_WAITING;
             break;
         }
     }
@@ -114,268 +115,222 @@ void kprocess_wakeup_internal(KPROCESS* kprocess)
 
 void kprocess_timeout(void* param)
 {
-    KPROCESS* kprocess = param;
+    KPROCESS* process = param;
     disable_interrupts();
     //because timeout is not atomic anymore
-    if (kprocess->flags & PROCESS_FLAGS_WAITING)
-        kprocess_wakeup_internal(kprocess);
+    if (process->flags & PROCESS_FLAGS_WAITING)
+        kprocess_wakeup((HANDLE)process);
     enable_interrupts();
 }
 
 void kprocess_abnormal_exit()
 {
+    HANDLE p = kprocess_get_current();
 #if (KERNEL_DEBUG)
-    printk("Warning: abnormal process termination: %s\n", kprocess_name(kprocess_get_current()));
+    printk("Warning: abnormal process termination: %s\n", kprocess_name(p));
 #endif
-    kprocess_destroy_current();
+    kprocess_destroy(p);
 }
 
-void kprocess_create(const REX* rex, KPROCESS** kprocess)
+HANDLE kprocess_create(const REX* rex)
 {
     unsigned int sys_size;
-    disable_interrupts();
-    *kprocess = kmalloc(sizeof(KPROCESS));
-    enable_interrupts();
-    memset((*kprocess), 0, sizeof(KPROCESS));
+    KPROCESS* process = kmalloc(sizeof(KPROCESS));
     //allocate kprocess object
-    if (*kprocess != NULL)
+    if (process != NULL)
     {
+        memset(process, 0, sizeof(KPROCESS));
         sys_size = sizeof(PROCESS) + KERNEL_IPC_COUNT * sizeof(IPC);
         if ((rex->flags & REX_FLAG_PERSISTENT_NAME) == 0)
             sys_size += strlen(rex->name) + 1;
         sys_size = (sys_size + 3) & ~3;
-        disable_interrupts();
-        (*kprocess)->process = kmalloc(rex->size + sys_size);
-        enable_interrupts();
-        if ((*kprocess)->process)
+        process->process = kmalloc(rex->size + sys_size);
+        if (process->process)
         {
 #if (KERNEL_PROFILING)
-            memset((*kprocess)->process, MAGIC_UNINITIALIZED_BYTE, rex->size + sys_size);
+            memset(process->process, MAGIC_UNINITIALIZED_BYTE, rex->size + sys_size);
 #endif
-            DO_MAGIC((*kprocess), MAGIC_PROCESS);
-            (*kprocess)->flags = 0;
-            (*kprocess)->base_priority = rex->priority;
-            (*kprocess)->sp = (void*)((unsigned int)(*kprocess)->process + rex->size + sys_size);
-            ksystime_timer_init_internal(&(*kprocess)->timer, kprocess_timeout, (*kprocess));
-            (*kprocess)->size = rex->size + sys_size;
-            kipc_init(*kprocess);
-            (*kprocess)->process->stdout = (*kprocess)->process->stdin = INVALID_HANDLE;
+            DO_MAGIC(process, MAGIC_PROCESS);
+            process->flags = 0;
+            process->base_priority = rex->priority;
+            process->sp = (void*)((unsigned int)process->process + rex->size + sys_size);
+            ksystime_timer_init_internal(&process->timer, kprocess_timeout, process);
+            process->size = rex->size + sys_size;
+            kipc_init(process);
+            process->process->stdout = process->process->stdin = INVALID_HANDLE;
 
             if (rex->flags & REX_FLAG_PERSISTENT_NAME)
-                (*kprocess)->process->name = rex->name;
+                process->process->name = rex->name;
             else
             {
-                strcpy(((char*)((*kprocess)->process)) + sizeof(PROCESS) + KERNEL_IPC_COUNT * sizeof(IPC), rex->name);
-                (*kprocess)->process->name = (((const char*)((*kprocess)->process)) + sizeof(PROCESS)) + KERNEL_IPC_COUNT * sizeof(IPC);
+                strcpy(((char*)(process->process)) + sizeof(PROCESS) + KERNEL_IPC_COUNT * sizeof(IPC), rex->name);
+                process->process->name = (((const char*)(process->process)) + sizeof(PROCESS)) + KERNEL_IPC_COUNT * sizeof(IPC);
             }
-            pool_init(&(*kprocess)->process->pool, (void*)((*kprocess)->process) + sys_size);
+            pool_init(&process->process->pool, (void*)(process->process) + sys_size);
 
-            process_setup_context((*kprocess), rex->fn);
+            process_setup_context(process, rex->fn);
 
 #if (KERNEL_PROCESS_STAT)
-            dlist_add_tail((DLIST**)&__KERNEL->wait_processes, (DLIST*)(*kprocess));
+            dlist_add_tail((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
 #endif
             if ((rex->flags & 1) == PROCESS_FLAGS_ACTIVE)
             {
-                (*kprocess)->flags |= PROCESS_MODE_ACTIVE;
+                process->flags |= PROCESS_MODE_ACTIVE;
                 disable_interrupts();
-                kprocess_add_to_active_list(*kprocess);
+                kprocess_add_to_active_list(process);
                 enable_interrupts();
             }
         }
         else
-        {
-            disable_interrupts();
-            kfree(*kprocess);
-            enable_interrupts();
-            (*kprocess) = NULL;
-            error(ERROR_OUT_OF_PAGED_MEMORY);
-        }
+            kfree(process);
     }
-    else
-        error(ERROR_OUT_OF_SYSTEM_MEMORY);
+    return (HANDLE)process;
 }
 
-void kprocess_get_flags(KPROCESS* kprocess, unsigned int* flags)
+unsigned int kprocess_get_flags(HANDLE p)
 {
-    CHECK_HANDLE(kprocess, sizeof(KPROCESS));
-    CHECK_MAGIC(kprocess, MAGIC_PROCESS);
-    CHECK_ADDRESS(kprocess, flags, sizeof(unsigned int));
-    (*flags) = kprocess->flags;
+    KPROCESS* process = (KPROCESS*)p;
+    CHECK_MAGIC(process, MAGIC_PROCESS);
+    return process->flags;
 }
 
-void kprocess_set_flags(KPROCESS* kprocess, unsigned int flags)
+void kprocess_set_flags(HANDLE p, unsigned int flags)
 {
-    CHECK_HANDLE(kprocess, sizeof(KPROCESS));
-    CHECK_MAGIC(kprocess, MAGIC_PROCESS);
+    KPROCESS* process = (KPROCESS*)p;
+    CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
     if ((flags & 1) == PROCESS_FLAGS_ACTIVE)
     {
-        switch (kprocess->flags & PROCESS_MODE_MASK)
+        switch (process->flags & PROCESS_MODE_MASK)
         {
         case PROCESS_MODE_FROZEN:
-            kprocess_add_to_active_list(kprocess);
+            kprocess_add_to_active_list(process);
         case PROCESS_MODE_WAITING_FROZEN:
-            kprocess->flags |= PROCESS_MODE_ACTIVE;
+            process->flags |= PROCESS_MODE_ACTIVE;
             break;
         }
     }
     else
     {
-        switch (kprocess->flags & PROCESS_MODE_MASK)
+        switch (process->flags & PROCESS_MODE_MASK)
         {
         case PROCESS_MODE_ACTIVE:
-            kprocess_remove_from_active_list(kprocess);
+            kprocess_remove_from_active_list(process);
         case PROCESS_MODE_WAITING:
-            kprocess->flags &= ~PROCESS_MODE_ACTIVE;
+            process->flags &= ~PROCESS_MODE_ACTIVE;
             break;
         }
     }
     enable_interrupts();
 }
 
-void kprocess_set_priority(KPROCESS* kprocess, unsigned int priority)
+void kprocess_set_priority(HANDLE p, unsigned int priority)
 {
-    CHECK_HANDLE(kprocess, sizeof(KPROCESS));
-    CHECK_MAGIC(kprocess, MAGIC_PROCESS);
+    KPROCESS* process = (KPROCESS*)p;
+    CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
-    if (kprocess->base_priority != priority)
+    if (process->base_priority != priority)
     {
-        kprocess->base_priority = priority;
-        if ((kprocess->flags & PROCESS_MODE_MASK) == PROCESS_MODE_ACTIVE)
+        process->base_priority = priority;
+        if ((process->flags & PROCESS_MODE_MASK) == PROCESS_MODE_ACTIVE)
         {
-            kprocess_remove_from_active_list(kprocess);
-            kprocess_add_to_active_list(kprocess);
+            kprocess_remove_from_active_list(process);
+            kprocess_add_to_active_list(process);
         }
     }
     enable_interrupts();
 }
 
-void kprocess_get_priority(KPROCESS* kprocess, unsigned int* priority)
+unsigned int kprocess_get_priority(HANDLE p)
 {
-    CHECK_HANDLE(kprocess, sizeof(KPROCESS));
-    CHECK_MAGIC(kprocess, MAGIC_PROCESS);
-    CHECK_ADDRESS(kprocess, priority, sizeof(unsigned int));
-    *priority = kprocess->base_priority;
+    KPROCESS* process = (KPROCESS*)p;
+    CHECK_MAGIC(process, MAGIC_PROCESS);
+    return process->base_priority;
 }
 
-void kprocess_get_current_svc(KPROCESS** var)
+const char* kprocess_name(HANDLE p)
 {
-    KPROCESS* kprocess = kprocess_get_current();
-    CHECK_ADDRESS(kprocess, var, sizeof(KPROCESS*));
-    *var = kprocess;
+    KPROCESS* process = (KPROCESS*)p;
+    return process->process->name;
 }
 
-const char* kprocess_name(KPROCESS* kprocess)
+void kprocess_destroy(HANDLE p)
 {
-    return kprocess->process->name;
-}
-
-void kprocess_destroy(KPROCESS* kprocess)
-{
-    if ((HANDLE)kprocess == INVALID_HANDLE)
+    KPROCESS* process = (KPROCESS*)p;
+    if (p == INVALID_HANDLE)
         return;
-    CHECK_HANDLE(kprocess, sizeof(KPROCESS));
-    CHECK_MAGIC(kprocess, MAGIC_PROCESS);
+    CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
-    CLEAR_MAGIC(kprocess);
+    CLEAR_MAGIC(process);
     //if kprocess is running, freeze it first
-    if ((kprocess->flags & PROCESS_MODE_MASK) == PROCESS_MODE_ACTIVE)
+    if ((process->flags & PROCESS_MODE_MASK) == PROCESS_MODE_ACTIVE)
     {
-        kprocess_remove_from_active_list(kprocess);
+        kprocess_remove_from_active_list(process);
         //we don't need to save context on exit
-        if (__KERNEL->active_process == kprocess)
+        if (__KERNEL->active_process == process)
             __KERNEL->active_process = NULL;
     }
     //if kprocess is owned by any sync object, release them
-    if  (kprocess->flags & PROCESS_FLAGS_WAITING)
+    if  (process->flags & PROCESS_FLAGS_WAITING)
     {
         //if timer is still active, kill him
-        ksystime_timer_stop_internal(&kprocess->timer);
+        ksystime_timer_stop_internal(&process->timer);
         //say sync object to release us
-        switch (kprocess->flags & PROCESS_SYNC_MASK)
+        switch (process->flags & PROCESS_SYNC_MASK)
         {
         case PROCESS_SYNC_TIMER_ONLY:
             break;
         case PROCESS_SYNC_IPC:
-            kipc_lock_release(kprocess);
+            kipc_lock_release(process);
             break;
         case PROCESS_SYNC_STREAM:
-            kstream_lock_release((STREAM_HANDLE*)kprocess->sync_object, kprocess);
+            kstream_lock_release(process->sync_object, p);
             break;
-        default:
-            ASSERT(false);
         }
     }
 #if (KERNEL_PROCESS_STAT)
-    dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)kprocess);
+    dlist_remove((DLIST**)&__KERNEL->wait_processes, (DLIST*)process);
 #endif
     enable_interrupts();
     //release memory, occupied by kprocess
-    disable_interrupts();
-    kfree(kprocess->process);
-    kfree(kprocess);
-    enable_interrupts();
+    kfree(process->process);
+    kfree(process);
 }
 
-void kprocess_sleep(KPROCESS* kprocess, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, void *sync_object)
+void kprocess_sleep(HANDLE p, SYSTIME* time, PROCESS_SYNC_TYPE sync_type, HANDLE sync_object)
 {
-    CHECK_HANDLE(kprocess, sizeof(KPROCESS));
-    CHECK_MAGIC(kprocess, MAGIC_PROCESS);
+    KPROCESS* process = (KPROCESS*)p;
+    CHECK_MAGIC(process, MAGIC_PROCESS);
     disable_interrupts();
-    ASSERT ((kprocess->flags & PROCESS_FLAGS_WAITING) == 0);
-    kprocess_remove_from_active_list(kprocess);
-    kprocess->flags |= PROCESS_FLAGS_WAITING | sync_type;
-    kprocess->sync_object = sync_object;
+    kprocess_remove_from_active_list(process);
+    process->flags |= PROCESS_FLAGS_WAITING | sync_type;
+    process->sync_object = sync_object;
 
     enable_interrupts();
     //create timer if not infinite
     if (time && (time->sec || time->usec))
-        ksystime_timer_start_internal(&kprocess->timer, time);
+        ksystime_timer_start_internal(&process->timer, time);
 }
 
-void kprocess_wakeup(KPROCESS* kprocess)
+void kprocess_error(HANDLE p, int error)
 {
-    CHECK_HANDLE(kprocess, sizeof(KPROCESS));
-    CHECK_MAGIC(kprocess, MAGIC_PROCESS);
-    disable_interrupts();
-    kprocess_wakeup_internal(kprocess);
-    enable_interrupts();
+    KPROCESS* process = (KPROCESS*)p;
+    process->process->error = error;
 }
 
-void kprocess_error(KPROCESS* kprocess, int error)
+HANDLE kprocess_get_current()
 {
-    CHECK_HANDLE(kprocess, sizeof(KPROCESS));
-    CHECK_MAGIC(kprocess, MAGIC_PROCESS);
-    kprocess->process->error = error;
+    return (__KERNEL->context >= 0) ?  __KERNEL->irqs[__KERNEL->context]->process : (HANDLE)__KERNEL->active_process;
 }
 
-void kprocess_error_current(int error)
+bool kprocess_check_address(HANDLE p, void* addr, unsigned int size)
 {
-    KPROCESS* kprocess = kprocess_get_current();
-    if (kprocess != NULL)
-        kprocess_error(kprocess, error);
-}
-
-void kprocess_destroy_current()
-{
-    KPROCESS* kprocess = kprocess_get_current();
-    if (kprocess != NULL)
-        kprocess_destroy(kprocess);
-}
-
-KPROCESS* kprocess_get_current()
-{
-    return (__KERNEL->context >= 0) ?  __KERNEL->irqs[__KERNEL->context]->process : __KERNEL->active_process;
-}
-
-bool kprocess_check_address(KPROCESS* kprocess, void* addr, unsigned int size)
-{
+    KPROCESS* process = (KPROCESS*)p;
     //don't check on IRQ or kernel post
-    if ((HANDLE)kprocess == KERNEL_HANDLE || __KERNEL->context >= 0)
+    if (p == KERNEL_HANDLE || __KERNEL->context >= 0)
         return true;
     //check PROCESS
-    if ((unsigned int)addr >= (unsigned int)kprocess->process && (unsigned int)addr + size < (unsigned int)kprocess->process + kprocess->size)
+    if ((unsigned int)addr >= (unsigned int)process->process && (unsigned int)addr + size < (unsigned int)process->process + process->size)
         return true;
 
     return false;
@@ -383,7 +338,6 @@ bool kprocess_check_address(KPROCESS* kprocess, void* addr, unsigned int size)
 
 void kprocess_init(const REX* rex)
 {
-    KPROCESS* init;
     __KERNEL->next_process = NULL;
     __KERNEL->active_process = NULL;
     dlist_clear((DLIST**)&__KERNEL->processes);
@@ -391,13 +345,13 @@ void kprocess_init(const REX* rex)
     dlist_clear((DLIST**)&__KERNEL->wait_processes);
 #endif
     //create and activate first kprocess
-    kprocess_create(rex, &init);
+    kprocess_create(rex);
 }
 
 #if (KERNEL_PROFILING)
 void kprocess_switch_test()
 {
-    KPROCESS* kprocess = kprocess_get_current();
+    KPROCESS* kprocess = (KPROCESS*)kprocess_get_current();
     disable_interrupts();
     kprocess_remove_from_active_list(kprocess);
     kprocess_add_to_active_list(kprocess);
@@ -414,22 +368,21 @@ static unsigned int stack_used(unsigned int top, unsigned int end)
 
 void process_stat(KPROCESS* kprocess)
 {
+    void* saved;
+    int err = ERROR_OK;
+    saved = __GLOBAL->process;
+    __GLOBAL->process = (PROCESS*)&err;
     POOL_STAT stat;
-    LIB_ENTER;
     ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_stat(&kprocess->process->pool, &stat, kprocess->sp);
-    LIB_EXIT;
 
-    printk("%-20.20s ", kprocess_name(kprocess));
+    printk("%-20.20s ", kprocess_name((HANDLE)kprocess));
 
     printk("%03d     ", kprocess->base_priority);
     printk("%4b  ", stack_used((unsigned int)pool_free_ptr(&kprocess->process->pool), (unsigned int)kprocess->process + kprocess->size));
     printk("%4b ", kprocess->size);
 
-    if (__KERNEL->error != ERROR_OK)
-    {
+    if (err != ERROR_OK)
         printk(DAMAGED);
-        __KERNEL->error = ERROR_OK;
-    }
     else
     {
         printk(" %3b(%02d)   ", stat.used, stat.used_slots);
@@ -440,6 +393,7 @@ void process_stat(KPROCESS* kprocess)
     printk("%3d:%02d.%03d", kprocess->uptime.sec / 60, kprocess->uptime.sec % 60, kprocess->uptime.usec / 1000);
 #endif
     printk("\n");
+    __GLOBAL->process = saved;
 }
 
 static inline void kernel_stat()
@@ -448,10 +402,14 @@ static inline void kernel_stat()
     KPOOL* kpool;
     unsigned int total_size;
     bool damaged;
+    void* saved;
 #if (KERNEL_PROCESS_STAT)
     SYSTIME uptime;
 #endif
     POOL_STAT stat, total;
+    int err = ERROR_OK;
+    saved = __GLOBAL->process;
+    __GLOBAL->process = (PROCESS*)&err;
     memset(&total, 0x00, sizeof(POOL_STAT));
     total_size = 0;
     damaged = false;
@@ -462,10 +420,9 @@ static inline void kernel_stat()
         printk("%#08X                         ", kpool->base);
         printk("%4b ", kpool->size);
 
-        if (__KERNEL->error != ERROR_OK)
+        if (err != ERROR_OK)
         {
             printk(DAMAGED);
-            __KERNEL->error = ERROR_OK;
             damaged = true;
         }
         else
@@ -501,6 +458,7 @@ static inline void kernel_stat()
     printk("%3d:%02d.%03d", uptime.sec / 60, uptime.sec % 60, uptime.usec / 1000);
 #endif
     printk("\n");
+    __GLOBAL->process = saved;
 }
 
 void kprocess_info()

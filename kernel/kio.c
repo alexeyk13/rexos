@@ -9,6 +9,15 @@
 #include "kstdlib.h"
 #include "kernel_config.h"
 
+typedef struct {
+    DLIST list;
+    MAGIC;
+    IO* io;
+    HANDLE owner;
+    HANDLE granted;
+    bool kill_flag;
+}KIO;
+
 static void kio_destroy_internal(KIO* kio)
 {
     CLEAR_MAGIC(kio);
@@ -16,56 +25,43 @@ static void kio_destroy_internal(KIO* kio)
     kfree(kio);
 }
 
-void kio_create(IO** io, unsigned int size)
+IO* kio_create(unsigned int size)
 {
     KIO* kio;
-    KPROCESS* kprocess = kprocess_get_current();
-    CHECK_ADDRESS(kprocess, io, sizeof(void*));
-    disable_interrupts();
+    HANDLE process = kprocess_get_current();
     kio = (KIO*)kmalloc(sizeof(KIO));
-    enable_interrupts();
     if (kio != NULL)
     {
         DO_MAGIC(kio, MAGIC_KIO);
-        kio->owner = kio->granted = kprocess;
+        kio->owner = kio->granted = process;
         kio->kill_flag = false;
-        disable_interrupts();
-        (*io) = kio->io = (IO*)kmalloc(size + sizeof(IO));
-        enable_interrupts();
+        kio->io = (IO*)kmalloc(size + sizeof(IO));
         if ((kio->io) == NULL)
         {
-            disable_interrupts();
-            kio_destroy_internal(kio);
-            enable_interrupts();
-            kprocess_error(kprocess, ERROR_OUT_OF_PAGED_MEMORY);
-            return;
+            kfree(kio);
+            return NULL;
         }
         kio->io->kio = (HANDLE)kio;
         kio->io->size = size + sizeof(IO);
     }
-    else
-        kprocess_error(kprocess, ERROR_OUT_OF_SYSTEM_MEMORY);
+    return kio->io;
 }
 
-bool kio_send(KIO* kio, KPROCESS* receiver)
+bool kio_send(HANDLE process, IO* io, HANDLE receiver)
 {
-    IPC ipc;
-    KPROCESS* kprocess = kprocess_get_current();
-    if (kprocess != kio->granted)
+    KIO* kio = (KIO*)(io->kio);
+    //sent from untrusted environment
+    CHECK_MAGIC(kio, MAGIC_KIO);
+    if (process != kio->granted)
     {
-        kprocess_error(kprocess, ERROR_ACCESS_DENIED);
+        error(ERROR_ACCESS_DENIED);
         return false;
     }
     //user released IO
     if ((kio->kill_flag) && (receiver == kio->owner))
     {
-        disable_interrupts();
         kio_destroy_internal(kio);
-        enable_interrupts();
-        ipc.process = (HANDLE)receiver;
-        ipc.cmd = HAL_CMD(HAL_SYSTEM, IPC_SYNC);
-        kipc_post_process(&ipc, (KPROCESS*)KERNEL_HANDLE);
-        return false;
+        return true;
     }
     kio->granted = receiver;
     return true;
@@ -77,24 +73,22 @@ void kio_destroy(IO *io)
     if (io == NULL)
         return;
     KIO* kio = (KIO*)io->kio;
-    KPROCESS* kprocess = kprocess_get_current();
-    CHECK_HANDLE(kio, sizeof(KIO));
     CHECK_MAGIC(kio, MAGIC_KIO);
 
-    if (kprocess != kio->owner)
+    if (kio->owner != kprocess_get_current())
     {
-        kprocess_error(kprocess, ERROR_ACCESS_DENIED);
+        error(ERROR_ACCESS_DENIED);
         return;
     }
     disable_interrupts();
-    if (kio->granted == kio->owner)
-        kio_destroy_internal(kio);
-    else
+    if (kio->granted != kio->owner)
     {
         kio->kill_flag = true;
         kill_flag = true;
     }
     enable_interrupts();
     if (kill_flag)
-        kprocess_error(kprocess, ERROR_BUSY);
+        error(ERROR_BUSY);
+    else
+        kio_destroy_internal(kio);
 }

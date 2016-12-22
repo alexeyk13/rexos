@@ -24,7 +24,6 @@ typedef enum {
     IPC_CLOSE,
     IPC_GET_RX_STREAM,
     IPC_GET_TX_STREAM,
-    IPC_SYNC,
     IPC_USER = 0x100
 } IPCS;
 
@@ -33,6 +32,7 @@ typedef enum {
     HAL_SYSTEM = 0,
     //real hardware
     HAL_PIN,
+    HAL_GPIO,
     HAL_POWER,
     HAL_TIMER,
     HAL_RTC,
@@ -123,6 +123,16 @@ void ipc_post(IPC* ipc);
 void ipc_post_inline(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
+    \brief post IPC, inline version for exo driver
+    \param cmd: command
+    \param param1: cmd-specific param1
+    \param param2: cmd-specific param2
+    \param param3: cmd-specific param3
+    \retval none
+*/
+#define ipc_post_exo(cmd, param1, param2, param3)                   ipc_post_inline(KERNEL_HANDLE, (cmd), (param1), (param2), (param3))
+
+/**
     \brief post IPC
     \details This version must be called for IRQ context
     \param ipc: IPC structure
@@ -199,7 +209,19 @@ void ack(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int par
 unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
 
 /**
-    \brief get hangle value from process.
+    \brief get value from driver
+    \details Error set if param3 is negative
+    \param cmd: command to post
+    \param param1: cmd specific
+    \param param2: cmd specific
+    \param param3: cmd specific
+    \retval returned param2
+*/
+
+#define get_exo(cmd, param1, param2, param3)                        get(KERNEL_HANDLE, (cmd), (param1), (param2), param3)
+
+/**
+    \brief get hangle value from process
     \details INVALID_HANDLE on error
     \param cmd: command to post
     \param process: IPC receiver
@@ -210,6 +232,18 @@ unsigned int get(HANDLE process, unsigned int cmd, unsigned int param1, unsigned
 */
 
 unsigned int get_handle(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
+
+/**
+    \brief get hangle value from driver
+    \details INVALID_HANDLE on error
+    \param cmd: command to post
+    \param param1: cmd specific
+    \param param2: cmd specific
+    \param param3: cmd specific
+    \retval param1
+*/
+
+#define get_handle_exo(cmd, param1, param2, param3)                 get_handle(KERNEL_HANDLE, (cmd), (param1), (param2), param3)
 
 /**
     \brief get size (positive) value from process.
@@ -223,6 +257,18 @@ unsigned int get_handle(HANDLE process, unsigned int cmd, unsigned int param1, u
 */
 
 int get_size(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3);
+
+/**
+    \brief get size (positive) value from driver
+    \details Error set if param3 is negative
+    \param cmd: command to post
+    \param param1: cmd specific
+    \param param2: cmd specific
+    \param param3: cmd specific
+    \retval param3
+*/
+
+#define get_size_exo(cmd, param1, param2, param3)                   get_size(KERNEL_HANDLE, (cmd), (param1), (param2), param3)
 
 /** \} */ // end of sem group
 

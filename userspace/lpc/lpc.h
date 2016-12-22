@@ -364,12 +364,6 @@
 #define LPC
 #endif
 
-#if defined(CORTEX_M3) || defined(CORTEX_M0)
-#ifndef CORTEX_M
-#define CORTEX_M
-#endif //CORTEX_M
-#endif //defined(CORTEX_M3) || defined(CORTEX_M0)
-
 #if defined(LPC)
 //shadow area for 18xx
 #ifndef FLASH_BASE

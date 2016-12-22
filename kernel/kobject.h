@@ -10,7 +10,7 @@
 #include "../userspace/types.h"
 
 void kobject_init();
-void kobject_set(int idx, HANDLE handle);
-void kobject_get(int idx, HANDLE* handle);
+void kobject_set(HANDLE process, int idx, HANDLE handle);
+HANDLE kobject_get(int idx);
 
 #endif // KOBJECT_H

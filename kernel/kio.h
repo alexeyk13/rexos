@@ -14,20 +14,10 @@
 #include "dbg.h"
 #include <stdbool.h>
 
-typedef struct {
-    DLIST list;
-    MAGIC;
-    IO* io;
-    KPROCESS* owner;
-    KPROCESS* granted;
-    bool kill_flag;
-}KIO;
-
-//called from svc
-void kio_create(IO** io, unsigned int size);
+IO* kio_create(unsigned int size);
 void kio_destroy(IO* io);
 
-//called from kipc
-bool kio_send(KIO* kio, KPROCESS* receiver);
+//internally called from kipc
+bool kio_send(HANDLE process, IO* io, HANDLE receiver);
 
 #endif // KIO_H

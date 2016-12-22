@@ -8,9 +8,6 @@
 #define STREAM_H
 
 #include "types.h"
-#include "process.h"
-#include "svc.h"
-#include "error.h"
 #include "ipc.h"
 
 
@@ -25,83 +22,76 @@
     \param size: requested size in bytes
     \retval STREAM on success. On failure (out of memory), error will be raised
 */
-__STATIC_INLINE HANDLE stream_create(unsigned int size)
-{
-    HANDLE stream = 0;
-    svc_call(SVC_STREAM_CREATE, (unsigned int)&stream, size, 0);
-    return stream;
-}
+HANDLE stream_create(unsigned int size);
 
 /**
     \brief open STREAM handle
     \param stream: handle of created stream
     \retval STREAM HANDLE on success. On failure (out of memory), error will be raised
 */
-__STATIC_INLINE HANDLE stream_open(HANDLE stream)
-{
-    HANDLE handle = 0;
-    svc_call(SVC_STREAM_OPEN, (unsigned int)stream, (unsigned int)&handle, 0);
-    return handle;
-}
+HANDLE stream_open(HANDLE stream);
 
 /**
     \brief close STREAM handle
     \param handle: handle of created stream
     \retval none
 */
-__STATIC_INLINE void stream_close(HANDLE handle)
-{
-    svc_call(SVC_STREAM_CLOSE, (unsigned int)handle, 0, 0);
-}
+void stream_close(HANDLE handle);
 
 /**
     \brief get STREAM used size
     \param stream: created STREAM object
     \retval used size
 */
-__STATIC_INLINE unsigned int stream_get_size(HANDLE stream)
-{
-    unsigned int size;
-    svc_call(SVC_STREAM_GET_SIZE, (unsigned int)stream, (unsigned int)&size, 0);
-    return size;
-}
+unsigned int stream_get_size(HANDLE stream);
 
 /**
     \brief get STREAM free bytes count
     \param stream: created STREAM object
     \retval free size
 */
-__STATIC_INLINE unsigned int stream_get_free(HANDLE stream)
-{
-    unsigned int size;
-    svc_call(SVC_STREAM_GET_FREE, (unsigned int)stream, (unsigned int)&size, 0);
-    return size;
-}
+unsigned int stream_get_free(HANDLE stream);
 
 /**
-    \brief start listen to STREAM successfull writes. Caller must be one, who created stream
+    \brief start listen to STREAM successfull writes.
     \param stream: created STREAM object
     \param hal: HAL group for parsing
-    \retval true on ok
+    \retval none
 */
-__STATIC_INLINE bool stream_listen(HANDLE stream, unsigned int param, HAL hal)
-{
-    error(ERROR_OK);
-    svc_call(SVC_STREAM_LISTEN, (unsigned int)stream, param, (unsigned int)hal);
-    return get_last_error() == ERROR_OK;
-}
+void stream_listen(HANDLE stream, unsigned int param, HAL hal);
+
+/**
+    \brief start listen to STREAM successfull writes. ISR version
+    \param stream: created STREAM object
+    \param hal: HAL group for parsing
+    \retval none
+*/
+void stream_ilisten(HANDLE stream, unsigned int param, HAL hal);
 
 /**
     \brief stop listen to STREAM successfull writes. Caller must be one, who created stream
     \param stream: created STREAM object
-    \retval true on ok
+    \retval none
 */
-__STATIC_INLINE bool stream_stop_listen(HANDLE stream)
-{
-    error(ERROR_OK);
-    svc_call(SVC_STREAM_STOP_LISTEN, (unsigned int)stream, 0, 0);
-    return get_last_error() == ERROR_OK;
-}
+void stream_stop_listen(HANDLE stream);
+
+/**
+    \brief write to STREAM handle without blocking
+    \param handle: handle of created stream
+    \param buf: pointer to data
+    \param size: max size of data to write
+    \retval number of bytes written
+*/
+unsigned int stream_write_no_block(HANDLE handle, const char* buf, unsigned int size);
+
+/**
+    \brief write to STREAM handle without blocking, ISR version
+    \param handle: handle of created stream
+    \param buf: pointer to data
+    \param size: max size of data to write
+    \retval number of bytes written
+*/
+unsigned int stream_iwrite_no_block(HANDLE handle, const char* buf, unsigned int size);
 
 /**
     \brief write to STREAM handle
@@ -110,12 +100,25 @@ __STATIC_INLINE bool stream_stop_listen(HANDLE stream)
     \param size: size of data to write
     \retval true on ok
 */
-__STATIC_INLINE bool stream_write(HANDLE handle, const char* buf, unsigned int size)
-{
-    error(ERROR_OK);
-    svc_call(SVC_STREAM_WRITE, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);
-    return get_last_error() == ERROR_OK;
-}
+bool stream_write(HANDLE handle, const char* buf, unsigned int size);
+
+/**
+    \brief read from STREAM handle without blocking
+    \param handle: handle of created stream
+    \param buf: pointer to data
+    \param size: max size of data to read
+    \retval number of bytes readed
+*/
+unsigned int stream_read_no_block(HANDLE handle, const char* buf, unsigned int size);
+
+/**
+    \brief read from STREAM handle without blocking, ISR version
+    \param handle: handle of created stream
+    \param buf: pointer to data
+    \param size: max size of data to read
+    \retval number of bytes readed
+*/
+unsigned int stream_iread_no_block(HANDLE handle, const char* buf, unsigned int size);
 
 /**
     \brief read from STREAM handle
@@ -124,32 +127,21 @@ __STATIC_INLINE bool stream_write(HANDLE handle, const char* buf, unsigned int s
     \param size: size of data to read
     \retval true on ok
 */
-__STATIC_INLINE bool stream_read(HANDLE handle, char* buf, unsigned int size)
-{
-    error(ERROR_OK);
-    svc_call(SVC_STREAM_READ, (unsigned int)handle, (unsigned int)buf, (unsigned int)size);
-    return get_last_error() == ERROR_OK;
-}
+bool stream_read(HANDLE handle, char* buf, unsigned int size);
 
 /**
     \brief flush STREAM
     \param stream: created STREAM object
     \retval none
 */
-__STATIC_INLINE void stream_flush(HANDLE stream)
-{
-    svc_call(SVC_STREAM_FLUSH, (unsigned int)stream, 0, 0);
-}
+void stream_flush(HANDLE stream);
 
 /**
     \brief destroy STREAM object
     \param stream: created STREAM object
     \retval none
 */
-__STATIC_INLINE void stream_destroy(HANDLE stream)
-{
-    svc_call(SVC_STREAM_DESTROY, (unsigned int)stream, 0, 0);
-}
+void stream_destroy(HANDLE stream);
 
 /** \} */ // end of strean group
 

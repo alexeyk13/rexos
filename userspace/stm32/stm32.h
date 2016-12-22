@@ -814,12 +814,6 @@
 #endif
 #endif //STM32L0 || STM32F0
 
-#if defined(CORTEX_M3) || defined(CORTEX_M0)
-#ifndef CORTEX_M
-#define CORTEX_M
-#endif
-#endif
-
 #if defined(STM32)
 #ifndef FLASH_BASE
 #define FLASH_BASE                0x08000000

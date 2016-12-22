@@ -101,7 +101,7 @@ __STATIC_INLINE unsigned int rb_get(RB* rb)
 */
 __STATIC_INLINE unsigned int rb_size(RB* rb)
 {
-    return rb->tail > rb->head ? rb->size - 1 - rb->tail + rb->head : rb->head - rb->tail;
+    return rb->tail > rb->head ? rb->size - rb->tail + rb->head : rb->head - rb->tail;
 }
 
 /**
@@ -111,7 +111,7 @@ __STATIC_INLINE unsigned int rb_size(RB* rb)
 */
 __STATIC_INLINE unsigned int rb_free(RB* rb)
 {
-    return rb->tail > rb->head ? rb->tail - rb->head : rb->size - 1 - rb->head + rb->tail;
+    return rb->tail > rb->head ? rb->tail - rb->head - 1: rb->size - rb->head + rb->tail - 1;
 }
 
 /**

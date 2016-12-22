@@ -7,18 +7,19 @@
 #include "kirq.h"
 #include "kernel.h"
 #include "kstdlib.h"
+#include "kprocess_private.h"
 #include "../userspace/error.h"
+
 
 void kirq_stub(int vector, void* param)
 {
 #if (KERNEL_DEBUG)
     printk("Warning: irq vector %d stub called\n", vector);
 #endif
-    kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 typedef KIRQ* KIRQ_P;
-static const KIRQ __KIRQ_STUB ={kirq_stub, NULL, NULL};
+static const KIRQ __KIRQ_STUB ={ERROR_OK, kirq_stub, NULL, INVALID_HANDLE};
 
 void kirq_init()
 {
@@ -54,11 +55,13 @@ void kirq_enter(int vector)
         return;
 #endif
     register int saved_context = __KERNEL->context;
+    register PROCESS* saved_process = __GLOBAL->process;
 #ifdef SOFT_NVIC
     while (pending--)
     {
 #endif
         __KERNEL->context = vector;
+        __GLOBAL->process = (PROCESS*)__KERNEL->irqs[vector];
         __KERNEL->irqs[vector]->handler(vector, __KERNEL->irqs[vector]->param);
 #ifdef SOFT_NVIC
         if (pending)
@@ -72,43 +75,37 @@ void kirq_enter(int vector)
     }
 #endif
     __KERNEL->context = saved_context;
+    __GLOBAL->process = saved_process;
 }
 
-void kirq_register(int vector, IRQ handler, void* param)
+void kirq_register(HANDLE owner, int vector, IRQ handler, void* param)
 {
     if (vector >= IRQ_VECTORS_COUNT)
     {
-        kprocess_error_current(ERROR_OUT_OF_RANGE);
+        error(ERROR_OUT_OF_RANGE);
         return;
     }
     if (__KERNEL->irqs[vector] != (KIRQ_P)&__KIRQ_STUB)
     {
-        kprocess_error_current(ERROR_ALREADY_CONFIGURED);
+        error(ERROR_ALREADY_CONFIGURED);
         return;
     }
-    disable_interrupts();
     __KERNEL->irqs[vector] = kmalloc(sizeof(KIRQ));
-    enable_interrupts();
     if (__KERNEL->irqs[vector] == NULL)
-    {
-        __KERNEL->irqs[vector] = (KIRQ_P)&__KIRQ_STUB;
-        kprocess_error_current(ERROR_OUT_OF_SYSTEM_MEMORY);
         return;
-    }
+    __KERNEL->irqs[vector]->error = ERROR_OK;
     __KERNEL->irqs[vector]->handler = handler;
     __KERNEL->irqs[vector]->param = param;
-    __KERNEL->irqs[vector]->process = kprocess_get_current();
+    __KERNEL->irqs[vector]->process = owner;
 }
 
-void kirq_unregister(int vector)
+void kirq_unregister(HANDLE owner, int vector)
 {
-    if (__KERNEL->irqs[vector]->process == kprocess_get_current())
+    if (__KERNEL->irqs[vector]->process != owner)
     {
-        disable_interrupts();
-        kfree(__KERNEL->irqs[vector]);
-        enable_interrupts();
-        __KERNEL->irqs[vector] = (KIRQ_P)&__KIRQ_STUB;
+        error(ERROR_ACCESS_DENIED);
+        return;
     }
-    else
-        kprocess_error_current(ERROR_ACCESS_DENIED);
+    kfree(__KERNEL->irqs[vector]);
+    __KERNEL->irqs[vector] = (KIRQ_P)&__KIRQ_STUB;
 }

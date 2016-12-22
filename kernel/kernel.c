@@ -13,18 +13,19 @@
 #include "kprocess.h"
 #include "kio.h"
 #include "kobject.h"
+#include "ksystime.h"
 #include "kstdlib.h"
 
 #include "../userspace/error.h"
+#include "../userspace/core/core.h"
 #include "../lib/lib_lib.h"
 #include <string.h>
 
-const char* const __KERNEL_NAME=                                                      "rexos 0.4.9";
+const char* const __KERNEL_NAME=                                                      "RExOS 0.5.0";
 
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {
     //what can we debug in debug stub? :)
-    kprocess_error_current(ERROR_STUB_CALLED);
 }
 
 void panic()
@@ -40,34 +41,54 @@ void panic()
 #endif //KERNEL_DEVELOPER_MODE
 }
 
+void kernel_setup_dbg(STDOUT stdout, void* param)
+{
+    if (__KERNEL->stdout != stdout_stub)
+        error(ERROR_INVALID_SVC);
+    else
+    {
+        __KERNEL->stdout = stdout;
+        __KERNEL->stdout_param = param;
+#if KERNEL_DEBUG
+        printk("%s\n", __KERNEL_NAME);
+#endif
+    }
+}
+
 void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned int param3)
 {
+    HANDLE process = kprocess_get_current();
     switch (num)
     {
     //process related
     case SVC_PROCESS_CREATE:
-        kprocess_create((REX*)param1, (KPROCESS**)param2);
+        CHECK_ADDRESS(process, (HANDLE*)param2, sizeof(HANDLE));
+        *((HANDLE*)param2) = kprocess_create((REX*)param1);
         break;
     case SVC_PROCESS_GET_CURRENT:
-        kprocess_get_current_svc((KPROCESS**)param1);
+        CHECK_ADDRESS(process, (HANDLE*)param1, sizeof(HANDLE));
+        *((HANDLE*)param1) = process;
         break;
     case SVC_PROCESS_GET_FLAGS:
-        kprocess_get_flags((KPROCESS*)param1, (unsigned int*)param2);
+        CHECK_ADDRESS(process, (unsigned int*)param2, sizeof(unsigned int));
+        *((unsigned int*)param2) = kprocess_get_flags(param1);
         break;
     case SVC_PROCESS_SET_FLAGS:
-        kprocess_set_flags((KPROCESS*)param1, (unsigned int)param2);
+        kprocess_set_flags(param1, param2);
         break;
     case SVC_PROCESS_GET_PRIORITY:
-        kprocess_get_priority((KPROCESS*)param1, (unsigned int*)param2);
+        CHECK_ADDRESS(process, (unsigned int*)param2, sizeof(unsigned int));
+        *((unsigned int*)param2) = kprocess_get_priority((HANDLE)param1);
         break;
     case SVC_PROCESS_SET_PRIORITY:
-        kprocess_set_priority((KPROCESS*)param1, (unsigned int)param2);
+        kprocess_set_priority((HANDLE)param1, (unsigned int)param2);
         break;
     case SVC_PROCESS_DESTROY:
-        kprocess_destroy((KPROCESS*)param1);
+        kprocess_destroy(param1);
         break;
     case SVC_PROCESS_SLEEP:
-        kprocess_sleep(kprocess_get_current(), (SYSTIME*)param1, PROCESS_SYNC_TIMER_ONLY, NULL);
+        CHECK_ADDRESS(process, (SYSTIME*)param1, sizeof(SYSTIME));
+        kprocess_sleep(process, (SYSTIME*)param1, PROCESS_SYNC_TIMER_ONLY, INVALID_HANDLE);
         break;
 #if (KERNEL_PROFILING)
     case SVC_PROCESS_SWITCH_TEST:
@@ -79,108 +100,128 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
 #endif //KERNEL_PROFILING
     //irq related
     case SVC_IRQ_REGISTER:
-        kirq_register((int)param1, (IRQ)param2, (void*)param3);
+        kirq_register(process, (int)param1, (IRQ)param2, (void*)param3);
         break;
     case SVC_IRQ_UNREGISTER:
-        kirq_unregister((int)param1);
+        kirq_unregister(process, (int)param1);
         break;
     //system timer related
+#ifndef EXODRIVERS
     case SVC_SYSTIME_HPET_TIMEOUT:
         ksystime_hpet_timeout();
         break;
     case SVC_SYSTIME_SECOND_PULSE:
         ksystime_second_pulse();
         break;
-    case SVC_SYSTIME_GET_UPTIME:
-        ksystime_get_uptime((SYSTIME*)param1);
-        break;
     case SVC_SYSTIME_HPET_SETUP:
         ksystime_hpet_setup((CB_SVC_TIMER*)param1, (void*)param2);
         break;
+#endif //EXODRIVERS
+    case SVC_SYSTIME_GET_UPTIME:
+        CHECK_ADDRESS(process, (SYSTIME*)param1, sizeof(SYSTIME));
+        ksystime_get_uptime((SYSTIME*)param1);
+        break;
     case SVC_SYSTIME_SOFT_TIMER_CREATE:
-        ksystime_soft_timer_create((SOFT_TIMER**)param1, param2, (HAL)param3);
+        CHECK_ADDRESS(process, (HANDLE*)param1, sizeof(HANDLE));
+        *((HANDLE*)param1) = ksystime_soft_timer_create(process, (HANDLE)param2, (HAL)param3);
         break;
     case SVC_SYSTIME_SOFT_TIMER_START:
-        ksystime_soft_timer_start((SOFT_TIMER*)param1, (SYSTIME*)param2);
+        CHECK_ADDRESS(process, (SYSTIME*)param2, sizeof(SYSTIME));
+        ksystime_soft_timer_start((HANDLE)param1, (SYSTIME*)param2);
         break;
     case SVC_SYSTIME_SOFT_TIMER_STOP:
-        ksystime_soft_timer_stop((SOFT_TIMER*)param1);
+        ksystime_soft_timer_stop((HANDLE)param1);
         break;
     case SVC_SYSTIME_SOFT_TIMER_DESTROY:
-        ksystime_soft_timer_destroy((SOFT_TIMER*)param1);
+        ksystime_soft_timer_destroy((HANDLE)param1);
         break;
     //ipc related
     case SVC_IPC_POST:
-        kipc_post((IPC*)param1);
+        CHECK_ADDRESS(process, (IPC*)param1, sizeof(IPC));
+        CHECK_IO_ADDRESS(process, (IPC*)param1);
+        kipc_post(process, (IPC*)param1);
         break;
     case SVC_IPC_WAIT:
-        kipc_wait((KPROCESS*)param1, param2, param3);
+        kipc_wait(process, param1, param2, param3);
         break;
     case SVC_IPC_CALL:
-        kipc_call((IPC*)param1);
+        CHECK_ADDRESS(process, (IPC*)param1, sizeof(IPC));
+        CHECK_IO_ADDRESS(process, (IPC*)param1);
+        kipc_call(process, (IPC*)param1);
         break;
     //stream related
     case SVC_STREAM_CREATE:
-        kstream_create((STREAM**)param1, param2);
+        CHECK_ADDRESS(process, (HANDLE*)param1, sizeof(HANDLE));
+        *((HANDLE*)param1) = kstream_create(param2);
         break;
     case SVC_STREAM_OPEN:
-        kstream_open((STREAM*)param1, (STREAM_HANDLE**)param2);
+        CHECK_ADDRESS(process, (HANDLE*)param2, sizeof(HANDLE));
+        *((HANDLE*)param2) = kstream_open(process, param1);
         break;
     case SVC_STREAM_CLOSE:
-        kstream_close((STREAM_HANDLE*)param1);
+        kstream_close(process, param1);
         break;
     case SVC_STREAM_GET_SIZE:
-        kstream_get_size((STREAM*)param1, (unsigned int*)param2);
+        CHECK_ADDRESS(process, (unsigned int*)param2, sizeof(unsigned int));
+        *((unsigned int*)param2) = kstream_get_size(param1);
         break;
     case SVC_STREAM_GET_FREE:
-        kstream_get_free((STREAM*)param1, (unsigned int*)param2);
+        CHECK_ADDRESS(process, (unsigned int*)param2, sizeof(unsigned int));
+        *((unsigned int*)param2) = kstream_get_free(param1);
         break;
     case SVC_STREAM_LISTEN:
-        kstream_listen((STREAM*)param1, param2, (HAL)param3);
+        kstream_listen(process, param1, param2, (HAL)param3);
         break;
     case SVC_STREAM_STOP_LISTEN:
-        kstream_stop_listen((STREAM*)param1);
+        kstream_stop_listen(process, param1);
+        break;
+    case SVC_STREAM_WRITE_NO_BLOCK:
+        CHECK_ADDRESS(process, (unsigned int*)param3, sizeof(unsigned int));
+        CHECK_ADDRESS(process, (char*)param2, *((unsigned int*)param3));
+        *((unsigned int*)param3) = kstream_write_no_block(param1, (char*)param2, *((unsigned int*)param3));
         break;
     case SVC_STREAM_WRITE:
-        kstream_write((STREAM_HANDLE*)param1, (char*)param2, param3);
+        CHECK_ADDRESS(process, (char*)param2, *((unsigned int*)param3));
+        kstream_write(process, param1, (char*)param2, param3);
         break;
     case SVC_STREAM_READ:
-        kstream_read((STREAM_HANDLE*)param1, (char*)param2, param3);
+        CHECK_ADDRESS(process, (char*)param2, *((unsigned int*)param3));
+        kstream_read(process, param1, (char*)param2, param3);
+        break;
+    case SVC_STREAM_READ_NO_BLOCK:
+        CHECK_ADDRESS(process, (unsigned int*)param3, sizeof(unsigned int));
+        CHECK_ADDRESS(process, (char*)param2, *((unsigned int*)param3));
+        *((unsigned int*)param3) = kstream_read_no_block(param1, (char*)param2, *((unsigned int*)param3));
         break;
     case SVC_STREAM_FLUSH:
-        kstream_flush((STREAM*)param1);
+        kstream_flush(param1);
         break;
     case SVC_STREAM_DESTROY:
-        kstream_destroy((STREAM*)param1);
+        kstream_destroy(param1);
         break;
     case SVC_IO_CREATE:
-        kio_create((IO**)param1, (unsigned int)param2);
+        CHECK_ADDRESS(process, (IO**)param1, sizeof(IO*));
+        *((IO**)param1) = kio_create(param2);
         break;
     case SVC_IO_DESTROY:
         kio_destroy((IO*)param1);
         break;
     case SVC_OBJECT_SET:
-        kobject_set(param1, (HANDLE)param2);
+        kobject_set(process, param1, (HANDLE)param2);
         break;
     case SVC_OBJECT_GET:
-        kobject_get(param1, (HANDLE*)param2);
+        CHECK_ADDRESS(process, (HANDLE*)param2, sizeof(HANDLE));
+        *((HANDLE*)param2) = kobject_get(param1);
         break;
     //other - dbg, stdout/in
     case SVC_ADD_POOL:
         kstdlib_add_pool(param1, param2);
         break;
+#ifndef EXODRIVERS
     case SVC_SETUP_DBG:
-        if (__KERNEL->stdout != stdout_stub)
-            kprocess_error_current(ERROR_INVALID_SVC);
-        else
-        {
-            __KERNEL->stdout = (STDOUT)param1;
-            __KERNEL->stdout_param = (void*)param2;
-#if KERNEL_DEBUG
-            printk("%s\n", __KERNEL_NAME);
-#endif
-        }
+        kernel_setup_dbg((STDOUT)param1, (void*)param2);
         break;
+#endif //EXODRIVERS
     case SVC_PRINTD:
         __KERNEL->stdout((const char*)param1, param2, __KERNEL->stdout_param);
         break;
@@ -190,7 +231,7 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         break;
 #endif //KERNEL_PROFILING
     default:
-        kprocess_error_current(ERROR_INVALID_SVC);
+        error(ERROR_INVALID_SVC);
     }
 }
 
@@ -215,6 +256,11 @@ void startup()
 
     //initialize kernel objects
     kobject_init();
+
+    //initialize exokernel drivers
+#ifdef EXODRIVERS
+    exodriver_init();
+#endif //EXODRIVERS
 
     //initialize thread subsystem, create application task
     kprocess_init(&__APP);

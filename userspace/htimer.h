@@ -7,10 +7,8 @@
 #ifndef HTIMER_H
 #define HTIMER_H
 
-#include "sys.h"
+#include <stdbool.h>
 #include "ipc.h"
-#include "cc_macro.h"
-#include "sys_config.h"
 
 typedef enum {
     TIMER_START = IPC_USER,
@@ -57,29 +55,54 @@ typedef enum {
 #define TIMER_CHANNEL_TYPE_VALUE(raw)           (((raw) >> 8) & 0xff)
 //bits 16..31 user specific
 
-__STATIC_INLINE bool htimer_open(int num, unsigned int flags)
-{
-    return get_handle(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_TIMER, IPC_OPEN), num, flags, 0) != INVALID_HANDLE;
-}
+/** \addtogroup HTIMER HTIMER
+    hardware timer
 
-__STATIC_INLINE void htimer_close(int num)
-{
-    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_TIMER, IPC_CLOSE), num, 0, 0);
-}
+    \{
+ */
 
-__STATIC_INLINE void htimer_start(int num, TIMER_VALUE_TYPE value_type, unsigned int value)
-{
-    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_TIMER, TIMER_START), num, value_type, value);
-}
+/**
+    \brief open hardware timer
+    \param num: number, hardware specific
+    \param flags: timer flags. Not all may be supported by hardware
+    \retval none
+*/
+bool htimer_open(int num, unsigned int flags);
 
-__STATIC_INLINE void htimer_stop(int num)
-{
-    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_TIMER, TIMER_STOP), num, 0, 0);
-}
+/**
+    \brief close hardware timer
+    \param num: number, hardware specific
+    \retval none
+*/
+void htimer_close(int num);
 
-__STATIC_INLINE void htimer_setup_channel(int num, int channel, TIMER_CHANNEL_TYPE type, unsigned int value)
-{
-    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_TIMER, TIMER_SETUP_CHANNEL), num, (channel << TIMER_CHANNEL_POS) | (type << TIMER_CHANNEL_TYPE_POS), value);
-}
+/**
+    \brief start hardware timer
+    \param num: number, hardware specific
+    \param value_type: value type: bus clocks, us, hz
+    \param value: value int value_type units
+    \retval none
+*/
+void htimer_start(int num, TIMER_VALUE_TYPE value_type, unsigned int value);
+
+/**
+    \brief stop hardware timer
+    \param num: number, hardware specific
+    \retval none
+*/
+void htimer_stop(int num);
+
+/**
+    \brief setup hardware timer channel.
+    \details maybe not supported for all or some hardware timers.
+    \param num: number, hardware specific
+    \param channel: number of timer channel
+    \param type: channel mode: generic, PWM, input signal counter, etc
+    \param value: match value, pwm impulse wide, etc. Generally in clocks units
+    \retval none
+*/
+void htimer_setup_channel(int num, int channel, TIMER_CHANNEL_TYPE type, unsigned int value);
+
+/** \} */ // end of htimer group
 
 #endif // HTIMER_H

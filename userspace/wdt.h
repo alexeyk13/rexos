@@ -7,7 +7,6 @@
 #ifndef WDT_H
 #define WDT_H
 
-#include "sys.h"
 #include "ipc.h"
 
 typedef enum {
@@ -16,10 +15,6 @@ typedef enum {
     WDT_HAL_MAX
 } WDT_IPCS;
 
-__STATIC_INLINE void wdt_kick()
-{
-    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_WDT, WDT_KICK), 0, 0, 0);
-}
-
+void wdt_kick();
 
 #endif // WDT_H

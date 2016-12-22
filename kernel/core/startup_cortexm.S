@@ -7,7 +7,6 @@
 //if you've got error in this line, than this file is compiled wrong
 
 #include "../kernel.h"
-#include "asm_defines.h"
 #include "../../userspace/svc.h"
 #include "../dbg.h"
 
@@ -28,6 +27,10 @@
   .equ   LR_OFFSET_IN_CONTEXT,  (13 * 4)
   .equ   PC_OFFSET_IN_CONTEXT,  (14 * 4)
   .equ   PSR_OFFSET_IN_CONTEXT, (15 * 4)
+  .equ   KPROCESS_PROCESS,      8
+  .equ   KPROCESS_SP,           12
+  .equ   ACTIVE_PROCESS,        0
+  .equ   NEXT_PROCESS,          4
 
   .equ   LR_TO_HANDLER,         0xfffffff1
   .equ   LR_TO_PROCESS_PSP,     0xfffffffd
@@ -58,17 +61,19 @@
 	.extern kprocess_abnormal_exit
 	.extern kirq_stub
 	.extern kirq_enter
+        //remove me
+        .extern hardware_init
 
 /* exported global constant and functions */
 	.global pend_switch_context
 	.global process_setup_context
 
 /* interrupt vectors */
-    .section  .isr_vectors, "ax"
+        .section  .isr_vectors, "ax"
 
 int_vectors:
-	.word  (SRAM_BASE + SRAM_SIZE)
-	.word  Reset_Handler
+        .word  (SRAM_BASE + SRAM_SIZE)
+        .word  Reset_Handler
 	.word  NMI_Handler
 	.word  HardFault_Handler
 #if defined(CORTEX_M3) || defined(CORTEX_M4)
@@ -94,13 +99,13 @@ int_vectors:
 	.word  PendSV_Handler
 	.word  SysTick_Handler
 
-	.rept IRQ_VECTORS_COUNT
-		.word  irq_handler
-	.endr
+        .rept IRQ_VECTORS_COUNT
+                .word  irq_handler
+        .endr
 
 /*********************** reset vector handler *********************/
-    .section  .reset, "ax"
-	.syntax unified
+        .section  .reset, "ax"
+        .syntax unified
 #if defined(CORTEX_M3)
 	.cpu cortex-m3
 #elif defined(CORTEX_M4)
@@ -113,6 +118,10 @@ int_vectors:
 	.thumb_func
 Reset_Handler:
 	cpsid   i
+
+#ifdef STARTUP_HARDWARE_INIT
+        bl    startup_hardware_init
+#endif //STARTUP_HARDWARE_INIT
 
 	@setup system and fault handlers priority
 #if defined(CORTEX_M3) || defined(CORTEX_M4)
@@ -169,11 +178,11 @@ profiling_loop:
 	bcc   profiling_loop
 #endif
 
-	bl   startup                @ to high-level initialization
+        bl   startup                @ to high-level initialization
 
 	@make context and sp switch
 	cpsie   i
-	@never reach
+        @never reach
 	b     .
 
 	/* code segment */
@@ -245,7 +254,7 @@ PendSV_Handler:
 	ldr   r0, =PEND_SV_CLEAR
 	str   r0, [r2]
 	ldr   r1, =KERNEL_BASE
-	ldr   r3, [r1, offsetof_KERNEL_active_process]   @active_process will be NULL on startup/task destroy
+        ldr   r3, [r1, ACTIVE_PROCESS]   @active_process will be NULL on startup/task destroy
 	cmp   r3, #0
 	beq   load_context
 
@@ -264,13 +273,17 @@ PendSV_Handler:
 #else
 	stmdb  r0!, {r4-r11}                           @save other context on stack
 #endif
-        str   r0, [r3, offsetof_KPROCESS_sp]           @save sp on process->sp
+        str   r0, [r3, KPROCESS_SP]                     @save sp on process->sp
 
 load_context:
-	ldr   r2, [r1, offsetof_KERNEL_next_process]
+        ldr   r2, [r1, NEXT_PROCESS]
 	cmp	r2, #0
-	beq	halt_core										  @halt core if no tasks
-        ldr   r0, [r2, offsetof_KPROCESS_sp]           @load sp from process->sp
+        beq	halt_core                              @halt core if no tasks
+
+        ldr   r0, [r2, KPROCESS_PROCESS]
+        ldr   r3, =SRAM_BASE
+        str   r0, [r3]
+        ldr   r0, [r2, KPROCESS_SP]                    @load sp from process->sp
 #if defined(CORTEX_M0)
 	ldmia r0!, {r4-r7}                             @load other context from stack
 	mov	r8, r4
@@ -284,16 +297,16 @@ load_context:
 
 	msr   psp, r0
 
-	str   r2, [r1, offsetof_KERNEL_active_process]
+        str   r2, [r1, ACTIVE_PROCESS]
 	movs  r0, #0
-	str   r0, [r1, offsetof_KERNEL_next_process]
+        str   r0, [r1, NEXT_PROCESS]
 
 context_exit:
 	cpsie i
 	//return to thread mode
 #if defined(CORTEX_M0)
 	ldr   r0, =0xfffffffd
-	bx		r0
+        bx    r0
 #else
 	ldr   pc, =0xfffffffd
 #endif
@@ -338,7 +351,7 @@ pend_switch_context:
 */
 	.thumb_func
 process_setup_context:
-        ldr   r2, [r0, offsetof_KPROCESS_sp]
+        ldr   r2, [r0, KPROCESS_SP]
 	lsrs  r2, r2, #3									    @8 byte stack align
 	lsls  r2, r2, #3
 	subs  r2, r2, #CONTEXT_SIZE
@@ -351,7 +364,7 @@ process_setup_context:
 	ldr   r3, =INITIAL_PSP_VALUE					    @T-Bit only
 #endif
 	str   r3, [r2, #PSR_OFFSET_IN_CONTEXT]        @run in system context, interrupts are enabled
-        str   r2, [r0, offsetof_KPROCESS_sp]
+        str   r2, [r0, KPROCESS_SP]
 
 	bx    lr
 

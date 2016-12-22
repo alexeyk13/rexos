@@ -14,6 +14,12 @@
 #include "../stm32/stm32.h"
 #include "../lpc/lpc.h"
 
+#if defined(CORTEX_M3) || defined(CORTEX_M0) || defined(CORTEX_M4)
+#ifndef CORTEX_M
+#define CORTEX_M
+#endif //CORTEX_M
+#endif //defined(CORTEX_M3) || defined(CORTEX_M0) || defined(CORTEX_M4)
+
 #ifdef CORTEX_M
 #ifndef SRAM_BASE
 #define SRAM_BASE                0x20000000

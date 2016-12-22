@@ -9,12 +9,6 @@
 
 #include "../kernel/kernel.h"
 
-#define LIB_ENTER                                           void* __saved_process = __GLOBAL->process;\
-                                                            __GLOBAL->process = (PROCESS*)__KERNEL; \
-                                                            __KERNEL->error = ERROR_OK;
-
-#define LIB_EXIT                                            __GLOBAL->process = __saved_process;
-
 extern const void *const __LIB[];
 
 void lib_stub ();

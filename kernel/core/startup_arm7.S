@@ -7,7 +7,6 @@
 //if you've got error in this line, than this file is compiled wrong
 
 #include "../kernel.h"
-#include "asm_defines.h"
 #include "../../userspace/svc.h"
 
 /* Define constants used in low-level initialization.  */
@@ -19,6 +18,10 @@
 	.equ	PC_OFFSET_IN_CONTEXT,	(1 * 4)
 	.equ	CPSR_OFFSET_IN_CONTEXT,	(0 * 4)
 	.equ  PEND_SV_FLAG_ADDR,		(SRAM_BASE + GLOBAL_SIZE - 4)
+        .equ   KPROCESS_PROCESS,      8
+        .equ   KPROCESS_SP,           12
+        .equ   ACTIVE_PROCESS,        0
+        .equ   NEXT_PROCESS,          4
 
 /* imported global constants and functions */
 
@@ -60,8 +63,7 @@ int_table:
 	.word  irq_vector
 	.word  fiq_vector
 
-    .section  .reset, "ax"
-    
+    .section    .reset, "ax"
 /*********************** reset vector handler *********************/
 reset_vector:
 	/* switch to svc mode, if not yet */
@@ -244,30 +246,36 @@ thread_switch_context:
 	/*save*/
 
 	ldr   r3, =KERNEL_BASE
-	ldr   r3, [r3, offsetof_KERNEL_active_process]
+        ldr   r3, [r3, ACTIVE_PROCESS]
 
 	cmp	r3, #0								@_active_thread will be NULL on startup/task destroy
 	beq	load_context
 
 	stmfd	sp!, {r0, r1, r4-r11, lr}		@save other context on stack
-	str	sp, [r3, offsetof_PROCESS_sp]	@save sp on thread sp_cur
+        str	sp, [r3, KPROCESS_SP]	@save sp on thread sp_cur
 
 load_context:
 
 	ldr   r3, =KERNEL_BASE
-	ldr   r3, [r3, offsetof_KERNEL_next_process]
+        ldr   r3, [r3, NEXT_PROCESS]
 
-	ldr	sp, [r3, offsetof_PROCESS_sp]	@load sp from thread sp_cur
-	ldmfd	sp!, {r0, r1, r4-r11, lr}		@load other context from stack
+        ldr	sp, [r3, KPROCESS_SP]                                   @load sp from thread sp_cur
+        ldmfd	sp!, {r0, r1, r4-r11, lr}                               @load other context from stack
 
 	msr	cpsr_cxsf, r2						@back to exception mode
 	str	r1, [sp]								@r1 - saved lr (current process pc)
 	msr	spsr_cxsf, r0						@r0 - spsr (current process cpsr)
 
 	ldr   r0, =KERNEL_BASE
-	str   r3, [r0, offsetof_KERNEL_active_process]
-	mov	r3, #0
-	str	r3, [r0, offsetof_KERNEL_next_process]
+        str   r3, [r0, ACTIVE_PROCESS]
+        mov   r3, #0
+        str   r3, [r0, NEXT_PROCESS]
+
+        ldr   r0, =KERNEL_BASE
+        ldr   r0, [r0, ACTIVE_PROCESS]
+        ldr   r0, [r0, KPROCESS_PROCESS]
+        ldr   r3, =SRAM_BASE
+        str   r0, [r3]
 
 no_switch:
 	bx		lr

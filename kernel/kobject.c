@@ -14,26 +14,23 @@ void kobject_init()
         __KERNEL->objects[i] = INVALID_HANDLE;
 }
 
-void kobject_set(int idx, HANDLE handle)
+void kobject_set(HANDLE process, int idx, HANDLE handle)
 {
-    KPROCESS* process = kprocess_get_current();
     if (idx < KERNEL_OBJECTS_COUNT)
     {
-        if (__KERNEL->objects[idx] == INVALID_HANDLE || (__KERNEL->objects[idx] == (HANDLE)process && handle == INVALID_HANDLE))
+        if (__KERNEL->objects[idx] == INVALID_HANDLE || (__KERNEL->objects[idx] == process && handle == INVALID_HANDLE))
             __KERNEL->objects[idx] = handle;
         else
-            kprocess_error(process, ERROR_ACCESS_DENIED);
+            error(ERROR_ACCESS_DENIED);
     }
     else
-        kprocess_error(process, ERROR_OUT_OF_RANGE);
+        error(ERROR_OUT_OF_RANGE);
 }
 
-void kobject_get(int idx, HANDLE* handle)
+HANDLE kobject_get(int idx)
 {
-    KPROCESS* process = kprocess_get_current();
-    CHECK_ADDRESS(process, handle, sizeof(HANDLE));
     if (idx < KERNEL_OBJECTS_COUNT)
-        *handle = __KERNEL->objects[idx];
-    else
-        kprocess_error(process, ERROR_OUT_OF_RANGE);
+        return __KERNEL->objects[idx];
+    error(ERROR_OUT_OF_RANGE);
+    return INVALID_HANDLE;
 }

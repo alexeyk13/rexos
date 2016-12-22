@@ -26,18 +26,17 @@
 #define ERROR_INVALID_MAGIC                             (ERROR_GENERAL - 8)
 #define ERROR_INVALID_SVC                               (ERROR_GENERAL - 9)
 #define ERROR_SYNC_OBJECT_DESTROYED                     (ERROR_GENERAL - 10)
-#define ERROR_STUB_CALLED                               (ERROR_GENERAL - 11)
-#define ERROR_OUT_OF_RANGE                              (ERROR_GENERAL - 12)
-#define ERROR_ACCESS_DENIED                             (ERROR_GENERAL - 13)
-#define ERROR_OVERFLOW                                  (ERROR_GENERAL - 14)
-#define ERROR_UNDERFLOW                                 (ERROR_GENERAL - 15)
-#define ERROR_INVALID_STATE                             (ERROR_GENERAL - 16)
-#define ERROR_INVALID_ALIGN                             (ERROR_GENERAL - 17)
-#define ERROR_DEADLOCK                                  (ERROR_GENERAL - 18)
-#define ERROR_INVALID_MODE                              (ERROR_GENERAL - 19)
-#define ERROR_INVALID_LENGTH                            (ERROR_GENERAL - 20)
-#define ERROR_TOO_MANY_HANDLES                          (ERROR_GENERAL - 21)
-#define ERROR_BUSY                                      (ERROR_GENERAL - 22)
+#define ERROR_OUT_OF_RANGE                              (ERROR_GENERAL - 11)
+#define ERROR_ACCESS_DENIED                             (ERROR_GENERAL - 12)
+#define ERROR_OVERFLOW                                  (ERROR_GENERAL - 13)
+#define ERROR_UNDERFLOW                                 (ERROR_GENERAL - 14)
+#define ERROR_INVALID_STATE                             (ERROR_GENERAL - 15)
+#define ERROR_INVALID_ALIGN                             (ERROR_GENERAL - 16)
+#define ERROR_DEADLOCK                                  (ERROR_GENERAL - 17)
+#define ERROR_INVALID_MODE                              (ERROR_GENERAL - 18)
+#define ERROR_INVALID_LENGTH                            (ERROR_GENERAL - 19)
+#define ERROR_TOO_MANY_HANDLES                          (ERROR_GENERAL - 20)
+#define ERROR_BUSY                                      (ERROR_GENERAL - 21)
 
 #define ERROR_IO                                        -100
 #define ERROR_FILE_SHARING_VIOLATION                    (ERROR_IO - 1)
@@ -70,6 +69,7 @@
 #define ERROR_COMM_BREAK                                (ERROR_COMM - 8)
 #define ERROR_NAK                                       (ERROR_COMM - 9)
 #define ERROR_TIMEOUT                                   (ERROR_COMM - 10)
+#define ERROR_CHAR_LOSS                                 (ERROR_COMM - 11)
 
 #define ERROR_HARDWARE                                  -400
 
