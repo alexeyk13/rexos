@@ -60,6 +60,9 @@ void scsis_destroy(SCSIS* scsis)
 void scsis_init(SCSIS* scsis)
 {
     scsis_error_init(scsis);
+#if (SCSI_MMC)
+    scsis->media_status_changed = false;
+#endif //SCSI_MMC
     if (scsis->storage_descriptor->flags & SCSI_STORAGE_DESCRIPTOR_REMOVABLE)
         storage_request_notify_state_change(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user);
     else
@@ -93,8 +96,14 @@ void scsis_request_cmd(SCSIS* scsis, IO* io, uint8_t* req)
     case SCSI_SPC_CMD_REQUEST_SENSE:
         scsis_pc_request_sense(scsis, req);
         break;
+    case SCSI_SPC_CMD_PREVENT_ALLOW_MEDIUM_REMOVAL:
+        scsis_pc_prevent_allow_medium_removal(scsis, req);
+        break;
     case SCSI_SBC_CMD_READ_CAPACITY10:
         scsis_bc_read_capacity10(scsis, req);
+        break;
+    case SCSI_SBC_CMD_START_STOP_UNIT:
+        scsis_bc_start_stop_unit(scsis, req);
         break;
     case SCSI_SBC_CMD_READ6:
         scsis_bc_read6(scsis, req);
@@ -190,6 +199,9 @@ void scsis_request_cmd(SCSIS* scsis, IO* io, uint8_t* req)
     case SCSI_MMC_CMD_GET_CONFIGURATION:
         scsis_mmc_get_configuration(scsis, req);
         break;
+    case SCSI_MMC_CMD_GET_EVENT_STATUS_NOTIFICATION:
+        scsis_mmc_get_event_status_notification(scsis, req);
+        break;
 #endif //SCSI_MMC
     default:
 #if (SCSI_DEBUG_ERRORS)
@@ -260,6 +272,9 @@ void scsis_request(SCSIS* scsis, IPC* ipc)
     case STORAGE_NOTIFY_STATE_CHANGE:
         if (scsis->storage_descriptor->flags & SCSI_STORAGE_DESCRIPTOR_REMOVABLE)
         {
+#if (SCSI_MMC)
+            scsis->media_status_changed = true;
+#endif //SCSI_MMC
             if (scsis->media != NULL)
                 scsis_media_removed(scsis);
             else

@@ -11,6 +11,26 @@
 #include "sys_config.h"
 #include <string.h>
 
+#define NOTIFICATION_CLASS_REQUEST_UNSUPPORTED_MASK                                 (1 << 0)
+#define NOTIFICATION_CLASS_REQUEST_OPERATIONAL_CHANGE_MASK                          (1 << 1)
+#define NOTIFICATION_CLASS_REQUEST_POWER_MANAGEMENT_MASK                            (1 << 2)
+#define NOTIFICATION_CLASS_REQUEST_EXTERNAL_MASK                                    (1 << 3)
+#define NOTIFICATION_CLASS_REQUEST_MEDIA_MASK                                       (1 << 4)
+#define NOTIFICATION_CLASS_REQUEST_MULTI_HOST_MASK                                  (1 << 5)
+#define NOTIFICATION_CLASS_REQUEST_DEVICE_BUSY_MASK                                 (1 << 6)
+#define NOTIFICATION_CLASS_REQUEST_RFU_MASK                                         (1 << 7)
+
+#define NOTIFICATION_CLASS_REQUEST_UNSUPPORTED                                      0
+#define NOTIFICATION_CLASS_REQUEST_OPERATIONAL_CHANGE                               1
+#define NOTIFICATION_CLASS_REQUEST_POWER_MANAGEMENT                                 2
+#define NOTIFICATION_CLASS_REQUEST_EXTERNAL                                         3
+#define NOTIFICATION_CLASS_REQUEST_MEDIA                                            4
+#define NOTIFICATION_CLASS_REQUEST_MULTI_HOST                                       5
+#define NOTIFICATION_CLASS_REQUEST_DEVICE_BUSY                                      6
+#define NOTIFICATION_CLASS_REQUEST_RFU                                              7
+
+#define GET_EVENT_STATUS_NEA                                                        (1 << 7)
+
 static void scsis_mmc_lba_to_msf(uint32_t lba, uint8_t* m, uint8_t* s, uint8_t* f)
 {
     uint32_t lba_tmp, m_tmp, s_tmp;
@@ -162,6 +182,53 @@ void scsis_mmc_get_configuration(SCSIS* scsis, uint8_t* req)
         scsis->io->data_size = len;
     int2be(resp, scsis->io->data_size - 4);
 
+    scsis->state = SCSIS_STATE_COMPLETE;
+    scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
+}
+
+void scsis_mmc_get_event_status_notification(SCSIS* scsis, uint8_t* req)
+{
+    uint16_t len;
+    uint8_t* resp;
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI Get Event Status Notification: %s\n", (req[1] & (1 << 0)) ? "poll" : "async");
+#endif //SCSI_DEBUG_REQUESTS
+    if ((req[1] & (1 << 0)) == 0)
+    {
+        scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
+        return;
+    }
+    len = be2short(req + 7);
+
+    //prepare header - no failed requests should be reported
+    scsis->io->data_size = 4;
+    resp = io_data(scsis->io);
+    //event header supported classes mask
+    resp[3] = NOTIFICATION_CLASS_REQUEST_MEDIA_MASK;
+
+    if (((req[4] & NOTIFICATION_CLASS_REQUEST_MEDIA_MASK) == 0) ||
+        (req[4] & (NOTIFICATION_CLASS_REQUEST_UNSUPPORTED_MASK | NOTIFICATION_CLASS_REQUEST_OPERATIONAL_CHANGE_MASK |
+         NOTIFICATION_CLASS_REQUEST_POWER_MANAGEMENT_MASK | NOTIFICATION_CLASS_REQUEST_EXTERNAL_MASK)))
+        //NEA
+        resp[2] = 1 << 7;
+    else
+    {
+        resp[2] = NOTIFICATION_CLASS_REQUEST_MEDIA;
+        scsis->io->data_size += 4;
+        //event code
+        if (scsis->media_status_changed)
+            resp[4] = (scsis->media) ? 2 : 3;
+        else
+            resp[4] = 0;
+        //media present bit
+        resp[5] = (scsis->media) ? (1 << 1) : 0;
+        //start/stop slot only for changer
+        resp[6] = resp[7] = 0;
+    }
+
+    if (scsis->io->data_size > len)
+        scsis->io->data_size = len;
+    short2be(resp, scsis->io->data_size - 4);
     scsis->state = SCSIS_STATE_COMPLETE;
     scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
 }

@@ -24,6 +24,7 @@
 #define SCSI_SPC_CMD_MODE_SENSE6                                            0x1a
 #define SCSI_SPC_CMD_RECEIVE_DIAGNOSTIC_RESULTS                             0x1c
 #define SCSI_SPC_CMD_SEND_DIAGNOSTIC                                        0x1d
+#define SCSI_SPC_CMD_PREVENT_ALLOW_MEDIUM_REMOVAL                           0x1e
 #define SCSI_SPC_CMD_WRITE_BUFFER                                           0x3b
 #define SCSI_SPC_CMD_READ_BUFFER                                            0x3c
 #define SCSI_SPC_CMD_LOG_SELECT                                             0x4c
@@ -60,7 +61,6 @@
 #define SCSI_SBC_CMD_WRITE6                                                 0x0a
 #define SCSI_SBC_CMD_VERIFY6                                                0x13
 #define SCSI_SBC_CMD_START_STOP_UNIT                                        0x1b
-#define SCSI_SBC_CMD_PREVENT_ALLOW_MEDIUM_REMOVAL                           0x1e
 #define SCSI_SBC_CMD_READ_CAPACITY10                                        0x25
 #define SCSI_SBC_CMD_READ10                                                 0x28
 #define SCSI_SBC_CMD_WRITE10                                                0x2a
@@ -113,6 +113,7 @@
 #define SCSI_MMC_CMD_READ_FORMAT_CAPACITY                                   0x23
 #define SCSI_MMC_CMD_READ_TOC                                               0x43
 #define SCSI_MMC_CMD_GET_CONFIGURATION                                      0x46
+#define SCSI_MMC_CMD_GET_EVENT_STATUS_NOTIFICATION                          0x4a
 
 //------------------------------- SCSI SAT --------------------------------------------------
 #define SCSI_SAT_CMD_ATA_PASS_THROUGH16                                     0x85
@@ -264,6 +265,9 @@ typedef struct _SCSIS {
 #if (SCSI_LONG_LBA)
     unsigned int lba_hi;
 #endif //SCSI_LONG_LBA
+#if (SCSI_MMC)
+    bool media_status_changed;
+#endif //SCSI_MMC
     bool need_media;
 } SCSIS;
 
