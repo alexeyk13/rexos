@@ -258,7 +258,7 @@ void usbd_usb_ep_read(USBD* usbd, unsigned int ep_num, IO* io, unsigned int size
 
 static void usbd_usb_sync(USBD* usbd)
 {
-    ipc_post(usbd->usb, HAL_CMD(HAL_USB, IPC_SYNC), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), 0, 0);
+    ipc_post_inline(usbd->usb, HAL_CMD(HAL_USB, IPC_SYNC), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), 0, 0);
 }
 #endif //EXODRIVERS
 

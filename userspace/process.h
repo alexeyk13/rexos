@@ -25,6 +25,7 @@
     \{
  */
 
+#include "core/core.h"
 #include "systime.h"
 #include "rb.h"
 

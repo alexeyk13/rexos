@@ -10,6 +10,7 @@
 #include "../../userspace/ip.h"
 #include "../../userspace/endian.h"
 #include "../../userspace/icmp.h"
+#include "../../userspace/error.h"
 #include <string.h>
 
 #define ICMP_TYPE(buf)                                              ((buf)[0])

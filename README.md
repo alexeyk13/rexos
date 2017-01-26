@@ -90,6 +90,11 @@ ARM7 features:
 
 History
 =======
+0.5.1 
+- PIN hal abstraction
+- fix critical kipc_post error on exodrivers
+- USB sync method to avoid driver post overflow
+
 0.5.0
 - kernel-kernel IPC calls. Exodrivers support. Experimental feature
 - isr own error processing

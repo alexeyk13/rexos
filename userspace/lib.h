@@ -7,9 +7,6 @@
 #ifndef LIB_H
 #define LIB_H
 
-#include "svc.h"
-#include "error.h"
-
 typedef enum {
     LIB_ID_STD = 0,
     LIB_ID_STDIO,

@@ -8,6 +8,7 @@
 #include "tcpips_private.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/endian.h"
+#include "../../userspace/error.h"
 #include "macs.h"
 #include "ips.h"
 

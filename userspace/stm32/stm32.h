@@ -829,7 +829,6 @@
 #undef FLASH_BASE
 
 #include "stm32_config.h"
-#include "stm32_driver.h"
 #if defined(STM32F0)
 #include "stm32f0xx.h"
 #elif defined(STM32F1)
@@ -841,6 +840,7 @@
 #elif defined(STM32L0)
 #include "stm32l0xx.h"
 #endif
+
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)
 
 #ifdef USB_EP_BULK

@@ -10,6 +10,7 @@
 #include "../../userspace/stdio.h"
 #include "../../userspace/endian.h"
 #include "../../userspace/systime.h"
+#include "../../userspace/error.h"
 #include "icmps.h"
 #include <string.h>
 
