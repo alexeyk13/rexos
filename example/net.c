@@ -25,7 +25,6 @@ static const IP __HOST_IP =                 {{192, 168, 8, 1}};
 
 void net_init(APP* app)
 {
-    HANDLE core = object_get(SYS_OBJ_CORE);
     pin_enable(ETH_MDC, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
     pin_enable(ETH_MDIO, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
 

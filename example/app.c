@@ -9,6 +9,7 @@
 #include "../../rexos/userspace/process.h"
 #include "../../rexos/userspace/sys.h"
 #include "../../rexos/userspace/gpio.h"
+#include "../../rexos/userspace/stm32/stm32.h"
 #include "../../rexos/userspace/stm32/stm32_driver.h"
 #include "../../rexos/userspace/ipc.h"
 #include "../../rexos/userspace/systime.h"
