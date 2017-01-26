@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -29,8 +29,6 @@ bool usbd_unregister_interface(USBD* usbd, unsigned int iface, const USBD_CLASS*
 bool usbd_register_endpoint(USBD* usbd, unsigned int iface, unsigned int ep_num);
 bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int ep_num);
 
-HANDLE usbd_user(USBD* usbd);
-HANDLE usbd_usb(USBD* usbd);
 //post IPC to user, if configured
 void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned int cmd, unsigned int param2, unsigned int param3);
 void usbd_io_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned int cmd, IO* io, unsigned int param3);

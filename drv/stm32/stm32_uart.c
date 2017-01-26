@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -256,7 +256,7 @@ static inline void stm32_uart_set_baudrate(CORE* core, UART_PORT port, IPC* ipc)
     unsigned int clock, stop;
     if (core->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     uart_decode_baudrate(ipc, &baudrate);
@@ -497,7 +497,7 @@ static inline void stm32_uart_close(CORE* core, UART_PORT port)
 {
     if (core->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     //disable interrupts
@@ -527,7 +527,7 @@ static inline void stm32_uart_flush(CORE* core, UART_PORT port)
 {
     if (core->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     stm32_uart_flush_internal(core, port);
@@ -537,7 +537,7 @@ static inline HANDLE stm32_uart_get_tx_stream(CORE* core, UART_PORT port)
 {
     if (core->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return INVALID_HANDLE;
     }
     return core->uart.uarts[port]->s.tx_stream;
@@ -547,7 +547,7 @@ static inline HANDLE stm32_uart_get_rx_stream(CORE* core, UART_PORT port)
 {
     if (core->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return INVALID_HANDLE;
     }
     return core->uart.uarts[port]->s.rx_stream;
@@ -557,7 +557,7 @@ static inline uint16_t stm32_uart_get_last_error(CORE* core, UART_PORT port)
 {
     if (core->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return ERROR_OK;
     }
     return core->uart.uarts[port]->error;
@@ -567,7 +567,7 @@ static inline void stm32_uart_clear_error(CORE* core, UART_PORT port)
 {
     if (core->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     core->uart.uarts[port]->error = ERROR_OK;

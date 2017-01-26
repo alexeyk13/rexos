@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -67,9 +67,7 @@ typedef enum {
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 
 typedef enum {
-    STM32_GPIO_ENABLE_PIN = IPC_USER,
-    STM32_GPIO_DISABLE_PIN,
-    STM32_GPIO_ENABLE_EXTI,
+    STM32_GPIO_ENABLE_EXTI = IPC_USER,
     STM32_GPIO_DISABLE_EXTI
 } STM32_GPIO_IPCS;
 

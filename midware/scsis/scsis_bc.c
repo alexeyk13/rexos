@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -80,6 +80,16 @@ void scsis_bc_read_capacity16(SCSIS* scsis, uint8_t* req)
     scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
 }
 #endif //SCSI_LONG_LBA
+
+void scsis_bc_start_stop_unit(SCSIS* scsis, uint8_t* req)
+{
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI start/stop unit\n");
+#endif //SCSI_DEBUG_REQUESTS
+    if (req[4] & (1 << 1))
+        storage_request_eject(scsis->storage_descriptor->hal, scsis->storage_descriptor->storage, scsis->storage_descriptor->user);
+    scsis_pass(scsis);
+}
 
 static void scsis_io(SCSIS* scsis)
 {

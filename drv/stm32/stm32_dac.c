@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -122,13 +122,13 @@ static inline void stm32_dac_open(CORE* core, int num, DAC_MODE mode, unsigned i
 
     //enable pin
 #ifdef STM32F1
-    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), DAC_PINS[num], STM32_GPIO_MODE_INPUT_ANALOG, false);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), DAC_PINS[num], STM32_GPIO_MODE_INPUT_ANALOG, false);
 #if (DAC_DUAL_CHANNEL)
-    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), DAC_PINS[1], STM32_GPIO_MODE_INPUT_ANALOG, false);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), DAC_PINS[1], STM32_GPIO_MODE_INPUT_ANALOG, false);
 #endif //DAC_DUAL_CHANNEL
 #endif //STM32F1
 #ifdef STM32L0
-    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), DAC_PINS[num], STM32_GPIO_MODE_ANALOG, AF0);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), DAC_PINS[num], STM32_GPIO_MODE_ANALOG, AF0);
 #endif //STM32L0
 
     DAC->CR = 0;
@@ -252,9 +252,9 @@ void stm32_dac_close(CORE* core, int num)
 #endif //(DAC_MANY)
 
     //disable pin
-    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), DAC_PINS[num], 0, 0);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_CLOSE), DAC_PINS[num], 0, 0);
 #if (DAC_DUAL_CHANNEL)
-    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), DAC_PINS[1], 0, 0);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_CLOSE), DAC_PINS[1], 0, 0);
 #endif //DAC_DUAL_CHANNEL
 }
 

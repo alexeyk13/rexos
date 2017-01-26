@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -21,6 +21,16 @@ void* realloc(void* ptr, size_t size)
 void free(void* ptr)
 {
     ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_free(&__PROCESS->pool, ptr);
+}
+
+unsigned long atou(const char *const buf, int size)
+{
+    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->atou(buf, size);
+}
+
+int utoa(char* buf, unsigned long value, int radix, bool uppercase)
+{
+    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->utoa(buf, value, radix, uppercase);
 }
 
 unsigned int srand()

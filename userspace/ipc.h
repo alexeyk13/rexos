@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -24,6 +24,7 @@ typedef enum {
     IPC_CLOSE,
     IPC_GET_RX_STREAM,
     IPC_GET_TX_STREAM,
+    IPC_SYNC,
     IPC_USER = 0x100
 } IPCS;
 

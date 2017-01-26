@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -259,4 +259,13 @@ void scsis_pc_request_sense(SCSIS* scsis, uint8_t* req)
 
     scsis->state = SCSIS_STATE_COMPLETE;
     scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
+}
+
+void scsis_pc_prevent_allow_medium_removal(SCSIS* scsis, uint8_t* req)
+{
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI prevent/allow medium removal\n");
+#endif //SCSI_DEBUG_REQUESTS
+    //generally for compatibility only
+    scsis_pass(scsis);
 }

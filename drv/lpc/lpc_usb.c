@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -34,8 +34,6 @@ typedef enum {
     LPC_USB_ERROR = USB_HAL_MAX,
     LPC_USB_OVERFLOW
 }LPC_USB_IPCS;
-
-#define ack_pin                 lpc_pin_request_inside
 
 #define USB_EP_INT_BIT(num)                         (1 << (((num) & USB_EP_IN) ? ((USB_EP_NUM(num) << 1) + 1) : (USB_EP_NUM(num) << 1)))
 #define USB_EP_LISTSTS(num, buf)                    ((uint32_t*)(((num) & USB_EP_IN) ? (USB_RAM_BASE + (((USB_EP_NUM(num) << 2) + 2 + (buf)) << 2)) : \
@@ -298,9 +296,9 @@ void lpc_usb_open_device(CORE* core, HANDLE device)
     int i;
     core->usb.device = device;
 
-    ack_pin(core, HAL_REQ(HAL_PIN, LPC_PIN_ENABLE), VBUS, PIO0_3_VBUS, 0);
+    lpc_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), VBUS, PIO0_3_VBUS, 0);
 #if (USB_SOFT_CONNECT)
-    ack_pin(core, HAL_REQ(HAL_PIN, LPC_PIN_ENABLE), SCONNECT, PIO0_6_USB_CONNECT, 0);
+    lpc_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), SCONNECT, PIO0_6_USB_CONNECT, 0);
 #endif
 
     //enable clock, power up
@@ -447,9 +445,9 @@ static inline void lpc_usb_close_device(CORE* core)
 #endif
 
     //disable pins
-    ack_pin(core, HAL_REQ(HAL_PIN, LPC_PIN_DISABLE), VBUS, 0, 0);
+    lpc_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_CLOSE), VBUS, 0, 0);
 #if (USB_SOFT_CONNECT)
-    ack_pin(core, HAL_REQ(HAL_PIN, LPC_PIN_DISABLE), SCONNECT, 0, 0);
+    lpc_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_CLOSE), SCONNECT, 0, 0);
 #endif
 }
 

@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -56,10 +56,10 @@ void lpc_pin_request(IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {
-    case LPC_PIN_ENABLE:
+    case IPC_OPEN:
         lpc_pin_enable(ipc->param1, ipc->param2);
         break;
-    case LPC_PIN_DISABLE:
+    case IPC_CLOSE:
         lpc_pin_disable(ipc->param1);
         break;
     default:

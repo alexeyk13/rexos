@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -152,10 +152,10 @@ void stm32_pin_request(CORE* core, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {
-    case STM32_GPIO_DISABLE_PIN:
+    case IPC_CLOSE:
         stm32_gpio_disable_pin(&core->gpio, (PIN)ipc->param1);
         break;
-    case STM32_GPIO_ENABLE_PIN:
+    case IPC_OPEN:
 #if defined(STM32F1)
         stm32_gpio_enable_pin(&core->gpio, (PIN)ipc->param1, (STM32_GPIO_MODE)ipc->param2, ipc->param3);
 #else

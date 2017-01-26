@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -8,6 +8,7 @@
 #include "../object.h"
 #include "../gpio.h"
 #include "sys_config.h"
+#include "../pin.h"
 
 #if defined(LPC11Uxx)
 #define PIN_RAW(gpio)                   (gpio)
@@ -115,7 +116,7 @@ void gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
     }
 #endif //LPC11Uxx
 
-    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, LPC_PIN_ENABLE), PIN_RAW(pin), param, 0);
+    pin_enable(PIN_RAW(pin), param, 0);
     if (mode == GPIO_MODE_OUT)
         LPC_GPIO->DIR[GPIO_PORT(pin)] |= 1 << GPIO_PIN(pin);
     else
@@ -137,7 +138,7 @@ void gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int mask)
 void gpio_disable_pin(unsigned int pin)
 {
     LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
-    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, LPC_PIN_DISABLE), PIN_RAW(pin), 0, 0);
+    disable_pin(PIN_RAW(pin));
 }
 
 void gpio_disable_mask(unsigned int port, unsigned int mask)

@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -66,10 +66,7 @@ void free(void* ptr);
     \param size: size of buf in bytes
     \retval integer result. 0 on error
 */
-__STATIC_INLINE unsigned long atou(const char *const buf, int size)
-{
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->atou(buf, size);
-}
+unsigned long atou(const char *const buf, int size);
 
 /**
     \brief unsigned int to string. Used internally in printf
@@ -79,10 +76,7 @@ __STATIC_INLINE unsigned long atou(const char *const buf, int size)
     \param uppercase: upper/lower case of result for radix 16
     \retval size of resulting string. 0 on error
 */
-__STATIC_INLINE int utoa(char* buf, unsigned long value, int radix, bool uppercase)
-{
-    return ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->utoa(buf, value, radix, uppercase);
-}
+int utoa(char* buf, unsigned long value, int radix, bool uppercase);
 
 /**
     \brief initialize random seed

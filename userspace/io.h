@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -157,6 +157,15 @@ IO* io_create(unsigned int size);
 #define io_write(process, cmd, handle, io)                              ipc_post_inline((process), (cmd), (handle), (unsigned int)(io), (io)->data_size)
 
 /**
+    \brief send IO write request to exodrivers
+    \param cmd: command to send
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \retval none.
+*/
+#define io_write_exo(cmd, handle, io)                                   ipc_post_exo((cmd), (handle), (unsigned int)(io), (io)->data_size)
+
+/**
     \brief send IO read request to another process
     \param process: receiver process
     \param cmd: command to send
@@ -166,6 +175,17 @@ IO* io_create(unsigned int size);
     \retval none.
 */
 #define io_read(process, cmd, handle, io, size)                         ipc_post_inline((process), (cmd), (handle), (unsigned int)(io), (size))
+
+/**
+    \brief send IO read request to exodrivers
+    \param process: receiver process
+    \param cmd: command to send
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \param size: IO data size
+    \retval none.
+*/
+#define io_read_exo(cmd, handle, io, size)                              ipc_post_exo((cmd), (handle), (unsigned int)(io), (size))
 
 /**
     \brief send IO complete to another process
@@ -196,6 +216,14 @@ IO* io_create(unsigned int size);
     \retval IO size or error.
 */
 int io_async_wait(HANDLE process, unsigned int cmd, unsigned int handle);
+
+/**
+    \brief wait for async IO completion from exodrivers
+    \param cmd: command for wait
+    \param handle: user handle
+    \retval IO size or error.
+*/
+#define io_async_wait_exo(cmd, handle)                                  io_async_wait(KERNEL_HANDLE, (cmd), (handle))
 
 /**
     \brief send IO complete to another process. isr version
@@ -229,6 +257,15 @@ int io_async_wait(HANDLE process, unsigned int cmd, unsigned int handle);
 #define io_write_sync(process, cmd, handle, io)                         get_size((process), (cmd), (handle), (unsigned int)(io), (io)->data_size)
 
 /**
+    \brief send IO write request to exodrivers. Wait for response
+    \param cmd: command to send
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \retval write result.
+*/
+#define io_write_sync_exo(cmd, handle, io)                              get_size_exo((cmd), (handle), (unsigned int)(io), (io)->data_size)
+
+/**
     \brief send IO read request to another process. Wait for response
     \param process: receiver process
     \param cmd: command to send
@@ -238,6 +275,16 @@ int io_async_wait(HANDLE process, unsigned int cmd, unsigned int handle);
     \retval read result.
 */
 #define io_read_sync(process, cmd, handle, io, size)                    get_size((process), (cmd), (handle), (unsigned int)(io), (size))
+
+/**
+    \brief send IO read request to exodrivers. Wait for response
+    \param cmd: command to send
+    \param handle: user handle
+    \param io: pointer to IO structure
+    \param size: IO data size
+    \retval read result.
+*/
+#define io_read_sync_exo(cmd, handle, io, size)                         get_size_exo((cmd), (handle), (unsigned int)(io), (size))
 
 /**
     \brief destroy IO

@@ -1,10 +1,11 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
 #include "../gpio.h"
+#include "../pin.h"
 #include "stm32_driver.h"
 
 void gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
@@ -13,32 +14,32 @@ void gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
     switch (mode)
     {
     case GPIO_MODE_OUT:
-        ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_OUTPUT_PUSH_PULL_50MHZ, false);
+        pin_enable(pin, STM32_GPIO_MODE_OUTPUT_PUSH_PULL_50MHZ, false);
         break;
     case GPIO_MODE_IN_FLOAT:
-        ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT_FLOAT, false);
+        pin_enable(pin, STM32_GPIO_MODE_INPUT_FLOAT, false);
         break;
     case GPIO_MODE_IN_PULLUP:
-        ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT_PULL, true);
+        pin_enable(pin, STM32_GPIO_MODE_INPUT_PULL, true);
         break;
     case GPIO_MODE_IN_PULLDOWN:
-        ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT_PULL, false);
+        pin_enable(pin, STM32_GPIO_MODE_INPUT_PULL, false);
         break;
     }
 #else
     switch (mode)
     {
     case GPIO_MODE_OUT:
-        ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_OUTPUT | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH | GPIO_PUPD_NO_PULLUP, AF0);
+        pin_enable(pin, STM32_GPIO_MODE_OUTPUT | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH | GPIO_PUPD_NO_PULLUP, AF0);
         break;
     case GPIO_MODE_IN_FLOAT:
-        ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_NO_PULLUP, AF0);
+        pin_enable(pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_NO_PULLUP, AF0);
         break;
     case GPIO_MODE_IN_PULLUP:
-        ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_PULLUP, AF0);
+        pin_enable(pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_PULLUP, AF0);
         break;
     case GPIO_MODE_IN_PULLDOWN:
-        ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_PULLDOWN, AF0);
+        pin_enable(pin, STM32_GPIO_MODE_INPUT | GPIO_SPEED_HIGH | GPIO_PUPD_PULLDOWN, AF0);
         break;
     }
 #endif
@@ -58,7 +59,7 @@ void gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int mask)
 
 void gpio_disable_pin(unsigned int pin)
 {
-    ack(object_get(SYS_OBJ_CORE), HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), pin, 0, 0);
+    pin_disable(pin);
 }
 
 void gpio_disable_mask(unsigned int port, unsigned int mask)

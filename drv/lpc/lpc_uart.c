@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -231,7 +231,7 @@ static inline void lpc_uart_set_baudrate(CORE* drv, UART_PORT port, IPC* ipc)
     BAUD baudrate;
     if (drv->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     uart_decode_baudrate(ipc, &baudrate);
@@ -421,7 +421,7 @@ static void lpc_uart_flush(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
 #ifdef LPC11U6x
@@ -478,7 +478,7 @@ static inline void lpc_uart_close(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     //disable interrupts
@@ -525,7 +525,7 @@ static inline HANDLE lpc_uart_get_tx_stream(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return INVALID_HANDLE;
     }
 #if (UART_IO_MODE_SUPPORT)
@@ -542,7 +542,7 @@ static inline HANDLE lpc_uart_get_rx_stream(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return INVALID_HANDLE;
     }
 #if (UART_IO_MODE_SUPPORT)
@@ -559,7 +559,7 @@ static inline uint16_t lpc_uart_get_last_error(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return ERROR_OK;
     }
     return drv->uart.uarts[port]->error;
@@ -569,7 +569,7 @@ static inline void lpc_uart_clear_error(CORE* drv, UART_PORT port)
 {
     if (drv->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_ACTIVE);
+        error(ERROR_NOT_CONFIGURED);
         return;
     }
     drv->uart.uarts[port]->error = ERROR_OK;

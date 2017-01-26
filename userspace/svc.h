@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -63,9 +63,6 @@ typedef enum {
     SVC_STREAM_READ_NO_BLOCK,
     SVC_STREAM_FLUSH,
     SVC_STREAM_DESTROY,
-
-    SVC_DIRECT_READ,
-    SVC_DIRECT_WRITE,
 
     SVC_BLOCK_CREATE,
     SVC_BLOCK_OPEN,

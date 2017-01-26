@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -110,4 +110,9 @@ bool storage_write_verify_sync(HAL hal, HANDLE process, HANDLE user, IO* io, uns
 void storage_request_activity_notify(HAL hal, HANDLE process, HANDLE user)
 {
     ipc_post_inline(process, HAL_REQ(hal, STORAGE_NOTIFY_ACTIVITY), user, 0, 0);
+}
+
+void storage_request_eject(HAL hal, HANDLE process, HANDLE user)
+{
+    ipc_post_inline(process, HAL_CMD(hal, STORAGE_REQUEST_EJECT), user, 0, 0);
 }

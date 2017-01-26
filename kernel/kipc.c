@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -64,17 +64,17 @@ void kipc_post(HANDLE sender, IPC* ipc)
     int index;
     IPC* cur;
     index = -1;
-    receiver = (KPROCESS*)ipc->process;
     error(ERROR_OK);
 #ifdef EXODRIVERS
     int err;
-    if ((HANDLE)receiver == KERNEL_HANDLE)
+    if (ipc->process == KERNEL_HANDLE)
     {
         if (ipc->cmd & HAL_IO_FLAG)
         {
-            if (!kio_send(sender, (IO*)ipc->param2, (HANDLE)receiver))
+            if (!kio_send(sender, (IO*)ipc->param2, KERNEL_HANDLE))
                 return;
         }
+        ipc->process = sender;
         exodriver_post(ipc);
         err = get_last_error();
         if ((ipc->cmd & HAL_REQ_FLAG) && (err != ERROR_SYNC))
@@ -100,10 +100,12 @@ void kipc_post(HANDLE sender, IPC* ipc)
                 kipc_debug_overflow(ipc, sender);
 #endif //KERNEL_IPC_DEBUG
         }
+        ipc->process = KERNEL_HANDLE;
         return;
     }
 #endif //EXODRIVERS
 
+    receiver = (KPROCESS*)ipc->process;
     CHECK_MAGIC(receiver, MAGIC_PROCESS);
     if (ipc->cmd & HAL_IO_FLAG)
     {
@@ -169,7 +171,5 @@ void kipc_wait(HANDLE process, HANDLE wait_process, unsigned int cmd, unsigned i
 void kipc_call(HANDLE process, IPC* ipc)
 {
     kipc_post(process, ipc);
-    if (get_last_error() != ERROR_OK)
-        return;
     kipc_wait(process, ipc->process, ipc->cmd & ~HAL_REQ_FLAG, ipc->param1);
 }

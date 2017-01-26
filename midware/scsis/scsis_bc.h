@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -19,6 +19,7 @@ void scsis_bc_storage_io_complete(SCSIS* scsis, int resp_size);
 
 void scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read_capacity16(SCSIS* scsis, uint8_t* req);
+void scsis_bc_start_stop_unit(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read6(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read10(SCSIS* scsis, uint8_t* req);
 void scsis_bc_read12(SCSIS* scsis, uint8_t* req);

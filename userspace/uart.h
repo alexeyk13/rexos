@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -32,9 +32,10 @@ typedef enum {
 
 #define UART_RX_STREAM                          (1 << 0)
 #define UART_TX_STREAM                          (1 << 1)
-#define UART_MODE                               (1 << 2)
+#define UART_MODE                               (3 << 2)
 #define UART_MODE_STREAM                        (0 << 2)
 #define UART_MODE_IO                            (1 << 2)
+#define UART_MODE_ISO7816                       (2 << 2)
 
 //used internally by driver
 void uart_encode_baudrate(BAUD* baudrate, IPC* ipc);

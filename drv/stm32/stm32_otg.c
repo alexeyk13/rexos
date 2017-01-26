@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -29,7 +29,6 @@ typedef enum {
 }STM32_USB_IPCS;
 
 #define GET_CORE_CLOCK          stm32_power_get_clock_inside(core, POWER_CORE_CLOCK)
-#define ack_pin                 stm32_pin_request_inside
 
 static inline OTG_FS_DEVICE_ENDPOINT_TypeDef* ep_reg_data(int num)
 {
@@ -243,8 +242,8 @@ void stm32_otg_open_device(CORE* core, HANDLE device)
     core->usb.device = device;
 
     //enable GPIO
-    ack_pin(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), A9, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack_pin(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), A10, STM32_GPIO_MODE_INPUT_PULL, true);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), A9, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), A10, STM32_GPIO_MODE_INPUT_PULL, true);
 
     //enable clock, setup prescaller
     switch (GET_CORE_CLOCK)
@@ -434,8 +433,8 @@ static inline void stm32_otg_close_device(CORE* core)
 #endif
 
     //disable pins
-    ack_pin(core, HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), A9, 0, 0);
-    ack_pin(core, HAL_REQ(HAL_PIN, STM32_GPIO_DISABLE_PIN), A10, 0, 0);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_CLOSE), A9, 0, 0);
+    stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_CLOSE), A10, 0, 0);
 }
 
 static inline void stm32_otg_set_address(int addr)

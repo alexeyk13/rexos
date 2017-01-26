@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -11,8 +11,6 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/systime.h"
-
-#define ack_pin                                     lpc_pin_request_inside
 
 #if defined(LPC11U6x)
 static const uint8_t __I2C_VECTORS[] =              {15, 10};

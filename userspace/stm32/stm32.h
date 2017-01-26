@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -829,6 +829,7 @@
 #undef FLASH_BASE
 
 #include "stm32_config.h"
+#include "stm32_driver.h"
 #if defined(STM32F0)
 #include "stm32f0xx.h"
 #elif defined(STM32F1)

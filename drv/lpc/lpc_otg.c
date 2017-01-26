@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -15,8 +15,6 @@
 //each is 16KB, 96KB limited by LPC18xx RAM size.
 #define USB_DTD_COUNT           6
 #define USB_DTD_CHUNK           0x4000
-
-#define ack_pin                 lpc_pin_request_inside
 
 typedef LPC_USB0_Type* LPC_USB_Type_P;
 #if defined(LPC183x) || defined(LPC185x)
@@ -457,7 +455,7 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, CORE* core, HANDLE de
         LPC_SCU->SFSUSB |= SCU_SFSUSB_EPWR_Msk;
 
         //enable VBUS monitoring
-        ack_pin(core, HAL_REQ(HAL_PIN, LPC_PIN_ENABLE), P2_5, P2_5_USB1_VBUS | SCU_SFS_EPUN | SCU_SFS_EZI | SCU_SFS_ZIF, 0);
+        lpc_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), P2_5, P2_5_USB1_VBUS | SCU_SFS_EPUN | SCU_SFS_EZI | SCU_SFS_ZIF, 0);
 #endif //USB1_ULPI
     }
     else
@@ -550,7 +548,7 @@ static inline void lpc_otg_close_device(USB_PORT_TYPE port, CORE* core)
 #if !(USB1_ULPI)
     if (port == USB_1)
     {
-        ack_pin(core, HAL_REQ(HAL_PIN, LPC_PIN_DISABLE), P2_5, 0, 0);
+        lpc_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_CLOSE), P2_5, 0, 0);
         LPC_SCU->SFSUSB &= ~SCU_SFSUSB_EPWR_Msk;
 
         LPC_CGU->BASE_USB1_CLK = CGU_BASE_USB1_CLK_PD_Msk;

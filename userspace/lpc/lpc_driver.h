@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -16,11 +16,6 @@ extern const REX __LPC_CORE;
 extern const REX __LPC_ETH;
 
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
-typedef enum {
-    LPC_PIN_ENABLE = IPC_USER,
-    LPC_PIN_DISABLE,
-} LPC_PIN_IPCS;
-
 typedef enum {
     PIO0_0 = 0, PIO0_1,  PIO0_2,  PIO0_3,  PIO0_4,  PIO0_5,  PIO0_6,  PIO0_7,
     PIO0_8,     PIO0_9,  PIO0_10, PIO0_11, PIO0_12, PIO0_13, PIO0_14, PIO0_15,

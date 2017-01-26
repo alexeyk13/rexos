@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -21,6 +21,7 @@ typedef struct {
 
 #define I2C_MODE_MASTER                  (1 << 0)
 #define I2C_MODE_SLAVE                   (0 << 0)
+#define I2C_MODE                         (1 << 0)
 
 //set address during transfer
 #define I2C_FLAG_ADDR                    (1 << 0)

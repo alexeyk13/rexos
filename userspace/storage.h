@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -22,6 +22,7 @@ typedef enum {
     STORAGE_NOTIFY_STATE_CHANGE,
     STORAGE_CANCEL_NOTIFY_STATE_CHANGE,
     STORAGE_NOTIFY_ACTIVITY,
+    STORAGE_REQUEST_EJECT,
     STORAGE_IPC_MAX
 } STORAGE_IPCS;
 
@@ -55,5 +56,6 @@ bool storage_verify_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned 
 void storage_write_verify(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector);
 bool storage_write_verify_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sector);
 void storage_request_activity_notify(HAL hal, HANDLE process, HANDLE user);
+void storage_request_eject(HAL hal, HANDLE process, HANDLE user);
 
 #endif // STORAGE_H

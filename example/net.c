@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2016, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -14,6 +14,7 @@
 #include "../../rexos/userspace/tcpip.h"
 #include "../../rexos/userspace/stm32/stm32_driver.h"
 #include "../../rexos/userspace/stdio.h"
+#include "../../rexos/userspace/pin.h"
 #include <string.h>
 
 static const MAC __MAC =                    {{0x20, 0xD9, 0x97, 0xA1, 0x90, 0x42}};
@@ -25,26 +26,26 @@ static const IP __HOST_IP =                 {{192, 168, 8, 1}};
 void net_init(APP* app)
 {
     HANDLE core = object_get(SYS_OBJ_CORE);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_MDC, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_MDIO, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    pin_enable(ETH_MDC, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    pin_enable(ETH_MDIO, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
 
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_TX_CLK, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_TX_EN, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_TX_D0, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_TX_D1, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_TX_D2, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_TX_D3, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    pin_enable(ETH_TX_CLK, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    pin_enable(ETH_TX_EN, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    pin_enable(ETH_TX_D0, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    pin_enable(ETH_TX_D1, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    pin_enable(ETH_TX_D2, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
+    pin_enable(ETH_TX_D3, STM32_GPIO_MODE_OUTPUT_AF_PUSH_PULL_50MHZ, false);
 
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_RX_CLK, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_RX_DV, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_RX_ER, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_RX_D0, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_RX_D1, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_RX_D2, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_RX_D3, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    pin_enable(ETH_RX_CLK, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    pin_enable(ETH_RX_DV, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    pin_enable(ETH_RX_ER, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    pin_enable(ETH_RX_D0, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    pin_enable(ETH_RX_D1, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    pin_enable(ETH_RX_D2, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    pin_enable(ETH_RX_D3, STM32_GPIO_MODE_INPUT_FLOAT, false);
 
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_COL, STM32_GPIO_MODE_INPUT_FLOAT, false);
-    ack(core, HAL_REQ(HAL_PIN, STM32_GPIO_ENABLE_PIN), ETH_CRS_WKUP, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    pin_enable(ETH_COL, STM32_GPIO_MODE_INPUT_FLOAT, false);
+    pin_enable(ETH_CRS_WKUP, STM32_GPIO_MODE_INPUT_FLOAT, false);
 
     process_create(&__STM32_ETH);
     eth_set_mac(object_get(SYS_OBJ_ETH), 0, &__MAC);
