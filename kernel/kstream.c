@@ -194,6 +194,7 @@ unsigned int kstream_write_no_block_internal(STREAM_HANDLE *handle, char* buf, u
 {
     register STREAM_HANDLE* reader;
     unsigned int to_write = size_max;
+    disable_interrupts();
     //write directly to output
     while (to_write && (reader = handle->stream->read_waiters) != NULL)
     {
@@ -203,10 +204,8 @@ unsigned int kstream_write_no_block_internal(STREAM_HANDLE *handle, char* buf, u
             memcpy(reader->buf, buf, reader->size);
             to_write -= reader->size;
             buf += reader->size;
-            disable_interrupts();
             dlist_remove_head((DLIST**)&handle->stream->read_waiters);
             kprocess_wakeup(reader->process);
-            enable_interrupts();
             reader->mode = STREAM_MODE_IDLE;
         }
         else
@@ -220,7 +219,6 @@ unsigned int kstream_write_no_block_internal(STREAM_HANDLE *handle, char* buf, u
         }
     }
     //write rest to stream
-    disable_interrupts();
     for(; to_write && !rb_is_full(&handle->stream->rb); --to_write)
         handle->stream->data[rb_put(&handle->stream->rb)] = *buf++;
     enable_interrupts();
@@ -246,10 +244,10 @@ void kstream_write(HANDLE process, HANDLE h, char* buf, unsigned int size)
     {
         handle->buf = buf + (size - handle->size);
         handle->mode = STREAM_MODE_WRITE;
+        kprocess_sleep(process, NULL, PROCESS_SYNC_STREAM, h);
         disable_interrupts();
         dlist_add_tail((DLIST**)&handle->stream->write_waiters, (DLIST*)handle);
         enable_interrupts();
-        kprocess_sleep(process, NULL, PROCESS_SYNC_STREAM, h);
     }
     kstream_check_inform(handle->stream);
 }
@@ -264,7 +262,6 @@ unsigned int kstream_read_no_block(HANDLE h, char* buf, unsigned int size_max)
     disable_interrupts();
     for(to_read = size_max; to_read && !rb_is_empty(&handle->stream->rb); --to_read)
         *buf++ = handle->stream->data[rb_get(&handle->stream->rb)];
-    enable_interrupts();
     //read directly from input
     while (to_read && (writer = handle->stream->write_waiters) != NULL)
     {
@@ -275,10 +272,8 @@ unsigned int kstream_read_no_block(HANDLE h, char* buf, unsigned int size_max)
             to_read -= writer->size;
             buf += writer->size;
             //wakeup writer
-            disable_interrupts();
             dlist_remove_head((DLIST**)&handle->stream->write_waiters);
             kprocess_wakeup(writer->process);
-            enable_interrupts();
             writer->mode = STREAM_MODE_IDLE;
         }
         else
@@ -294,26 +289,21 @@ unsigned int kstream_read_no_block(HANDLE h, char* buf, unsigned int size_max)
     //push data to stream internally after read
     if (to_read < size_max)
     {
-        disable_interrupts();
         to_push = rb_free(&handle->stream->rb);
-        enable_interrupts();
         while ((writer = handle->stream->write_waiters) != NULL && to_push)
         {
-            disable_interrupts();
             for(; to_push && writer->size; --writer->size, --to_push)
                 handle->stream->data[rb_put(&handle->stream->rb)] = *writer->buf++;
-            enable_interrupts();
             //writed all from waiter? Wake him up.
             if (!writer->size)
             {
-                disable_interrupts();
                 dlist_remove_head((DLIST**)&handle->stream->write_waiters);
                 kprocess_wakeup(writer->process);
-                enable_interrupts();
                 writer->mode = STREAM_MODE_IDLE;
             }
         }
     }
+    enable_interrupts();
     return size_max - to_read;
 }
 
@@ -325,11 +315,11 @@ void kstream_read(HANDLE process, HANDLE h, char* buf, unsigned int size)
     if (handle->size)
     {
         handle->buf = buf + (size - handle->size);
+        handle->mode = STREAM_MODE_READ;
         kprocess_sleep(process, NULL, PROCESS_SYNC_STREAM, h);
         disable_interrupts();
         dlist_add_tail((DLIST**)&handle->stream->read_waiters, (DLIST*)handle);
         enable_interrupts();
-        handle->mode = STREAM_MODE_READ;
     }
 }
 
