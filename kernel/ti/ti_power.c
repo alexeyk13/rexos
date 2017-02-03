@@ -28,27 +28,52 @@ unsigned int ti_power_get_clock(POWER_CLOCK_TYPE clock_type)
     }
 }
 
+void ti_power_domain_on(EXO* exo, POWER_DOMAIN domain)
+{
+    if (exo->power.power_domain_used[domain]++ == 0)
+    {
+        switch (domain)
+        {
+        case POWER_DOMAIN_PERIPH:
+            PRCM->PDCTL0PERIPH = PRCM_PDCTL0PERIPH_ON;
+            while ((PRCM->PDSTAT0PERIPH & PRCM_PDSTAT0PERIPH_ON) == 0) {}
+            break;
+        case POWER_DOMAIN_SERIAL:
+            PRCM->PDCTL0SERIAL = PRCM_PDCTL0SERIAL_ON;
+            while ((PRCM->PDSTAT0SERIAL & PRCM_PDSTAT0SERIAL_ON) == 0) {}
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void ti_power_domain_off(EXO* exo, POWER_DOMAIN domain)
+{
+    if (--exo->power.power_domain_used[domain] == 0)
+    {
+        switch (domain)
+        {
+        case POWER_DOMAIN_PERIPH:
+            PRCM->PDCTL0PERIPH = 0;
+            while (PRCM->PDSTAT0PERIPH & PRCM_PDSTAT0PERIPH_ON) {}
+            break;
+        case POWER_DOMAIN_SERIAL:
+            PRCM->PDCTL0SERIAL = 0;
+            while (PRCM->PDSTAT0SERIAL & PRCM_PDSTAT0SERIAL_ON) {}
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 void ti_power_init(EXO* exo)
 {
     //switch to DC/DC
     AON_SYSCTL->PWRCTL |= AON_SYSCTL_PWRCTL_DCDC_ACTIVE | AON_SYSCTL_PWRCTL_DCDC_EN;
 
-    //TODO: depending on request
-    //turn on PERIPH power domain
-    PRCM->PDCTL0PERIPH = PRCM_PDCTL0PERIPH_ON;
-    while ((PRCM->PDSTAT0PERIPH & PRCM_PDSTAT0PERIPH_ON) == 0) {}
-
-    //TODO: move to pin
-    //gate clock for GPIO
-    PRCM->GPIOCLKGR = PRCM_GPIOCLKGR_CLK_EN;
-    PRCM->CLKLOADCTL = PRCM_CLKLOADCTL_LOAD;
-    while ((PRCM->CLKLOADCTL & PRCM_CLKLOADCTL_LOAD_DONE) == 0) {}
-
-#if (TI_UART)
-    //turn on SERIAL power domain
-    PRCM->PDCTL0SERIAL = PRCM_PDCTL0SERIAL_ON;
-    while ((PRCM->PDSTAT0SERIAL & PRCM_PDSTAT0SERIAL_ON) == 0) {}
-#endif //TI_UART
+    exo->power.power_domain_used[POWER_DOMAIN_PERIPH] = exo->power.power_domain_used[POWER_DOMAIN_SERIAL] = 0;
 }
 
 void ti_power_request(EXO* exo, IPC* ipc)

@@ -12,60 +12,56 @@
 #include "../kstream.h"
 #include "../kernel.h"
 #include "../../userspace/uart.h"
+#include "../../userspace/stream.h"
 #include "../../userspace/ti/ti.h"
 
-//TODO:
-/*
+#define FIFO_MAX_DEPTH                                                          32
+
 void ti_uart_on_isr(int vector, void* param)
 {
-    UART_PORT port = (vector - UART0_RX_TX_IRQn) >> 1;
     EXO* exo = param;
-    UART_STREAM* us;
     char rx_buf[FIFO_MAX_DEPTH];
     unsigned int rx_size;
 
-    while ((exo->uart.rx_handle != INVALID_HANDLE) && (UART_REG[port]->S1 & UART_S1_RDRF_MASK))
+    while ((exo->uart.rx_handle != INVALID_HANDLE) && ((UART0->FR & UART_FR_RXFE) == 0))
     {
-        for (rx_size = 0; (rx_size < FIFO_MAX_DEPTH) && (UART_REG[port]->S1 & UART_S1_RDRF_MASK); ++rx_size)
-            rx_buf[rx_size] = UART_REG[port]->D;
+        if (UART0->RSR & 0xf)
+        {
+            if (UART0->RSR & UART_RSR_OE)
+                exo->uart.error = ERROR_OVERFLOW;
+            if (UART0->RSR & UART_RSR_PE)
+                exo->uart.error = ERROR_INVALID_PARITY;
+            if (UART0->RSR & UART_RSR_FE)
+                exo->uart.error = ERROR_INVALID_FRAME;
+            UART0->ECR = 0;
+        }
+
+        UART0->ICR = UART_ICR_RXIC;
+        for (rx_size = 0; (rx_size < FIFO_MAX_DEPTH) && ((UART0->FR & UART_FR_RXFE) == 0); ++rx_size)
+            rx_buf[rx_size] = UART0->DR & 0xff;
         if (stream_iwrite_no_block(exo->uart.rx_handle, rx_buf, rx_size) < rx_size)
             exo->uart.error = ERROR_CHAR_LOSS;
     }
+
     if (exo->uart.tx_handle != INVALID_HANDLE)
     {
+        UART0->ICR = UART_ICR_TXIC;
         if (exo->uart.tx_size == 0)
         {
             exo->uart.tx_total = exo->uart.tx_size = stream_iread_no_block(exo->uart.tx_handle, exo->uart.tx_buf, UART_BUF_SIZE);
             //nothing more, listen
             if (exo->uart.tx_size == 0)
             {
-                UART_REG[port]->C2 &= ~UART_C2_TIE_MASK;
-                NVIC_ClearPendingIRQ(vector);
-                stream_ilisten(exo->uart.tx_stream, port, HAL_UART);
+                UART0->IMSC &= ~UART_IMSC_TXIM;
+                stream_ilisten(exo->uart.tx_stream, UART_0, HAL_UART);
                 return;
             }
         }
 
-        for(; (UART_REG[port]->S1 & UART_S1_TDRE_MASK) && exo->uart.tx_size; --exo->uart.tx_size)
-            UART_REG[port]->D = exo->uart.tx_buf[exo->uart.tx_total - exo->uart.tx_size];
+        for(; ((UART0->FR & UART_FR_TXFF) == 0) && exo->uart.tx_size; --exo->uart.tx_size)
+            UART0->DR = exo->uart.tx_buf[exo->uart.tx_total - exo->uart.tx_size];
     }
 }
-
-void ti_uart_on_error_isr(int vector, void* param)
-{
-    UART_PORT port = (vector - UART0_RX_TX_IRQn) >> 1;
-    EXO* exo = param;
-    if (UART_REG[port]->S1 & UART_S1_OR_MASK)
-        exo->uart.error = ERROR_OVERFLOW;
-    if (UART_REG[port]->S1 & UART_S1_NF_MASK)
-        exo->uart.error = ERROR_LINE_NOISE;
-    if (UART_REG[port]->S1 & UART_S1_FE_MASK)
-        exo->uart.error = ERROR_INVALID_FRAME;
-    if (UART_REG[port]->S1 & UART_S1_PF_MASK)
-        exo->uart.error = ERROR_INVALID_PARITY;
-    __REG_RC32(UART_REG[port]->D);
-}
-*/
 
 void ti_uart_init(EXO* exo)
 {
@@ -81,9 +77,9 @@ static void ti_uart_destroy(EXO* exo)
     exo->uart.active = false;
 }
 
-static inline void ti_uart_enable_clock()
+static inline void ti_uart_enable_clock(EXO* exo)
 {
-    //TODO: request clock for SERIAL domain
+    ti_power_domain_on(exo, POWER_DOMAIN_SERIAL);
 
     //gate clock for UART
     PRCM->UARTCLKGR = PRCM_UARTCLKGR_CLK_EN;
@@ -91,14 +87,14 @@ static inline void ti_uart_enable_clock()
     while ((PRCM->CLKLOADCTL & PRCM_CLKLOADCTL_LOAD_DONE) == 0) {}
 }
 
-static void ti_uart_disable_clock()
+static void ti_uart_disable_clock(EXO* exo)
 {
     //gate clock for UART
     PRCM->UARTCLKGR &= ~PRCM_UARTCLKGR_CLK_EN;
     PRCM->CLKLOADCTL = PRCM_CLKLOADCTL_LOAD;
     while ((PRCM->CLKLOADCTL & PRCM_CLKLOADCTL_LOAD_DONE) == 0) {}
 
-    //TODO: disable clock for SERIAL domain
+    ti_power_domain_off(exo, POWER_DOMAIN_SERIAL);
 }
 
 static inline bool ti_uart_open_stream(EXO* exo, unsigned int mode)
@@ -124,7 +120,10 @@ static inline bool ti_uart_open_stream(EXO* exo, unsigned int mode)
             return false;
     }
     if (mode & UART_RX_STREAM)
+    {
         UART0->CTL |= UART_CTL_RXE;
+        UART0->IMSC |= UART_IMSC_RXIM | UART_IMSC_OEIM | UART_IMSC_FEIM | UART_IMSC_PEIM;
+    }
     if (mode & UART_TX_STREAM)
         UART0->CTL |= UART_CTL_TXE;
     return true;
@@ -136,7 +135,7 @@ static inline void ti_uart_open(EXO* exo, unsigned int mode)
 
     exo->uart.error = ERROR_OK;
 
-    ti_uart_enable_clock();
+    ti_uart_enable_clock(exo);
 
     UART0->LCRH = UART_LCRH_FEN;
     UART0->CTL = 0;
@@ -151,7 +150,7 @@ static inline void ti_uart_open(EXO* exo, unsigned int mode)
     }
     if (!ok)
     {
-        ti_uart_disable_clock();
+        ti_uart_disable_clock(exo);
         ti_uart_destroy(exo);
         return;
     }
@@ -160,9 +159,9 @@ static inline void ti_uart_open(EXO* exo, unsigned int mode)
     exo->uart.active = true;
 
     //enable interrupts
-///    NVIC_EnableIRQ(UART0_IRQn);
-///    NVIC_SetPriority(UART0_IRQn, 7);
-///    kirq_register(KERNEL_HANDLE, UART0_IRQn, ti_uart_on_isr, exo);
+    NVIC_EnableIRQ(UART0_IRQn);
+    NVIC_SetPriority(UART0_IRQn, 7);
+    kirq_register(KERNEL_HANDLE, UART0_IRQn, ti_uart_on_isr, exo);
 }
 
 static void ti_uart_flush(EXO* exo)
@@ -190,7 +189,7 @@ static inline void ti_uart_close(EXO* exo)
     //disable transmitter/receiver
     UART0->CTL = 0;
 
-    ti_uart_disable_clock();
+    ti_uart_disable_clock(exo);
     ti_uart_destroy(exo);
 }
 
@@ -271,16 +270,14 @@ static inline void ti_uart_clear_error(EXO* exo)
     exo->uart.error = ERROR_OK;
 }
 
-static inline void ti_uart_setup_printk(EXO* exo)
+static inline void ti_uart_setup_printk()
 {
-    //setup kernel printk dbg
     kernel_setup_dbg(uart_write_kernel, NULL);
 }
 
 static inline void ti_uart_stream_write()
 {
-    //TODO:
-//    UART_REG[port]->C2 |= UART_C2_TIE_MASK;
+    UART0->IMSC |= UART_IMSC_TXIM;
 }
 
 void ti_uart_request(EXO* exo, IPC* ipc)
@@ -325,7 +322,7 @@ void ti_uart_request(EXO* exo, IPC* ipc)
         ti_uart_clear_error(exo);
         break;
     case IPC_UART_SETUP_PRINTK:
-        ti_uart_setup_printk(exo);
+        ti_uart_setup_printk();
         break;
     case IPC_STREAM_WRITE:
         ti_uart_stream_write();

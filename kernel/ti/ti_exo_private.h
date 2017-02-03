@@ -13,7 +13,7 @@
 #include "ti_config.h"
 
 typedef struct _EXO {
-///TODO: power drv
+    POWER_DRV power;
     PIN_DRV pin;
     //TODO:
 ///    TIMER_DRV timer;

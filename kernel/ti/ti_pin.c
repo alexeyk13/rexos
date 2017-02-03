@@ -6,6 +6,7 @@
 
 #include "ti_pin.h"
 #include "ti_exo_private.h"
+#include "ti_power.h"
 #include "../../userspace/ti/ti.h"
 #include "../../userspace/error.h"
 #include "../../userspace/process.h"
@@ -19,10 +20,15 @@ void ti_pin_enable(EXO* exo, DIO dio, unsigned int mode, bool output)
         return;
     }
     //enable gating
-///    if (exo->pin.pin_used++ == 0)
-///    {
-///        TODO:
-///    }
+    if (exo->pin.pin_used++ == 0)
+    {
+        ti_power_domain_on(exo, POWER_DOMAIN_PERIPH);
+
+        //gate clock for GPIO
+        PRCM->GPIOCLKGR = PRCM_GPIOCLKGR_CLK_EN;
+        PRCM->CLKLOADCTL = PRCM_CLKLOADCTL_LOAD;
+        while ((PRCM->CLKLOADCTL & PRCM_CLKLOADCTL_LOAD_DONE) == 0) {}
+    }
     IOC->IOCFG[dio] = mode;
     if (output)
         GPIO->DOE |= (1 << dio);
@@ -39,10 +45,15 @@ void ti_pin_disable(EXO* exo, DIO dio)
     IOC->IOCFG[dio] = IOC_IOCFG_PULL_CTL_DIS;
 
     //disable gating
-///    if (--exo->pin.pin_used == 0)
-///    {
-///        TODO:
-///    }
+    if (--exo->pin.pin_used == 0)
+    {
+        //gate clock for GPIO
+        PRCM->GPIOCLKGR &= ~PRCM_GPIOCLKGR_CLK_EN;
+        PRCM->CLKLOADCTL = PRCM_CLKLOADCTL_LOAD;
+        while ((PRCM->CLKLOADCTL & PRCM_CLKLOADCTL_LOAD_DONE) == 0) {}
+
+        ti_power_domain_off(exo, POWER_DOMAIN_PERIPH);
+    }
 }
 
 void ti_gpio_enable_pin(EXO* exo, DIO dio, GPIO_MODE mode)
@@ -121,8 +132,7 @@ void ti_gpio_set_data_in(unsigned int port, unsigned int mask)
 
 void ti_pin_init(EXO* exo)
 {
-    //TODO:
-///    exo->pin.pin_used = 0;
+    exo->pin.pin_used = 0;
 }
 
 void ti_pin_request(EXO* exo, IPC* ipc)

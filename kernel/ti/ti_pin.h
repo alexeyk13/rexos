@@ -15,7 +15,6 @@ typedef struct {
     uint8_t pin_used;
 } PIN_DRV;
 
-
 //for internal use only
 void ti_pin_enable(EXO* exo, DIO dio, unsigned int mode, bool direction_out);
 void ti_pin_disable(EXO* exo, DIO dio);
