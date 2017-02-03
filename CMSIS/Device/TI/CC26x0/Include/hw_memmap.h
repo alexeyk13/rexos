@@ -61,7 +61,8 @@
 #define GPIO_BASE               0x40022000 // GPIO
 #define CRYPTO_BASE             0x40024000 // CRYPTO
 #define TRNG_BASE               0x40028000 // TRNG
-#define FLASH_BASE              0x40030000 // FLASH
+//edited by alexeyk13 for compatibility
+#define FLASH_REG_BASE          0x40030000 // FLASH
 #define VIMS_BASE               0x40034000 // VIMS
 #define RFC_PWR_BASE            0x40040000 // RFC_PWR
 #define RFC_DBELL_BASE          0x40041000 // RFC_DBELL

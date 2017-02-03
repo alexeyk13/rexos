@@ -313,7 +313,8 @@ typedef struct
   __I   uint32_t RESERVED1;
   __IO  uint32_t CFG;                           /*!< Internal                                                           */
   __IO  uint32_t SYSCODE_START;                 /*!< Internal                                                           */
-  __IO  uint32_t FLASH_SIZE;                    /*!< Internal                                                           */
+  //FLASH_SIZE is reserved keyword
+  __IO  uint32_t FLASH_SZ;                      /*!< Internal                                                           */
   __I   uint32_t RESERVED2[3];
   __IO  uint32_t FWLOCK;                        /*!< Internal                                                           */
   __IO  uint32_t FWFLAG;                        /*!< Internal                                                           */
@@ -1722,6 +1723,255 @@ typedef struct
 #define IOC_IOCFG_PORT_ID_RFC_INTERNAL4         (54 << 0)
 #define IOC_IOCFG_PORT_ID_RFC_INTERNAL5         (55 << 0)
 #define IOC_IOCFG_PORT_ID_RFC_INTERNAL6         (56 << 0)
+
+
+/******************************************************************************/
+/*                                                                            */
+/*                                   GPT                                      */
+/*                                                                            */
+/******************************************************************************/
+
+/*************  Bit definition for GPT_CFG register  **************************/
+#define GPT_CFG_CFG                             (0x7ul << 0)
+#define GPT_CFG_CFG_32BIT_TIMER                 (0x0ul << 0)
+#define GPT_CFG_CFG_16BIT_TIMER                 (0x4ul << 0)
+
+
+/*************  Bit definition for GPT_TAMR register  *************************/
+#define GPT_TAMR_TCACT                          (0x7ul << 13)
+#define GPT_TAMR_TCACT_DIS_CMP                  (0x0ul << 13)
+#define GPT_TAMR_TCACT_TOGGLE_TO                (0x1ul << 13)
+#define GPT_TAMR_TCACT_CLEAR_TO                 (0x2ul << 13)
+#define GPT_TAMR_TCACT_SET_TO                   (0x3ul << 13)
+#define GPT_TAMR_TCACT_SET_IMM_TOGGLE_TO        (0x4ul << 13)
+#define GPT_TAMR_TCACT_CLEAR_IMM_TOGGLE_TO      (0x5ul << 13)
+#define GPT_TAMR_TCACT_SET_IMM_CLEAR_TO         (0x6ul << 13)
+#define GPT_TAMR_TCACT_CLEAR_IMM_SET_TO         (0x7ul << 13)
+
+#define GPT_TAMR_TACINTD                        (0x1ul << 12)
+#define GPT_TAMR_TAPLO                          (0x1ul << 11)
+#define GPT_TAMR_TAMRSO                         (0x1ul << 10)
+#define GPT_TAMR_TAPWMIE                        (0x1ul << 9)
+#define GPT_TAMR_TAILD                          (0x1ul << 8)
+#define GPT_TAMR_TASNAPS                        (0x1ul << 7)
+#define GPT_TAMR_TAWOT                          (0x1ul << 6)
+#define GPT_TAMR_TAMIE                          (0x1ul << 5)
+#define GPT_TAMR_TACDIR                         (0x1ul << 4)
+#define GPT_TAMR_TAAMS                          (0x1ul << 3)
+#define GPT_TAMR_TACM                           (0x1ul << 2)
+
+#define GPT_TAMR_TAMR                           (0x3ul << 1)
+#define GPT_TAMR_TAMR_ONE_SHOT                  (0x1ul << 1)
+#define GPT_TAMR_TAMR_PERIODIC                  (0x2ul << 1)
+#define GPT_TAMR_TAMR_CAPTURE                   (0x3ul << 1)
+
+
+/*************  Bit definition for GPT_TBMR register  *************************/
+#define GPT_TBMR_TCACT                          (0x7ul << 13)
+#define GPT_TBMR_TCACT_DIS_CMP                  (0x0ul << 13)
+#define GPT_TBMR_TCACT_TOGGLE_TO                (0x1ul << 13)
+#define GPT_TBMR_TCACT_CLEAR_TO                 (0x2ul << 13)
+#define GPT_TBMR_TCACT_SET_TO                   (0x3ul << 13)
+#define GPT_TBMR_TCACT_SET_IMM_TOGGLE_TO        (0x4ul << 13)
+#define GPT_TBMR_TCACT_CLEAR_IMM_TOGGLE_TO      (0x5ul << 13)
+#define GPT_TBMR_TCACT_SET_IMM_CLEAR_TO         (0x6ul << 13)
+#define GPT_TBMR_TCACT_CLEAR_IMM_SET_TO         (0x7ul << 13)
+
+#define GPT_TBMR_TBCINTD                        (0x1ul << 12)
+#define GPT_TBMR_TBPLO                          (0x1ul << 11)
+#define GPT_TBMR_TBMRSO                         (0x1ul << 10)
+#define GPT_TBMR_TBPWMIE                        (0x1ul << 9)
+#define GPT_TBMR_TBILD                          (0x1ul << 8)
+#define GPT_TBMR_TBSNAPS                        (0x1ul << 7)
+#define GPT_TBMR_TBWOT                          (0x1ul << 6)
+#define GPT_TBMR_TBMIE                          (0x1ul << 5)
+#define GPT_TBMR_TBCDIR                         (0x1ul << 4)
+#define GPT_TBMR_TBAMS                          (0x1ul << 3)
+#define GPT_TBMR_TBCM                           (0x1ul << 2)
+
+#define GPT_TBMR_TBMR                           (0x3ul << 1)
+#define GPT_TBMR_TBMR_ONE_SHOT                  (0x1ul << 1)
+#define GPT_TBMR_TBMR_PERIODIC                  (0x2ul << 1)
+#define GPT_TBMR_TBMR_CAPTURE                   (0x3ul << 1)
+
+
+/*************  Bit definition for GPT_CTL register  **************************/
+#define GPT_CTL_TBPWML                          (0x1ul << 14)
+
+#define GPT_CTL_TBEVENT                         (0x3ul << 10)
+#define GPT_CTL_TBEVENT_POSITIVE                (0x0ul << 10)
+#define GPT_CTL_TBEVENT_NEGATIVE                (0x1ul << 10)
+#define GPT_CTL_TBEVENT_BOTH                    (0x3ul << 10)
+
+#define GPT_CTL_TBSTALL                         (0x1ul << 9)
+#define GPT_CTL_TBEN                            (0x1ul << 8)
+
+#define GPT_CTL_TAPWML                          (0x1ul << 6)
+
+#define GPT_CTL_TAEVENT                         (0x3ul << 2)
+#define GPT_CTL_TAEVENT_POSITIVE                (0x0ul << 2)
+#define GPT_CTL_TAEVENT_NEGATIVE                (0x1ul << 2)
+#define GPT_CTL_TAEVENT_BOTH                    (0x3ul << 2)
+
+#define GPT_CTL_TASTALL                         (0x1ul << 1)
+#define GPT_CTL_TAEN                            (0x1ul << 0)
+
+
+/*************  Bit definition for GPT_SYNC register  *************************/
+#define GPT_SYNC_SYNC3                          (0x3ul << 6)
+#define GPT_SYNC_SYNC3_A                        (0x1ul << 6)
+#define GPT_SYNC_SYNC3_B                        (0x2ul << 6)
+#define GPT_SYNC_SYNC3_BOTH                     (0x3ul << 6)
+
+#define GPT_SYNC_SYNC2                          (0x3ul << 4)
+#define GPT_SYNC_SYNC2_A                        (0x1ul << 4)
+#define GPT_SYNC_SYNC2_B                        (0x2ul << 4)
+#define GPT_SYNC_SYNC2_BOTH                     (0x3ul << 4)
+
+#define GPT_SYNC_SYNC1                          (0x3ul << 2)
+#define GPT_SYNC_SYNC1_A                        (0x1ul << 2)
+#define GPT_SYNC_SYNC1_B                        (0x2ul << 2)
+#define GPT_SYNC_SYNC1_BOTH                     (0x3ul << 2)
+
+#define GPT_SYNC_SYNC0                          (0x3ul << 0)
+#define GPT_SYNC_SYNC0_A                        (0x1ul << 0)
+#define GPT_SYNC_SYNC0_B                        (0x2ul << 0)
+#define GPT_SYNC_SYNC0_BOTH                     (0x3ul << 0)
+
+
+/*************  Bit definition for GPT_IMR register  **************************/
+#define GPT_IMR_DMABIM                          (0x1ul << 13)
+#define GPT_IMR_TBBIM                           (0x1ul << 11)
+#define GPT_IMR_CBEIM                           (0x1ul << 10)
+#define GPT_IMR_CBMIM                           (0x1ul << 9)
+#define GPT_IMR_TBTOIM                          (0x1ul << 8)
+#define GPT_IMR_DMAAIM                          (0x1ul << 5)
+#define GPT_IMR_TABIM                           (0x1ul << 4)
+#define GPT_IMR_CAEIM                           (0x1ul << 2)
+#define GPT_IMR_CAMIM                           (0x1ul << 1)
+#define GPT_IMR_TATOIM                          (0x1ul << 0)
+
+
+/*************  Bit definition for GPT_RIS register  **************************/
+#define GPT_RIS_DMABRIS                         (0x1ul << 13)
+#define GPT_RIS_TBBRIS                          (0x1ul << 11)
+#define GPT_RIS_CBERIS                          (0x1ul << 10)
+#define GPT_RIS_CBMRIS                          (0x1ul << 9)
+#define GPT_RIS_TBTORIS                         (0x1ul << 8)
+#define GPT_RIS_DMAARIS                         (0x1ul << 5)
+#define GPT_RIS_TABRIS                          (0x1ul << 4)
+#define GPT_RIS_CAERIS                          (0x1ul << 2)
+#define GPT_RIS_CAMRIS                          (0x1ul << 1)
+#define GPT_RIS_TATORIS                         (0x1ul << 0)
+
+
+/*************  Bit definition for GPT_MIS register  **************************/
+#define GPT_MIS_DMABMIS                         (0x1ul << 13)
+#define GPT_MIS_TBBMIS                          (0x1ul << 11)
+#define GPT_MIS_CBEMIS                          (0x1ul << 10)
+#define GPT_MIS_CBMMIS                          (0x1ul << 9)
+#define GPT_MIS_TBTOMIS                         (0x1ul << 8)
+#define GPT_MIS_DMAAMIS                         (0x1ul << 5)
+#define GPT_MIS_TABMIS                          (0x1ul << 4)
+#define GPT_MIS_CAEMIS                          (0x1ul << 2)
+#define GPT_MIS_CAMMIS                          (0x1ul << 1)
+#define GPT_MIS_TATOMIS                         (0x1ul << 0)
+
+
+/*************  Bit definition for GPT_ICLR register  *************************/
+#define GPT_ICLR_DMABINT                        (0x1ul << 13)
+#define GPT_ICLR_TBBCINT                        (0x1ul << 11)
+#define GPT_ICLR_CBECINT                        (0x1ul << 10)
+#define GPT_ICLR_CBMCINT                        (0x1ul << 9)
+#define GPT_ICLR_TBTOCINT                       (0x1ul << 8)
+#define GPT_ICLR_DMAAINT                        (0x1ul << 5)
+#define GPT_ICLR_TABCINT                        (0x1ul << 4)
+#define GPT_ICLR_CAECINT                        (0x1ul << 2)
+#define GPT_ICLR_CAMCINT                        (0x1ul << 1)
+#define GPT_ICLR_TATOCINT                       (0x1ul << 0)
+
+
+/*************  Bit definition for GPT_TAILR register  ************************/
+#define GPT_TAILR_TAILR                         (0xfffffffful << 0)
+
+
+/*************  Bit definition for GPT_TBILR register  ************************/
+#define GPT_TBILR_TBILR                         (0xfffffffful << 0)
+
+
+/*************  Bit definition for GPT_TAMATCHR register  *********************/
+#define GPT_TAMATCHR_TAMATCHR                   (0xfffffffful << 0)
+
+
+/*************  Bit definition for GPT_TBMATCHR register  *********************/
+#define GPT_TBMATCHR_TBMATCHR                   (0xfffful << 0)
+
+
+/*************  Bit definition for GPT_TAPR register  *************************/
+#define GPT_TAPR_TAPSR                          (0xfful << 0)
+
+
+/*************  Bit definition for GPT_TBPR register  *************************/
+#define GPT_TAPR_TBPSR                          (0xfful << 0)
+
+
+/*************  Bit definition for GPT_TAPMR register  ************************/
+#define GPT_TAPMR_TAPSMR                        (0xfful << 0)
+
+
+/*************  Bit definition for GPT_TBPMR register  ************************/
+#define GPT_TBPMR_TBPSMR                        (0xfful << 0)
+
+
+/*************  Bit definition for GPT_TAR register  **************************/
+#define GPT_TAR_TAR                             (0xfffffffful << 0)
+
+
+/*************  Bit definition for GPT_TBR register  **************************/
+#define GPT_TBR_TBR                             (0xfffffffful << 0)
+
+
+/*************  Bit definition for GPT_TAV register  **************************/
+#define GPT_TAV_TAV                             (0xfffffffful << 0)
+
+
+/*************  Bit definition for GPT_TBV register  **************************/
+#define GPT_TBV_TBV                             (0xfffffffful << 0)
+
+
+/*************  Bit definition for GPT_TAPS register  *************************/
+#define GPT_TAPS_PSS                            (0xfful << 0)
+
+
+/*************  Bit definition for GPT_TBPS register  *************************/
+#define GPT_TBPS_PSS                            (0xfful << 0)
+
+
+/*************  Bit definition for GPT_TAPV register  *************************/
+#define GPT_TAPS_PSV                            (0xfful << 0)
+
+
+/*************  Bit definition for GPT_TBPV register  *************************/
+#define GPT_TBPS_PSV                            (0xfful << 0)
+
+
+/*************  Bit definition for GPT_DMAEV register  ************************/
+#define GPT_DMAEV_TBMDMAEN                      (0x1ul << 11)
+#define GPT_DMAEV_CBEDMAEN                      (0x1ul << 10)
+#define GPT_DMAEV_CBMDMAEN                      (0x1ul << 9)
+#define GPT_DMAEV_TBTODMAEN                     (0x1ul << 8)
+#define GPT_DMAEV_TAMDMAEN                      (0x1ul << 4)
+#define GPT_DMAEV_CAEDMAEN                      (0x1ul << 2)
+#define GPT_DMAEV_CAMDMAEN                      (0x1ul << 1)
+#define GPT_DMAEV_TATODMAEN                     (0x1ul << 0)
+
+
+/*************  Bit definition for GPT_VERSION register  **********************/
+#define GPT_VERSION_VERSION                     (0xfffffffful << 0)
+
+
+/*************  Bit definition for GPT_ANDCCP register  ***********************/
+#define GPT_ANDCCP_CCP_AND_EN                   (0x1ul << 0)
 
 
 /******************************************************************************/
