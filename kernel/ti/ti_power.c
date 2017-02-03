@@ -6,6 +6,7 @@
 
 #include "ti_power.h"
 #include "ti_exo_private.h"
+#include "ti_config.h"
 #include "../../userspace/ti/ti.h"
 #include "../../userspace/error.h"
 #include "../../userspace/process.h"
