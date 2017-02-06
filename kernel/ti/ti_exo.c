@@ -12,7 +12,7 @@
 #include "ti_power.h"
 #include "ti_pin.h"
 #include "ti_uart.h"
-//#include "ti_timer.h"
+#include "ti_timer.h"
 
 void exodriver_post(IPC* ipc)
 {
@@ -27,9 +27,9 @@ void exodriver_post(IPC* ipc)
     case HAL_POWER:
         ti_power_request(__KERNEL->exo, ipc);
         break;
-/*    case HAL_TIMER:
+    case HAL_TIMER:
         ti_timer_request(__KERNEL->exo, ipc);
-        break;*/
+        break;
 #if (TI_UART)
     case HAL_UART:
         ti_uart_request(__KERNEL->exo, ipc);
@@ -47,7 +47,7 @@ void exodriver_init()
     __KERNEL->exo = kmalloc(sizeof(EXO));
     ti_power_init(__KERNEL->exo);
     ti_pin_init(__KERNEL->exo);
-//    ti_timer_init(__KERNEL->exo);
+    ti_timer_init(__KERNEL->exo);
 #if (TI_UART)
     ti_uart_init(__KERNEL->exo);
 #endif //TI_UART

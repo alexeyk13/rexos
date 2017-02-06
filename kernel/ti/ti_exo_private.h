@@ -9,14 +9,14 @@
 
 #include "ti_power.h"
 #include "ti_pin.h"
+#include "ti_timer.h"
 #include "ti_uart.h"
 #include "ti_config.h"
 
 typedef struct _EXO {
     POWER_DRV power;
     PIN_DRV pin;
-    //TODO:
-///    TIMER_DRV timer;
+    TIMER_DRV timer;
 #if (TI_UART)
     UART_DRV uart;
 #endif //TI_UART

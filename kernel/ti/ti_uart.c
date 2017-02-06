@@ -23,7 +23,7 @@ void ti_uart_on_isr(int vector, void* param)
     char rx_buf[FIFO_MAX_DEPTH];
     unsigned int rx_size;
 
-    while ((exo->uart.rx_handle != INVALID_HANDLE) && ((UART0->FR & UART_FR_RXFE) == 0))
+    while ((exo->uart.rx_handle != INVALID_HANDLE) && (UART0->FR & UART_FR_RXFE))
     {
         if (UART0->RSR & 0xf)
         {
@@ -43,9 +43,8 @@ void ti_uart_on_isr(int vector, void* param)
             exo->uart.error = ERROR_CHAR_LOSS;
     }
 
-    if (exo->uart.tx_handle != INVALID_HANDLE)
+    if ((UART0->IMSC & UART_IMSC_TXIM))
     {
-        UART0->ICR = UART_ICR_TXIC;
         if (exo->uart.tx_size == 0)
         {
             exo->uart.tx_total = exo->uart.tx_size = stream_iread_no_block(exo->uart.tx_handle, exo->uart.tx_buf, UART_BUF_SIZE);
@@ -137,7 +136,6 @@ static inline void ti_uart_open(EXO* exo, unsigned int mode)
 
     ti_uart_enable_clock(exo);
 
-    UART0->LCRH = UART_LCRH_FEN;
     UART0->CTL = 0;
 
     switch (mode & UART_MODE)
@@ -160,7 +158,7 @@ static inline void ti_uart_open(EXO* exo, unsigned int mode)
 
     //enable interrupts
     NVIC_EnableIRQ(UART0_IRQn);
-    NVIC_SetPriority(UART0_IRQn, 7);
+    NVIC_SetPriority(UART0_IRQn, 6);
     kirq_register(KERNEL_HANDLE, UART0_IRQn, ti_uart_on_isr, exo);
 }
 
@@ -275,7 +273,7 @@ static inline void ti_uart_setup_printk()
     kernel_setup_dbg(uart_write_kernel, NULL);
 }
 
-static inline void ti_uart_stream_write()
+static inline void ti_uart_stream_write(EXO* exo)
 {
     UART0->IMSC |= UART_IMSC_TXIM;
 }
@@ -325,7 +323,7 @@ void ti_uart_request(EXO* exo, IPC* ipc)
         ti_uart_setup_printk();
         break;
     case IPC_STREAM_WRITE:
-        ti_uart_stream_write();
+        ti_uart_stream_write(exo);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
