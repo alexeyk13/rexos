@@ -292,7 +292,7 @@ void ti_uart_request(EXO* exo, IPC* ipc)
     }
     if (!exo->uart.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        error(ERROR_NOT_ACTIVE);
         return;
     }
 
