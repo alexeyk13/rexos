@@ -281,6 +281,7 @@ static bool stm32_power_pll_on(STM32_CLOCK_SOURCE_TYPE src)
 {
     RCC->CFGR &= ~(0xf << 18);
     RCC->CFGR |= (PLL_MUL - 2) << 18;
+    RCC->CFGR2 = (PLL_DIV - 1) & 0xf;
 
     //Actually there is NO PLL_SRC0 bit on 072 at least.
 #if (HSE_VALUE)
@@ -302,9 +303,9 @@ static inline int stm32_power_get_pll_clock()
     if (RCC->CFGR & (1 << 16))
         pllsrc = HSE_VALUE;
 #endif
-    return pllsrc  * (((RCC->CFGR >> 18) & 0xf) + 2);
+    return (pllsrc / ((RCC->CFGR2 & 0xf) + 1)) * (((RCC->CFGR >> 18) & 0xf) + 2);
 }
-#endif
+#endif //STM32F0
 
 int get_core_clock()
 {
