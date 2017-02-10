@@ -152,7 +152,7 @@ typedef struct
 
 /******************************************************************************/
 /*                                                                            */
-/*                             AUX_DDI0_OSC                                   */
+/*                               DDI0_OSC                                     */
 /*                                                                            */
 /******************************************************************************/
 
@@ -174,7 +174,7 @@ typedef struct
   __I   uint32_t STAT0;                         /*!< Status 0                                                           */
   __I   uint32_t STAT1;                         /*!< Status 1                                                           */
   __I   uint32_t STAT2;                         /*!< Status 2                                                           */
-} AUX_DDI0_OSC_Type;
+} DDI0_OSC_Type;
 
 
 /******************************************************************************/
@@ -1231,7 +1231,7 @@ typedef struct
 #define AUX_AIODIO0                             ((AUX_AIODIO_Type*)AUX_IODIO0_BASE)
 #define AUX_AIODIO1                             ((AUX_AIODIO_Type*)AUX_IODIO1_BASE)
 #define AUX_ANAIF                               ((AUX_ANAIF_Type*)AUX_ANAIF_BASE)
-#define AUX_DDI0_OSC                            ((AUX_DDI0_OSC_Type*)AUX_DDI0_OSC_BASE)
+#define DDI0_OSC                                ((DDI0_OSC_Type*)AUX_DDI0_OSC_BASE)
 #define AUX_EVCTL                               ((AUX_EVCTL_Type*)AUX_EVCTL_BASE)
 #define AUX_SMPH                                ((AUX_MSPH_Type*)AUX_SMPH_BASE)
 #define AUX_TDC                                 ((AUX_TDC_Type*)AUX_TDC_BASE)
@@ -1311,6 +1311,212 @@ typedef struct
 /*************  Bit definition for AON_SYSCTL_SLEEPCTL register  **************/
 #define AON_SYSCTL_SLEEPCTL_IO_PAD_SLEEP_DIS    (0x1ul << 0)
 
+
+/******************************************************************************/
+/*                                                                            */
+/*                                DDI0_OSC                                    */
+/*                                                                            */
+/******************************************************************************/
+
+/*************  Bit definition for DDI0_OSC_CTL0 register  ********************/
+#define DDI0_OSC_CTL0_XTAL_IS_24M               (0x1ul << 31)
+#define DDI0_OSC_CTL0_BYPASS_XOSC_LF_CLK_QUAL   (0x1ul << 29)
+#define DDI0_OSC_CTL0_BYPASS_RCOSC_LF_CLK_QUAL  (0x1ul << 28)
+#define DDI0_OSC_CTL0_DOUBLE_START_DURATION     (0x3ul << 26)
+#define DDI0_OSC_CTL0_DOUBLE_RESET_DURATION     (0x1ul << 25)
+#define DDI0_OSC_CTL0_FORCE_KICKSTART_EN        (0x1ul << 22)
+#define DDI0_OSC_CTL0_ALLOW_SCLK_HW_SWITCHING   (0x1ul << 16)
+#define DDI0_OSC_CTL0_HPOSC_MODE_EN             (0x1ul << 14)
+#define DDI0_OSC_CTL0_RCOSC_LF_TRIMMED          (0x1ul << 12)
+#define DDI0_OSC_CTL0_XOSC_HF_POWER_MODE        (0x1ul << 11)
+#define DDI0_OSC_CTL0_XOSC_LF_DIG_BYPASS        (0x1ul << 10)
+#define DDI0_OSC_CTL0_CLK_LOSS_EN               (0x1ul << 9)
+
+#define DDI0_OSC_CTL0_ACLK_TDC_SRC_SEL          (0x3ul << 7)
+#define DDI0_OSC_CTL0_ACLK_TDC_SRC_SEL_RCOSC_HF48 \
+                                                (0x0ul << 7)
+#define DDI0_OSC_CTL0_ACLK_TDC_SRC_SEL_RCOSC_HF24 \
+                                                (0x1ul << 7)
+#define DDI0_OSC_CTL0_ACLK_TDC_SRC_SEL_XOSC_HF  (0x2ul << 7)
+
+#define DDI0_OSC_CTL0_ACLK_REF_SRC_SEL          (0x3ul << 5)
+#define DDI0_OSC_CTL0_ACLK_REF_SRC_SEL_RCOSC_HF (0x0ul << 5)
+#define DDI0_OSC_CTL0_ACLK_REF_SRC_SEL_XOSC_HF  (0x1ul << 5)
+#define DDI0_OSC_CTL0_ACLK_REF_SRC_SEL_RCOSC_LF (0x2ul << 5)
+#define DDI0_OSC_CTL0_ACLK_REF_SRC_SEL_XOSC_LF  (0x3ul << 5)
+
+#define DDI0_OSC_CTL0_ACLK_LF_SRC_SEL           (0x3ul << 2)
+#define DDI0_OSC_CTL0_ACLK_LF_SRC_SEL_RCOSC_HF  (0x0ul << 2)
+#define DDI0_OSC_CTL0_ACLK_LF_SRC_SEL_XOSC_HF   (0x1ul << 2)
+#define DDI0_OSC_CTL0_ACLK_LF_SRC_SEL_RCOSC_LF  (0x2ul << 2)
+#define DDI0_OSC_CTL0_ACLK_LF_SRC_SEL_XOSC_LF   (0x3ul << 2)
+
+#define DDI0_OSC_CTL0_ACLK_MF_SRC_SEL           (0x1ul << 1)
+
+#define DDI0_OSC_CTL0_ACLK_HF_SRC_SEL           (0x1ul << 0)
+#define DDI0_OSC_CTL0_ACLK_HF_SRC_SEL_RCOSC     (0x0ul << 0)
+#define DDI0_OSC_CTL0_ACLK_HF_SRC_SEL_XOSC      (0x1ul << 0)
+
+
+/*************  Bit definition for DDI0_OSC_CTL1 register  ********************/
+#define DDI0_OSC_CTL1_RCOSCHFCTRIMFRACT         (0x1ful << 18)
+#define DDI0_OSC_CTL1_RCOSCHFCTRIMFRACT_EN      (0x1ul << 17)
+#define DDI0_OSC_CTL1_XOSC_HF_FAST_START        (0x3ul << 0)
+
+
+/*************  Bit definition for DDI0_OSC_RADCEXTCFG register  **************/
+#define DDI0_OSC_RADCEXTCFG_HPM_IBIAS_WAIT_CNT  (0x3fful << 22)
+#define DDI0_OSC_RADCEXTCFG_LPM_IBIAS_WAIT_CNT  (0x3ful << 16)
+#define DDI0_OSC_RADCEXTCFG_IDAC_STEP           (0xful << 12)
+#define DDI0_OSC_RADCEXTCFG_RADC_DAC_TH         (0x3ful << 6)
+#define DDI0_OSC_RADCEXTCFG_RADC_MODE_IS_SAR    (0x1ful << 5)
+
+
+/*************  Bit definition for DDI0_OSC_AMPCOMPCTL register  **************/
+#define DDI0_OSC_AMPCOMPCTL_AMPCOMP_REQ_MODE    (0x1ul << 30)
+#define DDI0_OSC_AMPCOMPCTL_AMPCOMP_FSM_UPDATE_RATE \
+                                                (0x3ul << 28)
+#define DDI0_OSC_AMPCOMPCTL_AMPCOMP_SW_CTRL     (0x1ul << 27)
+#define DDI0_OSC_AMPCOMPCTL_AMPCOMP_SW_EN       (0x1ul << 26)
+#define DDI0_OSC_AMPCOMPCTL_IBIAS_OFFSET        (0xful << 20)
+#define DDI0_OSC_AMPCOMPCTL_IBIAS_INIT          (0xful << 16)
+#define DDI0_OSC_AMPCOMPCTL_LPM_IBIAS_WAIT_CNT_FINAL \
+                                                (0xfful << 8)
+#define DDI0_OSC_AMPCOMPCTL_CAP_STEP            (0xful << 4)
+#define DDI0_OSC_AMPCOMPCTL_IBIASCAP_HPTOLP_OL_CNT \
+                                                (0xful << 4)
+
+
+/*************  Bit definition for DDI0_OSC_AMPCOMPTH1 register  **************/
+#define DDI0_OSC_AMPCOMPTH1_HPMRAMP3_LTH        (0x3ful << 18)
+#define DDI0_OSC_AMPCOMPTH1_HPMRAMP3_HTH        (0x3ful << 10)
+#define DDI0_OSC_AMPCOMPTH1_IBIASCAP_LPTOHP_OL_CNT \
+                                                (0xful << 6)
+#define DDI0_OSC_AMPCOMPTH1_HPMRAMP1_TH         (0x3ful << 0)
+
+
+/*************  Bit definition for DDI0_OSC_AMPCOMPTH2 register  **************/
+#define DDI0_OSC_AMPCOMPTH2_LPMUPDATE_LTH       (0x3ful << 26)
+#define DDI0_OSC_AMPCOMPTH2_LPMUPDATE_HTH       (0x3ful << 18)
+#define DDI0_OSC_AMPCOMPTH2_ADC_COMP_AMPTH_LPM  (0x3ful << 10)
+#define DDI0_OSC_AMPCOMPTH2_ADC_COMP_AMPTH_HPM  (0x3ful << 2)
+
+
+/*************  Bit definition for DDI0_OSC_ANABYPASSVAL1 register  ***********/
+#define DDI0_OSC_ANABYPASSVAL1_XOSC_HF_ROW_Q12  (0xful << 16)
+#define DDI0_OSC_ANABYPASSVAL1_XOSC_HF_COLUMN_Q12 \
+                                                (0xfffful << 0)
+
+
+/*************  Bit definition for DDI0_OSC_ATESTCTL register  ****************/
+#define DDI0_OSC_ATESTCTL_SCLK_LF_AUX_EN        (0x1ul << 29)
+
+
+/*************  Bit definition for DDI0_OSC_ADCDOUBLERNANOAMPCTL register  ****/
+#define DDI0_OSC_ADCDOUBLERNANOAMPCTL_NANOAMP_BIAS_ENABLE \
+                                                (0x1ul << 24)
+#define DDI0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_MODE_EN \
+                                                (0x1ul << 5)
+#define DDI0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_VBUF_EN \
+                                                (0x1ul << 4)
+#define DDI0_OSC_ADCDOUBLERNANOAMPCTL_ADC_IREF_CTRL \
+                                                (0x3ul << 0)
+
+
+/*************  Bit definition for DDI0_OSC_XOSCHFCTL register  ***************/
+#define DDI0_OSC_XOSCHFCTL_PEAK_DET_ITRIM       (0x3ul << 8)
+#define DDI0_OSC_XOSCHFCTL_BYPASS               (0x1ul << 6)
+#define DDI0_OSC_XOSCHFCTL_HP_BUF_ITRIM         (0x7ul << 2)
+#define DDI0_OSC_XOSCHFCTL_LP_BUF_ITRIM         (0x3ul << 0)
+
+
+/*************  Bit definition for DDI0_OSC_LFOSCCTL register  ****************/
+#define DDI0_OSC_LFOSCCTL_XOSCLF_REGULATOR_TRIM (0x3ul << 22)
+#define DDI0_OSC_LFOSCCTL_XOSCLF_CMIRRWR_RATIO  (0xful << 18)
+#define DDI0_OSC_LFOSCCTL_XOSCLF_RCOSCLF_RTUNE_TRIM \
+                                                (0x3ul << 8)
+#define DDI0_OSC_LFOSCCTL_XOSCLF_RCOSCLF_CTUNE_TRIM \
+                                                (0xfful << 0)
+
+
+/*************  Bit definition for DDI0_OSC_RCOSCHFCTL register  **************/
+#define DDI0_OSC_RCOSCHFCTL_RCOSCHF_CTRIM       (0xfful << 8)
+
+
+/*************  Bit definition for DDI0_OSC_STAT0 register  *******************/
+#define DDI0_OSC_STAT0_SCLK_LF_SRC              (0x3ul << 29)
+#define DDI0_OSC_STAT0_SCLK_HF_SRC              (0x1ul << 28)
+#define DDI0_OSC_STAT0_RCOSC_HF_EN              (0x1ul << 22)
+#define DDI0_OSC_STAT0_RCOSC_LF_EN              (0x1ul << 21)
+#define DDI0_OSC_STAT0_XOSC_LF_EN               (0x1ul << 20)
+#define DDI0_OSC_STAT0_CLK_DCDC_RDY             (0x1ul << 19)
+#define DDI0_OSC_STAT0_CLK_DCDC_RDY_ACK         (0x1ul << 18)
+#define DDI0_OSC_STAT0_SCLK_HF_LOSS             (0x1ul << 17)
+#define DDI0_OSC_STAT0_SCLK_LF_LOSS             (0x1ul << 16)
+#define DDI0_OSC_STAT0_XOSC_HF_EN               (0x1ul << 15)
+#define DDI0_OSC_STAT0_XB_48M_CLK_EN            (0x1ul << 13)
+#define DDI0_OSC_STAT0_XOSC_HF_LP_BUF_EN        (0x1ul << 11)
+#define DDI0_OSC_STAT0_XOSC_HF_HP_BUF_EN        (0x1ul << 10)
+#define DDI0_OSC_STAT0_ADC_THMET                (0x1ul << 8)
+#define DDI0_OSC_STAT0_ADC_DATA_READY           (0x1ul << 7)
+#define DDI0_OSC_STAT0_ADC_DATA                 (0x3ful << 1)
+#define DDI0_OSC_STAT0_PENDINGSCLKHFSWITCHING   (0x1ul << 0)
+
+
+/*************  Bit definition for DDI0_OSC_STAT1 register  *******************/
+#define DDI0_OSC_STAT1_RAMPSTATE                (0xful << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_RESET          (0x0ul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_INITIALIZATION (0x1ul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_HPM_RAMP1      (0x2ul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_HPM_RAMP2      (0x3ul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_HPM_RAMP3      (0x4ul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_HPM_UPDATE     (0x5ul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_IDAC_INCREMENT (0x6ul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_IBIAS_CAP_UPDATE \
+                                                (0x7ul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_IBIAS_DECREMENT_WITH_MEASURE \
+                                                (0x8ul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_LPM_UPDATE     (0x9ul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_IBIAS_INCREMENT \
+                                                (0xaul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_IDAC_DECREMENT_WITH_MEASURE \
+                                                (0xbul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_DUMMY_TO_INIT_1 \
+                                                (0xcul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_FAST_START     (0xdul << 28)
+#define DDI0_OSC_STAT1_RAMPSTATE_FAST_START_SETTLE \
+                                                (0xeul << 28)
+
+#define DDI0_OSC_STAT1_HPM_UPDATE_AMP           (0x3ful << 22)
+#define DDI0_OSC_STAT1_LPM_UPDATE_AMP           (0x3ful << 16)
+#define DDI0_OSC_STAT1_FORCE_RCOSC_HF           (0x1ul << 15)
+#define DDI0_OSC_STAT1_SCLK_HF_EN               (0x1ul << 14)
+#define DDI0_OSC_STAT1_SCLK_MF_EN               (0x1ul << 13)
+#define DDI0_OSC_STAT1_ACLK_ADC_EN              (0x1ul << 12)
+#define DDI0_OSC_STAT1_ACLK_TDC_EN              (0x1ul << 11)
+#define DDI0_OSC_STAT1_ACLK_REF_EN              (0x1ul << 10)
+#define DDI0_OSC_STAT1_CLK_CHP_EN               (0x1ul << 9)
+#define DDI0_OSC_STAT1_CLK_DCDC_EN              (0x1ul << 8)
+#define DDI0_OSC_STAT1_SCLK_HF_GOOD             (0x1ul << 7)
+#define DDI0_OSC_STAT1_SCLK_MF_GOOD             (0x1ul << 6)
+#define DDI0_OSC_STAT1_SCLK_LF_GOOD             (0x1ul << 5)
+#define DDI0_OSC_STAT1_ADC_GOOD                 (0x1ul << 4)
+#define DDI0_OSC_STAT1_TDC_GOOD                 (0x1ul << 3)
+#define DDI0_OSC_STAT1_REF_GOOD                 (0x1ul << 2)
+#define DDI0_OSC_STAT1_CLK_CHP_GOOD             (0x1ul << 1)
+#define DDI0_OSC_STAT1_CLK_DCDC_GOOD            (0x1ul << 0)
+
+
+/*************  Bit definition for DDI0_OSC_STAT2 register  *******************/
+#define DDI0_OSC_STAT2_ADC_DCBIAS               (0x3ful << 26)
+#define DDI0_OSC_STAT2_HPM_RAMP1_THMET          (0x1ul << 25)
+#define DDI0_OSC_STAT2_HPM_RAMP2_THMET          (0x1ul << 24)
+#define DDI0_OSC_STAT2_HPM_RAMP3_THMET          (0x1ul << 23)
+#define DDI0_OSC_STAT2_RAMPSTATE                (0xful << 12)
+#define DDI0_OSC_STAT2_AMPCOMP_REQ              (0x1ul << 3)
+#define DDI0_OSC_STAT2_XOSC_HF_AMPGOOD          (0x1ul << 2)
+#define DDI0_OSC_STAT2_XOSC_HF_FREQGOOD         (0x1ul << 1)
+#define DDI0_OSC_STAT2_XOSC_HF_RF_FREQGOOD      (0x1ul << 0)
 
 
 /******************************************************************************/

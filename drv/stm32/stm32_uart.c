@@ -177,10 +177,13 @@ void stm32_uart_on_isr(int vector, void* param)
                 (sr & USART_SR_RXNE))
                 break;
         }
+        if (port == UARTS_COUNT)
+            return;
     }
+    else
 #endif
+        sr = SR(port);
 
-    sr = SR(port);
     //decode error, if any
     if (sr & (USART_SR_PE | USART_SR_FE | USART_SR_NE | USART_SR_ORE))
     {

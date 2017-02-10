@@ -243,8 +243,24 @@
 #define I2C_COUNT           2
 #endif
 
-#if defined(STM32F030) || defined(STM32F070)
-#define STM32F0x0
+#if defined(STM32F030) || defined(STM32F031) || defined(STM32F038)
+#define STM32F03x
+#endif
+
+#if defined(STM32F042) || defined(STM32F048)
+#define STM32F04x
+#endif
+
+#if defined(STM32F051) || defined(STM32F058)
+#define STM32F05x
+#endif
+
+#if defined(STM32F071) || defined(STM32F072) || defined(STM32F078)
+#define STM32F07x
+#endif
+
+#if defined(STM32F091) || defined(STM32F098)
+#define STM32F09x
 #endif
 
 #if defined(STM32F031) || defined(STM32F051) || defined(STM32F071) || defined(STM32F091)

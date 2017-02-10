@@ -11,6 +11,7 @@
 #include "sys_config.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/io.h"
+#include "../../userspace/error.h"
 #include <string.h>
 
 //report descriptor
@@ -84,7 +85,8 @@ void hidd_kbd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 {
     USB_INTERFACE_DESCRIPTOR* iface;
     USB_ENDPOINT_DESCRIPTOR* ep;
-    uint8_t in_ep, in_ep_size, hid_iface;
+    uint8_t in_ep, hid_iface;
+    unsigned in_ep_size;
     in_ep = in_ep_size = hid_iface = 0;
 
     //check control/data ep here

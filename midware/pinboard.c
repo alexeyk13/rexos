@@ -177,7 +177,6 @@ void pinboard()
     PINBOARD pinboard;
     pinboard_init(&pinboard);
 
-    object_set_self(SYS_OBJ_PINBOARD);
     for (;;)
     {
         ipc_read(&ipc);

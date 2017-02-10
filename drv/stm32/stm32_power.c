@@ -690,8 +690,10 @@ void stm32_power_init(CORE* core)
     RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 #endif
 #endif //SYSCFG_ENABLED
-#if defined (STM32L0)
-    PWR->CSR &= ~(PWR_CSR_EWUP2 | PWR_CSR_EWUP2);
+#if defined (STM32L0) || defined(STM32F03x) || defined(STM32F04x) || defined(STM32F05x)
+    PWR->CSR &= ~(PWR_CSR_EWUP1 | PWR_CSR_EWUP2);
+#elif defined(STM32F07x) || defined(STM32F09x)
+    PWR->CSR &= ~(PWR_CSR_EWUP1 | PWR_CSR_EWUP2 | PWR_CSR_EWUP3 | PWR_CSR_EWUP4 | PWR_CSR_EWUP5 | PWR_CSR_EWUP6 | PWR_CSR_EWUP7 | PWR_CSR_EWUP8);
 #else
     PWR->CSR &= ~PWR_CSR_EWUP;
 #endif //STM32L0
