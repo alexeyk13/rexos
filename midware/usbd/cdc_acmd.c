@@ -39,9 +39,10 @@ typedef struct {
     uint8_t tx_idle, data_iface;
     bool suspended;
 #if (USBD_CDC_ACM_FLOW_CONTROL)
+    uint32_t break_count;
     uint16_t control_ep_size;
     uint8_t DTR, RTS, control_iface;
-    bool notify_ready;
+    bool notify_ready, flow_sending, flow_changed;
     BAUD baud;
 #endif //USBD_CDC_ACM_FLOW_CONTROL
 } CDC_ACMD;
@@ -176,6 +177,9 @@ void cdc_acmd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
         cdc_acmd->control_ep_size = control_ep_size;
         cdc_acmd->notify = NULL;
         cdc_acmd->notify_ready = true;
+        cdc_acmd->flow_sending = false;
+        cdc_acmd->flow_changed = false;
+        cdc_acmd->break_count = 0;
 #endif //USBD_CDC_ACM_FLOW_CONTROL
 
 #if (USBD_CDC_ACM_TX_STREAM_SIZE)
@@ -384,8 +388,14 @@ static inline int set_line_coding(USBD* usbd, CDC_ACMD* cdc_acmd, IO* io)
     cdc_acmd->baud.parity = LC_BAUD_PARITY[lc->bParityType];
     cdc_acmd->baud.data_bits = lc->bDataBits;
 
-    usbd_post_user(usbd, cdc_acmd->data_iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_CDC_ACM_BAUDRATE_REQUEST), cdc_acmd->baud.baud,
-                   (cdc_acmd->baud.data_bits << 16) | (cdc_acmd->baud.parity << 8) | cdc_acmd->baud.stop_bits);
+    if (cdc_acmd->flow_sending || cdc_acmd->break_count)
+        cdc_acmd->flow_changed = true;
+    else
+    {
+        usbd_post_user(usbd, cdc_acmd->data_iface, 0, HAL_REQ(HAL_USBD_IFACE, USB_CDC_ACM_BAUDRATE_REQUEST), cdc_acmd->baud.baud,
+                       (cdc_acmd->baud.data_bits << 16) | (cdc_acmd->baud.parity << 8) | cdc_acmd->baud.stop_bits);
+        cdc_acmd->flow_sending = true;
+    }
 #if (USBD_CDC_ACM_DEBUG)
     printf("USB CDC ACM: set line coding %d %d%c%d\n", cdc_acmd->baud.baud, cdc_acmd->baud.data_bits, cdc_acmd->baud.parity, cdc_acmd->baud.stop_bits);
 #endif
@@ -456,11 +466,26 @@ static inline int set_control_line_state(USBD* usbd, CDC_ACMD* cdc_acmd, SETUP* 
 
 static inline int cdc_acmd_send_break(USBD* usbd, CDC_ACMD* cdc_acmd)
 {
-    usbd_post_user(usbd, cdc_acmd->data_iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_CDC_ACM_BREAK_REQUEST), 0, 0);
+    if (!cdc_acmd->flow_sending && (cdc_acmd->break_count == 0))
+        usbd_post_user(usbd, cdc_acmd->data_iface, 0, HAL_REQ(HAL_USBD_IFACE, USB_CDC_ACM_BREAK_REQUEST), 0, 0);
+    ++cdc_acmd->break_count;
 #if (USBD_CDC_ACM_DEBUG)
     printf("USB CDC ACM: BREAK request\n");
 #endif
     return 0;
+}
+
+static void cdc_acmd_flow_ack(USBD* usbd, CDC_ACMD* cdc_acmd)
+{
+    if (cdc_acmd->break_count)
+        usbd_post_user(usbd, cdc_acmd->data_iface, 0, HAL_REQ(HAL_USBD_IFACE, USB_CDC_ACM_BREAK_REQUEST), 0, 0);
+    else if (cdc_acmd->flow_changed)
+    {
+        usbd_post_user(usbd, cdc_acmd->data_iface, 0, HAL_REQ(HAL_USBD_IFACE, USB_CDC_ACM_BAUDRATE_REQUEST), cdc_acmd->baud.baud,
+                       (cdc_acmd->baud.data_bits << 16) | (cdc_acmd->baud.parity << 8) | cdc_acmd->baud.stop_bits);
+        cdc_acmd->flow_sending = true;
+        cdc_acmd->flow_changed = false;
+    }
 }
 #endif //USBD_CDC_ACM_FLOW_CONTROL
 
@@ -542,6 +567,15 @@ void cdc_acmd_class_request(USBD* usbd, void* param, IPC* ipc)
             break;
         case USB_CDC_ACM_SEND_BREAK:
             cdc_acmd_notify_serial_state(usbd, cdc_acmd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_BREAK);
+            break;
+        case USB_CDC_ACM_BREAK_REQUEST:
+            if (cdc_acmd->break_count)
+                --cdc_acmd->break_count;
+            cdc_acmd_flow_ack(usbd, cdc_acmd);
+            break;
+        case USB_CDC_ACM_BAUDRATE_REQUEST:
+            cdc_acmd->flow_sending = false;
+            cdc_acmd_flow_ack(usbd, cdc_acmd);
             break;
 #endif //USBD_CDC_ACM_FLOW_CONTROL
         default:
