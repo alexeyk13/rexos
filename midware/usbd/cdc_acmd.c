@@ -34,24 +34,28 @@ typedef struct {
     IO* notify;
     HANDLE rx_stream, tx_stream;
     HANDLE tx_stream_handle, rx_stream_handle;
+    unsigned int notify_state;
     uint8_t data_ep, control_ep;
     uint16_t data_ep_size, rx_free, tx_size;
-    uint8_t tx_idle, data_iface;
-    bool suspended;
+    uint16_t control_ep_size;
+    uint8_t tx_idle, data_iface, control_iface;
+    bool suspended, notify_busy, notify_pending;
+    uint8_t DTR, RTS;
+    BAUD baud;
 #if (USBD_CDC_ACM_FLOW_CONTROL)
     uint32_t break_count;
-    uint16_t control_ep_size;
-    uint8_t DTR, RTS, control_iface;
-    bool notify_ready, flow_sending, flow_changed;
-    BAUD baud;
+    bool flow_sending, flow_changed;
 #endif //USBD_CDC_ACM_FLOW_CONTROL
 } CDC_ACMD;
 
-#if (USBD_CDC_ACM_FLOW_CONTROL)
 void cdc_acmd_notify_serial_state(USBD* usbd, CDC_ACMD* cdc_acmd, unsigned int state)
 {
-    if (!cdc_acmd->notify_ready)
-        usbd_usb_ep_flush(usbd, USB_EP_IN | cdc_acmd->control_ep);
+    if (cdc_acmd->notify_busy)
+    {
+        cdc_acmd->notify_state = state;
+        cdc_acmd->notify_pending = true;
+        return;
+    }
 
     SETUP* setup = io_data(cdc_acmd->notify);
     setup->bmRequestType = BM_REQUEST_DIRECTION_DEVICE_TO_HOST | BM_REQUEST_TYPE_CLASS | BM_REQUEST_RECIPIENT_INTERFACE;
@@ -63,14 +67,12 @@ void cdc_acmd_notify_serial_state(USBD* usbd, CDC_ACMD* cdc_acmd, unsigned int s
     *serial_state = state;
     cdc_acmd->notify->data_size = sizeof(SETUP) + 2;
     usbd_usb_ep_write(usbd, cdc_acmd->control_ep, cdc_acmd->notify);
+    cdc_acmd->notify_busy = true;
 }
-#endif //USBD_CDC_ACM_FLOW_CONTROL
 
 void cdc_acmd_destroy(CDC_ACMD* cdc_acmd)
 {
-#if (USBD_CDC_ACM_FLOW_CONTROL)
     io_destroy(cdc_acmd->notify);
-#endif //USBD_CDC_ACM_FLOW_CONTROL
 
     io_destroy(cdc_acmd->rx);
     stream_close(cdc_acmd->rx_stream_handle);
@@ -91,10 +93,8 @@ void cdc_acmd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
     USB_ENDPOINT_DESCRIPTOR* ep;
     uint8_t data_ep, data_iface;
     uint16_t data_ep_size;
-#if (USBD_CDC_ACM_FLOW_CONTROL)
     uint8_t control_ep, control_iface;
     uint16_t control_ep_size;
-#endif //USBD_CDC_ACM_FLOW_CONTROL
 
     //check control/data ep here
     for (iface = usb_get_first_interface(cfg); iface != NULL; iface = usb_get_next_interface(cfg, iface))
@@ -143,7 +143,6 @@ void cdc_acmd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
         data_ep = USB_EP_NUM(ep->bEndpointAddress);
         data_ep_size = ep->wMaxPacketSize;
 
-#if (USBD_CDC_ACM_FLOW_CONTROL)
         control_iface = iface->bInterfaceNumber;
         control_ep = control_ep_size = 0;
         ep = (USB_ENDPOINT_DESCRIPTOR*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_TYPE);
@@ -152,7 +151,6 @@ void cdc_acmd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
             control_ep = USB_EP_NUM(ep->bEndpointAddress);
             control_ep_size = ep->wMaxPacketSize;
         }
-#endif //USBD_CDC_ACM_FLOW_CONTROL
 
         //configuration is ok, applying
         CDC_ACMD* cdc_acmd = (CDC_ACMD*)malloc(sizeof(CDC_ACMD));
@@ -171,12 +169,12 @@ void cdc_acmd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
         cdc_acmd->tx_stream = cdc_acmd->rx_stream = cdc_acmd->tx_stream_handle = cdc_acmd->rx_stream_handle = INVALID_HANDLE;
         cdc_acmd->suspended = false;
 
-#if (USBD_CDC_ACM_FLOW_CONTROL)
         cdc_acmd->control_iface = control_iface;
         cdc_acmd->control_ep = control_ep;
         cdc_acmd->control_ep_size = control_ep_size;
         cdc_acmd->notify = NULL;
-        cdc_acmd->notify_ready = true;
+        cdc_acmd->notify_busy = cdc_acmd->notify_pending = false;
+#if (USBD_CDC_ACM_FLOW_CONTROL)
         cdc_acmd->flow_sending = false;
         cdc_acmd->flow_changed = false;
         cdc_acmd->break_count = 0;
@@ -220,7 +218,6 @@ void cdc_acmd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
         usbd_register_interface(usbd, cdc_acmd->data_iface, &__CDC_ACMD_CLASS, cdc_acmd);
         usbd_register_endpoint(usbd, cdc_acmd->data_iface, cdc_acmd->data_ep);
 
-#if (USBD_CDC_ACM_FLOW_CONTROL)
         if (control_ep_size)
         {
             if (cdc_acmd->control_ep_size < 16)
@@ -238,16 +235,15 @@ void cdc_acmd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
                 return;
             }
             usbd_usb_ep_open(usbd, USB_EP_IN | cdc_acmd->control_ep, USB_EP_INTERRUPT, cdc_acmd->control_ep_size);
-            cdc_acmd_notify_serial_state(usbd, cdc_acmd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
             usbd_register_interface(usbd, cdc_acmd->control_iface, &__CDC_ACMD_CLASS, cdc_acmd);
             usbd_register_endpoint(usbd, cdc_acmd->control_iface, cdc_acmd->control_ep);
+            cdc_acmd_notify_serial_state(usbd, cdc_acmd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR);
         }
         cdc_acmd->DTR = cdc_acmd->RTS = false;
         cdc_acmd->baud.baud = 115200;
         cdc_acmd->baud.data_bits = 8;
         cdc_acmd->baud.parity = 'N';
         cdc_acmd->baud.stop_bits = 1;
-#endif //USBD_CDC_ACM_FLOW_CONTROL
     }
 }
 
@@ -267,14 +263,12 @@ void cdc_acmd_class_reset(USBD* usbd, void* param)
 
     usbd_unregister_endpoint(usbd, cdc_acmd->data_iface, cdc_acmd->data_ep);
     usbd_unregister_interface(usbd, cdc_acmd->data_iface, &__CDC_ACMD_CLASS);
-#if (USBD_CDC_ACM_FLOW_CONTROL)
     if (cdc_acmd->control_ep)
     {
         usbd_usb_ep_close(usbd, USB_EP_IN | cdc_acmd->control_ep);
         usbd_unregister_endpoint(usbd, cdc_acmd->control_iface, cdc_acmd->control_ep);
         usbd_unregister_interface(usbd, cdc_acmd->control_iface, &__CDC_ACMD_CLASS);
     }
-#endif //USBD_CDC_ACM_FLOW_CONTROL
     cdc_acmd_destroy(cdc_acmd);
 }
 
@@ -294,10 +288,11 @@ void cdc_acmd_class_suspend(USBD* usbd, void* param)
     cdc_acmd->rx_free = 0;
 #endif //USBD_CDC_ACM_RX_STREAM_SIZE
 
-#if (USBD_CDC_ACM_FLOW_CONTROL)
     if (cdc_acmd->control_ep)
+    {
         usbd_usb_ep_flush(usbd, USB_EP_IN | cdc_acmd->control_ep);
-#endif //USBD_CDC_ACM_FLOW_CONTROL
+        cdc_acmd->notify_busy = cdc_acmd->notify_pending = false;
+    }
     cdc_acmd->suspended = true;
 }
 
@@ -322,10 +317,8 @@ static inline void cdc_acmd_read_complete(USBD* usbd, CDC_ACMD* cdc_acmd)
     to_read = cdc_acmd->rx->data_size;
     if (to_read > cdc_acmd->rx_free)
         to_read = cdc_acmd->rx_free;
-#if (USBD_CDC_ACM_FLOW_CONTROL)
     if (to_read < cdc_acmd->rx->data_size)
         cdc_acmd_notify_serial_state(usbd, cdc_acmd, CDC_SERIAL_STATE_DCD | CDC_SERIAL_STATE_DSR | CDC_SERIAL_STATE_OVERRUN);
-#endif //USBD_CDC_ACM_FLOW_CONTROL
 #if (USBD_CDC_ACM_DEBUG_FLOW)
     int i;
     printf("USB CDC ACM: rx ");
@@ -343,13 +336,8 @@ static inline void cdc_acmd_read_complete(USBD* usbd, CDC_ACMD* cdc_acmd)
 
 void cdc_acmd_write(USBD* usbd, CDC_ACMD* cdc_acmd)
 {
-#if (USBD_CDC_ACM_FLOW_CONTROL)
     if (!cdc_acmd->DTR || !cdc_acmd->tx_idle || cdc_acmd->suspended)
         return;
-#else
-    if (!cdc_acmd->tx_idle || cdc_acmd->suspended)
-        return;
-#endif //USBD_CDC_ACM_FLOW_CONTROL
 
     unsigned int to_write;
     if (cdc_acmd->tx_size == 0)
@@ -375,7 +363,6 @@ void cdc_acmd_write(USBD* usbd, CDC_ACMD* cdc_acmd)
         stream_listen(cdc_acmd->tx_stream, USBD_IFACE(cdc_acmd->data_iface, 0), HAL_USBD_IFACE);
 }
 
-#if (USBD_CDC_ACM_FLOW_CONTROL)
 static inline int set_line_coding(USBD* usbd, CDC_ACMD* cdc_acmd, IO* io)
 {
     LINE_CODING_STRUCT* lc = io_data(io);
@@ -388,6 +375,7 @@ static inline int set_line_coding(USBD* usbd, CDC_ACMD* cdc_acmd, IO* io)
     cdc_acmd->baud.parity = LC_BAUD_PARITY[lc->bParityType];
     cdc_acmd->baud.data_bits = lc->bDataBits;
 
+#if (USBD_CDC_ACM_FLOW_CONTROL)
     if (cdc_acmd->flow_sending || cdc_acmd->break_count)
         cdc_acmd->flow_changed = true;
     else
@@ -396,6 +384,7 @@ static inline int set_line_coding(USBD* usbd, CDC_ACMD* cdc_acmd, IO* io)
                        (cdc_acmd->baud.data_bits << 16) | (cdc_acmd->baud.parity << 8) | cdc_acmd->baud.stop_bits);
         cdc_acmd->flow_sending = true;
     }
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 #if (USBD_CDC_ACM_DEBUG)
     printf("USB CDC ACM: set line coding %d %d%c%d\n", cdc_acmd->baud.baud, cdc_acmd->baud.data_bits, cdc_acmd->baud.parity, cdc_acmd->baud.stop_bits);
 #endif
@@ -466,15 +455,18 @@ static inline int set_control_line_state(USBD* usbd, CDC_ACMD* cdc_acmd, SETUP* 
 
 static inline int cdc_acmd_send_break(USBD* usbd, CDC_ACMD* cdc_acmd)
 {
+#if (USBD_CDC_ACM_FLOW_CONTROL)
     if (!cdc_acmd->flow_sending && (cdc_acmd->break_count == 0))
         usbd_post_user(usbd, cdc_acmd->data_iface, 0, HAL_REQ(HAL_USBD_IFACE, USB_CDC_ACM_BREAK_REQUEST), 0, 0);
     ++cdc_acmd->break_count;
+#endif //USBD_CDC_ACM_FLOW_CONTROL
 #if (USBD_CDC_ACM_DEBUG)
     printf("USB CDC ACM: BREAK request\n");
 #endif
     return 0;
 }
 
+#if (USBD_CDC_ACM_FLOW_CONTROL)
 static void cdc_acmd_flow_ack(USBD* usbd, CDC_ACMD* cdc_acmd)
 {
     if (cdc_acmd->break_count)
@@ -491,9 +483,8 @@ static void cdc_acmd_flow_ack(USBD* usbd, CDC_ACMD* cdc_acmd)
 
 int cdc_acmd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
 {
-#if (USBD_CDC_ACM_FLOW_CONTROL)
-    CDC_ACMD* cdc_acmd = (CDC_ACMD*)param;
     int res = -1;
+    CDC_ACMD* cdc_acmd = (CDC_ACMD*)param;
     switch (setup->bRequest)
     {
     case SET_LINE_CODING:
@@ -512,9 +503,6 @@ int cdc_acmd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
         break;
     }
     return res;
-#else
-    return -1;
-#endif //USBD_CDC_ACM_FLOW_CONTROL
 }
 
 static inline void cdc_acmd_driver_event(USBD* usbd, CDC_ACMD* cdc_acmd, IPC* ipc)
@@ -530,10 +518,15 @@ static inline void cdc_acmd_driver_event(USBD* usbd, CDC_ACMD* cdc_acmd, IPC* ip
             cdc_acmd->tx_idle = true;
             cdc_acmd_write(usbd, cdc_acmd);
         }
-#if (USBD_CDC_ACM_FLOW_CONTROL)
         else
-            cdc_acmd->notify_ready = true;
-#endif //USBD_CDC_ACM_FLOW_CONTROL
+        {
+            cdc_acmd->notify_busy = false;
+            if (cdc_acmd->notify_pending)
+            {
+                cdc_acmd->notify_pending = false;
+                cdc_acmd_notify_serial_state(usbd, cdc_acmd, cdc_acmd->notify_state);
+            }
+        }
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
