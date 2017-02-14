@@ -13,6 +13,7 @@
 #include "ti_pin.h"
 #include "ti_uart.h"
 #include "ti_timer.h"
+#include "ti_rf.h"
 
 void exodriver_post(IPC* ipc)
 {
@@ -35,6 +36,11 @@ void exodriver_post(IPC* ipc)
         ti_uart_request(__KERNEL->exo, ipc);
         break;
 #endif //TI_UART
+#if (TI_RF)
+    case HAL_RF:
+        ti_rf_request(__KERNEL->exo, ipc);
+        break;
+#endif //TI_RF
     default:
         error(ERROR_NOT_SUPPORTED);
         break;
@@ -51,4 +57,7 @@ void exodriver_init()
 #if (TI_UART)
     ti_uart_init(__KERNEL->exo);
 #endif //TI_UART
+#if (TI_RF)
+    ti_rf_init(__KERNEL->exo);
+#endif //TI_RF
 }

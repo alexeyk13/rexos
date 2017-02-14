@@ -11,6 +11,7 @@
 #include "ti_pin.h"
 #include "ti_timer.h"
 #include "ti_uart.h"
+#include "ti_rf.h"
 #include "ti_config.h"
 
 typedef struct _EXO {
@@ -20,6 +21,9 @@ typedef struct _EXO {
 #if (TI_UART)
     UART_DRV uart;
 #endif //TI_UART
+#if (TI_RF)
+    RF_DRV rf;
+#endif //TI_RF
 } EXO;
 
 

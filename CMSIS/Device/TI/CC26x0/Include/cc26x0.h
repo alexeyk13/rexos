@@ -93,6 +93,39 @@ typedef enum IRQn
   * @{
   */
 
+/******************************************************************************/
+/*                                                                            */
+/*                              ROM tables                                    */
+/*                                                                            */
+/******************************************************************************/
+
+typedef uint32_t (* FN_UINT32_UINT8P_UINT32_UINT32_Type) (uint8_t*, uint32_t, uint32_t);
+typedef uint32_t (* FN_UINT32_VOID_Type) (void);
+typedef void (* FN_VOID_VOID_Type) (void);
+typedef uint32_t (* FN_UINT32_UINT8P_UINT16_UINT16_Type) (uint8_t*, uint16_t, uint16_t);
+typedef uint32_t (* FN_UINT32_UINT32P_UINT32_Type) (uint32_t*, uint32_t);
+typedef void (* FN_VOID_UINT8_Type) (uint8_t);
+
+typedef struct
+{
+    FN_UINT32_UINT8P_UINT32_UINT32_Type Crc32;
+    FN_UINT32_VOID_Type FlashGetSize;
+    FN_UINT32_VOID_Type GetChipId;
+    __I   uint32_t RESERVED0[3];
+    FN_VOID_VOID_Type ResetDevice;
+    FN_UINT32_UINT8P_UINT16_UINT16_Type Fletcher32;
+    FN_UINT32_UINT32P_UINT32_Type MinValue;
+    FN_UINT32_UINT32P_UINT32_Type MaxValue;
+    FN_UINT32_UINT32P_UINT32_Type MeanValue;
+    FN_UINT32_UINT32P_UINT32_Type StandDeviationValue;
+    __I   uint32_t RESERVED1[2];
+    FN_VOID_VOID_Type HFSourceSafeSwitch;
+    FN_VOID_UINT8_Type SelectCompAInput;
+    FN_VOID_UINT8_Type SelectCompARef;
+    FN_VOID_UINT8_Type SelectADCCompBInput;
+    FN_VOID_UINT8_Type SelectCompBRef;
+} HARD_API_Type;
+
 
 /******************************************************************************/
 /*                                                                            */
@@ -1221,6 +1254,8 @@ typedef struct
 /*                                                                            */
 /******************************************************************************/
 
+#define HARD_API                                ((HARD_API_Type*)0x10000048)
+
 #define AON_BATMON                              ((AON_BATMON_Type*)AON_BATMON_BASE)
 #define AON_EVENT                               ((AON_EVENT_Type*)AON_EVENT_BASE)
 #define AON_IOC                                 ((AON_IOC_Type*)AON_IOC_BASE)
@@ -1314,6 +1349,115 @@ typedef struct
 
 /******************************************************************************/
 /*                                                                            */
+/*                                 AON_WUC                                    */
+/*                                                                            */
+/******************************************************************************/
+
+/*************  Bit definition for AON_WUC_MCUCLK register  *******************/
+#define AON_WUC_MCUCLK_RCOSC_HF_CAL_DONE        (0x1ul << 2)
+
+#define AON_WUC_MCUCLK_PWR_DWN_SRC              (0x3ul << 0)
+#define AON_WUC_MCUCLK_PWR_DWN_SRC_NO           (0x0ul << 0)
+#define AON_WUC_MCUCLK_PWR_DWN_SRC_SCLK_LF      (0x1ul << 0)
+
+
+/*************  Bit definition for AON_WUC_AUXCLK register  *******************/
+#define AON_WUC_AUXCLK_PWR_DWN_SRC              (0x3ul << 11)
+#define AON_WUC_AUXCLK_PWR_DWN_SRC_NO           (0x0ul << 11)
+#define AON_WUC_AUXCLK_PWR_DWN_SRC_SCLK_LF      (0x1ul << 11)
+
+#define AON_WUC_AUXCLK_SCLK_HF_DIV              (0x7ul << 8)
+#define AON_WUC_AUXCLK_SCLK_HF_DIV_2            (0x0ul << 8)
+#define AON_WUC_AUXCLK_SCLK_HF_DIV_4            (0x1ul << 8)
+#define AON_WUC_AUXCLK_SCLK_HF_DIV_8            (0x2ul << 8)
+#define AON_WUC_AUXCLK_SCLK_HF_DIV_16           (0x3ul << 8)
+#define AON_WUC_AUXCLK_SCLK_HF_DIV_32           (0x4ul << 8)
+#define AON_WUC_AUXCLK_SCLK_HF_DIV_64           (0x5ul << 8)
+#define AON_WUC_AUXCLK_SCLK_HF_DIV_128          (0x6ul << 8)
+#define AON_WUC_AUXCLK_SCLK_HF_DIV_256          (0x7ul << 8)
+
+#define AON_WUC_AUXCLK_SRC                      (0x7ul << 0)
+#define AON_WUC_AUXCLK_SRC_SCLK_HF              (0x1ul << 0)
+#define AON_WUC_AUXCLK_SRC_SCLK_LF              (0x4ul << 0)
+
+
+/*************  Bit definition for AON_WUC_MCUCFG register  *******************/
+#define AON_WUC_MCUCFG_VIRT_OFF                 (0x1ul << 17)
+#define AON_WUC_MCUCFG_FIXED_WU_EN              (0x1ul << 16)
+
+#define AON_WUC_MCUCFG_SRAM_RET_EN              (0xful << 0)
+#define AON_WUC_MCUCFG_SRAM_RET_EN_DIS          (0x0ul << 0)
+#define AON_WUC_MCUCFG_SRAM_RET_EN_1            (0x1ul << 0)
+#define AON_WUC_MCUCFG_SRAM_RET_EN_1_2          (0x3ul << 0)
+#define AON_WUC_MCUCFG_SRAM_RET_EN_1_2_3        (0x7ul << 0)
+#define AON_WUC_MCUCFG_SRAM_RET_EN_1_2_3_4      (0xful << 0)
+
+
+/*************  Bit definition for AON_WUC_AUXCFG register  *******************/
+#define AON_WUC_AUXCFG_RAM_RET_EN               (0x1ul << 0)
+
+
+/*************  Bit definition for AON_WUC_AUXCTL register  *******************/
+#define AON_WUC_AUXCTL_RESET_REQ                (0x1ul << 31)
+#define AON_WUC_AUXCTL_SCE_RUN_EN               (0x1ul << 2)
+#define AON_WUC_AUXCTL_SCE_SWEV                 (0x1ul << 1)
+#define AON_WUC_AUXCTL_AUX_FORCE_ON             (0x1ul << 0)
+
+
+/*************  Bit definition for AON_WUC_PWRSTAT register  ******************/
+#define AON_WUC_PWRSTAT_AUX_PWR_DWN             (0x1ul << 9)
+#define AON_WUC_PWRSTAT_JTAG_PD_ON              (0x1ul << 6)
+#define AON_WUC_PWRSTAT_AUX_PD_ON               (0x1ul << 5)
+#define AON_WUC_PWRSTAT_MCU_PD_ON               (0x1ul << 4)
+#define AON_WUC_PWRSTAT_AUX_BUS_CONNECTED       (0x1ul << 2)
+#define AON_WUC_PWRSTAT_AUX_RESET_DONE          (0x1ul << 1)
+
+
+/*************  Bit definition for AON_WUC_SHUTDOWN register  *****************/
+#define AON_WUC_SHUTDOWN_EN                     (0x1ul << 0)
+
+
+/*************  Bit definition for AON_WUC_CTL0 register  *********************/
+#define AON_WUC_CTL0_PWR_DWN_DIS                (0x1ul << 8)
+#define AON_WUC_CTL0_AUX_SRAM_ERASE             (0x1ul << 3)
+#define AON_WUC_CTL0_MCU_SRAM_ERASE             (0x1ul << 2)
+
+
+/*************  Bit definition for AON_WUC_CTL1 register  *********************/
+#define AON_WUC_CTL1_MCU_RESET_SRC              (0x1ul << 1)
+#define AON_WUC_CTL1_MCU_WARM_RESET             (0x1ul << 0)
+
+
+/*************  Bit definition for AON_WUC_RECHARGECFG register  **************/
+#define AON_WUC_RECHARGECFG_ADAPTIVE_EN         (0x1ul << 31)
+#define AON_WUC_RECHARGECFG_C2                  (0xful << 20)
+#define AON_WUC_RECHARGECFG_C1                  (0xful << 16)
+#define AON_WUC_RECHARGECFG_MAX_PER_M           (0x1ful << 11)
+#define AON_WUC_RECHARGECFG_MAX_PER_E           (0x7ul << 8)
+#define AON_WUC_RECHARGECFG_PER_M               (0x1ful << 3)
+#define AON_WUC_RECHARGECFG_PER_E               (0x7ul << 0)
+
+
+/*************  Bit definition for AON_WUC_RECHARGESTAT register  *************/
+#define AON_WUC_RECHARGESTAT_VDDR_SMPLS         (0xful << 16)
+#define AON_WUC_RECHARGESTAT_MAX_USED_PER       (0xfful << 0)
+
+
+/*************  Bit definition for AON_WUC_OSCCFG register  *******************/
+#define AON_WUC_OSCCFG_PER_M                    (0x1ful << 3)
+#define AON_WUC_OSCCFG_PER_E                    (0x7ul << 0)
+
+
+/*************  Bit definition for AON_WUC_JTAGCFG register  ******************/
+#define AON_WUC_JTAGCFG_JTAG_PD_FORCE_ON        (0x1ul << 8)
+
+
+/*************  Bit definition for AON_WUC_JTAGUSERCODE register  *************/
+#define AON_WUC_JTAGUSERCODE_USER_CODE          (0xfffffffful << 0)
+
+
+/******************************************************************************/
+/*                                                                            */
 /*                                DDI0_OSC                                    */
 /*                                                                            */
 /******************************************************************************/
@@ -1345,17 +1489,17 @@ typedef struct
 #define DDI0_OSC_CTL0_ACLK_REF_SRC_SEL_RCOSC_LF (0x2ul << 5)
 #define DDI0_OSC_CTL0_ACLK_REF_SRC_SEL_XOSC_LF  (0x3ul << 5)
 
-#define DDI0_OSC_CTL0_ACLK_LF_SRC_SEL           (0x3ul << 2)
-#define DDI0_OSC_CTL0_ACLK_LF_SRC_SEL_RCOSC_HF  (0x0ul << 2)
-#define DDI0_OSC_CTL0_ACLK_LF_SRC_SEL_XOSC_HF   (0x1ul << 2)
-#define DDI0_OSC_CTL0_ACLK_LF_SRC_SEL_RCOSC_LF  (0x2ul << 2)
-#define DDI0_OSC_CTL0_ACLK_LF_SRC_SEL_XOSC_LF   (0x3ul << 2)
+#define DDI0_OSC_CTL0_SCLK_LF_SRC_SEL           (0x3ul << 2)
+#define DDI0_OSC_CTL0_SCLK_LF_SRC_SEL_RCOSC_HF  (0x0ul << 2)
+#define DDI0_OSC_CTL0_SCLK_LF_SRC_SEL_XOSC_HF   (0x1ul << 2)
+#define DDI0_OSC_CTL0_SCLK_LF_SRC_SEL_RCOSC_LF  (0x2ul << 2)
+#define DDI0_OSC_CTL0_SCLK_LF_SRC_SEL_XOSC_LF   (0x3ul << 2)
 
-#define DDI0_OSC_CTL0_ACLK_MF_SRC_SEL           (0x1ul << 1)
+#define DDI0_OSC_CTL0_SCLK_MF_SRC_SEL           (0x1ul << 1)
 
-#define DDI0_OSC_CTL0_ACLK_HF_SRC_SEL           (0x1ul << 0)
-#define DDI0_OSC_CTL0_ACLK_HF_SRC_SEL_RCOSC     (0x0ul << 0)
-#define DDI0_OSC_CTL0_ACLK_HF_SRC_SEL_XOSC      (0x1ul << 0)
+#define DDI0_OSC_CTL0_SCLK_HF_SRC_SEL           (0x1ul << 0)
+#define DDI0_OSC_CTL0_SCLK_HF_SRC_SEL_RCOSC     (0x0ul << 0)
+#define DDI0_OSC_CTL0_SCLK_HF_SRC_SEL_XOSC      (0x1ul << 0)
 
 
 /*************  Bit definition for DDI0_OSC_CTL1 register  ********************/
@@ -1825,6 +1969,39 @@ typedef struct
 
 /******************************************************************************/
 /*                                                                            */
+/*                                  VIMS                                      */
+/*                                                                            */
+/******************************************************************************/
+
+/**************  Bit definition for VIMS_STAT register  *************************/
+#define VIMS_STAT_IDCODE_LB_DIS                 (0x1ul << 5)
+#define VIMS_STAT_SYSBUS_LB_DIS                 (0x1ul << 4)
+#define VIMS_STAT_MODE_CHANGING                 (0x1ul << 3)
+#define VIMS_STAT_INV                           (0x1ul << 2)
+
+#define VIMS_STAT_MODE                          (0x3ul << 0)
+#define VIMS_STAT_MODE_GPRAM                    (0x0ul << 0)
+#define VIMS_STAT_MODE_CACHE                    (0x1ul << 0)
+#define VIMS_STAT_MODE_OFF                      (0x3ul << 0)
+
+
+/**************  Bit definition for VIMS_CTL register  ************************/
+#define VIMS_CTL_STATS_CLR                      (0x1ul << 31)
+#define VIMS_CTL_STATS_EN                       (0x1ul << 30)
+#define VIMS_CTL_DYN_CG_EN                      (0x1ul << 29)
+#define VIMS_CTL_IDCODE_LB_DIS                  (0x1ul << 5)
+#define VIMS_CTL_SYSBUS_LB_DIS                  (0x1ul << 4)
+#define VIMS_CTL_ARB_CFG                        (0x1ul << 3)
+#define VIMS_CTL_PREF_EN                        (0x1ul << 2)
+
+#define VIMS_CTL_MODE                           (0x3ul << 0)
+#define VIMS_CTL_MODE_GPRAM                     (0x0ul << 0)
+#define VIMS_CTL_MODE_CACHE                     (0x1ul << 0)
+#define VIMS_CTL_MODE_OFF                       (0x3ul << 0)
+
+
+/******************************************************************************/
+/*                                                                            */
 /*                                   IOC                                      */
 /*                                                                            */
 /******************************************************************************/
@@ -2178,6 +2355,166 @@ typedef struct
 
 /*************  Bit definition for GPT_ANDCCP register  ***********************/
 #define GPT_ANDCCP_CCP_AND_EN                   (0x1ul << 0)
+
+
+/******************************************************************************/
+/*                                                                            */
+/*                               AON_RTC                                      */
+/*                                                                            */
+/******************************************************************************/
+
+/*************  Bit definition for AON_RTC_CTL register  **********************/
+#define AON_RTC_CTL_COMB_EV_MASK                (0x7ul << 16)
+#define AON_RTC_CTL_COMB_EV_MASK_NO             (0x0ul << 16)
+#define AON_RTC_CTL_COMB_EV_MASK_CHANNEL0       (0x1ul << 16)
+#define AON_RTC_CTL_COMB_EV_MASK_CHANNEL1       (0x2ul << 16)
+#define AON_RTC_CTL_COMB_EV_MASK_CHANNEL2       (0x4ul << 16)
+
+#define AON_RTC_CTL_EV_DELAY                    (0xful << 8)
+#define AON_RTC_CTL_EV_DELAY_NO                 (0x0ul << 8)
+#define AON_RTC_CTL_EV_DELAY_1                  (0x1ul << 8)
+#define AON_RTC_CTL_EV_DELAY_2                  (0x2ul << 8)
+#define AON_RTC_CTL_EV_DELAY_4                  (0x3ul << 8)
+#define AON_RTC_CTL_EV_DELAY_8                  (0x4ul << 8)
+#define AON_RTC_CTL_EV_DELAY_16                 (0x5ul << 8)
+#define AON_RTC_CTL_EV_DELAY_32                 (0x6ul << 8)
+#define AON_RTC_CTL_EV_DELAY_48                 (0x7ul << 8)
+#define AON_RTC_CTL_EV_DELAY_64                 (0x8ul << 8)
+#define AON_RTC_CTL_EV_DELAY_80                 (0x9ul << 8)
+#define AON_RTC_CTL_EV_DELAY_96                 (0xaul << 8)
+#define AON_RTC_CTL_EV_DELAY_112                (0xbul << 8)
+#define AON_RTC_CTL_EV_DELAY_128                (0xcul << 8)
+#define AON_RTC_CTL_EV_DELAY_144                (0xdul << 8)
+
+#define AON_RTC_CTL_RESET                       (0x1ul << 7)
+#define AON_RTC_CTL_RTC_4KHZ_EN                 (0x1ul << 2)
+#define AON_RTC_CTL_RTC_UPD_EN                  (0x1ul << 1)
+#define AON_RTC_CTL_EN                          (0x1ul << 0)
+
+
+/*************  Bit definition for AON_RTC_EVFLAGS register  ******************/
+#define AON_RTC_EVFLAGS_CH2                     (0x1ul << 16)
+#define AON_RTC_EVFLAGS_CH1                     (0x1ul << 8)
+#define AON_RTC_EVFLAGS_CH0                     (0x1ul << 0)
+
+
+/*************  Bit definition for AON_RTC_SUBSECINC register  ****************/
+#define AON_RTC_SUBSECINC_VALUEINC              (0xfffffful << 0)
+
+
+/*************  Bit definition for AON_RTC_CHCTL register  ********************/
+#define AON_RTC_CHCTL_CH2_CONT_EN               (0x1ul << 18)
+#define AON_RTC_CHCTL_CH2_EN                    (0x1ul << 16)
+#define AON_RTC_CHCTL_CH1_CAPT_EN               (0x1ul << 9)
+#define AON_RTC_CHCTL_CH1_EN                    (0x1ul << 8)
+#define AON_RTC_CHCTL_CH0_EN                    (0x1ul << 0)
+
+
+/*************  Bit definition for AON_RTC_CH1CAPT register  ******************/
+#define AON_RTC_CH1CAPT_SEC                     (0xfffful << 16)
+#define AON_RTC_CH1CAPT_SUBSEC                  (0xfffful << 0)
+
+
+/*************  Bit definition for AON_RTC_SYNC register  *********************/
+#define AON_RTC_SYNC_WBUSY                      (0x1ul << 0)
+
+
+/******************************************************************************/
+/*                                                                            */
+/*                               AUX_WUC                                      */
+/*                                                                            */
+/******************************************************************************/
+
+/*************  Bit definition for AUX_WUC_MODCLKEN0 register  ****************/
+#define AUX_WUC_MODCLKEN0_AUX_ADI4              (0x1ul << 7)
+#define AUX_WUC_MODCLKEN0_AUX_DDI0_OSC          (0x1ul << 6)
+#define AUX_WUC_MODCLKEN0_TDC                   (0x1ul << 5)
+#define AUX_WUC_MODCLKEN0_ANAIF                 (0x1ul << 4)
+#define AUX_WUC_MODCLKEN0_TIMER                 (0x1ul << 3)
+#define AUX_WUC_MODCLKEN0_AIODIO1               (0x1ul << 2)
+#define AUX_WUC_MODCLKEN0_AIODIO0               (0x1ul << 1)
+#define AUX_WUC_MODCLKEN0_SMPH                  (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_PWROFFREQ register  ****************/
+#define AUX_WUC_PWROFFREQ_REQ                   (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_PWRDWNREQ register  ****************/
+#define AUX_WUC_PWRDWNREQ_REQ                   (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_PWRDWNACK register  ****************/
+#define AUX_WUC_PWRDWNACK_ACK                   (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_CLKLFREQ register  *****************/
+#define AUX_WUC_CLKLFREQ_REQ                    (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_CLKLFACK register  *****************/
+#define AUX_WUC_CLKLFACK_ACK                    (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_WUEVFLAGS register  ****************/
+#define AUX_WUC_WUEVFLAGS_AON_RTC_CH2           (0x1ul << 2)
+#define AUX_WUC_WUEVFLAGS_AON_SW                (0x1ul << 1)
+#define AUX_WUC_WUEVFLAGS_AON_PROG_WU           (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_WUEVCLR register  ******************/
+#define AUX_WUC_WUEVCLR_AON_RTC_CH2             (0x1ul << 2)
+#define AUX_WUC_WUEVCLR_AON_SW                  (0x1ul << 1)
+#define AUX_WUC_WUEVCLR_AON_PROG_WU             (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_ADCCLKCTL register  ****************/
+#define AUX_WUC_ADCCLKCTL_ACK                   (0x1ul << 1)
+#define AUX_WUC_ADCCLKCTL_REQ                   (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_TDCCLKCTL register  ****************/
+#define AUX_WUC_TDCCLKCTL_ACK                   (0x1ul << 1)
+#define AUX_WUC_TDCCLKCTL_REQ                   (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_REFCLKCTL register  ****************/
+#define AUX_WUC_REFCLKCTL_ACK                   (0x1ul << 1)
+#define AUX_WUC_REFCLKCTL_REQ                   (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_RTCSUBSECINCCTL register  **********/
+#define AUX_WUC_RTCSUBSECINCCTL_ACK             (0x1ul << 1)
+#define AUX_WUC_RTCSUBSECINCCTL_REQ             (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_MCUBUSCTL register  ****************/
+#define AUX_WUC_MCUBUSCTL_DISCONNECT_REQ        (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_MCUBUSSTAT register  ***************/
+#define AUX_WUC_MCUBUSSTAT_DISCONNECTED         (0x1ul << 1)
+#define AUX_WUC_MCUBUSSTAT_DISCONNECT_ACK       (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_AONCTLSTAT register  ***************/
+#define AUX_WUC_AONCTLSTAT_AUX_FORCE_ON         (0x1ul << 1)
+#define AUX_WUC_AONCTLSTAT_SCE_RUN_EN           (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_AUXIOLATCH register  ***************/
+#define AUX_WUC_AUXIOLATCH_EN                   (0x1ul << 0)
+
+
+/*************  Bit definition for AUX_WUC_MODCLKEN1 register  ****************/
+#define AUX_WUC_MODCLKEN1_AUX_ADI4              (0x1ul << 7)
+#define AUX_WUC_MODCLKEN1_AUX_DDI0_OSC          (0x1ul << 6)
+#define AUX_WUC_MODCLKEN1_TDC                   (0x1ul << 5)
+#define AUX_WUC_MODCLKEN1_ANAIF                 (0x1ul << 4)
+#define AUX_WUC_MODCLKEN1_TIMER                 (0x1ul << 3)
+#define AUX_WUC_MODCLKEN1_AIODIO1               (0x1ul << 2)
+#define AUX_WUC_MODCLKEN1_AIODIO0               (0x1ul << 1)
+#define AUX_WUC_MODCLKEN1_SMPH                  (0x1ul << 0)
 
 
 /******************************************************************************/
