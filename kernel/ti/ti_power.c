@@ -69,8 +69,7 @@ void ti_power_domain_off(EXO* exo, POWER_DOMAIN domain)
     }
 }
 
-#include "../../CMSIS/Device/TI/CC26x0/Include/cc26x0.h"
-static inline void ddi_calibrate()
+static inline void setup_trim_values()
 {
     uint32_t rev;
 
@@ -134,6 +133,8 @@ static inline void ddi_calibrate()
         DDI0_OSC->XOSCHFCTL = 0;
         DDI0_OSC->RADCEXTCFG = 0x403F8000;
     }
+
+    ADI3->DCDCCTL1 = (ADI3->DCDCCTL1 & ~ADI3_DCDCCTL1_VDDR_TRIM_SLEEP) | (((FCFG1->LDO_TRIM >> 24) & 0x1f) << 0);
 }
 
 static inline void sclk_hf_setup()
@@ -171,7 +172,6 @@ static inline void sclk_lf_setup()
     DDI0_OSC->CTL0 = (DDI0_OSC->CTL0 & ~DDI0_OSC_CTL0_SCLK_LF_SRC_SEL) | DDI0_OSC_CTL0_SCLK_LF_SRC_SEL_XOSC_LF;
 #else
     DDI0_OSC->CTL0 = (DDI0_OSC->CTL0 & ~DDI0_OSC_CTL0_SCLK_LF_SRC_SEL) | DDI0_OSC_CTL0_SCLK_LF_SRC_SEL_RCOSC_LF;
-    //        OSCClockSourceSet( OSC_SRC_CLK_LF, OSC_RCOSC_LF );
 #endif
 
     //wait will next SCLK_LF
@@ -181,8 +181,10 @@ static inline void sclk_lf_setup()
 
 void ti_power_init(EXO* exo)
 {
+    setup_trim_values();
+
     //switch to DC/DC
-    //TODO: ADI3 tune
+    AON_BATMON->FLASHPUMPP0 &= ~(1 << 5);
     AON_SYSCTL->PWRCTL |= AON_SYSCTL_PWRCTL_DCDC_ACTIVE | AON_SYSCTL_PWRCTL_DCDC_EN;
 
     //some power saving
@@ -193,14 +195,12 @@ void ti_power_init(EXO* exo)
     VIMS->CTL = VIMS_CTL_DYN_CG_EN | VIMS_CTL_PREF_EN | VIMS_CTL_MODE_CACHE;
     while (VIMS->STAT & VIMS_STAT_MODE_CHANGING) {}
 
-    ddi_calibrate();
     sclk_hf_setup();
     sclk_lf_setup();
 
     //tune flash latency? Some magic from TI code
-    //TODO: not working
-///    FLASH->CFG = (1 << 5);
-///    FLASH->FPAC1 = (FLASH->FPAC1 & ~(0xffful << 16)) | (0x139ul << 16);
+    FLASH->CFG |= (1 << 5);
+    FLASH->FPAC1 = (FLASH->FPAC1 & ~(0xffful << 16)) | (0x139ul << 16);
 
     //yet another one more TI magic
     if (((AON_SYSCTL->RESETCTL >> 12) & 3) == 1)

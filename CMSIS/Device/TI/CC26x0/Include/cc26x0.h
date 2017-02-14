@@ -889,6 +889,28 @@ typedef struct
 
 /******************************************************************************/
 /*                                                                            */
+/*                                 ADI3                                       */
+/*                                                                            */
+/******************************************************************************/
+
+typedef struct
+{
+    __I uint32_t RESERVED0[2];
+  __IO  uint32_t REFSYSCTL0;                    /*!< Internal                                                           */
+  __IO  uint32_t REFSYSCTL1;                    /*!< Internal                                                           */
+  __IO  uint32_t REFSYSCTL2;                    /*!< Internal                                                           */
+  __IO  uint32_t REFSYSCTL3;                    /*!< Internal                                                           */
+  __IO  uint32_t DCDCCTL0;                      /*!< Internal                                                           */
+  __IO  uint32_t DCDCCTL1;                      /*!< Internal                                                           */
+  __IO  uint32_t DCDCCTL2;                      /*!< Internal                                                           */
+  __IO  uint32_t DCDCCTL3;                      /*!< Internal                                                           */
+  __IO  uint32_t DCDCCTL4;                      /*!< Internal                                                           */
+  __IO  uint32_t DCDCCTL5;                      /*!< Internal                                                           */
+} ADI3_Type;
+
+
+/******************************************************************************/
+/*                                                                            */
 /*                                AUX_ADI4                                    */
 /*                                                                            */
 /******************************************************************************/
@@ -1262,6 +1284,7 @@ typedef struct
 #define AON_RTC                                 ((AON_RTC_Type*)AON_RTC_BASE)
 #define AON_SYSCTL                              ((AON_SYSCTL_Type*)AON_SYSCTL_BASE)
 #define AON_WUC                                 ((AON_WUC_Type*)AON_WUC_BASE)
+#define ADI3                                    ((ADI3_Type*)ADI3_BASE)
 #define AUX_ADI4                                ((AUX_ADI4_Type*)AUX_ADI4_BASE)
 #define AUX_AIODIO0                             ((AUX_AIODIO_Type*)AUX_IODIO0_BASE)
 #define AUX_AIODIO1                             ((AUX_AIODIO_Type*)AUX_IODIO1_BASE)
@@ -1274,7 +1297,7 @@ typedef struct
 #define AUX_WUC                                 ((AUX_WUC_Type*)AUX_WUC_BASE)
 #define CCFG                                    ((CCFG_Type*)CCFG_BASE)
 #define FCFG1                                   ((FCFG1_Type*)FCFG1_BASE)
-#define FLASH                                   ((FLASH_Type*)FLASH_BASE)
+#define FLASH                                   ((FLASH_Type*)FLASH_REG_BASE)
 #define GPT0                                    ((GPT_Type*)GPT0_BASE)
 #define GPT1                                    ((GPT_Type*)GPT1_BASE)
 #define GPT2                                    ((GPT_Type*)GPT2_BASE)
@@ -2355,6 +2378,125 @@ typedef struct
 
 /*************  Bit definition for GPT_ANDCCP register  ***********************/
 #define GPT_ANDCCP_CCP_AND_EN                   (0x1ul << 0)
+
+
+/******************************************************************************/
+/*                                                                            */
+/*                                 ADI3                                       */
+/*                                                                            */
+/******************************************************************************/
+
+/*************  Bit definition for ADI3_REFSYSCTL0 register  ******************/
+#define ADI3_REFSYSCTL0_TESTCTL                 (0xfful << 0)
+#define ADI3_REFSYSCTL0_TESTCTL_NC              (0x0ul << 0)
+#define ADI3_REFSYSCTL0_TESTCTL_IPTAT2U         (0x1ul << 0)
+#define ADI3_REFSYSCTL0_TESTCTL_IVREF4U         (0x2ul << 0)
+#define ADI3_REFSYSCTL0_TESTCTL_IREF4U          (0x4ul << 0)
+#define ADI3_REFSYSCTL0_TESTCTL_VBG             (0x8ul << 0)
+#define ADI3_REFSYSCTL0_TESTCTL_VBGUNBUFF       (0x10ul << 0)
+#define ADI3_REFSYSCTL0_TESTCTL_VREF0P8V        (0x20ul << 0)
+#define ADI3_REFSYSCTL0_TESTCTL_VTEMP           (0x40ul << 0)
+#define ADI3_REFSYSCTL0_TESTCTL_BMCOMPOUT       (0x80ul << 0)
+
+
+/*************  Bit definition for ADI3_REFSYSCTL1 register  ******************/
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD           (0x1ful << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_4     (0x0ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_5     (0x1ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_6     (0x2ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_7     (0x3ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_0     (0x4ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_1     (0x5ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_2     (0x6ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_3     (0x7ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_12    (0x8ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_13    (0x9ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_14    (0xaul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_15    (0xbul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_8     (0xcul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_9     (0xdul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_10    (0xeul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_11    (0xful << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_20    (0x10ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_21    (0x11ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_22    (0x12ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_23    (0x13ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_16    (0x14ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_17    (0x15ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_18    (0x16ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_19    (0x17ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_28    (0x18ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_29    (0x19ul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_30    (0x1aul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_31    (0x1bul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_24    (0x1cul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_25    (0x1dul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_26    (0x1eul << 3)
+#define ADI3_REFSYSCTL1_TRIM_VDDS_BOD_POS_27    (0x1ful << 3)
+
+#define ADI3_REFSYSCTL1_BATMON_COMP_TEST_EN     (0x1ul << 2)
+
+#define ADI3_REFSYSCTL1_TESTCTL                 (0x3ul << 0)
+#define ADI3_REFSYSCTL1_TESTCTL_NC              (0x0ul << 0)
+#define ADI3_REFSYSCTL1_TESTCTL_BMCOMPIN        (0x1ul << 0)
+#define ADI3_REFSYSCTL1_TESTCTL_IPTAT1U         (0x1ul << 1)
+
+
+/*************  Bit definition for ADI3_REFSYSCTL2 register  ******************/
+#define ADI3_REFSYSCTL2_TRIM_VREF               (0xful << 4)
+#define ADI3_REFSYSCTL2_TRIM_TSENSE             (0x3ul << 0)
+
+
+/*************  Bit definition for ADI3_REFSYSCTL3 register  ******************/
+#define ADI3_REFSYSCTL3_BOD_BG_TRIM_EN          (0x1ul << 7)
+#define ADI3_REFSYSCTL3_VTEMP_EN                (0x1ul << 6)
+#define ADI3_REFSYSCTL3_TRIM_VBG                (0x3ful << 0)
+
+
+/*************  Bit definition for ADI3_DCDCCTL0 register  ********************/
+#define ADI3_DCDCCTL0_GLDO_ISRC                 (0x7ul << 5)
+#define ADI3_DCDCCTL0_GLDO_ISRC_11MA            (0x0ul << 5)
+#define ADI3_DCDCCTL0_GLDO_ISRC_15MA            (0x3ul << 5)
+#define ADI3_DCDCCTL0_GLDO_ISRC_5MA             (0x4ul << 5)
+
+#define ADI3_DCDCCTL0_VDDR_TRIM                 (0x1ful << 0)
+
+
+/*************  Bit definition for ADI3_DCDCCTL1 register  ********************/
+#define ADI3_DCDCCTL1_IPTAT_TRIM                (0x3ul << 6)
+#define ADI3_DCDCCTL1_IPTAT_TRIM_DEFAULT        (0x0ul << 6)
+#define ADI3_DCDCCTL1_IPTAT_TRIM_1_3            (0x1ul << 6)
+#define ADI3_DCDCCTL1_IPTAT_TRIM_1_6            (0x2ul << 6)
+#define ADI3_DCDCCTL1_IPTAT_TRIM_0_7            (0x3ul << 6)
+
+#define ADI3_DCDCCTL1_VDDR_OK_HYST              (0x1ul << 5)
+#define ADI3_DCDCCTL1_VDDR_TRIM_SLEEP           (0x1ful << 0)
+
+
+/*************  Bit definition for ADI3_DCDCCTL2 register  ********************/
+#define ADI3_DCDCCTL2_TURNON_EA_SW              (0x1ul << 6)
+#define ADI3_DCDCCTL2_TEST_VDDR                 (0x1ul << 5)
+#define ADI3_DCDCCTL2_BIAS_DIS                  (0x1ul << 4)
+
+#define ADI3_DCDCCTL2_TESTSEL                   (0xful << 0)
+#define ADI3_DCDCCTL2_TESTSEL_NC                (0x0ul << 0)
+#define ADI3_DCDCCTL2_TESTSEL_ERRAMP_OUT        (0x1ul << 0)
+#define ADI3_DCDCCTL2_TESTSEL_PASSGATE          (0x2ul << 0)
+#define ADI3_DCDCCTL2_TESTSEL_IB1U              (0x4ul << 0)
+#define ADI3_DCDCCTL2_TESTSEL_VDDROK            (0x8ul << 0)
+
+
+/*************  Bit definition for ADI3_DCDCCTL4 register  ********************/
+#define ADI3_DCDCCTL4_DEADTIME_TRIM             (0x3ul << 6)
+#define ADI3_DCDCCTL4_LOW_EN_SEL                (0x7ul << 3)
+#define ADI3_DCDCCTL4_HIGH_EN_SEL               (0x7ul << 0)
+
+
+/*************  Bit definition for ADI3_DCDCCTL5 register  ********************/
+#define ADI3_DCDCCTL5_TESTN                     (0x1ul << 5)
+#define ADI3_DCDCCTL5_TESTP                     (0x1ul << 4)
+#define ADI3_DCDCCTL5_DITHER_EN                 (0x1ul << 3)
+#define ADI3_DCDCCTL5_IPEAK                     (0x7ul << 0)
 
 
 /******************************************************************************/
