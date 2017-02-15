@@ -13,8 +13,8 @@
 #define FLASH_BASE                      0x00000000
 //128k
 #define FLASH_SIZE                      0x20000
-//5k
-#define SRAM_SIZE                       0x1400
+//20k
+#define SRAM_SIZE                       0x5000
 
 #define EXODRIVERS
 #define IRQ_VECTORS_COUNT               34
