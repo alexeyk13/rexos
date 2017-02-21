@@ -12,7 +12,7 @@ typedef struct _ARRAY {
     unsigned int size, reserved, data_size;
 } ARRAY;
 
-#define ARRAY_DATA(ar)                      (((void*)(ar)) + sizeof(ARRAY))
+#define ARRAY_DATA(ar)                      ((void*)(((uint8_t*)(ar)) + sizeof(ARRAY)))
 
 ARRAY* lib_array_create(ARRAY** ar, const STD_MEM* std_mem, unsigned int data_size, unsigned int reserved)
 {

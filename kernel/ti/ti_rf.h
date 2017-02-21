@@ -9,10 +9,24 @@
 
 #include "ti_exo.h"
 #include "../../userspace/ipc.h"
+#include "../../userspace/process.h"
+#include "../../userspace/array.h"
 #include <stdbool.h>
 
+typedef enum {
+    RF_STATE_IDLE,
+    RF_STATE_CONFIGURED,
+    RF_STATE_READY
+} RF_STATE;
+
 typedef struct {
-    bool active;
+    unsigned int buf_allocated;
+    ARRAY* free_bufs;
+    void* cur;
+    void* rfc_free;
+    RF_STATE state;
+    uint16_t cmd;
+    HANDLE process;
 } RF_DRV;
 
 void ti_rf_init(EXO* exo);

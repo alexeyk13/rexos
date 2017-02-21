@@ -7,6 +7,8 @@
 #ifndef TI_DRIVER_H
 #define TI_DRIVER_H
 
+#include "../ipc.h"
+
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 typedef enum {
     DIO0 = 0, DIO1,  DIO2,  DIO3,  DIO4,  DIO5,  DIO6,  DIO7,  DIO8,  DIO9,  DIO10, DIO11, DIO12, DIO13, DIO14, DIO15,
@@ -34,6 +36,16 @@ typedef enum {
 typedef enum {
     UART_0 = 0,
     UART_MAX
-}UART_PORT;
+} UART_PORT;
+
+//-------------------------------------------------- RF ----------------------------------------------------------------------
+typedef enum {
+    IPC_RF_GET_FW_INFO = IPC_USER,
+    IPC_RF_POWER_UP,
+    IPC_RF_POWER_DOWN,
+    IPC_RF_SET_TX_POWER,
+    IPC_RF_GET_RSSI,
+    IPC_RF_MAX
+} RF_IPCS;
 
 #endif // TI_DRIVER_H
