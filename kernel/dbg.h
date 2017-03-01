@@ -19,13 +19,10 @@
 
 #define MAGIC_TIMER                                    0xbecafcf5
 #define MAGIC_PROCESS                                  0x7de32076
-#define MAGIC_MUTEX                                    0xd0cc6e26
-#define MAGIC_EVENT                                    0x57e198c7
-#define MAGIC_SEM                                      0xabfd92d9
 #define MAGIC_STREAM                                   0xf4eb741c
 #define MAGIC_STREAM_HANDLE                            0x250b73c2
-#define MAGIC_BLOCK                                    0x890f6c75
 #define MAGIC_KIO                                      0x890f6c75
+#define MAGIC_HEAP                                     0xd0cc6e26
 
 #define MAGIC_UNINITIALIZED                            0xcdcdcdcd
 #define MAGIC_UNINITIALIZED_BYTE                       0xcd
@@ -56,8 +53,8 @@
     \param name: object text to display in case of wrong magic
     \retval no return if wrong magic, else none
 */
-#define CHECK_MAGIC(obj, magic_value)    if (((HANDLE)(obj) == INVALID_HANDLE) || ((HANDLE)(obj) == ANY_HANDLE) || ((HANDLE)(obj) == KERNEL_HANDLE) || \
-                                         ((obj)->magic != (magic_value))) {printk("INVALID MAGIC at %s, line %d\n", __FILE__, __LINE__);    panic();}
+#define CHECK_MAGIC(obj, magic_value)    if (((HANDLE)(obj) != KERNEL_HANDLE) && (((HANDLE)(obj) == INVALID_HANDLE) || ((HANDLE)(obj) == ANY_HANDLE) || \
+                                         ((obj)->magic != (magic_value)))) {printk("INVALID MAGIC at %s, line %d\n", __FILE__, __LINE__);    panic();}
 
 /**
     \brief apply object magic on object creation

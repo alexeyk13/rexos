@@ -23,7 +23,6 @@ typedef struct {
     unsigned int buf_allocated;
     ARRAY* free_bufs;
     void* cur;
-    void* rfc_free;
     RF_STATE state;
     uint16_t cmd;
     HANDLE process;

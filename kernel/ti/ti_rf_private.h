@@ -114,6 +114,26 @@
 #define RF_CMD_CLEAR_RX                         0x0008                  /*!< Clear All RX Queue Entries                                             */
 #define RF_CMD_REMOVE_PENDING_ENTRIES           0x0009                  /*!< Remove Pending Entries From Queue                                      */
 
+
+// Bluetooth low energy Radio Operation Commands
+
+#define RF_CMD_BLE_SLAVE                        0x1801                  /*!< Start slave operation                                                  */
+#define CMD_BLE_MASTER                          0x1802                  /*!< Start master operation                                                 */
+#define CMD_BLE_ADV                             0x1803                  /*!< Start connectable undirected advertiser operation                      */
+#define CMD_BLE_ADV_DIR                         0x1804                  /*!< Start connectable directed advertiser operation                        */
+#define CMD_BLE_ADV_NC                          0x1805                  /*!< Start the not-connectable advertiser operation                         */
+#define CMD_BLE_ADV_SCAN                        0x1806                  /*!< Start scannable undirected advertiser operation                        */
+#define CMD_BLE_SCANNER                         0x1807                  /*!< Start scanner operation                                                */
+#define CMD_BLE_INITIATOR                       0x1808                  /*!< Start initiator operation                                              */
+#define CMD_BLE_GENERIC_RX                      0x1809                  /*!< Receive generic packets (used for PHY test or packet sniffing)         */
+#define CMD_BLE_TX_TEST                         0x180a                  /*!< Transmit PHY test packets                                              */
+
+
+// Bluetooth low-energy-specific immediate commands
+
+#define CMD_BLE_ADV_PAYLOAD                     0x1001                  /*!< Modify payload used in advertiser operations                           */
+
+
 // Radio operation structure
 
 #pragma pack(push, 1)
@@ -182,6 +202,12 @@ typedef struct {
 #define RF_CMD_RADIO_SETUP_CONFIG_NO_FS_POWERUP                         (0x1ul << 10)
 
 typedef struct {
+    RF_CMD_HEADER_TYPE header;
+    uint16_t counter;                                                   /*!< Counter. When starting, the radio CPU decrements the value, and
+                                                                             the end status of the operation differs if the result is zero.         */
+} RF_CMD_COUNT_TYPE;
+
+typedef struct {
     uint16_t commandNo;                                                 /*!< The command ID number                                                  */
 } RF_CMD_IMMEDIATE_GENERIC_TYPE;
 
@@ -192,7 +218,6 @@ typedef struct {
     uint16_t freeRamSz;                                                 /*!< The size of free RAM                                                   */
     uint16_t availRatCh;                                                /*!< Bitmap of available RAT channels                                       */
 } RF_CMD_GET_FW_INFO_TYPE;
-
 
 typedef struct {
     uint16_t commandNo;                                                 /*!< The command ID number                                                  */

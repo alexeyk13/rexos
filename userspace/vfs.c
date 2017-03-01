@@ -8,6 +8,7 @@
 #include "process.h"
 #include <string.h>
 #include "stdlib.h"
+#include "error.h"
 
 extern void vfss();
 

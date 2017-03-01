@@ -8,11 +8,13 @@
 #include "kipc.h"
 #include "kio.h"
 #include "kprocess.h"
+#include "kheap.h"
 #include "kprocess_private.h"
 #include "../userspace/error.h"
 #include "../userspace/rb.h"
 #include "../userspace/core/core.h"
 #include "kernel.h"
+#include "kernel_config.h"
 
 #define KIPC_ITEM(p, num)                               ((IPC*)((unsigned int)(((KPROCESS*)(p))->process) + sizeof(PROCESS) + (num) * sizeof(IPC)))
 
@@ -64,16 +66,26 @@ void kipc_post(HANDLE sender, IPC* ipc)
     int index;
     IPC* cur;
     index = -1;
+    CHECK_MAGIC(ipc->process, MAGIC_PROCESS);
+    switch (ipc->cmd & HAL_MODE)
+    {
+    case HAL_IO_MODE:
+        if (!kio_send(sender, (IO*)ipc->param2, ipc->process))
+            return;
+        break;
+#if (KERNEL_HEAP)
+    case HAL_HEAP_MODE:
+        kheap_send((void*)ipc->param2, ipc->process);
+        break;
+#endif //KERNEL_HEAP
+    default:
+        break;
+    }
     error(ERROR_OK);
 #ifdef EXODRIVERS
     int err;
     if (ipc->process == KERNEL_HANDLE)
     {
-        if (ipc->cmd & HAL_IO_FLAG)
-        {
-            if (!kio_send(sender, (IO*)ipc->param2, KERNEL_HANDLE))
-                return;
-        }
         ipc->process = sender;
         exodriver_post(ipc);
         err = get_last_error();
@@ -106,12 +118,6 @@ void kipc_post(HANDLE sender, IPC* ipc)
 #endif //EXODRIVERS
 
     receiver = (KPROCESS*)ipc->process;
-    CHECK_MAGIC(receiver, MAGIC_PROCESS);
-    if (ipc->cmd & HAL_IO_FLAG)
-    {
-        if (!kio_send(sender, (IO*)ipc->param2, (HANDLE)receiver))
-            return;
-    }
     disable_interrupts();
     if ((receiver->kipc.wait_process == sender || receiver->kipc.wait_process == ANY_HANDLE) &&
                  (receiver->kipc.cmd == ipc->cmd || receiver->kipc.cmd == ANY_CMD) &&

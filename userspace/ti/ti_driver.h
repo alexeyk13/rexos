@@ -40,7 +40,7 @@ typedef enum {
 
 //-------------------------------------------------- RF ----------------------------------------------------------------------
 typedef enum {
-    IPC_RF_GET_FW_INFO = IPC_USER,
+    IPC_RF_GET_FW_VERSION = IPC_USER,
     IPC_RF_POWER_UP,
     IPC_RF_POWER_DOWN,
     IPC_RF_SET_TX_POWER,

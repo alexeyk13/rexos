@@ -65,26 +65,29 @@ typedef enum {
     HAL_PINBOARD,
     //virtual file system
     HAL_VFS,
-    //bluetooth controller
-    HAL_BTC,
-    //bluetooth host
-    HAL_BTH,
+    //bluetooth host/controller
+    HAL_BLUETOOTH,
     //application level
     HAL_APP
 } HAL;
 
 //ipc contains IO in param2
-#define HAL_IO_FLAG                                         (1 << 15)
+#define HAL_MODE                                            (3 << 30)
+#define HAL_IO_MODE                                         (1ul << 30)
+#define HAL_HEAP_MODE                                       (2ul << 30)
 //response required
-#define HAL_REQ_FLAG                                        (1 << 31)
+#define HAL_REQ_FLAG                                        (1ul << 15)
 
-#define HAL_CMD(group, item)                                ((((group) & 0x7fff) << 16) | ((item) & 0x7fff))
-#define HAL_REQ(group, item)                                ((((group) & 0x7fff) << 16) | ((item) & 0x7fff) | HAL_REQ_FLAG)
+#define HAL_CMD(group, item)                                ((((group) & 0x3fff) << 16) | ((item) & 0x7fff))
+#define HAL_REQ(group, item)                                ((((group) & 0x3fff) << 16) | ((item) & 0x7fff) | HAL_REQ_FLAG)
 #define HAL_ITEM(cmd)                                       ((cmd) & 0x7fff)
-#define HAL_GROUP(cmd)                                      (((cmd) >> 16) & 0x7fff)
+#define HAL_GROUP(cmd)                                      (((cmd) >> 16) & 0x3fff)
 
-#define HAL_IO_CMD(group, item)                             ((((group) & 0x7fff) << 16) | ((item) & 0x7fff) | HAL_IO_FLAG)
-#define HAL_IO_REQ(group, item)                             ((((group) & 0x7fff) << 16) | ((item) & 0x7fff) | HAL_IO_FLAG | HAL_REQ_FLAG)
+#define HAL_IO_CMD(group, item)                             ((((group) & 0x3fff) << 16) | ((item) & 0x7fff) | HAL_IO_MODE)
+#define HAL_IO_REQ(group, item)                             ((((group) & 0x3fff) << 16) | ((item) & 0x7fff) | HAL_IO_MODE | HAL_REQ_FLAG)
+
+#define HAL_HEAP_CMD(group, item)                           ((((group) & 0x3fff) << 16) | ((item) & 0x7fff) | HAL_HEAP_MODE)
+#define HAL_HEAP_REQ(group, item)                           ((((group) & 0x3fff) << 16) | ((item) & 0x7fff) | HAL_HEAP_MODE | HAL_REQ_FLAG)
 
 #define ANY_CMD                                             0xffffffff
 
