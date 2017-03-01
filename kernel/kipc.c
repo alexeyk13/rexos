@@ -60,6 +60,25 @@ static void kipc_debug_overflow(IPC* ipc, HANDLE sender)
 }
 #endif //KERNEL_IPC_DEBUG
 
+static bool kipc_send(HANDLE sender, HANDLE receiver, void* param)
+{
+    bool res = true;
+    switch (ipc->cmd & HAL_MODE)
+    {
+    case HAL_IO_MODE:
+        res = kio_send(sender, param, receiver);
+        break;
+#if (KERNEL_HEAP)
+    case HAL_HEAP_MODE:
+        kheap_send(param, receiver);
+        break;
+#endif //KERNEL_HEAP
+    default:
+        break;
+    }
+    return res;
+}
+
 void kipc_post(HANDLE sender, IPC* ipc)
 {
     KPROCESS* receiver;
@@ -67,20 +86,8 @@ void kipc_post(HANDLE sender, IPC* ipc)
     IPC* cur;
     index = -1;
     CHECK_MAGIC(ipc->process, MAGIC_PROCESS);
-    switch (ipc->cmd & HAL_MODE)
-    {
-    case HAL_IO_MODE:
-        if (!kio_send(sender, (IO*)ipc->param2, ipc->process))
-            return;
-        break;
-#if (KERNEL_HEAP)
-    case HAL_HEAP_MODE:
-        kheap_send((void*)ipc->param2, ipc->process);
-        break;
-#endif //KERNEL_HEAP
-    default:
-        break;
-    }
+    if (!kipc_send(sender, ipc->process, (void*)ipc->param2))
+        return;
     error(ERROR_OK);
 #ifdef EXODRIVERS
     int err;
@@ -91,6 +98,10 @@ void kipc_post(HANDLE sender, IPC* ipc)
         err = get_last_error();
         if ((ipc->cmd & HAL_REQ_FLAG) && (err != ERROR_SYNC))
         {
+            //send back if response is received
+            if (!kipc_send(ipc->process, sender, (void*)ipc->param2))
+                return;
+            
             //send response ipc inline
             if (err != ERROR_OK)
                 ipc->param3 = err;
