@@ -60,10 +60,10 @@ static void kipc_debug_overflow(IPC* ipc, HANDLE sender)
 }
 #endif //KERNEL_IPC_DEBUG
 
-static bool kipc_send(HANDLE sender, HANDLE receiver, void* param)
+static bool kipc_send(HANDLE sender, HANDLE receiver, unsigned int cmd, void* param)
 {
     bool res = true;
-    switch (ipc->cmd & HAL_MODE)
+    switch (cmd & HAL_MODE)
     {
     case HAL_IO_MODE:
         res = kio_send(sender, param, receiver);
@@ -86,7 +86,7 @@ void kipc_post(HANDLE sender, IPC* ipc)
     IPC* cur;
     index = -1;
     CHECK_MAGIC(ipc->process, MAGIC_PROCESS);
-    if (!kipc_send(sender, ipc->process, (void*)ipc->param2))
+    if (!kipc_send(sender, ipc->process, ipc->cmd, (void*)ipc->param2))
         return;
 #ifdef EXODRIVERS
     int err;
@@ -99,7 +99,7 @@ void kipc_post(HANDLE sender, IPC* ipc)
         if ((ipc->cmd & HAL_REQ_FLAG) && (err != ERROR_SYNC))
         {
             //send back if response is received
-            if (!kipc_send(ipc->process, sender, (void*)ipc->param2))
+            if (!kipc_send(ipc->process, sender, ipc->cmd, (void*)ipc->param2))
                 return;
             
             //send response ipc inline

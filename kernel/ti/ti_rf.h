@@ -20,8 +20,7 @@ typedef enum {
 } RF_STATE;
 
 typedef struct {
-    unsigned int buf_allocated;
-    ARRAY* free_bufs;
+    HANDLE heap;
     void* cur;
     RF_STATE state;
     uint16_t cmd;

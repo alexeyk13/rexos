@@ -57,6 +57,7 @@ void* kheap_malloc(HANDLE h, unsigned int size)
     void* ptr;
     KHEAP* kheap = (KHEAP*)h;
     CHECK_MAGIC(kheap, MAGIC_HEAP);
+
     ptr = pool_malloc(&kheap->pool, size + sizeof(KHEAP*), kheap->virtual_sp);
     if (ptr == NULL)
         return NULL;
@@ -83,7 +84,9 @@ void kheap_free(void* ptr)
         return;
     kheap = *((KHEAP**)((unsigned int)ptr - sizeof(KHEAP*)));
     CHECK_MAGIC(kheap, MAGIC_HEAP);
+
     pool_free(&kheap->pool, (void*)((unsigned int)ptr - sizeof(KHEAP*)));
+
     if ((kprocess_get_current() != kheap->owner) && kheap->granted_count)
         kheap_return(kheap);
 }
@@ -103,4 +106,12 @@ void kheap_send(void* ptr, unsigned int process)
         kheap_return(kheap);
     else
         ++kheap->granted_count;
+}
+
+bool kheap_check(HANDLE h)
+{
+    KHEAP* kheap = (KHEAP*)h;
+    CHECK_MAGIC(kheap, MAGIC_HEAP);
+
+    return pool_check(&kheap->pool, kheap->virtual_sp);
 }
