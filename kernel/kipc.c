@@ -88,12 +88,12 @@ void kipc_post(HANDLE sender, IPC* ipc)
     CHECK_MAGIC(ipc->process, MAGIC_PROCESS);
     if (!kipc_send(sender, ipc->process, (void*)ipc->param2))
         return;
-    error(ERROR_OK);
 #ifdef EXODRIVERS
     int err;
     if (ipc->process == KERNEL_HANDLE)
     {
         ipc->process = sender;
+        error(ERROR_OK);
         exodriver_post(ipc);
         err = get_last_error();
         if ((ipc->cmd & HAL_REQ_FLAG) && (err != ERROR_SYNC))

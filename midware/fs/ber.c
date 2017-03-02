@@ -263,6 +263,7 @@ static inline void ber_open(VFSS_TYPE* vfss, unsigned int block_sectors)
     memcpy(vfss->ber.remap_list, (uint8_t*)vfss_get_buf(vfss) + sizeof(BER_HEADER_TYPE), hdr->fs_blocks * sizeof(uint16_t));
     memcpy(vfss->ber.stat_list, (uint8_t*)vfss_get_buf(vfss) + sizeof(BER_HEADER_TYPE) + hdr->fs_blocks * sizeof(uint16_t), hdr->total_blocks * sizeof(uint32_t));
 
+    process_info();
 #if (VFS_BER_DEBUG_INFO)
     printf("BER: mounted, FS size: %dKB\n", vfss->ber.volume.fs_blocks * vfss->ber.volume.block_sectors / 2);
 #endif //VFS_BER_DEBUG_INFO
@@ -314,13 +315,14 @@ static inline void ber_format(VFSS_TYPE* vfss, IO* io)
         hdr = vfss_get_buf(vfss);
         if ((hdr->magic == BER_MAGIC))
             if (!storage_erase_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->io,
-                                    vfss->volume.first_sector + i * format->block_sectors, FAT_SECTOR_SIZE))
+                                    vfss->volume.first_sector + i * format->block_sectors, 1))
                 return;
     }
 
     //make superblock
     //header
     vfss_resize_buf(vfss, vfss->ber.block_size);
+    memset(vfss_get_buf(vfss), 0xff, vfss->ber.block_size);
     hdr = vfss_get_buf(vfss);
     hdr->magic = BER_MAGIC;
     hdr->revision = 1;
