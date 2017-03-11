@@ -196,9 +196,9 @@ void ber_init(VFSS_TYPE *vfss)
 static void ber_close_internal(VFSS_TYPE* vfss)
 {
     free(vfss->ber.remap_list);
+    free(vfss->ber.stat_list);
     vfss->ber.remap_list = NULL;
     vfss->ber.stat_list = NULL;
-    free(vfss->ber.stat_list);
     io_destroy(vfss->ber.io);
     vfss->ber.io = NULL;
 }
@@ -263,7 +263,6 @@ static inline void ber_open(VFSS_TYPE* vfss, unsigned int block_sectors)
     memcpy(vfss->ber.remap_list, (uint8_t*)vfss_get_buf(vfss) + sizeof(BER_HEADER_TYPE), hdr->fs_blocks * sizeof(uint16_t));
     memcpy(vfss->ber.stat_list, (uint8_t*)vfss_get_buf(vfss) + sizeof(BER_HEADER_TYPE) + hdr->fs_blocks * sizeof(uint16_t), hdr->total_blocks * sizeof(uint32_t));
 
-    process_info();
 #if (VFS_BER_DEBUG_INFO)
     printf("BER: mounted, FS size: %dKB\n", vfss->ber.volume.fs_blocks * vfss->ber.volume.block_sectors / 2);
 #endif //VFS_BER_DEBUG_INFO

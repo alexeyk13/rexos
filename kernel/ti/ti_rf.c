@@ -6,7 +6,6 @@
 
 #include "ti_rf.h"
 #include "ti_exo_private.h"
-#include "ti_rf_private.h"
 #include "../../userspace/process.h"
 #include "../../userspace/error.h"
 #include "../kstdlib.h"
@@ -14,6 +13,10 @@
 #include "../kheap.h"
 #include <stdint.h>
 #include <string.h>
+#include "rf_common_cmd.h"
+#include "rf_mailbox.h"
+#include "rf_ble_cmd.h"
+#include "rf_data_entry.h"
 
 #define RF_DIRECT_CMD(cmd)                      (((cmd) << 16) | (1 << 0))
 #define RF_RADIO_IMM_CMD(ptr)                   (((unsigned int)(ptr)) & ~3)
@@ -70,15 +73,12 @@ static uint16_t ti_rf_encode_tx_power(int dbm)
 
 static void* ti_rf_prepare_radio_cmd(EXO* exo, unsigned int size, uint16_t cmd)
 {
-    RF_CMD_HEADER_TYPE* hdr = BUF_ALLOC(exo, size);
+    rfc_radioOp_t* hdr = BUF_ALLOC(exo, size);
     if (hdr == NULL)
         return NULL;
+    memset(hdr, 0x00, size);
     hdr->commandNo = cmd;
-    hdr->status = RF_STATE_IDLE;
-    hdr->pNextOp = NULL;
-    hdr->startTime = 0;
-    hdr->startTrigger = RF_CMD_HEADER_TRIG_TYPE_NOW;
-    hdr->condition = RF_CMD_HEADER_COND_RULE_NEVER;
+    hdr->condition.rule = COND_NEVER;
     exo->rf.cmd = cmd;
     exo->rf.cur = hdr;
     return hdr;
@@ -101,15 +101,15 @@ static void ti_rf_imm_cmd(EXO* exo, uint16_t cmd, void* buf, HANDLE process)
     exo->rf.process = process;
     exo->rf.cmd = cmd;
     exo->rf.cur = buf;
-    ((RF_CMD_IMMEDIATE_GENERIC_TYPE*)buf)->commandNo = RF_CMD_GET_FW_INFO;
+    ((rfc_command_t*)buf)->commandNo = cmd;
     RFC_DBELL->CMDR = RF_RADIO_IMM_CMD(buf);
 }
 
 static inline void ti_rf_fw_info_fsm(EXO* exo)
 {
-    RF_CMD_GET_FW_INFO_TYPE* fw_info;
+    rfc_CMD_GET_FW_INFO_t* fw_info;
 
-    exo->rf.cmd = RF_CMD_IDLE;
+    exo->rf.cmd = 0;
     fw_info = exo->rf.cur;
 #if (TI_RF_DEBUG_INFO)
     printk("RF FW ver: %d.%d\n", fw_info->versionNo >> 8, fw_info->versionNo & 0xff);
@@ -121,16 +121,14 @@ static inline void ti_rf_fw_info_fsm(EXO* exo)
 
 static inline void ti_rf_start_rat_fsm(EXO* exo)
 {
-    RF_CMD_RADIO_SETUP_TYPE* setup;
+    rfc_CMD_RADIO_SETUP_t* setup;
     void* rfe_patch;
-    setup = ti_rf_prepare_radio_cmd(exo, ((sizeof(RF_CMD_RADIO_SETUP_TYPE) + 3) & ~3) + RFE_PATCH_WORDS * sizeof(uint32_t), RF_CMD_RADIO_SETUP);
+    setup = ti_rf_prepare_radio_cmd(exo, ((sizeof(rfc_CMD_RADIO_SETUP_t) + 3) & ~3) + RFE_PATCH_WORDS * sizeof(uint32_t), CMD_RADIO_SETUP);
     //RFE patch must be located somewhere in RAM. It's not documented by TRM, but generating error by CPE if it's in flash.
-    rfe_patch = (void*)(((uint32_t)(setup) + sizeof(RF_CMD_RADIO_SETUP_TYPE) + 3) & ~3);
+    rfe_patch = (void*)(((uint32_t)(setup) + sizeof(rfc_CMD_RADIO_SETUP_t) + 3) & ~3);
     memcpy(rfe_patch, __RFE_PATCH, RFE_PATCH_WORDS * sizeof(uint32_t));
 
-    setup->mode = RF_CMD_RADIO_SETUP_MODE_BLE;
-    setup->loDivider = 0;
-    setup->config = RF_CMD_RADIO_SETUP_CONFIG_BIAS_INTERNAL | RF_CMD_RADIO_SETUP_CONFIG_MODE_DIFFERENTIAL;
+    setup->mode = 0;
     setup->txPower = ti_rf_encode_tx_power(0);
     setup->pRegOverride = rfe_patch;
 
@@ -139,7 +137,7 @@ static inline void ti_rf_start_rat_fsm(EXO* exo)
 
 static inline void ti_rf_set_tx_power_fsm(EXO* exo)
 {
-    exo->rf.cmd = RF_CMD_IDLE;
+    exo->rf.cmd = 0;
     kheap_free(exo->rf.cur);
     ipc_ipost_inline(exo->rf.process, HAL_CMD(HAL_RF, IPC_RF_SET_TX_POWER), 0, 0, 0);
 }
@@ -149,18 +147,18 @@ static void ti_rf_cmd_ack_isr(int vector, void* param)
     EXO* exo = param;
     RFC_DBELL->RFACKIFG &= ~RFC_DBELL_RFACKIFG_ACKFLAG;
 
-    if ((RFC_DBELL->CMDSTA & 0xff) == RF_RESULT_DONE)
+    if ((RFC_DBELL->CMDSTA & 0xff) == CMDSTA_Done)
     //normal processing
     {
         switch (exo->rf.cmd)
         {
-        case RF_CMD_GET_FW_INFO:
+        case CMD_GET_FW_INFO:
             ti_rf_fw_info_fsm(exo);
             break;
-        case RF_CMD_START_RAT:
+        case CMD_START_RAT:
             ti_rf_start_rat_fsm(exo);
             break;
-        case RF_CMD_SET_TX_POWER:
+        case CMD_SET_TX_POWER:
             ti_rf_set_tx_power_fsm(exo);
             break;
         default:
@@ -174,7 +172,7 @@ static void ti_rf_cmd_ack_isr(int vector, void* param)
         //release buffer if not direct cmd
         switch (exo->rf.cmd)
         {
-        case RF_CMD_START_RAT:
+        case CMD_START_RAT:
             break;
         default:
             kheap_free(exo->rf.cur);
@@ -186,27 +184,27 @@ static void ti_rf_cmd_ack_isr(int vector, void* param)
 
         switch (exo->rf.cmd)
         {
-        case RF_CMD_GET_FW_INFO:
+        case CMD_GET_FW_INFO:
             ipc_ipost_inline(exo->rf.process, HAL_CMD(HAL_RF, IPC_OPEN), 0, 0, ERROR_HARDWARE);
             break;
-        case RF_CMD_START_RAT:
-        case RF_CMD_RADIO_SETUP:
+        case CMD_START_RAT:
+        case CMD_RADIO_SETUP:
             ipc_ipost_inline(exo->rf.process, HAL_CMD(HAL_RF, IPC_RF_POWER_UP), 0, 0, ERROR_HARDWARE);
             break;
-        case RF_CMD_SET_TX_POWER:
+        case CMD_SET_TX_POWER:
             ipc_ipost_inline(exo->rf.process, HAL_CMD(HAL_RF, IPC_RF_SET_TX_POWER), 0, 0, ERROR_HARDWARE);
             break;
         default:
             break;
         }
-        exo->rf.cmd = RF_CMD_IDLE;
+        exo->rf.cmd = 0;
     }
 }
 
 static inline void ti_rf_radio_up_fsm(EXO* exo)
 {
     kheap_free(exo->rf.cur);
-    exo->rf.cmd = RF_CMD_IDLE;
+    exo->rf.cmd = 0;
     exo->rf.state = RF_STATE_READY;
     ipc_ipost_inline(exo->rf.process, HAL_CMD(HAL_RF, IPC_RF_POWER_UP), 0, 0, 0);
 }
@@ -217,25 +215,21 @@ static void ti_rf_cpe0_isr(int vector, void* param)
     uint16_t status;
     RFC_DBELL->RFCPEIFG = ~RFC_DBELL_RFCPEIFG_LAST_COMMAND_DONE;
 
-    status = ((RF_CMD_HEADER_TYPE*)exo->rf.cur)->status;
+    status = ((rfc_radioOp_t*)exo->rf.cur)->status;
     if (status < 0x800)
     //normal processing
     {
         switch (exo->rf.cmd)
         {
-        case RF_CMD_RADIO_SETUP:
+        case CMD_RADIO_SETUP:
             ti_rf_radio_up_fsm(exo);
-            break;
-        case RF_CMD_COUNT:
-            kheap_free(exo->rf.cur);
-            exo->rf.cmd = RF_CMD_IDLE;
             break;
         default:
 #if (TI_RF_DEBUG_ERRORS)
             printk("RF unexpected cmd: %x\n", exo->rf.cmd);
 #endif //(TI_RF_DEBUG_ERRORS
             kheap_free(exo->rf.cur);
-            exo->rf.cmd = RF_CMD_IDLE;
+            exo->rf.cmd = 0;
             break;
         }
     }
@@ -250,20 +244,30 @@ static void ti_rf_cpe0_isr(int vector, void* param)
 
         switch (exo->rf.cmd)
         {
-        case RF_CMD_RADIO_SETUP:
+        case CMD_RADIO_SETUP:
             ipc_ipost_inline(exo->rf.process, HAL_CMD(HAL_RF, IPC_RF_POWER_UP), 0, 0, ERROR_HARDWARE);
             break;
         default:
             break;
         }
-        exo->rf.cmd = RF_CMD_IDLE;
+        exo->rf.cmd = 0;
     }
+}
+
+static void ti_rf_cpe1_isr(int vector, void* param)
+{
+    EXO* exo = param;
+    //TODO:
+    printk("DTA CPE1!!!! %08x\n", RFC_DBELL->RFCPEIFG);
+    RFC_DBELL->RFACKIFG = 0;
+//    RFC_DBELL->RFACKIFG = ~0xfff0000ul;
+//    dump(exo->rf.cur, 128);
 }
 
 void ti_rf_init(EXO* exo)
 {
     exo->rf.state = RF_STATE_IDLE;
-    exo->rf.cmd = RF_CMD_IDLE;
+    exo->rf.cmd = 0;
 }
 
 static inline void ti_rf_open(EXO* exo, HANDLE process)
@@ -272,6 +276,9 @@ static inline void ti_rf_open(EXO* exo, HANDLE process)
         return;
 
     exo->rf.heap = kheap_create(TI_RF_HEAP_SIZE);
+
+    //very poorly documented.
+    PRCM->RFCMODESEL = RF_MODE_BLE;
 
     //power up RFC domain
     PRCM->PDCTL1RFC = PRCM_PDCTL1RFC_ON;
@@ -297,15 +304,30 @@ static inline void ti_rf_open(EXO* exo, HANDLE process)
     RFC_DBELL->RFCPEIEN = 0;
     //CPE0 - command flow
     RFC_DBELL->RFCPEIEN |= RFC_DBELL_RFCPEIEN_LAST_COMMAND_DONE;
-    RFC_DBELL->RFCPEISL &= ~RFC_DBELL_RFCPEISL_LAST_COMMAND_DONE;
+
+    //CPE1 - data flow
+    RFC_DBELL->RFCPEIEN |= RFC_DBELL_RFCPEIEN_RX_ABORTED | RFC_DBELL_RFCPEIEN_RX_N_DATA_WRITTEN | RFC_DBELL_RFCPEIEN_RX_DATA_WRITTEN |
+                           RFC_DBELL_RFCPEIEN_RX_ENTRY_DONE | RFC_DBELL_RFCPEIEN_RX_BUF_FULL | RFC_DBELL_RFCPEIEN_RX_CTRL_ACK |
+                           RFC_DBELL_RFCPEIEN_RX_CTRL | RFC_DBELL_RFCPEIEN_RX_EMPTY | RFC_DBELL_RFCPEIEN_RX_IGNORED |
+                           RFC_DBELL_RFCPEIEN_RX_NOK | RFC_DBELL_RFCPEIEN_RX_OK;
+
+    RFC_DBELL->RFCPEISL  = RFC_DBELL_RFCPEISL_RX_ABORTED | RFC_DBELL_RFCPEISL_RX_N_DATA_WRITTEN | RFC_DBELL_RFCPEISL_RX_DATA_WRITTEN |
+                           RFC_DBELL_RFCPEISL_RX_ENTRY_DONE | RFC_DBELL_RFCPEISL_RX_BUF_FULL | RFC_DBELL_RFCPEISL_RX_CTRL_ACK |
+                           RFC_DBELL_RFCPEISL_RX_CTRL | RFC_DBELL_RFCPEISL_RX_EMPTY | RFC_DBELL_RFCPEISL_RX_IGNORED |
+                           RFC_DBELL_RFCPEISL_RX_NOK | RFC_DBELL_RFCPEISL_RX_OK;
 
     RFC_DBELL->RFCPEIFG = 0;
+
+    kirq_register(KERNEL_HANDLE, RFCCPE0_IRQn, ti_rf_cpe0_isr, exo);
     NVIC_EnableIRQ(RFCCPE0_IRQn);
     NVIC_SetPriority(RFCCPE0_IRQn, 3);
-    kirq_register(KERNEL_HANDLE, RFCCPE0_IRQn, ti_rf_cpe0_isr, exo);
+
+    kirq_register(KERNEL_HANDLE, RFCCPE1_IRQn, ti_rf_cpe1_isr, exo);
+    NVIC_EnableIRQ(RFCCPE1_IRQn);
+    NVIC_SetPriority(RFCCPE1_IRQn, 2);
 
     // ---> FW_INFO ---> CONFIGURED
-    ti_rf_imm_cmd(exo, RF_CMD_GET_FW_INFO, BUF_ALLOC(exo, sizeof(RF_CMD_GET_FW_INFO_TYPE)), process);
+    ti_rf_imm_cmd(exo, CMD_GET_FW_INFO, BUF_ALLOC(exo, sizeof(rfc_CMD_GET_FW_INFO_t)), process);
     error(ERROR_SYNC);
 }
 
@@ -313,6 +335,9 @@ static inline void ti_rf_close(EXO* exo)
 {
     NVIC_DisableIRQ(RFCCPE0_IRQn);
     kirq_unregister(KERNEL_HANDLE, RFCCPE0_IRQn);
+
+    NVIC_DisableIRQ(RFCCPE1_IRQn);
+    kirq_unregister(KERNEL_HANDLE, RFCCPE1_IRQn);
 
     NVIC_DisableIRQ(RFCCmdAck_IRQn);
     kirq_unregister(KERNEL_HANDLE, RFCCmdAck_IRQn);
@@ -341,13 +366,13 @@ static inline void ti_rf_power_up(EXO* exo, HANDLE process)
     }
 
     // CONFIGURED ---> Start RAT ---> Radio Setup ---> READY
-    ti_rf_direct_cmd(exo, RF_CMD_START_RAT, process);
+    ti_rf_direct_cmd(exo, CMD_START_RAT, process);
     error(ERROR_SYNC);
 }
 
 static inline void ti_rf_set_tx_power(EXO* exo, int dbm, HANDLE process)
 {
-    RF_CMD_SET_TX_POWER_TYPE* tx_power;
+    rfc_CMD_SET_TX_POWER_t* tx_power;
     if (exo->rf.state != RF_STATE_READY)
     {
         error(ERROR_INVALID_STATE);
@@ -355,34 +380,68 @@ static inline void ti_rf_set_tx_power(EXO* exo, int dbm, HANDLE process)
     }
 
     // READY ---> Set TX Power ---> READY
-    tx_power = BUF_ALLOC(exo, sizeof(RF_CMD_SET_TX_POWER_TYPE));
+    tx_power = BUF_ALLOC(exo, sizeof(rfc_CMD_SET_TX_POWER_t));
     if (tx_power == NULL)
         return;
     tx_power->txPower = ti_rf_encode_tx_power(dbm);
-    ti_rf_imm_cmd(exo, RF_CMD_SET_TX_POWER, tx_power, process);
+    ti_rf_imm_cmd(exo, CMD_SET_TX_POWER, tx_power, process);
     error(ERROR_SYNC);
 }
 
 static inline void ti_rf_test(EXO* exo)
 {
-    RF_CMD_COUNT_TYPE* count;
+    rfc_CMD_BLE_ADV_NC_t* cmd;
+    rfc_bleAdvPar_t* params;
+    rfc_bleAdvOutput_t* out;
+    uint8_t* adv_data;
+    uint8_t* dev_addr;
     if (exo->rf.state != RF_STATE_READY)
     {
         error(ERROR_INVALID_STATE);
         return;
     }
 
-    //test counter
-    count = ti_rf_prepare_radio_cmd(exo, sizeof(RF_CMD_COUNT_TYPE), RF_CMD_COUNT);
-    if (count == NULL)
+    //test packet rx
+    cmd = ti_rf_prepare_radio_cmd(exo, sizeof(rfc_CMD_BLE_ADV_NC_t) + sizeof(rfc_bleAdvPar_t) + sizeof(rfc_bleAdvOutput_t) +
+                                  6 + 6, CMD_BLE_ADV_NC);
+    if (cmd == NULL)
         return;
-    count->counter = 1;
-    ti_rf_radio_cmd(count);
+    params = (rfc_bleAdvPar_t*)(((uint8_t*)cmd) + sizeof(rfc_CMD_BLE_ADV_NC_t));
+    out = (rfc_bleAdvOutput_t*)(((uint8_t*)params) + sizeof(rfc_bleAdvPar_t));
+    adv_data = (uint8_t*)out + sizeof(rfc_bleAdvOutput_t);
+    dev_addr = (uint8_t*)adv_data + sizeof(rfc_bleAdvOutput_t);
+
+    cmd->channel = 37;
+    cmd->pParams = params;
+    cmd->pOutput = out;
+
+
+    params->pRxQ = NULL;
+    params->advLen = 6;
+    params->pAdvData = adv_data;
+    adv_data[0] = 't';
+    adv_data[1] = 'e';
+    adv_data[2] = 's';
+    adv_data[3] = 't';
+    adv_data[4] = ' ';
+    adv_data[5] = '1';
+
+    params->pDeviceAddress = (uint16_t*)dev_addr;
+    dev_addr[0] = 0x10;
+    dev_addr[1] = 0x12;
+    dev_addr[2] = 0x13;
+    dev_addr[3] = 0x14;
+    dev_addr[4] = 0x15;
+    dev_addr[5] = 0x16;
+
+    params->endTrigger.triggerType = TRIG_NEVER;
+
+    ti_rf_radio_cmd(cmd);
 }
 
 void ti_rf_request(EXO* exo, IPC* ipc)
 {
-    if (exo->rf.cmd != RF_CMD_IDLE)
+    if (exo->rf.cmd != 0)
     {
         error(ERROR_IN_PROGRESS);
         return;
