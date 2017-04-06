@@ -14,7 +14,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Very thin kernel. 
 - Independent library level, accessible both from kernel and userspace
 - Independent system and drivers in userspace
-- Syncronization: ipc, stream, io
+- Syncronization: ipc, stream, io, heap
 - Soft timers
 - Embedded dynamic memory manager, for every process.
 - Safe and MPU ready. All supervisor-specific calls are wrapped around 
@@ -64,19 +64,19 @@ unavailable, another HPET timer can be used for RTC emulation
   * cortex-m3
   * cortex-m4
   * ARM7
-- Drivers:
-  * core (PIN/GPIO, UART, TIMER, POWER): STM32F0, STM32F1, STM32F2, STM32F4, STM32L0, LPC11Uxx, LPC18xx, CC26x0
-  * rtc: STM32F0, STM32F1, STM32F2, STM32F4, STM32L0
-  * wdt: STM32F0, STM32F1, STM32F2, STM32F4, STM32L0
-  * EEPROM: LPC11Uxx, STM32L0
-  * I2C: LPC1Uxx, LPC18xx, STM32F0
-  * ADC: STM32F1, STM32L0
-  * DAC: STM32F1, STM32L0
-  * USB: STM32F1, STM32F0, STM32L0, LPC11Uxx, LPC18xx
-  * ETH: STM32F1, LPC18xx
-  * SD/MMC: LPC18xx
-  * flash: LPC18xx
+- MCU Drivers:
+  * ST STM32F0: generic, UART, RTC, WDT, I2C, USB
+  * ST STM32F1: generic, UART, RTC, WDT, ADC, DAC, USB, ETH
+  * ST STM32F2: generic, UART, RTC, WDT, USB
+  * ST STM32F4: generic, UART, RTC, WDT, USB
+  * ST STM32L0: generic, UART, RTC, WDT, EEPROM, ADC, DAC, USB
+  * NXP LPC11Uxx: generic, UART, EEPROM, USB, flash
+  * NXP LPC18xx: generic, UART, USB, ETH, SD/MMC, flash
+  * TI CC26x0: generic, UART, RTC, WDT, Radio BLE (alpha)
+- Other drivers:
   * МЭЛТ mt12864j LCD display
+- Commercial license drivers (not included in opensource release):
+  * NXP Kinetis MK22: generic, UART, RTC, WDT, I2C, USB, flash
 
 Cortex-M3 features:
 ------------------
@@ -90,6 +90,11 @@ ARM7 features:
 
 History
 =======
+0.5.3
+- CC26x0 Radio BLE alpha support
+- HEAP sync object for dynamic object sharing
+- MK22 flash support (commercial license)
+
 0.5.2
 - TI CC26x0 support
 - stream write critical fix
