@@ -6,6 +6,7 @@
 #include "../../userspace/stdio.h"
 #include "../../userspace/ipc.h"
 #include "../../userspace/usb.h"
+#include "../../userspace/error.h"
 #include <string.h>
 #include "sys_config.h"
 

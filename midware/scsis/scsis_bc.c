@@ -10,6 +10,7 @@
 #include "../../userspace/stdio.h"
 #include "../../userspace/scsi.h"
 #include "../../userspace/endian.h"
+#include "../../userspace/error.h"
 #include <string.h>
 
 void scsis_bc_read_capacity10(SCSIS* scsis, uint8_t* req)

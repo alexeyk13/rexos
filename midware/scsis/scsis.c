@@ -14,6 +14,7 @@
 #include "../../userspace/stdlib.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/endian.h"
+#include "../../userspace/error.h"
 #include <string.h>
 
 static void scsis_request_media(SCSIS* scsis)
