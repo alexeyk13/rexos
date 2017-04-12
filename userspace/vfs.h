@@ -40,7 +40,10 @@ typedef enum {
     VFS_READ_VOLUME_LABEL,
     VFS_REMOVE,
     VFS_MK_FOLDER,
-    VFS_FORMAT
+    VFS_GET_FREE,
+    VFS_GET_USED,
+    VFS_FORMAT,
+    VFS_STAT
 } VFS_IPCS;
 
 #define SECTOR_MODE_DIRECT                                  0x00
@@ -76,6 +79,10 @@ typedef struct {
 } VFS_BER_FORMAT_TYPE;
 
 typedef struct {
+    unsigned int crc_blocks, bad_blocks, crc_errors_count;
+} VFS_BER_STAT_TYPE;
+
+typedef struct {
     unsigned int root_entries;
     unsigned short cluster_sectors, fat_count;
     uint32_t serial;
@@ -92,6 +99,7 @@ void vfs_close_volume(VFS_RECORD_TYPE* vfs_record);
 bool vfs_open_ber(VFS_RECORD_TYPE* vfs_record, unsigned int block_sectors);
 void vfs_close_ber(VFS_RECORD_TYPE* vfs_record);
 bool vfs_format_ber(VFS_RECORD_TYPE* vfs_record, VFS_BER_FORMAT_TYPE* format);
+bool vfs_ber_get_stat(VFS_RECORD_TYPE* vfs_record, VFS_BER_STAT_TYPE* stat);
 
 bool vfs_open_fs(VFS_RECORD_TYPE* vfs_record);
 void vfs_close_fs(VFS_RECORD_TYPE* vfs_record);
@@ -105,7 +113,6 @@ bool vfs_cd_path(VFS_RECORD_TYPE* vfs_record, const char* path);
 char* vfs_read_volume_label(VFS_RECORD_TYPE* vfs_record);
 bool vfs_format(VFS_RECORD_TYPE* vfs_record, VFS_FAT_FORMAT_TYPE* format);
 
-//Only VFS_MODE_READ supported for now
 HANDLE vfs_open(VFS_RECORD_TYPE* vfs_record, const char* file_path, unsigned int mode);
 bool vfs_seek(VFS_RECORD_TYPE* vfs_record, HANDLE handle, unsigned int pos);
 void vfs_read(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io, unsigned int size);
@@ -115,5 +122,7 @@ int vfs_write_sync(VFS_RECORD_TYPE* vfs_record, HANDLE handle, IO* io);
 void vfs_close(VFS_RECORD_TYPE* vfs_record, HANDLE handle);
 bool vfs_remove(VFS_RECORD_TYPE* vfs_record, const char* file_path);
 bool vfs_mk_folder(VFS_RECORD_TYPE* vfs_record, const char* file_path);
+int vfs_get_free(VFS_RECORD_TYPE* vfs_record);
+int vfs_get_used(VFS_RECORD_TYPE* vfs_record);
 
 #endif // VFS_H

@@ -12,12 +12,14 @@
 #include "sys_config.h"
 #include <string.h>
 
-#define BER_MAGIC                           0xf247f2a0
+#define BER_MAGIC                           0x426b7189
 
 #define BER_BLOCK_UNUSED                    0xffff
 #define BER_STAT_BLOCK_USED                 (1 << 31)
 #define BER_STAT_BLOCK_STUFFED              (1 << 30)
-#define BER_STAT_VALUE(raw)                 ((raw) & 0x3fffffff)
+#define BER_STAT_BLOCK_CRC                  (1 << 29)
+#define BER_STAT_VALUE(raw)                 ((raw) & 0x1fffffff)
+#define BER_STAT_BAD_BLOCK                  0xffffffff
 
 #define BER_MAGIC_FLASH_UNINITIALIZED       0xff
 
@@ -27,8 +29,9 @@ typedef struct {
     uint32_t magic;
     uint32_t revision;
     uint16_t block_sectors;
-    uint16_t total_blocks;
     uint16_t fs_blocks;
+    uint32_t total_blocks;
+    uint32_t crc_count;
 } BER_HEADER_TYPE;
 
 #pragma pack(pop)
@@ -76,7 +79,7 @@ bool ber_read_sectors(VFSS_TYPE* vfss, unsigned long sector, unsigned size)
     return true;
 }
 
-static uint16_t ber_find_best(VFSS_TYPE* vfss, uint16_t current_pblock)
+static uint16_t ber_find_best(VFSS_TYPE* vfss)
 {
     uint16_t best_pblock, i;
     uint32_t best_pblock_stat;
@@ -99,10 +102,80 @@ static uint16_t ber_find_best(VFSS_TYPE* vfss, uint16_t current_pblock)
 #endif //VFS_BER_DEBUG_ERRORS
         error(ERROR_FULL);
     }
-    if (current_pblock != BER_BLOCK_UNUSED)
-        vfss->ber.stat_list[current_pblock] &= ~(BER_STAT_BLOCK_USED | BER_STAT_BLOCK_STUFFED);
-    vfss->ber.stat_list[best_pblock] = (vfss->ber.stat_list[best_pblock] + 1) | BER_STAT_BLOCK_USED;
     return best_pblock;
+}
+
+static void ber_use_block(VFSS_TYPE* vfss, uint16_t pblock)
+{
+    vfss->ber.stat_list[pblock] = (BER_STAT_VALUE(vfss->ber.stat_list[pblock]) + 1) |
+                                  (vfss->ber.stat_list[pblock] & BER_STAT_BLOCK_CRC) |
+                                  BER_STAT_BLOCK_USED;
+}
+
+static void ber_free_block(VFSS_TYPE* vfss, uint16_t pblock)
+{
+    if (pblock != BER_BLOCK_UNUSED)
+        vfss->ber.stat_list[pblock] &= ~(BER_STAT_BLOCK_USED | BER_STAT_BLOCK_STUFFED);
+}
+
+static void ber_prepare_superblock(VFSS_TYPE* vfss, uint16_t pblock)
+{
+    uint32_t old_stat_superblock, old_stat_pblock;
+    BER_HEADER_TYPE* hdr;
+
+    old_stat_superblock = vfss->ber.stat_list[vfss->ber.superblock];
+    ber_free_block(vfss, vfss->ber.superblock);
+    old_stat_pblock = vfss->ber.stat_list[pblock];
+    ber_use_block(vfss, pblock);
+
+    hdr = io_data(vfss->ber.io);
+    hdr->magic = BER_MAGIC;
+    hdr->revision = vfss->ber.ber_revision + 1;
+    hdr->block_sectors = vfss->ber.volume.block_sectors;
+    hdr->total_blocks = vfss->ber.total_blocks;
+    hdr->fs_blocks = vfss->ber.volume.fs_blocks;
+    hdr->crc_count = vfss->ber.crc_count;
+
+    memcpy((uint8_t*)io_data(vfss->ber.io) + sizeof(BER_HEADER_TYPE),
+           vfss->ber.remap_list, vfss->ber.volume.fs_blocks * sizeof(uint16_t));
+    memcpy((uint8_t*)io_data(vfss->ber.io) + sizeof(BER_HEADER_TYPE) + vfss->ber.volume.fs_blocks * sizeof(uint16_t),
+           vfss->ber.stat_list, vfss->ber.total_blocks * sizeof(uint32_t));
+    //update cache later, only after successfull write
+    vfss->ber.stat_list[vfss->ber.superblock] = old_stat_superblock;
+    vfss->ber.stat_list[pblock] = old_stat_pblock;
+}
+
+static uint16_t ber_write_pblock(VFSS_TYPE* vfss, bool is_super)
+{
+    unsigned int retry;
+    uint16_t pblock;
+
+    vfss->ber.io->data_size = vfss->ber.block_size;
+    for (;;)
+    {
+        pblock = ber_find_best(vfss);
+        if (pblock == BER_BLOCK_UNUSED)
+            return BER_BLOCK_UNUSED;
+        for (retry = 0; retry < 3; ++retry)
+        {
+            //we need to update superblock statistics on each write - successfull or not
+            if (is_super)
+                ber_prepare_superblock(vfss, pblock);
+            if (storage_write_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->ber.io, vfss->volume.first_sector +
+                                      pblock * vfss->ber.volume.block_sectors))
+                return pblock;
+            error(ERROR_OK);
+#if (VFS_BER_DEBUG_ERRORS)
+            printf("BER: crc at block %#x\n", pblock);
+#endif //VFS_BER_DEBUG_ERRORS
+            vfss->ber.stat_list[pblock] |= BER_STAT_BLOCK_CRC;
+            ++vfss->ber.crc_count;
+        }
+        vfss->ber.stat_list[pblock] = BER_STAT_BAD_BLOCK;
+#if (VFS_BER_DEBUG_ERRORS)
+        printf("BER: marking block %#x as bad\n", pblock);
+#endif //VFS_BER_DEBUG_ERRORS
+    }
 }
 
 static inline bool ber_read_lblock(VFSS_TYPE* vfss, uint16_t lblock)
@@ -118,44 +191,39 @@ static inline bool ber_read_lblock(VFSS_TYPE* vfss, uint16_t lblock)
 
 static inline bool ber_write_lblock(VFSS_TYPE* vfss, uint16_t lblock)
 {
-    uint16_t best_pblock = ber_find_best(vfss, vfss->ber.remap_list[lblock]);
-    if (best_pblock == BER_BLOCK_UNUSED)
-        return false;
-    vfss->ber.remap_list[lblock] = best_pblock;
+    bool stuffed;
+    uint16_t pblock;
+
     //extremely rare, but possible. Stuff header
-    if (*((uint32_t*)io_data(vfss->ber.io)) == BER_MAGIC)
-    {
+    stuffed = *((uint32_t*)io_data(vfss->ber.io)) == BER_MAGIC;
+    if (stuffed)
         *((uint32_t*)io_data(vfss->ber.io)) = 0x00000000;
-        vfss->ber.stat_list[best_pblock] |= BER_STAT_BLOCK_STUFFED;
-    }
-    vfss->ber.io->data_size = vfss->ber.block_size;
-    return storage_write_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->ber.io, vfss->volume.first_sector +
-                              best_pblock * vfss->ber.volume.block_sectors);
+
+    pblock = ber_write_pblock(vfss, false);
+    if (pblock == BER_BLOCK_UNUSED)
+        return false;
+
+    //update superblock cache only after successfull write
+    ber_free_block(vfss, vfss->ber.remap_list[lblock]);
+    ber_use_block(vfss, pblock);
+    vfss->ber.remap_list[lblock] = pblock;
+    if (stuffed)
+        vfss->ber.stat_list[pblock] |= BER_STAT_BLOCK_STUFFED;
+    return true;
 }
 
 static inline bool ber_update_superblock(VFSS_TYPE* vfss)
 {
-    BER_HEADER_TYPE* hdr;
-    uint16_t best_pblock = ber_find_best(vfss, vfss->ber.superblock);
-    if (best_pblock == BER_BLOCK_UNUSED)
+    uint16_t pblock = ber_write_pblock(vfss, true);
+    if (pblock == BER_BLOCK_UNUSED)
         return false;
-    vfss->ber.superblock = best_pblock;
+
+    //update cache only after successfull write
     ++vfss->ber.ber_revision;
-    hdr = io_data(vfss->ber.io);
-    hdr->magic = BER_MAGIC;
-    hdr->revision = vfss->ber.ber_revision;
-    hdr->block_sectors = vfss->ber.volume.block_sectors;
-    hdr->total_blocks = vfss->ber.total_blocks;
-    hdr->fs_blocks = vfss->ber.volume.fs_blocks;
-
-    memcpy((uint8_t*)io_data(vfss->ber.io) + sizeof(BER_HEADER_TYPE),
-           vfss->ber.remap_list, vfss->ber.volume.fs_blocks * sizeof(uint16_t));
-    memcpy((uint8_t*)io_data(vfss->ber.io) + sizeof(BER_HEADER_TYPE) + vfss->ber.volume.fs_blocks * sizeof(uint16_t),
-           vfss->ber.stat_list, vfss->ber.total_blocks * sizeof(uint32_t));
-
-    vfss->ber.io->data_size = vfss->ber.block_size;
-    return storage_write_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->ber.io, vfss->volume.first_sector +
-                              best_pblock * vfss->ber.volume.block_sectors);
+    ber_free_block(vfss, vfss->ber.superblock);
+    ber_use_block(vfss, pblock);
+    vfss->ber.superblock = pblock;
+    return true;
 }
 
 bool ber_write_sectors(VFSS_TYPE* vfss, unsigned long sector, unsigned size)
@@ -255,6 +323,7 @@ static inline void ber_open(VFSS_TYPE* vfss, unsigned int block_sectors)
     vfss->ber.remap_list = malloc(hdr->fs_blocks * sizeof(uint16_t));
     vfss->ber.stat_list = malloc(hdr->total_blocks * sizeof(uint32_t));
     vfss->ber.ber_revision = hdr->revision;
+    vfss->ber.crc_count = hdr->crc_count;
     if (vfss->ber.io == NULL || vfss->ber.remap_list == NULL || vfss->ber.stat_list == NULL)
     {
         ber_close_internal(vfss);
@@ -283,8 +352,6 @@ static inline void ber_close(VFSS_TYPE* vfss)
 static inline void ber_format(VFSS_TYPE* vfss, IO* io)
 {
     unsigned int i;
-    uint16_t* remap_list;
-    uint32_t* stat_list;
     BER_HEADER_TYPE* hdr;
     VFS_BER_FORMAT_TYPE* format = io_data(io);
 
@@ -313,37 +380,66 @@ static inline void ber_format(VFSS_TYPE* vfss, IO* io)
             return;
         hdr = vfss_get_buf(vfss);
         if ((hdr->magic == BER_MAGIC))
+        {
             if (!storage_erase_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->io,
                                     vfss->volume.first_sector + i * format->block_sectors, 1))
+            {
+#if (VFS_BER_DEBUG_ERRORS)
+                printf("BER: can't format superblock. Replace flash.\n");
+#endif //VFS_BER_DEBUG_ERRORS
                 return;
+            }
+        }
     }
 
-    //make superblock
-    //header
     vfss_resize_buf(vfss, vfss->ber.block_size);
     memset(vfss_get_buf(vfss), 0xff, vfss->ber.block_size);
-    hdr = vfss_get_buf(vfss);
-    hdr->magic = BER_MAGIC;
-    hdr->revision = 1;
-    hdr->block_sectors = format->block_sectors;
-    hdr->total_blocks = vfss->ber.total_blocks;
-    hdr->fs_blocks = format->fs_blocks;
+    vfss->ber.volume.block_sectors = format->block_sectors;
+    vfss->ber.volume.fs_blocks = format->fs_blocks;
+    vfss->ber.io = io_create(vfss->ber.block_size + sizeof(STORAGE_STACK));
+    vfss->ber.remap_list = malloc(vfss->ber.volume.fs_blocks * sizeof(uint16_t));
+    vfss->ber.stat_list = malloc(vfss->ber.total_blocks * sizeof(uint32_t));
+    vfss->ber.ber_revision = 0;
+    vfss->ber.crc_count = 0;
+    vfss->ber.superblock = 0;
+    if (vfss->ber.io == NULL || vfss->ber.remap_list == NULL || vfss->ber.stat_list == NULL)
+    {
+        ber_close_internal(vfss);
+        return;
+    }
 
     //remap list - all empty blocks
-    remap_list = (uint16_t*)((uint8_t*)vfss_get_buf(vfss) + sizeof(BER_HEADER_TYPE));
-    for (i = 0; i < format->fs_blocks; ++i)
-        remap_list[i] = BER_BLOCK_UNUSED;
+    for (i = 0; i < vfss->ber.volume.fs_blocks; ++i)
+        vfss->ber.remap_list[i] = BER_BLOCK_UNUSED;
 
-    //stat list
-    stat_list = (uint32_t*)((uint8_t*)vfss_get_buf(vfss) + sizeof(BER_HEADER_TYPE) + format->fs_blocks * sizeof(uint16_t));
-    //first reserve for superblock
-    stat_list[0] = 1 | BER_STAT_BLOCK_USED;
+    //stat list - unused, no CRC, clear
     for (i = 1; i < vfss->ber.total_blocks; ++i)
-        stat_list[i] = 0;
+        vfss->ber.stat_list[i] = 0;
 
-    //save superblock
-    vfss->io->data_size = vfss->ber.block_size;
-    storage_write_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->io, vfss->volume.first_sector);
+    ber_update_superblock(vfss);
+    ber_close_internal(vfss);
+}
+
+static inline void ber_stat(VFSS_TYPE* vfss, IO* io)
+{
+    unsigned int i;
+    VFS_BER_STAT_TYPE* stat = io_data(io);
+
+    if (!vfss->ber.active)
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    stat->crc_errors_count = vfss->ber.crc_count;
+    stat->bad_blocks = stat->crc_blocks = 0;
+    for (i = 0; i < vfss->ber.total_blocks; ++i)
+    {
+        if (vfss->ber.stat_list[i] == BER_STAT_BAD_BLOCK)
+            ++stat->bad_blocks;
+        else if (vfss->ber.stat_list[i] & BER_STAT_BLOCK_CRC)
+            ++stat->crc_blocks;
+    }
+    io->data_size = sizeof(VFS_BER_STAT_TYPE);
 }
 
 void ber_request(VFSS_TYPE *vfss, IPC* ipc)
@@ -358,6 +454,9 @@ void ber_request(VFSS_TYPE *vfss, IPC* ipc)
         break;
     case VFS_FORMAT:
         ber_format(vfss, (IO*)ipc->param2);
+        break;
+    case VFS_STAT:
+        ber_stat(vfss, (IO*)ipc->param2);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

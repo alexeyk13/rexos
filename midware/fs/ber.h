@@ -17,7 +17,7 @@
 typedef struct {
     VFS_BER_FORMAT_TYPE volume;
     uint16_t superblock;
-    unsigned int total_blocks, ber_revision, block_size;
+    unsigned int total_blocks, ber_revision, block_size, crc_count;
     uint16_t* remap_list;
     uint32_t* stat_list;
     IO* io;

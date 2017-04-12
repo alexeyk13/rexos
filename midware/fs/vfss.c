@@ -156,28 +156,10 @@ void vfss_request(VFSS_TYPE *vfss, IPC* ipc)
         return;
     }
 #if (VFS_BER)
-    if (vfss->volume.sector_mode == SECTOR_MODE_BER)
+    if ((vfss->volume.sector_mode == SECTOR_MODE_BER) && (ipc->param1 == VFS_BER_HANDLE))
     {
-        switch (HAL_ITEM(ipc->cmd))
-        {
-        case IPC_OPEN:
-        case IPC_CLOSE:
-        case VFS_FORMAT:
-            //forward request to BER
-            if (ipc->param1 == VFS_BER_HANDLE)
-            {
-                ber_request(vfss, ipc);
-                return;
-            }
-            break;
-        default:
-            break;
-        }
-        if (!vfss->ber.active)
-        {
-            error(ERROR_NOT_CONFIGURED);
-            return;
-        }
+        ber_request(vfss, ipc);
+        return;
     }
 #endif //VFS_BER
     //forward to fs

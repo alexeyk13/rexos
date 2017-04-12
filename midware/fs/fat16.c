@@ -1483,6 +1483,21 @@ static inline void fat16_format(VFSS_TYPE* vfss, IO* io, HANDLE process)
     error(ERROR_SYNC);
 }
 
+static int fat16_get_free(VFSS_TYPE* vfss)
+{
+    unsigned int free_clusters, cluster;
+    free_clusters = 0;
+    for (cluster = 2; cluster < vfss->fat16.clusters_count; ++cluster)
+        if (fat16_get_fat_value(vfss, cluster) == FAT_CLUSTER_FREE)
+            ++free_clusters;
+    return free_clusters * vfss->fat16.cluster_size;
+}
+
+static inline int fat16_get_used(VFSS_TYPE* vfss)
+{
+    return (vfss->fat16.clusters_count - 2) * vfss->fat16.cluster_size - fat16_get_free(vfss);
+}
+
 void fat16_request(VFSS_TYPE *vfss, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -1550,6 +1565,12 @@ void fat16_request(VFSS_TYPE *vfss, IPC* ipc)
         break;
     case VFS_MK_FOLDER:
         fat16_mk_folder(vfss, ipc->param1, (IO*)ipc->param2, ipc->process);
+        break;
+    case VFS_GET_FREE:
+        ipc->param3 = fat16_get_free(vfss);
+        break;
+    case VFS_GET_USED:
+        ipc->param3 = fat16_get_used(vfss);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

@@ -44,22 +44,6 @@ static inline int kipc_index(HANDLE p, HANDLE wait_process, unsigned int cmd, un
     return -1;
 }
 
-#if (KERNEL_IPC_DEBUG)
-static void kipc_debug_overflow(IPC* ipc, HANDLE sender)
-{
-    printk("Error: receiver %s IPC overflow!\n", kprocess_name(ipc->process));
-    printk("Sender: ");
-    if (sender == KERNEL_HANDLE)
-        printk("Kernel\n");
-    else
-        printk("%s\n", kprocess_name(sender));
-    printk("cmd: %#X, p1: %#X, p2: %#X, p3: %#X\n", ipc->cmd, ipc->param1, ipc->param2, ipc->param3);
-#if (KERNEL_DEVELOPER_MODE)
-    HALT();
-#endif //KERNEL_DEVELOPER_MODE
-}
-#endif //KERNEL_IPC_DEBUG
-
 static bool kipc_send(HANDLE sender, HANDLE receiver, unsigned int cmd, void* param)
 {
     bool res = true;
@@ -79,51 +63,72 @@ static bool kipc_send(HANDLE sender, HANDLE receiver, unsigned int cmd, void* pa
     return res;
 }
 
+static void kipc_post_internal(HANDLE sender, HANDLE receiver, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+{
+    IPC* cur;
+    KPROCESS* r;
+    int index;
+    index = -1;
+    r = (KPROCESS*)receiver;
+    disable_interrupts();
+    if (!rb_is_full(&r->process->ipcs))
+        index = rb_put(&r->process->ipcs);
+    enable_interrupts();
+    if (index >= 0)
+    {
+        cur = KIPC_ITEM(r, index);
+        cur->cmd = cmd;
+        cur->param1 = param1;
+        cur->param2 = param2;
+        cur->param3 = param3;
+        cur->process = sender;
+    }
+    else
+    {
+        error(ERROR_OVERFLOW);
+#if (KERNEL_IPC_DEBUG)
+        printk("Error: receiver %s IPC overflow!\n", kprocess_name((HANDLE)receiver));
+        printk("Sender: ");
+        if (sender == KERNEL_HANDLE)
+            printk("Kernel\n");
+        else
+            printk("%s\n", kprocess_name(sender));
+        printk("cmd: %#X, p1: %#X, p2: %#X, p3: %#X\n", cmd, param1, param2, param3);
+#if (KERNEL_DEVELOPER_MODE)
+        HALT();
+#endif //KERNEL_DEVELOPER_MODE
+#endif //KERNEL_IPC_DEBUG
+    }
+}
+
 void kipc_post(HANDLE sender, IPC* ipc)
 {
     KPROCESS* receiver;
-    int index;
-    IPC* cur;
-    index = -1;
     CHECK_MAGIC(ipc->process, MAGIC_PROCESS);
+
     if (!kipc_send(sender, ipc->process, ipc->cmd, (void*)ipc->param2))
+    {
+        //can't be delivered. Return response back with error (if required)
+        if (ipc->cmd & HAL_REQ_FLAG)
+            kipc_post_internal(ipc->process, sender, ipc->cmd & ~HAL_REQ_FLAG, ipc->param1, ipc->param2, get_last_error());
         return;
+    }
 #ifdef EXODRIVERS
-    int err;
     if (ipc->process == KERNEL_HANDLE)
     {
-        ipc->process = sender;
         error(ERROR_OK);
+        ipc->process = sender;
         exodriver_post(ipc);
-        err = get_last_error();
-        if ((ipc->cmd & HAL_REQ_FLAG) && (err != ERROR_SYNC))
-        {
-            //send back if response is received
-            if (!kipc_send(ipc->process, sender, ipc->cmd, (void*)ipc->param2))
-                return;
-            
-            //send response ipc inline
-            if (err != ERROR_OK)
-                ipc->param3 = err;
-            disable_interrupts();
-            if (!rb_is_full(&((KPROCESS*)sender)->process->ipcs))
-                index = rb_put(&((KPROCESS*)sender)->process->ipcs);
-            enable_interrupts();
-            if (index >= 0)
-            {
-                cur = KIPC_ITEM(sender, index);
-                cur->cmd = ipc->cmd & ~HAL_REQ_FLAG;
-                cur->param1 = ipc->param1;
-                cur->param2 = ipc->param2;
-                cur->param3 = (err != ERROR_OK ? err : ipc->param3);
-                cur->process = KERNEL_HANDLE;
-            }
-#if (KERNEL_IPC_DEBUG)
-            else
-                kipc_debug_overflow(ipc, sender);
-#endif //KERNEL_IPC_DEBUG
-        }
         ipc->process = KERNEL_HANDLE;
+        //send back if response is received
+        if ((ipc->cmd & HAL_REQ_FLAG) && (get_last_error() != ERROR_SYNC))
+        {
+            kipc_send(KERNEL_HANDLE, sender, ipc->cmd, (void*)ipc->param2);
+
+            if (get_last_error() != ERROR_OK)
+                ipc->param3 = get_last_error();
+            kipc_post_internal(ipc->process, sender, ipc->cmd & ~HAL_REQ_FLAG, ipc->param1, ipc->param2, ipc->param3);
+        }
         return;
     }
 #endif //EXODRIVERS
@@ -138,25 +143,8 @@ void kipc_post(HANDLE sender, IPC* ipc)
         receiver->kipc.wait_process = INVALID_HANDLE;
         kprocess_wakeup((HANDLE)receiver);
     }
-    if (!rb_is_full(&receiver->process->ipcs))
-        index = rb_put(&receiver->process->ipcs);
     enable_interrupts();
-    if (index >= 0)
-    {
-        cur = KIPC_ITEM(receiver, index);
-        cur->cmd = ipc->cmd;
-        cur->param1 = ipc->param1;
-        cur->param2 = ipc->param2;
-        cur->param3 = ipc->param3;
-        cur->process = (HANDLE)sender;
-    }
-    else
-    {
-        error(ERROR_OVERFLOW);
-#if (KERNEL_IPC_DEBUG)
-        kipc_debug_overflow(ipc, sender);
-#endif //KERNEL_IPC_DEBUG
-    }
+    kipc_post_internal(sender, ipc->process, ipc->cmd, ipc->param1, ipc->param2, ipc->param3);
 }
 
 void kipc_wait(HANDLE process, HANDLE wait_process, unsigned int cmd, unsigned int param1)

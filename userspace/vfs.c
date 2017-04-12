@@ -69,6 +69,16 @@ bool vfs_format_ber(VFS_RECORD_TYPE* vfs_record, VFS_BER_FORMAT_TYPE* format)
     return io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_FORMAT), VFS_BER_HANDLE, vfs_record->io) >= 0;
 }
 
+bool vfs_ber_get_stat(VFS_RECORD_TYPE* vfs_record, VFS_BER_STAT_TYPE* stat)
+{
+    memset(stat, 0x00, sizeof(VFS_BER_STAT_TYPE));
+    if (io_read_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_STAT), VFS_BER_HANDLE, vfs_record->io, sizeof(VFS_BER_STAT_TYPE))
+            < (int)sizeof(VFS_BER_STAT_TYPE))
+        return false;
+    memcpy(stat, io_data(vfs_record->io), sizeof(VFS_BER_STAT_TYPE));
+    return true;
+}
+
 bool vfs_open_fs(VFS_RECORD_TYPE* vfs_record)
 {
     return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_OPEN), VFS_FS_HANDLE, 0, 0) >= 0;
@@ -131,7 +141,7 @@ bool vfs_cd_path(VFS_RECORD_TYPE* vfs_record, const char* path)
 char* vfs_read_volume_label(VFS_RECORD_TYPE* vfs_record)
 {
     int res;
-    res = io_read_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_READ_VOLUME_LABEL), 0, vfs_record->io, VFS_MAX_FILE_PATH + 1);
+    res = io_read_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_READ_VOLUME_LABEL), VFS_ROOT, vfs_record->io, VFS_MAX_FILE_PATH + 1);
     if (res < 0)
         return NULL;
     return (char*)io_data(vfs_record->io);
@@ -210,4 +220,14 @@ bool vfs_mk_folder(VFS_RECORD_TYPE* vfs_record, const char* file_path)
     vfs_record->io->data_size = strlen(file_path) + 1;
     res = io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_MK_FOLDER), vfs_record->current_folder, vfs_record->io);
     return res >= 0;
+}
+
+int vfs_get_free(VFS_RECORD_TYPE* vfs_record)
+{
+    return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, VFS_GET_FREE), VFS_ROOT, 0, 0);
+}
+
+int vfs_get_used(VFS_RECORD_TYPE* vfs_record)
+{
+    return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, VFS_GET_USED), VFS_ROOT, 0, 0);
 }
