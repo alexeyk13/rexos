@@ -90,6 +90,13 @@ ARM7 features:
 
 History
 =======
+
+0.5.4
+- BER bad block recovery
+- BER error statistics
+- FAT16 get free/used space
+- critical exodrivers IPC fix
+
 0.5.3
 - CC26x0 Radio BLE alpha support
 - HEAP sync object for dynamic object sharing
