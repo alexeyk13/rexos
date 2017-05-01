@@ -185,7 +185,7 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 {
     USB_INTERFACE_DESCRIPTOR* iface;
     USB_INTERFACE_DESCRIPTOR* diface;
-    CDC_UNION_DESCRIPTOR_TYPE* u;
+    CDC_UNION_DESCRIPTOR* u;
     USB_ENDPOINT_DESCRIPTOR* ep;
     uint8_t data_ep, control_ep, data_iface, control_iface;
     uint16_t data_ep_size, control_ep_size;
@@ -216,7 +216,7 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
         for (u = usb_interface_get_first_descriptor(cfg, iface, CS_INTERFACE); u != NULL; u = usb_interface_get_next_descriptor(cfg, u, CS_INTERFACE))
         {
             if ((u->bDescriptorSybType == CDC_DESCRIPTOR_UNION) && (u->bControlInterface == iface->bInterfaceNumber) &&
-                (u->bFunctionLength > sizeof(CDC_UNION_DESCRIPTOR_TYPE)))
+                (u->bFunctionLength > sizeof(CDC_UNION_DESCRIPTOR)))
                 break;
         }
         if (u == NULL)
@@ -226,7 +226,7 @@ void rndisd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 #endif //USBD_RNDIS_DEBUG
             continue;
         }
-        data_iface = ((uint8_t*)u)[sizeof(CDC_UNION_DESCRIPTOR_TYPE)];
+        data_iface = ((uint8_t*)u)[sizeof(CDC_UNION_DESCRIPTOR)];
         diface = usb_find_interface(cfg, data_iface);
         if (diface == NULL)
         {

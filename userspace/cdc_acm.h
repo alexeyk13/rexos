@@ -108,7 +108,7 @@ typedef struct {
     uint8_t bDescriptorSybType;                                                         /* Header function descriptor subtype */
     uint16_t bcdCDC;                                                                    /* USB Class Definitions for Communications Device Specification
                                                                                            release number in binary-coded decimal.*/
-} CDC_HEADER_DESCRIPTOR_TYPE;
+} CDC_HEADER_DESCRIPTOR;
 
 typedef struct {
     uint8_t bFunctionLength;                                                            /* Size of this descriptor in bytes */
@@ -119,7 +119,7 @@ typedef struct {
                                                                                            controlling interface for the union.*/
     //uint8_t bSubordinateInterface[] is following
 
-} CDC_UNION_DESCRIPTOR_TYPE;
+} CDC_UNION_DESCRIPTOR;
 
 typedef struct {
     uint8_t bFunctionLength;                                                            /* Size of this descriptor in bytes */
@@ -144,7 +144,7 @@ typedef struct {
                                                                                            for future compatibility. */
     uint8_t  bDataInterface;                                                            /* Interface number of Data Class interface optionally used for
                                                                                            call management. */
-} CDC_CALL_MANAGEMENT_DESCRIPTOR_TYPE;
+} CDC_CALL_MANAGEMENT_DESCRIPTOR;
 
 typedef struct {
     uint8_t bFunctionLength;                                                            /* Size of this descriptor in bytes */
@@ -174,7 +174,7 @@ typedef struct {
                                                                                            Abstract Control Model. */
 
 
-} CDC_ACM_DESCRIPTOR_TYPE;
+} CDC_ACM_DESCRIPTOR;
 
 typedef struct {
     uint32_t dwDTERate;                                                                 /*  Data terminal rate, in bits per second. */
