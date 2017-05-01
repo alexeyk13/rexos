@@ -6,6 +6,7 @@
 
 #include "lpc_pin.h"
 #include "../../userspace/lpc/lpc_driver.h"
+#include "../../userspace/error.h"
 #include "lpc_config.h"
 #include <stdint.h>
 

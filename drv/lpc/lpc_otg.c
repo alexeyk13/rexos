@@ -162,7 +162,7 @@ static void lpc_otg_in(USB_PORT_TYPE port, CORE* core, int ep_num)
 #if (USB_DEBUG_ERRORS)
 static void lpc_otg_err(USB_PORT_TYPE port, CORE* core, int num)
 {
-    DTD* dtd = ep_dtd(port, num);
+    DTD* dtd = ep_dtd(port, num, 0);
     if (dtd->size_flags & USB0_DTD_SIZE_FLAGS_HALTED_Msk)
     {
         if (dtd->size_flags & USB0_DTD_SIZE_FLAGS_BUFFER_ERR_Msk)

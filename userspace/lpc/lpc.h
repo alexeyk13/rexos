@@ -381,7 +381,6 @@
 #if defined(LPC)
 
 #include "lpc_config.h"
-#include "lpc_driver.h"
 
 #if defined(LPC11Uxx)
 #include "lpc11uxx_bits.h"

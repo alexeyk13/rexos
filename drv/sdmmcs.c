@@ -8,6 +8,7 @@
 #include "../userspace/stdio.h"
 #include "../userspace/types.h"
 #include "../userspace/process.h"
+#include "../userspace/error.h"
 #include "sys_config.h"
 #include <string.h>
 
