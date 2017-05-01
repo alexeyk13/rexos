@@ -138,7 +138,7 @@ void gpio_enable_mask(unsigned int port, GPIO_MODE mode, unsigned int mask)
 void gpio_disable_pin(unsigned int pin)
 {
     LPC_GPIO->DIR[GPIO_PORT(pin)] &= ~(1 << GPIO_PIN(pin));
-    disable_pin(PIN_RAW(pin));
+    pin_disable(PIN_RAW(pin));
 }
 
 void gpio_disable_mask(unsigned int port, unsigned int mask)
