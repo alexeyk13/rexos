@@ -22,6 +22,7 @@
 #include "lpc_eep.h"
 #include "lpc_sdmmc.h"
 #include "lpc_flash.h"
+#include "lpc_eth.h"
 
 void lpc_core();
 
@@ -89,6 +90,11 @@ void lpc_core_loop(CORE* core)
             lpc_flash_request(core, &ipc);
             break;
 #endif //LPC_FLASH_DRIVER
+#if (LPC_ETH_DRIVER)
+        case HAL_ETH:
+            lpc_eth_request(core, &ipc);
+            break;
+#endif //LPC_ETH_DRIVER
         default:
             error(ERROR_NOT_SUPPORTED);
             break;
@@ -155,6 +161,9 @@ void lpc_core()
 #if (LPC_FLASH_DRIVER)
     lpc_flash_init(&core);
 #endif //LPC_FLASH_DRIVER
+#if (LPC_ETH_DRIVER)
+    lpc_eth_init(&core);
+#endif //LPC_ETH_DRIVER
 
     lpc_core_loop(&core);
 }

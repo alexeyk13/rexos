@@ -8,7 +8,7 @@
 #define LPC_ETH_H
 
 /*
-    STM32 Ethernet driver.
+    LPC18xx Ethernet driver.
 */
 
 #include "../../userspace/process.h"
@@ -16,6 +16,7 @@
 #include "../../userspace/io.h"
 #include <stdint.h>
 #include "sys_config.h"
+#include "lpc_core.h"
 
 #pragma pack(push, 1)
 
@@ -52,7 +53,8 @@ typedef struct {
 #endif
 } ETH_DRV;
 
-void lpc_eth_request(ETH_DRV* drv, IPC* ipc);
+void lpc_eth_init(CORE* core);
+void lpc_eth_request(CORE* core, IPC* ipc);
 
 
 #endif // LPC_ETH_H

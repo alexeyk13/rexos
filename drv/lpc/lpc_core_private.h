@@ -22,7 +22,7 @@
 #include "lpc_eep.h"
 #include "lpc_sdmmc.h"
 #include "lpc_flash.h"
-
+#include "lpc_eth.h"
 
 typedef struct _CORE {
     POWER_DRV power;
@@ -46,6 +46,9 @@ typedef struct _CORE {
 #if (LPC_FLASH_DRIVER)
     FLASH_DRV flash;
 #endif //LPC_FLASH_DRIVER
+#if (LPC_ETH_DRIVER)
+    ETH_DRV eth;
+#endif //LPC_ETH_DRIVER
 }CORE;
 
 

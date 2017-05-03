@@ -13,7 +13,6 @@
 #include "../power.h"
 
 extern const REX __LPC_CORE;
-extern const REX __LPC_ETH;
 
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 typedef enum {
