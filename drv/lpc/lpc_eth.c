@@ -237,6 +237,11 @@ static void lpc_eth_close(ETH_DRV* drv)
     LPC_CGU->BASE_PHY_TX_CLK = CGU_BASE_PHY_TX_CLK_PD_Msk;
     LPC_CGU->BASE_PHY_RX_CLK = CGU_BASE_PHY_RX_CLK_PD_Msk;
 
+    //physically reset phy, if configured
+#if (LPC_ETH_PHY_RST_CYCLES)
+    gpio_disable_pin(LPC_ETH_PHY_RST_PIN);
+#endif //LPC_ETH_PHY_RST_CYCLES
+
     //switch to unconfigured state
     drv->tcpip = INVALID_HANDLE;
     drv->connected = false;
@@ -246,6 +251,9 @@ static void lpc_eth_close(ETH_DRV* drv)
 static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TYPE conn, HANDLE tcpip)
 {
     unsigned int clock;
+#if (LPC_ETH_PHY_RST_CYCLES)
+    int i;
+#endif //LPC_ETH_PHY_RST_CYCLES
 
     drv->timer = timer_create(0, HAL_ETH);
     if (drv->timer == INVALID_HANDLE)
@@ -275,6 +283,14 @@ static inline void lpc_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_TY
     //reset DMA
     LPC_ETHERNET->DMA_BUS_MODE |= ETHERNET_DMA_BUS_MODE_SWR_Msk;
     while(LPC_ETHERNET->DMA_BUS_MODE & ETHERNET_DMA_BUS_MODE_SWR_Msk) {}
+
+#if (LPC_ETH_PHY_RST_CYCLES)
+    //physically reset phy
+    gpio_enable_pin(LPC_ETH_PHY_RST_PIN, GPIO_MODE_OUT);
+    for (i = 0; i < LPC_ETH_PHY_RST_CYCLES; ++i)
+        __NOP();
+    gpio_set_pin(LPC_ETH_PHY_RST_PIN);
+#endif //LPC_ETH_PHY_RST_CYCLES
 
     //setup descriptors
 #if (ETH_DOUBLE_BUFFERING)
