@@ -188,7 +188,7 @@ static inline void lpc_setup_clock()
 #if (PLL_P == 1)
     LPC_CGU->PLL1_CTRL |= CGU_PLL1_CTRL_DIRECT_Msk;
 #else
-    LPC_CGU->PLL1_CTRL |= (32 - __builtin_clz(PLL_P)) << CGU_PLL1_CTRL_PSEL_Pos;
+    LPC_CGU->PLL1_CTRL |= (30 - __builtin_clz(PLL_P)) << CGU_PLL1_CTRL_PSEL_Pos;
 #endif
     LPC_CGU->PLL1_CTRL &= ~CGU_PLL1_CTRL_PD_Msk;
 
