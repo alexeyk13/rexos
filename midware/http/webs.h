@@ -4,9 +4,9 @@
     All rights reserved.
 */
 
-#ifndef HSS_H
-#define HSS_H
+#ifndef WEBS_H
+#define WEBS_H
 
 #include "../../userspace/process.h"
 
-#endif // HSS_H
+#endif // WEBS_H
