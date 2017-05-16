@@ -22,10 +22,10 @@ void web_node_destroy(WEB_NODE* web_node)
     so_destroy(&web_node->items);
 }
 
-static WEB_NODE_ITEM* web_node_find_child(WEB_NODE_ITEM* parent, char* name, unsigned int len)
+static WEB_NODE_ITEM* web_node_find_child(WEB_NODE* web_node, WEB_NODE_ITEM* parent, char* name, unsigned int len)
 {
     WEB_NODE_ITEM* cur;
-    for(cur = parent->child; cur != NULL; cur = cur->next)
+    for(cur = so_get(&web_node->items, parent->child); cur != NULL; cur = so_get(&web_node->items, cur->next))
     {
         if (web_stricmp(WEB_OBJ_WILDCARD, 1, cur->name))
             return cur;
@@ -45,8 +45,6 @@ HANDLE web_node_allocate(WEB_NODE* web_node, HANDLE parent_handle, char* name, u
     unsigned int len;
 
     len = strlen(name);
-    //Useless. Just to ignore warnings
-    parent = 0;
     if (parent_handle == WEB_ROOT_NODE)
     {
         if (web_node->root != INVALID_HANDLE)
@@ -60,7 +58,7 @@ HANDLE web_node_allocate(WEB_NODE* web_node, HANDLE parent_handle, char* name, u
         parent = so_get(&web_node->items, parent_handle);
         if (parent == NULL)
             return INVALID_HANDLE;
-        if (web_node_find_child(parent, name, len) != NULL)
+        if (web_node_find_child(web_node, parent, name, len) != NULL)
         {
             error(ERROR_ALREADY_CONFIGURED);
             return INVALID_HANDLE;
@@ -78,21 +76,24 @@ HANDLE web_node_allocate(WEB_NODE* web_node, HANDLE parent_handle, char* name, u
     }
     strcpy(cur->name, name);
     cur->self = cur_handle;
-    cur->next = cur->child = NULL;
+    cur->next = cur->child = INVALID_HANDLE;
     cur->flags = flags;
 
     if (parent_handle == WEB_ROOT_NODE)
         web_node->root = cur_handle;
     else
     {
+        //re-fetch after allocate
+        parent = so_get(&web_node->items, parent_handle);
         //first child
-        if (parent->child == NULL)
-            parent->child = cur;
+        if (parent->child == INVALID_HANDLE)
+            parent->child = cur_handle;
         //add sibling
         else
         {
-            for(child = parent->child; child->next != NULL; child = child->next) {}
-            child->next = cur;
+            for(child = so_get(&web_node->items, parent->child); child->next != INVALID_HANDLE;
+                child = so_get(&web_node->items, child->next)) {}
+            child->next = cur_handle;
         }
     }
 
@@ -112,9 +113,9 @@ static void web_node_free_siblings(WEB_NODE* web_node, WEB_NODE_ITEM* cur)
 
     for (sibling = cur; sibling != NULL; sibling = next)
     {
-        next = sibling->next;
-        if (sibling->child != NULL)
-            web_node_free_siblings(web_node, sibling->child);
+        next = so_get(&web_node->items, sibling->next);
+        if (sibling->child != INVALID_HANDLE)
+            web_node_free_siblings(web_node, so_get(&web_node->items, sibling->child));
         web_node_free_internal(web_node, sibling);
     }
 }
@@ -130,8 +131,8 @@ void web_node_free(WEB_NODE* web_node, HANDLE handle)
         return;
 
     //remove all childs
-    if (cur->child != NULL)
-        web_node_free_siblings(web_node, cur->child);
+    if (cur->child != INVALID_HANDLE)
+        web_node_free_siblings(web_node, so_get(&web_node->items, cur->child));
 
     //remove from parent/older brother
     if (handle != web_node->root)
@@ -140,13 +141,13 @@ void web_node_free(WEB_NODE* web_node, HANDLE handle)
         for (h = so_first(&web_node->items); h != INVALID_HANDLE; h = so_next(&web_node->items, h))
         {
             parent = so_get(&web_node->items, h);
-            if (parent->child == cur)
+            if (parent->child == handle)
             {
                 parent->child = cur->next;
                 found = true;
                 break;
             }
-            if (parent->next == cur)
+            if (parent->next == handle)
             {
                 parent->next = cur->next;
                 found = true;
@@ -171,20 +172,27 @@ void web_node_free(WEB_NODE* web_node, HANDLE handle)
 HANDLE web_node_find_path(WEB_NODE* web_node, char* url, unsigned int url_size)
 {
     WEB_NODE_ITEM* cur;
-    unsigned int pos;
+    unsigned int len;
     if (web_node->root == INVALID_HANDLE)
         return INVALID_HANDLE;
     if (!url_size || url[0] != '/')
         return INVALID_HANDLE;
     cur = so_get(&web_node->items, web_node->root);
-    for (--url_size, ++url; url_size; url += pos + 1, url_size -= pos + 1)
+    //skip "/"
+    --url_size;
+    ++url;
+    for (;;)
     {
-        pos = web_get_word(url, url_size, '/');
-        cur = web_node_find_child(cur, url, pos);
+        len = web_get_word(url, url_size, '/');
+        cur = web_node_find_child(web_node, cur, url, len);
         if (cur == NULL)
             return INVALID_HANDLE;
+        if (len == url_size)
+            return cur->self;
+        //also skip slash
+        url += len + 1;
+        url_size -= len + 1;
     }
-    return cur->self;
 }
 
 bool web_node_check_flag(WEB_NODE* web_node, HANDLE handle, unsigned int flag)

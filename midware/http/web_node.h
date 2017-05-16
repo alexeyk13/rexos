@@ -10,9 +10,8 @@
 #include "../../userspace/types.h"
 #include "../../userspace/so.h"
 
-typedef struct _WEB_NODE {
-    struct _WEB_NODE* child;
-    struct _WEB_NODE* next;
+typedef struct {
+    HANDLE child, next;
     HANDLE self;
     char* name;
     unsigned int flags;
