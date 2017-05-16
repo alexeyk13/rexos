@@ -45,24 +45,6 @@ void web_server_destroy_node(HANDLE web_server, HANDLE obj)
     ack(web_server, HAL_REQ(HAL_WEBS, WEBS_DESTROY_NODE), obj, 0, 0);
 }
 
-void web_server_respond(HANDLE web_server, HANDLE session, unsigned int method, IO* io, IO* user_io)
-{
-///    HS_RESPONSE* resp = io_stack(io);
-///    resp->content_size = user_io->data_size;
-    //send response (ok)
-    io_complete(web_server, HAL_IO_CMD(HAL_WEBS, method), session, io);
-    io_write_sync(web_server, HAL_IO_REQ(HAL_WEBS, IPC_WRITE), session, user_io);
-}
-
-void web_server_respond_error(HANDLE web_server, HANDLE session, unsigned int method, IO* io, WEB_RESPONSE code)
-{
-///    HS_RESPONSE* resp = web_server_prepare_response(io);
-
-///    resp->response = code;
-    //send response
-    io_complete(web_server, HAL_IO_CMD(HAL_WEBS, method), session, io);
-}
-
 void web_server_register_error(HANDLE web_server, WEB_RESPONSE code, const char* html)
 {
     ack(web_server, HAL_REQ(HAL_WEBS, WEBS_REGISTER_RESPONSE), (unsigned int)code, (unsigned int)html, 0);
@@ -71,4 +53,16 @@ void web_server_register_error(HANDLE web_server, WEB_RESPONSE code, const char*
 void web_server_unregister_error(HANDLE web_server, WEB_RESPONSE code)
 {
     ack(web_server, HAL_REQ(HAL_WEBS, WEBS_UNREGISTER_RESPONSE), (unsigned int)code, 0, 0);
+}
+
+void web_server_write(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io)
+{
+    *((WEB_RESPONSE*)io_push(io, sizeof(WEB_RESPONSE))) = code;
+    io_write(web_server, HAL_REQ(HAL_WEBS, IPC_WRITE), session, io);
+}
+
+int web_server_write_sync(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io)
+{
+    *((WEB_RESPONSE*)io_push(io, sizeof(WEB_RESPONSE))) = code;
+    return io_write_sync(web_server, HAL_REQ(HAL_WEBS, IPC_WRITE), session, io);
 }

@@ -30,7 +30,7 @@ typedef enum {
     WEBS_SESSION_STATE_RX,
     WEBS_SESSION_STATE_PENDING,
     WEBS_SESSION_STATE_REQUEST,
-    WEBS_SESSION_STATE_REQUEST_DONE,
+    WEBS_SESSION_STATE_REQUEST_CUSTOM_PARAMS,
     WEBS_SESSION_STATE_TX
 } WEBS_SESSION_STATE;
 
@@ -132,6 +132,7 @@ static const char* const __HTTP_REASON500[] =  {"Internal Server Error",
                                                 "HTTP Version Not Supported"};
 
 static const char* const* const __HTTP_REASONS[] =    {__HTTP_REASON100, __HTTP_REASON200, __HTTP_REASON300, __HTTP_REASON400, __HTTP_REASON500};
+static const unsigned int __CODE_SIZE[] =             {2, 7, 8, 27, 6};
 
 static inline void webs_init(WEBS* webs)
 {
@@ -145,6 +146,26 @@ static inline void webs_init(WEBS* webs)
     //TODO: Multiple session support
     //TODO: allocation queue (tcpip style)
     webs->session.conn = INVALID_HANDLE;
+}
+
+static const char* webs_get_response_text(WEB_RESPONSE code)
+{
+    unsigned int group, item;
+    group = code / 100;
+    item = code % 100;
+    if (group < 1 || group > 5)
+        return "";
+    if (__CODE_SIZE[group] <= item)
+        return "";
+    return __HTTP_REASONS[code / 100 - 1][code % 100];
+}
+
+static void webs_session_reset(WEBS_SESSION* session)
+{
+    free(session->req);
+    session->req = NULL;
+    session->req_size = session->header_size = session->data_size = 0;
+    session->state = WEBS_SESSION_STATE_IDLE;
 }
 
 static inline WEBS_SESSION* webs_create_session(WEBS* webs)
@@ -225,6 +246,22 @@ static void webs_out_of_memory(WEBS* webs, WEBS_SESSION* session)
     webs_close_session(webs, session);
 }
 
+static void webs_tx(WEBS* webs, WEBS_SESSION* session)
+{
+    TCP_STACK* tcp_stack;
+    tcp_stack = io_push(session->io, sizeof(TCP_STACK));
+    session->io->data_size = WEBS_IO_SIZE;
+    if (session->req_size - session->processed < WEBS_IO_SIZE)
+    {
+        tcp_stack->flags = 0;
+        session->io->data_size = session->req_size - session->processed;
+    }
+    else
+        tcp_stack->flags = TCP_PSH;
+    memcpy(io_data(session->io), session->req + session->processed, session->io->data_size);
+    tcp_write(webs->tcpip, session->conn, session->io);
+}
+
 static char* webs_append_line(IO* io, char* header)
 {
     unsigned int len = strlen(header);
@@ -232,13 +269,14 @@ static char* webs_append_line(IO* io, char* header)
     return header + len;
 }
 
-static unsigned int webs_generate_header(WEBS_SESSION* session, WEB_RESPONSE code, unsigned int response_size)
+static inline unsigned int webs_generate_header(WEBS_SESSION* session, WEB_RESPONSE code, unsigned int response_size)
 {
     //generate header in session IO, which is unused at this moment
+    io_reset(session->io);
     char* header = io_data(session->io);
 
     //status line
-    sprintf(header, "HTTP/%d.%d %d %s\r\n", session->version >> 4, session->version & 0xf, code, __HTTP_REASONS[code / 100 - 1][code % 100]);
+    sprintf(header, "HTTP/%d.%d %d %s\r\n", session->version >> 4, session->version & 0xf, code, webs_get_response_text(code));
     header = webs_append_line(session->io, header);
 
     //header
@@ -253,6 +291,42 @@ static unsigned int webs_generate_header(WEBS_SESSION* session, WEB_RESPONSE cod
         header = webs_append_line(session->io, header);
     }
     return session->io->data_size;
+}
+
+static void webs_send_response(WEBS* webs, WEBS_SESSION* session, WEB_RESPONSE code, char* data, unsigned int data_size)
+{
+    unsigned int header_size;
+
+    header_size = webs_generate_header(session, code, data_size);
+    free(session->req);
+    session->req = malloc(header_size + 2 + data_size);
+
+    if (session->req == NULL)
+    {
+        webs_out_of_memory(webs, session);
+        return;
+    }
+
+    //header, generated in io
+    memcpy(session->req, io_data(session->io), session->io->data_size);
+    sprintf(session->req + header_size, "\r\n");
+    header_size += 2;
+    memcpy(session->req + header_size, data, data_size);
+    session->req_size = header_size + data_size;
+    session->processed = 0;
+    session->state = WEBS_SESSION_STATE_TX;
+
+#if (WEBS_DEBUG_REQUESTS)
+    printf("WEBS: %d %s\n", code, webs_get_response_text(code));
+#endif //WEBS_DEBUG_REQUESTS
+#if (WEBS_DEBUG_FLOW)
+    printf("WEBS TX:\n");
+    web_print(session->req, session->req_size);
+#endif //WEBS_DEBUG_FLOW
+
+    //TODO: timer start
+
+    webs_tx(webs, session);
 }
 
 static char* webs_get_error_html(WEBS* webs, WEB_RESPONSE code)
@@ -270,36 +344,17 @@ static char* webs_get_error_html(WEBS* webs, WEB_RESPONSE code)
 
 static void webs_respond_error(WEBS* webs, WEBS_SESSION* session, WEB_RESPONSE code)
 {
-/*    TCP_STACK* tcp_stack;
     char* html = webs_get_error_html(webs, code);
     if (html == NULL)
         html = webs->generic_error;
     if (html == NULL)
     {
         //no generic error set
-        webs_destroy_connection(webs, session);
+        webs_destroy_session(webs, session);
         return;
     }
-    session->content_size = strlen(html);
-    session->content_type = HTTP_CONTENT_HTML;
-    session->encoding_type = HTTP_ENCODING_NONE;
-    webs_fill_header(session, code);
-    memcpy((uint8_t*)io_data(session->io) + session->io->data_size, html, session->content_size);
-    session->io->data_size += session->content_size;
-    tcp_stack = io_push(session->io, sizeof(TCP_STACK));
-    tcp_stack->flags = TCP_PSH;
-    tcp_write_sync(webs->tcpip, session->conn, session->io);
-
-    session->state = WEBS_SESSION_STATE_IDLE;
-    io_reset(session->io);
-    io_push(session->io, sizeof(HS_STACK));
-    tcp_read(webs->tcpip, session->conn, session->io, WEBS_IO_SIZE);*/
-
-    //TODO: dbg err code
-#if (WEBS_DEBUG_ERRORS)
-        printf("WEBS: Payload too large: %d\n", session->req_size + session->io->data_size);
-#endif //WEBS_DEBUG_ERRORS
-
+    webs_session_reset(session);
+    webs_send_response(webs, session, code, html, strlen(html));
 }
 
 static inline void webs_open(WEBS* webs, uint16_t port, HANDLE tcpip, HANDLE process)
@@ -335,26 +390,18 @@ static inline void webs_close(WEBS* webs, HANDLE process)
     webs->process = INVALID_HANDLE;
 }
 
-static void webs_tx(WEBS* webs, WEBS_SESSION* session)
+static inline void webs_user_response(WEBS* webs, WEBS_SESSION* session, IO* io)
 {
-    session->io->data_size = WEBS_IO_SIZE;
-    if (session->req_size - session->processed < WEBS_IO_SIZE)
-        session->io->data_size = session->req_size - session->processed;
-    memcpy(io_data(session->io), session->req + session->processed, session->io->data_size);
-    tcp_write(webs->tcpip, session->conn, session->io);
-}
+    WEB_RESPONSE code = *((WEB_RESPONSE*)io_stack(io));
+    io_pop(io, sizeof(WEB_RESPONSE));
 
-static inline void webs_response(WEBS* webs, WEBS_SESSION* session, IO* io)
-{
-    unsigned int header_size;
-    WEB_RESPONSE code = *((WEB_RESPONSE*)io_pop(io, sizeof(WEB_RESPONSE*)));
-
-    //TODO: release busy state
+    //TODO: multiple sessions support, switch to next req
+    webs->busy = false;
 
     switch (session->state)
     {
     case WEBS_SESSION_STATE_REQUEST:
-    case WEBS_SESSION_STATE_REQUEST_DONE:
+    case WEBS_SESSION_STATE_REQUEST_CUSTOM_PARAMS:
         break;
     default:
 #if (WEBS_DEBUG_ERRORS)
@@ -364,49 +411,7 @@ static inline void webs_response(WEBS* webs, WEBS_SESSION* session, IO* io)
         return;
     }
 
-    header_size = webs_generate_header(session, code, io->data_size);
-    switch (session->state)
-    {
-    case WEBS_SESSION_STATE_REQUEST:
-        free(session->req);
-        session->req = malloc(header_size + 2 + io->data_size);
-        break;
-    case WEBS_SESSION_STATE_REQUEST_DONE:
-        session->req = realloc(session->req, header_size + session->req_size + 2 + io->data_size);
-        if (session->req)
-            memmove(session->req + header_size, session->req, session->req_size);
-        header_size += session->req_size;
-        break;
-    default:
-        break;
-    }
-
-    if (session->req == NULL)
-    {
-        webs_out_of_memory(webs, session);
-        return;
-    }
-
-    memcpy(session->req, io_data(session->io), session->io->data_size);
-    sprintf(session->req + header_size, "\r\n");
-    header_size += 2;
-    memcpy(session->req + header_size, io_data(io), io->data_size);
-    session->req_size = session->header_size + io->data_size;
-    session->processed = 0;
-    session->state = WEBS_SESSION_STATE_TX;
-
-#if (WEBS_DEBUG_REQUESTS)
-    printf("WEBS: %d %s\n", code, __HTTP_REASONS[code / 100 - 1][code % 100]);
-#endif //WEBS_DEBUG_REQUESTS
-#if (WEBS_DEBUG_FLOW)
-    printf("WEBS TX:\n");
-    web_print(session->req, session->req_size);
-#endif //WEBS_DEBUG_FLOW
-
-    //TODO: timer start
-
-    webs_tx(webs, session);
-
+    webs_send_response(webs, session, code, io_data(io), io->data_size);
 }
 
 static inline void webs_create_node(WEBS* webs, HANDLE process, HANDLE parent, IO* io, unsigned int flags)
@@ -484,8 +489,8 @@ static inline void webs_session_request(WEBS* webs, IPC* ipc)
     }
     switch (HAL_ITEM(ipc->cmd))
     {
-    case WEBS_RESPONSE:
-        webs_response(webs, session, (IO*)ipc->param2);
+    case IPC_WRITE:
+        webs_user_response(webs, session, (IO*)ipc->param2);
         break;
     case WEBS_GET_DATA:
         //TODO:
@@ -692,7 +697,7 @@ static inline void webs_session_tx_complete(WEBS* webs, WEBS_SESSION* session, i
     session->processed += size;
     if (session->processed >= session->req_size)
     {
-        session->state = WEBS_SESSION_STATE_IDLE;
+        webs_session_reset(session);
         tcp_read(webs->tcpip, session->conn, session->io, WEBS_IO_SIZE);
     }
     else

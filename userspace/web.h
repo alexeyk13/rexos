@@ -24,7 +24,6 @@ typedef enum {
     WEBS_DESTROY_NODE,
     WEBS_REGISTER_RESPONSE,
     WEBS_UNREGISTER_RESPONSE,
-    WEBS_RESPONSE,
     WEBS_GET_DATA,
     WEBS_GET_PARAM,
     WEBS_SET_PARAM,
@@ -117,14 +116,14 @@ typedef struct {
 HANDLE web_server_create();
 bool web_server_open(HANDLE web_server, uint16_t port, HANDLE tcpip);
 void web_server_close(HANDLE web_server);
-
 HANDLE web_server_create_node(HANDLE web_server, HANDLE parent, const char* name, unsigned int flags);
 void web_server_destroy_node(HANDLE web_server, HANDLE obj);
-
-void web_server_respond(HANDLE web_server, HANDLE session, unsigned int method, IO* io, IO* user_io);
-void web_server_respond_error(HANDLE web_server, HANDLE session, unsigned int method, IO* io, WEB_RESPONSE code);
-
+//html must be located in flash
 void web_server_register_error(HANDLE web_server, WEB_RESPONSE code, const char *html);
 void web_server_unregister_error(HANDLE web_server, WEB_RESPONSE code);
+
+void web_server_write(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io);
+int web_server_write_sync(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io);
+
 
 #endif // WEB_H
