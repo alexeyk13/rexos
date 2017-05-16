@@ -24,7 +24,6 @@ typedef enum {
     WEBS_DESTROY_NODE,
     WEBS_REGISTER_RESPONSE,
     WEBS_UNREGISTER_RESPONSE,
-    WEBS_GET_DATA,
     WEBS_GET_PARAM,
     WEBS_SET_PARAM,
     WEBS_GET_URL
@@ -122,6 +121,8 @@ void web_server_destroy_node(HANDLE web_server, HANDLE obj);
 void web_server_register_error(HANDLE web_server, WEB_RESPONSE code, const char *html);
 void web_server_unregister_error(HANDLE web_server, WEB_RESPONSE code);
 
+void web_server_read(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max);
+int web_server_read_sync(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max);
 void web_server_write(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io);
 int web_server_write_sync(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io);
 

@@ -55,6 +55,16 @@ void web_server_unregister_error(HANDLE web_server, WEB_RESPONSE code)
     ack(web_server, HAL_REQ(HAL_WEBS, WEBS_UNREGISTER_RESPONSE), (unsigned int)code, 0, 0);
 }
 
+void web_server_read(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max)
+{
+    io_read(web_server, HAL_REQ(HAL_WEBS, IPC_READ), session, io, size_max);
+}
+
+int web_server_read_sync(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max)
+{
+    return io_read_sync(web_server, HAL_REQ(HAL_WEBS, IPC_READ), session, io, size_max);
+}
+
 void web_server_write(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io)
 {
     *((WEB_RESPONSE*)io_push(io, sizeof(WEB_RESPONSE))) = code;

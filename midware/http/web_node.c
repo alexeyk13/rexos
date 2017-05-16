@@ -181,6 +181,8 @@ HANDLE web_node_find_path(WEB_NODE* web_node, char* url, unsigned int url_size)
     //skip "/"
     --url_size;
     ++url;
+    if (url_size == 0)
+        return web_node->root;
     for (;;)
     {
         len = web_get_word(url, url_size, '/');

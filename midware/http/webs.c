@@ -30,7 +30,6 @@ typedef enum {
     WEBS_SESSION_STATE_RX,
     WEBS_SESSION_STATE_PENDING,
     WEBS_SESSION_STATE_REQUEST,
-    WEBS_SESSION_STATE_REQUEST_CUSTOM_PARAMS,
     WEBS_SESSION_STATE_TX
 } WEBS_SESSION_STATE;
 
@@ -390,7 +389,25 @@ static inline void webs_close(WEBS* webs, HANDLE process)
     webs->process = INVALID_HANDLE;
 }
 
-static inline void webs_user_response(WEBS* webs, WEBS_SESSION* session, IO* io)
+static inline void webs_user_read(WEBS* webs, WEBS_SESSION* session, IO* io)
+{
+    if (session->state != WEBS_SESSION_STATE_REQUEST)
+    {
+        error(ERROR_INVALID_STATE);
+        return;
+    }
+
+    io->data_size = 0;
+    if (io_get_free(io) < session->data_size)
+    {
+        error(ERROR_IO_BUFFER_TOO_SMALL);
+        return;
+    }
+    memcpy(io_data(io), session->req + session->header_size, session->data_size);
+    io->data_size = session->data_size;
+}
+
+static inline void webs_user_write(WEBS* webs, WEBS_SESSION* session, IO* io)
 {
     WEB_RESPONSE code = *((WEB_RESPONSE*)io_stack(io));
     io_pop(io, sizeof(WEB_RESPONSE));
@@ -398,15 +415,8 @@ static inline void webs_user_response(WEBS* webs, WEBS_SESSION* session, IO* io)
     //TODO: multiple sessions support, switch to next req
     webs->busy = false;
 
-    switch (session->state)
+    if (session->state != WEBS_SESSION_STATE_REQUEST)
     {
-    case WEBS_SESSION_STATE_REQUEST:
-    case WEBS_SESSION_STATE_REQUEST_CUSTOM_PARAMS:
-        break;
-    default:
-#if (WEBS_DEBUG_ERRORS)
-        printf("WEBS: Invalid session state on RESPONSE: %d\n", session->state);
-#endif //WEBS_DEBUG_ERRORS
         error(ERROR_INVALID_STATE);
         return;
     }
@@ -489,12 +499,11 @@ static inline void webs_session_request(WEBS* webs, IPC* ipc)
     }
     switch (HAL_ITEM(ipc->cmd))
     {
-    case IPC_WRITE:
-        webs_user_response(webs, session, (IO*)ipc->param2);
+    case IPC_READ:
+        webs_user_read(webs, session, (IO*)ipc->param2);
         break;
-    case WEBS_GET_DATA:
-        //TODO:
-        error(ERROR_NOT_SUPPORTED);
+    case IPC_WRITE:
+        webs_user_write(webs, session, (IO*)ipc->param2);
         break;
     case WEBS_GET_PARAM:
         //TODO:
