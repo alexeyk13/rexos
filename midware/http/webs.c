@@ -488,6 +488,36 @@ static inline void webs_unregister_error(WEBS* webs, int code)
     error(ERROR_NOT_CONFIGURED);
 }
 
+static inline void webs_get_param(WEBS* webs, WEBS_SESSION* session, IO* io)
+{
+    unsigned int size;
+    char* param;
+    if (session->state != WEBS_SESSION_STATE_REQUEST)
+    {
+        error(ERROR_INVALID_STATE);
+        return;
+    }
+
+    param = web_get_str_param(session->req, session->header_size, io_data(io), &size);
+    io->data_size = 0;
+    if (param == NULL)
+    {
+        error(ERROR_NOT_FOUND);
+        return;
+    }
+    if (io_get_free(io) < size + 1)
+    {
+        error(ERROR_IO_BUFFER_TOO_SMALL);
+        return;
+    }
+    memcpy(io_data(io), param, size);
+    ((uint8_t*)io_data(io))[size] = 0;
+    io->data_size = size + 1;
+    //TODO: multiple sessions support
+    io_complete(webs->process, HAL_IO_CMD(HAL_WEBS, WEBS_GET_PARAM), 0/*session*/, io);
+    error(ERROR_SYNC);
+}
+
 static inline void webs_get_url(WEBS* webs, WEBS_SESSION* session, IO* io)
 {
     if (session->state != WEBS_SESSION_STATE_REQUEST)
@@ -528,8 +558,7 @@ static inline void webs_session_request(WEBS* webs, IPC* ipc)
         webs_user_write(webs, session, (IO*)ipc->param2);
         break;
     case WEBS_GET_PARAM:
-        //TODO:
-        error(ERROR_NOT_SUPPORTED);
+        webs_get_param(webs, session, (IO*)ipc->param2);
         break;
     case WEBS_SET_PARAM:
         //TODO:

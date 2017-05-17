@@ -6,6 +6,7 @@
 
 #include "web.h"
 #include "../midware/http/webs.h"
+#include "error.h"
 #include <string.h>
 
 extern const REX __WEBS;
@@ -77,7 +78,23 @@ int web_server_write_sync(HANDLE web_server, HANDLE session, WEB_RESPONSE code, 
     return io_write_sync(web_server, HAL_IO_REQ(HAL_WEBS, IPC_WRITE), session, io);
 }
 
-int web_server_get_url(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max)
+char *web_server_get_param(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max, char *param)
 {
-    return io_read_sync(web_server, HAL_IO_REQ(HAL_WEBS, WEBS_GET_URL), session, io, size_max);
+    unsigned int len = strlen(param);
+    if (len + 1 < size_max)
+        error(ERROR_IO_BUFFER_TOO_SMALL);
+    strcpy(io_data(io), param);
+    io->data_size = len + 1;
+    int res = io_read_sync(web_server, HAL_IO_REQ(HAL_WEBS, WEBS_GET_PARAM), session, io, size_max);
+    if (res <= 0)
+        return NULL;
+    return io_data(io);
+}
+
+char *web_server_get_url(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max)
+{
+    int res = io_read_sync(web_server, HAL_IO_REQ(HAL_WEBS, WEBS_GET_URL), session, io, size_max);
+    if (res <= 0)
+        return NULL;
+    return io_data(io);
 }
