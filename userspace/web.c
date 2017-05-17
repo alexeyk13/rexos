@@ -62,17 +62,22 @@ void web_server_read(HANDLE web_server, HANDLE session, IO* io, unsigned int siz
 
 int web_server_read_sync(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max)
 {
-    return io_read_sync(web_server, HAL_REQ(HAL_WEBS, IPC_READ), session, io, size_max);
+    return io_read_sync(web_server, HAL_IO_REQ(HAL_WEBS, IPC_READ), session, io, size_max);
 }
 
 void web_server_write(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io)
 {
     *((WEB_RESPONSE*)io_push(io, sizeof(WEB_RESPONSE))) = code;
-    io_write(web_server, HAL_REQ(HAL_WEBS, IPC_WRITE), session, io);
+    io_write(web_server, HAL_IO_REQ(HAL_WEBS, IPC_WRITE), session, io);
 }
 
 int web_server_write_sync(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io)
 {
     *((WEB_RESPONSE*)io_push(io, sizeof(WEB_RESPONSE))) = code;
-    return io_write_sync(web_server, HAL_REQ(HAL_WEBS, IPC_WRITE), session, io);
+    return io_write_sync(web_server, HAL_IO_REQ(HAL_WEBS, IPC_WRITE), session, io);
+}
+
+int web_server_get_url(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max)
+{
+    return io_read_sync(web_server, HAL_IO_REQ(HAL_WEBS, WEBS_GET_URL), session, io, size_max);
 }
