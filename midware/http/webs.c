@@ -64,19 +64,6 @@ typedef struct {
     WEBS_SESSION session;
 } WEBS;
 
-const REX __WEBS = {
-    //name
-    "Web Server",
-    //size
-    HS_PROCESS_SIZE,
-    //priority - midware priority
-    HS_PROCESS_PRIORITY,
-    //flags
-    PROCESS_FLAGS_ACTIVE | REX_FLAG_PERSISTENT_NAME,
-    //function
-    webs_main
-};
-
 #define HTTP_LINE_SIZE                         64
 
 static const char* const __HTTP_REASON100[] = {"Continue",

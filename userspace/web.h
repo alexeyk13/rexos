@@ -112,7 +112,7 @@ typedef struct {
     HANDLE obj;
 } HS_STACK;
 
-HANDLE web_server_create();
+HANDLE web_server_create(unsigned int process_size, unsigned int priority);
 bool web_server_open(HANDLE web_server, uint16_t port, HANDLE tcpip);
 void web_server_close(HANDLE web_server);
 HANDLE web_server_create_node(HANDLE web_server, HANDLE parent, const char* name, unsigned int flags);

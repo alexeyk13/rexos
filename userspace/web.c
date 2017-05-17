@@ -9,11 +9,17 @@
 #include "error.h"
 #include <string.h>
 
-extern const REX __WEBS;
+extern void webs_main();
 
-HANDLE web_server_create()
+HANDLE web_server_create(unsigned int process_size, unsigned int priority)
 {
-    return process_create(&__WEBS);
+    REX rex;
+    rex.name = "Web Server";
+    rex.size = process_size;
+    rex.priority = priority;
+    rex.flags = PROCESS_FLAGS_ACTIVE;
+    rex.fn = webs_main;
+    return process_create(&rex);
 }
 
 bool web_server_open(HANDLE web_server, uint16_t port, HANDLE tcpip)
