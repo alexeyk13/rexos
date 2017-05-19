@@ -39,6 +39,10 @@ static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {0, 1, 2, 3, 4, 
 #define GPIO_POWER_PORT                                         RCC->AHB1ENR
 #elif defined(STM32L0)
 const GPIO_TypeDef_P GPIO[8] =                                  {GPIOA, GPIOB, GPIOC, GPIOD, 0, 0, 0, GPIOH};
+#elif defined(STM32L1)
+const GPIO_TypeDef_P GPIO[4] =                                  {GPIOA, GPIOB, GPIOC, GPIOD};
+static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {0, 1, 2, 3};
+#define GPIO_POWER_PORT                                         RCC->AHBENR
 #endif
 
 #if defined(STM32F1)
@@ -162,6 +166,7 @@ void stm32_pin_request(CORE* core, IPC* ipc)
         stm32_gpio_enable_pin(&core->gpio, (PIN)ipc->param1, ipc->param2, (AF)ipc->param3);
 #endif
         break;
+
     case STM32_GPIO_ENABLE_EXTI:
         stm32_gpio_enable_exti(&core->gpio, (PIN)ipc->param1, ipc->param2);
         break;

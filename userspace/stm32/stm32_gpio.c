@@ -76,7 +76,7 @@ void gpio_disable_mask(unsigned int port, unsigned int mask)
 
 void gpio_set_pin(unsigned int pin)
 {
-#if defined(STM32F1) || defined (STM32L0) || defined(STM32F0)
+#if defined(STM32F1) || defined(STM32L1) || defined (STM32L0) || defined(STM32F0)
     GPIO[GPIO_PORT(pin)]->BSRR = 1 << GPIO_PIN(pin);
 #else
     GPIO[GPIO_PORT(pin)]->BSRRL = 1 << GPIO_PIN(pin);
@@ -85,7 +85,7 @@ void gpio_set_pin(unsigned int pin)
 
 void gpio_set_mask(unsigned int port, unsigned int mask)
 {
-#if defined(STM32F1) || defined (STM32L0) || defined(STM32F0)
+#if defined(STM32F1) || defined(STM32L1) || defined (STM32L0) || defined(STM32F0)
     GPIO[port]->BSRR = mask;
 #else
     GPIO[port]->BSRRL = mask;
@@ -94,7 +94,7 @@ void gpio_set_mask(unsigned int port, unsigned int mask)
 
 void gpio_reset_pin(unsigned int pin)
 {
-#if defined(STM32F1) || defined (STM32L0) || defined(STM32F0)
+#if defined(STM32F1) || defined(STM32L1) || defined (STM32L0) || defined(STM32F0)
     GPIO[GPIO_PORT(pin)]->BSRR = 1 << (GPIO_PIN(pin) + 16);
 #else
     GPIO[GPIO_PORT(pin)]->BSRRH = 1 << GPIO_PIN(pin);
@@ -103,7 +103,7 @@ void gpio_reset_pin(unsigned int pin)
 
 void gpio_reset_mask(unsigned int port, unsigned int mask)
 {
-#if defined(STM32F1) || defined (STM32L0) || defined(STM32F0)
+#if defined(STM32F1) || defined(STM32L1) ||  defined (STM32L0) || defined(STM32F0)
     GPIO[port]->BSRR = mask << 16;
 #else
     GPIO[port]->BSRRH = mask;

@@ -558,6 +558,9 @@
 #define UARTS_COUNT                                             2
 #elif defined(STM32F10X_MD) || defined(STM32F10X_MD_VL)
 #define UARTS_COUNT                                             3
+#define I2C_COUNT                                               2
+#define SPI_COUNT                                               2
+#define CAN_COUNT                                               1
 #else
 #define UARTS_COUNT                                             5
 #endif
@@ -748,7 +751,6 @@
 #if defined(STM32F401) || defined(STM32F405) || defined(STM32F407) || defined(STM32F411) || defined(STM32F415) || defined(STM32F417)
 #define STM32F40_41xxx
 #if defined(STM32F401)
-#define
 #define STM32F401xx
 #define IRQ_VECTORS_COUNT   85
 #else
@@ -815,13 +817,57 @@
 
 #endif
 
+
+//---------------------------------------------------------------------------- STM32 L1 ----------------------------------------------------------------------------------------------------------
+#if defined(STM32L151C6) || defined(STM32L151C8) || defined(STM32L151CB)
+#define STM32L151xC
+#endif
+
+#if defined(STM32L151R6) || defined(STM32L151R8) || defined(STM32L151RB)
+#define STM32L151xR
+#endif
+
+#if defined(STM32L151V8) || defined(STM32L151VB)
+#define STM32L151xV
+#endif
+
+#if defined(STM32L151C6) || defined(STM32L151R6)
+#define FLASH_SIZE          0x8000
+#elif defined(STM32L151C8) || defined(STM32L151R8)
+#define FLASH_SIZE          0x10000
+#elif defined(STM32L151CB) || defined(STM32L151RB)
+#define FLASH_SIZE          0x20000
+#endif
+
+#if defined(STM32L151C6) || defined(STM32L151C8) || defined(STM32L151V8)
+#define SRAM_SIZE           0x2800
+#elif defined(STM32L151CB) || defined(STM32L151RB) || defined(STM32L151VB)
+#define SRAM_SIZE           0x4000
+#endif
+
+
+#if defined(STM32L151xC) || defined(STM32L151xR) || defined(STM32L151xV)
+#define STM32L1
+#define EEPROM_SIZE         0x1000
+#define TIM_COUNT           8
+#define SPI_COUNT           2
+#define I2C_COUNT           2
+#define UARTS_COUNT         3
+#define GPIO_COUNT          4
+#define DAC_CHANNELS_COUNT  2
+#endif
+
+#if defined(STM32L151xC)
+#define IRQ_VECTORS_COUNT   45
+#endif
+
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4) || defined(STM32L1)
 #define STM32
 #ifndef CORTEX_M3
 #define CORTEX_M3
 #endif
-#endif //STM32F1 || STM32F2 || STM32F4
+#endif // STM32F1 || STM32F2 || STM32F4 || STM32L1
 
 #if defined(STM32L0) || defined(STM32F0)
 #define STM32
@@ -845,6 +891,7 @@
 #undef FLASH_BASE
 
 #include "stm32_config.h"
+
 #if defined(STM32F0)
 #include "stm32f0xx.h"
 #elif defined(STM32F1)
@@ -855,6 +902,8 @@
 #include "stm32f4xx.h"
 #elif defined(STM32L0)
 #include "stm32l0xx.h"
+#elif defined(STM32L1)
+#include "stm32l1xx.h"
 #endif
 
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)

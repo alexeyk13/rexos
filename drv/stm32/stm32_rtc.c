@@ -18,6 +18,12 @@
 #define RTC_EXTI_LINE                               20
 #endif
 
+#if defined(STM32L1)
+#define RTC_IRQ                                     RTC_WKUP_IRQn
+#else
+#define RTC_IRQ                                     RTC_IRQn
+#endif
+
 //bug in F0 CMSIS
 #ifndef RTC_CR_WUTIE
 #define RTC_CR_WUTIE                                (1 << 14)
@@ -212,9 +218,10 @@ void stm32_rtc_init()
     }
     stm32_rtc_enable_second_pulse();
 
-    irq_register(RTC_IRQn, stm32_rtc_isr, NULL);
-    NVIC_EnableIRQ(RTC_IRQn);
-    NVIC_SetPriority(RTC_IRQn, 13);
+    irq_register(RTC_IRQ, stm32_rtc_isr, NULL);
+    NVIC_EnableIRQ(RTC_IRQ);
+    NVIC_SetPriority(RTC_IRQ, 13);
+
 }
 
 TIME* stm32_rtc_get(TIME* time)
@@ -292,7 +299,7 @@ void stm32_rtc_disable()
 #if defined(STM32F1)
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     RTC->CRH = 0;
-#elif defined(STM32L0)
+#elif defined(STM32L0) || defined(STM32L1)
     RTC->CR &= ~(RTC_CR_WUTE | RTC_CR_WUTIE | RTC_CR_TSE | RTC_CR_TSIE | RTC_CR_ALRAE | RTC_CR_ALRAIE | RTC_CR_ALRBE | RTC_CR_ALRBIE);
 #else
     RTC->CR &= ~(RTC_CR_WUTE | RTC_CR_WUTIE | RTC_CR_TSE | RTC_CR_TSIE | RTC_CR_ALRAE | RTC_CR_ALRAIE);

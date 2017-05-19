@@ -121,7 +121,8 @@ typedef enum {
     STM32_GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_50MHZ = 0xf
 }STM32_GPIO_MODE;
 
-#elif defined(STM32F0) || defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
+#elif defined(STM32F0) || defined(STM32F2) || defined(STM32F4) || defined(STM32L0) \
+    || defined(STM32L1)
 
 #define STM32_GPIO_MODE_INPUT                   (0x0 << 0)
 #define STM32_GPIO_MODE_OUTPUT                  (0x1 << 0)
@@ -131,7 +132,7 @@ typedef enum {
 #define GPIO_OT_PUSH_PULL                       (0x0 << 2)
 #define GPIO_OT_OPEN_DRAIN                      (0x1 << 2)
 
-#if defined(STM32L0)
+#if defined(STM32L0) || defined(STM32L1)
 #define GPIO_SPEED_VERY_LOW                     (0x0 << 3)
 #define GPIO_SPEED_LOW                          (0x1 << 3)
 #define GPIO_SPEED_MEDIUM                       (0x2 << 3)
@@ -190,6 +191,18 @@ typedef enum {
     TIM_21,
     TIM_22
 }TIMER_NUM;
+#elif defined(STM32L1)
+typedef enum {
+    TIM_2 = 0,
+    TIM_3,
+    TIM_4,
+    TIM_5, /* !< This TIMER is available in Cat.3, Cat.4, Cat.5 and Cat.6 devices only */
+    TIM_6,
+    TIM_7,
+    TIM_9,
+    TIM_10,
+    TIM_11,
+}TIMER_NUM;
 #elif defined(STM32F0)
 typedef enum {
     TIM_1 = 0,
@@ -242,6 +255,13 @@ typedef enum {
     I2C_1,
     I2C_2
 } I2C_PORT;
+
+// ------------------------------------------------ SPI -----------------------------------------------------------------------
+typedef enum {
+    SPI_1 = 0,
+    SPI_2,
+    SPI_MAX
+} SPI_PORT;
 
 //------------------------------------------------- UART ----------------------------------------------------------------------
 
