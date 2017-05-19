@@ -116,7 +116,7 @@ void ksystime_hpet_timeout()
 {
 #if (KERNEL_TIMER_DEBUG)
     if (__KERNEL->hpet_value == 0)
-        printk("Warning: HPET timeout on FREE RUN mode: second pulse is inactive or HPET configured improperly");
+        printk("Warning: HPET timeout on FREE RUN mode: second pulse is inactive or HPET configured improperly\n");
 #endif
     disable_interrupts();
     __KERNEL->uptime.usec += __KERNEL->hpet_value;

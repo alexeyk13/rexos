@@ -47,10 +47,11 @@ static inline void backup_on()
     RCC->APB1ENR |= RCC_APB1ENR_BKPEN;
 #endif
     PWR->CR |= PWR_CR_DBP;
-#if defined(STM32L0) || defined(STM32F0)
+
+#if defined(STM32L0) || defined(STM32F0) || defined(STM32L1)
     //HSE as clock source can cause faults on pin reset, so reset backup domain is required
 #if !(LSE_VALUE)
-#if defined(STM32L0)
+#if defined(STM32L0) || defined(STM32L1)
     RCC->CSR |= RCC_CSR_RTCRST;
     __NOP();
     __NOP();
@@ -74,7 +75,7 @@ static inline void backup_on()
 
 static inline void backup_off()
 {
-#if defined(STM32L0) || defined(STM32F0)
+#if defined(STM32L0) || defined(STM32F0) || defined(STM32L1)
     __disable_irq();
     RTC->WPR = 0x00;
     RTC->WPR = 0xff;

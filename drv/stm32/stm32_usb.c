@@ -382,7 +382,7 @@ void stm32_usb_open_device(CORE* core, HANDLE device)
     // hardware pull up DP line
 #if defined (STM32F0)
     USB->BCDR |= USB_BCDR_DPPU;
-#elif fdefined(STM32L1)
+#elif defined(STM32L1)
     SYSCFG->PMC |=  SYSCFG_PMC_USB_PU;
 #endif
 }
