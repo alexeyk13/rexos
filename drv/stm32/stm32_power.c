@@ -715,6 +715,22 @@ void stm32_power_init(CORE* core)
 
 #if (POWER_MANAGEMENT) || (STM32_RTC_DRIVER)
     RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+
+#if defined(STM32L0) || defined(STM32L1)
+#if (HSE_RTC_DIV)
+    uint8_t value;
+    uint32_t div = HSE_RTC_DIV;
+    for (value = 0; div > 2; div >>= 1, value++) {}
+
+#if defined(STM32L0)
+    RCC->CR |= (value << 20);
+#else
+    RCC->CR |= (value << 29);
+#endif
+
+#endif // HSE_RTC_DIV
+#endif // STM32L0 || STM32L1
+
 #endif //(POWER_MANAGEMENT) || (STM32_RTC_DRIVER)
 #if (POWER_MANAGEMENT)
 #if (SYSCFG_ENABLED)
