@@ -33,11 +33,11 @@ typedef struct {
     USB_CONFIGURATION_DESCRIPTOR configuration;
     USB_INTERFACE_ASSOCIATION_DESCRIPTOR comm_iad;
     USB_INTERFACE_DESCRIPTOR comm_interface;
-    CDC_HEADER_DESCRIPTOR_TYPE cdc_header;
-    CDC_ACM_DESCRIPTOR_TYPE cdc_acm;
-    CDC_UNION_DESCRIPTOR_TYPE cdc_union;
+    CDC_HEADER_DESCRIPTOR cdc_header;
+    CDC_ACM_DESCRIPTOR cdc_acm;
+    CDC_UNION_DESCRIPTOR cdc_union;
     uint8_t bSubordinateInterface0;
-    CDC_CALL_MANAGEMENT_DESCRIPTOR_TYPE call_management;
+    CDC_CALL_MANAGEMENT_DESCRIPTOR call_management;
     USB_ENDPOINT_DESCRIPTOR comm_endpoint;
     USB_INTERFACE_DESCRIPTOR data_interface;
     USB_ENDPOINT_DESCRIPTOR data_endpoints[2];
@@ -80,21 +80,21 @@ const CONFIGURATION __CONFIGURATION_DESCRIPTOR = {
     },
     //CDC header descriptor
     {
-        sizeof(CDC_HEADER_DESCRIPTOR_TYPE),                                 /* bFunctionLength */
+        sizeof(CDC_HEADER_DESCRIPTOR),                                      /* bFunctionLength */
         CS_INTERFACE,                                                       /* bDescriptorType */
         CDC_DESCRIPTOR_HEADER,                                              /* bDescriptorSybType */
         0x120                                                               /* bcdCDC */
     },
     //CDC ACM descriptor
     {
-        sizeof(CDC_ACM_DESCRIPTOR_TYPE),                                    /* bFunctionLength */
+        sizeof(CDC_ACM_DESCRIPTOR),                                         /* bFunctionLength */
         CS_INTERFACE,                                                       /* bDescriptorType */
         CDC_DESCRIPTOR_ACM,                                                 /* bDescriptorSybType */
         0x2                                                                 /* bmCapabilities */
     },
     //CDC union descriptor
     {
-        sizeof(CDC_UNION_DESCRIPTOR_TYPE) + 1,                              /* bFunctionLength */
+        sizeof(CDC_UNION_DESCRIPTOR) + 1,                                   /* bFunctionLength */
         CS_INTERFACE,                                                       /* bDescriptorType */
         CDC_DESCRIPTOR_UNION,                                               /* bDescriptorSybType */
         0,                                                                  /* bControlInterface */
@@ -102,7 +102,7 @@ const CONFIGURATION __CONFIGURATION_DESCRIPTOR = {
     1,                                                                      /* bSubordinateInterface 0 */
     //call management
     {
-        sizeof(CDC_CALL_MANAGEMENT_DESCRIPTOR_TYPE),                        /* bFunctionLength */
+        sizeof(CDC_CALL_MANAGEMENT_DESCRIPTOR),                             /* bFunctionLength */
         CS_INTERFACE,                                                       /* bDescriptorType */
         CDC_DESCRIPTOR_CALL_MANAGEMENT,                                     /* bDescriptorSybType */
         3,                                                                  /* bmCapabilities */
