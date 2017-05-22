@@ -16,6 +16,7 @@
 #include "../../userspace/sys.h"
 #include "../../userspace/web.h"
 #include "../../userspace/array.h"
+#include "../../userspace/so.h"
 #include <string.h>
 #include "sys_config.h"
 
@@ -38,7 +39,7 @@ typedef struct {
     char* req;
     char* url;
     unsigned int req_size, header_size, status_line_size, data_size, url_size, processed;
-    HANDLE conn, node_handle;
+    HANDLE conn, node_handle, self;
 #if (WEBS_DEBUG_SESSION)
     IP remote_addr;
 #endif //WEBS_DEBUG_SESSION
@@ -50,7 +51,7 @@ typedef struct {
 typedef struct {
     WEB_RESPONSE code;
     char* data;
-} HSS_ERROR;
+} WEBS_ERROR;
 
 typedef struct {
     HANDLE tcpip, process, listener;
@@ -60,8 +61,7 @@ typedef struct {
     ARRAY* errors;
     char* generic_error;
 
-    //only one session for now
-    WEBS_SESSION session;
+    SO sessions;
 } WEBS;
 
 #define HTTP_LINE_SIZE                         64
@@ -128,12 +128,10 @@ static inline void webs_init(WEBS* webs)
     web_node_create(&webs->web_node);
 
     webs->busy = false;
-    array_create(&webs->errors, sizeof(HSS_ERROR), 1);
+    array_create(&webs->errors, sizeof(WEBS_ERROR), 1);
     webs->generic_error = NULL;
 
-    //TODO: Multiple session support
-    //TODO: allocation queue (tcpip style)
-    webs->session.conn = INVALID_HANDLE;
+    so_create(&webs->sessions, sizeof(WEBS_SESSION), 1);
 }
 
 static const char* webs_get_response_text(WEB_RESPONSE code)
@@ -158,30 +156,37 @@ static void webs_session_reset(WEBS_SESSION* session)
 
 static inline WEBS_SESSION* webs_create_session(WEBS* webs)
 {
+    HANDLE h;
     WEBS_SESSION* session;
-    //TODO: Multiple session support
-    if (webs->session.conn != INVALID_HANDLE)
+    if (so_count(&webs->sessions) >= WEBS_MAX_SESSIONS)
     {
 #if (WEBS_DEBUG_ERRORS)
         printf("WEBS: Too many sessions, rejecting connection\n");
 #endif //WEBS_DEBUG_ERRORS
         return NULL;
     }
-    session = &webs->session;
+    h = so_allocate(&webs->sessions);
+    session = so_get(&webs->sessions, h);
+    if (session == NULL)
+        return NULL;
     session->state = WEBS_SESSION_STATE_IDLE;
     session->req = NULL;
     session->req_size = session->header_size = session->data_size = 0;
     session->io = io_create(WEBS_IO_SIZE + sizeof(TCP_STACK));
+    session->self = h;
+    if (session->io == NULL)
+    {
+        so_free(&webs->sessions, h);
+        return NULL;
+    }
     return session;
 }
 
 static void webs_destroy_session(WEBS* webs, WEBS_SESSION* session)
 {
-    //TODO: multiple session support
     free(session->req);
-    session->req = NULL;
     io_destroy(session->io);
-    session->conn = INVALID_HANDLE;
+    so_free(&webs->sessions, session->self);
 }
 
 static inline void webs_open_session(WEBS* webs, HANDLE conn)
@@ -202,6 +207,7 @@ static inline void webs_open_session(WEBS* webs, HANDLE conn)
 #endif //WEBS_DEBUG_SESSION
 
     //TODO: start timer here
+
     tcp_read(webs->tcpip, session->conn, session->io, WEBS_IO_SIZE);
 }
 
@@ -220,9 +226,14 @@ static inline void webs_close_session(WEBS* webs, WEBS_SESSION* session)
 
 static WEBS_SESSION* webs_find_session(WEBS* webs, HANDLE conn)
 {
-    //TODO: multiple sessions support
-    if (conn == webs->session.conn)
-        return &webs->session;
+    HANDLE h;
+    WEBS_SESSION* session;
+    for (h = so_first(&webs->sessions); h != INVALID_HANDLE; h = so_next(&webs->sessions, h))
+    {
+        session = so_get(&webs->sessions, h);
+        if (conn == session->conn)
+            return session;
+    }
     return NULL;
 }
 
@@ -305,7 +316,7 @@ static void webs_send_response(WEBS* webs, WEBS_SESSION* session, WEB_RESPONSE c
 static char* webs_get_error_html(WEBS* webs, WEB_RESPONSE code)
 {
     int i;
-    HSS_ERROR* err;
+    WEBS_ERROR* err;
     for (i = 0; i < array_size(webs->errors); ++i)
     {
         err = array_at(webs->errors, i);
@@ -346,6 +357,8 @@ static inline void webs_open(WEBS* webs, uint16_t port, HANDLE tcpip, HANDLE pro
 
 static inline void webs_close(WEBS* webs, HANDLE process)
 {
+    HANDLE h;
+    WEBS_SESSION* session;
     if (process != webs->process)
     {
         error(ERROR_ACCESS_DENIED);
@@ -356,9 +369,12 @@ static inline void webs_close(WEBS* webs, HANDLE process)
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    //TODO: Multiple session support
-    if (webs->session.conn != INVALID_HANDLE)
-        webs_close_session(webs, &webs->session);
+
+    for (h = so_first(&webs->sessions); h != INVALID_HANDLE; h = so_next(&webs->sessions, h))
+    {
+        session = so_get(&webs->sessions, h);
+        webs_close_session(webs, session);
+    }
     tcp_close_listen(webs->tcpip, webs->listener);
     webs->process = INVALID_HANDLE;
 }
@@ -377,11 +393,25 @@ static inline void webs_user_read(WEBS* webs, WEBS_SESSION* session, IO* io)
 
 static inline void webs_user_write(WEBS* webs, WEBS_SESSION* session, IO* io)
 {
+    WEBS_SESSION* cur_session;
+    HANDLE h;
     WEB_RESPONSE code = *((WEB_RESPONSE*)io_stack(io));
     io_pop(io, sizeof(WEB_RESPONSE));
 
-    //TODO: multiple sessions support, switch to next req
     webs->busy = false;
+    //switch to next req (if any)
+    for (h = so_first(&webs->sessions); h != INVALID_HANDLE; h = so_next(&webs->sessions, h))
+    {
+        cur_session = so_get(&webs->sessions, h);
+        if (cur_session->state == WEBS_SESSION_STATE_PENDING)
+        {
+            webs->busy = true;
+            cur_session->state = WEBS_SESSION_STATE_REQUEST;
+            ipc_post_inline(webs->process, HAL_CMD(HAL_WEBS, (WEBS_GET + cur_session->method)), cur_session->self,
+                            cur_session->node_handle, cur_session->req_size);
+            break;
+        }
+    }
 
     webs_send_response(webs, session, code, io_data(io), io->data_size);
 }
@@ -402,7 +432,7 @@ static inline void webs_destroy_node(WEBS* webs, HANDLE handle)
 
 static inline void webs_register_error(WEBS* webs, int code, char* html)
 {
-    HSS_ERROR* err;
+    WEBS_ERROR* err;
     if (code == WEB_GENERIC_ERROR)
     {
         if (webs->generic_error != NULL)
@@ -427,7 +457,7 @@ static inline void webs_register_error(WEBS* webs, int code, char* html)
 static inline void webs_unregister_error(WEBS* webs, int code)
 {
     int i;
-    HSS_ERROR* err;
+    WEBS_ERROR* err;
     if (code == WEB_GENERIC_ERROR)
     {
         if (webs->generic_error == NULL)
@@ -470,8 +500,7 @@ static inline void webs_get_param(WEBS* webs, WEBS_SESSION* session, IO* io)
     memcpy(io_data(io), param, size);
     ((uint8_t*)io_data(io))[size] = 0;
     io->data_size = size + 1;
-    //TODO: multiple sessions support
-    io_complete(webs->process, HAL_IO_CMD(HAL_WEBS, WEBS_GET_PARAM), 0/*session*/, io);
+    io_complete(webs->process, HAL_IO_CMD(HAL_WEBS, WEBS_GET_PARAM), session->self, io);
     error(ERROR_SYNC);
 }
 
@@ -496,21 +525,19 @@ static inline void webs_get_url(WEBS* webs, WEBS_SESSION* session, IO* io)
     memcpy(io_data(io), session->url, session->url_size);
     ((uint8_t*)io_data(io))[session->url_size] = 0;
     io->data_size = session->url_size + 1;
-    //TODO: multiple sessions support
-    io_complete(webs->process, HAL_IO_CMD(HAL_WEBS, WEBS_GET_URL), 0/*session*/, io);
+    io_complete(webs->process, HAL_IO_CMD(HAL_WEBS, WEBS_GET_URL), session->self, io);
     error(ERROR_SYNC);
 }
 
 static inline void webs_session_request(WEBS* webs, IPC* ipc)
 {
-    //TODO: multiple sessions support
-    WEBS_SESSION* session = &webs->session;
-    if (session->conn == INVALID_HANDLE)
+    WEBS_SESSION* session = webs_find_session(webs, ipc->param1);
+
+    if (session == NULL)
     {
         error(ERROR_CONNECTION_CLOSED);
         return;
     }
-
     if (session->state != WEBS_SESSION_STATE_REQUEST)
     {
         error(ERROR_INVALID_STATE);
@@ -630,8 +657,7 @@ static inline void webs_req_received(WEBS* webs, WEBS_SESSION* session)
         {
             webs->busy = true;
             session->state = WEBS_SESSION_STATE_REQUEST;
-            //TODO: multiple sessions support
-            ipc_post_inline(webs->process, HAL_CMD(HAL_WEBS, (WEBS_GET + session->method)), 0/*session*/, session->node_handle, session->req_size);
+            ipc_post_inline(webs->process, HAL_CMD(HAL_WEBS, (WEBS_GET + session->method)), session->self, session->node_handle, session->req_size);
         }
         return;
     } while (false);
