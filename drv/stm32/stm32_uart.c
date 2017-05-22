@@ -51,6 +51,10 @@ static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USA
 static const unsigned int UART_VECTORS[UARTS_COUNT] =       {27, 28};
 static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {14, 17};
 static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2};
+#elif defined(STM32L1)
+static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39};
+static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {14, 17, 18};
+static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USART3};
 #elif defined(STM32F0)
 #if ((UARTS_COUNT)== 1)
 static const unsigned int UART_VECTORS[UARTS_COUNT] =       {27};

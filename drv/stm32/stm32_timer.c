@@ -40,6 +40,13 @@ const TIM_TypeDef_P TIMER_REGS[TIMERS_COUNT] =  {TIM2, TIM6, TIM21, TIM22};
 const int TIMER_VECTORS[TIMERS_COUNT] =         {15,   17,   20,    22};
 const int TIMER_POWER_BIT[TIMERS_COUNT] =       {0,    4,    2,     5};
 const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB1, APB1, APB2,  APB2};
+#elif defined(STM32L1)
+#define TIMERS_COUNT                            9
+const TIM_TypeDef_P TIMER_REGS[TIMERS_COUNT] =  {TIM2, TIM3, TIM4, TIM5, TIM6, TIM7, TIM9, TIM10, TIM11};
+const int TIMER_VECTORS[TIMERS_COUNT] =         {28,   29,   30,   46,   43,   44,   25,   26,    27};
+const int TIMER_POWER_BIT[TIMERS_COUNT] =       {0,    1,    2,    3,    4,    5,    2,    3,     4};
+const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB1, APB1, APB1, APB1, APB1, APB1, APB2, APB2,  APB2};
+
 #elif defined (STM32F0)
 #define TIMERS_COUNT                            TIM_MAX
 

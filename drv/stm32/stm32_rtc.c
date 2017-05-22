@@ -13,9 +13,16 @@
 #include "../../userspace/time.h"
 #include "../../userspace/irq.h"
 #include "../../userspace/systime.h"
+#include "../../userspace/stdio.h"
 
-#if defined(STM32L0)
+#if defined(STM32L0) || defined(STM32L1)
 #define RTC_EXTI_LINE                               20
+#endif
+
+#if defined(STM32L1)
+#define RTC_IRQ                                     RTC_WKUP_IRQn
+#else
+#define RTC_IRQ                                     RTC_IRQn
 #endif
 
 //bug in F0 CMSIS
@@ -31,20 +38,39 @@ void stm32_rtc_isr(int vector, void* param)
 #else
     RTC->ISR &= ~RTC_ISR_WUTF;
 #endif
+
+#if defined(STM32L0) || defined(STM32L1)
+    EXTI->PR |= (1 << RTC_EXTI_LINE);
+#endif
+
     systime_second_pulse();
 }
 
-static inline void backup_on()
+static inline void stm32_backup_on()
 {
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     //enable BACKUP interface
     RCC->APB1ENR |= RCC_APB1ENR_BKPEN;
 #endif
+
     PWR->CR |= PWR_CR_DBP;
-#if defined(STM32L0) || defined(STM32F0)
+}
+
+static inline void stm32_backup_off()
+{
+    PWR->CR &= ~PWR_CR_DBP;
+
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+    RCC->APB1ENR &= ~RCC_APB1ENR_BKPEN;
+#endif
+}
+
+static inline void stm32_disable_write_protection()
+{
+#if defined(STM32L0) || defined(STM32F0) || defined(STM32L1)
     //HSE as clock source can cause faults on pin reset, so reset backup domain is required
 #if !(LSE_VALUE)
-#if defined(STM32L0)
+#if defined(STM32L0) || defined(STM32L1)
     RCC->CSR |= RCC_CSR_RTCRST;
     __NOP();
     __NOP();
@@ -66,17 +92,13 @@ static inline void backup_on()
 #endif
 }
 
-static inline void backup_off()
+static inline void stm32_enable_write_protection()
 {
-#if defined(STM32L0) || defined(STM32F0)
+#if defined(STM32L0) || defined(STM32F0) || defined(STM32L1)
     __disable_irq();
     RTC->WPR = 0x00;
     RTC->WPR = 0xff;
     __enable_irq();
-#endif
-    PWR->CR &= ~PWR_CR_DBP;
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
-    RCC->APB1ENR &= ~RCC_APB1ENR_BKPEN;
 #endif
 }
 
@@ -163,10 +185,11 @@ static inline void stm32_rtc_configure()
     RTC->ALRH = 0;
     RTC->ALRL = 0;
 #else
-
     //prescaller to 1 sec
 #if (LSE_VALUE)
     RTC->PRER = ((128 - 1) << 16) | (LSE_VALUE / 128 - 1);
+#elif (HSE_RTC_DIV)
+    RTC->PRER = ((128 - 1) << 16) | ((HSE_VALUE / HSE_RTC_DIV) / 128 - 1);
 #else
     RTC->PRER = ((64 - 1) << 16) | (1000000 / 64 - 1);
 #endif
@@ -195,6 +218,19 @@ static inline void stm32_rtc_enable_second_pulse()
    while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
    RTC->CRH |= RTC_CRH_SECIE;
 #else
+
+#if defined(STM32L0) || defined(STM32L1)
+   // EXTI line 20 is connected to the RTC Wakeup event
+   EXTI->IMR |= (1 << RTC_EXTI_LINE);
+   EXTI->RTSR |= (1 << RTC_EXTI_LINE);
+
+   // Configure the RTC WakeUp Clock source: CK_SPRE (1Hz)
+   RTC->CR &= (uint32_t)~RTC_CR_WUCKSEL;
+   RTC->CR |= RTC_CR_WUCKSEL_2;
+   // set wakeup counter
+   RTC->WUTR = 0;
+#endif
+
     RTC->CR |= RTC_CR_WUTE | RTC_CR_WUTIE;
     RTC->ISR &= ~RTC_ISR_WUTF;
 #endif
@@ -202,7 +238,8 @@ static inline void stm32_rtc_enable_second_pulse()
 
 void stm32_rtc_init()
 {
-    backup_on();
+    stm32_backup_on();
+    stm32_disable_write_protection();
 
     //backup domain reset?
     if (stm32_is_backup_domain_reset())
@@ -210,11 +247,13 @@ void stm32_rtc_init()
         stm32_rtc_on();
         stm32_rtc_configure();
     }
-    stm32_rtc_enable_second_pulse();
 
-    irq_register(RTC_IRQn, stm32_rtc_isr, NULL);
-    NVIC_EnableIRQ(RTC_IRQn);
-    NVIC_SetPriority(RTC_IRQn, 13);
+    stm32_rtc_enable_second_pulse();
+    stm32_enable_write_protection();
+
+    irq_register(RTC_IRQ, stm32_rtc_isr, NULL);
+    NVIC_EnableIRQ(RTC_IRQ);
+    NVIC_SetPriority(RTC_IRQ, 13);
 }
 
 TIME* stm32_rtc_get(TIME* time)
@@ -292,7 +331,7 @@ void stm32_rtc_disable()
 #if defined(STM32F1)
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     RTC->CRH = 0;
-#elif defined(STM32L0)
+#elif defined(STM32L0) || defined(STM32L1)
     RTC->CR &= ~(RTC_CR_WUTE | RTC_CR_WUTIE | RTC_CR_TSE | RTC_CR_TSIE | RTC_CR_ALRAE | RTC_CR_ALRAIE | RTC_CR_ALRBE | RTC_CR_ALRBIE);
 #else
     RTC->CR &= ~(RTC_CR_WUTE | RTC_CR_WUTIE | RTC_CR_TSE | RTC_CR_TSIE | RTC_CR_ALRAE | RTC_CR_ALRAIE);
