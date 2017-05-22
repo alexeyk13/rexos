@@ -37,7 +37,7 @@ typedef struct {
     IO* io;
     char* req;
     char* url;
-    unsigned int req_size, header_size, data_size, url_size, processed;
+    unsigned int req_size, header_size, status_line_size, data_size, url_size, processed;
     HANDLE conn, node_handle;
 #if (WEBS_DEBUG_SESSION)
     IP remote_addr;
@@ -119,6 +119,8 @@ static const char* const __HTTP_REASON500[] =  {"Internal Server Error",
 
 static const char* const* const __HTTP_REASONS[] =    {__HTTP_REASON100, __HTTP_REASON200, __HTTP_REASON300, __HTTP_REASON400, __HTTP_REASON500};
 static const unsigned int __CODE_SIZE[] =             {2, 7, 8, 27, 6};
+
+#define HTTP_STATUS_LINE_SIZE                   15
 
 static inline void webs_init(WEBS* webs)
 {
@@ -248,44 +250,27 @@ static void webs_tx(WEBS* webs, WEBS_SESSION* session)
     tcp_write(webs->tcpip, session->conn, session->io);
 }
 
-static char* webs_append_line(IO* io, char* header)
+static inline void webs_generate_params(WEBS_SESSION* session, unsigned int response_size)
 {
-    unsigned int len = strlen(header);
-    io->data_size += len;
-    return header + len;
-}
-
-static inline unsigned int webs_generate_header(WEBS_SESSION* session, WEB_RESPONSE code, unsigned int response_size)
-{
-    //generate header in session IO, which is unused at this moment
-    io_reset(session->io);
-    char* header = io_data(session->io);
-
-    //status line
-    sprintf(header, "HTTP/%d.%d %d %s\r\n", session->version >> 4, session->version & 0xf, code, webs_get_response_text(code));
-    header = webs_append_line(session->io, header);
-
     //header
-    sprintf(header, "Server: RExOS\r\n");
-    header = webs_append_line(session->io, header);
+    web_set_str_param(io_data(session->io), &session->io->data_size, "server", "RExOS");
 
     if (response_size)
     {
-        sprintf(header, "Content-Length: %d\r\n", response_size);
-        header = webs_append_line(session->io, header);
-        sprintf(header, "Content-Type: text/html\r\n");
-        header = webs_append_line(session->io, header);
+        web_set_int_param(io_data(session->io), &session->io->data_size, "content-length", response_size);
+        web_set_str_param(io_data(session->io), &session->io->data_size, "content-type", "text/html");
     }
-    return session->io->data_size;
 }
 
 static void webs_send_response(WEBS* webs, WEBS_SESSION* session, WEB_RESPONSE code, char* data, unsigned int data_size)
 {
-    unsigned int header_size;
+    unsigned int header_size, status_line_size;
 
-    header_size = webs_generate_header(session, code, data_size);
+    status_line_size = HTTP_STATUS_LINE_SIZE + strlen(webs_get_response_text(code));
+    webs_generate_params(session, data_size);
+    header_size = status_line_size + session->io->data_size + 2;
     free(session->req);
-    session->req = malloc(header_size + 2 + data_size);
+    session->req = malloc(header_size + data_size);
 
     if (session->req == NULL)
     {
@@ -293,10 +278,12 @@ static void webs_send_response(WEBS* webs, WEBS_SESSION* session, WEB_RESPONSE c
         return;
     }
 
+    //status line
+    sprintf(session->req, "HTTP/%d.%d %d %s\r\n", session->version >> 4, session->version & 0xf, code, webs_get_response_text(code));
+
     //header, generated in io
-    memcpy(session->req, io_data(session->io), session->io->data_size);
-    sprintf(session->req + header_size, "\r\n");
-    header_size += 2;
+    memcpy(session->req + status_line_size, io_data(session->io), session->io->data_size);
+    sprintf(session->req + status_line_size + session->io->data_size, "\r\n");
     memcpy(session->req + header_size, data, data_size);
     session->req_size = header_size + data_size;
     session->processed = 0;
@@ -378,12 +365,6 @@ static inline void webs_close(WEBS* webs, HANDLE process)
 
 static inline void webs_user_read(WEBS* webs, WEBS_SESSION* session, IO* io)
 {
-    if (session->state != WEBS_SESSION_STATE_REQUEST)
-    {
-        error(ERROR_INVALID_STATE);
-        return;
-    }
-
     io->data_size = 0;
     if (io_get_free(io) < session->data_size)
     {
@@ -401,12 +382,6 @@ static inline void webs_user_write(WEBS* webs, WEBS_SESSION* session, IO* io)
 
     //TODO: multiple sessions support, switch to next req
     webs->busy = false;
-
-    if (session->state != WEBS_SESSION_STATE_REQUEST)
-    {
-        error(ERROR_INVALID_STATE);
-        return;
-    }
 
     webs_send_response(webs, session, code, io_data(io), io->data_size);
 }
@@ -479,11 +454,6 @@ static inline void webs_get_param(WEBS* webs, WEBS_SESSION* session, IO* io)
 {
     unsigned int size;
     char* param;
-    if (session->state != WEBS_SESSION_STATE_REQUEST)
-    {
-        error(ERROR_INVALID_STATE);
-        return;
-    }
 
     param = web_get_str_param(session->req, session->header_size, io_data(io), &size);
     io->data_size = 0;
@@ -505,14 +475,18 @@ static inline void webs_get_param(WEBS* webs, WEBS_SESSION* session, IO* io)
     error(ERROR_SYNC);
 }
 
+static inline void webs_set_param(WEBS* webs, WEBS_SESSION* session, IO* io)
+{
+    char* param;
+    char* value;
+
+    param = io_data(io);
+    value = param + strlen(param) + 1;
+    web_set_str_param(io_data(session->io), &session->io->data_size, param, value);
+}
+
 static inline void webs_get_url(WEBS* webs, WEBS_SESSION* session, IO* io)
 {
-    if (session->state != WEBS_SESSION_STATE_REQUEST)
-    {
-        error(ERROR_INVALID_STATE);
-        return;
-    }
-
     io->data_size = 0;
     if (io_get_free(io) < session->url_size + 1)
     {
@@ -536,6 +510,13 @@ static inline void webs_session_request(WEBS* webs, IPC* ipc)
         error(ERROR_CONNECTION_CLOSED);
         return;
     }
+
+    if (session->state != WEBS_SESSION_STATE_REQUEST)
+    {
+        error(ERROR_INVALID_STATE);
+        return;
+    }
+
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
@@ -548,8 +529,7 @@ static inline void webs_session_request(WEBS* webs, IPC* ipc)
         webs_get_param(webs, session, (IO*)ipc->param2);
         break;
     case WEBS_SET_PARAM:
-        //TODO:
-        error(ERROR_NOT_SUPPORTED);
+        webs_set_param(webs, session, (IO*)ipc->param2);
         break;
     case WEBS_GET_URL:
         webs_get_url(webs, session, (IO*)ipc->param2);
@@ -591,6 +571,7 @@ static inline void webs_req_received(WEBS* webs, WEBS_SESSION* session)
     char* str;
     unsigned int pos, size;
     do {
+        io_reset(session->io);
         //parse status line
         //<METHOD> <URL> HTTP/<VERSION>
         str = session->req;
@@ -713,9 +694,10 @@ static inline void webs_session_rx(WEBS* webs, WEBS_SESSION* session, int size)
         }
     }
 
+    session->status_line_size = web_get_line_size(session->req, session->header_size);
     //Make sure all data received
     if (session->data_size == 0)
-        session->data_size = web_get_int_param(session->req, session->header_size, "content-length");
+        session->data_size = web_get_int_param(session->req + session->status_line_size, session->header_size, "content-length");
     if (session->data_size + session->header_size < session->req_size)
     {
         tcp_read(webs->tcpip, session->conn, session->io, WEBS_IO_SIZE);

@@ -23,10 +23,10 @@ const char* const __HTTP_METHODS[HTTP_METHODS_COUNT] =
                                           "OPTIONS",
                                           "TRACE"};
 
-unsigned int web_get_header_size(char* data, unsigned int size)
+unsigned int web_get_header_size(const char *data, unsigned int size)
 {
-    char* cur;
-    char* next;
+    const char* cur;
+    const char* next;
     if (size < 4)
         return 0;
     for (cur = data; (cur - data + 4 <= size) && (next = memchr(cur, '\r', size - (cur - data) - 3)) != NULL; cur = next + 1)
@@ -37,10 +37,10 @@ unsigned int web_get_header_size(char* data, unsigned int size)
     return 0;
 }
 
-int web_get_line_size(char* data, unsigned int size)
+int web_get_line_size(const char* data, unsigned int size)
 {
-    char* cur;
-    char* next;
+    const char* cur;
+    const char* next;
     if (size == 0)
         return -1;
     for (cur = data; (cur - data + 2 <= size) && (next = memchr(cur, '\r', size - (cur - data) - 1)) != NULL; cur = next + 1)
@@ -51,7 +51,7 @@ int web_get_line_size(char* data, unsigned int size)
     return size;
 }
 
-unsigned int web_get_word(char* data, unsigned int size, char delim)
+unsigned int web_get_word(const char* data, unsigned int size, char delim)
 {
     char* p;
     if (!size)
@@ -62,7 +62,7 @@ unsigned int web_get_word(char* data, unsigned int size, char delim)
     return p - data;
 }
 
-int web_find_keyword(char* data, unsigned int size, const char* const* keywords, unsigned int keywords_count)
+int web_find_keyword(const char *data, unsigned int size, const char* const* keywords, unsigned int keywords_count)
 {
     unsigned int i;
     for (i = 0; i < keywords_count; ++i)
@@ -73,7 +73,7 @@ int web_find_keyword(char* data, unsigned int size, const char* const* keywords,
     return -1;
 }
 
-bool web_atou(char* data, unsigned int size, unsigned int* u)
+bool web_atou(const char* data, unsigned int size, unsigned int* u)
 {
     unsigned int i;
     *u = 0;
@@ -91,7 +91,7 @@ bool web_atou(char* data, unsigned int size, unsigned int* u)
     return true;
 }
 
-bool web_stricmp(char* data, unsigned int size, const char* keyword)
+bool web_stricmp(const char* data, unsigned int size, const char* keyword)
 {
     unsigned int i;
     char c, k;
@@ -111,7 +111,7 @@ bool web_stricmp(char* data, unsigned int size, const char* keyword)
     return true;
 }
 
-void* web_trim(char* str, unsigned int* len)
+char* web_trim(char *str, unsigned int* len)
 {
     while ((*len) && (str[0] == ' ' || str[0] == '\t'))
     {
@@ -124,7 +124,7 @@ void* web_trim(char* str, unsigned int* len)
 }
 
 
-char* web_get_str_param(char* head, unsigned int head_size, char* param, unsigned int* value_len)
+char* web_get_str_param(const char* head, unsigned int head_size, const char *param, unsigned int* value_len)
 {
     int cur, cur_text;
     char* delim;
@@ -144,7 +144,7 @@ char* web_get_str_param(char* head, unsigned int head_size, char* param, unsigne
     return NULL;
 }
 
-unsigned int web_get_int_param(char* head, unsigned int head_size, char* param)
+unsigned int web_get_int_param(const char *head, unsigned int head_size, const char *param)
 {
     char* cur_txt;
     unsigned int cur_len;
@@ -153,6 +153,40 @@ unsigned int web_get_int_param(char* head, unsigned int head_size, char* param)
     if (cur_txt != NULL)
         web_atou(cur_txt, cur_len, &res);
     return res;
+}
+
+static unsigned int web_param_capitalize(char* head, const char* param)
+{
+    unsigned int i, len;
+    bool nextUp = true;
+    len = strlen(param);
+    for (i = 0; i < len; ++i)
+    {
+        if (nextUp && param[i] >= 'a' && param[i] <= 'z')
+            head[i] = param[i] - 0x20;
+        else
+            head[i] = param[i];
+        nextUp = param[i] == '-';
+    }
+    return len;
+}
+
+void web_set_str_param(char* head, unsigned int* head_size, const char* param, const char* value)
+{
+    unsigned int tmp;
+    //parameter already set. No override.
+    if (web_get_str_param(head, *head_size, param, &tmp))
+        return;
+    *head_size += web_param_capitalize(head + *head_size, param);
+    sprintf(head + *head_size, ": %s\r\n", value);
+    *head_size += 4 + strlen(value);
+}
+
+void web_set_int_param(char* head, unsigned int* head_size, const char* param, int value)
+{
+    char buf[10];
+    sprintf(buf, "%d", value);
+    web_set_str_param(head, head_size, param, buf);
 }
 
 void web_print(char* data, unsigned int size)
@@ -199,7 +233,7 @@ bool web_get_method(char* data, unsigned int size, WEB_METHOD* method)
     return true;
 }
 
-bool web_get_version(char* data, unsigned int size, HTTP_VERSION* version)
+bool web_get_version(const char* data, unsigned int size, HTTP_VERSION* version)
 {
     char* dot;
     unsigned int ver_hi, ver_lo;

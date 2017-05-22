@@ -27,18 +27,20 @@ typedef enum {
     HTTP_2_0 = 0x20,
 } HTTP_VERSION;
 
-unsigned int web_get_header_size(char* data, unsigned int size);
-int web_get_line_size(char* data, unsigned int size);
-unsigned int web_get_word(char* data, unsigned int size, char delim);
-int web_find_keyword(char* data, unsigned int size, const char* const* keywords, unsigned int keywords_count);
-bool web_atou(char* data, unsigned int size, unsigned int* u);
-bool web_stricmp(char* data, unsigned int size, const char* keyword);
-void* web_trim(char* str, unsigned int* len);
-char* web_get_str_param(char* head, unsigned int head_size, char* param, unsigned int* value_len);
-unsigned int web_get_int_param(char* head, unsigned int head_size, char* param);
+unsigned int web_get_header_size(const char* data, unsigned int size);
+int web_get_line_size(const char *data, unsigned int size);
+unsigned int web_get_word(const char *data, unsigned int size, char delim);
+int web_find_keyword(const char* data, unsigned int size, const char* const* keywords, unsigned int keywords_count);
+bool web_atou(const char* data, unsigned int size, unsigned int* u);
+bool web_stricmp(const char* data, unsigned int size, const char* keyword);
+char* web_trim(char* str, unsigned int* len);
+char* web_get_str_param(const char* head, unsigned int head_size, const char* param, unsigned int* value_len);
+unsigned int web_get_int_param(const char* head, unsigned int head_size, const char* param);
+void web_set_str_param(char* head, unsigned int* head_size, const char* param, const char* value);
+void web_set_int_param(char* head, unsigned int* head_size, const char* param, int value);
 void web_print(char* data, unsigned int size);
 bool web_url_to_relative(char** url, unsigned int* url_size);
 bool web_get_method(char* data, unsigned int size, WEB_METHOD* method);
-bool web_get_version(char* data, unsigned int size, HTTP_VERSION* version);
+bool web_get_version(const char* data, unsigned int size, HTTP_VERSION* version);
 
 #endif // WEB_PARSE_H

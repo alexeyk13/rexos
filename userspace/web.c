@@ -88,13 +88,32 @@ char *web_server_get_param(HANDLE web_server, HANDLE session, IO* io, unsigned i
 {
     unsigned int len = strlen(param);
     if (len + 1 < size_max)
+    {
         error(ERROR_IO_BUFFER_TOO_SMALL);
+        return NULL;
+    }
     strcpy(io_data(io), param);
     io->data_size = len + 1;
     int res = io_read_sync(web_server, HAL_IO_REQ(HAL_WEBS, WEBS_GET_PARAM), session, io, size_max);
     if (res <= 0)
         return NULL;
     return io_data(io);
+}
+
+void web_server_set_param(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max, const char* param, const char* value)
+{
+    unsigned int param_len, value_len;
+    param_len = strlen(param) + 1;
+    value_len = strlen(value) + 1;
+    if (param_len + value_len < size_max)
+    {
+        error(ERROR_IO_BUFFER_TOO_SMALL);
+        return;
+    }
+    strcpy(io_data(io), param);
+    strcpy((char*)io_data(io) + param_len, value);
+    io->data_size = param_len + value_len;
+    io_write_sync(web_server, HAL_IO_REQ(HAL_WEBS, WEBS_SET_PARAM), session, io);
 }
 
 char *web_server_get_url(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max)
