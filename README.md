@@ -43,7 +43,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * IP: fragmentation supported
   * ICMP: ECHO and flow control
   * ARP: timeouts and static routes support
-  * HTTP Server (beta)
+  * Web Server
   * TLS 1.2 Server (beta)
   * SD/MMC host stack
   * FAT16 file system
@@ -70,6 +70,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * ST STM32F2: generic, UART, RTC, WDT, USB
   * ST STM32F4: generic, UART, RTC, WDT, USB
   * ST STM32L0: generic, UART, RTC, WDT, EEPROM, ADC, DAC, USB
+  * ST STM32L1: generic, UART, RTC, WDT, I2C, USB
   * NXP LPC11Uxx: generic, UART, EEPROM, USB, flash
   * NXP LPC18xx: generic, UART, USB, ETH, SD/MMC, flash
   * TI CC26x0: generic, UART, RTC, WDT, Radio BLE (alpha)
@@ -90,6 +91,15 @@ ARM7 features:
 
 History
 =======
+
+0.5.5
+- WEB server rewritten: 
+    * payload no more limited to MTU
+    * multiple sessions support
+    * custom url/parameters/data processing available
+    * sessions timeouts, keep-alive or close immediatly
+- STM32L1 support (thanks to Roma Jam @github)
+- LPC exodrivers (experimental
 
 0.5.4
 - BER bad block recovery
