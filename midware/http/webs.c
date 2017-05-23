@@ -40,6 +40,9 @@ typedef struct {
     char* url;
     unsigned int req_size, header_size, status_line_size, data_size, url_size, processed;
     HANDLE conn, node_handle, self;
+#if (WEBS_SESSION_TIMEOUT_S)
+    HANDLE timer;
+#endif //WEBS_SESSION_TIMEOUT_S
 #if (WEBS_DEBUG_SESSION)
     IP remote_addr;
 #endif //WEBS_DEBUG_SESSION
@@ -179,12 +182,19 @@ static inline WEBS_SESSION* webs_create_session(WEBS* webs)
         so_free(&webs->sessions, h);
         return NULL;
     }
+#if (WEBS_SESSION_TIMEOUT_S)
+    session->timer = timer_create(session->self, HAL_WEBS);
+#endif //WEBS_SESSION_TIMEOUT_S
     return session;
 }
 
 static void webs_destroy_session(WEBS* webs, WEBS_SESSION* session)
 {
     free(session->req);
+#if (WEBS_SESSION_TIMEOUT_S)
+    timer_stop(session->timer, session->self, HAL_WEBS);
+    timer_destroy(session->timer);
+#endif //WEBS_SESSION_TIMEOUT_S
     io_destroy(session->io);
     so_free(&webs->sessions, session->self);
 }
@@ -206,7 +216,9 @@ static inline void webs_open_session(WEBS* webs, HANDLE conn)
     printf("\n");
 #endif //WEBS_DEBUG_SESSION
 
-    //TODO: start timer here
+#if (WEBS_SESSION_TIMEOUT_S)
+    timer_start_ms(session->timer, WEBS_SESSION_TIMEOUT_S * 1000);
+#endif //WEBS_SESSION_TIMEOUT_S
 
     tcp_read(webs->tcpip, session->conn, session->io, WEBS_IO_SIZE);
 }
@@ -219,7 +231,6 @@ static inline void webs_close_session(WEBS* webs, WEBS_SESSION* session)
     printf("\n");
 #endif //WEBS_DEBUG_SESSION
 
-    //TODO: stop timer here
     tcp_close(webs->tcpip, session->conn);
     webs_destroy_session(webs, session);
 }
@@ -308,7 +319,9 @@ static void webs_send_response(WEBS* webs, WEBS_SESSION* session, WEB_RESPONSE c
     web_print(session->req, session->req_size);
 #endif //WEBS_DEBUG_FLOW
 
-    //TODO: timer start
+#if (WEBS_SESSION_TIMEOUT_S)
+    timer_start_ms(session->timer, WEBS_SESSION_TIMEOUT_S * 1000);
+#endif //WEBS_SESSION_TIMEOUT_S
 
     webs_tx(webs, session);
 }
@@ -531,18 +544,28 @@ static inline void webs_get_url(WEBS* webs, WEBS_SESSION* session, IO* io)
 
 static inline void webs_session_request(WEBS* webs, IPC* ipc)
 {
-    WEBS_SESSION* session = webs_find_session(webs, ipc->param1);
+    WEBS_SESSION* session = so_get(&webs->sessions, ipc->param1);
 
     if (session == NULL)
     {
         error(ERROR_CONNECTION_CLOSED);
         return;
     }
-    if (session->state != WEBS_SESSION_STATE_REQUEST)
+#if (WEBS_SESSION_TIMEOUT_S)
+    if (HAL_ITEM(ipc->cmd) == IPC_TIMEOUT)
     {
-        error(ERROR_INVALID_STATE);
-        return;
+#if (WEBS_DEBUG_SESSION)
+        printf("WEBS: session timeout\n");
+#endif //WEBS_DEBUG_SESSION
+        webs_close_session(webs, session);
     }
+    else
+#endif //WEBS_SESSION_TIMEOUT_S
+        if (session->state != WEBS_SESSION_STATE_REQUEST)
+        {
+            error(ERROR_INVALID_STATE);
+            return;
+        }
 
     switch (HAL_ITEM(ipc->cmd))
     {
@@ -735,7 +758,9 @@ static inline void webs_session_rx(WEBS* webs, WEBS_SESSION* session, int size)
     web_print(session->req, session->req_size);
 #endif //WEBS_DEBUG_FLOW
 
-    //TODO: stop timer here
+#if (WEBS_SESSION_TIMEOUT_S)
+    timer_stop(session->timer, session->self, HAL_WEBS);
+#endif //WEBS_SESSION_TIMEOUT_S
 
     webs_req_received(webs, session);
 }
@@ -751,8 +776,12 @@ static inline void webs_session_tx_complete(WEBS* webs, WEBS_SESSION* session, i
     session->processed += size;
     if (session->processed >= session->req_size)
     {
+#if (WEBS_SESSION_TIMEOUT_S)
         webs_session_reset(session);
         tcp_read(webs->tcpip, session->conn, session->io, WEBS_IO_SIZE);
+#else
+        webs_close_session(webs, session);
+#endif //WEBS_SESSION_TIMEOUT_S
     }
     else
         webs_tx(webs, session);

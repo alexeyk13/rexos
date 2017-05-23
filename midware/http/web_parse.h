@@ -11,10 +11,10 @@
 #include "../../userspace/web.h"
 
 #define HTTP_URL_HEAD_LEN                       7
-extern const char* __HTTP_URL_HEAD;
+extern const char* const __HTTP_URL_HEAD;
 
 #define HTTP_VER_LEN                            5
-extern const char* __HTTP_VER;
+extern const char* const __HTTP_VER;
 
 #define HTTP_METHODS_COUNT                      8
 const char* const __HTTP_METHODS[HTTP_METHODS_COUNT];

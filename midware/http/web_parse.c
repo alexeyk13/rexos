@@ -9,9 +9,9 @@
 #include "../../userspace/stdio.h"
 #include <string.h>
 
-const char* __HTTP_URL_HEAD =            "http://";
+const char* const __HTTP_URL_HEAD =       "http://";
 
-const char* __HTTP_VER =                 "HTTP/";
+const char* const __HTTP_VER =            "HTTP/";
 
 const char* const __HTTP_METHODS[HTTP_METHODS_COUNT] =
                                          {"GET",
