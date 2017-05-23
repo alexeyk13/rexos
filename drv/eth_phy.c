@@ -8,6 +8,10 @@
 #include "../userspace/systime.h"
 #include "../userspace/process.h"
 #include "sys_config.h"
+#include "../userspace/core/core.h"
+#include "../kernel/kernel.h"
+
+#define ETH_WAIT_QUANT_MS                   10
 
 static void eth_phy_reset(uint8_t phy_addr)
 {
@@ -54,9 +58,10 @@ void eth_phy_power_off(uint8_t phy_addr)
 
 ETH_CONN_TYPE eth_phy_get_conn_status(uint8_t phy_addr)
 {
-    SYSTIME uptime;
+    unsigned int i;
     uint16_t sta, con, anlpar;
     sta = eth_phy_read(phy_addr, ETH_PHY_REG_STATUS);
+
     if ((sta & ETH_STATUS_LINK_STATUS) == 0)
         return ETH_NO_LINK;
     con = eth_phy_read(phy_addr, ETH_PHY_REG_CONTROL);
@@ -75,11 +80,14 @@ ETH_CONN_TYPE eth_phy_get_conn_status(uint8_t phy_addr)
         }
     }
     //wait for auto-negotiation complete
-    get_uptime(&uptime);
-    while (((sta & ETH_STATUS_AUTO_NEGOTIATION_COMPLETE) == 0) && (systime_elapsed_ms(&uptime) < ETH_AUTO_NEGOTIATION_TIME))
+    for (i = 0; ((sta & ETH_STATUS_AUTO_NEGOTIATION_COMPLETE) == 0) && (i < (ETH_AUTO_NEGOTIATION_TIME / ETH_WAIT_QUANT_MS)); ++i)
     {
         sta = eth_phy_read(phy_addr, ETH_PHY_REG_STATUS);
-        sleep_ms(10);
+#ifdef EXODRIVERS
+        exodriver_delay_us(ETH_WAIT_QUANT_MS * 1000);
+#else
+        sleep_ms(ETH_WAIT_QUANT_MS);
+#endif //EXODRIVERS
     }
     //auto negotiation failure
     anlpar = eth_phy_read(phy_addr, ETH_PHY_REG_ANLPAR);

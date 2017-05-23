@@ -11,7 +11,8 @@
 #include "../../userspace/ipc.h"
 #include "../../userspace/io.h"
 #include "lpc_config.h"
-#include "lpc_core.h"
+#include "lpc_exo.h"
+#include <stdbool.h>
 
 typedef struct {
     IO* io;
@@ -26,9 +27,11 @@ typedef struct {
   EP* out[USB_EP_COUNT_MAX];
   EP* in[USB_EP_COUNT_MAX];
   uint8_t addr;
+  unsigned int pending_ipc;
+  bool device_ready, device_pending;
 } USB_DRV;
 
-void lpc_usb_init(CORE* core);
-void lpc_usb_request(CORE* core, IPC* ipc);
+void lpc_usb_init(EXO* exo);
+void lpc_usb_request(EXO* exo, IPC* ipc);
 
 #endif // LPC_USB_H

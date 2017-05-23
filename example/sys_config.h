@@ -184,14 +184,21 @@
 #define TCP_DEBUG_FLOW                                      0
 #define TCP_DEBUG_PACKETS                                   0
 
-//---------------------------- HTTP server---------------------------------------------
-#define HS_PROCESS_SIZE                                     900
-#define HS_PROCESS_PRIORITY                                 161
+//----------------------------- web server---------------------------------------------
+#define WEBS_DEBUG_ERRORS                                   1
+#define WEBS_DEBUG_SESSION                                  1
+#define WEBS_DEBUG_REQUESTS                                 1
+#define WEBS_DEBUG_FLOW                                     0
 
-#define HS_DEBUG                                            0
-#define HS_DEBUG_HEAD                                       0
-//URL and header must fit completely in IO. Default to MSS
-#define HS_IO_SIZE                                          1460
+#define WEBS_MAX_SESSIONS                                   2
+//0 means close connection immediatly
+#define WEBS_SESSION_TIMEOUT_S                              3
+
+//Each session internal IO size. Smaller may require more often requests
+//to TCP/IP stack, bigger consumes more memory. Default to MSS.
+#define WEBS_IO_SIZE                                        1460
+//Maximum request size. If request is bigger, it will be responded with "payload too large"
+#define WEBS_MAX_PAYLOAD                                    8192
 
 //---------------------------- TLS server---------------------------------------------
 //cryptography can take much space.

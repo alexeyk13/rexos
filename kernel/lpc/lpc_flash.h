@@ -7,7 +7,7 @@
 #ifndef LPC_FLASH_H
 #define LPC_FLASH_H
 
-#include "lpc_core.h"
+#include "lpc_exo.h"
 #include <stdbool.h>
 #include "../../userspace/types.h"
 
@@ -16,7 +16,7 @@ typedef struct {
     HANDLE user, activity;
 } FLASH_DRV;
 
-void lpc_flash_init(CORE* core);
-void lpc_flash_request(CORE* core, IPC* ipc);
+void lpc_flash_init(EXO* exo);
+void lpc_flash_request(EXO* exo, IPC* ipc);
 
 #endif // LPC_FLASH_H

@@ -9,6 +9,8 @@
 #include "../userspace/types.h"
 #include "../userspace/process.h"
 #include "../userspace/error.h"
+#include "../userspace/core/core.h"
+#include "../kernel/kernel.h"
 #include "sys_config.h"
 #include <string.h>
 
@@ -185,7 +187,11 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
             }
             return true;
         }
+#ifdef EXODRIVERS
+        exodriver_delay_us(1 * 1000);
+#else
         sleep_ms(1);
+#endif //EXODRIVERS
     }
 #if (SDMMC_DEBUG)
     printd("SDMMC: Card init timeout\n");
@@ -357,7 +363,11 @@ static bool sdmmcs_wait_for_ready(SDMMCS* sdmmcs)
             if ((sdmmcs->r1 & SDMMC_R1_CURRENT_STATE_MSK) == SDMMC_R1_STATE_TRAN)
                 return true;
         }
+#ifdef EXODRIVERS
+        exodriver_delay_us(100);
+#else
         sleep_us(100);
+#endif //EXODRIVERS
     }
     error(ERROR_TIMEOUT);
     return false;

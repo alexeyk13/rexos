@@ -5,7 +5,7 @@
 */
 
 #include "lpc_eep.h"
-#include "lpc_core_private.h"
+#include "lpc_exo_private.h"
 #include "lpc_config.h"
 #include "../../userspace/io.h"
 #include "lpc_power.h"
@@ -21,7 +21,7 @@
 
 #endif //LPC18xx
 
-static inline void lpc_eep_read(CORE* core, IPC* ipc)
+static inline void lpc_eep_read(EXO* exo, IPC* ipc)
 {
     IO* io = (IO*)ipc->param2;
 #ifdef LPC18xx
@@ -44,7 +44,7 @@ static inline void lpc_eep_read(CORE* core, IPC* ipc)
 #endif //LPC18xx
 }
 
-static inline void lpc_eep_write(CORE* core, IPC* ipc)
+static inline void lpc_eep_write(EXO* exo, IPC* ipc)
 {
     IO* io = (IO*)ipc->param2;
 #ifdef LPC18xx
@@ -65,7 +65,7 @@ static inline void lpc_eep_write(CORE* core, IPC* ipc)
         LPC_EEPROM->CMD = LPC_EEPROM_CMD_ERASE_PROGRAM;
         while ((LPC_EEPROM->INTSTAT & LPC_EEPROM_INTSTAT_END_OF_PROG_Msk) == 0)
         {
-            sleep_ms(1);
+            __NOP();
         }
     }
 #else //LPC11Uxx
@@ -82,25 +82,27 @@ static inline void lpc_eep_write(CORE* core, IPC* ipc)
 }
 
 #ifdef LPC18xx
-void lpc_eep_init(CORE* core)
+void lpc_eep_init(EXO* exo)
 {
+    unsigned int i;
     LPC_EEPROM->PWRDWN |= LPC_EEPROM_PWRDWN_Msk;
     //EEPROM operates on M3 clock
     LPC_EEPROM->CLKDIV = lpc_power_get_core_clock_inside() / EEP_CLK - 1;
-    sleep_us(100);
+    for (i = 0; i < 100; ++i)
+        __NOP();
     LPC_EEPROM->PWRDWN &= ~LPC_EEPROM_PWRDWN_Msk;
 }
 #endif //LPC18xx
 
-void lpc_eep_request(CORE* core, IPC* ipc)
+void lpc_eep_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
-        lpc_eep_read(core, ipc);
+        lpc_eep_read(exo, ipc);
         break;
     case IPC_WRITE:
-        lpc_eep_write(core, ipc);
+        lpc_eep_write(exo, ipc);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

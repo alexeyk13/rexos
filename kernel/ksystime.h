@@ -27,6 +27,8 @@ void ksystime_hpet_setup(const CB_SVC_TIMER* cb_ktimer, void* cb_ktimer_param);
 HANDLE ksystime_soft_timer_create(HANDLE process, HANDLE param, HAL hal);
 void ksystime_soft_timer_destroy(HANDLE t);
 void ksystime_soft_timer_start(HANDLE t, SYSTIME* time);
+void ksystime_soft_timer_start_ms(HANDLE t, unsigned int ms);
+void ksystime_soft_timer_start_us(HANDLE t, unsigned int us);
 void ksystime_soft_timer_stop(HANDLE t);
 
 //called from startup

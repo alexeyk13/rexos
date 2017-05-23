@@ -6,11 +6,12 @@
 
 #include "lpc_i2c.h"
 #include "lpc_pin.h"
-#include "lpc_core_private.h"
+#include "lpc_exo_private.h"
 #include "lpc_power.h"
-#include "../../userspace/stdlib.h"
-#include "../../userspace/irq.h"
-#include "../../userspace/systime.h"
+#include "../kstdlib.h"
+#include "../kipc.h"
+#include "../kirq.h"
+#include "../ksystime.h"
 
 #if defined(LPC11U6x)
 static const uint8_t __I2C_VECTORS[] =              {15, 10};
@@ -33,27 +34,29 @@ static const uint8_t __I2C_VECTORS[] =              {18, 19};
 #define I2C_CLEAR (I2C0_CONCLR_AAC_Msk | I2C0_CONCLR_SIC_Msk | I2C0_CONCLR_STAC_Msk)
 
 #if (LPC_I2C_TIMEOUT_MS)
-static void lpc_i2c_timer_istop(CORE* core, I2C_PORT port)
+static void lpc_i2c_timer_istop(EXO* exo, I2C_PORT port)
 {
-    ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_I2C, IPC_TIMEOUT), port, 0, 0);
-    core->i2c.i2cs[port]->timer_need_stop = true;
+    ksystime_soft_timer_stop(exo->i2c.i2cs[port]->timer);
+    __disable_irq();
+    exo->i2c.i2cs[port]->timer_pending = false;
+    __enable_irq();
 }
 #endif //LPC_I2C_TIMEOUT_MS
 
-static void lpc_i2c_isr_error(CORE* core, I2C_PORT port, int error)
+static void lpc_i2c_isr_error(EXO* exo, I2C_PORT port, int error)
 {
-    I2C* i2c = core->i2c.i2cs[port];
+    I2C* i2c = exo->i2c.i2cs[port];
     __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
 #if (LPC_I2C_TIMEOUT_MS)
-    lpc_i2c_timer_istop(core, port);
+    lpc_i2c_timer_istop(exo, port);
 #endif
     iio_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (i2c->io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, error);
     i2c->io_mode = I2C_IO_MODE_IDLE;
 }
 
-static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
+static inline void lpc_i2c_isr_tx(EXO* exo, I2C_PORT port)
 {
-    I2C* i2c = core->i2c.i2cs[port];
+    I2C* i2c = exo->i2c.i2cs[port];
     switch(__I2C_REGS[port]->STAT)
     {
     case I2C0_STAT_START:
@@ -62,13 +65,13 @@ static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
         __I2C_REGS[port]->CONCLR = I2C0_CONCLR_STAC_Msk;
         break;
     case I2C0_STAT_SLAW_NACK:
-        lpc_i2c_isr_error(core, port, ERROR_NAK);
+        lpc_i2c_isr_error(exo, port, ERROR_NAK);
         break;
     case I2C0_STAT_DATW_NACK:
         //only acceptable for last byte
         if ((i2c->processed < i2c->size) || (i2c->state != I2C_STATE_DATA))
         {
-            lpc_i2c_isr_error(core, port, ERROR_NAK);
+            lpc_i2c_isr_error(exo, port, ERROR_NAK);
             break;
         }
         //follow down
@@ -93,7 +96,7 @@ static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
             {
                 __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
 #if (LPC_I2C_TIMEOUT_MS)
-                lpc_i2c_timer_istop(core, port);
+                lpc_i2c_timer_istop(exo, port);
 #endif
                 iio_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_WRITE), port, i2c->io, i2c->processed);
                 i2c->io_mode = I2C_IO_MODE_IDLE;
@@ -101,14 +104,14 @@ static inline void lpc_i2c_isr_tx(CORE* core, I2C_PORT port)
         }
         break;
     default:
-         lpc_i2c_isr_error(core, port, ERROR_INVALID_STATE);
+         lpc_i2c_isr_error(exo, port, ERROR_INVALID_STATE);
          break;
     }
 }
 
-static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
+static inline void lpc_i2c_isr_rx(EXO* exo, I2C_PORT port)
 {
-    I2C* i2c = core->i2c.i2cs[port];
+    I2C* i2c = exo->i2c.i2cs[port];
     switch(__I2C_REGS[port]->STAT)
     {
     case I2C0_STAT_START:
@@ -127,7 +130,7 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
         break;
     case I2C0_STAT_SLAR_NACK:
     case I2C0_STAT_SLAW_NACK:
-        lpc_i2c_isr_error(core, port, ERROR_NAK);
+        lpc_i2c_isr_error(exo, port, ERROR_NAK);
         break;
     case I2C0_STAT_SLAW_ACK:
         //transmit address
@@ -158,7 +161,7 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
             break;
         //data state
         default:
-            lpc_i2c_isr_error(core, port, ERROR_INVALID_STATE);
+            lpc_i2c_isr_error(exo, port, ERROR_INVALID_STATE);
         }
         //need more? send ACK
         if (i2c->processed + 1 < i2c->size)
@@ -174,33 +177,33 @@ static inline void lpc_i2c_isr_rx(CORE* core, I2C_PORT port)
         //stop transmission
         __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
 #if (LPC_I2C_TIMEOUT_MS)
-        lpc_i2c_timer_istop(core, port);
+        lpc_i2c_timer_istop(exo, port);
 #endif
         i2c->io->data_size = i2c->processed;
         iio_complete(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_READ), port, i2c->io);
         i2c->io_mode = I2C_IO_MODE_IDLE;
         break;
     default:
-        lpc_i2c_isr_error(core, port, ERROR_INVALID_STATE);
+        lpc_i2c_isr_error(exo, port, ERROR_INVALID_STATE);
         break;
     }
 }
 
 void lpc_i2c_on_isr(int vector, void* param)
 {
-    CORE* core = (CORE*)param;
+    EXO* exo = (EXO*)param;
     I2C_PORT port = I2C_0;
 #if defined(LPC11U6x) || defined(LPC18xx)
     if (vector != __I2C_VECTORS[0])
         port = I2C_1;
 #endif //defined(LPC11U6x) || defined(LPC18xx)
-    switch (core->i2c.i2cs[port]->io_mode)
+    switch (exo->i2c.i2cs[port]->io_mode)
     {
     case I2C_IO_MODE_TX:
-        lpc_i2c_isr_tx(core, port);
+        lpc_i2c_isr_tx(exo, port);
         break;
     case I2C_IO_MODE_RX:
-        lpc_i2c_isr_rx(core, port);
+        lpc_i2c_isr_rx(exo, port);
         break;
     default:
         break;
@@ -208,30 +211,31 @@ void lpc_i2c_on_isr(int vector, void* param)
     __I2C_REGS[port]->CONCLR = I2C0_CONCLR_SIC_Msk;
 }
 
-void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int speed)
+void lpc_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int speed)
 {
-    I2C* i2c = core->i2c.i2cs[port];
+    I2C* i2c = exo->i2c.i2cs[port];
     if (i2c)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
-    i2c = malloc(sizeof(I2C));
-    core->i2c.i2cs[port] = i2c;
+    i2c = kmalloc(sizeof(I2C));
+    exo->i2c.i2cs[port] = i2c;
     if (i2c == NULL)
     {
         error(ERROR_OUT_OF_MEMORY);
         return;
     }
 #if (LPC_I2C_TIMEOUT_MS)
-    i2c->timer = timer_create(port, HAL_I2C);
+    i2c->cc = 0;
+    i2c->timer_pending = false;
+    i2c->timer = ksystime_soft_timer_create(KERNEL_HANDLE, port, HAL_I2C);
     if (i2c->timer == INVALID_HANDLE)
     {
         free(i2c);
-        core->i2c.i2cs[port] = NULL;
+        exo->i2c.i2cs[port] = NULL;
         return;
     }
-    i2c->timer_need_stop = false;
 #endif
     i2c->io = NULL;
     i2c->io_mode = I2C_IO_MODE_IDLE;
@@ -265,14 +269,14 @@ void lpc_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int spe
     //reset state machine
     __I2C_REGS[port]->CONCLR = I2C_CLEAR;
     //enable interrupt
-    irq_register(__I2C_VECTORS[port], lpc_i2c_on_isr, (void*)core);
+    kirq_register(KERNEL_HANDLE, __I2C_VECTORS[port], lpc_i2c_on_isr, (void*)exo);
     NVIC_EnableIRQ(__I2C_VECTORS[port]);
     NVIC_SetPriority(__I2C_VECTORS[port], 2);
 }
 
-void lpc_i2c_close(CORE* core, I2C_PORT port)
+void lpc_i2c_close(EXO* exo, I2C_PORT port)
 {
-    I2C* i2c = core->i2c.i2cs[port];
+    I2C* i2c = exo->i2c.i2cs[port];
     if (i2c == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
@@ -280,7 +284,7 @@ void lpc_i2c_close(CORE* core, I2C_PORT port)
     }
     //disable interrupt
     NVIC_DisableIRQ(__I2C_VECTORS[port]);
-    irq_unregister(__I2C_VECTORS[port]);
+    kirq_unregister(KERNEL_HANDLE, __I2C_VECTORS[port]);
 
 #if defined(LPC11Uxx)
     //set reset state
@@ -293,16 +297,16 @@ void lpc_i2c_close(CORE* core, I2C_PORT port)
 #endif //LPC11Uxx
 
 #if (LPC_I2C_TIMEOUT_MS)
-    timer_destroy(i2c->timer);
+    ksystime_soft_timer_destroy(i2c->timer);
 #endif
-    free(i2c);
-    core->i2c.i2cs[port] = NULL;
+    kfree(i2c);
+    exo->i2c.i2cs[port] = NULL;
 }
 
-static void lpc_i2c_io(CORE* core, IPC* ipc, bool read)
+static void lpc_i2c_io(EXO* exo, IPC* ipc, bool read)
 {
     I2C_PORT port = (I2C_PORT)ipc->param1;
-    I2C* i2c = core->i2c.i2cs[port];
+    I2C* i2c = exo->i2c.i2cs[port];
     if (i2c == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
@@ -339,7 +343,7 @@ static void lpc_i2c_io(CORE* core, IPC* ipc, bool read)
     //reset
     __I2C_REGS[port]->CONCLR = I2C_CLEAR;
 #if (LPC_I2C_TIMEOUT_MS)
-    timer_start_ms(i2c->timer, LPC_I2C_TIMEOUT_MS);
+    ksystime_soft_timer_start_ms(i2c->timer, LPC_I2C_TIMEOUT_MS);
 #endif
 
     //set START
@@ -349,33 +353,27 @@ static void lpc_i2c_io(CORE* core, IPC* ipc, bool read)
 }
 
 #if (LPC_I2C_TIMEOUT_MS)
-static inline void lpc_i2c_timeout(CORE* core, I2C_PORT port)
+static inline void lpc_i2c_timeout(EXO* exo, I2C_PORT port)
 {
     I2C_IO_MODE io_mode;
-    I2C* i2c = core->i2c.i2cs[port];
-    if (i2c->timer_need_stop)
-    {
-        timer_stop(i2c->timer, port, HAL_I2C);
-        i2c->timer_need_stop = false;
-        return;
-    }
+    I2C* i2c = exo->i2c.i2cs[port];
     __disable_irq();
     io_mode = i2c->io_mode;
     i2c->io_mode = I2C_IO_MODE_IDLE;
     __enable_irq();
     __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
-    io_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, ERROR_TIMEOUT);
+    kipc_post_exo(i2c->process, HAL_IO_CMD(HAL_I2C, (io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, (unsigned int)i2c->io, ERROR_TIMEOUT);
 }
 #endif
 
-void lpc_i2c_init(CORE* core)
+void lpc_i2c_init(EXO* exo)
 {
     int i;
     for (i = 0; i < I2C_COUNT; ++i)
-        core->i2c.i2cs[i] = NULL;
+        exo->i2c.i2cs[i] = NULL;
 }
 
-void lpc_i2c_request(CORE* core, IPC* ipc)
+void lpc_i2c_request(EXO* exo, IPC* ipc)
 {
     I2C_PORT port = (I2C_PORT)ipc->param1;
     if (port >= I2C_COUNT)
@@ -383,28 +381,38 @@ void lpc_i2c_request(CORE* core, IPC* ipc)
         error(ERROR_INVALID_PARAMS);
         return;
     }
+#if (LPC_I2C_TIMEOUT_MS)
+    ++exo->i2c.i2cs[port]->cc;
+#endif //LPC_I2C_TIMEOUT_MS
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        lpc_i2c_open(core, port, ipc->param2, ipc->param3);
+        lpc_i2c_open(exo, port, ipc->param2, ipc->param3);
         break;
     case IPC_CLOSE:
-        lpc_i2c_close(core, port);
+        lpc_i2c_close(exo, port);
         break;
     case IPC_WRITE:
-        lpc_i2c_io(core, ipc, false);
+        lpc_i2c_io(exo, ipc, false);
         break;
     case IPC_READ:
-        lpc_i2c_io(core, ipc, true);
+        lpc_i2c_io(exo, ipc, true);
         //async message, no write
         break;
 #if (LPC_I2C_TIMEOUT_MS)
     case IPC_TIMEOUT:
-        lpc_i2c_timeout(core, port);
+        if (exo->i2c.i2cs[port]->cc == 1)
+            lpc_i2c_timeout(exo, port);
+        else
+            exo->i2c.i2cs[port]->timer_pending = true;
         break;
-#endif
+#endif //LPC_I2C_TIMEOUT_MS
     default:
         error(ERROR_NOT_SUPPORTED);
         break;
     }
+#if (LPC_I2C_TIMEOUT_MS)
+    if (--exo->i2c.i2cs[port]->cc == 0 && exo->i2c.i2cs[port]->timer_pending);
+        lpc_i2c_timeout(exo, port);
+#endif //LPC_I2C_TIMEOUT_MS
 }

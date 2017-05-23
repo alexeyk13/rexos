@@ -7,7 +7,7 @@
 #ifndef LPC_POWER_H
 #define LPC_POWER_H
 
-#include "lpc_core.h"
+#include "lpc_exo.h"
 #include "../../userspace/ipc.h"
 #include "../../userspace/lpc/lpc_driver.h"
 
@@ -15,8 +15,8 @@ typedef struct {
     RESET_REASON reset_reason;
 }POWER_DRV;
 
-void lpc_power_init(CORE* core);
-void lpc_power_request(CORE* core, IPC* ipc);
+void lpc_power_init(EXO* exo);
+void lpc_power_request(EXO* exo, IPC* ipc);
 unsigned int lpc_power_get_clock_inside(POWER_CLOCK_TYPE clock_type);
 unsigned int lpc_power_get_core_clock_inside();
 

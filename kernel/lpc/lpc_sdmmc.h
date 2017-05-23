@@ -7,8 +7,8 @@
 #ifndef LPC_SDMMC_H
 #define LPC_SDMMC_H
 
-#include "lpc_core.h"
-#include "../sdmmcs.h"
+#include "lpc_exo.h"
+#include "../../drv/sdmmcs.h"
 #include "../../userspace/io.h"
 #include "../../midware/crypto/sha1.h"
 
@@ -33,7 +33,7 @@ typedef struct  {
     bool active;
 } SDMMC_DRV;
 
-void lpc_sdmmc_init(CORE* core);
-void lpc_sdmmc_request(CORE* core, IPC* ipc);
+void lpc_sdmmc_init(EXO* exo);
+void lpc_sdmmc_request(EXO* exo, IPC* ipc);
 
 #endif // LPC_SDMMC_H
