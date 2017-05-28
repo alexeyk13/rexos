@@ -15,15 +15,7 @@
 void lpc_pin_init();
 void lpc_pin_request(IPC* ipc);
 
-__STATIC_INLINE unsigned int lpc_pin_request_inside(void* unused, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.param1 = param1;
-    ipc.param2 = param2;
-    ipc.param3 = param3;
-    lpc_pin_request(&ipc);
-    return ipc.param2;
-}
+void lpc_pin_enable(unsigned int pin, unsigned int mode);
+void lpc_pin_disable(unsigned int pin);
 
 #endif // LPC_PIN_H

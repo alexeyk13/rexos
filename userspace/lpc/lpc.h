@@ -362,6 +362,7 @@
 
 #if defined(LPC11Uxx) || defined(LPC18xx)
 #define LPC
+#define EXODRIVERS
 #endif
 
 #if defined(LPC)

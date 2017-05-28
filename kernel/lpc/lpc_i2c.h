@@ -8,7 +8,7 @@
 #define LPC_I2C_H
 
 #include "lpc_config.h"
-#include "lpc_core.h"
+#include "lpc_exo.h"
 #include "../../userspace/ipc.h"
 #include "../../userspace/io.h"
 #include "../../userspace/lpc/lpc_driver.h"
@@ -31,8 +31,9 @@ typedef struct  {
     I2C_STACK* stack;
     HANDLE process;
 #if (LPC_I2C_TIMEOUT_MS)
+    unsigned int cc;
     HANDLE timer;
-    bool timer_need_stop;
+    bool timer_pending;
 #endif
     I2C_IO_MODE io_mode;
     I2C_STATE state;
@@ -43,7 +44,7 @@ typedef struct  {
     I2C* i2cs[I2C_COUNT];
 } I2C_DRV;
 
-void lpc_i2c_init(CORE* core);
-void lpc_i2c_request(CORE* core, IPC* ipc);
+void lpc_i2c_init(EXO* exo);
+void lpc_i2c_request(EXO* exo, IPC* ipc);
 
 #endif // LPC_I2C_H

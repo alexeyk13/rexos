@@ -16,7 +16,8 @@
 #include "../../userspace/io.h"
 #include <stdint.h>
 #include "sys_config.h"
-#include "lpc_core.h"
+#include "lpc_exo.h"
+#include <stdbool.h>
 
 #pragma pack(push, 1)
 
@@ -51,10 +52,12 @@ typedef struct {
 #if (ETH_DOUBLE_BUFFERING)
     uint8_t cur_rx, cur_tx;
 #endif
+    unsigned int processing;
+    bool timeout;
 } ETH_DRV;
 
-void lpc_eth_init(CORE* core);
-void lpc_eth_request(CORE* core, IPC* ipc);
+void lpc_eth_init(EXO* exo);
+void lpc_eth_request(EXO* exo, IPC* ipc);
 
 
 #endif // LPC_ETH_H

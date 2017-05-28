@@ -160,6 +160,12 @@ extern void exodriver_init();
 */
 extern void exodriver_post(IPC* ipc);
 
+/**
+    \brief delay in supervisor context
+    \param us: time in us
+    \retval none
+*/
+extern void exodriver_delay_us(unsigned int us);
 
 /** \} */ // end of arch_porting group
 

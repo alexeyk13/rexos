@@ -104,7 +104,7 @@ static void kipc_post_internal(HANDLE sender, HANDLE receiver, unsigned int cmd,
 void kipc_post(HANDLE sender, IPC* ipc)
 {
     KPROCESS* receiver;
-    CHECK_MAGIC(ipc->process, MAGIC_PROCESS);
+    CHECK_MAGIC((KPROCESS*)ipc->process, MAGIC_PROCESS);
 
     if (!kipc_send(sender, ipc->process, ipc->cmd, (void*)ipc->param2))
     {
@@ -145,6 +145,17 @@ void kipc_post(HANDLE sender, IPC* ipc)
     }
     enable_interrupts();
     kipc_post_internal(sender, ipc->process, ipc->cmd, ipc->param1, ipc->param2, ipc->param3);
+}
+
+void kipc_post_exo(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
+{
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.param1 = param1;
+    ipc.param2 = param2;
+    ipc.param3 = param3;
+    ipc.process = process;
+    kipc_post(KERNEL_HANDLE, &ipc);
 }
 
 void kipc_wait(HANDLE process, HANDLE wait_process, unsigned int cmd, unsigned int param1)

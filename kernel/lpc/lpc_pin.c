@@ -30,7 +30,7 @@ void lpc_pin_enable(unsigned int pin, unsigned int mode)
 #endif //LPC11Uxx
 }
 
-static inline void lpc_pin_disable(unsigned int pin)
+void lpc_pin_disable(unsigned int pin)
 {
     if (pin >= PIN_MAX)
     {

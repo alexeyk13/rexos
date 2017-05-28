@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2014, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -9,13 +9,15 @@
 
 //---------------------- fast drivers definitions -----------------------------------
 #define LPC_I2C_DRIVER                      0
-#define LPC_SDMMC_DRIVER                    1
-#define LPC_EEPROM_DRIVER                   1
+#define LPC_SDMMC_DRIVER                    0
+#define LPC_EEPROM_DRIVER                   0
 #define LPC_UART_DRIVER                     1
 #define LPC_USB_DRIVER                      1
-#define LPC_FLASH_DRIVER                    1
+#define LPC_FLASH_DRIVER                    0
+#define LPC_ETH_DRIVER                      1
+
 //------------------------------------- CORE ----------------------------------------------
-//Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
+//Sizeof CORE process stack
 #define LPC_CORE_PROCESS_SIZE               1200
 
 //------------------------------------- power ---------------------------------------------
@@ -46,8 +48,6 @@
 #define SECOND_CHANNEL                      TIMER_CHANNEL0
 #define HPET_CHANNEL                        TIMER_CHANNEL1
 
-//-------------------------------------- UART ---------------------------------------------
-#define UART_IO_PREBUFFER                   0
 //-------------------------------------- USB ----------------------------------------------
 //Maximum packet size for USB.
 //Full speed: 64 if no isochronous transfers, else max 1024
@@ -77,9 +77,9 @@
 //-------------------------------------- SDMMC ------------------------------------------------
 //each is 7 KB
 #define LPC_SDMMC_DESCR_COUNT               9
-//-------------------------------------- FLASH ------------------------------------------------
-//protect user code if VFS is allocated on flash. Must be page-aligned (512)
-#define LPC_FLASH_USER_CODE_SIZE            (128 * 1024)
 
+//-------------------------------------- ETH ----------------------------------------------
+//MII/RMII
+#define LPC_ETH_MII                         0
 
 #endif //LPC_CONFIG_H

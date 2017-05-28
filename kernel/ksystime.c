@@ -233,6 +233,20 @@ void ksystime_soft_timer_start(HANDLE t, SYSTIME* time)
     ksystime_timer_start_internal(&timer->timer, time);
 }
 
+void ksystime_soft_timer_start_ms(HANDLE t, unsigned int ms)
+{
+    SYSTIME time;
+    ms_to_systime(ms, &time);
+    ksystime_soft_timer_start(t, &time);
+}
+
+void ksystime_soft_timer_start_us(HANDLE t, unsigned int us)
+{
+    SYSTIME time;
+    us_to_systime(us, &time);
+    ksystime_soft_timer_start(t, &time);
+}
+
 void ksystime_soft_timer_stop(HANDLE t)
 {
     SOFT_TIMER* timer = (SOFT_TIMER*)t;

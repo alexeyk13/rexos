@@ -4,11 +4,11 @@
     All rights reserved.
 */
 
-#ifndef LPC_CORE_PRIVATE_H
-#define LPC_CORE_PRIVATE_H
+#ifndef LPC_EXO_PRIVATE_H
+#define LPC_EXO_PRIVATE_H
 
 #include "lpc_config.h"
-#include "lpc_core.h"
+#include "lpc_exo.h"
 #include "lpc_power.h"
 #include "lpc_timer.h"
 
@@ -24,7 +24,9 @@
 #include "lpc_flash.h"
 #include "lpc_eth.h"
 
-typedef struct _CORE {
+#define PLL_LOCK_TIMEOUT                        10000
+
+typedef struct _EXO {
     POWER_DRV power;
     TIMER_DRV timer;
 #if (LPC_UART_DRIVER)
@@ -49,7 +51,7 @@ typedef struct _CORE {
 #if (LPC_ETH_DRIVER)
     ETH_DRV eth;
 #endif //LPC_ETH_DRIVER
-}CORE;
+} EXO;
 
 
-#endif // LPC_CORE_PRIVATE_H
+#endif // LPC_EXO_PRIVATE_H

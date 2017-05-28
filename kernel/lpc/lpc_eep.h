@@ -7,9 +7,9 @@
 #ifndef LPC_EEP_H
 #define LPC_EEP_H
 
-#include "lpc_core.h"
+#include "lpc_exo.h"
 
-void lpc_eep_init(CORE* core);
-void lpc_eep_request(CORE* core, IPC* ipc);
+void lpc_eep_init(EXO* exo);
+void lpc_eep_request(EXO* exo, IPC* ipc);
 
 #endif // LPC_EEP_H

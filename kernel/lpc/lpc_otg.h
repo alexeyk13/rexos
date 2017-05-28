@@ -12,7 +12,7 @@
 #include "../../userspace/io.h"
 #include "../../userspace/usb.h"
 #include "lpc_config.h"
-#include "lpc_core.h"
+#include "lpc_exo.h"
 
 typedef struct {
     IO* io;
@@ -25,13 +25,15 @@ typedef struct {
   unsigned int read_size[USB_EP_COUNT_MAX];
   bool suspended;
   USB_SPEED speed;
+  unsigned int pending_ipc;
+  bool device_ready, device_pending;
 } OTG_TYPE;
 
 typedef struct {
   OTG_TYPE* otg[USB_COUNT];
 } OTG_DRV;
 
-void lpc_otg_init(CORE* core);
-void lpc_otg_request(CORE* core, IPC* ipc);
+void lpc_otg_init(EXO* exo);
+void lpc_otg_request(EXO* exo, IPC* ipc);
 
 #endif // LPC_OTG_H

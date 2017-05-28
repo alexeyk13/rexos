@@ -126,6 +126,7 @@ int web_server_read_sync(HANDLE web_server, HANDLE session, IO* io, unsigned int
 void web_server_write(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io);
 int web_server_write_sync(HANDLE web_server, HANDLE session, WEB_RESPONSE code,  IO* io);
 char* web_server_get_param(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max, char* param);
+void web_server_set_param(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max, const char* param, const char* value);
 char* web_server_get_url(HANDLE web_server, HANDLE session, IO* io, unsigned int size_max);
 
 #endif // WEB_H

@@ -5,9 +5,10 @@
 */
 
 #include "lpc_flash.h"
-#include "lpc_core_private.h"
+#include "lpc_exo_private.h"
 #include "../../userspace/storage.h"
 #include "../../userspace/stdio.h"
+#include "../kipc.h"
 #include "lpc_iap.h"
 #include <string.h>
 
@@ -28,11 +29,11 @@ typedef struct {
 } FLASH_ADDR_BLOCK_TYPE;
 
 
-void lpc_flash_init(CORE* core)
+void lpc_flash_init(EXO* exo)
 {
-    core->flash.active = false;
-    core->flash.user = INVALID_HANDLE;
-    core->flash.activity = INVALID_HANDLE;
+    exo->flash.active = false;
+    exo->flash.user = INVALID_HANDLE;
+    exo->flash.activity = INVALID_HANDLE;
 }
 
 static bool lpc_flash_decode_addr_block(unsigned int addr, FLASH_ADDR_BLOCK_TYPE* addr_block, unsigned int size)
@@ -145,19 +146,19 @@ static bool lpc_flash_write_block(FLASH_ADDR_BLOCK_TYPE* addr_block, void* buf, 
     return true;
 }
 
-static inline void lpc_flash_flush(CORE* core)
+static inline void lpc_flash_flush(EXO* exo)
 {
-    if (!core->flash.active)
+    if (!exo->flash.active)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
     }
 }
 
-static inline void lpc_flash_open(CORE* core, HANDLE user)
+static inline void lpc_flash_open(EXO* exo, HANDLE user)
 {
     LPC_IAP_TYPE iap;
-    if (core->flash.active)
+    if (exo->flash.active)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
@@ -166,40 +167,40 @@ static inline void lpc_flash_open(CORE* core, HANDLE user)
     lpc_iap(&iap, IAP_CMD_INIT);
     error(ERROR_OK);
 
-    core->flash.user = user;
-    core->flash.active = true;
+    exo->flash.user = user;
+    exo->flash.active = true;
 }
 
-static inline void lpc_flash_close(CORE* core)
+static inline void lpc_flash_close(EXO* exo)
 {
-    if (!core->flash.active)
+    if (!exo->flash.active)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    core->flash.active = false;
+    exo->flash.active = false;
 }
 
-static inline void lpc_flash_read(CORE* core, HANDLE process, HANDLE user, IO* io, unsigned int size)
+static inline void lpc_flash_read(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned int size)
 {
     FLASH_ADDR_BLOCK_TYPE addr_block;
     STORAGE_STACK* stack = io_stack(io);
     unsigned int base_addr;
     io_pop(io, sizeof(STORAGE_STACK));
-    if (!core->flash.active)
+    if (!exo->flash.active)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    if ((user != core->flash.user) || (size == 0) || (size % FLASH_PAGE_SIZE))
+    if ((user != exo->flash.user) || (size == 0) || (size % FLASH_PAGE_SIZE))
     {
         error(ERROR_INVALID_PARAMS);
         return;
     }
-    if ((core->flash.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
+    if ((exo->flash.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
     {
-        ipc_post_inline(core->flash.activity, HAL_CMD(HAL_FLASH, STORAGE_NOTIFY_ACTIVITY), core->flash.user, 0, 0);
-        core->flash.activity = INVALID_HANDLE;
+        kipc_post_exo(exo->flash.activity, HAL_CMD(HAL_FLASH, STORAGE_NOTIFY_ACTIVITY), exo->flash.user, 0, 0);
+        exo->flash.activity = INVALID_HANDLE;
     }
 
     base_addr = stack->sector * FLASH_PAGE_SIZE;
@@ -209,11 +210,11 @@ static inline void lpc_flash_read(CORE* core, HANDLE process, HANDLE user, IO* i
             return;
         io_data_append(io, (void*)addr_block.first_page, addr_block.size);
     }
-    io_complete(process, HAL_IO_CMD(HAL_FLASH, IPC_READ), user, io);
+    kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, IPC_READ), user, (unsigned int)io, io->data_size);
     error(ERROR_SYNC);
 }
 
-static inline void lpc_flash_write(CORE* core, HANDLE process, HANDLE user, IO* io, unsigned int size)
+static inline void lpc_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned int size)
 {
     SHA1_CTX sha1;
     FLASH_ADDR_BLOCK_TYPE addr_block;
@@ -222,22 +223,22 @@ static inline void lpc_flash_write(CORE* core, HANDLE process, HANDLE user, IO* 
     uint8_t hash_out[SHA1_BLOCK_SIZE];
     STORAGE_STACK* stack = io_stack(io);
     io_pop(io, sizeof(STORAGE_STACK));
-    if (!core->flash.active)
+    if (!exo->flash.active)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
     }
     if ((stack->flags & STORAGE_MASK_MODE) == STORAGE_FLAG_ERASE_ONLY)
         size *= FLASH_PAGE_SIZE;
-    if ((user != core->flash.user) || (size == 0) || (size % FLASH_PAGE_SIZE))
+    if ((user != exo->flash.user) || (size == 0) || (size % FLASH_PAGE_SIZE))
     {
         error(ERROR_INVALID_PARAMS);
         return;
     }
-    if ((core->flash.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
+    if ((exo->flash.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
     {
-        ipc_post_inline(core->flash.activity, HAL_CMD(HAL_FLASH, STORAGE_NOTIFY_ACTIVITY), core->flash.user, STORAGE_FLAG_WRITE, 0);
-        core->flash.activity = INVALID_HANDLE;
+        kipc_post_exo(exo->flash.activity, HAL_CMD(HAL_FLASH, STORAGE_NOTIFY_ACTIVITY), exo->flash.user, STORAGE_FLAG_WRITE, 0);
+        exo->flash.activity = INVALID_HANDLE;
     }
 
     //generate in hash
@@ -282,20 +283,20 @@ static inline void lpc_flash_write(CORE* core, HANDLE process, HANDLE user, IO* 
             return;
         }
     }
-    io_complete(process, HAL_IO_CMD(HAL_FLASH, IPC_WRITE), user, io);
+    kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, IPC_WRITE), user, (unsigned int)io, io->data_size);
     error(ERROR_SYNC);
 }
 
-static inline void lpc_flash_get_media_descriptor(CORE* core, HANDLE process, HANDLE user, IO* io)
+static inline void lpc_flash_get_media_descriptor(EXO* exo, HANDLE process, HANDLE user, IO* io)
 {
     STORAGE_MEDIA_DESCRIPTOR* media;
     LPC_IAP_TYPE iap;
-    if (!core->flash.active)
+    if (!exo->flash.active)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    if (user != core->flash.user)
+    if (user != exo->flash.user)
     {
         error(ERROR_INVALID_PARAMS);
         return;
@@ -311,22 +312,22 @@ static inline void lpc_flash_get_media_descriptor(CORE* core, HANDLE process, HA
     sprintf(STORAGE_MEDIA_SERIAL(media), "%08X%08X%08X%08X", iap.resp[1], iap.resp[2], iap.resp[3], iap.resp[4]);
 
     io->data_size = sizeof(STORAGE_MEDIA_DESCRIPTOR) + 32 + 1;
-    io_complete(process, HAL_IO_CMD(HAL_FLASH, STORAGE_GET_MEDIA_DESCRIPTOR), core->flash.user, io);
+    kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, STORAGE_GET_MEDIA_DESCRIPTOR), exo->flash.user, (unsigned int)io, io->data_size);
     error(ERROR_SYNC);
 }
 
-static inline void lpc_flash_request_notify_activity(CORE* core, HANDLE process)
+static inline void lpc_flash_request_notify_activity(EXO* exo, HANDLE process)
 {
-    if (core->flash.activity != INVALID_HANDLE)
+    if (exo->flash.activity != INVALID_HANDLE)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
-    core->flash.activity = process;
+    exo->flash.activity = process;
     error(ERROR_SYNC);
 }
 
-void lpc_flash_request(CORE* core, IPC* ipc)
+void lpc_flash_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {

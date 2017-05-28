@@ -5,7 +5,7 @@
 */
 
 #include "lpc_power.h"
-#include "lpc_core_private.h"
+#include "lpc_exo_private.h"
 #include "sys_config.h"
 
 #define IRC_VALUE                               12000000
@@ -111,19 +111,19 @@ static inline unsigned int lpc_power_get_core_clock_inside()
 }
 
 #if (LPC_DECODE_RESET)
-static inline void lpc_decode_reset_reason(CORE* core)
+static inline void lpc_decode_reset_reason(EXO* exo)
 {
-    core->power.reset_reason = RESET_REASON_UNKNOWN;
+    exo->power.reset_reason = RESET_REASON_UNKNOWN;
     if (LPC_SYSCON->SYSRSTSTAT & SYSCON_SYSRSTSTAT_WDT)
-        core->power.reset_reason = RESET_REASON_WATCHDOG;
+        exo->power.reset_reason = RESET_REASON_WATCHDOG;
     else if (LPC_SYSCON->SYSRSTSTAT & SYSCON_SYSRSTSTAT_BOD)
-        core->power.reset_reason = RESET_REASON_BROWNOUT;
+        exo->power.reset_reason = RESET_REASON_BROWNOUT;
     else if (LPC_SYSCON->SYSRSTSTAT & SYSCON_SYSRSTSTAT_SYSRST)
-        core->power.reset_reason = RESET_REASON_SOFTWARE;
+        exo->power.reset_reason = RESET_REASON_SOFTWARE;
     else if (LPC_SYSCON->SYSRSTSTAT & SYSCON_SYSRSTSTAT_EXTRST)
-        core->power.reset_reason = RESET_REASON_EXTERNAL;
+        exo->power.reset_reason = RESET_REASON_EXTERNAL;
     else if (LPC_SYSCON->SYSRSTSTAT & SYSCON_SYSRSTSTAT_POR)
-        core->power.reset_reason = RESET_REASON_POWERON;
+        exo->power.reset_reason = RESET_REASON_POWERON;
     LPC_SYSCON->SYSRSTSTAT = SYSCON_SYSRSTSTAT_WDT | SYSCON_SYSRSTSTAT_BOD | SYSCON_SYSRSTSTAT_SYSRST | SYSCON_SYSRSTSTAT_EXTRST | SYSCON_SYSRSTSTAT_POR;
 }
 #endif //LPC_DECODE_RESET
@@ -298,18 +298,18 @@ unsigned int lpc_power_get_core_clock_inside()
 }
 
 #if (LPC_DECODE_RESET)
-static inline void lpc_decode_reset_reason(CORE* core)
+static inline void lpc_decode_reset_reason(EXO* exo)
 {
     /* According to errata:
      * The CORE_RST bits in the RGU's status register do not properly indicate the cause of the core reset. When the core is reset the RGU
      * is also reset and as a result the state of these bits will always read with their default values. As a result, these status bits cannot
      * be used to determine the cause of the core reset */
 
-    core->power.reset_reason = RESET_REASON_UNKNOWN;
+    exo->power.reset_reason = RESET_REASON_UNKNOWN;
     if (LPC_EVENTROUTER->HILO == 0 && LPC_EVENTROUTER->EDGE == 0)
-        core->power.reset_reason = RESET_REASON_POWERON;
+        exo->power.reset_reason = RESET_REASON_POWERON;
     else if ((LPC_EVENTROUTER->EDGE & EVENTROUTER_EDGE_RESET_E_Msk) && (LPC_EVENTROUTER->STATUS & EVENTROUTER_STATUS_RESET_ST_Msk))
-        core->power.reset_reason = RESET_REASON_EXTERNAL;
+        exo->power.reset_reason = RESET_REASON_EXTERNAL;
 
     LPC_EVENTROUTER->HILO &= ~EVENTROUTER_HILO_RESET_L_Msk;
     LPC_EVENTROUTER->EDGE |= EVENTROUTER_EDGE_RESET_E_Msk;
@@ -318,29 +318,29 @@ static inline void lpc_decode_reset_reason(CORE* core)
 #endif //LPC_DECODE_RESET
 
 #if (POWER_MANAGEMENT)
-static inline void lpc_power_hi(CORE* core)
+static inline void lpc_power_hi(EXO* exo)
 {
-    lpc_timer_suspend(core);
+    lpc_timer_suspend(exo);
     lpc_power_switch_core_clock(POWER_HI_DIVIDER);
-    lpc_timer_adjust(core);
+    lpc_timer_adjust(exo);
 }
 
-static inline void lpc_power_lo(CORE* core)
+static inline void lpc_power_lo(EXO* exo)
 {
-    lpc_timer_suspend(core);
+    lpc_timer_suspend(exo);
     lpc_power_switch_core_clock(POWER_LO_DIVIDER);
-    lpc_timer_adjust(core);
+    lpc_timer_adjust(exo);
 }
 
-static inline void lpc_power_set_mode(CORE* core, POWER_MODE mode)
+static inline void lpc_power_set_mode(EXO* exo, POWER_MODE mode)
 {
     switch (mode)
     {
     case POWER_MODE_HIGH:
-        lpc_power_hi(core);
+        lpc_power_hi(exo);
         break;
     case POWER_MODE_LOW:
-        lpc_power_lo(core);
+        lpc_power_lo(exo);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -351,9 +351,9 @@ static inline void lpc_power_set_mode(CORE* core, POWER_MODE mode)
 #endif //LPC11Uxx
 
 #if (LPC_DECODE_RESET)
-RESET_REASON lpc_get_reset_reason(CORE* core)
+RESET_REASON lpc_get_reset_reason(EXO* exo)
 {
-    return core->power.reset_reason;
+    return exo->power.reset_reason;
 }
 #endif //LPC_DECODE_RESET
 
@@ -373,15 +373,15 @@ unsigned int lpc_power_get_clock_inside(POWER_CLOCK_TYPE clock_type)
     }
 }
 
-void lpc_power_init(CORE *core)
+void lpc_power_init(EXO* exo)
 {
 #if (LPC_DECODE_RESET)
-    lpc_decode_reset_reason(core);
+    lpc_decode_reset_reason(exo);
 #endif //LPC_DECODE_RESET
     lpc_setup_clock();
 }
 
-void lpc_power_request(CORE* core, IPC* ipc)
+void lpc_power_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {
@@ -390,13 +390,13 @@ void lpc_power_request(CORE* core, IPC* ipc)
         break;
 #if (LPC_DECODE_RESET)
     case LPC_POWER_GET_RESET_REASON:
-        ipc->param2 = lpc_get_reset_reason(core);
+        ipc->param2 = lpc_get_reset_reason(exo);
         break;
 #endif //LPC_DECODE_RESET
 #if (POWER_MANAGEMENT)
     case POWER_SET_MODE:
         //no return
-        lpc_power_set_mode(core, ipc->param1);
+        lpc_power_set_mode(exo, ipc->param1);
         break;
 #endif //POWER_MANAGEMENT
     default:

@@ -5,9 +5,9 @@
 */
 
 #include "lpc_otg.h"
-#include "lpc_core_private.h"
-#include "../../userspace/irq.h"
-#include "../../userspace/stdlib.h"
+#include "lpc_exo_private.h"
+#include "../kirq.h"
+#include "../kstdlib.h"
 #include "../../userspace/stdio.h"
 #include "lpc_pin.h"
 #include <string.h>
@@ -24,12 +24,6 @@ static const LPC_USB_Type_P __USB_REGS[] =                      {LPC_USB0, (LPC_
 static const uint8_t __USB_VECTORS[] =                          {8};
 static const LPC_USB_Type_P __USB_REGS[] =                      {LPC_USB0};
 #endif
-
-typedef enum {
-    LPC_OTG_SYSTEM_ERROR = USB_HAL_MAX,
-    LPC_OTG_BUFFER_ERROR,
-    LPC_OTG_TRANSACTION_ERROR
-}LPC_OTG_IPCS;
 
 #define EP_CTRL(port)                       ((uint32_t*)(&(__USB_REGS[port]->ENDPTCTRL0)))
 
@@ -57,9 +51,9 @@ typedef struct
 
 #define EP_BIT(num)                         (1 << (USB_EP_NUM(num) + (((num) & USB_EP_IN) ? 16 : 0)))
 
-static inline EP* ep_data(USB_PORT_TYPE port, CORE* core, unsigned int num)
+static inline EP* ep_data(USB_PORT_TYPE port, EXO* exo, unsigned int num)
 {
-    return (num & USB_EP_IN) ? (core->otg.otg[port]->in[USB_EP_NUM(num)]) : (core->otg.otg[port]->out[USB_EP_NUM(num)]);
+    return (num & USB_EP_IN) ? (exo->otg.otg[port]->in[USB_EP_NUM(num)]) : (exo->otg.otg[port]->out[USB_EP_NUM(num)]);
 }
 
 static inline DQH* ep_dqh(USB_PORT_TYPE port, unsigned int num)
@@ -72,7 +66,7 @@ static inline DTD* ep_dtd(USB_PORT_TYPE port, unsigned int num, unsigned int i)
     return &(((DTD*)(__USB_REGS[port]->ENDPOINTLISTADDR + sizeof(DQH) * USB_EP_COUNT_MAX * 2))[(USB_EP_NUM(num) * 2 + ((num & USB_EP_IN) ? 1 : 0)) * USB_DTD_COUNT + i]);
 }
 
-static void lpc_otg_bus_reset(USB_PORT_TYPE port, CORE* core)
+static void lpc_otg_bus_reset(USB_PORT_TYPE port, EXO* exo)
 {
     int i;
     //clear all SETUP token semaphores
@@ -99,38 +93,52 @@ static void lpc_otg_bus_reset(USB_PORT_TYPE port, CORE* core)
     __USB_REGS[port]->DEVICEADDR = 0;
 }
 
-static inline void lpc_otg_reset(USB_PORT_TYPE port, CORE* core)
+static inline void lpc_otg_reset(USB_PORT_TYPE port, EXO* exo)
 {
-    IPC ipc;
-    ipc.process = core->otg.otg[port]->device;
-    ipc.cmd = HAL_CMD(HAL_USB, USB_RESET);
-    ipc.param1 = USB_HANDLE(port, USB_HANDLE_DEVICE);
-    ipc.param2 = core->otg.otg[port]->speed;
-    ipc_ipost(&ipc);
+    if (exo->otg.otg[port]->device_ready)
+    {
+        ipc_ipost_inline(exo->otg.otg[port]->device, HAL_CMD(HAL_USB, USB_RESET), USB_HANDLE(port, USB_HANDLE_DEVICE), exo->otg.otg[port]->speed, 0);
+        exo->otg.otg[port]->device_ready = false;
+    }
+    else
+    {
+        exo->otg.otg[port]->device_pending = true;
+        exo->otg.otg[port]->pending_ipc = HAL_CMD(HAL_USB, USB_RESET);
+    }
 }
 
-static inline void lpc_otg_suspend(USB_PORT_TYPE port, CORE* core)
+static inline void lpc_otg_suspend(USB_PORT_TYPE port, EXO* exo)
 {
-    IPC ipc;
-    ipc.process = core->otg.otg[port]->device;
-    ipc.cmd = HAL_CMD(HAL_USB, USB_SUSPEND);
-    ipc.param1 = USB_HANDLE(port, USB_HANDLE_DEVICE);
-    ipc_ipost(&ipc);
+    if (exo->otg.otg[port]->device_ready)
+    {
+        ipc_ipost_inline(exo->otg.otg[port]->device, HAL_CMD(HAL_USB, USB_SUSPEND), USB_HANDLE(port, USB_HANDLE_DEVICE), 0, 0);
+        exo->otg.otg[port]->device_ready = false;
+    }
+    else
+    {
+        exo->otg.otg[port]->device_pending = true;
+        exo->otg.otg[port]->pending_ipc = HAL_CMD(HAL_USB, USB_SUSPEND);
+    }
 }
 
-static inline void lpc_otg_wakeup(USB_PORT_TYPE port, CORE* core)
+static inline void lpc_otg_wakeup(USB_PORT_TYPE port, EXO* exo)
 {
-    IPC ipc;
-    ipc.process = core->otg.otg[port]->device;
-    ipc.cmd = HAL_CMD(HAL_USB, USB_WAKEUP);
-    ipc.param1 = USB_HANDLE(port, USB_HANDLE_DEVICE);
-    ipc_ipost(&ipc);
+    if (exo->otg.otg[port]->device_ready)
+    {
+        ipc_ipost_inline(exo->otg.otg[port]->device, HAL_CMD(HAL_USB, USB_WAKEUP), USB_HANDLE(port, USB_HANDLE_DEVICE), 0, 0);
+        exo->otg.otg[port]->device_ready = false;
+    }
+    else
+    {
+        exo->otg.otg[port]->device_pending = true;
+        exo->otg.otg[port]->pending_ipc = HAL_CMD(HAL_USB, USB_WAKEUP);
+    }
 }
 
-static inline void lpc_otg_setup(USB_PORT_TYPE port, CORE* core)
+static inline void lpc_otg_setup(USB_PORT_TYPE port, EXO* exo)
 {
     IPC ipc;
-    ipc.process = core->otg.otg[port]->device;
+    ipc.process = exo->otg.otg[port]->device;
     ipc.cmd = HAL_CMD(HAL_USB, USB_SETUP);
     ipc.param1 = USB_HANDLE(port, 0);
     ipc.param2 = ep_dqh(port, 0)->stp[0];
@@ -138,76 +146,73 @@ static inline void lpc_otg_setup(USB_PORT_TYPE port, CORE* core)
     ipc_ipost(&ipc);
 }
 
-static inline void lpc_otg_out(USB_PORT_TYPE port, CORE* core, int ep_num)
+static inline void lpc_otg_out(USB_PORT_TYPE port, EXO* exo, int ep_num)
 {
-    EP* ep = core->otg.otg[port]->out[ep_num];
+    EP* ep = exo->otg.otg[port]->out[ep_num];
     if (ep->io)
     {
-        ep->io->data_size = core->otg.otg[port]->read_size[ep_num] - ((ep_dtd(port, ep_num, 0)->size_flags & USB0_DTD_SIZE_FLAGS_SIZE_Msk) >> USB0_DTD_SIZE_FLAGS_SIZE_Pos);
-        iio_complete(core->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, IPC_READ), USB_HANDLE(port, ep_num), ep->io);
+        ep->io->data_size = exo->otg.otg[port]->read_size[ep_num] - ((ep_dtd(port, ep_num, 0)->size_flags & USB0_DTD_SIZE_FLAGS_SIZE_Msk) >> USB0_DTD_SIZE_FLAGS_SIZE_Pos);
+        iio_complete(exo->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, IPC_READ), USB_HANDLE(port, ep_num), ep->io);
         ep->io = NULL;
     }
 }
 
-static void lpc_otg_in(USB_PORT_TYPE port, CORE* core, int ep_num)
+static void lpc_otg_in(USB_PORT_TYPE port, EXO* exo, int ep_num)
 {
-    EP* ep = core->otg.otg[port]->in[ep_num];
+    EP* ep = exo->otg.otg[port]->in[ep_num];
     if (ep->io)
     {
-        iio_complete(core->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, IPC_WRITE), USB_HANDLE(port, USB_EP_IN | ep_num), ep->io);
+        iio_complete(exo->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, IPC_WRITE), USB_HANDLE(port, USB_EP_IN | ep_num), ep->io);
         ep->io = NULL;
     }
 }
 
 #if (USB_DEBUG_ERRORS)
-static void lpc_otg_err(USB_PORT_TYPE port, CORE* core, int num)
+static void lpc_otg_err(USB_PORT_TYPE port, EXO* exo, int num)
 {
     DTD* dtd = ep_dtd(port, num, 0);
     if (dtd->size_flags & USB0_DTD_SIZE_FLAGS_HALTED_Msk)
     {
         if (dtd->size_flags & USB0_DTD_SIZE_FLAGS_BUFFER_ERR_Msk)
-            ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_USB, LPC_OTG_BUFFER_ERROR), USB_HANDLE(port, num), 0, 0);
+            printk("OTG: Buffer error EP%#02X\n", num);
         if (dtd->size_flags & USB0_DTD_SIZE_FLAGS_TRANSACTION_ERR_Msk)
-            ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_USB, LPC_OTG_TRANSACTION_ERROR), USB_HANDLE(port, num), 0, 0);
+            printk("OTG: Transaction error EP%#02X\n", num);
     }
 }
 #endif //USB_DEBUG_ERRORS
 
 static void lpc_otg_on_isr(int vector, void* param)
 {
-#if (USB_DEBUG_ERRORS)
-    IPC ipc;
-#endif //USB_DEBUG_ERRORS
     int i;
-    CORE* core = param;
+    EXO* exo = param;
     USB_PORT_TYPE port = USB_0;
     if (vector != __USB_VECTORS[0])
         port = USB_1;
 
     if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_URI_Msk)
     {
-        lpc_otg_bus_reset(port, core);
+        lpc_otg_bus_reset(port, exo);
 
-        core->otg.otg[port]->suspended = false;
+        exo->otg.otg[port]->suspended = false;
         __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_URI_Msk;
     }
     if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_SLI_Msk)
     {
-        lpc_otg_suspend(port, core);
-        core->otg.otg[port]->suspended = true;
+        lpc_otg_suspend(port, exo);
+        exo->otg.otg[port]->suspended = true;
         __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_SLI_Msk;
     }
     if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_PCI_Msk)
     {
-        core->otg.otg[port]->speed = __USB_REGS[port]->PORTSC1_D & USB0_PORTSC1_D_HSP_Msk ? USB_HIGH_SPEED : USB_FULL_SPEED;
+        exo->otg.otg[port]->speed = __USB_REGS[port]->PORTSC1_D & USB0_PORTSC1_D_HSP_Msk ? USB_HIGH_SPEED : USB_FULL_SPEED;
         __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_PCI_Msk;
-        if (core->otg.otg[port]->suspended)
+        if (exo->otg.otg[port]->suspended)
         {
-            core->otg.otg[port]->suspended = false;
-            lpc_otg_wakeup(port, core);
+            exo->otg.otg[port]->suspended = false;
+            lpc_otg_wakeup(port, exo);
         }
         else
-            lpc_otg_reset(port, core);
+            lpc_otg_reset(port, exo);
     }
 
     if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_UI_Msk)
@@ -217,8 +222,8 @@ static void lpc_otg_on_isr(int vector, void* param)
         {
             for (i = 0; i < USB_EP_COUNT_MAX; ++i )
             {
-                lpc_otg_err(port, core, i);
-                lpc_otg_err(port, core, USB_EP_IN | i);
+                lpc_otg_err(port, exo, i);
+                lpc_otg_err(port, exo, USB_EP_IN | i);
             }
             __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_UEI_Msk;
         }
@@ -227,19 +232,19 @@ static void lpc_otg_on_isr(int vector, void* param)
         {
             if (__USB_REGS[port]->ENDPTCOMPLETE & EP_BIT(i))
             {
-                lpc_otg_out(port, core, i);
+                lpc_otg_out(port, exo, i);
                 __USB_REGS[port]->ENDPTCOMPLETE = EP_BIT(i);
             }
             if (__USB_REGS[port]->ENDPTCOMPLETE & EP_BIT(USB_EP_IN | i))
             {
-                lpc_otg_in(port, core, i);
+                lpc_otg_in(port, exo, i);
                 __USB_REGS[port]->ENDPTCOMPLETE = EP_BIT(USB_EP_IN | i);
             }
         }
         //Only for EP0
         if (__USB_REGS[port]->ENDPTSETUPSTAT & (1 << 0))
         {
-            lpc_otg_setup(port, core);
+            lpc_otg_setup(port, exo);
             __USB_REGS[port]->ENDPTSETUPSTAT = (1 << 0);
         }
         __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_UI_Msk;
@@ -248,25 +253,22 @@ static void lpc_otg_on_isr(int vector, void* param)
 #if (USB_DEBUG_ERRORS)
     if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_SEI_Msk)
     {
-        ipc.process = process_iget_current();
-        ipc.cmd = HAL_CMD(HAL_USB, LPC_OTG_SYSTEM_ERROR);
-        ipc.param1 = USB_HANDLE(port, USB_HANDLE_DEVICE);
-        ipc_ipost(&ipc);
+        printk("OTG: system error\n");
         __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_SEI_Msk;
     }
 #endif
 }
 
-void lpc_otg_init(CORE* core)
+void lpc_otg_init(EXO* exo)
 {
     int i;
     for (i = 0; i < USB_COUNT; ++i)
-        core->otg.otg[i] = NULL;
+        exo->otg.otg[i] = NULL;
 }
 
-static bool lpc_otg_ep_flush(USB_PORT_TYPE port, CORE* core, int num)
+static bool lpc_otg_ep_flush(USB_PORT_TYPE port, EXO* exo, int num)
 {
-    EP* ep = ep_data(port, core, num);
+    EP* ep = ep_data(port, exo, num);
     if (ep == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
@@ -280,22 +282,22 @@ static bool lpc_otg_ep_flush(USB_PORT_TYPE port, CORE* core, int num)
     EP_CTRL(port)[USB_EP_NUM(num)] |= USB0_ENDPTCTRL_R_Msk << ((num & USB_EP_IN) ? 16 : 0);
     if (ep->io != NULL)
     {
-        io_complete_ex(core->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), USB_HANDLE(port, num), ep->io, ERROR_IO_CANCELLED);
+        io_complete_ex(exo->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), USB_HANDLE(port, num), ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
     }
     return true;
 }
 
-static inline void lpc_otg_ep_set_stall(USB_PORT_TYPE port, CORE* core, int num)
+static inline void lpc_otg_ep_set_stall(USB_PORT_TYPE port, EXO* exo, int num)
 {
-    if (!lpc_otg_ep_flush(port, core, num))
+    if (!lpc_otg_ep_flush(port, exo, num))
         return;
     EP_CTRL(port)[USB_EP_NUM(num)] |= USB0_ENDPTCTRL_S_Msk << ((num & USB_EP_IN) ? 16 : 0);
 }
 
-static inline void lpc_otg_ep_clear_stall(USB_PORT_TYPE port, CORE* core, int num)
+static inline void lpc_otg_ep_clear_stall(USB_PORT_TYPE port, EXO* exo, int num)
 {
-    if (!lpc_otg_ep_flush(port, core, num))
+    if (!lpc_otg_ep_flush(port, exo, num))
         return;
     EP_CTRL(port)[USB_EP_NUM(num)] &= ~(USB0_ENDPTCTRL_S_Msk << ((num & USB_EP_IN) ? 16 : 0));
     EP_CTRL(port)[USB_EP_NUM(num)] |= USB0_ENDPTCTRL_R_Msk << ((num & USB_EP_IN) ? 16 : 0);
@@ -307,21 +309,21 @@ static inline bool lpc_otg_ep_is_stall(USB_PORT_TYPE port, int num)
     return (EP_CTRL(port)[USB_EP_NUM(num)] & (USB0_ENDPTCTRL_S_Msk << ((num & USB_EP_IN) ? 16 : 0))) ? true : false;
 }
 
-static inline void lpc_otg_open_ep(USB_PORT_TYPE port, CORE* core, int num, USB_EP_TYPE type, unsigned int size)
+static inline void lpc_otg_open_ep(USB_PORT_TYPE port, EXO* exo, int num, USB_EP_TYPE type, unsigned int size)
 {
     unsigned int reg;
     DQH* dqh;
-    if (ep_data(port, core, num) != NULL)
+    if (ep_data(port, exo, num) != NULL)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
 
-    EP* ep = malloc(sizeof(EP));
+    EP* ep = kmalloc(sizeof(EP));
     if (ep == NULL)
         return;
     ep->io = NULL;
-    num & USB_EP_IN ? (core->otg.otg[port]->in[USB_EP_NUM(num)] = ep) : (core->otg.otg[port]->out[USB_EP_NUM(num)] = ep);
+    num & USB_EP_IN ? (exo->otg.otg[port]->in[USB_EP_NUM(num)] = ep) : (exo->otg.otg[port]->out[USB_EP_NUM(num)] = ep);
 
     dqh = ep_dqh(port, num);
     dqh->capa = (size << USB0_DQH_CAPA_MAX_PACKET_LENGTH_Pos) | USB0_DQH_CAPA_ZLT_Msk;
@@ -340,23 +342,23 @@ static inline void lpc_otg_open_ep(USB_PORT_TYPE port, CORE* core, int num, USB_
         EP_CTRL(port)[USB_EP_NUM(num)] = (EP_CTRL(port)[USB_EP_NUM(num)] & (0xffff << 16)) | reg;
 }
 
-static void lpc_otg_close_ep(USB_PORT_TYPE port, CORE* core, int num)
+static void lpc_otg_close_ep(USB_PORT_TYPE port, EXO* exo, int num)
 {
-    if (!lpc_otg_ep_flush(port, core, num))
+    if (!lpc_otg_ep_flush(port, exo, num))
         return;
 
-    EP* ep = ep_data(port, core, num);
-    free(ep);
-    num & USB_EP_IN ? (core->otg.otg[port]->in[USB_EP_NUM(num)] = NULL) : (core->otg.otg[port]->out[USB_EP_NUM(num)] = NULL);
+    EP* ep = ep_data(port, exo, num);
+    kfree(ep);
+    num & USB_EP_IN ? (exo->otg.otg[port]->in[USB_EP_NUM(num)] = NULL) : (exo->otg.otg[port]->out[USB_EP_NUM(num)] = NULL);
 }
 
-static void lpc_otg_io(USB_PORT_TYPE port, CORE* core, IPC* ipc, bool read)
+static void lpc_otg_io(USB_PORT_TYPE port, EXO* exo, IPC* ipc, bool read)
 {
     unsigned int i, size;
     unsigned int num = USB_NUM(ipc->param1);
     DTD* dtd;
     DQH* dqh;
-    EP* ep = ep_data(port, core, num);
+    EP* ep = ep_data(port, exo, num);
     if (ep == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
@@ -368,7 +370,7 @@ static void lpc_otg_io(USB_PORT_TYPE port, CORE* core, IPC* ipc, bool read)
         return;
     }
     if (read)
-        size = core->otg.otg[port]->read_size[USB_EP_NUM(num)] = ipc->param3;
+        size = exo->otg.otg[port]->read_size[USB_EP_NUM(num)] = ipc->param3;
     else
         size = ((IO*)ipc->param2)->data_size;
     if (size > USB_DTD_CHUNK * USB_DTD_COUNT)
@@ -416,25 +418,28 @@ static void lpc_otg_io(USB_PORT_TYPE port, CORE* core, IPC* ipc, bool read)
     error(ERROR_SYNC);
 }
 
-static inline void lpc_otg_open_device(USB_PORT_TYPE port, CORE* core, HANDLE device)
+static inline void lpc_otg_open_device(USB_PORT_TYPE port, EXO* exo, HANDLE device)
 {
-    if (core->otg.otg[port])
+    if (exo->otg.otg[port])
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
-    core->otg.otg[port] = malloc(sizeof(OTG_TYPE));
-    if (core->otg.otg[port] == NULL)
+    exo->otg.otg[port] = kmalloc(sizeof(OTG_TYPE));
+    if (exo->otg.otg[port] == NULL)
         return;
     int i;
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
     {
-        core->otg.otg[port]->out[i] = NULL;
-        core->otg.otg[port]->in[i] = NULL;
+        exo->otg.otg[port]->out[i] = NULL;
+        exo->otg.otg[port]->in[i] = NULL;
     }
-    core->otg.otg[port]->device = device;
-    core->otg.otg[port]->suspended = false;
-    core->otg.otg[port]->speed = USB_FULL_SPEED;
+    exo->otg.otg[port]->device = device;
+    exo->otg.otg[port]->suspended = false;
+    exo->otg.otg[port]->speed = USB_FULL_SPEED;
+
+    exo->otg.otg[port]->device_pending = false;
+    exo->otg.otg[port]->device_ready = true;
 
 #if defined(LPC183x) || defined(LPC185x)
     if (port == USB_1)
@@ -455,7 +460,7 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, CORE* core, HANDLE de
         LPC_SCU->SFSUSB |= SCU_SFSUSB_EPWR_Msk;
 
         //enable VBUS monitoring
-        lpc_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), P2_5, P2_5_USB1_VBUS | SCU_SFS_EPUN | SCU_SFS_EZI | SCU_SFS_ZIF, 0);
+        lpc_pin_enable(P2_5, P2_5_USB1_VBUS | SCU_SFS_EPUN | SCU_SFS_EZI | SCU_SFS_ZIF);
 #endif //USB1_ULPI
     }
     else
@@ -510,7 +515,7 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, CORE* core, HANDLE de
                          USB0_USBSTS_D_SLI_Msk;
 
     //enable interrupts
-    irq_register(__USB_VECTORS[port], lpc_otg_on_isr, core);
+    kirq_register(KERNEL_HANDLE, __USB_VECTORS[port], lpc_otg_on_isr, exo);
     NVIC_EnableIRQ(__USB_VECTORS[port]);
     NVIC_SetPriority(__USB_VECTORS[port], 1);
 
@@ -524,22 +529,22 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, CORE* core, HANDLE de
     __USB_REGS[port]->USBCMD_D |= USB0_USBCMD_D_RS_Msk;
 }
 
-static inline void lpc_otg_close_device(USB_PORT_TYPE port, CORE* core)
+static inline void lpc_otg_close_device(USB_PORT_TYPE port, EXO* exo)
 {
     int i;
     //disable interrupts
     NVIC_DisableIRQ(__USB_VECTORS[port]);
-    irq_unregister(__USB_VECTORS[port]);
+    kirq_unregister(KERNEL_HANDLE, __USB_VECTORS[port]);
     //stop
     __USB_REGS[port]->USBCMD_D &= ~USB0_USBCMD_D_RS_Msk;
 
     //close all endpoints
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
     {
-        if (core->otg.otg[port]->out[i] != NULL)
-            lpc_otg_close_ep(port, core, i);
-        if (core->otg.otg[port]->in[i] != NULL)
-            lpc_otg_close_ep(port, core, USB_EP_IN | i);
+        if (exo->otg.otg[port]->out[i] != NULL)
+            lpc_otg_close_ep(port, exo, i);
+        if (exo->otg.otg[port]->in[i] != NULL)
+            lpc_otg_close_ep(port, exo, USB_EP_IN | i);
     }
     //Mask all interrupts
     __USB_REGS[port]->USBINTR_D = 0;
@@ -548,7 +553,7 @@ static inline void lpc_otg_close_device(USB_PORT_TYPE port, CORE* core)
 #if !(USB1_ULPI)
     if (port == USB_1)
     {
-        lpc_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_CLOSE), P2_5, 0, 0);
+        lpc_pin_disable(P2_5);
         LPC_SCU->SFSUSB &= ~SCU_SFSUSB_EPWR_Msk;
 
         LPC_CGU->BASE_USB1_CLK = CGU_BASE_USB1_CLK_PD_Msk;
@@ -567,58 +572,84 @@ static inline void lpc_otg_close_device(USB_PORT_TYPE port, CORE* core)
     }
 
     //free object
-    free(core->otg.otg[port]);
-    core->otg.otg[port] = NULL;
+    kfree(exo->otg.otg[port]);
+    exo->otg.otg[port] = NULL;
 }
 
-static inline void lpc_otg_set_address(USB_PORT_TYPE port, CORE* core, int addr)
+static inline void lpc_otg_set_address(USB_PORT_TYPE port, EXO* exo, int addr)
 {
     //according to datasheet, no special action is required if status will go in 2 ms
     __USB_REGS[port]->DEVICEADDR = (addr << USB0_DEVICEADDR_USBADR_Pos) | USB0_DEVICEADDR_USBADRA_Msk;
 }
 
 #if (USB_TEST_MODE_SUPPORT)
-static inline void lpc_otg_set_test_mode(USB_PORT_TYPE port, CORE* core, USB_TEST_MODES test_mode)
+static inline void lpc_otg_set_test_mode(USB_PORT_TYPE port, EXO* exo, USB_TEST_MODES test_mode)
 {
     __USB_REGS[port]->PORTSC1_D &= ~USB1_PORTSC1_H_PTC3_0_Msk;
     __USB_REGS[port]->PORTSC1_D |= test_mode << USB1_PORTSC1_H_PTC3_0_Pos;
 }
 #endif //USB_TEST_MODE_SUPPORT
 
-static inline void lpc_otg_device_request(CORE* core, IPC* ipc)
+static inline void lpc_otg_sync(EXO* exo)
+{
+    int port;
+    for (port = 0; port < USB_COUNT; port++)
+    {
+        if (exo->otg.otg[port]->device == INVALID_HANDLE)
+            continue;
+        if (exo->otg.otg[port]->device_pending)
+        {
+            switch (HAL_ITEM(exo->otg.otg[port]->pending_ipc))
+            {
+            case USB_RESET:
+                ipc_ipost_inline(exo->otg.otg[port]->device, exo->otg.otg[port]->pending_ipc,
+                                 USB_HANDLE(USB_0, USB_HANDLE_DEVICE), exo->otg.otg[port]->speed, 0);
+                break;
+            case USB_SUSPEND:
+            case USB_WAKEUP:
+                ipc_ipost_inline(exo->otg.otg[port]->device, exo->otg.otg[port]->pending_ipc, USB_HANDLE(USB_0, USB_HANDLE_DEVICE), 0, 0);
+                break;
+            default:
+                break;
+            }
+            exo->otg.otg[port]->device_pending = false;
+        }
+        else
+            exo->otg.otg[port]->device_ready = true;
+    }
+}
+
+static inline void lpc_otg_device_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {
     case USB_GET_SPEED:
-        ipc->param2 = core->otg.otg[USB_PORT(ipc->param1)]->speed;
+        ipc->param2 = exo->otg.otg[USB_PORT(ipc->param1)]->speed;
         break;
     case IPC_OPEN:
-        lpc_otg_open_device(USB_PORT(ipc->param1), core, ipc->process);
+        lpc_otg_open_device(USB_PORT(ipc->param1), exo, ipc->process);
         break;
     case IPC_CLOSE:
-        lpc_otg_close_device(USB_PORT(ipc->param1), core);
+        lpc_otg_close_device(USB_PORT(ipc->param1), exo);
         break;
     case USB_SET_ADDRESS:
-        lpc_otg_set_address(USB_PORT(ipc->param1), core, ipc->param2);
+        lpc_otg_set_address(USB_PORT(ipc->param1), exo, ipc->param2);
         break;
 #if (USB_TEST_MODE_SUPPORT)
     case USB_SET_TEST_MODE:
-        lpc_otg_set_test_mode(USB_PORT(ipc->param1), core, ipc->param2);
+        lpc_otg_set_test_mode(USB_PORT(ipc->param1), exo, ipc->param2);
         break;
 #endif //USB_TEST_MODE_SUPPORT
-#if (USB_DEBUG_ERRORS)
-    case LPC_OTG_SYSTEM_ERROR:
-        printd("OTG_%d driver system error\n", USB_PORT(ipc->param1));
-        //posted from isr
+    case IPC_SYNC:
+        lpc_otg_sync(exo);
         break;
-#endif
     default:
         error(ERROR_NOT_SUPPORTED);
         break;
     }
 }
 
-static inline void lpc_otg_ep_request(CORE* core, IPC* ipc)
+static inline void lpc_otg_ep_request(EXO* exo, IPC* ipc)
 {
     if (USB_EP_NUM(USB_NUM(ipc->param1)) >= USB_EP_COUNT_MAX)
     {
@@ -628,46 +659,36 @@ static inline void lpc_otg_ep_request(CORE* core, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        lpc_otg_open_ep(USB_PORT(ipc->param1), core, USB_NUM(ipc->param1), ipc->param2, ipc->param3);
+        lpc_otg_open_ep(USB_PORT(ipc->param1), exo, USB_NUM(ipc->param1), ipc->param2, ipc->param3);
         break;
     case IPC_CLOSE:
-        lpc_otg_close_ep(USB_PORT(ipc->param1), core, USB_NUM(ipc->param1));
+        lpc_otg_close_ep(USB_PORT(ipc->param1), exo, USB_NUM(ipc->param1));
         break;
     case IPC_FLUSH:
-        lpc_otg_ep_flush(USB_PORT(ipc->param1), core, USB_NUM(ipc->param1));
+        lpc_otg_ep_flush(USB_PORT(ipc->param1), exo, USB_NUM(ipc->param1));
         break;
     case USB_EP_SET_STALL:
-        lpc_otg_ep_set_stall(USB_PORT(ipc->param1), core, USB_NUM(ipc->param1));
+        lpc_otg_ep_set_stall(USB_PORT(ipc->param1), exo, USB_NUM(ipc->param1));
         break;
     case USB_EP_CLEAR_STALL:
-        lpc_otg_ep_clear_stall(USB_PORT(ipc->param1), core, USB_NUM(ipc->param1));
+        lpc_otg_ep_clear_stall(USB_PORT(ipc->param1), exo, USB_NUM(ipc->param1));
         break;
     case USB_EP_IS_STALL:
         ipc->param2 = lpc_otg_ep_is_stall(USB_PORT(ipc->param1), USB_NUM(ipc->param1));
         break;
     case IPC_READ:
-        lpc_otg_io(USB_PORT(ipc->param1), core, ipc, true);
+        lpc_otg_io(USB_PORT(ipc->param1), exo, ipc, true);
         break;
     case IPC_WRITE:
-        lpc_otg_io(USB_PORT(ipc->param1), core, ipc, false);
+        lpc_otg_io(USB_PORT(ipc->param1), exo, ipc, false);
         break;
-#if (USB_DEBUG_ERRORS)
-    case LPC_OTG_BUFFER_ERROR:
-        printd("OTG_%d EP%x buffer error\n", USB_PORT(ipc->param1), USB_NUM(ipc->param1));
-        //posted from isr
-        break;
-    case LPC_OTG_TRANSACTION_ERROR:
-        printd("OTG_%d EP%x transaction error\n", USB_PORT(ipc->param1), USB_NUM(ipc->param1));
-        //posted from isr
-        break;
-#endif
     default:
         error(ERROR_NOT_SUPPORTED);
         break;
     }
 }
 
-void lpc_otg_request(CORE* core, IPC* ipc)
+void lpc_otg_request(EXO* exo, IPC* ipc)
 {
     if (USB_PORT(ipc->param1) >= USB_COUNT)
     {
@@ -675,7 +696,7 @@ void lpc_otg_request(CORE* core, IPC* ipc)
         return;
     }
     if (USB_NUM(ipc->param1) == USB_HANDLE_DEVICE)
-        lpc_otg_device_request(core, ipc);
+        lpc_otg_device_request(exo, ipc);
     else
-        lpc_otg_ep_request(core, ipc);
+        lpc_otg_ep_request(exo, ipc);
 }
