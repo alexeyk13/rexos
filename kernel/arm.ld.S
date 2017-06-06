@@ -32,7 +32,15 @@ SECTIONS
 		PROVIDE(__ETEXT = .);
 	} > FLASH
 
-	_end = . ;
+    .init :
+    {
+        *(.init*);
+    } >FLASH
+    .fini :
+    {
+      *(.fini*);
+    } >FLASH
+    _end = . ;
 	PROVIDE(__END = .);
 }
 

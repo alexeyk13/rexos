@@ -235,15 +235,7 @@ UsageFault_Handler:
 SVC_Handler:
     mrs   r0, psp
     ldmia r0, {r0-r3}
-    bl    svc                           @ call c handler
-
-    //return to thread mode
-#if defined(CORTEX_M0)
-    ldr   r0, =0xfffffffd
-    bx    r0
-#else
-    ldr   pc, =0xfffffffd
-#endif
+    b    svc                           @ call c handler
 
     .thumb_func
 PendSV_Handler:
@@ -272,7 +264,7 @@ PendSV_Handler:
 #else
     stmdb  r0!, {r4-r11}                           @save other context on stack
 #endif
-        str   r0, [r3, KPROCESS_SP]                     @save sp on process->sp
+    str   r0, [r3, KPROCESS_SP]                     @save sp on process->sp
 
 load_context:
     ldr   r2, [r1, NEXT_PROCESS]
@@ -304,11 +296,12 @@ context_exit:
     cpsie i
     //return to thread mode
 #if defined(CORTEX_M0)
-    ldr   r0, =0xfffffffd
+    ldr   r0, [pc, #4]
     bx    r0
 #else
-    ldr   pc, =0xfffffffd
+    ldr   pc, [pc]
 #endif
+    .word LR_TO_PROCESS_PSP
 
 halt_core:
     cpsie    i
