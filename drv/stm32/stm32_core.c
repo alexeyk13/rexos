@@ -13,6 +13,7 @@
 #include "stm32_rtc.h"
 #include "stm32_wdt.h"
 #include "stm32_uart.h"
+#include "stm32_can.h"
 #include "stm32_adc.h"
 #include "stm32_dac.h"
 #include "stm32_eep.h"
@@ -72,6 +73,11 @@ void stm32_core_loop(CORE* core)
             stm32_uart_request(core, &ipc);
             break;
 #endif //STM32_UART_DRIVER
+#if (STM32_CAN_DRIVER)
+        case HAL_CAN:
+            stm32_can_request(core, &ipc);
+            break;
+#endif //STM32_CAN_DRIVER
 #if (STM32_ADC_DRIVER)
         case HAL_ADC:
             stm32_adc_request(core, &ipc);
@@ -129,6 +135,9 @@ void stm32_core()
 #if (STM32_UART_DRIVER)
     stm32_uart_init(&core);
 #endif //STM32_UART_DRIVER
+#if (STM32_CAN_DRIVER)
+    stm32_can_init(&core);
+#endif //STM32_CAN_DRIVER
 #if (STM32_ADC_DRIVER)
     stm32_adc_init(&core);
 #endif //STM32_ADC_DRIVER

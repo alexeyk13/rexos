@@ -235,7 +235,16 @@ UsageFault_Handler:
 SVC_Handler:
     mrs   r0, psp
     ldmia r0, {r0-r3}
-    b    svc                           @ call c handler
+    bl    svc                           @ call c handler
+
+    //return to thread mode
+#if defined(CORTEX_M0)
+    ldr   r0, =0xfffffffd
+    bx    r0
+#else
+    ldr   pc, SW
+SW: .word LR_TO_PROCESS_PSP
+#endif
 
     .thumb_func
 PendSV_Handler:
@@ -296,12 +305,11 @@ context_exit:
     cpsie i
     //return to thread mode
 #if defined(CORTEX_M0)
-    ldr   r0, [pc, #4]
+    ldr   r0, =0xfffffffd
     bx    r0
 #else
-    ldr   pc, [pc]
+    ldr   pc, SW
 #endif
-    .word LR_TO_PROCESS_PSP
 
 halt_core:
     cpsie    i

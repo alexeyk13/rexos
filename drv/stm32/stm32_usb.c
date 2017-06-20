@@ -5,6 +5,7 @@
 */
 
 #include "stm32_usb.h"
+#include "stm32_regsusb.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/usb.h"
 #include "../../userspace/irq.h"
@@ -17,8 +18,8 @@
 #include "stm32_core_private.h"
 
 typedef struct {
-  HANDLE process;
-  HANDLE device;
+    HANDLE process;
+    HANDLE device;
 } USB_STRUCT;
 
 typedef enum {

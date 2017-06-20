@@ -296,17 +296,17 @@ static inline int get_pll_clock()
 #elif defined (STM32F0)
 static bool stm32_power_pll_on(STM32_CLOCK_SOURCE_TYPE src)
 {
-    RCC->CFGR &= ~(0xf << 18);
+    RCC->CFGR &= ~((0xf << 18) || (0x03 << 15)); //PLLMUL & PLLSRC
     RCC->CFGR |= (PLL_MUL - 2) << 18;
     RCC->CFGR2 = (PLL_DIV - 1) & 0xf;
 
     //Actually there is NO PLL_SRC0 bit on 072 at least.
-#if (HSE_VALUE)
     if (src == STM32_CLOCK_SOURCE_HSE)
-        RCC->CFGR |= (1 << 16);
+        RCC->CFGR |= (0x02 << 15);
     else
+#if defined(STM32F042) || defined(STM32F072) || defined(STM32F092)
+        RCC->CFGR |= (0x01 << 15);
 #endif
-        RCC->CFGR &= ~(1 << 16);
     //turn PLL on
     RCC->CR |= RCC_CR_PLLON;
     while (!(RCC->CR & RCC_CR_PLLRDY)) {}
@@ -315,7 +315,11 @@ static bool stm32_power_pll_on(STM32_CLOCK_SOURCE_TYPE src)
 
 static inline int stm32_power_get_pll_clock()
 {
+#if defined(STM32F042) || defined(STM32F072) || defined(STM32F092)
+    int pllsrc = HSI_VALUE;
+#else
     int pllsrc = HSI_VALUE / 2;
+#endif
 #if (HSE_VALUE)
     if (RCC->CFGR & (1 << 16))
         pllsrc = HSE_VALUE;
