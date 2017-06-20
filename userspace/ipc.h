@@ -60,7 +60,6 @@ typedef enum {
     HAL_ICMP,
     HAL_UDP,
     HAL_TCP,
-    HAL_HTTP,
     HAL_WEBS,
     HAL_TLS,
     HAL_PINBOARD,
