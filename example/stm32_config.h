@@ -16,6 +16,7 @@
 #define STM32_UART_DRIVER                       1
 #define STM32_RTC_DRIVER                        1
 #define STM32_USB_DRIVER                        1
+#define STM32_CAN_DRIVER                        0
 //------------------------------ CORE ------------------------------------------------
 //Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
 #define STM32_CORE_PROCESS_SIZE                 1024

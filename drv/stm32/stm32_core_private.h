@@ -13,6 +13,7 @@
 #include "stm32_timer.h"
 #include "stm32_power.h"
 #include "stm32_uart.h"
+#include "stm32_can.h"
 #include "stm32_dac.h"
 #include "stm32_adc.h"
 #if (STM32_I2C_DRIVER)
@@ -31,6 +32,9 @@ typedef struct _CORE {
 #if (STM32_UART_DRIVER)
     UART_DRV uart;
 #endif //STM32_UART_DRIVER
+#if (STM32_CAN_DRIVER)
+    CAN_DRV can;
+#endif //STM32_CAN_DRIVER
 #if (STM32_ADC_DRIVER)
     ADC_DRV adc;
 #endif //STM32_ADC_DRIVER
