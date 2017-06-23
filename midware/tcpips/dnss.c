@@ -4,17 +4,12 @@
 #include "object.h"
 #include "endian.h"
 #include "udps.h"
-//#include "udp.h"
-//#include "arp.h"
 
 static const char server_name[] = {3, 'R', 'e', 'x', 2, 'O', 'S', 0};
-
-static const char name[] = "no.name";
 
 void dnss_init(TCPIPS* tcpips)
 {
     memset(tcpips->dnss.name, 0, 64);
-    strcpy(tcpips->dnss.name, name); //TODO:
 }
 
 static bool dns_cmp(uint8_t* dns_ptr, const char* name)
@@ -87,7 +82,7 @@ bool dnss_rx(TCPIPS* tcpips, IO* io, IP* src)
         return false;
     if (hdr->ancount != HTONS(0))
         return false;
-    hdr->flags |= HTONS(0x8180);
+    hdr->flags |= HTONS(DNS_FLAG_RESPONSE|DNS_FLAG_REQ_AVALIBLE);
     hdr->ancount = HTONS(1);
     uint16_t type = *(uint16_t*)((uint8_t*)hdr + io->data_size - 4);
     ans = (DNS_ANSWER*)((uint8_t*)hdr + io->data_size);

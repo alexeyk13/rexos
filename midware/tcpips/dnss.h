@@ -21,10 +21,12 @@
 #define DNS_ERROR_NOT_IMPLEMENT 4
 #define DNS_ERROR_REFUSED       5
 
-#define DNS_FLAG_RESPONSE       0x8000
-//#define DNS_FLAG_
+#define DNS_FLAG_RESPONSE       (1 << 15)
+#define DNS_FLAG_AA             (1 << 10)
+#define DNS_FLAG_TRUNCATE       (1 << 9)
+#define DNS_FLAG_REQ_DESIRED    (1 << 8)
+#define DNS_FLAG_REQ_AVALIBLE   (1 << 7)
 
-//-------- DNS typdefs ---------------
 #pragma pack(push,1)
 typedef struct {
     uint8_t id_be[2];
@@ -35,6 +37,7 @@ typedef struct {
     uint16_t arcount;
     uint8_t name[0];
 } DNS_HEADER;
+
 typedef struct {
     uint16_t compress;
     uint16_t type;uint16_t class;

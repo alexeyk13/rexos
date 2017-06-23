@@ -11,7 +11,6 @@
 
 #define DHCP_POOL_SIZE   5
 
-//-------- DHCP defines ---------------
 #define DHCP_SERVER_PORT      67
 #define DHCP_CLIENT_PORT      68
 
@@ -59,33 +58,33 @@ enum DHCP_OPTIONS {
     DHCP_REBINDTIME = 59,
     DHCP_CLASSID = 60,
     DHCP_CLIENTID = 61,
-    DHCP_USERCLASS = 77, /* RFC 3004 */
+    DHCP_USERCLASS = 77,  // RFC 3004 
     DHCP_FQDN = 81,
-    DHCP_DNSSEARCH = 119, /* RFC 3397 */
-    DHCP_CSR = 121, /* RFC 3442 */
-    DHCP_MSCSR = 249, /* MS code for RFC 3442 */
+    DHCP_DNSSEARCH = 119, // RFC 3397 
+    DHCP_CSR = 121,       // RFC 3442 
+    DHCP_MSCSR = 249,     // MS code for RFC 3442
     DHCP_END = 255,
 };
 
 typedef struct {
-    uint8_t op; /* packet opcode type */
-    uint8_t htype; /* hardware addr type */
-    uint8_t hlen; /* hardware addr length */
-    uint8_t hops; /* gateway hops */
-    uint32_t xid; /* transaction ID */
-    uint16_t secs; /* seconds since boot began */
+    uint8_t op;          // packet opcode type 
+    uint8_t htype;       // hardware addr type
+    uint8_t hlen;        // hardware addr length 
+    uint8_t hops;        // gateway hops
+    uint32_t xid;        // transaction ID
+    uint16_t secs;       // seconds since boot began
     uint16_t flags;
-    IP ciaddr; /* client IP address */
-    IP yiaddr; /* 'your' IP address */
-    IP siaddr; /* server IP address */
-    IP giaddr; /* gateway IP address */
-    uint8_t chaddr[16]; /* client hardware address */
+    IP ciaddr;           // client IP address
+    IP yiaddr;           // 'your' IP address 
+    IP siaddr;           // server IP address
+    IP giaddr;           // gateway IP address
+    uint8_t chaddr[16];  // client hardware address
     uint8_t legacy[192];
     uint32_t magic;
     uint8_t msg_code;
     uint8_t msg_len;
     uint8_t msg_type;
-    uint8_t options[0]; /* options area outside header*/
+    uint8_t options[0];  // options area outside header
 } DHCP_TYPE;
 
 typedef struct {
