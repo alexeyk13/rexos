@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2017, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #ifndef DNSS_H
 #define DNSS_H
 

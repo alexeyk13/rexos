@@ -1,8 +1,8 @@
 /*
- RExOS - embedded RTOS
- Copyright (c) 2011-2017, Alexey Kramarenko
- All rights reserved.
- */
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2017, Alexey Kramarenko
+    All rights reserved.
+*/
 
 #include "stm32_can.h"
 #include "stm32_power.h"

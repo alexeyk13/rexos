@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2017, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #ifndef DHCPS_H
 #define DHCPS_H
 
