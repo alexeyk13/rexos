@@ -277,11 +277,6 @@ void lpc_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int speed
 void lpc_i2c_close(EXO* exo, I2C_PORT port)
 {
     I2C* i2c = exo->i2c.i2cs[port];
-    if (i2c == NULL)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
     //disable interrupt
     NVIC_DisableIRQ(__I2C_VECTORS[port]);
     kirq_unregister(KERNEL_HANDLE, __I2C_VECTORS[port]);
@@ -307,11 +302,6 @@ static void lpc_i2c_io(EXO* exo, IPC* ipc, bool read)
 {
     I2C_PORT port = (I2C_PORT)ipc->param1;
     I2C* i2c = exo->i2c.i2cs[port];
-    if (i2c == NULL)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
     if (i2c->io_mode != I2C_IO_MODE_IDLE)
     {
         error(ERROR_IN_PROGRESS);
@@ -381,38 +371,45 @@ void lpc_i2c_request(EXO* exo, IPC* ipc)
         error(ERROR_INVALID_PARAMS);
         return;
     }
-#if (LPC_I2C_TIMEOUT_MS)
-    ++exo->i2c.i2cs[port]->cc;
-#endif //LPC_I2C_TIMEOUT_MS
-    switch (HAL_ITEM(ipc->cmd))
-    {
-    case IPC_OPEN:
+    if (HAL_ITEM(ipc->cmd) == IPC_OPEN)
         lpc_i2c_open(exo, port, ipc->param2, ipc->param3);
-        break;
-    case IPC_CLOSE:
-        lpc_i2c_close(exo, port);
-        break;
-    case IPC_WRITE:
-        lpc_i2c_io(exo, ipc, false);
-        break;
-    case IPC_READ:
-        lpc_i2c_io(exo, ipc, true);
-        //async message, no write
-        break;
+    else
+    {
+        if (exo->i2c.i2cs[port] == NULL)
+        {
+            error(ERROR_NOT_CONFIGURED);
+            return;
+        }
 #if (LPC_I2C_TIMEOUT_MS)
-    case IPC_TIMEOUT:
-        if (exo->i2c.i2cs[port]->cc == 1)
+        ++exo->i2c.i2cs[port]->cc;
+#endif //LPC_I2C_TIMEOUT_MS
+        switch (HAL_ITEM(ipc->cmd))
+        {
+        case IPC_CLOSE:
+            lpc_i2c_close(exo, port);
+            return;
+        case IPC_WRITE:
+            lpc_i2c_io(exo, ipc, false);
+            break;
+        case IPC_READ:
+            lpc_i2c_io(exo, ipc, true);
+            //async message, no write
+            break;
+#if (LPC_I2C_TIMEOUT_MS)
+        case IPC_TIMEOUT:
+            if (exo->i2c.i2cs[port]->cc == 1)
+                lpc_i2c_timeout(exo, port);
+            else
+                exo->i2c.i2cs[port]->timer_pending = true;
+            break;
+#endif //LPC_I2C_TIMEOUT_MS
+        default:
+            error(ERROR_NOT_SUPPORTED);
+            break;
+        }
+#if (LPC_I2C_TIMEOUT_MS)
+        if ((--exo->i2c.i2cs[port]->cc == 0) && exo->i2c.i2cs[port]->timer_pending)
             lpc_i2c_timeout(exo, port);
-        else
-            exo->i2c.i2cs[port]->timer_pending = true;
-        break;
 #endif //LPC_I2C_TIMEOUT_MS
-    default:
-        error(ERROR_NOT_SUPPORTED);
-        break;
     }
-#if (LPC_I2C_TIMEOUT_MS)
-    if (--exo->i2c.i2cs[port]->cc == 0 && exo->i2c.i2cs[port]->timer_pending);
-        lpc_i2c_timeout(exo, port);
-#endif //LPC_I2C_TIMEOUT_MS
 }
