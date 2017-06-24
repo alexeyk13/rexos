@@ -213,6 +213,7 @@ typedef union {
 #define IP_MAKE(a, b, c, d)                             (((a) << 0) | ((b) << 8) | ((c) << 16) | ((d) << 24))
 
 #define LOCALHOST                                       (IP_MAKE(127, 0, 0, 1))
+#define BROADCAST                                       (IP_MAKE(255, 255, 255, 255))
 
 typedef enum {
     IP_SET = IPC_USER,

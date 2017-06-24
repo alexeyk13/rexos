@@ -80,7 +80,6 @@ static inline void arps_cmd_reply(TCPIPS* tcpips, MAC* mac, IP* ip)
         return;
     arp = io_data(io);
 
-
     short2be(arp->hrd_be, ARP_HRD_ETHERNET);
     short2be(arp->pro_be, ETHERTYPE_IP);
     arp->hln = sizeof(MAC);
@@ -373,6 +372,12 @@ void arps_rx(TCPIPS* tcpips, IO *io)
 
 bool arps_resolve(TCPIPS* tcpips, const IP* ip, MAC* mac)
 {
+    if (ip->u32.ip == BROADCAST)
+    {
+        mac->u32.lo = __MAC_BROADCAST.u32.lo;
+        mac->u32.hi = __MAC_BROADCAST.u32.hi;
+        return true;
+    }
     if (arps_lookup(tcpips, ip, mac))
         return true;
     //request mac

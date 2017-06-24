@@ -216,7 +216,6 @@ void ips_disable_firewall(TCPIPS* tcpips)
 }
 #endif //IP_FIREWALL
 
-
 void ips_request(TCPIPS* tcpips, IPC* ipc)
 {
 #if (IP_FIREWALL)
@@ -604,8 +603,12 @@ void ips_rx(TCPIPS* tcpips, IO* io)
         tcpips_release_io(tcpips, io);
         return;
     }
+#if(UDP_BROADCAST)
+    if ((tcpips->ips.ip.u32.ip != hdr->dst.u32.ip) && ((hdr->dst.u32.ip !=BROADCAST) || (hdr->proto != PROTO_UDP )))
+#else
     //unicast-only filter
     if (tcpips->ips.ip.u32.ip != hdr->dst.u32.ip)
+#endif
     {
         tcpips_release_io(tcpips, io);
         return;

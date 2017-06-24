@@ -7,6 +7,7 @@
 #include "udps.h"
 #include "tcpips_private.h"
 #include "../../userspace/udp.h"
+#include "../../userspace/error.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/endian.h"
 #include <string.h>
@@ -148,13 +149,36 @@ void udps_link_changed(TCPIPS* tcpips, bool link)
     }
 }
 
+static void udps_replay(TCPIPS* tcpips, IO* io, const IP* src)
+{
+    UDP_HEADER* udp;
+    IP dst;
+    dst.u32.ip = src->u32.ip;
+    io_unhide(io, sizeof(UDP_HEADER));
+    udp = io_data(io);
+    //format header
+    udp->dst_port_be[0] = udp->src_port_be[0];
+    udp->dst_port_be[1] = udp->src_port_be[1];
+    short2be(udp->src_port_be, DNS_PORT);
+    short2be(udp->len_be, io->data_size);
+    short2be(udp->checksum_be, 0);
+    short2be(udp->checksum_be, udp_checksum(io_data(io), io->data_size, &tcpips->ips.ip, &dst));
+    ips_tx(tcpips, io, &dst);
+}
+
 void udps_rx(TCPIPS* tcpips, IO* io, IP* src)
 {
     HANDLE handle;
     UDP_HEADER* hdr;
     UDP_HANDLE* uh;
     uint16_t src_port, dst_port;
+#if(UDP_BROADCAST)
+    const IP* dst;
+    dst = (const IP*)io_data(io) - 1;
+    if (io->data_size < sizeof(UDP_HEADER) || udp_checksum(io_data(io), io->data_size, src, dst))
+#else
     if (io->data_size < sizeof(UDP_HEADER) || udp_checksum(io_data(io), io->data_size, src, &tcpips->ips.ip))
+#endif
     {
         ips_release_io(tcpips, io);
         return;
@@ -162,7 +186,6 @@ void udps_rx(TCPIPS* tcpips, IO* io, IP* src)
     hdr = io_data(io);
     src_port = be2short(hdr->src_port_be);
     dst_port = be2short(hdr->dst_port_be);
-
 #if (UDP_DEBUG_FLOW)
     printf("UDP: ");
     ip_print(src);
@@ -171,6 +194,29 @@ void udps_rx(TCPIPS* tcpips, IO* io, IP* src)
     printf(":%d, %d byte(s)\n", dst_port, io->data_size - sizeof(UDP_HEADER));
 #endif //UDP_DEBUG_FLOW
 
+#if(DHCPS)
+    if((dst_port == DHCP_SERVER_PORT)||(src_port == DHCP_CLIENT_PORT))
+    {
+        io_hide(io, sizeof(UDP_HEADER));
+        if(dhcps_rx(tcpips,io,src))
+            udps_replay(tcpips,io,&__BROADCAST);
+        else
+            ips_release_io(tcpips, io);
+        return;
+    }
+#endif
+
+#if(DNSS)
+    if((dst_port == DNS_PORT)&&(dst->u32.ip == tcpips->ips.ip.u32.ip))
+    {
+        io_hide(io, sizeof(UDP_HEADER));
+        if(dnss_rx(tcpips,io,src))
+            udps_replay(tcpips,io,src);
+        else
+            ips_release_io(tcpips, io);
+        return;
+    }
+#endif
     //search in listeners
     handle = udps_find(tcpips, dst_port);
     if (handle != INVALID_HANDLE)
@@ -182,8 +228,11 @@ void udps_rx(TCPIPS* tcpips, IO* io, IP* src)
         else
             handle = INVALID_HANDLE;
     }
-
+#if(UDP_BROADCAST)
+    if ((handle == INVALID_HANDLE) && (dst->u32.ip != BROADCAST))
+#else
     if (handle == INVALID_HANDLE)
+#endif
     {
 #if (UDP_DEBUG)
         printf("UDP: no connection, datagramm dropped\n");
@@ -329,6 +378,8 @@ static inline void udps_write(TCPIPS* tcpips, HANDLE handle, IO* io)
         //copy data
         memcpy((uint8_t*)io_data(cur) + sizeof(UDP_HEADER), (uint8_t*)io_data(io) + offset, size);
         udp = io_data(cur);
+// correct size
+        cur->data_size = size + sizeof(UDP_HEADER);
         //format header
         short2be(udp->src_port_be, uh->local_port);
         short2be(udp->dst_port_be, remote_port);
