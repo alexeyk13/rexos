@@ -595,6 +595,8 @@ static inline void lpc_otg_sync(EXO* exo)
     int port;
     for (port = 0; port < USB_COUNT; port++)
     {
+        if (exo->otg.otg[port] == NULL)
+            continue;
         if (exo->otg.otg[port]->device == INVALID_HANDLE)
             continue;
         if (exo->otg.otg[port]->device_pending)
