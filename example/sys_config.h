@@ -242,4 +242,12 @@
 //01.09.2016 as default if not rtc used
 #define VFS_BASE_DATE                                       736207
 
+//---------------------------- CANopen server---------------------------------------------
+#define CO_PROCESS_SIZE                                    800
+#define CO_PROCESS_PRIORITY                                161
+
+#define CO_LSS_MASTER                                      0
+
+#define CO_DEBUG                                           1
+
 #endif // SYS_CONFIG_H
