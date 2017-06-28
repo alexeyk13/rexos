@@ -171,11 +171,14 @@
 //----------------------------- TCP/IP UDP --------------------------------------------
 #define UDP                                                 1
 #define UDP_BROADCAST                                       1  // need for DHCP
+
 #define DNSS                                                1
 #define DHCPS                                               1
 
 #define UDP_DEBUG                                           0
 #define UDP_DEBUG_FLOW                                      0
+#define DNSS_DEBUG                                          1
+#define DHCPS_DEBUG                                         1
 
 //----------------------------- TCP/IP TCP --------------------------------------------
 #define TCP_DEBUG                                           1
