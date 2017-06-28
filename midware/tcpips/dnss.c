@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2017, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #include "dnss.h"
 #include "tcpips_private.h"
 #include "sys_config.h"

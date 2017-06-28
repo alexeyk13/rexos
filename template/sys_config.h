@@ -208,12 +208,15 @@
 #define TLS_PROCESS_SIZE                                    3048
 #define TLS_PROCESS_PRIORITY                                160
 
-#define TLS_DEBUG                                           1
 #define TLS_DEBUG_REQUESTS                                  1
-#define TLS_DEBUG_FLOW                                      0
+#define TLS_DEBUG_ERRORS                                    1
 //DON'T FORGET TO REMOVE IN PRODUCTION!!!
 #define TLS_DEBUG_SECRETS                                   0
 #define TLS_IO_SIZE                                         1460
+
+//at least one must be selected
+#define TLS_RSA_WITH_AES_128_CBC_SHA_CIPHER_SUITE           1
+#define TLS_RSA_WITH_AES_128_CBC_SHA256_CIPHER_SUITE        1
 //--------------------------------- SDMMC ---------------------------------------------
 #define SDMMC_DEBUG                                         1
 
