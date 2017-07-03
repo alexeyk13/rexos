@@ -36,9 +36,9 @@
 //generally UART is used as stdout/stdio, so fine-tuning is required only on hi load
 #define UART_STREAM_SIZE                                    32
 //-------------------------------- USB -----------------------------------------------
-#define USB_EP_COUNT_MAX                                    6
+#define USB_EP_COUNT_MAX                                    5
 //low-level USB debug. Turn on only in case of IO problems
-#define USB_DEBUG_ERRORS                                    1
+#define USB_DEBUG_ERRORS                                    0
 #define USB_TEST_MODE_SUPPORT                               0
 
 //----------------------------- USB device--------------------------------------------
@@ -57,7 +57,7 @@
 #define USBD_CDC_ACM_CLASS                                  0
 #define USBD_RNDIS_CLASS                                    1
 #define USBD_HID_KBD_CLASS                                  0
-#define USBD_CCID_CLASS                                     0
+#define USBD_CCID_CLASS                                     1
 #define USBD_MSC_CLASS                                      0
 
 //----------------------- CDC ACM Device class ----------------------------------------
@@ -172,9 +172,17 @@
 #define ICMP_ECHO                                           1
 
 //----------------------------- TCP/IP UDP --------------------------------------------
-#define UDP                                                 0
+#define UDP                                                 1
+//required for DHCP
+#define UDP_BROADCAST                                       1
+#define DNSS                                                1
+#define DHCPS                                               1
+
+
 #define UDP_DEBUG                                           0
 #define UDP_DEBUG_FLOW                                      0
+#define DNSS_DEBUG                                          1
+#define DHCPS_DEBUG                                         1
 
 //----------------------------- TCP/IP TCP --------------------------------------------
 #define TCP_DEBUG                                           1
