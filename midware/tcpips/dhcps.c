@@ -1,9 +1,3 @@
-/*
-    RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
-    All rights reserved.
-*/
-
 #include "dhcps.h"
 #include "tcpips_private.h"
 #include "sys_config.h"
@@ -11,6 +5,9 @@
 #include "endian.h"
 #include "udp.h"
 #include "arp.h"
+
+#include "ip.h"
+#include "mac.h"
 
 #define DHCP_OPTION_DNSSERVER       (1<< 0)
 #define DHCP_OPTION_SERVERID        (1<< 1)
@@ -37,7 +34,7 @@ static void dhcp_init_pool(DHCP_POOL* pool, IP* start_ip)
     for (i = DHCP_POOL_SIZE; i > 0; pool++, i--)
     {
         pool->mac.u32.hi = pool->mac.u32.lo = 0;
-        pool->ip.u32.ip = start_ip->u32.ip + (i << 24);
+        pool->ip.u32.ip = start_ip->u32.ip + ((i-1) << 24);
     }
 }
 
@@ -137,7 +134,6 @@ bool dhcps_rx(TCPIPS* tcpips, IO* io, IP* src)
         return false;
     if ((hdr->msg_code != DHCP_MESSAGETYPE) || (hdr->msg_len != 1))
         return false;
-
     hdr->op = DHCP_BOOT_REPLY;
     hdr->secs = 0;
     ptr = hdr->options;
@@ -146,6 +142,13 @@ bool dhcps_rx(TCPIPS* tcpips, IO* io, IP* src)
     hdr->yiaddr.u32.ip = dhcp_get_option_u32(ptr, DHCP_IPADDRESS);
     memset(hdr->options, 0, DHCP_OPTION_LEN + 1);
     io->data_size = sizeof(DHCP_TYPE) + DHCP_OPTION_LEN;
+#if (DHCPS_DEBUG)
+    printf("DHCPS: request type %d from ", msg_type);
+    mac_print((MAC*)&hdr->chaddr);
+    printf(" yiaddr ");
+    ip_print((const IP*)&hdr->yiaddr.u32.ip);
+    printf("\n");
+#endif
     switch (msg_type)
     {
     case DHCP_REQUEST: // send ACK or NAK
@@ -155,17 +158,33 @@ bool dhcps_rx(TCPIPS* tcpips, IO* io, IP* src)
             hdr->yiaddr.u32.ip = 0;
             hdr->ciaddr.u32.ip = 0;
             dhcp_add_options(tcpips, ptr, DHCP_OPTION_DHCP_NAK);
+#if (DHCPS_DEBUG)
+    printf("DHCPS: NAK \n");
+#endif
         } else
         {
             hdr->msg_type = DHCP_ACK;
             dhcp_add_options(tcpips, ptr, DHCP_OPTION_DHCP_OFFER);
+#if (DHCPS_DEBUG)
+    printf("DHCPS: ACK \n");
+#endif
         }
         break;
     case DHCP_DISCOVER: // send OFFER
         hdr->yiaddr.u32.ip = dhcp_get_ip(tcpips->dhcps.pool, (MAC*)&hdr->chaddr, true);
         if (hdr->yiaddr.u32.ip == 0)
+        {
+#if (DHCPS_DEBUG)
+            printf("DHCPS: pool full! /n");
+#endif
             return false;
+        }
         dhcp_add_options(tcpips, ptr, DHCP_OPTION_DHCP_OFFER);
+#if (DHCPS_DEBUG)
+        printf("DHCPS: OFFER IP ");
+        ip_print((const IP*)&hdr->yiaddr.u32.ip);
+        printf("\n");
+#endif
         break;
     case DHCP_INFORM:
         if ((hdr->ciaddr.u32.ip == 0) || (hdr->ciaddr.u32.ip != dhcp_get_ip(tcpips->dhcps.pool, (MAC*)&hdr->chaddr, false)))
@@ -187,9 +206,6 @@ bool dhcps_rx(TCPIPS* tcpips, IO* io, IP* src)
 void dhcps_init(TCPIPS* tcpips)
 {
     memset(tcpips->dhcps.pool, 0, sizeof(tcpips->dhcps.pool));
-//    IP ip = { {192, 168, 2, 11}};
-//    dhcp_init_pool(tcpips->dhcps.pool, &ip);
-//    tcpips->dhcps.net_mask.u32.ip = IP_MAKE(255, 255, 255, 0);
 }
 
 void dhcps_request(TCPIPS* tcpips, IPC* ipc)

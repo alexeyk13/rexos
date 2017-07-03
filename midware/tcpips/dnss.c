@@ -94,6 +94,10 @@ bool dnss_rx(TCPIPS* tcpips, IO* io, IP* src)
     ans = (DNS_ANSWER*)((uint8_t*)hdr + io->data_size);
     ans->compress = HTONS(0xC00C);
     ans->class = HTONS(DNS_CLASS_IN);
+#if (DNSS_DEBUG)
+    printf("DNSS: request type %d \n", HTONS(type));
+#endif
+
     if (type == HTONS(DNS_TYPE_PTR))
     {
         if (!dns_ptr_cmp(hdr->name, &tcpips->ips.ip)) // if wrong IP - no answer

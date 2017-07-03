@@ -153,13 +153,16 @@ static void udps_replay(TCPIPS* tcpips, IO* io, const IP* src)
 {
     UDP_HEADER* udp;
     IP dst;
+    uint16_t src_port;
     dst.u32.ip = src->u32.ip;
     io_unhide(io, sizeof(UDP_HEADER));
     udp = io_data(io);
     //format header
+    src_port = be2short(udp->dst_port_be);
     udp->dst_port_be[0] = udp->src_port_be[0];
     udp->dst_port_be[1] = udp->src_port_be[1];
-    short2be(udp->src_port_be, DNS_PORT);
+    short2be(udp->src_port_be, src_port);
+
     short2be(udp->len_be, io->data_size);
     short2be(udp->checksum_be, 0);
     short2be(udp->checksum_be, udp_checksum(io_data(io), io->data_size, &tcpips->ips.ip, &dst));
