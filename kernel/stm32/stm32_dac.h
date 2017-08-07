@@ -12,7 +12,7 @@
 #include "../../userspace/dac.h"
 #include "../../userspace/io.h"
 #include "stm32_config.h"
-#include "stm32_core.h"
+#include "stm32_exo.h"
 #include <stdint.h>
 
 #if defined (STM32F1)
@@ -50,7 +50,7 @@ typedef struct {
     DAC_CHANNEL channels[DAC_CHANNELS_COUNT_USER];
 } DAC_DRV;
 
-void stm32_dac_request(CORE* core, IPC* ipc);
-void stm32_dac_init(CORE* core);
+void stm32_dac_request(EXO* exo, IPC* ipc);
+void stm32_dac_init(EXO* exo);
 
 #endif // STM32_DAC_H

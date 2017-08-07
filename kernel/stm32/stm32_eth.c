@@ -7,8 +7,8 @@
 #include "stm32_eth.h"
 #include "stm32_config.h"
 #include "../../userspace/stdio.h"
-#include "../../userspace/ipc.h"
-#include "../../userspace/irq.h"
+#include "../kipc.h"
+#include "../kirq.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/systime.h"
 #include "../../userspace/power.h"
@@ -71,7 +71,7 @@ static void stm32_eth_flush(ETH_DRV* drv)
         drv->rx[i] = NULL;
         __enable_irq();
         if (io != NULL)
-            io_complete_ex(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), drv->phy_addr, io, ERROR_IO_CANCELLED);
+            io_complete_ex_exo(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), drv->phy_addr, io, ERROR_IO_CANCELLED);
 
         __disable_irq();
         drv->tx_des[i].ctl = 0;
@@ -79,7 +79,7 @@ static void stm32_eth_flush(ETH_DRV* drv)
         drv->tx[i] = NULL;
         __enable_irq();
         if (io != NULL)
-            io_complete_ex(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), drv->phy_addr, io, ERROR_IO_CANCELLED);
+            io_complete_ex_exo(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), drv->phy_addr, io, ERROR_IO_CANCELLED);
     }
     drv->cur_rx = (ETH->DMACHRDR == (unsigned int)(&drv->rx_des[0]) ? 0 : 1);
     drv->cur_tx = (ETH->DMACHTDR == (unsigned int)(&drv->tx_des[0]) ? 0 : 1);
@@ -89,14 +89,14 @@ static void stm32_eth_flush(ETH_DRV* drv)
     drv->rx = NULL;
     __enable_irq();
     if (io != NULL)
-        io_complete_ex(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), drv->phy_addr, io, ERROR_IO_CANCELLED);
+        io_complete_ex_exo(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), drv->phy_addr, io, ERROR_IO_CANCELLED);
 
     __disable_irq();
     io = drv->tx;
     drv->tx = NULL;
     __enable_irq();
     if (io != NULL)
-        io_complete_ex(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), drv->phy_addr, io, ERROR_IO_CANCELLED);
+        io_complete_ex_exo(drv->tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), drv->phy_addr, io, ERROR_IO_CANCELLED);
 #endif
 }
 
@@ -206,7 +206,7 @@ static void stm32_eth_close(ETH_DRV* drv)
 {
     //disable interrupts
     NVIC_DisableIRQ(ETH_IRQn);
-    irq_unregister(ETH_IRQn);
+    kirq_unregister(KERNEL_HANDLE, ETH_IRQn);
 
     //flush
     stm32_eth_flush(drv);
@@ -291,7 +291,7 @@ static inline void stm32_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_
         ETH->MACMIIAR = ETH_MACMIIAR_CR_Div42;
 
     //enable dma interrupts
-    irq_register(ETH_IRQn, stm32_eth_isr, (void*)drv);
+    kirq_register(KERNEL_HANDLE, ETH_IRQn, stm32_eth_isr, (void*)drv);
     NVIC_EnableIRQ(ETH_IRQn);
     NVIC_SetPriority(ETH_IRQn, 13);
     ETH->DMAIER = ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE;

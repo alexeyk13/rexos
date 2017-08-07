@@ -8,10 +8,10 @@
 #include "sys_config.h"
 #include "../../userspace/stm32/stm32_driver.h"
 #include "stm32_power.h"
-#include "stm32_core_private.h"
+#include "stm32_exo_private.h"
 #include "../../userspace/error.h"
-#include "../../userspace/systime.h"
-#include "../../userspace/irq.h"
+#include "../ksystime.h"
+#include "../kirq.h"
 #include "../../userspace/power.h"
 #include <string.h>
 
@@ -79,7 +79,7 @@ const int TIMER_POWER_BIT[TIMERS_COUNT] =       {11,   0,    1,       4,    5,  
 const uint_p TIMER_POWER_PORT[TIMERS_COUNT] =   {APB2, APB1, APB1, APB1, APB1,  APB1,  APB2,  APB2,  APB2};
 #endif
 
-void stm32_timer_open(CORE *core, TIMER_NUM num, unsigned int flags)
+void stm32_timer_open(EXO* exo, TIMER_NUM num, unsigned int flags)
 {
     //power up
     *(TIMER_POWER_PORT[num]) |= 1 << TIMER_POWER_BIT[num];
@@ -97,7 +97,7 @@ void stm32_timer_open(CORE *core, TIMER_NUM num, unsigned int flags)
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     if (num == TIM_1 || num == TIM_10)
     {
-        if (core->timer.shared1++ == 0)
+        if (exo->timer.shared1++ == 0)
         {
             if (flags & TIMER_IRQ_ENABLE)
             {
@@ -108,7 +108,7 @@ void stm32_timer_open(CORE *core, TIMER_NUM num, unsigned int flags)
     }
     else if (num == TIM_8 || num == TIM_13)
     {
-        if (core->timer.shared8++ == 0)
+        if (exo->timer.shared8++ == 0)
         {
             if (flags & TIMER_IRQ_ENABLE)
             {
@@ -126,7 +126,7 @@ void stm32_timer_open(CORE *core, TIMER_NUM num, unsigned int flags)
         }
 }
 
-void stm32_timer_close(CORE *core, TIMER_NUM num)
+void stm32_timer_close(EXO* exo, TIMER_NUM num)
 {
     //disable timer
     TIMER_REGS[num]->CR1 &= ~TIM_CR1_CEN;
@@ -135,12 +135,12 @@ void stm32_timer_close(CORE *core, TIMER_NUM num)
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     if (num == TIM_1 || num == TIM_10)
     {
-        if (--core->timer.shared1== 0)
+        if (--exo->timer.shared1== 0)
             NVIC_DisableIRQ(TIMER_VECTORS[num]);
     }
     else if (num == TIM_8 || num == TIM_13)
     {
-        if (--core->timer.shared8 == 0)
+        if (--exo->timer.shared8 == 0)
             NVIC_DisableIRQ(TIMER_VECTORS[num]);
     }
     else
@@ -151,14 +151,14 @@ void stm32_timer_close(CORE *core, TIMER_NUM num)
     *(TIMER_POWER_PORT[num]) &= ~(1 << TIMER_POWER_BIT[num]);
 }
 
-static unsigned int stm32_timer_get_clock(CORE* core, TIMER_NUM num)
+static unsigned int stm32_timer_get_clock(EXO* exo, TIMER_NUM num)
 {
     unsigned int ahb, apb;
-    ahb = stm32_power_get_clock_inside(core, POWER_BUS_CLOCK);
+    ahb = stm32_power_get_clock_inside(exo, POWER_BUS_CLOCK);
     if (TIMER_POWER_PORT[num] == APB2)
-        apb = stm32_power_get_clock_inside(core, STM32_CLOCK_APB2);
+        apb = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB2);
     else
-        apb = stm32_power_get_clock_inside(core, STM32_CLOCK_APB1);
+        apb = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB1);
     if (ahb != apb)
         apb <<= 1;
     return apb;
@@ -180,29 +180,29 @@ static void stm32_timer_setup_clk(TIMER_NUM num, unsigned int clk)
     TIMER_REGS[num]->ARR = cnt - 1;
 }
 
-static inline void stm32_timer_setup_hz(CORE* core, TIMER_NUM num, unsigned int hz)
+static inline void stm32_timer_setup_hz(EXO* exo, TIMER_NUM num, unsigned int hz)
 {
     unsigned int clk;
-    clk = stm32_timer_get_clock(core, num) / hz;
+    clk = stm32_timer_get_clock(exo, num) / hz;
     stm32_timer_setup_clk(num, clk);
 }
 
-static inline void stm32_timer_setup_us(CORE* core, TIMER_NUM num, unsigned int us)
+static inline void stm32_timer_setup_us(EXO* exo, TIMER_NUM num, unsigned int us)
 {
     unsigned int clk;
-    clk = stm32_timer_get_clock(core, num) / 1000000 * us;
+    clk = stm32_timer_get_clock(exo, num) / 1000000 * us;
     stm32_timer_setup_clk(num, clk);
 }
 
-void stm32_timer_start(CORE* core, TIMER_NUM num, TIMER_VALUE_TYPE value_type, unsigned int value)
+void stm32_timer_start(EXO* exo, TIMER_NUM num, TIMER_VALUE_TYPE value_type, unsigned int value)
 {
     switch (value_type)
     {
     case TIMER_VALUE_HZ:
-        stm32_timer_setup_hz(core, num, value);
+        stm32_timer_setup_hz(exo, num, value);
         break;
     case TIMER_VALUE_US:
-        stm32_timer_setup_us(core, num, value);
+        stm32_timer_setup_us(exo, num, value);
         break;
     default:
         stm32_timer_setup_clk(num, value);
@@ -281,14 +281,14 @@ static inline void stm32_timer_setup_channel(int num, int channel, TIMER_CHANNEL
 void hpet_isr(int vector, void* param)
 {
     TIMER_REGS[HPET_TIMER]->SR &= ~TIM_SR_UIF;
-    systime_hpet_timeout();
+    ksystime_hpet_timeout();
 }
 
 void hpet_start(unsigned int value, void* param)
 {
-    CORE* core = (CORE*)param;
+    EXO* exo = (EXO*)param;
     //find near prescaller
-    stm32_timer_start(core, HPET_TIMER, TIMER_VALUE_CLK, value * core->timer.hpet_uspsc);
+    stm32_timer_start(exo, HPET_TIMER, TIMER_VALUE_CLK, value * exo->timer.hpet_uspsc);
 }
 
 void hpet_stop(void* param)
@@ -298,52 +298,52 @@ void hpet_stop(void* param)
 
 unsigned int hpet_elapsed(void* param)
 {
-    CORE* core = (CORE*)param;
-    return (((TIMER_REGS[HPET_TIMER]->PSC) + 1)/ core->timer.hpet_uspsc) * ((TIMER_REGS[HPET_TIMER]->CNT) + 1);
+    EXO* exo = (EXO*)param;
+    return (((TIMER_REGS[HPET_TIMER]->PSC) + 1)/ exo->timer.hpet_uspsc) * ((TIMER_REGS[HPET_TIMER]->CNT) + 1);
 }
 
 #if !(STM32_RTC_DRIVER)
 void second_pulse_isr(int vector, void* param)
 {
     TIMER_REGS[SECOND_PULSE_TIMER]->SR &= ~TIM_SR_UIF;
-    systime_second_pulse();
+    ksystime_second_pulse();
 }
 #endif //STM32_RTC_DRIVER
 
 #if (POWER_MANAGEMENT)
-void stm32_timer_pm_event(CORE* core)
+void stm32_timer_pm_event(EXO* exo)
 {
-    core->timer.hpet_uspsc = stm32_timer_get_clock(core, HPET_TIMER) / 1000000;
+    exo->timer.hpet_uspsc = stm32_timer_get_clock(exo, HPET_TIMER) / 1000000;
 #if !(STM32_RTC_DRIVER)
     stm32_timer_stop(SECOND_PULSE_TIMER);
-    stm32_timer_start(core, SECOND_PULSE_TIMER, TIMER_VALUE_HZ, 1);
+    stm32_timer_start(exo, SECOND_PULSE_TIMER, TIMER_VALUE_HZ, 1);
 #endif //STM32_RTC_DRIVER
 }
 #endif //POWER_MANAGEMENT
 
-void stm32_timer_init(CORE *core)
+void stm32_timer_init(EXO* exo)
 {
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
-    core->timer.shared1 = core->timer.shared8 = 0;
+    exo->timer.shared1 = exo->timer.shared8 = 0;
 #endif
 
     //setup HPET
-    irq_register(TIMER_VECTORS[HPET_TIMER], hpet_isr, (void*)core);
-    core->timer.hpet_uspsc = stm32_timer_get_clock(core, HPET_TIMER) / 1000000;
-    stm32_timer_open(core, HPET_TIMER, TIMER_ONE_PULSE | TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
+    kirq_register(KERNEL_HANDLE, TIMER_VECTORS[HPET_TIMER], hpet_isr, (void*)exo);
+    exo->timer.hpet_uspsc = stm32_timer_get_clock(exo, HPET_TIMER) / 1000000;
+    stm32_timer_open(exo, HPET_TIMER, TIMER_ONE_PULSE | TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
     CB_SVC_TIMER cb_svc_timer;
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
-    systime_hpet_setup(&cb_svc_timer, core);
+    ksystime_hpet_setup(&cb_svc_timer, exo);
 #if !(STM32_RTC_DRIVER)
-    irq_register(TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)core);
-    stm32_timer_open(core, SECOND_PULSE_TIMER, TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
-    stm32_timer_start(core, SECOND_PULSE_TIMER, TIMER_VALUE_HZ, 1);
+    kirq_register(KERNEL_HANDLE, TIMER_VECTORS[SECOND_PULSE_TIMER], second_pulse_isr, (void*)exo);
+    stm32_timer_open(exo, SECOND_PULSE_TIMER, TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
+    stm32_timer_start(exo, SECOND_PULSE_TIMER, TIMER_VALUE_HZ, 1);
 #endif //STM32_RTC_DRIVER
 }
 
-void stm32_timer_request(CORE* core, IPC* ipc)
+void stm32_timer_request(EXO* exo, IPC* ipc)
 {
     TIMER_NUM num = (TIMER_NUM)ipc->param1;
     if (num >= TIMERS_COUNT)
@@ -354,13 +354,13 @@ void stm32_timer_request(CORE* core, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        stm32_timer_open(core, num, ipc->param2);
+        stm32_timer_open(exo, num, ipc->param2);
         break;
     case IPC_CLOSE:
-        stm32_timer_close(core, num);
+        stm32_timer_close(exo, num);
         break;
     case TIMER_START:
-        stm32_timer_start(core, num, (TIMER_VALUE_TYPE)ipc->param2, ipc->param3);
+        stm32_timer_start(exo, num, (TIMER_VALUE_TYPE)ipc->param2, ipc->param3);
         break;
     case TIMER_STOP:
         stm32_timer_stop(num);

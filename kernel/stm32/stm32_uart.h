@@ -17,13 +17,14 @@
 #include "../../userspace/stm32/stm32_driver.h"
 #include "stm32_config.h"
 #include "sys_config.h"
-#include "stm32_core.h"
+#include "stm32_exo.h"
 #include <stdbool.h>
 
 
 typedef struct {
     HANDLE tx_stream, tx_handle, rx_stream, rx_handle;
-    uint16_t tx_total, tx_chunk_pos, tx_chunk_size, rx_free;
+    uint16_t tx_size, tx_total, rx_free;
+//    uint16_t tx_total, tx_chunk_pos, tx_chunk_size, rx_free,/* */   tx_size;
     char tx_buf[UART_BUF_SIZE];
 } UART_STREAM;
 
@@ -55,7 +56,7 @@ typedef struct {
 #endif
 } UART_DRV;
 
-void stm32_uart_init(CORE* core);
-void stm32_uart_request(CORE* core, IPC* ipc);
+void stm32_uart_init(EXO* exo);
+void stm32_uart_request(EXO* exo, IPC* ipc);
 
 #endif // STM32_UART_H

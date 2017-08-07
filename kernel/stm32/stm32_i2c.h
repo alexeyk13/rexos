@@ -7,7 +7,7 @@
 #ifndef STM32_I2C_H
 #define STM32_I2C_H
 
-#include "stm32_core.h"
+#include "stm32_exo.h"
 #include "../../userspace/io.h"
 #include "../../userspace/i2c.h"
 #include "../../userspace/process.h"
@@ -38,7 +38,7 @@ typedef struct  {
     I2C* i2cs[I2C_COUNT];
 } I2C_DRV;
 
-void stm32_i2c_init(CORE* core);
-void stm32_i2c_request(CORE* core, IPC* ipc);
+void stm32_i2c_init(EXO* exo);
+void stm32_i2c_request(EXO* exo, IPC* ipc);
 
 #endif // STM32_I2C_H

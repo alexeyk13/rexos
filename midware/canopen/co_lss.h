@@ -4,6 +4,7 @@
 #define LSS_DELAY_MS     10
 
 #include "canopens.h"
+#include "io.h"
 
 //------------ LSS --------
 typedef enum {
@@ -17,19 +18,20 @@ typedef enum {
     LSS_SET_ID
 } LSS_STATE;
 
-
 typedef struct {
-    uint32_t id;
+    LSS_FIND req;
+    CO_IDENTITY lss_id;
     LSS_STATE state;
+    uint32_t curr_pos;// 0 - vendor, ... 3 - serial
     uint32_t bit_checked;
     bool response;
-    uint32_t remote_id;
+//    uint32_t remote_id;
 } LSS_t;
 
 
 void lss_request(CO* co);
 void lss_timeout(CO* co);
-void lss_init_find(CO* co, uint32_t bit_cnt, uint32_t lss_id);
+void lss_init_find(CO* co, IO* io);
 void lss_init_set_id(CO* co, uint32_t id);
 
 #endif //LSS_H

@@ -7,11 +7,11 @@
 #include "stm32_rtc.h"
 #include "stm32_config.h"
 #include "../../userspace/rtc.h"
-#include "stm32_core_private.h"
+#include "stm32_exo_private.h"
 #include "sys_config.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/time.h"
-#include "../../userspace/irq.h"
+#include "../kirq.h"
 #include "../../userspace/systime.h"
 #include "../../userspace/stdio.h"
 
@@ -251,7 +251,7 @@ void stm32_rtc_init()
     stm32_rtc_enable_second_pulse();
     stm32_enable_write_protection();
 
-    irq_register(RTC_IRQ, stm32_rtc_isr, NULL);
+    kirq_register(KERNEL_HANDLE, RTC_IRQ, stm32_rtc_isr, NULL);
     NVIC_EnableIRQ(RTC_IRQ);
     NVIC_SetPriority(RTC_IRQ, 13);
 }

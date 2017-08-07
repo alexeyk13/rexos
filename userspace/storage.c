@@ -56,6 +56,7 @@ static void storage_write_internal(HAL hal, HANDLE process, HANDLE user, IO* io,
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
     stack->flags = flags;
+    if(flags == STORAGE_FLAG_ERASE_ONLY) io->data_size = count;
     io_write(process, HAL_IO_REQ(hal, IPC_WRITE), user, io);
 }
 

@@ -5,7 +5,7 @@
 */
 
 #include "stm32_eep.h"
-#include "stm32_core_private.h"
+#include "stm32_exo_private.h"
 #include "stm32_config.h"
 #include "../../userspace/io.h"
 #include "../../userspace/stm32/stm32_driver.h"
@@ -17,7 +17,7 @@
 #define EEP_BASE                        0x08080000
 #define EEP_SIZE                        0x800
 
-static inline void stm32_eep_read(CORE* core, IPC* ipc)
+static inline void stm32_eep_read(EXO* exo, IPC* ipc)
 {
     if (ipc->param1 + ipc->param3 > EEP_SIZE)
     {
@@ -28,7 +28,7 @@ static inline void stm32_eep_read(CORE* core, IPC* ipc)
     ipc_post_ex(ipc, io->data_size);
 }
 
-static inline void stm32_eep_write(CORE* core, IPC* ipc)
+static inline void stm32_eep_write(EXO* exo, IPC* ipc)
 {
     unsigned int i;
     IO* io = (IO*)ipc->param2;
@@ -55,22 +55,22 @@ static inline void stm32_eep_write(CORE* core, IPC* ipc)
     ipc_post_ex(ipc, io->data_size);
 }
 
-bool stm32_eep_request(CORE* core, IPC* ipc)
+bool stm32_eep_request(EXO* exo, IPC* ipc)
 {
     bool need_post = false;
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
-        stm32_eep_read(core, ipc);
+        stm32_eep_read(exo, ipc);
         break;
     case IPC_WRITE:
-        stm32_eep_write(core, ipc);
+        stm32_eep_write(exo, ipc);
         break;
     }
     return need_post;
 }
 
-void stm32_eep_init(CORE* core)
+void stm32_eep_init(EXO* exo)
 {
     //unlock EEP memore for write access
     if (FLASH->PECR & FLASH_PECR_PELOCK)

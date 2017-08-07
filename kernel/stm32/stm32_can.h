@@ -1,8 +1,8 @@
 /*
-    RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
-    All rights reserved.
-*/
+ RExOS - embedded RTOS
+ Copyright (c) 2011-2017, Alexey Kramarenko
+ All rights reserved.
+ */
 
 #ifndef STM32_CAN_H
 #define STM32_CAN_H
@@ -17,7 +17,7 @@
 #include "../../userspace/can.h"
 #include "stm32_config.h"
 #include "sys_config.h"
-#include "stm32_core.h"
+#include "stm32_exo.h"
 #include <stdbool.h>
 
 #define MAX_TX_ERR_CNT     100
@@ -45,7 +45,7 @@ typedef struct {
     CAN_TX_QUEUE queue;
 } CAN_DRV;
 
-void stm32_can_init(CORE* core);
-void stm32_can_request(CORE* core, IPC* ipc);
+void stm32_can_init(EXO* exo);
+void stm32_can_request(EXO* exo, IPC* ipc);
 
 #endif // STM32_CAN_H

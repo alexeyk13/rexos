@@ -6,7 +6,7 @@
 
 #include "stm32_pin.h"
 #include "../../userspace/stm32/stm32_driver.h"
-#include "stm32_core_private.h"
+#include "stm32_exo_private.h"
 #include "sys_config.h"
 #include <string.h>
 
@@ -147,31 +147,31 @@ void stm32_gpio_disable_exti(GPIO_DRV* gpio, PIN pin)
     EXTI->FTSR &= ~(1ul << GPIO_PIN(pin));
 }
 
-void stm32_pin_init(CORE* core)
+void stm32_pin_init(EXO* exo)
 {
-    memset(&core->gpio, 0, sizeof (GPIO_DRV));
+    memset(&exo->gpio, 0, sizeof (GPIO_DRV));
 }
 
-void stm32_pin_request(CORE* core, IPC* ipc)
+void stm32_pin_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_CLOSE:
-        stm32_gpio_disable_pin(&core->gpio, (PIN)ipc->param1);
+        stm32_gpio_disable_pin(&exo->gpio, (PIN)ipc->param1);
         break;
     case IPC_OPEN:
 #if defined(STM32F1)
-        stm32_gpio_enable_pin(&core->gpio, (PIN)ipc->param1, (STM32_GPIO_MODE)ipc->param2, ipc->param3);
+        stm32_gpio_enable_pin(&exo->gpio, (PIN)ipc->param1, (STM32_GPIO_MODE)ipc->param2, ipc->param3);
 #else
-        stm32_gpio_enable_pin(&core->gpio, (PIN)ipc->param1, ipc->param2, (AF)ipc->param3);
+        stm32_gpio_enable_pin(&exo->gpio, (PIN)ipc->param1, ipc->param2, (AF)ipc->param3);
 #endif
         break;
 
     case STM32_GPIO_ENABLE_EXTI:
-        stm32_gpio_enable_exti(&core->gpio, (PIN)ipc->param1, ipc->param2);
+        stm32_gpio_enable_exti(&exo->gpio, (PIN)ipc->param1, ipc->param2);
         break;
     case STM32_GPIO_DISABLE_EXTI:
-        stm32_gpio_disable_exti(&core->gpio, (PIN)ipc->param1);
+        stm32_gpio_disable_exti(&exo->gpio, (PIN)ipc->param1);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

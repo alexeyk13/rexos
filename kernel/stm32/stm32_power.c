@@ -5,7 +5,7 @@
 */
 
 #include "stm32_power.h"
-#include "stm32_core_private.h"
+#include "stm32_exo_private.h"
 #include "stm32_rtc.h"
 #include "stm32_timer.h"
 #include "stm32_config.h"
@@ -328,7 +328,7 @@ static inline int stm32_power_get_pll_clock()
 }
 #endif //STM32F0
 
-int get_core_clock()
+int get_core_clock_internal()
 {
     switch (RCC->CFGR & (3 << 2))
     {
@@ -356,7 +356,7 @@ int get_ahb_clock()
         div = 1 << (((RCC->CFGR >> 4) & 7) + 1);
     if (div >= 32)
         div <<= 1;
-    return get_core_clock() / div;
+    return get_core_clock_internal() / div;
 }
 
 #if (MAX_APB2)
@@ -442,7 +442,7 @@ unsigned int stm32_power_get_clock(int type)
     switch (type)
     {
     case POWER_CORE_CLOCK:
-        res = get_core_clock();
+        res = get_core_clock_internal();
         break;
     case POWER_BUS_CLOCK:
         res = get_ahb_clock();
@@ -561,7 +561,7 @@ static void stm32_power_set_clock_source(STM32_CLOCK_SOURCE_TYPE src)
 }
 
 #if (POWER_MANAGEMENT)
-static void stm32_power_update_core_clock(CORE* core, STM32_CLOCK_SOURCE_TYPE src)
+static void stm32_power_update_core_clock(EXO* exo, STM32_CLOCK_SOURCE_TYPE src)
 {
     __disable_irq();
     //turn off all peripheral clocking
@@ -596,16 +596,16 @@ static void stm32_power_update_core_clock(CORE* core, STM32_CLOCK_SOURCE_TYPE sr
     RCC->APB1ENR = apb1;
     RCC->APB2ENR = apb2;
 
-    stm32_timer_pm_event(core);
+    stm32_timer_pm_event(exo);
     __enable_irq();
 }
 
-static inline void stm32_power_lo(CORE* core)
+static inline void stm32_power_lo(EXO* exo)
 {
 #if defined (STM32L0) || defined(STM32L1)
-    stm32_power_update_core_clock(core, STM32_CLOCK_SOURCE_MSI);
+    stm32_power_update_core_clock(exo, STM32_CLOCK_SOURCE_MSI);
 #else
-    stm32_power_update_core_clock(core, STM32_CLOCK_SOURCE_HSI);
+    stm32_power_update_core_clock(exo, STM32_CLOCK_SOURCE_HSI);
 #endif
 
     stm32_power_pll_off();
@@ -640,15 +640,15 @@ static inline void stm32_power_down()
     __WFI();
 }
 
-static inline void stm32_power_set_mode(CORE* core, POWER_MODE mode)
+static inline void stm32_power_set_mode(EXO* exo, POWER_MODE mode)
 {
     switch (mode)
     {
     case POWER_MODE_HIGH:
-        stm32_power_update_core_clock(core, STM32_CLOCK_SOURCE_PLL);
+        stm32_power_update_core_clock(exo, STM32_CLOCK_SOURCE_PLL);
         break;
     case POWER_MODE_LOW:
-        stm32_power_lo(core);
+        stm32_power_lo(exo);
         break;
     case POWER_MODE_STANDY:
         stm32_power_down();
@@ -661,30 +661,30 @@ static inline void stm32_power_set_mode(CORE* core, POWER_MODE mode)
 #endif //POWER_MANAGEMENT
 
 #if (STM32_DECODE_RESET)
-void decode_reset_reason(CORE* core)
-//static inline void decode_reset_reason(CORE* core)
+void decode_reset_reason(EXO* exo)
+//static inline void decode_reset_reason(EXO* exo)
 {
 #if !(POWER_MANAGEMENT) && !(STM32_RTC_DRIVER)
     RCC->APB1ENR |= RCC_APB1ENR_PWREN;
 #endif //!(POWER_MANAGEMENT) && !(STM32_RTC_DRIVER)
     if ((PWR->CSR & (PWR_CSR_WUF | PWR_CSR_SBF)) == (PWR_CSR_WUF | PWR_CSR_SBF))
-        core->power.reset_reason = RESET_REASON_WAKEUP;
+        exo->power.reset_reason = RESET_REASON_WAKEUP;
     else
     {
-        core->power.reset_reason = RESET_REASON_UNKNOWN;
+        exo->power.reset_reason = RESET_REASON_UNKNOWN;
         if (RCC->CSR & RCC_CSR_LPWRRSTF)
-            core->power.reset_reason = RESET_REASON_LOW_POWER;
+            exo->power.reset_reason = RESET_REASON_LOW_POWER;
         else if (RCC->CSR & (RCC_CSR_WWDGRSTF | RCC_CSR_WDGRSTF))
-            core->power.reset_reason = RESET_REASON_WATCHDOG;
+            exo->power.reset_reason = RESET_REASON_WATCHDOG;
         else if (RCC->CSR & RCC_CSR_SFTRSTF)
-            core->power.reset_reason = RESET_REASON_SOFTWARE;
+            exo->power.reset_reason = RESET_REASON_SOFTWARE;
         else if (RCC->CSR & RCC_CSR_PORRSTF)
-            core->power.reset_reason = RESET_REASON_POWERON;
+            exo->power.reset_reason = RESET_REASON_POWERON;
         else if (RCC->CSR & RCC_CSR_PADRSTF)
-            core->power.reset_reason = RESET_REASON_PIN_RST;
+            exo->power.reset_reason = RESET_REASON_PIN_RST;
 #if defined(STM32L0) || defined(STM32F0)
         else if (RCC->CSR & RCC_CSR_OBL)
-            core->power.reset_reason = RESET_REASON_OPTION_BYTES;
+            exo->power.reset_reason = RESET_REASON_OPTION_BYTES;
 #endif //STM32L0
     }
     PWR->CR |= PWR_CR_CWUF | PWR_CR_CSBF;
@@ -695,7 +695,7 @@ void decode_reset_reason(CORE* core)
 }
 #endif //STM32_DECODE_RESET
 
-void stm32_power_init(CORE* core)
+void stm32_power_init(EXO* exo)
 {
     RCC->APB1ENR = 0;
     RCC->APB2ENR = 0;
@@ -757,13 +757,13 @@ void stm32_power_init(CORE* core)
 #endif //POWER_MANAGEMENT
 
 #if (STM32_DECODE_RESET)
-    decode_reset_reason(core);
+    decode_reset_reason(exo);
 #endif //STM32_DECODE_RESET
 
     stm32_power_set_clock_source(STM32_CLOCK_SOURCE_PLL);
 }
 
-void stm32_power_request(CORE* core, IPC* ipc)
+void stm32_power_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {
@@ -772,13 +772,13 @@ void stm32_power_request(CORE* core, IPC* ipc)
         break;
 #if (STM32_DECODE_RESET)
     case STM32_POWER_GET_RESET_REASON:
-        ipc->param2 = core->power.reset_reason;
+        ipc->param2 = exo->power.reset_reason;
         break;
 #endif //STM32_DECODE_RESET
 #if (POWER_MANAGEMENT)
     case POWER_SET_MODE:
         //no return
-        stm32_power_set_mode(core, ipc->param1);
+        stm32_power_set_mode(exo, ipc->param1);
         break;
 #endif //POWER_MANAGEMENT
     default:

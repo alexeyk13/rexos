@@ -26,6 +26,17 @@ typedef enum {
     COT_LSS
 } CO_TIMER;
 
+typedef struct {
+    HANDLE timer;
+    uint32_t count;
+    CO_OD_ENTRY* cob_id[CO_MAX_TPDO];
+    CO_OD_ENTRY*  od_var[CO_MAX_TPDO];
+}CO_TPDO;
+typedef struct {
+    uint32_t count;
+    CO_OD_ENTRY* cob_id[CO_MAX_RPDO];
+    CO_OD_ENTRY*  od_var[CO_MAX_RPDO];
+}CO_RPDO;
 //------------------------
 typedef struct _CO{
     HANDLE can, device;
@@ -39,8 +50,21 @@ typedef struct _CO{
     CAN_STATE_t can_state;
 //canopen
     uint8_t id;
+    CO_OD_ENTRY* od;
+    uint32_t od_size;
     CO_STATE co_state;
     LSS_t lss;
+    CO_TPDO tpdo;
+    CO_RPDO rpdo;
 } CO;
+
+#pragma pack(push,1)
+typedef struct {
+    uint8_t cmd;
+    uint16_t index;
+    uint8_t subindex;
+    uint32_t data;
+}SDO_PKT;
+#pragma pack(pop)
 
 #endif //CANOPENS_PRIVATE_H

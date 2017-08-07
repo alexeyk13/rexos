@@ -146,6 +146,7 @@
 #define UARTS_COUNT         2
 #define IRQ_VECTORS_COUNT   32
 #define I2C_COUNT           1
+#define SPI_COUNT           2
 #endif
 
 #if defined(STM32F048x6)
@@ -209,6 +210,7 @@
 #define UARTS_COUNT         4
 #define IRQ_VECTORS_COUNT   32
 #define I2C_COUNT           2
+#define SPI_COUNT           2
 #endif
 
 #if defined(STM32F078xB)
@@ -877,6 +879,7 @@
 #endif //STM32L0 || STM32F0
 
 #if defined(STM32)
+#define EXODRIVERS
 #ifndef FLASH_BASE
 #define FLASH_BASE                0x08000000
 #endif

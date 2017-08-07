@@ -5,10 +5,9 @@
 */
 
 #include "stm32_i2c.h"
-#include "stm32_core_private.h"
-#include "../../userspace/stdlib.h"
-#include "../../userspace/stdio.h"
-#include "../../userspace/irq.h"
+#include "stm32_exo_private.h"
+#include "../kstdlib.h"
+#include "../kirq.h"
 #include "../../userspace/stm32/stm32_driver.h"
 
 #define I2C_CR2_NBYTES_Pos                                              16
@@ -30,11 +29,11 @@ static const uint8_t __I2C_POWER_PINS[] =                               {21};
 #define I2C_TIMING_FAST_SPEED                                           ((0 << 28) | (0x9 << 0) | (0x3 << 8) | (0x1 << 16) | (0x3 << 20))
 #define I2C_TIMING_FAST_PLUS_SPEED                                      ((0 << 28) | (0x6 << 0) | (0x3 << 8) | (0x0 << 16) | (0x1 << 20))
 
-void stm32_i2c_init(CORE* core)
+void stm32_i2c_init(EXO* exo)
 {
     int i;
     for (i = 0; i < I2C_COUNT; ++i)
-        core->i2c.i2cs[i] = NULL;
+        exo->i2c.i2cs[i] = NULL;
 }
 
 static void stm32_i2c_tx_byte(I2C_PORT port)
@@ -191,13 +190,13 @@ void stm32_i2c_on_isr(int vector, void* param)
 {
     I2C_PORT port;
     I2C* i2c;
-    CORE* core = param;
+    EXO* exo = param;
     port = I2C_1;
 #if (I2C_COUNT > 1)
     if (vector != __I2C_VECTORS[0])
         port = I2C_2;
 #endif
-    i2c = core->i2c.i2cs[port];
+    i2c = exo->i2c.i2cs[port];
 
     if (__I2C_REGS[port]->ISR & (I2C_ISR_ARLO | I2C_ISR_BERR))
     {
@@ -218,16 +217,16 @@ void stm32_i2c_on_isr(int vector, void* param)
     }
 }
 
-void stm32_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int speed)
+void stm32_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int speed)
 {
-    I2C* i2c = core->i2c.i2cs[port];
+    I2C* i2c = exo->i2c.i2cs[port];
     if (i2c)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
-    i2c = malloc(sizeof(I2C));
-    core->i2c.i2cs[port] = i2c;
+    i2c = kmalloc(sizeof(I2C));
+    exo->i2c.i2cs[port] = i2c;
     if (i2c == NULL)
     {
         error(ERROR_OUT_OF_MEMORY);
@@ -249,14 +248,14 @@ void stm32_i2c_open(CORE* core, I2C_PORT port, unsigned int mode, unsigned int s
     __I2C_REGS[port]->CR1 |= I2C_CR1_PE | I2C_CR1_ERRIE | I2C_CR1_TCIE | I2C_CR1_NACKIE |  I2C_CR1_RXIE | I2C_CR1_TXIE;
 
     //enable interrupt
-    irq_register(__I2C_VECTORS[port], stm32_i2c_on_isr, (void*)core);
+    kirq_register(KERNEL_HANDLE, __I2C_VECTORS[port], stm32_i2c_on_isr, (void*)exo);
     NVIC_EnableIRQ(__I2C_VECTORS[port]);
     NVIC_SetPriority(__I2C_VECTORS[port], 13);
 }
 
-void stm32_i2c_close(CORE* core, I2C_PORT port)
+void stm32_i2c_close(EXO* exo, I2C_PORT port)
 {
-    I2C* i2c = core->i2c.i2cs[port];
+    I2C* i2c = exo->i2c.i2cs[port];
     if (i2c == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
@@ -264,19 +263,19 @@ void stm32_i2c_close(CORE* core, I2C_PORT port)
     }
     //disable interrupt
     NVIC_DisableIRQ(__I2C_VECTORS[port]);
-    irq_unregister(__I2C_VECTORS[port]);
+    kirq_unregister(KERNEL_HANDLE, __I2C_VECTORS[port]);
 
     __I2C_REGS[port]->CR1 &= ~I2C_CR1_PE;
     RCC->APB1ENR &= ~(1 << __I2C_POWER_PINS[port]);
 
-    free(i2c);
-    core->i2c.i2cs[port] = NULL;
+    kfree(i2c);
+    exo->i2c.i2cs[port] = NULL;
 }
 
-static void stm32_i2c_io(CORE* core, IPC* ipc, bool read)
+static void stm32_i2c_io(EXO* exo, IPC* ipc, bool read)
 {
     I2C_PORT port = (I2C_PORT)ipc->param1;
-    I2C* i2c = core->i2c.i2cs[port];
+    I2C* i2c = exo->i2c.i2cs[port];
     if (i2c == NULL)
     {
         error(ERROR_NOT_CONFIGURED);
@@ -328,7 +327,7 @@ static void stm32_i2c_io(CORE* core, IPC* ipc, bool read)
     error(ERROR_SYNC);
 }
 
-void stm32_i2c_request(CORE* core, IPC* ipc)
+void stm32_i2c_request(EXO* exo, IPC* ipc)
 {
     I2C_PORT port = (I2C_PORT)ipc->param1;
     if (port >= I2C_COUNT)
@@ -339,16 +338,16 @@ void stm32_i2c_request(CORE* core, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        stm32_i2c_open(core, port, ipc->param2, ipc->param3);
+        stm32_i2c_open(exo, port, ipc->param2, ipc->param3);
         break;
     case IPC_CLOSE:
-        stm32_i2c_close(core, port);
+        stm32_i2c_close(exo, port);
         break;
     case IPC_WRITE:
-        stm32_i2c_io(core, ipc, false);
+        stm32_i2c_io(exo, ipc, false);
         break;
     case IPC_READ:
-        stm32_i2c_io(core, ipc, true);
+        stm32_i2c_io(exo, ipc, true);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

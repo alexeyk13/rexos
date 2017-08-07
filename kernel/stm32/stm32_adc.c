@@ -6,8 +6,9 @@
 
 #include "stm32_adc.h"
 #include "stm32_pin.h"
-#include "stm32_core_private.h"
+#include "stm32_exo_private.h"
 #include "sys_config.h"
+#include "kernel.h"
 
 #if defined (STM32F1)
 #define ADC_TSTAB                                                   11
@@ -17,15 +18,14 @@
 #define ADC_TSTAB                                                   10
 #endif //STM32F1
 
-#define STM32_ADC_CHANNEL_INVALID_SAMPLERATE                        0xff
 #define STM32_ADC_REGULAR_CHANNELS_COUNT                            16
 
 static const PIN ADC_PINS[STM32_ADC_REGULAR_CHANNELS_COUNT] =       {A0, A1, A2, A3, A4, A5, A6, A7, B0, B1, C0, C1, C2, C3, C4, C5};
 
 
-static inline void stm32_adc_open_device(CORE* core)
+static inline void stm32_adc_open_device(EXO* exo)
 {
-    if (core->adc.active)
+    if (exo->adc.active)
     {
         error(ERROR_ALREADY_CONFIGURED);
         return;
@@ -35,7 +35,11 @@ static inline void stm32_adc_open_device(CORE* core)
     //turn ADC on
 #ifdef STM32F1
     ADC1->CR2 |= ADC_CR2_ADON;
+#ifdef EXODRIVERS
+    exodriver_delay_us(ADC_TSTAB);
+#else
     sleep_us(ADC_TSTAB);
+#endif // EXODRIVERS
     //start self-calibration
     ADC1->CR2 |= ADC_CR2_CAL;
     while(ADC1->CR2 & ADC_CR2_CAL) {}
@@ -57,15 +61,15 @@ static inline void stm32_adc_open_device(CORE* core)
 
     ADC1->CFGR1 = ADC_CFGR1_AUTOFF | ADC_CFGR1_WAIT;
 #endif
-    core->adc.active = true;
+    exo->adc.active = true;
 }
 
-static inline void stm32_adc_open_channel(CORE* core, STM32_ADC_CHANNEL channel)
+static inline void stm32_adc_open_channel(EXO* exo, STM32_ADC_CHANNEL channel)
 {
     //enable pin
 #ifdef STM32F1
     if (channel < STM32_ADC_REGULAR_CHANNELS_COUNT)
-        stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), ADC_PINS[channel], stm32_pin_MODE_INPUT_ANALOG, false);
+        stm32_pin_request_inside(exo, HAL_REQ(HAL_PIN, IPC_OPEN), ADC_PINS[channel], STM32_GPIO_MODE_INPUT_ANALOG, false);
     else
         ADC1->CR2 |= ADC_CR2_TSVREFE;
 #elif defined STM32L0
@@ -82,20 +86,18 @@ static inline void stm32_adc_open_channel(CORE* core, STM32_ADC_CHANNEL channel)
         ADC->CCR |= ADC_CCR_VLCDEN;
         break;
     default:
-        stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_OPEN), ADC_PINS[channel], STM32_GPIO_MODE_ANALOG, AF0);
+        stm32_pin_request_inside(exo, HAL_REQ(HAL_PIN, IPC_OPEN), ADC_PINS[channel], STM32_GPIO_MODE_ANALOG, AF0);
     }
 #endif
 }
 
-static inline void stm32_adc_close_channel(CORE* core, STM32_ADC_CHANNEL channel)
+static inline void stm32_adc_close_channel(EXO* exo, STM32_ADC_CHANNEL channel)
 {
     //disable pin
     if (channel < STM32_ADC_REGULAR_CHANNELS_COUNT)
-        stm32_pin_request_inside(core, HAL_REQ(HAL_PIN, IPC_CLOSE), ADC_PINS[channel], 0, 0);
+        stm32_pin_request_inside(exo, HAL_REQ(HAL_PIN, IPC_CLOSE), ADC_PINS[channel], 0, 0);
     else
 #ifdef STM32F1
-        if (core->adc.channels[STM32_ADC_TEMP].samplerate == STM32_ADC_CHANNEL_INVALID_SAMPLERATE &&
-            core->adc.channels[STM32_ADC_VREF].samplerate == STM32_ADC_CHANNEL_INVALID_SAMPLERATE )
             ADC1->CR2 &= ~ADC_CR2_TSVREFE;
 #elif defined STM32L0
         switch (channel)
@@ -115,9 +117,9 @@ static inline void stm32_adc_close_channel(CORE* core, STM32_ADC_CHANNEL channel
 #endif
 }
 
-static inline void stm32_adc_close_device(CORE* core)
+static inline void stm32_adc_close_device(EXO* exo)
 {
-    if (!core->adc.active)
+    if (!exo->adc.active)
     {
         error(ERROR_NOT_CONFIGURED);
         return;
@@ -135,7 +137,7 @@ static inline void stm32_adc_close_device(CORE* core)
 #endif
     //disable clock
     RCC->APB2ENR &= ~RCC_APB2ENR_ADC1EN;
-    core->adc.active = false;
+    exo->adc.active = false;
 }
 
 #ifdef STM32F1
@@ -173,7 +175,7 @@ static inline void stm32_adc_set_sample_rate(int chan, int sample_rate)
 }
 #endif //STM32F1
 
-static int stm32_adc_get(CORE* core, STM32_ADC_CHANNEL channel, unsigned int samplerate)
+static int stm32_adc_get(EXO* exo, STM32_ADC_CHANNEL channel, unsigned int samplerate)
 {
 #ifdef STM32F1
     stm32_adc_set_sample_rate(channel, samplerate);
@@ -198,24 +200,24 @@ static int stm32_adc_get(CORE* core, STM32_ADC_CHANNEL channel, unsigned int sam
 #endif
 }
 
-void stm32_adc_request(CORE* core, IPC* ipc)
+void stm32_adc_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {
     case ADC_GET:
-        ipc->param2 = stm32_adc_get(core, ipc->param1, ipc->param2);
+        ipc->param2 = stm32_adc_get(exo, ipc->param1, ipc->param2);
         break;
     case IPC_OPEN:
         if (ipc->param1 == STM32_ADC_DEVICE)
-            stm32_adc_open_device(core);
+            stm32_adc_open_device(exo);
         else
-            stm32_adc_open_channel(core, ipc->param1);
+            stm32_adc_open_channel(exo, ipc->param1);
         break;
     case IPC_CLOSE:
         if (ipc->param1 == STM32_ADC_DEVICE)
-            stm32_adc_close_device(core);
+            stm32_adc_close_device(exo);
         else
-            stm32_adc_close_channel(core, ipc->param1);
+            stm32_adc_close_channel(exo, ipc->param1);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);
@@ -223,10 +225,7 @@ void stm32_adc_request(CORE* core, IPC* ipc)
     }
 }
 
-void stm32_adc_init(CORE* core)
+void stm32_adc_init(EXO* exo)
 {
-    int i;
-    core->adc.active = false;
-    for (i = 0; i < ADC_CHANNELS_COUNT; ++i)
-        core->adc.channels[i].samplerate = STM32_ADC_CHANNEL_INVALID_SAMPLERATE;
+    exo->adc.active = false;
 }
