@@ -4,11 +4,11 @@
     All rights reserved.
 */
 
-#ifndef STM32_CORE_PRIVATE_H
-#define STM32_CORE_PRIVATE_H
+#ifndef STM32_EXO_PRIVATE_H
+#define STM32_EXO_PRIVATE_H
 
 #include "stm32_config.h"
-#include "stm32_core.h"
+#include "stm32_exo.h"
 #include "stm32_pin.h"
 #include "stm32_timer.h"
 #include "stm32_power.h"
@@ -16,16 +16,20 @@
 #include "stm32_can.h"
 #include "stm32_dac.h"
 #include "stm32_adc.h"
+#include "stm32_flash.h"
 #if (STM32_I2C_DRIVER)
-#include "stm32_i2c.h"
+    #include "stm32_i2c.h"
 #endif //STM32_I2C_DRIVER
+#if (STM32_SPI_DRIVER)
+    #include "stm32_spi.h"
+#endif //STM32_SPI_DRIVER
 #ifdef STM32F10X_CL
 #include "stm32_otg.h"
 #else
 #include "stm32_usb.h"
 #endif
 
-typedef struct _CORE {
+typedef struct _EXO {
     GPIO_DRV gpio;
     TIMER_DRV timer;
     POWER_DRV power;
@@ -35,6 +39,9 @@ typedef struct _CORE {
 #if (STM32_CAN_DRIVER)
     CAN_DRV can;
 #endif //STM32_CAN_DRIVER
+#if (STM32_SPI_DRIVER)
+    SPI_DRV spi;
+#endif //STM32_SPI_DRIVER
 #if (STM32_ADC_DRIVER)
     ADC_DRV adc;
 #endif //STM32_ADC_DRIVER
@@ -44,9 +51,12 @@ typedef struct _CORE {
 #if (STM32_I2C_DRIVER)
     I2C_DRV i2c;
 #endif //STM32_I2C_DRIVER
+#if (STM32_FLASH_DRIVER)
+    FLASH_DRV flash;
+#endif //STM32_FLASH_DRIVER
 #if (STM32_USB_DRIVER)
     USB_DRV usb;
 #endif //STM32_USB_DRIVER
-}CORE;
+}EXO;
 
-#endif // STM32_CORE_PRIVATE_H
+#endif // STM32_EXO_PRIVATE_H
