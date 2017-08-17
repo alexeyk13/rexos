@@ -242,7 +242,8 @@ SVC_Handler:
     ldr   r0, =0xfffffffd
     bx    r0
 #else
-    ldr   pc, =0xfffffffd
+    ldr   pc, SW
+SW: .word LR_TO_PROCESS_PSP
 #endif
 
     .thumb_func
@@ -272,7 +273,7 @@ PendSV_Handler:
 #else
     stmdb  r0!, {r4-r11}                           @save other context on stack
 #endif
-        str   r0, [r3, KPROCESS_SP]                     @save sp on process->sp
+    str   r0, [r3, KPROCESS_SP]                     @save sp on process->sp
 
 load_context:
     ldr   r2, [r1, NEXT_PROCESS]
@@ -307,7 +308,7 @@ context_exit:
     ldr   r0, =0xfffffffd
     bx    r0
 #else
-    ldr   pc, =0xfffffffd
+    ldr   pc, SW
 #endif
 
 halt_core:

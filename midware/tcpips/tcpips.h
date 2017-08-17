@@ -15,6 +15,7 @@
 typedef struct _TCPIPS TCPIPS;
 
 extern const IP __LOCALHOST;
+extern const IP __BROADCAST;
 
 #define TCPIP_DYNAMIC_RANGE_LO                      49152
 #define TCPIP_DYNAMIC_RANGE_HI                      65535

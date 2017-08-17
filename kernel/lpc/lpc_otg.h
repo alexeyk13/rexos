@@ -13,6 +13,7 @@
 #include "../../userspace/usb.h"
 #include "lpc_config.h"
 #include "lpc_exo.h"
+#include "sys_config.h"
 
 typedef struct {
     IO* io;

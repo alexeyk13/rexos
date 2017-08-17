@@ -43,7 +43,7 @@ void* kmalloc_internal(size_t size)
     int idx;
     void* res;
     KPOOL* kpool;
-    for (idx = 0; idx < karray_size_internal(__KERNEL->pools); ++idx)
+    for (idx = karray_size_internal(__KERNEL->pools) - 1; idx >= 0; --idx)
     {
         kpool = kpool_at(idx);
         res = ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&kpool_at(idx)->pool, size, idx == 0 ? get_sp() : (void*)(kpool->base + kpool->size));
@@ -78,7 +78,7 @@ void* krealloc_internal(void* ptr, size_t size)
     if (res != NULL)
         return res;
 
-    for (idx = 0; idx < karray_size_internal(__KERNEL->pools); ++idx)
+    for (idx = karray_size_internal(__KERNEL->pools) - 1; idx >= 0; --idx)
     {
         if (idx == idx_cur)
             continue;

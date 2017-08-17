@@ -18,11 +18,13 @@
 #include "routes.h"
 #include "ips.h"
 #include "udps.h"
+#include "dhcps.h"
 #include "tcps.h"
 
 #define FRAME_MAX_SIZE                          (TCPIP_MTU + sizeof(MAC_HEADER) + sizeof(IP_STACK))
 
 const IP __LOCALHOST =                          {{127, 0, 0, 1}};
+const IP __BROADCAST =                          {{255, 255, 255, 255}};
 
 #if (TCPIP_DEBUG)
 static void print_conn_status(TCPIPS* tcpips, const char* head, ETH_CONN_TYPE conn)
@@ -296,6 +298,12 @@ void tcpips_init(TCPIPS* tcpips)
 #if (UDP)
     udps_init(tcpips);
 #endif //UDP
+#if (DHCPS)
+    dhcps_init(tcpips);
+#endif //UDP
+#if (DNSS)
+    dnss_init(tcpips);
+#endif //UDP
     tcps_init(tcpips);
 }
 
@@ -402,6 +410,16 @@ void tcpips_main()
             udps_request(&tcpips, &ipc);
             break;
 #endif //UDP
+#if (DNSS)
+        case HAL_DNS:
+            dnss_request(&tcpips, &ipc);
+            break;
+#endif //DNSS
+#if (DHCPS)
+        case HAL_DHCPS:
+            dhcps_request(&tcpips, &ipc);
+            break;
+#endif //DHCPS
         case HAL_TCP:
             tcps_request(&tcpips, &ipc);
             break;

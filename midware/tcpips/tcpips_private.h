@@ -18,6 +18,8 @@
 #include "icmps.h"
 #include "udps.h"
 #include "tcps.h"
+#include "dnss.h"
+#include "dhcps.h"
 #include "sys_config.h"
 
 typedef struct _TCPIPS {
@@ -40,6 +42,12 @@ typedef struct _TCPIPS {
 #if (UDP)
     UDPS udps;
 #endif //UDP
+#if (DNSS)
+    _DNSS dnss;
+#endif //DNSS
+#if (DHCPS)
+    _DHCPS dhcps;
+#endif //DHCP
     TCPS tcps;
 } TCPIPS;
 

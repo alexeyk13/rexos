@@ -23,6 +23,7 @@ typedef struct {
 uint16_t udp_checksum(void* buf, unsigned int size, const IP* src, const IP* dst);
 HANDLE udp_listen(HANDLE tcpip, unsigned short port);
 HANDLE udp_connect(HANDLE tcpip, unsigned short port, const IP* remote_addr);
+void udp_close_connect(HANDLE tcpip, HANDLE handle);
 #define udp_read(tcpip, handle, io, size)                           io_read((tcpip), HAL_IO_REQ(HAL_UDP, IPC_READ), (handle), (io), (size))
 #define udp_read_sync(tcpip, handle, io, size)                      io_read_sync((tcpip), HAL_IO_REQ(HAL_UDP, IPC_READ), (handle), (io), (size))
 

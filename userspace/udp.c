@@ -50,6 +50,11 @@ HANDLE udp_connect(HANDLE tcpip, unsigned short port, const IP* remote_addr)
     return get_handle(tcpip, HAL_REQ(HAL_UDP, IPC_OPEN), port, remote_addr->u32.ip, 0);
 }
 
+void udp_close_connect(HANDLE tcpip, HANDLE handle)
+{
+    ack(tcpip, HAL_REQ(HAL_UDP, IPC_CLOSE), handle, 0, 0);
+}
+
 void udp_write_listen(HANDLE tcpip, HANDLE handle, IO* io, const IP* remote_addr, unsigned short remote_port)
 {
     UDP_STACK* udp_stack = io_push(io, sizeof(UDP_STACK));

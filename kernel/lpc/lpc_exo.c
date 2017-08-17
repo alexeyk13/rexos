@@ -108,9 +108,9 @@ void exodriver_init()
 #ifdef AHB_SRAM_ONE_PIECE
     //AHB SRAM1 + SRAM2/ETB SRAM. Shared with USB
 #if (LPC_USB_USE_BOTH)
-    kstdlib_add_pool(AHB_SRAM1_BASE, AHB_SRAM1_SIZE + AHB_SRAM2_SIZE - 2048 * 2);
+    kstdlib_add_pool(AHB_SRAM1_BASE, AHB_SRAM1_SIZE + AHB_SRAM2_SIZE - (USB_EP_COUNT_MAX | 1) * 2048);
 #else
-    kstdlib_add_pool(AHB_SRAM1_BASE, AHB_SRAM1_SIZE + AHB_SRAM2_SIZE - 2048);
+    kstdlib_add_pool(AHB_SRAM1_BASE, AHB_SRAM1_SIZE + AHB_SRAM2_SIZE - (USB_EP_COUNT_MAX >> 1) * 2048);
 #endif //LPC_USB_USE_BOTH
 #else
     //AHB SRAM1

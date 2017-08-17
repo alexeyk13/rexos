@@ -169,9 +169,16 @@
 #define ICMP_ECHO                                           1
 
 //----------------------------- TCP/IP UDP --------------------------------------------
-#define UDP                                                 0
+#define UDP                                                 1
+#define UDP_BROADCAST                                       1  // need for DHCP
+
+#define DNSS                                                1
+#define DHCPS                                               1
+
 #define UDP_DEBUG                                           0
 #define UDP_DEBUG_FLOW                                      0
+#define DNSS_DEBUG                                          1
+#define DHCPS_DEBUG                                         1
 
 //----------------------------- TCP/IP TCP --------------------------------------------
 #define TCP_DEBUG                                           1
@@ -205,12 +212,15 @@
 #define TLS_PROCESS_SIZE                                    3048
 #define TLS_PROCESS_PRIORITY                                160
 
-#define TLS_DEBUG                                           1
 #define TLS_DEBUG_REQUESTS                                  1
-#define TLS_DEBUG_FLOW                                      0
+#define TLS_DEBUG_ERRORS                                    1
 //DON'T FORGET TO REMOVE IN PRODUCTION!!!
 #define TLS_DEBUG_SECRETS                                   0
 #define TLS_IO_SIZE                                         1460
+
+//at least one must be selected
+#define TLS_RSA_WITH_AES_128_CBC_SHA_CIPHER_SUITE           1
+#define TLS_RSA_WITH_AES_128_CBC_SHA256_CIPHER_SUITE        1
 //--------------------------------- SDMMC ---------------------------------------------
 #define SDMMC_DEBUG                                         1
 
@@ -231,5 +241,13 @@
 
 //01.09.2016 as default if not rtc used
 #define VFS_BASE_DATE                                       736207
+
+//---------------------------- CANopen server---------------------------------------------
+#define CO_PROCESS_SIZE                                    800
+#define CO_PROCESS_PRIORITY                                161
+
+#define CO_LSS_MASTER                                      0
+
+#define CO_DEBUG                                           1
 
 #endif // SYS_CONFIG_H
