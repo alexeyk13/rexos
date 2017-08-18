@@ -35,7 +35,7 @@ typedef struct {
                                                                                             Other bits are RFU */
     uint32_t dwProtocols;                                                               /* Upper Word- is RFU = 0000h
                                                                                            Lower Word- Encodes the supported protocol types.
-                                                                                           A вЂ�1вЂ™ in a given bit position indicates support for the
+                                                                                           A '1' in a given bit position indicates support for the
                                                                                            associated ISO protocol.
                                                                                            0001h = Protocol T=0
                                                                                            0002h = Protocol T=1
@@ -73,7 +73,7 @@ typedef struct {
     uint32_t dwMaxIFSD;                                                                 /* Indicates the maximum IFSD supported by CCID for protocol T=1 */
     uint32_t dwSynchProtocol;                                                           /* Upper Word- is RFU = 0000h
                                                                                            Lower Word- encodes the supported protocotypes.
-                                                                                           A вЂ�1вЂ™ in a given bit position indicates supporfor the associated protocol.
+                                                                                           A '1' in a given bit position indicates supporfor the associated protocol.
                                                                                            - 0001h indicates support for the 2-wire protocol 1
                                                                                            - 0002h indicates support for the 3-wire protocol 1
                                                                                            - 0004h indicates support for the I2C protocol 1
@@ -275,10 +275,10 @@ typedef enum {
 #define CCID_EXT_APDU_NULL                              0x10
 
 typedef struct {
-    uint8_t bmFindexDindex;                             /* B7-4 вЂ“ FI вЂ“ Index into the table 7 in ISO/IEC  7816-3:1997 selecting a clock rate conversion factor
-                                                           B3-0 вЂ“ DI - Index into the table 8 in ISO/IEC  7816-3:1997 selecting a baud rate conversion factor */
-    uint8_t bmTCCKST0;                                  /* For T=0 ,B0 вЂ“ 0b, B7-2 вЂ“ 000000b
-                                                           B1 вЂ“ Convention used (b1=0 for direct, b1=1 for inverse) */
+    uint8_t bmFindexDindex;                             /* B7-4 - FI - Index into the table 7 in ISO/IEC  7816-3:1997 selecting a clock rate conversion factor
+                                                           B3-0 - DI - Index into the table 8 in ISO/IEC  7816-3:1997 selecting a baud rate conversion factor */
+    uint8_t bmTCCKST0;                                  /* For T=0 ,B0 - 0b, B7-2 - 000000b
+                                                           B1 - Convention used (b1=0 for direct, b1=1 for inverse) */
     uint8_t bGuardTimeT0;                               /* Extra Guardtime between two characters. Add 0 to 254 etu to the normal guardtime of 12etu.
                                                            FFh is the same as 00h */
     uint8_t bWaitingIntegerT0;                          /* WI for T=0 used to define WWT */
@@ -290,11 +290,11 @@ typedef struct {
 } CCID_T0_PARAMS;
 
 typedef struct {
-    uint8_t bmFindexDindex;                             /* B7-4 вЂ“ FI вЂ“ Index into the table 7 in ISO/IEC  7816-3:1997 selecting a clock rate conversion factor
-                                                           B3-0 вЂ“ DI - Index into the table 8 in ISO/IEC  7816-3:1997 selecting a baud rate conversion factor */
-    uint8_t bmTCCKST1;                                  /* For T=1, B7-2 вЂ“ 000100b
-                                                           B0 вЂ“ Checksum type (b0=0 for LRC, b0=1 for CRC
-                                                           B1 вЂ“ Convention used (b1=0 for direct, b1=1 for inverse) */
+    uint8_t bmFindexDindex;                             /* B7-4 - FI - Index into the table 7 in ISO/IEC  7816-3:1997 selecting a clock rate conversion factor
+                                                           B3-0 - DI - Index into the table 8 in ISO/IEC  7816-3:1997 selecting a baud rate conversion factor */
+    uint8_t bmTCCKST1;                                  /* For T=1, B7-2 - 000100b
+                                                           B0 - Checksum type (b0=0 for LRC, b0=1 for CRC
+                                                           B1 - Convention used (b1=0 for direct, b1=1 for inverse) */
     uint8_t bGuardTimeT1;                               /* Extra Guardtime (0 to 254 etu between two characters). If value is FFh, then guardtime is reduced by 1 */
     uint8_t bmWaitingIntegersT1;                        /* B7-4 = BWI
                                                            B3-0 = CWI */
