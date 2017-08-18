@@ -253,14 +253,15 @@ typedef enum {
 #define CCID_SLOT_ERROR_SLOT_BUSY                       0xe0
 #define CCID_SLOT_ERROR_CMD_NOT_SUPPORTED               0x00
 
-#define CCID_SLOT_STATUS_ICC_PRESENT_AND_ACTIVE         (0 << 0)
-#define CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE       (1 << 0)
-#define CCID_SLOT_STATUS_ICC_NOT_PRESENT                (2 << 0)
-#define CCID_SLOT_STATUS_ICC_CHANGED                    (1 << 1)
+#define CCID_SLOT_ICC_STATE_CHANGED                     (1 << 1)
 
-#define CCID_SLOT_STATUS_COMMAND_NO_ERROR               (0 << 6)
-#define CCID_SLOT_STATUS_COMMAND_FAIL                   (1 << 6)
-#define CCID_SLOT_STATUS_COMMAND_TIME_EXTENSION         (2 << 6)
+#define CCID_SLOT_STATUS_ICC_PRESENT_AND_ACTIVE         (0)
+#define CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE       (1)
+#define CCID_SLOT_STATUS_ICC_NOT_PRESENT                (2)
+
+#define CCID_SLOT_STATUS_COMMAND_NO_ERROR               (0)
+#define CCID_SLOT_STATUS_COMMAND_FAIL                   (1)
+#define CCID_SLOT_STATUS_COMMAND_TIME_EXTENSION         (2)
 
 #define CCID_CLOCK_STATUS_RUNNING                       0
 #define CCID_CLOCK_STATUS_STOPPED_H                     1

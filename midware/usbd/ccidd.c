@@ -15,12 +15,19 @@ typedef enum {
     CCIDD_STATE_RX,
     CCIDD_STATE_CARD_REQUEST,
     CCIDD_STATE_TX,
+#if (USBD_CCID_WTX_TIMEOUT_MS)
+    CCIDD_STATE_WTX,
+#endif // USBD_CCID_WTX_TIMEOUT_MS
     CCIDD_STATE_TX_ZLP
 } CCIDD_STATE;
 
 typedef struct {
     IO* io;
     IO* status_io;
+#if(USBD_CCID_WTX_TIMEOUT_MS)
+    IO* wtx_io;
+    HANDLE wtx_timer;
+#endif // USBD_CCID_WTX_TIMEOUT_MS
     CCIDD_STATE state;
     uint16_t data_ep_size;
     uint8_t data_ep, status_ep, iface, seq, status_busy, slot_status, aborting;
@@ -28,6 +35,11 @@ typedef struct {
 
 static void ccidd_destroy(CCIDD* ccidd)
 {
+#if (USBD_CCID_WTX_TIMEOUT_MS)
+    timer_stop(ccidd->wtx_timer, USBD_IFACE(ccidd->iface, 0), HAL_USBD_IFACE);
+    timer_destroy(ccidd->wtx_timer);
+    io_destroy(ccidd->wtx_io);
+#endif // USBD_CCID_WTX_TIMEOUT_MS
     io_destroy(ccidd->io);
     io_destroy(ccidd->status_io);
     free(ccidd);
@@ -52,7 +64,7 @@ static void ccidd_notify_slot_change(USBD* usbd, CCIDD* ccidd)
         notify = io_data(ccidd->status_io);
 
         notify->bMessageType = RDR_TO_PC_NOTIFY_SLOT_CHANGE;
-        notify->bmSlotICCState = CCID_SLOT_STATUS_ICC_CHANGED;
+        notify->bmSlotICCState = CCID_SLOT_ICC_STATE_CHANGED;
 
         if (ccidd->slot_status != CCID_SLOT_STATUS_ICC_NOT_PRESENT)
             notify->bmSlotICCState |= CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE;
@@ -104,6 +116,24 @@ static void ccidd_send_data_block(USBD* usbd, CCIDD* ccidd, uint8_t error, uint8
     usbd_usb_ep_write(usbd, USB_EP_IN | ccidd->data_ep, ccidd->io);
     ccidd->state = CCIDD_STATE_TX;
 }
+
+#if (USBD_CCID_WTX_TIMEOUT_MS)
+static void ccidd_send_wtx(USBD* usbd, CCIDD* ccidd, uint8_t seq, uint8_t timeout)
+{
+    io_reset(ccidd->wtx_io);
+    CCID_SLOT_STATUS* msg = io_data(ccidd->wtx_io);
+    msg->bMessageType = RDR_TO_PC_SLOT_STATUS;
+    msg->dwLength = 0;
+    msg->bSlot = 0;
+    msg->bSeq = seq;
+    msg->bStatus = ccidd_slot_status_register(ccidd, CCID_SLOT_STATUS_COMMAND_TIME_EXTENSION);
+    msg->bError = timeout;
+    msg->bClockStatus = CCID_CLOCK_STATUS_RUNNING;
+    ccidd->wtx_io->data_size = sizeof(CCID_SLOT_STATUS);
+    usbd_usb_ep_write(usbd, USB_EP_IN | ccidd->data_ep, ccidd->wtx_io);
+    ccidd->state = CCIDD_STATE_WTX;
+}
+#endif // USBD_CCID_WTX_TIMEOUT_MS
 
 static void ccidd_send_params(USBD* usbd, CCIDD* ccidd, uint8_t error, uint8_t status, CCID_PROTOCOL protocol)
 {
@@ -190,6 +220,16 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 
             ccidd->state = CCIDD_STATE_IDLE;
             ccidd->aborting = false;
+
+#if (USBD_CCID_WTX_TIMEOUT_MS)
+            ccidd->wtx_io = io_create(sizeof(CCID_SLOT_STATUS));
+            ccidd->wtx_timer = timer_create(USBD_IFACE(ccidd->iface, 0), HAL_USBD_IFACE);
+            if(ccidd->wtx_io == NULL || ccidd->wtx_timer == INVALID_HANDLE)
+            {
+                free(ccidd);
+                continue;
+            }
+#endif // USBD_CCID_WTX_TIMEOUT_MS
 
 #if (USBD_CCID_DEBUG_REQUESTS)
             printf("Found USB CCID device class, data: EP%d, iface: %d\n", ccidd->data_ep, ccidd->iface);
@@ -316,7 +356,16 @@ static inline void ccidd_xfer_block(USBD* usbd, CCIDD* ccidd)
 #if (USBD_CCID_DEBUG_IO)
     usbd_dump(io_data(ccidd->io) + sizeof(CCID_MESSAGE), msg->dwLength, "CCIDD C-APDU");
 #endif
-    ccidd_user_request(usbd, ccidd, USB_CCID_APDU, msg->msg_specific[0]);
+
+    if(ccidd->slot_status == CCID_SLOT_STATUS_ICC_PRESENT_AND_ACTIVE)
+    {
+#if (USBD_CCID_WTX_TIMEOUT_MS)
+        timer_start_ms(ccidd->wtx_timer, USBD_CCID_WTX_TIMEOUT_MS);
+#endif
+        ccidd_user_request(usbd, ccidd, USB_CCID_APDU, msg->msg_specific[0]);
+    }
+    else
+        ccidd_send_data_block(usbd, ccidd, CCID_SLOT_ERROR_XFR_OVERRUN, CCID_SLOT_STATUS_COMMAND_FAIL);
 }
 
 static inline void ccidd_get_params(USBD* usbd, CCIDD* ccidd)
@@ -432,6 +481,11 @@ static void ccidd_tx_complete(USBD* usbd, CCIDD* ccidd)
 {
     switch (ccidd->state)
     {
+#if (USBD_CCID_WTX_TIMEOUT_MS)
+    case CCIDD_STATE_WTX:
+        ccidd->state = CCIDD_STATE_IDLE;
+        return;
+#endif // USBD_CCID_WTX_TIMEOUT_MS
     case CCIDD_STATE_TX:
         if ((ccidd->io->data_size % ccidd->data_ep_size) == 0)
         {
@@ -472,6 +526,17 @@ static inline void ccidd_card_removed(USBD* usbd, CCIDD* ccidd)
     }
 }
 #endif //USBD_CCID_REMOVABLE_CARD
+
+#if (USBD_CCID_WTX_TIMEOUT_MS)
+static inline void ccidd_card_wtx(USBD* usbd, CCIDD* ccidd)
+{
+#if (USBD_CCID_DEBUG_REQUESTS)
+    printf("CCIDD: WTX\n");
+#endif //USBD_CCID_DEBUG_REQUESTS
+    ccidd_send_wtx(usbd, ccidd, ccidd->seq, 0x10);
+    timer_start_ms(ccidd->wtx_timer, USBD_CCID_WTX_TIMEOUT_MS);
+}
+#endif // USBD_CCID_WTX_TIMEOUT_MS
 
 static inline void ccidd_power_on_response(USBD* usbd, CCIDD* ccidd, int param3)
 {
@@ -562,6 +627,9 @@ static inline void ccidd_user_response(USBD* usbd, CCIDD* ccidd, IPC* ipc)
         ccidd_power_on_response(usbd, ccidd, ipc->param3);
         break;
     case USB_CCID_APDU:
+#if (USBD_CCID_WTX_TIMEOUT_MS)
+        timer_stop(ccidd->wtx_timer, USBD_IFACE(ccidd->iface, 0), HAL_USBD_IFACE);
+#endif // USBD_CCID_WTX_ENABLE
         ccidd_data_block_response(usbd, ccidd, ipc->param3);
         break;
     case USB_CCID_GET_PARAMS:
@@ -588,6 +656,11 @@ void ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
             ccidd_card_removed(usbd, ccidd);
             break;
 #endif //USBD_CCID_REMOVABLE_CARD
+#if (USBD_CCID_WTX_TIMEOUT_MS)
+        case IPC_TIMEOUT:
+            ccidd_card_wtx(usbd, ccidd);
+            break;
+#endif
         case USB_CCID_POWER_ON:
         case USB_CCID_POWER_OFF:
         case USB_CCID_GET_PARAMS:
