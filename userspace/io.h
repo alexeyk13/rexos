@@ -9,6 +9,7 @@
 
 #include "types.h"
 #include "ipc.h"
+#include "kipc.h"
 
 #pragma pack(push, 1)
 
@@ -207,6 +208,8 @@ IO* io_create(unsigned int size);
     \retval none.
 */
 #define io_complete_ex(process, cmd, handle, io, param3)                ipc_post_inline((process), (cmd), (handle), (unsigned int)(io), (param3))
+
+#define io_complete_ex_exo(process, cmd, handle, io, param3)            kipc_post_exo((process), (cmd), (handle), (unsigned int)(io), (unsigned int)(param3))
 
 /**
     \brief wait for async IO completion

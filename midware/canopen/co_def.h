@@ -55,6 +55,19 @@
 #define SDO_BSS_END_DOWNLOAD_RESPONSE      1
 #define SDO_BSS_DOWNLOAD_RESPONSE          2
 
+
+#define SDO_CMD_MSK                   0xE0
+#define SDO_CMD_DOWNLOAD_REQ         (1 << 5)
+#define SDO_CMD_DOWNLOAD_RESP        (3 << 5)
+#define SDO_CMD_UPLOAD_REQ           (2 << 5)
+#define SDO_CMD_UPLOAD_RESP          (2 << 5)
+#define SDO_CMD_ABORT                (4 << 5)
+
+#define SDO_ERROR_READONLY                 0x06010002
+#define SDO_ERROR_NOT_EXIST                0x06020000
+#define SDO_ERROR_DATA_LEN                 0x06070010
+#define SDO_ERROR_DATA_RANGE               0x06090030
+
 #define MSK_ID     0x7F
 #define MSK_FUNC   (0x0F <<7)
 

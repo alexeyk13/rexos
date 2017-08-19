@@ -12,6 +12,7 @@
 #define STM32_DAC_DRIVER                        0
 #define STM32_WDT_DRIVER                        0
 #define STM32_EEP_DRIVER                        0
+#define STM32_FLASH_DRIVER                      0
 #define STM32_I2C_DRIVER                        0
 #define STM32_UART_DRIVER                       1
 #define STM32_RTC_DRIVER                        0
