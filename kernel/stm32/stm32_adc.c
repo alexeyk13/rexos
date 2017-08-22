@@ -8,7 +8,7 @@
 #include "stm32_pin.h"
 #include "stm32_exo_private.h"
 #include "sys_config.h"
-#include "kernel.h"
+#include "../kernel.h"
 
 #if defined (STM32F1)
 #define ADC_TSTAB                                                   11
@@ -19,8 +19,6 @@
 #endif //STM32F1
 
 #define STM32_ADC_REGULAR_CHANNELS_COUNT                            16
-
-static const PIN ADC_PINS[STM32_ADC_REGULAR_CHANNELS_COUNT] =       {A0, A1, A2, A3, A4, A5, A6, A7, B0, B1, C0, C1, C2, C3, C4, C5};
 
 
 static inline void stm32_adc_open_device(EXO* exo)
@@ -35,11 +33,7 @@ static inline void stm32_adc_open_device(EXO* exo)
     //turn ADC on
 #ifdef STM32F1
     ADC1->CR2 |= ADC_CR2_ADON;
-#ifdef EXODRIVERS
     exodriver_delay_us(ADC_TSTAB);
-#else
-    sleep_us(ADC_TSTAB);
-#endif // EXODRIVERS
     //start self-calibration
     ADC1->CR2 |= ADC_CR2_CAL;
     while(ADC1->CR2 & ADC_CR2_CAL) {}
@@ -68,9 +62,7 @@ static inline void stm32_adc_open_channel(EXO* exo, STM32_ADC_CHANNEL channel)
 {
     //enable pin
 #ifdef STM32F1
-    if (channel < STM32_ADC_REGULAR_CHANNELS_COUNT)
-        stm32_pin_request_inside(exo, HAL_REQ(HAL_PIN, IPC_OPEN), ADC_PINS[channel], STM32_GPIO_MODE_INPUT_ANALOG, false);
-    else
+    if (channel >= STM32_ADC_REGULAR_CHANNELS_COUNT)
         ADC1->CR2 |= ADC_CR2_TSVREFE;
 #elif defined STM32L0
     switch (channel)
@@ -86,34 +78,31 @@ static inline void stm32_adc_open_channel(EXO* exo, STM32_ADC_CHANNEL channel)
         ADC->CCR |= ADC_CCR_VLCDEN;
         break;
     default:
-        stm32_pin_request_inside(exo, HAL_REQ(HAL_PIN, IPC_OPEN), ADC_PINS[channel], STM32_GPIO_MODE_ANALOG, AF0);
+        break;
     }
 #endif
 }
 
 static inline void stm32_adc_close_channel(EXO* exo, STM32_ADC_CHANNEL channel)
 {
-    //disable pin
-    if (channel < STM32_ADC_REGULAR_CHANNELS_COUNT)
-        stm32_pin_request_inside(exo, HAL_REQ(HAL_PIN, IPC_CLOSE), ADC_PINS[channel], 0, 0);
-    else
 #ifdef STM32F1
-            ADC1->CR2 &= ~ADC_CR2_TSVREFE;
+    if (channel >= STM32_ADC_REGULAR_CHANNELS_COUNT)
+        ADC1->CR2 &= ~ADC_CR2_TSVREFE;
 #elif defined STM32L0
-        switch (channel)
-        {
-        case STM32_ADC_TEMP:
-            ADC->CCR &= ~ADC_CCR_TSEN;
-            break;
-        case STM32_ADC_VREF:
-            ADC->CCR &= ~ADC_CCR_VREFEN;
-            break;
-        case STM32_ADC_VLCD:
-            ADC->CCR &= ~ADC_CCR_VLCDEN;
-            break;
-        default:
-            break;
-        }
+    switch (channel)
+    {
+    case STM32_ADC_TEMP:
+        ADC->CCR &= ~ADC_CCR_TSEN;
+        break;
+    case STM32_ADC_VREF:
+        ADC->CCR &= ~ADC_CCR_VREFEN;
+        break;
+    case STM32_ADC_VLCD:
+        ADC->CCR &= ~ADC_CCR_VLCDEN;
+        break;
+    default:
+        break;
+    }
 #endif
 }
 
@@ -208,13 +197,13 @@ void stm32_adc_request(EXO* exo, IPC* ipc)
         ipc->param2 = stm32_adc_get(exo, ipc->param1, ipc->param2);
         break;
     case IPC_OPEN:
-        if (ipc->param1 == STM32_ADC_DEVICE)
+        if (ipc->param1 == ADC_HANDLE_DEVICE)
             stm32_adc_open_device(exo);
         else
             stm32_adc_open_channel(exo, ipc->param1);
         break;
     case IPC_CLOSE:
-        if (ipc->param1 == STM32_ADC_DEVICE)
+        if (ipc->param1 == ADC_HANDLE_DEVICE)
             stm32_adc_close_device(exo);
         else
             stm32_adc_close_channel(exo, ipc->param1);

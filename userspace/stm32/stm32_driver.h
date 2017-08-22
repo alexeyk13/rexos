@@ -311,7 +311,6 @@ typedef enum {
     STM32_ADC_TEMP,
     STM32_ADC_VREF,
 
-    STM32_ADC_DEVICE,
     STM32_ADC_MAX
 } STM32_ADC_CHANNEL;
 

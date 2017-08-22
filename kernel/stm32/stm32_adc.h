@@ -18,7 +18,7 @@ typedef struct {
 } ADC_CHANNEL_DRV;
 
 typedef struct {
-//    ADC_CHANNEL_DRV channels[ADC_CHANNELS_COUNT];
+    ADC_CHANNEL_DRV channels[ADC_CHANNELS_COUNT];
     bool active;
 } ADC_DRV;
 
