@@ -13,7 +13,7 @@
 #include "../../userspace/systime.h"
 #include "../../userspace/power.h"
 #include "../../userspace/stm32/stm32_driver.h"
-#include "../eth_phy.h"
+#include "../drv/eth_phy.h"
 #include "stm32_pin.h"
 #include "stm32_power.h"
 #include <stdbool.h>

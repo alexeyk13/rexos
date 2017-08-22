@@ -377,7 +377,7 @@ void stm32_dac_request(EXO* exo, IPC* ipc)
         break;
 #if (DAC_DEBUG)
     case STM32_DAC_UNDERFLOW_DEBUG:
-        printd("DAC %d underflow/stop\n", ipc->param1);
+        printk("DAC %d underflow/stop\n", ipc->param1);
         //message from isr, no response
         break;
 #endif //DAC_DEBUG

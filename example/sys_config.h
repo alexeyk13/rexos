@@ -169,11 +169,12 @@
 #define ICMP_ECHO                                           1
 
 //----------------------------- TCP/IP UDP --------------------------------------------
-#define UDP                                                 1
-#define UDP_BROADCAST                                       1  // need for DHCP
+#define UDP                                                 0
+//required for DHCP
+#define UDP_BROADCAST                                       1
+#define DNSS                                                0
+#define DHCPS                                               0
 
-#define DNSS                                                1
-#define DHCPS                                               1
 
 #define UDP_DEBUG                                           0
 #define UDP_DEBUG_FLOW                                      0
