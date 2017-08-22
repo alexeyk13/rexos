@@ -108,6 +108,7 @@ void kheap_send(void* ptr, unsigned int process)
         ++kheap->granted_count;
 }
 
+#if (KERNEL_PROFILING)
 bool kheap_check(HANDLE h)
 {
     KHEAP* kheap = (KHEAP*)h;
@@ -115,3 +116,4 @@ bool kheap_check(HANDLE h)
 
     return pool_check(&kheap->pool, kheap->virtual_sp);
 }
+#endif //KERNEL_PROFILING
