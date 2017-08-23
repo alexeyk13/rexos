@@ -392,6 +392,8 @@ static inline bool clear_busy(EXO* exo, I2C* i2c, I2C_PORT port)
     oar1 = __I2C_REGS[port]->OAR1;
 
     __I2C_REGS[port]->CR1 &= ~I2C_CR1_PE;
+    stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_CLOSE), i2c->pin_scl, 0, 0);
+    stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_CLOSE), i2c->pin_sda, 0, 0);
     stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_OPEN), i2c->pin_scl, STM32_GPIO_MODE_OUTPUT_OPEN_DRAIN_10MHZ, true);
     stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_OPEN), i2c->pin_sda, STM32_GPIO_MODE_OUTPUT_OPEN_DRAIN_10MHZ, true);
     if (!check_line(i2c, true))
@@ -404,6 +406,8 @@ static inline bool clear_busy(EXO* exo, I2C* i2c, I2C_PORT port)
     gpio_set_pin(i2c->pin_sda);
     if (!check_line(i2c, true))
         return false;
+    stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_CLOSE), i2c->pin_scl, 0, 0);
+    stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_CLOSE), i2c->pin_sda, 0, 0);
     stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_OPEN), i2c->pin_scl, STM32_GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_10MHZ, true);
     stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_OPEN), i2c->pin_sda, STM32_GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_10MHZ, true);
     __I2C_REGS[port]->CR1 |= I2C_CR1_SWRST;
@@ -664,6 +668,8 @@ void stm32_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int spe
 #if defined(STM32F1)
     i2c->pin_scl = (mode & STM32F1_I2C_SCL_Msk) >> STM32F1_I2C_SCL_Pos;
     i2c->pin_sda = (mode & STM32F1_I2C_SDA_Msk) >> STM32F1_I2C_SDA_Pos;
+    stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_OPEN), i2c->pin_scl, STM32_GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_10MHZ, true);
+    stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_OPEN), i2c->pin_sda, STM32_GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_10MHZ, true);
     uint32_t arb1_freq = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB1);
     __I2C_REGS[port]->CR2 = I2C_CR2_ITBUFEN | I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | (arb1_freq / 1000000);
     if (speed <= I2C_NORMAL_CLOCK)
@@ -718,13 +724,14 @@ void stm32_i2c_close(EXO* exo, I2C_PORT port)
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    //disable interrupt
-    NVIC_DisableIRQ(__I2C_VECTORS[port]);
-    kirq_unregister(KERNEL_HANDLE, __I2C_VECTORS[port]);
 #if defined(STM32F1)
+    stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_CLOSE), i2c->pin_scl, 0, 0);
+    stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_CLOSE), i2c->pin_sda, 0, 0);
     NVIC_DisableIRQ(__I2C_ERROR_VECTORS[port]);
     kirq_unregister(KERNEL_HANDLE, __I2C_ERROR_VECTORS[port]);
 #endif
+    NVIC_DisableIRQ(__I2C_VECTORS[port]);
+    kirq_unregister(KERNEL_HANDLE, __I2C_VECTORS[port]);
     __I2C_REGS[port]->CR1 &= ~I2C_CR1_PE;
     RCC->APB1ENR &= ~(1 << __I2C_POWER_PINS[port]);
 

@@ -9,10 +9,10 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "../userspace/process.h"
-#include "../userspace/sys.h"
-#include "../userspace/canvas.h"
-#include "../userspace/graphics.h"
+#include "../process.h"
+#include "../sys.h"
+#include "../canvas.h"
+#include "../graphics.h"
 #include "mt_config.h"
 
 #define MT_MODE_IGNORE                     0x0
