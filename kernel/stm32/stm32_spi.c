@@ -27,11 +27,6 @@ void stm32_spi_init(EXO* exo)
         exo->spi.spis[i] = NULL;
 }
 
-void stm32_spi_on_isr(int vector, void* param)
-{
-
-}
-
 void stm32_spi_open(EXO* exo, SPI_PORT port, uint32_t mode, uint32_t cs_pin)
 {
     SPI* spi = exo->spi.spis[port];
@@ -56,28 +51,18 @@ void stm32_spi_open(EXO* exo, SPI_PORT port, uint32_t mode, uint32_t cs_pin)
         RCC->APB1ENR |= 1 << __SPI_POWER_PINS[port];
 
     spi->cs_pin = cs_pin;
-    cr1=0;// | SPI_CR1_MSTR;// | SPI_CR1_SPE;
-    if(mode & SPI_LSBFIRST_MSK) cr1 |= SPI_CR1_LSBFIRST;
-    if(mode & SPI_CPOL_MSK)     cr1 |= SPI_CR1_CPOL;
-    if(mode & SPI_CPHA_MSK)     cr1 |= SPI_CR1_CPHA;
-
-/*    SPI1->CR1 =SPI_CR1_MSTR |((mode & 0x07) << 3);
-    __SPI_REGS[port]->CR1 |= cr1 ;
-
-    SPI1->CR2 =SPI_CR2_SSOE |SPI_CR2_RXNEIE |SPI_CR2_FRXTH
-            |SPI_CR2_DS_3 |SPI_CR2_DS_2 |SPI_CR2_DS_1 |SPI_CR2_DS_0;
-    SPI1->CR1 |=SPI_CR1_SPE;
-*/
+    cr1 = 0;
+    if (mode & SPI_LSBFIRST_MSK)
+        cr1 |= SPI_CR1_LSBFIRST;
+    if (mode & SPI_CPOL_MSK)
+        cr1 |= SPI_CR1_CPOL;
+    if (mode & SPI_CPHA_MSK)
+        cr1 |= SPI_CR1_CPHA;
 
     __SPI_REGS[port]->CR1 |= ((mode & 0x07) << 3) | SPI_CR1_MSTR;
-    __SPI_REGS[port]->CR1 |= cr1 ;
-    __SPI_REGS[port]->CR2 = (mode & 0x0F00)| SPI_CR2_SSOE ;
-    __SPI_REGS[port]->CR1 |=  SPI_CR1_SPE;
-
-    //enable interrupt
-//    kirq_register(KERNEL_HANDLE, __SPI_VECTORS[port], stm32_spi_on_isr, (void*)exo);
-//    NVIC_EnableIRQ(__I2C_VECTORS[port]);
-//    NVIC_SetPriority(__I2C_VECTORS[port], 13);
+    __SPI_REGS[port]->CR1 |= cr1;
+    __SPI_REGS[port]->CR2 = (mode & 0x0F00) | SPI_CR2_SSOE | SPI_CR2_FRXTH;
+    __SPI_REGS[port]->CR1 |= SPI_CR1_SPE;
 }
 
 void stm32_spi_close(EXO* exo, SPI_PORT port)
@@ -88,10 +73,6 @@ void stm32_spi_close(EXO* exo, SPI_PORT port)
         error(ERROR_NOT_CONFIGURED);
         return;
     }
-    //disable interrupt
-//    NVIC_DisableIRQ(__SPI_VECTORS[port]);
-//    kirq_unregister(KERNEL_HANDLE, __SPI_VECTORS[port]);
-
     __SPI_REGS[port]->CR1 &= ~SPI_CR1_SPE;
     if (port == SPI_1)
         RCC->APB2ENR &= ~(1 << __SPI_POWER_PINS[port]);
@@ -104,24 +85,28 @@ void stm32_spi_close(EXO* exo, SPI_PORT port)
 
 static uint16_t spi_write(SPI_PORT port, uint16_t data)
 {
+//    *(uint8_t *)&__SPI_REGS[port]->DR = (uint8_t)data;
     __SPI_REGS[port]->DR = data;
-    while((__SPI_REGS[port]->SR & SPI_SR_RXNE) == 0);
+    while ((__SPI_REGS[port]->SR & SPI_SR_RXNE) == 0);
     return __SPI_REGS[port]->DR;
 }
 
 void stm32_spi_write(EXO* exo, IPC* ipc, SPI_PORT port)
 {
+// TODO: 8bit access if data len  <=8 bit
     uint32_t size = (ipc->param1 >> 8) & 0xFF;
     SPI* spi = exo->spi.spis[port];
     if (spi == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        error (ERROR_NOT_CONFIGURED);
         return;
     }
     ipc->param3 = spi_write(port, ipc->param3);
-    if(size < 2) return;
+    if (size < 2)
+        return;
     ipc->param2 = spi_write(port, ipc->param2);
-    if(size < 3) return;
+    if (size < 3)
+        return;
     ipc->param1 = spi_write(port, ipc->param1 >> 16);
 
 }

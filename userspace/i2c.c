@@ -7,9 +7,40 @@
 #include "i2c.h"
 #include "core/core.h"
 
+#ifdef STM32F1
+#define PIN_ENCODE_MASTER(scl, sda) ((scl << 16) | (sda << 24) | I2C_MODE_MASTER)
+#define PIN_ENCODE_SLAVE(scl, sda)  ((scl << 16) | (sda << 24) | I2C_MODE_SLAVE)
+
+bool i2c_open_master(int port, uint32_t speed, uint32_t pin_scl, uint32_t pin_sda)
+{
+    return get_handle_exo(HAL_REQ(HAL_I2C, IPC_OPEN), port, PIN_ENCODE_MASTER(pin_scl, pin_sda), speed) != INVALID_HANDLE;
+}
+bool i2c_open_slave(int port, uint32_t addr,  uint32_t speed, uint32_t pin_scl, uint32_t pin_sda)
+{
+    return get_handle_exo(HAL_REQ(HAL_I2C, IPC_OPEN), port, PIN_ENCODE_SLAVE(pin_scl, pin_sda) | addr , speed) != INVALID_HANDLE;
+}
+
+#else
+
 bool i2c_open(int port, unsigned int mode, unsigned int speed)
 {
     return get_handle_exo(HAL_REQ(HAL_I2C, IPC_OPEN), port, mode, speed) != INVALID_HANDLE;
+}
+
+#endif // STM32F1
+void i2c_set_register(int port, IO* io,  uint8_t addr)
+{
+    ipc_post_exo(HAL_REQ(HAL_I2C, I2C_SET_REGISTER), port, (uint32_t)io, addr);
+}
+
+void i2c_clear_register(int port, uint8_t addr)
+{
+    ipc_post_exo(HAL_CMD(HAL_I2C, I2C_SET_REGISTER), port, 0, addr);
+}
+
+int i2c_read_slave(int port, IO* io, uint32_t max_size)
+{
+    return io_read_sync_exo(HAL_IO_REQ(HAL_I2C, IPC_READ), port, io, max_size);
 }
 
 void i2c_close(int port)
