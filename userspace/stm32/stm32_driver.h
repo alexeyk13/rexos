@@ -13,7 +13,6 @@
 #include "../object.h"
 #include "../ipc.h"
 
-extern const REX __STM32_CORE;
 extern const REX __STM32_ETH;
 
 //-------------------------------------------------- POWER ---------------------------------------------------------------------
@@ -310,14 +309,14 @@ typedef enum {
     STM32_ADC_VREF,
 #endif //STM32L0
     STM32_ADC_TEMP,
+    STM32_ADC_VREF,
 
-    STM32_ADC_DEVICE,
     STM32_ADC_MAX
 } STM32_ADC_CHANNEL;
 
 __STATIC_INLINE int stm32_adc_temp(int vref, int res)
 {
-    return (V25_MV * 1000 - ADC2uV(adc_get(STM32_ADC_TEMP, STM32_ADC_SMPR_239_5), vref, res)) * 10 / AVG_SLOPE + 25l * 10l;
+    return (V25_MV * 1000l - ADC2uV(adc_get(STM32_ADC_TEMP, STM32_ADC_SMPR_239_5), vref, res)) * 10l / AVG_SLOPE + 25l * 10l;
 }
 
 #endif // STM32_DRIVER_H

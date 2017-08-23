@@ -332,25 +332,25 @@ void lpc_flash_request(EXO* exo, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        lpc_flash_open(core, (HANDLE)ipc->param1);
+        lpc_flash_open(exo, (HANDLE)ipc->param1);
         break;
     case IPC_CLOSE:
-        lpc_flash_close(core);
+        lpc_flash_close(exo);
         break;
     case IPC_READ:
-        lpc_flash_read(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3);
+        lpc_flash_read(exo, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3);
         break;
     case IPC_WRITE:
-        lpc_flash_write(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3);
+        lpc_flash_write(exo, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3);
         break;
     case IPC_FLUSH:
-        lpc_flash_flush(core);
+        lpc_flash_flush(exo);
         break;
     case STORAGE_GET_MEDIA_DESCRIPTOR:
-        lpc_flash_get_media_descriptor(core, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2);
+        lpc_flash_get_media_descriptor(exo, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2);
         break;
     case STORAGE_NOTIFY_ACTIVITY:
-        lpc_flash_request_notify_activity(core, ipc->process);
+        lpc_flash_request_notify_activity(exo, ipc->process);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

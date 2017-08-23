@@ -81,8 +81,6 @@ static inline void app_setup_dbg()
 
 static inline void app_init(APP* app)
 {
-    process_create(&__STM32_CORE);
-
     gpio_enable_pin(B14, GPIO_MODE_OUT);
     gpio_reset_pin(B14);
 

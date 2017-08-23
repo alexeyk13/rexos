@@ -16,10 +16,6 @@
 #define LPC_FLASH_DRIVER                    0
 #define LPC_ETH_DRIVER                      1
 
-//------------------------------------- CORE ----------------------------------------------
-//Sizeof CORE process stack
-#define LPC_CORE_PROCESS_SIZE               1200
-
 //------------------------------------- power ---------------------------------------------
 //save few bytes here
 #define LPC_DECODE_RESET                    0

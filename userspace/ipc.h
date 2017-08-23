@@ -49,6 +49,8 @@ typedef enum {
     HAL_EEPROM,
     HAL_SDMMC,
     HAL_RF,
+    HAL_CAN,
+    HAL_SPI,
     //device stacks
     HAL_USBD,
     HAL_USBD_IFACE,
@@ -60,6 +62,8 @@ typedef enum {
     HAL_ICMP,
     HAL_UDP,
     HAL_TCP,
+    HAL_DNS,
+    HAL_DHCPS,
     HAL_WEBS,
     HAL_TLS,
     HAL_PINBOARD,
@@ -67,6 +71,7 @@ typedef enum {
     HAL_VFS,
     //bluetooth host/controller
     HAL_BLUETOOTH,
+    HAL_CANOPEN,
     //application level
     HAL_APP
 } HAL;

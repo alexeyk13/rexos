@@ -282,7 +282,7 @@ static bool lpc_otg_ep_flush(USB_PORT_TYPE port, EXO* exo, int num)
     EP_CTRL(port)[USB_EP_NUM(num)] |= USB0_ENDPTCTRL_R_Msk << ((num & USB_EP_IN) ? 16 : 0);
     if (ep->io != NULL)
     {
-        io_complete_ex(exo->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), USB_HANDLE(port, num), ep->io, ERROR_IO_CANCELLED);
+        iio_complete_ex(exo->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), USB_HANDLE(port, num), ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
     }
     return true;
@@ -503,10 +503,10 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, EXO* exo, HANDLE devi
 
 #if (LPC_USB_USE_BOTH)
     if (port == USB_1)
-        __USB_REGS[port]->ENDPOINTLISTADDR = AHB_SRAM2_BASE + AHB_SRAM2_SIZE - 2 * 2048;
+        __USB_REGS[port]->ENDPOINTLISTADDR = AHB_SRAM2_BASE + AHB_SRAM2_SIZE - (USB_EP_COUNT_MAX | 1) * 2048;
     else
 #endif //LPC_USB_USE_BOTH
-        __USB_REGS[port]->ENDPOINTLISTADDR = AHB_SRAM2_BASE + AHB_SRAM2_SIZE - 2 * 2048;
+        __USB_REGS[port]->ENDPOINTLISTADDR = AHB_SRAM2_BASE + AHB_SRAM2_SIZE - (USB_EP_COUNT_MAX >> 1) * 2048;
 
     memset((void*)__USB_REGS[port]->ENDPOINTLISTADDR, 0, (sizeof(DQH) + sizeof(DTD)) * USB_EP_COUNT_MAX * 2);
 
@@ -595,6 +595,8 @@ static inline void lpc_otg_sync(EXO* exo)
     int port;
     for (port = 0; port < USB_COUNT; port++)
     {
+        if (exo->otg.otg[port] == NULL)
+            continue;
         if (exo->otg.otg[port]->device == INVALID_HANDLE)
             continue;
         if (exo->otg.otg[port]->device_pending)
