@@ -43,9 +43,12 @@ unavailable, another HPET timer can be used for RTC emulation
   * IP: fragmentation supported
   * ICMP: ECHO and flow control
   * ARP: timeouts and static routes support
+  * DNS server
+  * DHCP server
   * Web Server
   * TLS 1.2 Server (beta)
   * SD/MMC host stack
+  * uCanOpen stack
   * FAT16 file system
   * Block error rate layer
 - Error handling:
@@ -65,7 +68,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * cortex-m4
   * ARM7
 - MCU Drivers:
-  * ST STM32F0: generic, UART, RTC, WDT, I2C, USB
+  * ST STM32F0: generic, UART, RTC, WDT, I2C, USB, CAN
   * ST STM32F1: generic, UART, RTC, WDT, ADC, DAC, USB, ETH
   * ST STM32F2: generic, UART, RTC, WDT, USB
   * ST STM32F4: generic, UART, RTC, WDT, USB
@@ -91,6 +94,12 @@ ARM7 features:
 
 History
 =======
+0.5.6
+- TLS added TLS_RSA_WITH_AES_128_CBC_SHA256 cipher suite
+- DNS server
+- DHCP server
+- STM32 F0 CAN driver
+- uCanOpen (alpha)
 
 0.5.5
 - WEB server rewritten: 

@@ -604,11 +604,11 @@ static inline void stm32_usb_device_request(EXO* exo, IPC* ipc)
         break;
 #if (USB_DEBUG_ERRORS)
     case STM32_USB_ERROR:
-        printd("USB: hardware error\n");
+        printk("USB: hardware error\n");
         //posted from isr
         break;
      case STM32_USB_OVERFLOW:
-        printd("USB: packet memory overflow\n");
+        printk("USB: packet memory overflow\n");
         //posted from isr
         break;
 #endif

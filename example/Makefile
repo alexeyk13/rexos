@@ -39,7 +39,7 @@ INCLUDE_FOLDERS            += $(LIB)
 #userspace
 INCLUDE_FOLDERS            += $(USERSPACE) $(USERSPACE)/core $(USERSPACE)/stm32
 #sys
-INCLUDE_FOLDERS            += $(REXOS)/drv $(REXOS)/drv/stm32 $(REXOS)/midware $(REXOS)/midware/usbd $(REXOS)/midware/tcpips
+INCLUDE_FOLDERS            += $(REXOS)/kernel/drv $(REXOS)/kernel/stm32 $(REXOS)/midware $(REXOS)/midware/usbd $(REXOS)/midware/tcpips
 
 INCLUDES                    = $(INCLUDE_FOLDERS:%=-I%)
 VPATH                      += $(INCLUDE_FOLDERS)
@@ -52,7 +52,7 @@ SRC_C                      += kernel.c dbg.c kstdlib.c karray.c kso.c kirq.c kpr
 #lib
 SRC_C                      += lib_lib.c lib_systime.c pool.c printf.c lib_std.c lib_stdio.c lib_array.c lib_so.c
 #drv
-SRC_C                      += stm32_pin.c stm32_gpio.c stm32_power.c stm32_timer.c stm32_rtc.c stm32_core.c stm32_uart.c stm32_otg.c stm32_eth.c
+SRC_C                      += stm32_pin.c stm32_gpio.c stm32_power.c stm32_timer.c stm32_rtc.c stm32_exo.c stm32_uart.c stm32_otg.c stm32_eth.c
 #userspace lib
 SRC_C                      += ipc.c io.c process.c stdio.c stdlib.c systime.c time.c uart.c usb.c power.c stream.c pin.c
 SRC_C                      += eth.c tcpip.c mac.c icmp.c ip.c arp.c tcp.c

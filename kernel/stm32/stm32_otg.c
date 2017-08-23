@@ -15,6 +15,7 @@
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/power.h"
+#include "../kstdlib.h"
 #include <string.h>
 #include "stm32_exo_private.h"
 

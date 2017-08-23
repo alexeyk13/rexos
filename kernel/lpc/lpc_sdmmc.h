@@ -8,7 +8,7 @@
 #define LPC_SDMMC_H
 
 #include "lpc_exo.h"
-#include "../../drv/sdmmcs.h"
+#include "../drv/sdmmcs.h"
 #include "../../userspace/io.h"
 #include "../../midware/crypto/sha1.h"
 

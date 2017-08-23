@@ -14,7 +14,7 @@
 #include "../ksystime.h"
 #include "../kernel.h"
 #include "../../userspace/lpc/lpc_driver.h"
-#include "../../drv/eth_phy.h"
+#include "../drv/eth_phy.h"
 #include "lpc_pin.h"
 #include "lpc_power.h"
 #include <stdbool.h>

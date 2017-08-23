@@ -187,7 +187,9 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
     }
 
     addr = stack->sector * FLASH_SECTOR_SIZE + FLASH_BASE;
-    while(size)
+    //just to ignore warnings
+    tail_ptr = NULL;
+    while (size)
     {
         page_addr = addr & FLASH_PAGE_MASK;
         head_size = addr - page_addr;
@@ -195,14 +197,16 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
         {
             head_ptr = kmalloc(head_size);
             memcpy(head_ptr, (uint8_t*)page_addr, head_size);
-        }else
+        }
+        else
             head_size = 0;
         tail_size = (page_addr + FLASH_PAGE_SIZE)-(addr+size);
-        if(tail_size > 0)
+        if (tail_size > 0)
         {
             tail_ptr = kmalloc(tail_size);
             memcpy(tail_ptr, (uint8_t*)(addr+size), tail_size);
-        }else
+        }
+        else
             tail_size = 0;
 
         erase_page(page_addr);
@@ -216,7 +220,8 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
             flash_block_write(addr, io_data(io), write_size, &verify);
             io_hide(io, write_size);
         }
-        if(tail_size > 0){
+        if (tail_size > 0)
+        {
             flash_block_write(addr+size, tail_ptr, tail_size, &verify);
             kfree(tail_ptr);
         }
