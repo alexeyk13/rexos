@@ -255,6 +255,13 @@ typedef enum {
     I2C_2
 } I2C_PORT;
 
+//pins are required for STM32F1 configuration because of errata
+#define STM32F1_I2C_SCL_Msk                             (0xff << 16)
+#define STM32F1_I2C_SDA_Msk                             (0xff << 24)
+#define STM32F1_I2C_SCL_Pos                             16
+#define STM32F1_I2C_SDA_Pos                             24
+#define STM32F1_I2C_ENCODE_PINS(scl, sda) (((scl) << STM32F1_I2C_SCL_Pos) | ((sda) << STM32F1_I2C_SDA_Pos))
+
 // ------------------------------------------------ SPI -----------------------------------------------------------------------
 typedef enum {
     SPI_1 = 0,

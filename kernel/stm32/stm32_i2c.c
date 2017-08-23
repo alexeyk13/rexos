@@ -662,13 +662,13 @@ void stm32_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int spe
     //enable clock
     RCC->APB1ENR |= (1 << __I2C_POWER_PINS[port]);
 #if defined(STM32F1)
-    i2c->pin_scl = (mode >> 16) & 0xFF;
-    i2c->pin_sda = (mode >> 24) & 0xFF;
+    i2c->pin_scl = (mode & STM32F1_I2C_SCL_Msk) >> STM32F1_I2C_SCL_Pos;
+    i2c->pin_sda = (mode & STM32F1_I2C_SDA_Msk) >> STM32F1_I2C_SDA_Pos;
     uint32_t arb1_freq = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB1);
     __I2C_REGS[port]->CR2 = I2C_CR2_ITBUFEN | I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | (arb1_freq / 1000000);
     if (speed <= I2C_NORMAL_CLOCK)
     {
-        __I2C_REGS[port]->CCR = (arb1_freq / (2 * 88000)) + 1; // speed must not be from 88 to 100kGz, errata 2.13.5
+        __I2C_REGS[port]->CCR = (arb1_freq / (2 * 88000)) + 1; // speed must not be from 88 to 100KHz, errata 2.13.5
         __I2C_REGS[port]->TRISE = 1 + arb1_freq / 1000000;// 1000 ns
 
     } else
