@@ -112,7 +112,7 @@ static inline void stm32_flash_read(EXO* exo, HANDLE process, HANDLE user, IO* i
         exo->flash.activity = INVALID_HANDLE;
     }
 
-    base_addr = stack->sector * FLASH_SECTOR_SIZE + FLASH_BASE;
+    base_addr = stack->sector * FLASH_SECTOR_SIZE + FLASH_BASE + STM32_FLASH_USER_CODE_SIZE;
 
     io->data_size = 0;
     io_data_append(io, (void*)base_addr, size);
@@ -186,7 +186,7 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
         exo->flash.activity = INVALID_HANDLE;
     }
 
-    addr = stack->sector * FLASH_SECTOR_SIZE + FLASH_BASE;
+    addr = stack->sector * FLASH_SECTOR_SIZE + FLASH_BASE + STM32_FLASH_USER_CODE_SIZE;
     //just to ignore warnings
     tail_ptr = NULL;
     while (size)

@@ -19,9 +19,6 @@
 #define STM32_USB_DRIVER                        1
 #define STM32_CAN_DRIVER                        0
 //------------------------------ CORE ------------------------------------------------
-//Sizeof CORE process stack. Adjust, if monolith UART/USB/Analog/etc is used
-#define STM32_CORE_PROCESS_SIZE                 1024
-
 //disable only for power saving if no EXTI or remap is used
 #define SYSCFG_ENABLED                          1
 //stupid F1 series only. Remap mask. See datasheet
@@ -99,5 +96,8 @@
 #define HARDWARE_WATCHDOG                       0
 //------------------------------- ETH -----------------------------------------------
 #define STM32_ETH_PROCESS_SIZE                  512
+//------------------------------ FLASH -----------------------------------------------
+//protect user code if VFS is allocated on flash. Must be sector aligned
+#define STM32_FLASH_USER_CODE_SIZE              (32 * 1024)
 
 #endif // STM32_CONFIG_H

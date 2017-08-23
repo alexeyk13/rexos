@@ -13,11 +13,5 @@
 #include "sys_config.h"
 
 typedef struct _EXO EXO;
-/*
-__STATIC_INLINE unsigned int stm32_core_request_outside(void* unused, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
-{
-    return get_handle(object_get(SYS_OBJ_CORE), cmd, param1, param2, param3);
-}
-*/
 
 #endif // STM32_EXO_H
