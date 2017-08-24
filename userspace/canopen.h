@@ -15,7 +15,7 @@
 #define LSS_CHECK_ALL_BITS            31
 #define CO_OD_MAX_ENTRY               50
 #define CO_MAX_RPDO                   4
-#define CO_MAX_TPDO                   4
+#define CO_MAX_TPDO                   8
 
 typedef enum {
     BUS_RESET = 0,

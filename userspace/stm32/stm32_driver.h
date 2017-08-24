@@ -261,6 +261,7 @@ typedef enum {
 #define STM32F1_I2C_SCL_Pos                             16
 #define STM32F1_I2C_SDA_Pos                             24
 #define STM32F1_I2C_ENCODE_PINS(scl, sda) (((scl) << STM32F1_I2C_SCL_Pos) | ((sda) << STM32F1_I2C_SDA_Pos))
+#define STM32F1_I2C_SLAVE_ENCODE(sla, scl, sda)  (I2C_MODE_SLAVE | (sla) | (STM32F1_I2C_ENCODE_PINS(scl, sda)) )
 
 // ------------------------------------------------ SPI -----------------------------------------------------------------------
 typedef enum {

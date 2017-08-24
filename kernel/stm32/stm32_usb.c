@@ -23,11 +23,6 @@ typedef struct {
     HANDLE device;
 } USB_STRUCT;
 
-typedef enum {
-    STM32_USB_ERROR = USB_HAL_MAX,
-    STM32_USB_OVERFLOW
-}STM32_USB_IPCS;
-
 #if defined(STM32F1)
     #define USB_IRQn                    USB_LP_CAN1_RX0_IRQn
     typedef uint32_t pma_reg;
@@ -293,23 +288,15 @@ void stm32_usb_on_isr(int vector, void* param)
         return;
     }
 #if (USB_DEBUG_ERRORS)
-    IPC ipc;
     if (sta & USB_ISTR_ERR)
     {
-        ipc.process = process_iget_current();
-        ipc.param1 = USB_HANDLE_DEVICE;
-        ipc.cmd = HAL_CMD(HAL_USB, STM32_USB_ERROR);
-        ipc_ipost(&ipc);
+        printk("USB: hardware error\n");
         USB->ISTR &= ~USB_ISTR_ERR;
     }
     if (sta & USB_ISTR_PMAOVR)
     {
-        ipc.process = process_iget_current();
-        ipc.param1 = USB_HANDLE_DEVICE;
-        ipc.cmd = HAL_CMD(HAL_USB, STM32_USB_OVERFLOW);
-        ipc_ipost(&ipc);
+        printk("USB: packet memory overflow\n");
         USB->ISTR &= ~USB_ISTR_PMAOVR;
-    }
 #endif
 }
 
@@ -602,16 +589,6 @@ static inline void stm32_usb_device_request(EXO* exo, IPC* ipc)
     case USB_SET_ADDRESS:
         stm32_usb_set_address(exo, ipc->param2);
         break;
-#if (USB_DEBUG_ERRORS)
-    case STM32_USB_ERROR:
-        printk("USB: hardware error\n");
-        //posted from isr
-        break;
-     case STM32_USB_OVERFLOW:
-        printk("USB: packet memory overflow\n");
-        //posted from isr
-        break;
-#endif
     default:
         error(ERROR_NOT_SUPPORTED);
         break;

@@ -49,7 +49,7 @@ void canopen_send_pdo(HANDLE co, uint8_t pdo_num, uint8_t pdo_len, uint32_t hi, 
 
 void canopen_od_change(HANDLE co, uint32_t idx, uint32_t data)
 {
-    ipc_post_inline(co, HAL_REQ(HAL_CANOPEN, IPC_CO_OD_CHANGE), idx, data, 0);
+    ack(co, HAL_REQ(HAL_CANOPEN, IPC_CO_OD_CHANGE), idx, data, 0);
 }
 
 void canopen_open(HANDLE co, IO* od, uint32_t baudrate, uint8_t id)

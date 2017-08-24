@@ -351,7 +351,7 @@ static inline void stm32_i2c_on_slave_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
                 __I2C_REGS[port]->CR1 &= ~I2C_CR1_ACK;
             } else
             {
-                *(uint8_t*)io_data(i2c->io) = data;
+                *(uint8_t*)(io_data(i2c->io)+i2c->io->data_size) = data;
                 i2c->io->data_size++;
                 if ((i2c->size - i2c->io->data_size) <= 1)
                     __I2C_REGS[port]->CR1 &= ~I2C_CR1_ACK;

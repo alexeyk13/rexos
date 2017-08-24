@@ -152,7 +152,8 @@ static inline void stm32_uart_on_rx_isr(EXO* exo, UART_PORT port, uint8_t c)
     }
     else
 #endif //UART_IO_MODE_SUPPORT
-        ipc_ipost_inline(process_iget_current(), HAL_CMD(HAL_UART, IPC_UART_ISR_RX), port, 0, c);
+    if (!stream_iwrite_no_block(exo->uart.uarts[port]->s.rx_handle, (char*)&c, 1))
+        exo->uart.uarts[port]->error = ERROR_CHAR_LOSS;
 }
 
 void stm32_uart_on_isr(int vector, void* param)
