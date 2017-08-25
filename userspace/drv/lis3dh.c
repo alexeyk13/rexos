@@ -121,7 +121,6 @@ LIS3DH* lis3dh_open(unsigned int i2c, uint8_t sla, LIS_POWER_MODE power_mode, un
 
 void lis3dh_get(LIS3DH* lis3dh, LIS_DATA* lis_data)
 {
-    //TODO: 1-time read after i2c fix
     if (i2c_read_addr(lis3dh->i2c, lis3dh->sla, LIS_REG_OUT_X_L | LIS_REG_AUTOINCREMENT, lis3dh->io, 6) == 6)
         memcpy(lis_data, io_data(lis3dh->io), 6);
 }
