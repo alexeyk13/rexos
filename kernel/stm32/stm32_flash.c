@@ -16,6 +16,8 @@
 #define FLASH_SIZE_BASE                       0x1FFFF7E0
 #define FLASH_UUID_BASE                       0x1FFFF7E8
 #elif defined(STM32F0)
+#define FLASH_KEY1                            0x45670123
+#define FLASH_KEY2                            0xCDEF89AB
 #define FLASH_SIZE_BASE                       0x1FFFF7CC
 #define FLASH_UUID_BASE                       0x1FFFF7AC
 #endif
@@ -34,7 +36,6 @@ typedef struct {
     unsigned int size;
 } FLASH_ADDR_BLOCK_TYPE;
 
-
 void stm32_flash_init(EXO* exo)
 {
     exo->flash.active = false;
@@ -44,7 +45,7 @@ void stm32_flash_init(EXO* exo)
 
 static bool check_range(uint32_t sector, uint32_t size)
 {
-    if((size == 0) || (size & (FLASH_SECTOR_SIZE-1)))
+    if((size == 0) || (size & (FLASH_SECTOR_SIZE - 1)))
         return false;
     if((sector + size/FLASH_SECTOR_SIZE) > FLASH_SECTOR_COUNT)
         return false;
@@ -132,7 +133,7 @@ static inline bool is_block_empty(uint8_t* addr, unsigned int words)
 
 static inline void erase_page(uint32_t page_addr)
 {
-    if(is_block_empty((uint8_t*)page_addr, FLASH_PAGE_SIZE/sizeof(uint32_t)))
+    if(is_block_empty((uint8_t*)page_addr, FLASH_PAGE_SIZE / sizeof(uint32_t)))
         return;
     FLASH->CR |= FLASH_CR_PER;
     FLASH->AR = page_addr;
@@ -146,8 +147,9 @@ static void flash_block_write(uint32_t dst, uint8_t* src, uint32_t size, bool* v
 {
     __IO uint16_t* flash = (__IO uint16_t*)dst;
     uint16_t* ram = (uint16_t*)src;
-    size /=2;
-    do{
+    size /= 2;
+    do
+    {
         __disable_irq();
         FLASH->CR |= FLASH_CR_PG;
         *flash = *ram;
@@ -164,7 +166,7 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
     unsigned int write_size, addr, page_addr;
     void* head_ptr;
     void *tail_ptr;
-    int head_size,tail_size;
+    int head_size, tail_size;
     bool verify = true;
     STORAGE_STACK* stack = io_stack(io);
     io_pop(io, sizeof(STORAGE_STACK));
@@ -200,17 +202,18 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
         }
         else
             head_size = 0;
-        tail_size = (page_addr + FLASH_PAGE_SIZE)-(addr+size);
+        tail_size = (page_addr + FLASH_PAGE_SIZE) - (addr + size);
         if (tail_size > 0)
         {
             tail_ptr = kmalloc(tail_size);
-            memcpy(tail_ptr, (uint8_t*)(addr+size), tail_size);
+            memcpy(tail_ptr, (uint8_t*)(addr + size), tail_size);
         }
         else
             tail_size = 0;
 
         erase_page(page_addr);
-        if(head_size > 0){
+        if(head_size > 0)
+        {
             flash_block_write(page_addr, head_ptr, head_size, &verify);
             kfree(head_ptr);
         }
@@ -222,17 +225,17 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
         }
         if (tail_size > 0)
         {
-            flash_block_write(addr+size, tail_ptr, tail_size, &verify);
+            flash_block_write(addr + size, tail_ptr, tail_size, &verify);
             kfree(tail_ptr);
         }
-        size-=write_size;
+        size -= write_size;
         addr = page_addr + FLASH_PAGE_SIZE;
     }
 //check for verify
     if ((stack->flags & STORAGE_FLAG_VERIFY) && !verify)
     {
-            error(ERROR_CRC);
-            return;
+        error(ERROR_CRC);
+        return;
     }
     io_show(io);
     kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, IPC_WRITE), user, (unsigned int)io, io->data_size);
@@ -260,7 +263,7 @@ static inline void stm32_flash_get_media_descriptor(EXO* exo, HANDLE process, HA
 
     sprintf(STORAGE_MEDIA_SERIAL(media), "%08X%08X%08X", uuid[0], uuid[1], uuid[2]);
 
-    io->data_size = sizeof(STORAGE_MEDIA_DESCRIPTOR) + 6*4 + 1;
+    io->data_size = sizeof(STORAGE_MEDIA_DESCRIPTOR) + 6 * 4 + 1;
     kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, STORAGE_GET_MEDIA_DESCRIPTOR), exo->flash.user, (unsigned int)io, io->data_size);
     error(ERROR_SYNC);
 }
@@ -305,5 +308,4 @@ void stm32_flash_request(EXO* exo, IPC* ipc)
         error(ERROR_NOT_SUPPORTED);
     }
 }
-
 
