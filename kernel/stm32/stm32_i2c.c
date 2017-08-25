@@ -244,21 +244,18 @@ static inline void stm32_i2c_on_rx_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
         {
             __disable_irq(); // errata 2.13.2
             __I2C_REGS[port]->CR1 |= I2C_CR1_STOP;
-            *(uint8_t*)io_data(i2c->io) = __I2C_REGS[port]->DR;
-            i2c->io->data_size++;
-            *(uint8_t*)io_data(i2c->io) = __I2C_REGS[port]->DR;
+            ((uint8_t*)io_data(i2c->io))[i2c->io->data_size++] = __I2C_REGS[port]->DR;
+            ((uint8_t*)io_data(i2c->io))[i2c->io->data_size++] = __I2C_REGS[port]->DR;
             __enable_irq();
-            i2c->io->data_size++;
             stm32_i2c_end_rx(i2c, port);
             return;
         } else if ((i2c->size - i2c->io->data_size) == 3)
         {
             __I2C_REGS[port]->CR1 &= ~I2C_CR1_ACK;
             __disable_irq();    // errata 2.13.2
-            *(uint8_t*)io_data(i2c->io) = __I2C_REGS[port]->DR;
+            ((uint8_t*)io_data(i2c->io))[i2c->io->data_size++] = __I2C_REGS[port]->DR;
             __I2C_REGS[port]->CR1 |= I2C_CR1_STOP;
             __enable_irq();
-            i2c->io->data_size++;
             return;
         }
     }
@@ -269,8 +266,7 @@ static inline void stm32_i2c_on_rx_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
             return;
         if (i2c->size == 2)
             return;
-        *(uint8_t*)io_data(i2c->io) = __I2C_REGS[port]->DR;
-        i2c->io->data_size++;
+        ((uint8_t*)io_data(i2c->io))[i2c->io->data_size++] = __I2C_REGS[port]->DR;
         if (i2c->io->data_size >= i2c->size)
             stm32_i2c_end_rx(i2c, port);
         return;
@@ -351,8 +347,7 @@ static inline void stm32_i2c_on_slave_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
                 __I2C_REGS[port]->CR1 &= ~I2C_CR1_ACK;
             } else
             {
-                *(uint8_t*)(io_data(i2c->io)+i2c->io->data_size) = data;
-                i2c->io->data_size++;
+                ((uint8_t*)io_data(i2c->io))[i2c->io->data_size++] = data;
                 if ((i2c->size - i2c->io->data_size) <= 1)
                     __I2C_REGS[port]->CR1 &= ~I2C_CR1_ACK;
             }

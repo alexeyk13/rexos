@@ -11,7 +11,7 @@
 #include "../error.h"
 #include <string.h>
 
-#define LIS_IO_SIZE                                         6
+#define LIS_IO_SIZE                                         1
 
 typedef struct _LIS3DH {
     unsigned int i2c;
@@ -121,7 +121,6 @@ LIS3DH* lis3dh_open(unsigned int i2c, uint8_t sla, LIS_POWER_MODE power_mode, un
 
 void lis3dh_get(LIS3DH* lis3dh, LIS_DATA* lis_data)
 {
-    //TODO: 1-time read after i2c fix
     lis_data->x = ((int16_t)lis3dh_get_reg(lis3dh, LIS_REG_OUT_X_H) << 8) | lis3dh_get_reg(lis3dh, LIS_REG_OUT_X_L);
     lis_data->y = ((int16_t)lis3dh_get_reg(lis3dh, LIS_REG_OUT_Y_H) << 8) | lis3dh_get_reg(lis3dh, LIS_REG_OUT_Y_L);
     lis_data->z = ((int16_t)lis3dh_get_reg(lis3dh, LIS_REG_OUT_Z_H) << 8) | lis3dh_get_reg(lis3dh, LIS_REG_OUT_Z_L);
