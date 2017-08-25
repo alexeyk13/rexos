@@ -58,6 +58,8 @@
 #define LIS_REG_ACT_THS                             0x3e
 #define LIS_REG_ACT_DUR                             0x3f
 
+#define LIS_REG_AUTOINCREMENT                       (1 << 7)
+
 #define LIS_REG_CTRL1_XEN                           (1 << 0)
 #define LIS_REG_CTRL1_YEN                           (1 << 1)
 #define LIS_REG_CTRL1_ZEN                           (1 << 2)
