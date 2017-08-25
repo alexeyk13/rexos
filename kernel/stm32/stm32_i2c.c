@@ -786,12 +786,12 @@ static void stm32_i2c_io(EXO* exo, IPC* ipc, bool read)
     }
 #if defined(STM32F1)
     if (__I2C_REGS[port]->SR2 & I2C_SR2_BUSY)
-    clear_busy(exo, i2c, port);
+        clear_busy(exo, i2c, port);
     i2c->state = I2C_STATE_DATA;
     if (i2c->stack->flags & I2C_FLAG_LEN)
-    i2c->state = I2C_STATE_LEN;
+        i2c->state = I2C_STATE_LEN;
     if (i2c->stack->flags & I2C_STATE_ADDR)
-    i2c->state = I2C_STATE_ADDR;
+        i2c->state = I2C_STATE_ADDR;
 
     //set START
     __I2C_REGS[port]->CR1 |= I2C_CR1_START;

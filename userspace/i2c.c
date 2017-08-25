@@ -14,7 +14,7 @@ bool i2c_open(int port, unsigned int mode, unsigned int speed)
 
 void i2c_set_register(int port, IO* io,  uint8_t addr)
 {
-    ipc_post_exo(HAL_REQ(HAL_I2C, I2C_SET_REGISTER), port, (uint32_t)io, addr);
+    get_exo(HAL_IO_REQ(HAL_I2C, I2C_SET_REGISTER), port, (uint32_t)io, addr);
 }
 
 void i2c_clear_register(int port, uint8_t addr)
