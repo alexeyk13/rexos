@@ -9,6 +9,7 @@
 #include "../kstdlib.h"
 #include "../kirq.h"
 #include "../kheap.h"
+#include "../karray.h"
 #include "../../userspace/stm32/stm32_driver.h"
 
 #include "stm32_pin.h"
@@ -58,7 +59,7 @@ static const uint8_t __I2C_POWER_PINS[] =                               {21};
 //---works with slave registers
 static inline void regs_init(I2C* i2c)
 {
-    array_create(&i2c->regs, sizeof(REG), 1);
+    karray_create(&i2c->regs, sizeof(REG), 1);
 }
 
 static inline void regs_free(I2C* i2c)
@@ -67,27 +68,27 @@ static inline void regs_free(I2C* i2c)
     REG* reg;
     if (i2c->regs == NULL)
         return;
-    for (i = 0; i < array_size(i2c->regs); i++)
+    for (i = 0; i < karray_size(i2c->regs); i++)
     {
-        reg = (REG*)array_at(i2c->regs, i);
+        reg = (REG*)karray_at(i2c->regs, i);
         kfree(reg->data);
     }
-    array_destroy(&i2c->regs);
+    karray_destroy(&i2c->regs);
 }
 
 static inline void regs_delete(I2C* i2c, uint8_t addr)
 {
     int i;
     REG* reg;
-    for (i = 0; i < array_size(i2c->regs); i++)
+    for (i = 0; i < karray_size(i2c->regs); i++)
     {
-        reg = (REG*)array_at(i2c->regs, i);
+        reg = (REG*)karray_at(i2c->regs, i);
         if (reg == NULL)
             return;
         if (reg->addr == addr)
         {
             kfree(reg->data);
-            array_remove(&i2c->regs, i);
+            karray_remove(&i2c->regs, i);
             return;
         }
     }
@@ -95,11 +96,11 @@ static inline void regs_delete(I2C* i2c, uint8_t addr)
 static inline void regs_add(I2C* i2c, IO* io, uint8_t addr)
 {
     int i;
-    uint32_t len = array_size(i2c->regs);
+    uint32_t len = karray_size(i2c->regs);
     REG* reg;
     for (i = 0; i < len; i++)
     {
-        reg = (REG*)array_at(i2c->regs, i);
+        reg = (REG*)karray_at(i2c->regs, i);
         if (reg->addr == addr)
         {
             kfree(reg->data);
@@ -112,9 +113,9 @@ static inline void regs_add(I2C* i2c, IO* io, uint8_t addr)
             break;
     }
     if (i < len)
-        reg = (REG*)array_insert(&i2c->regs, i);
+        reg = (REG*)karray_insert(&i2c->regs, i);
     else
-    reg = (REG*)array_append(&i2c->regs);
+        reg = (REG*)karray_append(&i2c->regs);
     reg->addr = addr;
     reg->data = kmalloc(io->data_size);
     reg->len = io->data_size;
@@ -125,9 +126,9 @@ static inline REG* regs_search(I2C* i2c, uint8_t addr)
 {
     int i;
     REG* reg;
-    for (i = 0; i < array_size(i2c->regs); i++)
+    for (i = 0; i < karray_size(i2c->regs); i++)
     {
-        reg = (REG*)array_at(i2c->regs, i);
+        reg = (REG*)karray_at(i2c->regs, i);
         if (reg->addr == addr)
             return reg;
     }
@@ -147,7 +148,7 @@ static inline void stm32_i2c_set_register(EXO* exo, IPC* ipc)
     if (io == NULL)
         regs_delete(i2c, ipc->param3);
     else
-    regs_add(i2c, io, ipc->param3);
+        regs_add(i2c, io, ipc->param3);
 }
 
 #ifdef STM32F1
@@ -180,10 +181,12 @@ static void stm32_i2c_on_error_isr(I2C* i2c, I2C_PORT port, int error, uint32_t 
     {
         __I2C_REGS[port]->CR1 |= I2C_CR1_STOP;
         error = ERROR_NAK;
-    } else if (sr & I2C_SR1_TIMEOUT)
+    }
+    else if (sr & I2C_SR1_TIMEOUT)
     {
         error = ERROR_TIMEOUT;
-    } else
+    }
+    else
     {
         error = ERROR_HARDWARE;
     }
@@ -229,7 +232,8 @@ static inline void stm32_i2c_on_rx_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
             {
                 __I2C_REGS[port]->CR1 &= ~I2C_CR1_ACK;
                 __I2C_REGS[port]->CR1 |= I2C_CR1_STOP;
-            } else if (i2c->size == 2)
+            }
+            else if (i2c->size == 2)
                 __I2C_REGS[port]->CR1 &= ~I2C_CR1_ACK;
         }
         __enable_irq();
@@ -249,7 +253,8 @@ static inline void stm32_i2c_on_rx_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
             __enable_irq();
             stm32_i2c_end_rx(i2c, port);
             return;
-        } else if ((i2c->size - i2c->io->data_size) == 3)
+        }
+        else if ((i2c->size - i2c->io->data_size) == 3)
         {
             __I2C_REGS[port]->CR1 &= ~I2C_CR1_ACK;
             __disable_irq();    // errata 2.13.2
@@ -298,7 +303,8 @@ static inline void stm32_i2c_on_tx_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
             __I2C_REGS[port]->CR1 |= I2C_CR1_STOP;
             iio_complete(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_WRITE), port, i2c->io);
             i2c->io_mode = I2C_IO_MODE_IDLE;
-        } else
+        }
+        else
         {
             __I2C_REGS[port]->DR = ((uint8_t*)io_data(i2c->io))[i2c->size++];
         }
@@ -316,7 +322,8 @@ static inline void stm32_i2c_on_slave_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
         if (i2c->reg_data == NULL)
         {
             __I2C_REGS[port]->DR = I2C_REG_EMPTY;
-        } else
+        }
+        else
         {
             __I2C_REGS[port]->DR = *i2c->reg_data++;
             if (--i2c->reg_len == 0)
@@ -334,18 +341,21 @@ static inline void stm32_i2c_on_slave_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
             if (reg == NULL)
             {
                 i2c->reg_data = NULL;
-            } else
+            }
+            else
             {
                 i2c->reg_data = reg->data;
                 i2c->reg_len = reg->len;
             }
             i2c->state = I2C_STATE_DATA;
-        } else
+        }
+        else
         {
             if (i2c->io == NULL)
             {
                 __I2C_REGS[port]->CR1 &= ~I2C_CR1_ACK;
-            } else
+            }
+            else
             {
                 ((uint8_t*)io_data(i2c->io))[i2c->io->data_size++] = data;
                 if ((i2c->size - i2c->io->data_size) <= 1)
@@ -672,7 +682,8 @@ void stm32_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int spe
         __I2C_REGS[port]->CCR = (arb1_freq / (2 * 88000)) + 1; // speed must not be from 88 to 100KHz, errata 2.13.5
         __I2C_REGS[port]->TRISE = 1 + arb1_freq / 1000000;// 1000 ns
 
-    } else
+    }
+    else
     {
         __I2C_REGS[port]->CCR = I2C_CCR_FS | (arb1_freq / 800000);
         __I2C_REGS[port]->TRISE = 1 + arb1_freq / 3000000; // 300 ns
@@ -683,7 +694,8 @@ void stm32_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int spe
         __I2C_REGS[port]->OAR1 = (mode & I2C_SLAVE_ADDR) << 1;
         i2c->io_mode = I2C_IO_MODE_SLAVE;
         __I2C_REGS[port]->CR1 = I2C_CR1_PE | I2C_CR1_ACK;
-    } else
+    }
+    else
     {
         __I2C_REGS[port]->CR1 = I2C_CR1_PE;
     }

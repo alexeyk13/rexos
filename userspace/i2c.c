@@ -22,9 +22,9 @@ void i2c_clear_register(int port, uint8_t addr)
     ipc_post_exo(HAL_CMD(HAL_I2C, I2C_SET_REGISTER), port, 0, addr);
 }
 
-int i2c_read_slave(int port, IO* io, uint32_t max_size)
+void i2c_read_slave(int port, IO* io, uint32_t max_size)
 {
-    return io_read_sync_exo(HAL_IO_REQ(HAL_I2C, IPC_READ), port, io, max_size);
+    io_read_exo(HAL_IO_REQ(HAL_I2C, IPC_READ), port, io, max_size);
 }
 
 void i2c_close(int port)

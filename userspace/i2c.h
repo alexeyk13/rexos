@@ -50,7 +50,7 @@ int i2c_write_len(int port, uint8_t sla, IO* io);
 int i2c_write_addr(int port, uint8_t sla, uint8_t addr, IO* io);
 int i2c_write_addr_len(int port, uint8_t sla, uint8_t addr, IO* io);
 
-int i2c_read_slave(int port, IO* io, uint32_t max_size);
+void i2c_read_slave(int port, IO* io, uint32_t max_size);
 void i2c_set_register(int port, IO* io, uint8_t addr);
 void i2c_clear_register(int port, uint8_t addr);
 
