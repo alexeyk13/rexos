@@ -96,5 +96,7 @@
 //------------------------------ FLASH -----------------------------------------------
 //protect user code if VFS is allocated on flash. Must be sector aligned
 #define STM32_FLASH_USER_CODE_SIZE              (32 * 1024)
+//------------------------------- I2C ------------------------------------------------
+#define I2C_DEBUG                               0
 
 #endif // STM32_CONFIG_H
