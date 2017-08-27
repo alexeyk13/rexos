@@ -17,7 +17,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-//#define STM32F1 // TODO: remove!!
+#define STM32F1 // TODO: remove!!
 
 typedef I2C_TypeDef* I2C_TypeDef_P;
 #ifdef STM32F1
@@ -128,7 +128,7 @@ static inline REG* regs_search(I2C* i2c, uint8_t addr)
     REG* reg;
     for (i = 0; i < karray_size(i2c->regs); i++)
     {
-        reg = (REG*)karray_at(i2c->regs, i);
+        reg = karray_at(i2c->regs, i);
         if (reg->addr == addr)
             return reg;
     }
@@ -155,15 +155,19 @@ static inline void stm32_i2c_set_register(EXO* exo, IPC* ipc)
 static void stm32_i2c_end_rx_slave(I2C* i2c, I2C_PORT port, int error)
 {
     if (i2c->io == NULL)
+    {
         return;
+    }
     else
     {
         I2C_SLAVE_STACK* stack;
         stack = io_push(i2c->io, sizeof(I2C_SLAVE_STACK));
         stack->addr = i2c->reg_addr;
+#if (I2C_DEBUG)
+        printk("I2CSLAVE: master complete write register:%x len:%x error:%u\n", i2c->reg_addr, i2c->io->data_size, error);
+#endif // I2C_DEBUG
         iio_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_READ), port, i2c->io, error);
         i2c->io = NULL;
-
     }
 }
 
@@ -177,24 +181,39 @@ static inline void stm32_i2c_end_rx(I2C* i2c, I2C_PORT port)
 
 static void stm32_i2c_on_error_isr(I2C* i2c, I2C_PORT port, int error, uint32_t sr)
 {
+    if (i2c->io_mode == I2C_IO_MODE_SLAVE)
+    {
+#if (I2C_DEBUG)
+        if(sr & I2C_SR1_AF)
+            printk("I2CSLAVE: master complete read register\n" );
+#endif // I2C_DEBUG
+        if(sr & I2C_SR1_BERR)
+        {
+            __I2C_REGS[port]->SR1 &= ~I2C_SR1_BERR;
+            stm32_i2c_end_rx_slave(i2c, port, ERROR_HARDWARE);
+        }
+        return;
+    }
+
     if (sr & I2C_SR1_AF)
     {
         __I2C_REGS[port]->CR1 |= I2C_CR1_STOP;
         error = ERROR_NAK;
     }
-    else if (sr & I2C_SR1_TIMEOUT)
+    else if (sr & I2C_SR1_ARLO)
     {
-        error = ERROR_TIMEOUT;
+        __I2C_REGS[port]->SR1 &= ~I2C_SR1_ARLO;
+        error = ERROR_CONNECTION_REFUSED;   //TODO: add ERROR_ARBITRATION_LOST
     }
     else
     {
+#if (I2C_DEBUG)
+        printk("I2CMASTER: hardware error SR1:%x \n", sr);
+#endif // I2C_DEBUG
+        __I2C_REGS[port]->SR1 = 0;
         error = ERROR_HARDWARE;
     }
-    if (i2c->io_mode == I2C_IO_MODE_SLAVE)
-    {
-        stm32_i2c_end_rx_slave(i2c, port, error);
-        return;
-    }
+
     iio_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (i2c->io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, error);
     i2c->io_mode = I2C_IO_MODE_IDLE;
 }
@@ -340,12 +359,18 @@ static inline void stm32_i2c_on_slave_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
             i2c->reg_addr = data;
             if (reg == NULL)
             {
+#if (I2C_DEBUG)
+                printk("I2CSLAVE: master addressed void register %x\n", data);
+#endif // I2C_DEBUG
                 i2c->reg_data = NULL;
             }
             else
             {
                 i2c->reg_data = reg->data;
                 i2c->reg_len = reg->len;
+#if (I2C_DEBUG)
+                printk("I2CSLAVE: master addressed register:%x len: %u\n", data, i2c->reg_len);
+#endif // I2C_DEBUG
             }
             i2c->state = I2C_STATE_DATA;
         }
@@ -425,6 +450,11 @@ static inline bool clear_busy(EXO* exo, I2C* i2c, I2C_PORT port)
     __I2C_REGS[port]->CR1 |= I2C_CR1_PE;
     if (i2c->io_mode == I2C_IO_MODE_SLAVE)
         __I2C_REGS[port]->CR1 |= I2C_CR1_ACK;
+#if (I2C_DEBUG)
+      printk("I2C: try to clear BUSY\n");
+#endif // I2C_DEBUG
+
+
     return true;
 }
 
@@ -634,8 +664,10 @@ void stm32_i2c_on_isr(int vector, void* param)
         stm32_i2c_on_slave_isr(i2c, port, sr);
         break;
     default:
-        #ifdef STM32F1
-        stm32_i2c_on_error_isr(i2c, port, ERROR_INVALID_STATE, sr);
+#ifdef STM32F1
+        __I2C_REGS[port]->SR2;
+        __I2C_REGS[port]->SR1 = 0;
+        __I2C_REGS[port]->CR1 = __I2C_REGS[port]->CR1;
 #else
         stm32_i2c_on_error_isr(i2c, port, ERROR_INVALID_STATE);
 #endif //STM32F1
@@ -734,6 +766,8 @@ void stm32_i2c_close(EXO* exo, I2C_PORT port)
 #if defined(STM32F1)
     stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_CLOSE), i2c->pin_scl, 0, 0);
     stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_CLOSE), i2c->pin_sda, 0, 0);
+    __I2C_REGS[port]->CR1 |= I2C_CR1_SWRST;
+    __I2C_REGS[port]->CR1 &= ~I2C_CR1_SWRST;
     NVIC_DisableIRQ(__I2C_ERROR_VECTORS[port]);
     kirq_unregister(KERNEL_HANDLE, __I2C_ERROR_VECTORS[port]);
 #endif
