@@ -68,8 +68,8 @@ unavailable, another HPET timer can be used for RTC emulation
   * cortex-m4
   * ARM7
 - MCU Drivers:
-  * ST STM32F0: generic, UART, RTC, WDT, I2C, USB, CAN
-  * ST STM32F1: generic, UART, RTC, WDT, ADC, DAC, USB, ETH
+  * ST STM32F0: generic, UART, RTC, WDT, SPI, I2C, USB, CAN
+  * ST STM32F1: generic, UART, RTC, WDT, I2C, ADC, DAC, USB, ETH, flash
   * ST STM32F2: generic, UART, RTC, WDT, USB
   * ST STM32F4: generic, UART, RTC, WDT, USB
   * ST STM32L0: generic, UART, RTC, WDT, EEPROM, ADC, DAC, USB
@@ -94,6 +94,15 @@ ARM7 features:
 
 History
 =======
+0.5.7
+- STM32 drivers are now exodrivers. System is now fully exodrivers based
+- STM32 F1 flash driver
+- STM32 F1 I2C driver (master & slave)
+- STM32 F0 SPI driver
+- uCanOpen support PDO/SDO, persistent data saving
+- CCID WTX fix (thanks to Roma Jam @github)
+
+
 0.5.6
 - TLS added TLS_RSA_WITH_AES_128_CBC_SHA256 cipher suite
 - DNS server
@@ -108,7 +117,7 @@ History
     * custom url/parameters/data processing available
     * sessions timeouts, keep-alive or close immediatly
 - STM32L1 support (thanks to Roma Jam @github)
-- LPC exodrivers (experimental
+- LPC exodrivers (experimental)
 
 0.5.4
 - BER bad block recovery

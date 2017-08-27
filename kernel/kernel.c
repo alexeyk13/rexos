@@ -22,7 +22,7 @@
 #include "../lib/lib_lib.h"
 #include <string.h>
 
-const char* const __KERNEL_NAME=                                                      "RExOS 0.5.5";
+const char* const __KERNEL_NAME=                                                      "RExOS 0.5.7";
 
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {
