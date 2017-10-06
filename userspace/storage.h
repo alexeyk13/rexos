@@ -41,6 +41,7 @@ typedef struct {
 } STORAGE_STACK;
 
 bool storage_open(HAL hal, HANDLE process, HANDLE user);
+void storage_close(HAL hal, HANDLE process, HANDLE user);
 void storage_get_media_descriptor(HAL hal, HANDLE process, HANDLE user, IO* io);
 void storage_request_notify_state_change(HAL hal, HANDLE process, HANDLE user);
 void storage_cancel_notify_state_change(HAL hal, HANDLE process, HANDLE user);

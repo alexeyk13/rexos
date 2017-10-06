@@ -17,8 +17,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define STM32F1 // TODO: remove!!
-
 typedef I2C_TypeDef* I2C_TypeDef_P;
 #ifdef STM32F1
 #if (I2C_COUNT > 1)
@@ -142,7 +140,7 @@ static inline void stm32_i2c_set_register(EXO* exo, IPC* ipc)
     IO* io = (IO*)ipc->param2;
     if (i2c == NULL)
     {
-        error (ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (io == NULL)
@@ -686,14 +684,14 @@ void stm32_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int spe
     I2C* i2c = exo->i2c.i2cs[port];
     if (i2c)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     i2c = kmalloc(sizeof(I2C));
     exo->i2c.i2cs[port] = i2c;
     if (i2c == NULL)
     {
-        error(ERROR_OUT_OF_MEMORY);
+        kerror(ERROR_OUT_OF_MEMORY);
         return;
     }
     i2c->io = NULL;
@@ -760,7 +758,7 @@ void stm32_i2c_close(EXO* exo, I2C_PORT port)
     I2C* i2c = exo->i2c.i2cs[port];
     if (i2c == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
 #if defined(STM32F1)
@@ -787,12 +785,12 @@ static void stm32_i2c_io(EXO* exo, IPC* ipc, bool read)
     I2C* i2c = exo->i2c.i2cs[port];
     if (i2c == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if ((i2c->io_mode != I2C_IO_MODE_IDLE) && (i2c->io_mode != I2C_IO_MODE_SLAVE))
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     i2c->process = ipc->process;
@@ -803,7 +801,7 @@ static void stm32_i2c_io(EXO* exo, IPC* ipc, bool read)
         i2c->io->data_size = 0;
         i2c->size = ipc->param3;
         io_reset(i2c->io);
-        error (ERROR_SYNC);
+        kerror(ERROR_SYNC);
         return;
     }
 
@@ -855,7 +853,7 @@ static void stm32_i2c_io(EXO* exo, IPC* ipc, bool read)
     //all rest in isr
 #endif //STM32F1
 
-    error (ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 void stm32_i2c_request(EXO* exo, IPC* ipc)
@@ -863,7 +861,7 @@ void stm32_i2c_request(EXO* exo, IPC* ipc)
     I2C_PORT port = (I2C_PORT)ipc->param1;
     if (port >= I2C_COUNT)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -884,7 +882,7 @@ void stm32_i2c_request(EXO* exo, IPC* ipc)
         stm32_i2c_set_register(exo, ipc);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

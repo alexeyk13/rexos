@@ -37,4 +37,8 @@ void kprocess_switch_test();
 void kprocess_info();
 #endif //(KERNEL_PROFILING)
 
+
+int kget_last_error();
+void kerror(int kerror);
+
 #endif // KPROCESS_H

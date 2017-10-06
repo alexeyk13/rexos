@@ -108,7 +108,7 @@ void exodriver_post(IPC* ipc)
         break;
 #endif //STM32_USB_DRIVER
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

@@ -23,7 +23,7 @@ static const uint8_t __SPI_POWER_PINS[] =                               {12, 14}
 void stm32_spi_init(EXO* exo)
 {
     int i;
-    for (i = 0; i < I2C_COUNT; ++i)
+    for (i = 0; i < SPI_COUNT; ++i)
         exo->spi.spis[i] = NULL;
 }
 
@@ -33,14 +33,14 @@ void stm32_spi_open(EXO* exo, SPI_PORT port, uint32_t mode, uint32_t cs_pin)
     uint32_t cr1;
     if (spi)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     spi = kmalloc(sizeof(SPI));
     exo->spi.spis[port] = spi;
     if (spi == NULL)
     {
-        error(ERROR_OUT_OF_MEMORY);
+        kerror(ERROR_OUT_OF_MEMORY);
         return;
     }
 
@@ -70,7 +70,7 @@ void stm32_spi_close(EXO* exo, SPI_PORT port)
     SPI* spi = exo->spi.spis[port];
     if (spi == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     __SPI_REGS[port]->CR1 &= ~SPI_CR1_SPE;
@@ -98,7 +98,7 @@ void stm32_spi_write(EXO* exo, IPC* ipc, SPI_PORT port)
     SPI* spi = exo->spi.spis[port];
     if (spi == NULL)
     {
-        error (ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     ipc->param3 = spi_write(port, ipc->param3);
@@ -116,7 +116,7 @@ void stm32_spi_request(EXO* exo, IPC* ipc)
     SPI_PORT port = (SPI_PORT)(ipc->param1 & 0xFF);
     if (port >= SPI_COUNT)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -130,7 +130,7 @@ void stm32_spi_request(EXO* exo, IPC* ipc)
         stm32_spi_write(exo, ipc, port);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

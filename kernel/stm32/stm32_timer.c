@@ -348,7 +348,7 @@ void stm32_timer_request(EXO* exo, IPC* ipc)
     TIMER_NUM num = (TIMER_NUM)ipc->param1;
     if (num >= TIMERS_COUNT)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -371,7 +371,7 @@ void stm32_timer_request(EXO* exo, IPC* ipc)
         break;
 #endif //TIMER_IO
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

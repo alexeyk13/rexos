@@ -266,7 +266,7 @@ static inline void stm32_uart_set_baudrate(EXO* exo, UART_PORT port, IPC* ipc)
     unsigned int clock, stop;
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     uart_decode_baudrate(ipc, &baudrate);
@@ -448,7 +448,7 @@ static inline void stm32_uart_open(EXO* exo, UART_PORT port, unsigned int mode)
     bool ok;
     if (exo->uart.uarts[port] != NULL)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     exo->uart.uarts[port] = kmalloc(sizeof(UART));
@@ -505,7 +505,7 @@ static inline void stm32_uart_close(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     //disable interrupts
@@ -535,7 +535,7 @@ static inline void stm32_uart_flush(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     stm32_uart_flush_internal(exo, port);
@@ -545,7 +545,7 @@ static inline HANDLE stm32_uart_get_tx_stream(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return INVALID_HANDLE;
     }
     return exo->uart.uarts[port]->s.tx_stream;
@@ -555,7 +555,7 @@ static inline HANDLE stm32_uart_get_rx_stream(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return INVALID_HANDLE;
     }
     return exo->uart.uarts[port]->s.rx_stream;
@@ -565,7 +565,7 @@ static inline uint16_t stm32_uart_get_last_error(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return ERROR_OK;
     }
     return exo->uart.uarts[port]->error;
@@ -575,7 +575,7 @@ static inline void stm32_uart_clear_error(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     exo->uart.uarts[port]->error = ERROR_OK;
@@ -616,17 +616,17 @@ static inline void stm32_uart_io_read(EXO* exo, UART_PORT port, IPC* ipc)
     IO* io;
     if (uart == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (!uart->io_mode)
     {
-        error(ERROR_INVALID_STATE);
+        kerror(ERROR_INVALID_STATE);
         return;
     }
     if (uart->i.rx_io)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     io = (IO*)ipc->param2;
@@ -635,7 +635,7 @@ static inline void stm32_uart_io_read(EXO* exo, UART_PORT port, IPC* ipc)
     io->data_size = 0;
     timer_start_ms(uart->i.rx_timer, uart->i.rx_char_timeout);
     uart->i.rx_io = io;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void stm32_uart_io_write(EXO* exo, UART_PORT port, IPC* ipc)
@@ -644,17 +644,17 @@ static inline void stm32_uart_io_write(EXO* exo, UART_PORT port, IPC* ipc)
     IO* io;
     if (uart == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (!uart->io_mode)
     {
-        error(ERROR_INVALID_STATE);
+        kerror(ERROR_INVALID_STATE);
         return;
     }
     if (uart->i.tx_io)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     io = (IO*)ipc->param2;
@@ -663,7 +663,7 @@ static inline void stm32_uart_io_write(EXO* exo, UART_PORT port, IPC* ipc)
     uart->i.tx_io = io;
     //start
     UART_REGS[port]->CR1 |= USART_CR1_TE | USART_CR1_TXEIE;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void stm32_uart_io_read_timeout(EXO* exo, UART_PORT port)
@@ -694,7 +694,7 @@ void stm32_uart_request(EXO* exo, IPC* ipc)
     UART_PORT port = (UART_PORT)ipc->param1;
     if (port >= UARTS_COUNT)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -746,7 +746,7 @@ void stm32_uart_request(EXO* exo, IPC* ipc)
         break;
 #endif //UART_IO_MODE_SUPPORT
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

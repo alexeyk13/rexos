@@ -321,7 +321,7 @@ void stm32_rtc_request(IPC* ipc)
         stm32_rtc_set(&time);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

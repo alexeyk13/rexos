@@ -67,6 +67,7 @@ typedef struct {
     //next process to run, after leave. For context switch. If NULL - no context switch is required
     void* next_process;
 
+    int kerror;
     //active processes
     KPROCESS* processes;
 #if (KERNEL_PROCESS_STAT)

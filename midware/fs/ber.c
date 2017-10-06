@@ -159,6 +159,10 @@ static uint16_t ber_write_pblock(VFSS_TYPE* vfss, bool is_super)
         for (retry = 0; retry < 3; ++retry)
         {
             //we need to update superblock statistics on each write - successfull or not
+#if (VFS_BER_DEBUG_INFO)
+            printf("BER: write pblock %#x  version %#x super %#x\n", pblock, vfss->ber.ber_revision, is_super);
+#endif // VFS_BER_DEBUG_INFO
+
             if (is_super)
                 ber_prepare_superblock(vfss, pblock);
             if (storage_write_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->ber.io, vfss->volume.first_sector +
@@ -454,6 +458,7 @@ void ber_request(VFSS_TYPE *vfss, IPC* ipc)
         break;
     case VFS_FORMAT:
         ber_format(vfss, (IO*)ipc->param2);
+//        error(ERROR_OK);
         break;
     case VFS_STAT:
         ber_stat(vfss, (IO*)ipc->param2);

@@ -97,7 +97,7 @@ bool stm32_usb_ep_flush(EXO* exo, unsigned int num)
     EP* ep = ep_data(exo, num);
     if (ep == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return false;
     }
     if (num & USB_EP_IN)
@@ -316,7 +316,7 @@ void stm32_usb_open_device(EXO* exo, HANDLE device)
         RCC->CFGR |= 1 << 22;
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         return;
     }
 #endif
@@ -384,7 +384,7 @@ static inline void stm32_usb_open_ep(EXO* exo, unsigned int num, USB_EP_TYPE typ
 {
     if (ep_data(exo, num) != NULL)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
 
@@ -516,12 +516,12 @@ static bool stm32_usb_io_prepare(EXO* exo, IPC* ipc)
     EP* ep = ep_data(exo, ipc->param1);
     if (ep == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return false;
     }
     if (ep->io_active)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return false;
     }
     ep->io = (IO*)ipc->param2;
@@ -538,7 +538,7 @@ static inline void stm32_usb_read(EXO* exo, IPC* ipc)
         ep->size = ipc->param3;
         ep->io_active = true;
         ep_toggle_bits(ep_num, USB_EPRX_STAT, USB_EP_RX_VALID);
-        error(ERROR_SYNC);
+        kerror(ERROR_SYNC);
     }
 }
 
@@ -557,7 +557,7 @@ static inline void stm32_usb_write(EXO* exo, IPC* ipc)
             return;
         }
         ep->io_active = true;
-        error(ERROR_SYNC);
+        kerror(ERROR_SYNC);
     }
 }
 
@@ -590,7 +590,7 @@ static inline void stm32_usb_device_request(EXO* exo, IPC* ipc)
         stm32_usb_set_address(exo, ipc->param2);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }
@@ -599,7 +599,7 @@ static inline void stm32_usb_ep_request(EXO* exo, IPC* ipc)
 {
     if (USB_EP_NUM(ipc->param1) >= USB_EP_COUNT_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -629,7 +629,7 @@ static inline void stm32_usb_ep_request(EXO* exo, IPC* ipc)
         stm32_usb_write(exo, ipc);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

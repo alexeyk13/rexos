@@ -46,7 +46,7 @@ bool stm32_otg_ep_flush(EXO* exo, int num)
     EP* ep = ep_data(exo, num);
     if (ep == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return false;
     }
     if (ep->io != NULL)
@@ -256,7 +256,7 @@ void stm32_otg_open_device(EXO* exo, HANDLE device)
         RCC->CFGR |= 1 << 22;
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         return;
     }
 #if defined(STM32F10X_CL)
@@ -316,7 +316,7 @@ static inline void stm32_otg_open_ep(EXO* exo, int num, USB_EP_TYPE type, unsign
 {
     if (ep_data(exo, num) != NULL)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     EP* ep = kmalloc(sizeof(EP));
@@ -449,16 +449,16 @@ static bool stm32_usb_io_prepare(EXO* exo, IPC* ipc)
     EP* ep = ep_data(exo, ipc->param1);
     if (ep == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return false;
     }
     if (ep->io_active)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return false;
     }
     ep->io = (IO*)ipc->param2;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
     return true;
 }
 
@@ -531,7 +531,7 @@ static inline void stm32_otg_device_request(EXO* exo, IPC* ipc)
         break;
 #endif //USB_TEST_MODE_SUPPORT
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }
@@ -541,7 +541,7 @@ static void stm32_otg_ep_request(EXO* exo, IPC* ipc)
 {
     if (USB_EP_NUM(ipc->param1) >= USB_EP_COUNT_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -575,7 +575,7 @@ static void stm32_otg_ep_request(EXO* exo, IPC* ipc)
         //message from isr, no response
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

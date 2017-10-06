@@ -29,6 +29,10 @@ typedef enum {
 typedef struct {
     HANDLE timer;
     uint32_t count;
+    uint32_t updated_msk;
+    HANDLE inhibit_timer;
+    uint32_t inhibit_time;  // in us
+    bool inhibit;
     CO_OD_ENTRY* cob_id[CO_MAX_TPDO];
     CO_OD_ENTRY*  od_var[CO_MAX_TPDO];
 }CO_TPDO;

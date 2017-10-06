@@ -14,6 +14,11 @@ bool storage_open(HAL hal, HANDLE process, HANDLE user)
     return get_last_error() == ERROR_OK;
 }
 
+void storage_close(HAL hal, HANDLE process, HANDLE user)
+{
+    ipc_post_inline(process, HAL_REQ(hal, IPC_CLOSE), user, 0, 0);
+}
+
 void storage_get_media_descriptor(HAL hal, HANDLE process, HANDLE user, IO* io)
 {
     io_read(process, HAL_IO_REQ(hal, STORAGE_GET_MEDIA_DESCRIPTOR), user, io, sizeof(STORAGE_MEDIA_DESCRIPTOR));

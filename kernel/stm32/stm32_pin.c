@@ -174,7 +174,7 @@ void stm32_pin_request(EXO* exo, IPC* ipc)
         stm32_gpio_disable_exti(&exo->gpio, (PIN)ipc->param1);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

@@ -159,7 +159,7 @@ static inline void stm32_can_set_baudrate(EXO* exo, uint32_t baudrate)
 {
     if (exo->can.state == NO_INIT)
     {
-        error (ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     CAN->TSR |= CAN_TSR_ABRQ0;
@@ -177,7 +177,7 @@ static inline void stm32_can_open(EXO* exo, HANDLE device, uint32_t baudrate)
     stm32_can_tx_flush(exo);
     if (exo->can.state != NO_INIT)
     {
-        error (ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     RCC->APB1ENR |= RCC_APB1ENR_CANEN;
@@ -209,7 +209,7 @@ static inline void stm32_can_close(EXO* exo)
 {
     if (exo->can.state == NO_INIT)
     {
-        error (ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
 
@@ -229,7 +229,7 @@ static inline void stm32_can_check_state(EXO* exo)
     switch (exo->can.state)
     {
     case NO_INIT:
-        error (ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         exo->can.error = ERROR_OK;
         break;
     case INIT:
@@ -258,7 +258,7 @@ static inline void stm32_can_clear_error(EXO* exo)
 {
     if (exo->can.state == NO_INIT)
     {
-        error (ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     exo->can.error = OK;
@@ -320,7 +320,7 @@ void stm32_can_request(EXO* exo, IPC* ipc)
         stm32_can_clear_error(exo);
         break;
     default:
-        error (ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
     ipc->param2 = exo->can.error;
