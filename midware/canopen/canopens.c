@@ -9,9 +9,14 @@
 #define CO_DEF_HEATBEART              2000 // in ms
 #define CO_DEF_TIM_BUSRESTART         4000 // in ms
 
+#define CO_MIN_INHIBIT_TIME          5000 // in us
+
 #define TIMER_PDO_MASK                (1UL <<31)
 #define COT_PDO                       (TIMER_PDO_MASK +1)
+#define COT_INHIBIT                   (TIMER_PDO_MASK +2)
 #define CO_OD_ENTRY_EVENT_TIME_1TPDO   0x051800
+#define CO_OD_ENTRY_INHIBIT_TIME       CO_OD_IDX(0x1800, 3)
+#define CO_OD_ENTRY_ERROR_REG          CO_OD_IDX(0x1001, 0)
 
 #define IS_MY_ID          ((co->rec_msg.id & 0x7F) == co->id)
 
@@ -22,7 +27,8 @@ static void pdo_start_timer(CO* co)
     CO_OD_ENTRY* entry = co_od_find_idx(co->od, CO_OD_ENTRY_EVENT_TIME_1TPDO);
     if (entry == NULL)
         return;
-    timer_start_ms(co->tpdo.timer, entry->data);
+    if(entry->data)
+        timer_start_ms(co->tpdo.timer, entry->data);
 }
 
 static void pdo_send(CO* co, uint32_t cob_id, uint32_t data, uint32_t len)
@@ -34,7 +40,11 @@ static void pdo_send(CO* co, uint32_t cob_id, uint32_t data, uint32_t len)
     co->out_msg.data.hi = 0;
     co->out_msg.data_len = len;
     can_write(&co->out_msg, &co->can_state);
-
+    if((!co->tpdo.inhibit) && (co->tpdo.inhibit_time))
+        {
+            timer_start_us(co->tpdo.inhibit_timer, co->tpdo.inhibit_time);
+            co->tpdo.inhibit = true;
+        }
 }
 
 void pdo_data_changed(CO* co, CO_OD_ENTRY* entry, uint32_t data)
@@ -44,23 +54,55 @@ void pdo_data_changed(CO* co, CO_OD_ENTRY* entry, uint32_t data)
     {
         if (entry != co->tpdo.od_var[i])
             continue;
+        if(co->tpdo.inhibit)
+        {
+            co->tpdo.updated_msk |= (1 << i);
+            continue;
+        }
         pdo_send(co, co->tpdo.cob_id[i]->data, data, entry->len & 0xff);
         timer_stop(co->tpdo.timer, COT_PDO, HAL_CANOPEN);
         pdo_start_timer(co);
     }
 }
 
-void pdo_tpdo_param_change(CO* co, CO_OD_ENTRY* entry, uint32_t data)
+uint32_t pdo_tpdo_param_change(CO* co, CO_OD_ENTRY* entry, uint32_t data)
 {
+    switch (entry->idx)
+    {
+    case CO_OD_ENTRY_EVENT_TIME_1TPDO:   //event timer first TPDO in  ms
+        if((data < 100) && (data != 0))
+            data = 100;
+        entry->data = data;
+        break;
+    case CO_OD_ENTRY_INHIBIT_TIME:   // in us
+        if((data < CO_MIN_INHIBIT_TIME) && (data != 0))
+            data = CO_MIN_INHIBIT_TIME;
+        entry->data = data;
+        co->tpdo.inhibit_time = data;
+        break;
+    }
 
+    return SDO_ERROR_OK;
 }
 
 void pdo_timeout(CO* co, uint32_t timer)
 {
     int i;
-    for (i = 0; i < co->tpdo.count; i++)
-        pdo_send(co, co->tpdo.cob_id[i]->data, co->tpdo.od_var[i]->data, co->tpdo.od_var[i]->len & 0xff);
-    pdo_start_timer(co);
+    switch (timer)
+    {
+    case COT_PDO:
+        for (i = 0; i < co->tpdo.count; i++)
+            pdo_send(co, co->tpdo.cob_id[i]->data, co->tpdo.od_var[i]->data, co->tpdo.od_var[i]->len & 0xff);
+        pdo_start_timer(co);
+        break;
+    case COT_INHIBIT:
+        co->tpdo.inhibit = false;
+        for (i = 0; i < co->tpdo.count; i++)
+            if(co->tpdo.updated_msk & (1 << i))
+                pdo_send(co, co->tpdo.cob_id[i]->data, co->tpdo.od_var[i]->data, co->tpdo.od_var[i]->len & 0xff);
+        co->tpdo.updated_msk = 0;
+        break;
+    }
 }
 
 void pdo_init(CO* co)
@@ -68,6 +110,12 @@ void pdo_init(CO* co)
     CO_OD_ENTRY* entry;
     int i;
     uint32_t idx;
+    if(co->co_state != Operational)
+    {
+        co->tpdo.count = 0;
+        co->rpdo.count = 0;
+        return;
+    }
 //search TPDO
     for (i = 0; i < CO_MAX_TPDO; i++)
     {
@@ -75,7 +123,7 @@ void pdo_init(CO* co)
         if (entry == NULL)
             break;
         co->tpdo.cob_id[i] = entry;
-        entry->data = 0x180 + i * 0x100 + co->id;
+        entry->data = (entry->data & ~MSK_ID) | co->id;
         entry = co_od_find_idx(co->od, CO_OD_IDX(0x1A00 + i, 1));
         if (entry == NULL)
             break;
@@ -91,7 +139,7 @@ void pdo_init(CO* co)
         entry = co_od_find_idx(co->od, CO_OD_IDX(0x1400 + i, 1));
         if (entry == NULL)
             break;
-        entry->data = 0x200 + i * 0x100 + co->id;
+        entry->data = (entry->data & ~MSK_ID) | co->id;
         co->rpdo.cob_id[i] = entry;
         entry = co_od_find_idx(co->od, CO_OD_IDX(0x1600 + i, 1));
         if (entry == NULL)
@@ -179,6 +227,7 @@ static inline void bus_init(CO* co) // can bus ready after init or restore after
     can_write(&co->out_msg, &co->can_state);
     co->co_state = Operational;
     heartbeat_init(co);
+    pdo_init(co);
 }
 
 static inline void bus_error(CO* co)
@@ -205,6 +254,7 @@ static inline void init(CO* co)
 static inline void open(CO* co, IPC* ipc) // HANDLE device, IO* io)
 {
     IO* io = (IO*)ipc->param2;
+    CO_OD_ENTRY* od;
     if (co->od)
     {
         error (ERROR_ALREADY_CONFIGURED);
@@ -236,7 +286,17 @@ static inline void open(CO* co, IPC* ipc) // HANDLE device, IO* io)
     timer_start_us(co->timers.bus, 30 * 1000000ul / baud);
     co->out_msg.rtr = 0;
     co->tpdo.timer = timer_create(COT_PDO, HAL_CANOPEN);
+    co->tpdo.inhibit_timer = timer_create(COT_INHIBIT, HAL_CANOPEN);
     pdo_init(co);
+
+    od = co_od_find_idx(co->od, CO_OD_ENTRY_INHIBIT_TIME);
+    if(od)
+    {
+        if( (od->data > 0) && (od->data < CO_MIN_INHIBIT_TIME) )
+            od->data = CO_MIN_INHIBIT_TIME;
+        co->tpdo.inhibit_time  = od->data;
+    }else
+        co->tpdo.inhibit_time  = 0;
 
 #if (CO_DEBUG)
     printf("LSS serial:%x \n", co->lss.lss_id.serial);
@@ -327,56 +387,36 @@ static void co_sdo_slave_replay(CO* co, uint8_t cmd, uint32_t data)
     can_write(&co->out_msg, &co->can_state);
 }
 
-static inline void co_sdo_comm_changed(CO* co, CO_OD_ENTRY* entry, uint32_t data)
+static inline uint32_t co_sdo_save_od(CO* co, CO_OD_ENTRY* entry, uint32_t data)
 {
-    switch (entry->index & 0xFF00)
-    {
-    case 0x1000:
-        switch (entry->idx)
-        {
-        case CO_OD_ENTRY_HEARTBEAT_TIME:
-            if ((entry->data == 0) && (data != 0))
-            {
-                entry->data = data;
-                heartbeat_init(co);
-            }
-            break;
-
-        }
-        break;
-    case 0x1800:
-        pdo_tpdo_param_change(co, entry, data);
-    }
+    uint32_t size;
+    if (data != SDO_SAVE_MAGIC)
+        return SDO_ERROR_STORE;
+    size = co_od_size(co->od)*sizeof(CO_OD_ENTRY);
+    if (get_size(co->device, HAL_REQ(HAL_CANOPEN, IPC_CO_SAVE_OD), 0, CO_OD_SUBINDEX((entry->idx)) , size) != 0)
+        return SDO_ERROR_ACCESS_FAIL;
+    else return 0;
 }
 
-static inline bool co_sdo_changed(CO* co, CO_OD_ENTRY* entry, uint32_t data)
+static inline uint32_t co_sdo_comm_changed(CO* co, CO_OD_ENTRY* entry, uint32_t data)
 {
-    switch ((entry->index & 0xF000))
+    if ((CO_OD_INDEX(entry->index) & 0xFF00) == 0x1800)
     {
-    case 0x1000:
-        co_sdo_comm_changed(co, entry, data);
-        break;
-    case 0x2000:
-        ipc_post_inline(co->device, HAL_CMD(HAL_CANOPEN, IPC_CO_OD_CHANGE),
-                entry->idx, data, 0);
-        break;
-    case 0x6000:
-        pdo_data_changed(co, entry, data);
-        break;
-    default:
-        return false;
+        return pdo_tpdo_param_change(co, entry, data);
     }
-    entry->data = data;
-    return true;
+    switch(CO_OD_INDEX(entry->idx))
+    {
+    case CO_OD_INDEX_SAVE_OD:
+        return co_sdo_save_od(co, entry, data);
+    case CO_OD_INDEX_RESTORE_OD:
+        if (get_size(co->device, HAL_REQ(HAL_CANOPEN, IPC_CO_RESTORE_OD), 0, CO_OD_SUBINDEX((entry->idx)), 0) != 0)
+            return SDO_ERROR_ACCESS_FAIL;
+        else
+            return SDO_ERROR_OK;
+    }
 
-    if ((entry->index & 0xF000) == 2)
-    {
-        ipc_post_inline(co->device, HAL_CMD(HAL_CANOPEN, IPC_CO_OD_CHANGE), entry->idx, data, 0);
-    }
     switch (entry->idx)
     {
-    case CO_OD_ENTRY_EVENT_TIME_1TPDO:   //event timer first TPDO in  ms
-        break;
     case CO_OD_ENTRY_HEARTBEAT_TIME:
         if ((entry->data == 0) && (data != 0))
         {
@@ -386,7 +426,7 @@ static inline bool co_sdo_changed(CO* co, CO_OD_ENTRY* entry, uint32_t data)
         break;
     }
     entry->data = data;
-    return true;
+    return SDO_ERROR_OK;
 }
 
 static inline void co_sdo_slave_request(CO* co)
@@ -403,10 +443,20 @@ static inline void co_sdo_slave_request(CO* co)
     case SDO_CMD_DOWNLOAD_REQ:
         if (CO_OD_IS_RW(entry))
         {
-            if (co_sdo_changed(co, entry, pkt->data))
+            uint32_t err_code = 0;
+            if( CO_OD_INDEX(entry->index) < CO_OD_FIRST_USER_INDEX)
+                err_code = co_sdo_comm_changed(co, entry, pkt->data);
+            else
+            {
+                pdo_data_changed(co, entry, pkt->data);
+                ipc_post_inline(co->device, HAL_CMD(HAL_CANOPEN, IPC_CO_OD_CHANGE), entry->idx, pkt->data, 0);
+                entry->data = pkt->data;
+            }
+//            = co_sdo_changed(co, entry, pkt->data);
+            if (err_code == SDO_ERROR_OK)
                 co_sdo_slave_replay(co, SDO_CMD_DOWNLOAD_RESP, 0);
             else
-            co_sdo_slave_replay(co, SDO_CMD_ABORT, SDO_ERROR_DATA_RANGE);
+            co_sdo_slave_replay(co, SDO_CMD_ABORT, err_code);
         } else
         co_sdo_slave_replay(co, SDO_CMD_ABORT, SDO_ERROR_READONLY);
         break;
@@ -458,6 +508,20 @@ static inline void co_sdo_init_request(CO* co, IPC* ipc)
     can_write(&co->out_msg, &co->can_state);
 }
 #endif // CO_LSS_MASTER
+
+static void co_nmt_request(CO* co)
+{
+    CAN_MSG* msg = &co->rec_msg;
+    if( (msg->data_len != 2) || (msg->data.b1 != co->id) )
+        return;
+    switch(msg->data.b0)
+    {
+    case NMT_RESET_NODE:
+        ipc_post_inline(co->device, HAL_CMD(HAL_CANOPEN, IPC_CO_HARDW_RESET), 0, 0, 0);
+        break;
+    }
+}
+
 //-----------------
 static inline void can_received(CO* co)
 {
@@ -480,19 +544,45 @@ static inline void can_received(CO* co)
         return;
     switch (co->rec_msg.id & MSK_FUNC)
     {
-    case NMT:
-        break;
 #if (CO_LSS_MASTER)
         case SDOtx:         // from slave(server) to master(client)
         co_sdo_master_replay(co);
         break;
 #endif // CO_LSS_MASTER
+    case NMT:
+        co_nmt_request(co);
+        break;
     case SDOrx:         // from master(client) to slave(server)
+//        if ((!IS_MY_ID) || (co->rec_msg.data_len != 8))
         if (!IS_MY_ID)
             break;
         co_sdo_slave_request(co);
         break;
     }
+}
+static inline void co_get_OD(CO* co, IPC* ipc)
+{
+    IO* io = (IO*)ipc->param2;
+    io_data_append(io, co->od, ipc->param3);
+    ipc->param3 = io->data_size;
+}
+
+static inline void co_fault(CO* co, uint32_t error_code)
+{
+    CO_OD_ENTRY* entry= co_od_find_idx(co->od, CO_OD_ENTRY_ERROR_REG);
+    if(entry)
+    {
+        if(error_code)
+            entry->data = 1;
+        else
+            entry->data = 0;
+    }
+    co->out_msg.id = SYNC + co->id;
+    co->out_msg.data.lo = error_code;
+    co->out_msg.data.hi = 0;
+    co->out_msg.data_len = 8;
+    can_write(&co->out_msg, &co->can_state);
+
 }
 
 static inline void canopen_request(CO* co, IPC* ipc)
@@ -510,7 +600,9 @@ static inline void canopen_request(CO* co, IPC* ipc)
         bus_init(co);
         break;
     case IPC_CO_ID_CHANGED:
-        pdo_init(co);
+        bus_init(co);
+        pdo_start_timer(co);
+//        pdo_init(co);
         break;
     case IPC_TIMEOUT:
         if (ipc->param1 & TIMER_PDO_MASK)
@@ -532,17 +624,20 @@ static inline void canopen_request(CO* co, IPC* ipc)
         }
         break;
     case IPC_CO_FAULT:
-        co->out_msg.id = SYNC + co->id;
-        co->out_msg.data.lo = ipc->param2;
-        co->out_msg.data.hi = 0;
-        co->out_msg.data_len = 8;
-        can_write(&co->out_msg, &co->can_state);
+        co_fault(co, ipc->param2);
         break;
 
+    case IPC_CO_GET_OD:
+        co_get_OD(co,ipc);
+        break;
     case IPC_CO_OD_CHANGE:
         entry = co_od_find_idx(co->od, ipc->param1);
-        if (entry)
-            co_sdo_changed(co, entry, ipc->param2);
+        if (entry)// if(CO_OD_INDEX(entry->idx) >= 0x2000)
+        {
+            pdo_data_changed(co, entry, ipc->param2);
+            entry->data = ipc->param2;
+        }
+//            co_sdo_changed(co, entry, ipc->param2);
         break;
 
 #if (CO_LSS_MASTER)

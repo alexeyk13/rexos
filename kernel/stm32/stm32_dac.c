@@ -109,12 +109,12 @@ static inline void stm32_dac_open(EXO* exo, int num, DAC_MODE mode, unsigned int
 {
     if (num >= DAC_CHANNELS_COUNT_USER)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if (exo->dac.channels[num].active)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     //enable clock
@@ -217,12 +217,12 @@ void stm32_dac_close(EXO* exo, int num)
 {
     if (num >= DAC_CHANNELS_COUNT_USER)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if (!exo->dac.channels[num].active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
 
@@ -269,17 +269,17 @@ static inline void stm32_dac_write(EXO* exo, IPC*ipc)
     bool need_start = true;
     if (num >= DAC_CHANNELS_COUNT_USER)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if (!exo->dac.channels[num].active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (exo->dac.channels[num].cnt > 2)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     exo->dac.channels[num].io = (IO*)ipc->param2;
@@ -310,7 +310,7 @@ static inline void stm32_dac_write(EXO* exo, IPC*ipc)
     if (need_start)
         stm32_timer_request_inside(exo, HAL_REQ(HAL_TIMER, TIMER_START), DAC_TRIGGERS[num], TIMER_VALUE_HZ, exo->dac.channels[num].samplerate);
     if (cnt_left)
-        error(ERROR_SYNC);
+        kerror(ERROR_SYNC);
 }
 #endif //DAC_STREAM
 
@@ -318,12 +318,12 @@ void stm32_dac_set_level(EXO* exo, int num, int value)
 {
     if (num >= DAC_CHANNELS_COUNT_USER)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if (!exo->dac.channels[num].active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     *(unsigned int*)(DAC_DATA_REG[num]) = 0;
@@ -333,12 +333,12 @@ void stm32_dac_wave(EXO* exo, int num, DAC_WAVE_TYPE wave_type, int amplitude)
 {
     if (num >= DAC_CHANNELS_COUNT_USER)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if (!exo->dac.channels[num].active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     stm32_timer_request_inside(exo, HAL_REQ(HAL_TIMER, TIMER_STOP), DAC_TRIGGERS[num], 0, 0);
@@ -383,7 +383,7 @@ void stm32_dac_request(EXO* exo, IPC* ipc)
 #endif //DAC_DEBUG
 #endif //DAC_STREAM
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

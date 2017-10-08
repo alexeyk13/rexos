@@ -54,11 +54,7 @@ void canopen_od_change(HANDLE co, uint32_t idx, uint32_t data)
 
 void canopen_open(HANDLE co, IO* od, uint32_t baudrate, uint8_t id)
 {
-//    IO* io;
-//    io = io_create(sizeof(CO_DATA));
-//    memcpy(io_data(io), data, sizeof(CO_DATA));
     ack(co, HAL_REQ(HAL_CANOPEN, IPC_OPEN), baudrate, (uint32_t)od, id);
-//    io_destroy(io);
 }
 
 void canopen_close(HANDLE co)
@@ -137,7 +133,7 @@ uint32_t co_od_size(CO_OD_ENTRY* od)
         if (od == NULL)
             return 0;
         if (od->idx == 0)
-            return i;
+            return i+1;
     }
     return 0;
 }

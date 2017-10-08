@@ -56,46 +56,43 @@
 #define SDO_BSS_DOWNLOAD_RESPONSE          2
 
 
-#define SDO_CMD_MSK                   0xE0
-#define SDO_CMD_DOWNLOAD_REQ         (1 << 5)
-#define SDO_CMD_DOWNLOAD_RESP        (3 << 5)
-#define SDO_CMD_UPLOAD_REQ           (2 << 5)
-#define SDO_CMD_UPLOAD_RESP          (2 << 5)
-#define SDO_CMD_ABORT                (4 << 5)
+#define SDO_CMD_MSK                 0xE0
+#define SDO_CMD_DOWNLOAD_REQ        (1 << 5)
+#define SDO_CMD_DOWNLOAD_RESP       (3 << 5)
+#define SDO_CMD_UPLOAD_REQ          (2 << 5)
+#define SDO_CMD_UPLOAD_RESP         (2 << 5)
+#define SDO_CMD_ABORT               (4 << 5)
 
-#define SDO_ERROR_READONLY                 0x06010002
-#define SDO_ERROR_NOT_EXIST                0x06020000
-#define SDO_ERROR_DATA_LEN                 0x06070010
-#define SDO_ERROR_DATA_RANGE               0x06090030
+#define SDO_SAVE_MAGIC               0x65766173
+#define SDO_RESTORE_MAGIC            0x64616F6C
 
-#define MSK_ID     0x7F
-#define MSK_FUNC   (0x0F <<7)
+#define SDO_ERROR_OK                 0
+#define SDO_ERROR_READONLY           0x06010002
+#define SDO_ERROR_NOT_EXIST          0x06020000
+#define SDO_ERROR_ACCESS_FAIL        0x06060000
+#define SDO_ERROR_DATA_LEN           0x06070010
+#define SDO_ERROR_DATA_RANGE         0x06090030
+#define SDO_ERROR_STORE              0x08000020
+
+#define MSK_ID                       0x7F
+#define MSK_FUNC                     (0x0F <<7)
 
 // Function Codes
-#define NMT        (0x0 << 7)
-#define SYNC       (0x1 << 7)
-#define TIME_STAMP (0x2 << 7)
-#define PDO1tx     (0x3 << 7)
-#define PDO1rx     (0x4 << 7)
-#define PDO2tx     (0x5 << 7)
-#define PDO2rx     (0x6 << 7)
-#define PDO3tx     (0x7 << 7)
-#define PDO3rx     (0x8 << 7)
-#define PDO4tx     (0x9 << 7)
-#define PDO4rx     (0xA << 7)
-#define SDOtx      (0xB << 7)
-#define SDOrx      (0xC << 7)
-#define NODE_GUARD (0xE << 7)
-#define LSS        (0xF << 7)
+#define NMT                          (0x0 << 7)
+#define SYNC                         (0x1 << 7)
+#define TIME_STAMP                   (0x2 << 7)
+#define SDOtx                        (0xB << 7)
+#define SDOrx                        (0xC << 7)
+#define NODE_GUARD                   (0xE << 7)
+#define LSS                          (0xF << 7)
 
-/* NMT Command Specifier, sent by master to change a slave state */
-/* ------------------------------------------------------------- */
-/* Should not be modified */
-#define NMT_Start_Node              0x01
-#define NMT_Stop_Node               0x02
-#define NMT_Enter_PreOperational    0x80
-#define NMT_Reset_Node              0x81
-#define NMT_Reset_Comunication      0x82
+// NMT Command Specifier, sent by master to change a slave state
+
+#define NMT_START_NODE               0x01
+#define NMT_STOP_NODE                0x02
+#define NMT_ENTER_PREOPERATION       0x80
+#define NMT_RESET_NODE               0x81
+#define NMT_RESET_COMMUNICATION      0x82
 
 //-------------------- LSS ---------------------
 

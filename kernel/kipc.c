@@ -116,19 +116,21 @@ void kipc_post(HANDLE sender, IPC* ipc)
 #ifdef EXODRIVERS
     if (ipc->process == KERNEL_HANDLE)
     {
-        error(ERROR_OK);
+        int old_kerror = kget_last_error();
+ //       error(ERROR_OK);
         ipc->process = sender;
         exodriver_post(ipc);
         ipc->process = KERNEL_HANDLE;
         //send back if response is received
-        if ((ipc->cmd & HAL_REQ_FLAG) && (get_last_error() != ERROR_SYNC))
+        if ((ipc->cmd & HAL_REQ_FLAG) && (kget_last_error() != ERROR_SYNC))
         {
             kipc_send(KERNEL_HANDLE, sender, ipc->cmd, (void*)ipc->param2);
 
-            if (get_last_error() != ERROR_OK)
-                ipc->param3 = get_last_error();
+            if (kget_last_error() != ERROR_OK)
+                ipc->param3 = kget_last_error();
             kipc_post_internal(ipc->process, sender, ipc->cmd & ~HAL_REQ_FLAG, ipc->param1, ipc->param2, ipc->param3);
         }
+        kerror(old_kerror);
         return;
     }
 #endif //EXODRIVERS

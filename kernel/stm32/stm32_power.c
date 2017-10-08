@@ -461,7 +461,7 @@ unsigned int stm32_power_get_clock(int type)
         break;
 #endif
     default:
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
     }
     return res;
 }
@@ -654,7 +654,7 @@ static inline void stm32_power_set_mode(EXO* exo, POWER_MODE mode)
         stm32_power_down();
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }
 
@@ -782,6 +782,6 @@ void stm32_power_request(EXO* exo, IPC* ipc)
         break;
 #endif //POWER_MANAGEMENT
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }

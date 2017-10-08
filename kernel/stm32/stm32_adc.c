@@ -25,7 +25,7 @@ static inline void stm32_adc_open_device(EXO* exo)
 {
     if (exo->adc.active)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     //enable clock
@@ -110,7 +110,7 @@ static inline void stm32_adc_close_device(EXO* exo)
 {
     if (!exo->adc.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     //turn ADC off
@@ -209,7 +209,7 @@ void stm32_adc_request(EXO* exo, IPC* ipc)
             stm32_adc_close_channel(exo, ipc->param1);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

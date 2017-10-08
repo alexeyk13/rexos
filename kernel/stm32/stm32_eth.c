@@ -299,7 +299,7 @@ static inline void stm32_eth_open(ETH_DRV* drv, unsigned int phy_addr, ETH_CONN_
     //turn phy on
     if (!eth_phy_power_on(drv->phy_addr, conn))
     {
-        error(ERROR_NOT_FOUND);
+        kerror(ERROR_NOT_FOUND);
         stm32_eth_close(drv);
         return;
     }
@@ -312,7 +312,7 @@ static inline void stm32_eth_read(ETH_DRV* drv, IPC* ipc)
     IO* io = (IO*)ipc->param2;
     if (!drv->connected)
     {
-        error(ERROR_NOT_ACTIVE);
+        kerror(ERROR_NOT_ACTIVE);
         return;
     }
 #if (ETH_DOUBLE_BUFFERING)
@@ -325,7 +325,7 @@ static inline void stm32_eth_read(ETH_DRV* drv, IPC* ipc)
         i = (cur_rx + 1) & 1;
     if (i < 0)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     drv->rx_des[i].buf1 = io_data(io);
@@ -339,7 +339,7 @@ static inline void stm32_eth_read(ETH_DRV* drv, IPC* ipc)
 #else
     if (drv->rx != NULL)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     drv->rx_des.buf1 = io_data(io);
@@ -351,7 +351,7 @@ static inline void stm32_eth_read(ETH_DRV* drv, IPC* ipc)
 #endif
     //enable and poll DMA. Value is doesn't matter
     ETH->DMARPDR = 0;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
@@ -359,7 +359,7 @@ static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
     IO* io = (IO*)ipc->param2;
     if (!drv->connected)
     {
-        error(ERROR_NOT_ACTIVE);
+        kerror(ERROR_NOT_ACTIVE);
         return;
     }
 #if (ETH_DOUBLE_BUFFERING)
@@ -372,7 +372,7 @@ static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
         i = (cur_tx + 1) & 1;
     if (i < 0)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     drv->tx_des[i].buf1 = io_data(io);
@@ -386,7 +386,7 @@ static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
 #else
     if (drv->tx != NULL)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     drv->tx_des.buf1 = io_data(io);
@@ -398,7 +398,7 @@ static inline void stm32_eth_write(ETH_DRV* drv, IPC* ipc)
 #endif
     //enable and poll DMA. Value is doesn't matter
     ETH->DMATPDR = 0;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void stm32_eth_set_mac(ETH_DRV* drv, unsigned int param2, unsigned int param3)
@@ -456,7 +456,7 @@ void stm32_eth_request(ETH_DRV* drv, IPC* ipc)
         stm32_eth_get_mac(drv, ipc);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

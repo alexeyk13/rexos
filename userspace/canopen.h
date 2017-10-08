@@ -13,9 +13,18 @@
 #include "io.h"
 
 #define LSS_CHECK_ALL_BITS            31
-#define CO_OD_MAX_ENTRY               50
+#define CO_OD_MAX_ENTRY               100
 #define CO_MAX_RPDO                   4
 #define CO_MAX_TPDO                   8
+
+#define PDO1_TX                       (0x3 << 7)
+#define PDO1_RX                       (0x4 << 7)
+#define PDO2_TX                       (0x5 << 7)
+#define PDO2_RX                       (0x6 << 7)
+#define PDO3_TX                       (0x7 << 7)
+#define PDO3_RX                       (0x8 << 7)
+#define PDO4_TX                       (0x9 << 7)
+#define PDO4_RX                       (0xA << 7)
 
 typedef enum {
     BUS_RESET = 0,
@@ -42,6 +51,10 @@ typedef enum {
     IPC_CO_LED_STATE,
     IPC_CO_CLEAR_ERROR,
     IPC_CO_ID_CHANGED,
+    IPC_CO_SAVE_OD,
+    IPC_CO_RESTORE_OD,
+    IPC_CO_GET_OD,
+    IPC_CO_HARDW_RESET,
 // only master ipc
     IPC_CO_SEND_PDO,
     IPC_CO_LSS_FIND,
@@ -86,15 +99,25 @@ typedef struct {
     uint8_t start_pos;
 } LSS_FIND;
 // --- object dictionary entry ------
-#define OD_RO  (0UL << 31)
-#define OD_RW  (1UL << 31)
-#define CO_OD_IS_RW(od)  (od->len & OD_RW)
+#define OD_RO                               (0UL << 31)
+#define OD_RW                               (1UL << 31)
+#define CO_OD_IS_RW(od)                     (od->len & OD_RW)
 
-#define CO_OD_ENTRY_HEARTBEAT_TIME     0x001017
+#define CO_OD_SUBINDEX_Pos                  16
+#define CO_OD_IDX(index, subindex)          ( (index) | ((subindex) << CO_OD_SUBINDEX_Pos) )
+#define CO_OD_INDEX(idx)                    ( (idx) & (0xFFFF) )
+#define CO_OD_SUBINDEX(idx)                 ( (idx) >> CO_OD_SUBINDEX_Pos)
+#define CO_OD_ADD_FLOAT(index, subindex, rw_mode, len, d)   { {{(index), (subindex)}}, (len) | (rw_mode), {.f = (d)}}
+#define CO_OD_ADD(index, subindex, rw_mode, len, d)   { {{(index), (subindex)}}, (len) | (rw_mode), {.data= (d)}}
+#define CO_OD_END                                        { {{0, 0}}, 0, {.data = 0}}
+#define CO_OD_FIRST_USER_INDEX               0x2000
+#define CO_OD_MAX_INDEX                      0xC000
 
-#define CO_OD_IDX(index, subindex) ((index) | (subindex << 16))
-#define CO_OD_ADD(index,subindex,rw_mode,len,data) { {{index,subindex}},len|rw_mode,data}
-#define CO_OD_END  { {{0, 0}},0, 0}
+#define CO_OD_ENTRY_HEARTBEAT_TIME          CO_OD_IDX(0x1017, 0)
+#define CO_OD_INDEX_SAVE_OD                 0x1010
+#define CO_OD_INDEX_RESTORE_OD              0x1011
+
+
 typedef struct {
     union {
         struct {
@@ -104,7 +127,11 @@ typedef struct {
         uint32_t idx;
     };
     uint32_t len;
-    uint32_t data;
+    union {
+        uint32_t data;
+        float  f;
+    };
+//    uint32_t data;
 } CO_OD_ENTRY;
 
 typedef enum {

@@ -56,7 +56,7 @@ static inline void stm32_flash_flush(EXO* exo)
 {
     if (!exo->flash.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
 }
@@ -65,7 +65,7 @@ static inline void stm32_flash_open(EXO* exo, HANDLE user)
 {
     if (exo->flash.active)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     if (FLASH->CR & FLASH_CR_LOCK)
@@ -75,7 +75,7 @@ static inline void stm32_flash_open(EXO* exo, HANDLE user)
         FLASH->KEYR = FLASH_KEY2;
         enable_interrupts();
     }
-    error(ERROR_OK);
+    kerror(ERROR_OK);
 
     exo->flash.user = user;
     exo->flash.active = true;
@@ -85,7 +85,7 @@ static inline void stm32_flash_close(EXO* exo)
 {
     if (!exo->flash.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     FLASH->CR |= FLASH_CR_LOCK;
@@ -99,12 +99,12 @@ static inline void stm32_flash_read(EXO* exo, HANDLE process, HANDLE user, IO* i
     io_pop(io, sizeof(STORAGE_STACK));
     if (!exo->flash.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if ((user != exo->flash.user) || !check_range(stack->sector, size))
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if ((exo->flash.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
@@ -119,7 +119,7 @@ static inline void stm32_flash_read(EXO* exo, HANDLE process, HANDLE user, IO* i
     io_data_append(io, (void*)base_addr, size);
 
     kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, IPC_READ), user, (unsigned int)io, io->data_size);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline bool is_block_empty(uint8_t* addr, unsigned int words)
@@ -171,15 +171,19 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
     STORAGE_STACK* stack = io_stack(io);
     io_pop(io, sizeof(STORAGE_STACK));
     if ((stack->flags & STORAGE_MASK_MODE) == STORAGE_FLAG_ERASE_ONLY)
+    {
+        io->data_size = size;
         size *= FLASH_SECTOR_SIZE;
+    }
+
     if (!exo->flash.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if ((user != exo->flash.user) || !check_range(stack->sector, size))
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if ((exo->flash.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
@@ -234,12 +238,12 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
 //check for verify
     if ((stack->flags & STORAGE_FLAG_VERIFY) && !verify)
     {
-        error(ERROR_CRC);
+        kerror(ERROR_CRC);
         return;
     }
     io_show(io);
     kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, IPC_WRITE), user, (unsigned int)io, io->data_size);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void stm32_flash_get_media_descriptor(EXO* exo, HANDLE process, HANDLE user, IO* io)
@@ -248,12 +252,12 @@ static inline void stm32_flash_get_media_descriptor(EXO* exo, HANDLE process, HA
     STORAGE_MEDIA_DESCRIPTOR* media;
     if (!exo->flash.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (user != exo->flash.user)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     media = io_data(io);
@@ -265,18 +269,18 @@ static inline void stm32_flash_get_media_descriptor(EXO* exo, HANDLE process, HA
 
     io->data_size = sizeof(STORAGE_MEDIA_DESCRIPTOR) + 6 * 4 + 1;
     kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, STORAGE_GET_MEDIA_DESCRIPTOR), exo->flash.user, (unsigned int)io, io->data_size);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void stm32_flash_request_notify_activity(EXO* exo, HANDLE process)
 {
     if (exo->flash.activity != INVALID_HANDLE)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     exo->flash.activity = process;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 void stm32_flash_request(EXO* exo, IPC* ipc)
@@ -305,7 +309,7 @@ void stm32_flash_request(EXO* exo, IPC* ipc)
         stm32_flash_request_notify_activity(exo, ipc->process);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }
 

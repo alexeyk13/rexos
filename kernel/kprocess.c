@@ -158,6 +158,7 @@ HANDLE kprocess_create(const REX* rex)
             process->size = rex->size + sys_size;
             kipc_init(process);
             process->process->stdout = process->process->stdin = INVALID_HANDLE;
+            process->process->error = ERROR_OK;
 
             if (rex->flags & REX_FLAG_PERSISTENT_NAME)
                 process->process->name = rex->name;
@@ -340,6 +341,7 @@ void kprocess_init(const REX* rex)
 {
     __KERNEL->next_process = NULL;
     __KERNEL->active_process = NULL;
+    __KERNEL->kerror = ERROR_OK;
     dlist_clear((DLIST**)&__KERNEL->processes);
 #if (KERNEL_PROCESS_STAT)
     dlist_clear((DLIST**)&__KERNEL->wait_processes);
@@ -497,3 +499,16 @@ void kprocess_info()
     enable_interrupts();
 }
 #endif //KERNEL_PROFILING
+
+int kget_last_error()
+{
+    return __KERNEL->kerror;
+}
+
+void kerror(int kerror)
+{
+    __disable_irq();
+    __KERNEL->kerror = kerror;
+    __enable_irq();
+}
+

@@ -66,7 +66,7 @@ void stm32_wdt_request(IPC* ipc)
         stm32_wdt_kick();
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

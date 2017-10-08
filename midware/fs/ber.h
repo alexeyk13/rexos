@@ -13,9 +13,11 @@
 #include "../../userspace/vfs.h"
 #include "../../userspace/io.h"
 #include "../../userspace/ipc.h"
+#include "../../userspace/array.h"
 
 typedef struct {
     VFS_BER_FORMAT_TYPE volume;
+    ARRAY* trans_buffer;
     uint16_t superblock;
     unsigned int total_blocks, ber_revision, block_size, crc_count;
     uint16_t* remap_list;
