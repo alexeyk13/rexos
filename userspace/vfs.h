@@ -43,6 +43,9 @@ typedef enum {
     VFS_GET_FREE,
     VFS_GET_USED,
     VFS_FORMAT,
+    VFS_START_TRANSACTION,
+    VFS_COMMIT_TRANSACTION,
+    VFS_ROLLBACK_TRANSACTION,
     VFS_STAT
 } VFS_IPCS;
 
@@ -100,6 +103,11 @@ bool vfs_open_ber(VFS_RECORD_TYPE* vfs_record, unsigned int block_sectors);
 void vfs_close_ber(VFS_RECORD_TYPE* vfs_record);
 bool vfs_format_ber(VFS_RECORD_TYPE* vfs_record, VFS_BER_FORMAT_TYPE* format);
 bool vfs_ber_get_stat(VFS_RECORD_TYPE* vfs_record, VFS_BER_STAT_TYPE* stat);
+
+bool vfs_ber_start_transaction(VFS_RECORD_TYPE* vfs_record);
+bool vfs_ber_commit_transaction(VFS_RECORD_TYPE* vfs_record);
+bool vfs_ber_rollback_transaction(VFS_RECORD_TYPE* vfs_record);
+
 
 bool vfs_open_fs(VFS_RECORD_TYPE* vfs_record);
 void vfs_close_fs(VFS_RECORD_TYPE* vfs_record);

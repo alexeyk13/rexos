@@ -13,6 +13,7 @@
 #include <string.h>
 
 #define BER_MAGIC                           0x426b7189
+#define BER_TRANSACTION_INCREMENT           64
 
 #define BER_BLOCK_UNUSED                    0xffff
 #define BER_STAT_BLOCK_USED                 (1 << 31)
@@ -24,17 +25,21 @@
 #define BER_MAGIC_FLASH_UNINITIALIZED       0xff
 
 #pragma pack(push, 1)
-
 typedef struct {
     uint32_t magic;
+    uint32_t crc;
     uint32_t revision;
     uint16_t block_sectors;
     uint16_t fs_blocks;
     uint32_t total_blocks;
     uint32_t crc_count;
 } BER_HEADER_TYPE;
-
 #pragma pack(pop)
+
+typedef struct {
+    uint16_t lblock;
+    uint16_t pblock;
+} BER_TRANS_ENTRY;
 
 /*
         BER superblock format:
@@ -42,7 +47,51 @@ typedef struct {
         <blocks remap list>
         <blocks stat list>
  */
+static void ber_rollback_trans(VFSS_TYPE* vfss);
+static inline void ber_trans_clear_buffer(VFSS_TYPE *vfss)
+{
+    if(vfss->ber.trans_buffer)
+        array_destroy(&vfss->ber.trans_buffer);
+}
 
+static inline bool ber_trans_is_pblock_lock(VFSS_TYPE *vfss, uint16_t pblock)
+{
+    int i;
+    BER_TRANS_ENTRY* entry;
+    if(vfss->ber.trans_buffer == NULL)
+        return false;
+    for (i = 0; i < array_size(vfss->ber.trans_buffer); i++)
+    {
+        entry = (BER_TRANS_ENTRY*)array_at(vfss->ber.trans_buffer, i);
+        if (entry == NULL)
+            return false;
+        if (entry->pblock == pblock)
+            return true;
+    }
+    return false;
+}
+
+static inline bool ber_trans_add_block(VFSS_TYPE *vfss, uint16_t lblock)
+{
+    int i;
+    BER_TRANS_ENTRY* entry;
+    if(vfss->ber.trans_buffer == NULL)
+        return true;
+    for (i = 0; i < array_size(vfss->ber.trans_buffer); i++)
+    {
+        entry = (BER_TRANS_ENTRY*)array_at(vfss->ber.trans_buffer, i);
+        if (entry == NULL)
+            continue;
+        if (entry->lblock == lblock)
+            return true;
+    }
+    entry = (BER_TRANS_ENTRY*)array_append(&vfss->ber.trans_buffer);
+    if (entry == NULL)
+        return false;
+    entry->lblock = lblock;
+    entry->pblock = vfss->ber.remap_list[lblock];
+    return true;
+}
 
 unsigned int ber_get_volume_sectors(VFSS_TYPE *vfss)
 {
@@ -87,6 +136,8 @@ static uint16_t ber_find_best(VFSS_TYPE* vfss)
     best_pblock_stat = 0xffffffff;
     for (i = 0; i < vfss->ber.total_blocks; ++i)
     {
+        if(ber_trans_is_pblock_lock(vfss, i))
+            continue;
         if (vfss->ber.stat_list[i] & BER_STAT_BLOCK_USED)
             continue;
         if (BER_STAT_VALUE(vfss->ber.stat_list[i]) < best_pblock_stat)
@@ -118,11 +169,24 @@ static void ber_free_block(VFSS_TYPE* vfss, uint16_t pblock)
         vfss->ber.stat_list[pblock] &= ~(BER_STAT_BLOCK_USED | BER_STAT_BLOCK_STUFFED);
 }
 
+static uint32_t ber_superblock_crc(VFSS_TYPE* vfss, IO* io)
+{
+    uint16_t len = sizeof(BER_HEADER_TYPE) - 8 + vfss->ber.volume.fs_blocks * sizeof(uint16_t) + vfss->ber.total_blocks * sizeof(uint32_t);
+    len /= sizeof(uint16_t);
+    uint32_t crc  = 0;
+    uint16_t* ptr = io_data(io);
+    ptr +=  8 / sizeof(uint16_t);
+    do
+    {
+        crc += *ptr++;
+    }while(--len);
+    return crc;
+}
+
 static void ber_prepare_superblock(VFSS_TYPE* vfss, uint16_t pblock)
 {
     uint32_t old_stat_superblock, old_stat_pblock;
     BER_HEADER_TYPE* hdr;
-
     old_stat_superblock = vfss->ber.stat_list[vfss->ber.superblock];
     ber_free_block(vfss, vfss->ber.superblock);
     old_stat_pblock = vfss->ber.stat_list[pblock];
@@ -140,6 +204,7 @@ static void ber_prepare_superblock(VFSS_TYPE* vfss, uint16_t pblock)
            vfss->ber.remap_list, vfss->ber.volume.fs_blocks * sizeof(uint16_t));
     memcpy((uint8_t*)io_data(vfss->ber.io) + sizeof(BER_HEADER_TYPE) + vfss->ber.volume.fs_blocks * sizeof(uint16_t),
            vfss->ber.stat_list, vfss->ber.total_blocks * sizeof(uint32_t));
+    hdr->crc = ber_superblock_crc(vfss, vfss->ber.io);
     //update cache later, only after successfull write
     vfss->ber.stat_list[vfss->ber.superblock] = old_stat_superblock;
     vfss->ber.stat_list[pblock] = old_stat_pblock;
@@ -197,8 +262,17 @@ static inline bool ber_write_lblock(VFSS_TYPE* vfss, uint16_t lblock)
 {
     bool stuffed;
     uint16_t pblock;
+#if (VFS_BER_DEBUG_INFO)
+    printf("BER: write lblock %#x  ", lblock);
+#endif // VFS_BER_DEBUG_INFO
 
-    //extremely rare, but possible. Stuff header
+    if(!ber_trans_add_block(vfss, lblock))
+    {
+        ber_rollback_trans(vfss);
+        return false;
+    }
+
+//extremely rare, but possible. Stuff header
     stuffed = *((uint32_t*)io_data(vfss->ber.io)) == BER_MAGIC;
     if (stuffed)
         *((uint32_t*)io_data(vfss->ber.io)) = 0x00000000;
@@ -252,8 +326,11 @@ bool ber_write_sectors(VFSS_TYPE* vfss, unsigned long sector, unsigned size)
         if (!ber_write_lblock(vfss, lblock))
             return false;
     }
-    if (!ber_update_superblock(vfss))
-        return false;
+    if(vfss->ber.trans_buffer == NULL)
+    {
+        if (!ber_update_superblock(vfss))
+            return false;
+    }
     return true;
 }
 
@@ -263,6 +340,7 @@ void ber_init(VFSS_TYPE *vfss)
     vfss->ber.io = NULL;
     vfss->ber.remap_list = NULL;
     vfss->ber.stat_list = NULL;
+    vfss->ber.trans_buffer = NULL;
 }
 
 static void ber_close_internal(VFSS_TYPE* vfss)
@@ -295,8 +373,11 @@ static inline void ber_open(VFSS_TYPE* vfss, unsigned int block_sectors)
         hdr = vfss_get_buf(vfss);
         if ((hdr->magic == BER_MAGIC) && (hdr->revision > revision))
         {
-            revision = hdr->revision;
-            vfss->ber.superblock = i;
+            if(hdr->crc == ber_superblock_crc(vfss, vfss->io))
+            {
+                revision = hdr->revision;
+                vfss->ber.superblock = i;
+            }
         }
     }
     if (revision == 0)
@@ -342,14 +423,10 @@ static inline void ber_open(VFSS_TYPE* vfss, unsigned int block_sectors)
     vfss->ber.active = true;
 }
 
-static inline void ber_close(VFSS_TYPE* vfss)
+static void ber_close(VFSS_TYPE* vfss)
 {
-    if (!vfss->ber.active)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
     ber_close_internal(vfss);
+    ber_trans_clear_buffer(vfss);
     vfss->ber.active = false;
 }
 
@@ -428,12 +505,6 @@ static inline void ber_stat(VFSS_TYPE* vfss, IO* io)
 {
     unsigned int i;
     VFS_BER_STAT_TYPE* stat = io_data(io);
-
-    if (!vfss->ber.active)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
     stat->crc_errors_count = vfss->ber.crc_count;
     stat->bad_blocks = stat->crc_blocks = 0;
     for (i = 0; i < vfss->ber.total_blocks; ++i)
@@ -446,8 +517,51 @@ static inline void ber_stat(VFSS_TYPE* vfss, IO* io)
     io->data_size = sizeof(VFS_BER_STAT_TYPE);
 }
 
+static inline void ber_start_trans(VFSS_TYPE* vfss)
+{
+    if (vfss->ber.trans_buffer != NULL)
+    {
+        error(ERROR_INVALID_STATE);
+        return;
+    }
+    if(array_create(&vfss->ber.trans_buffer, sizeof(BER_TRANS_ENTRY), BER_TRANSACTION_INCREMENT) == NULL)
+        error(ERROR_OUT_OF_MEMORY);
+}
+static inline void ber_commit_trans(VFSS_TYPE* vfss)
+{
+    if(vfss->ber.trans_buffer == NULL)
+        return;
+    if(array_size(vfss->ber.trans_buffer))
+    {
+        if(!ber_update_superblock(vfss))
+            error(ERROR_OUT_OF_MEMORY);
+    }
+    ber_trans_clear_buffer(vfss);
+}
+
+static void ber_rollback_trans(VFSS_TYPE* vfss)
+{
+    uint32_t block_sectors;
+    if(vfss->ber.trans_buffer == NULL)
+        return;
+    if(array_size(vfss->ber.trans_buffer) == 0)
+    {
+        ber_trans_clear_buffer(vfss);
+        return;
+    }
+    block_sectors =  vfss->ber.block_size / FAT_SECTOR_SIZE;
+    ber_close(vfss);
+    ber_open(vfss, block_sectors);
+}
+
 void ber_request(VFSS_TYPE *vfss, IPC* ipc)
 {
+    if((!vfss->ber.active) && (HAL_ITEM(ipc->cmd) != IPC_OPEN) && (HAL_ITEM(ipc->cmd) != VFS_FORMAT) )
+    {
+        error(ERROR_NOT_CONFIGURED);
+        return;
+    }
+
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
@@ -458,10 +572,18 @@ void ber_request(VFSS_TYPE *vfss, IPC* ipc)
         break;
     case VFS_FORMAT:
         ber_format(vfss, (IO*)ipc->param2);
-//        error(ERROR_OK);
         break;
     case VFS_STAT:
         ber_stat(vfss, (IO*)ipc->param2);
+        break;
+    case VFS_START_TRANSACTION:
+        ber_start_trans(vfss);
+        break;
+    case VFS_COMMIT_TRANSACTION:
+        ber_commit_trans(vfss);
+        break;
+    case VFS_ROLLBACK_TRANSACTION:
+        ber_rollback_trans(vfss);
         break;
     default:
         error(ERROR_NOT_SUPPORTED);

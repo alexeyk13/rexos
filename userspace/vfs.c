@@ -79,6 +79,22 @@ bool vfs_ber_get_stat(VFS_RECORD_TYPE* vfs_record, VFS_BER_STAT_TYPE* stat)
     return true;
 }
 
+bool vfs_ber_start_transaction(VFS_RECORD_TYPE* vfs_record)
+{
+    return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, VFS_START_TRANSACTION), VFS_BER_HANDLE, 0, 0) >= 0;
+}
+
+bool vfs_ber_commit_transaction(VFS_RECORD_TYPE* vfs_record)
+{
+    return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, VFS_COMMIT_TRANSACTION), VFS_BER_HANDLE, 0, 0) >= 0;
+
+}
+bool vfs_ber_rollback_transaction(VFS_RECORD_TYPE* vfs_record)
+{
+    return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, VFS_ROLLBACK_TRANSACTION), VFS_BER_HANDLE, 0, 0) >= 0;
+}
+
+
 bool vfs_open_fs(VFS_RECORD_TYPE* vfs_record)
 {
     return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_OPEN), VFS_FS_HANDLE, 0, 0) >= 0;
