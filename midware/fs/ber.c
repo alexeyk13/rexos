@@ -172,6 +172,8 @@ static void ber_free_block(VFSS_TYPE* vfss, uint16_t pblock)
 static uint32_t ber_superblock_crc(VFSS_TYPE* vfss, IO* io)
 {
     uint16_t len = sizeof(BER_HEADER_TYPE) - 8 + vfss->ber.volume.fs_blocks * sizeof(uint16_t) + vfss->ber.total_blocks * sizeof(uint32_t);
+    if(len > io->size)
+        return 0;
     len /= sizeof(uint16_t);
     uint32_t crc  = 0;
     uint16_t* ptr = io_data(io);
@@ -364,15 +366,18 @@ static inline void ber_open(VFSS_TYPE* vfss, unsigned int block_sectors)
     }
     vfss->ber.total_blocks = vfss->volume.sectors_count / block_sectors;
     vfss->ber.block_size = block_sectors * FAT_SECTOR_SIZE;
+    vfss_resize_buf(vfss, vfss->ber.block_size);
     //try to find latest superblock
     revision = 0;
     for (i = 0; i < vfss->ber.total_blocks; ++i)
     {
-        if (!storage_read_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->io, vfss->volume.first_sector + i * block_sectors, FAT_SECTOR_SIZE))
+        if (!storage_read_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->io, vfss->volume.first_sector + i * block_sectors, vfss->ber.block_size))
             return;
         hdr = vfss_get_buf(vfss);
         if ((hdr->magic == BER_MAGIC) && (hdr->revision > revision))
         {
+            vfss->ber.total_blocks = hdr->total_blocks;
+            vfss->ber.volume.fs_blocks = hdr->fs_blocks;
             if(hdr->crc == ber_superblock_crc(vfss, vfss->io))
             {
                 revision = hdr->revision;
@@ -388,7 +393,6 @@ static inline void ber_open(VFSS_TYPE* vfss, unsigned int block_sectors)
         error(ERROR_CORRUPTED);
         return;
     }
-    vfss_resize_buf(vfss, vfss->ber.block_size);
     if (!storage_read_sync(vfss->volume.hal, vfss->volume.process, vfss->volume.user, vfss->io,
                            vfss->volume.first_sector + vfss->ber.superblock * block_sectors, vfss->ber.block_size))
         return;
