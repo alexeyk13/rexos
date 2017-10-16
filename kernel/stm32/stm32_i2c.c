@@ -10,6 +10,7 @@
 #include "../kirq.h"
 #include "../kheap.h"
 #include "../karray.h"
+#include "../kerror.h"
 #include "../../userspace/stm32/stm32_driver.h"
 
 #include "stm32_pin.h"

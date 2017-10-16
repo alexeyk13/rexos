@@ -11,6 +11,7 @@
 #include "../kipc.h"
 #include "../kstream.h"
 #include "../kernel.h"
+#include "../kerror.h"
 #include "../../userspace/uart.h"
 #include "../../userspace/stream.h"
 #include "../../userspace/ti/ti.h"
@@ -258,12 +259,12 @@ static inline HANDLE ti_uart_get_rx_stream(EXO* exo)
     return exo->uart.rx_stream;
 }
 
-static inline uint16_t ti_uart_get_last_error(EXO* exo)
+static inline uint16_t ti_uart_get_last_kerror(EXO* exo)
 {
     return exo->uart.error;
 }
 
-static inline void ti_uart_clear_error(EXO* exo)
+static inline void ti_uart_clear_kerror(EXO* exo)
 {
     exo->uart.error = ERROR_OK;
 }
@@ -282,7 +283,7 @@ void ti_uart_request(EXO* exo, IPC* ipc)
 {
     if (ipc->param1 > UART_0)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if (HAL_ITEM(ipc->cmd) == IPC_OPEN)
@@ -292,7 +293,7 @@ void ti_uart_request(EXO* exo, IPC* ipc)
     }
     if (!exo->uart.active)
     {
-        error(ERROR_NOT_ACTIVE);
+        kerror(ERROR_NOT_ACTIVE);
         return;
     }
 
@@ -314,10 +315,10 @@ void ti_uart_request(EXO* exo, IPC* ipc)
         ipc->param2 = ti_uart_get_rx_stream(exo);
         break;
     case IPC_UART_GET_LAST_ERROR:
-        ipc->param2 = ti_uart_get_last_error(exo);
+        ipc->param2 = ti_uart_get_last_kerror(exo);
         break;
     case IPC_UART_CLEAR_ERROR:
-        ti_uart_clear_error(exo);
+        ti_uart_clear_kerror(exo);
         break;
     case IPC_UART_SETUP_PRINTK:
         ti_uart_setup_printk();
@@ -326,6 +327,6 @@ void ti_uart_request(EXO* exo, IPC* ipc)
         ti_uart_stream_write(exo);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }

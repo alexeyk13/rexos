@@ -9,6 +9,7 @@
 #include "../../userspace/stdio.h"
 #include "../kipc.h"
 #include "../kirq.h"
+#include "../kerror.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/systime.h"
 #include "../../userspace/power.h"

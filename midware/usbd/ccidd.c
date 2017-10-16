@@ -291,7 +291,9 @@ void ccidd_class_resume(USBD* usbd, void* param)
 {
     CCIDD* ccidd = (CCIDD*)param;
     ccidd_rx(usbd, ccidd);
+#if (USBD_CCID_REMOVABLE_CARD)
     ccidd_notify_slot_change(usbd, ccidd);
+#endif //USBD_CCID_REMOVABLE_CARD
 }
 
 int ccidd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)

@@ -27,6 +27,7 @@
 #endif //STM32F10X_CL
 #include "../kernel.h"
 #include "../kstdlib.h"
+#include "../kerror.h"
 
 void exodriver_delay_us(unsigned int us)
 {

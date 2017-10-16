@@ -7,7 +7,7 @@
 #include "stm32_uart.h"
 #include "stm32_power.h"
 #include "../../userspace/sys.h"
-#include "error.h"
+#include "../kerror.h"
 #include "../kstdlib.h"
 #include "../kstream.h"
 #include "../kirq.h"

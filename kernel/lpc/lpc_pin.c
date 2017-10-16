@@ -6,7 +6,7 @@
 
 #include "lpc_pin.h"
 #include "../../userspace/lpc/lpc_driver.h"
-#include "../../userspace/error.h"
+#include "../kerror.h"
 #include "lpc_config.h"
 #include <stdint.h>
 
@@ -20,7 +20,7 @@ void lpc_pin_enable(unsigned int pin, unsigned int mode)
 {
     if (pin >= PIN_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
 #ifdef LPC11Uxx
@@ -34,7 +34,7 @@ void lpc_pin_disable(unsigned int pin)
 {
     if (pin >= PIN_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     //default state, input
@@ -64,7 +64,7 @@ void lpc_pin_request(IPC* ipc)
         lpc_pin_disable(ipc->param1);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

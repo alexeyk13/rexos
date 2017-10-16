@@ -7,7 +7,7 @@
 #include "../../userspace/lpc/lpc_driver.h"
 #include "../../userspace/gpio.h"
 #include "../../userspace/pin.h"
-#include "../../userspace/error.h"
+#include "../kerror.h"
 #include "lpc_pin.h"
 #include "sys_config.h"
 
@@ -229,7 +229,7 @@ void lpc_gpio_request(IPC* ipc)
         lpc_gpio_set_data_in(ipc->param1, ipc->param2);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

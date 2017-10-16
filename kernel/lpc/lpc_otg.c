@@ -8,6 +8,7 @@
 #include "lpc_exo_private.h"
 #include "../kirq.h"
 #include "../kstdlib.h"
+#include "../kerror.h"
 #include "../../userspace/stdio.h"
 #include "lpc_pin.h"
 #include <string.h>
@@ -271,7 +272,7 @@ static bool lpc_otg_ep_flush(USB_PORT_TYPE port, EXO* exo, int num)
     EP* ep = ep_data(port, exo, num);
     if (ep == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return false;
     }
 
@@ -315,7 +316,7 @@ static inline void lpc_otg_open_ep(USB_PORT_TYPE port, EXO* exo, int num, USB_EP
     DQH* dqh;
     if (ep_data(port, exo, num) != NULL)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
 
@@ -361,12 +362,12 @@ static void lpc_otg_io(USB_PORT_TYPE port, EXO* exo, IPC* ipc, bool read)
     EP* ep = ep_data(port, exo, num);
     if (ep == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (ep->io != NULL)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     if (read)
@@ -375,7 +376,7 @@ static void lpc_otg_io(USB_PORT_TYPE port, EXO* exo, IPC* ipc, bool read)
         size = ((IO*)ipc->param2)->data_size;
     if (size > USB_DTD_CHUNK * USB_DTD_COUNT)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     ep->io = (IO*)ipc->param2;
@@ -415,14 +416,14 @@ static void lpc_otg_io(USB_PORT_TYPE port, EXO* exo, IPC* ipc, bool read)
         //required before EP0 transfers
         while (__USB_REGS[port]->ENDPTSETUPSTAT & (1 << 0)) {}
     __USB_REGS[port]->ENDPTPRIME = EP_BIT(num);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void lpc_otg_open_device(USB_PORT_TYPE port, EXO* exo, HANDLE device)
 {
     if (exo->otg.otg[port])
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     exo->otg.otg[port] = kmalloc(sizeof(OTG_TYPE));
@@ -483,7 +484,7 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, EXO* exo, HANDLE devi
                 break;
         if ((LPC_CGU->PLL0USB_STAT & CGU_PLL0USB_STAT_LOCK_Msk) == 0)
         {
-            error(ERROR_HARDWARE);
+            kerror(ERROR_HARDWARE);
             return;
         }
         //enable PLL clock
@@ -646,7 +647,7 @@ static inline void lpc_otg_device_request(EXO* exo, IPC* ipc)
         lpc_otg_sync(exo);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }
@@ -655,7 +656,7 @@ static inline void lpc_otg_ep_request(EXO* exo, IPC* ipc)
 {
     if (USB_EP_NUM(USB_NUM(ipc->param1)) >= USB_EP_COUNT_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -685,7 +686,7 @@ static inline void lpc_otg_ep_request(EXO* exo, IPC* ipc)
         lpc_otg_io(USB_PORT(ipc->param1), exo, ipc, false);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }
@@ -694,7 +695,7 @@ void lpc_otg_request(EXO* exo, IPC* ipc)
 {
     if (USB_PORT(ipc->param1) >= USB_COUNT)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if (USB_NUM(ipc->param1) == USB_HANDLE_DEVICE)

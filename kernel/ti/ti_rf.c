@@ -7,7 +7,7 @@
 #include "ti_rf.h"
 #include "ti_exo_private.h"
 #include "../../userspace/process.h"
-#include "../../userspace/error.h"
+#include "../kerror.h"
 #include "../kstdlib.h"
 #include "../kirq.h"
 #include "../kheap.h"
@@ -328,7 +328,7 @@ static inline void ti_rf_open(EXO* exo, HANDLE process)
 
     // ---> FW_INFO ---> CONFIGURED
     ti_rf_imm_cmd(exo, CMD_GET_FW_INFO, BUF_ALLOC(exo, sizeof(rfc_CMD_GET_FW_INFO_t)), process);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void ti_rf_close(EXO* exo)
@@ -361,13 +361,13 @@ static inline void ti_rf_power_up(EXO* exo, HANDLE process)
 {
     if (exo->rf.state != RF_STATE_CONFIGURED)
     {
-        error(ERROR_INVALID_STATE);
+        kerror(ERROR_INVALID_STATE);
         return;
     }
 
     // CONFIGURED ---> Start RAT ---> Radio Setup ---> READY
     ti_rf_direct_cmd(exo, CMD_START_RAT, process);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void ti_rf_set_tx_power(EXO* exo, int dbm, HANDLE process)
@@ -375,7 +375,7 @@ static inline void ti_rf_set_tx_power(EXO* exo, int dbm, HANDLE process)
     rfc_CMD_SET_TX_POWER_t* tx_power;
     if (exo->rf.state != RF_STATE_READY)
     {
-        error(ERROR_INVALID_STATE);
+        kerror(ERROR_INVALID_STATE);
         return;
     }
 
@@ -385,7 +385,7 @@ static inline void ti_rf_set_tx_power(EXO* exo, int dbm, HANDLE process)
         return;
     tx_power->txPower = ti_rf_encode_tx_power(dbm);
     ti_rf_imm_cmd(exo, CMD_SET_TX_POWER, tx_power, process);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void ti_rf_test(EXO* exo)
@@ -397,7 +397,7 @@ static inline void ti_rf_test(EXO* exo)
     uint8_t* dev_addr;
     if (exo->rf.state != RF_STATE_READY)
     {
-        error(ERROR_INVALID_STATE);
+        kerror(ERROR_INVALID_STATE);
         return;
     }
 
@@ -443,7 +443,7 @@ void ti_rf_request(EXO* exo, IPC* ipc)
 {
     if (exo->rf.cmd != 0)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -468,6 +468,6 @@ void ti_rf_request(EXO* exo, IPC* ipc)
         ti_rf_test(exo);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }

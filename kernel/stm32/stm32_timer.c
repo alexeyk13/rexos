@@ -9,7 +9,7 @@
 #include "../../userspace/stm32/stm32_driver.h"
 #include "stm32_power.h"
 #include "stm32_exo_private.h"
-#include "../../userspace/error.h"
+#include "../kerror.h"
 #include "../ksystime.h"
 #include "../kirq.h"
 #include "../../userspace/power.h"

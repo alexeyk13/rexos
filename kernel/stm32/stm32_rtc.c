@@ -6,6 +6,7 @@
 
 #include "../ksystime.h"
 #include "../kirq.h"
+#include "../kerror.h"
 #include "../../userspace/rtc.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/time.h"

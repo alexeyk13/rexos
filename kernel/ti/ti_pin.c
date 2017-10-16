@@ -8,7 +8,7 @@
 #include "ti_exo_private.h"
 #include "ti_power.h"
 #include "../../userspace/ti/ti.h"
-#include "../../userspace/error.h"
+#include "../kerror.h"
 #include "../../userspace/process.h"
 #include "../../userspace/gpio.h"
 
@@ -16,7 +16,7 @@ void ti_pin_enable(EXO* exo, DIO dio, unsigned int mode, bool output)
 {
     if (dio >= DIO_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     //enable gating
@@ -38,7 +38,7 @@ void ti_pin_disable(EXO* exo, DIO dio)
 {
     if (dio >= DIO_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     GPIO->DOE &= ~(1 << dio);
@@ -79,7 +79,7 @@ void ti_gpio_set_pin(DIO dio)
 {
     if (dio >= DIO_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     GPIO->DOUTSET = (1 << dio);
@@ -94,7 +94,7 @@ void ti_gpio_reset_pin(DIO dio)
 {
     if (dio >= DIO_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     GPIO->DOUTCLR = (1 << dio);
@@ -109,7 +109,7 @@ bool ti_gpio_get_pin(DIO dio)
 {
     if (dio >= DIO_MAX)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return false;
     }
     return (GPIO->DIN >> dio) & 1;
@@ -145,7 +145,7 @@ void ti_pin_request(EXO* exo, IPC* ipc)
     case IPC_CLOSE:
         ti_pin_disable(exo, (DIO)ipc->param1);
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }
@@ -185,7 +185,7 @@ void ti_pin_gpio_request(EXO* exo, IPC* ipc)
         ti_gpio_set_data_in(ipc->param1, ipc->param2);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

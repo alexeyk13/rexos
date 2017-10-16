@@ -7,6 +7,7 @@
 #include "stm32_wdt.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/wdt.h"
+#include "../kerror.h"
 #include "stm32_config.h"
 
 #define KICK_KEY                                        0xaaaa

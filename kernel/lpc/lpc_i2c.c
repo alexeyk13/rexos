@@ -12,6 +12,7 @@
 #include "../kipc.h"
 #include "../kirq.h"
 #include "../ksystime.h"
+#include "../kerror.h"
 
 #if defined(LPC11U6x)
 static const uint8_t __I2C_VECTORS[] =              {15, 10};
@@ -43,7 +44,7 @@ static void lpc_i2c_timer_istop(EXO* exo, I2C_PORT port)
 }
 #endif //LPC_I2C_TIMEOUT_MS
 
-static void lpc_i2c_isr_error(EXO* exo, I2C_PORT port, int error)
+static void lpc_i2c_isr_kerror(EXO* exo, I2C_PORT port, int error)
 {
     I2C* i2c = exo->i2c.i2cs[port];
     __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
@@ -65,13 +66,13 @@ static inline void lpc_i2c_isr_tx(EXO* exo, I2C_PORT port)
         __I2C_REGS[port]->CONCLR = I2C0_CONCLR_STAC_Msk;
         break;
     case I2C0_STAT_SLAW_NACK:
-        lpc_i2c_isr_error(exo, port, ERROR_NAK);
+        lpc_i2c_isr_kerror(exo, port, ERROR_NAK);
         break;
     case I2C0_STAT_DATW_NACK:
         //only acceptable for last byte
         if ((i2c->processed < i2c->size) || (i2c->state != I2C_STATE_DATA))
         {
-            lpc_i2c_isr_error(exo, port, ERROR_NAK);
+            lpc_i2c_isr_kerror(exo, port, ERROR_NAK);
             break;
         }
         //follow down
@@ -104,7 +105,7 @@ static inline void lpc_i2c_isr_tx(EXO* exo, I2C_PORT port)
         }
         break;
     default:
-         lpc_i2c_isr_error(exo, port, ERROR_INVALID_STATE);
+         lpc_i2c_isr_kerror(exo, port, ERROR_INVALID_STATE);
          break;
     }
 }
@@ -130,7 +131,7 @@ static inline void lpc_i2c_isr_rx(EXO* exo, I2C_PORT port)
         break;
     case I2C0_STAT_SLAR_NACK:
     case I2C0_STAT_SLAW_NACK:
-        lpc_i2c_isr_error(exo, port, ERROR_NAK);
+        lpc_i2c_isr_kerror(exo, port, ERROR_NAK);
         break;
     case I2C0_STAT_SLAW_ACK:
         //transmit address
@@ -161,7 +162,7 @@ static inline void lpc_i2c_isr_rx(EXO* exo, I2C_PORT port)
             break;
         //data state
         default:
-            lpc_i2c_isr_error(exo, port, ERROR_INVALID_STATE);
+            lpc_i2c_isr_kerror(exo, port, ERROR_INVALID_STATE);
         }
         //need more? send ACK
         if (i2c->processed + 1 < i2c->size)
@@ -184,7 +185,7 @@ static inline void lpc_i2c_isr_rx(EXO* exo, I2C_PORT port)
         i2c->io_mode = I2C_IO_MODE_IDLE;
         break;
     default:
-        lpc_i2c_isr_error(exo, port, ERROR_INVALID_STATE);
+        lpc_i2c_isr_kerror(exo, port, ERROR_INVALID_STATE);
         break;
     }
 }
@@ -216,14 +217,14 @@ void lpc_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int speed
     I2C* i2c = exo->i2c.i2cs[port];
     if (i2c)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     i2c = kmalloc(sizeof(I2C));
     exo->i2c.i2cs[port] = i2c;
     if (i2c == NULL)
     {
-        error(ERROR_OUT_OF_MEMORY);
+        kerror(ERROR_OUT_OF_MEMORY);
         return;
     }
 #if (LPC_I2C_TIMEOUT_MS)
@@ -304,7 +305,7 @@ static void lpc_i2c_io(EXO* exo, IPC* ipc, bool read)
     I2C* i2c = exo->i2c.i2cs[port];
     if (i2c->io_mode != I2C_IO_MODE_IDLE)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     i2c->process = ipc->process;
@@ -339,7 +340,7 @@ static void lpc_i2c_io(EXO* exo, IPC* ipc, bool read)
     //set START
     __I2C_REGS[port]->CONSET = I2C0_CONSET_I2EN_Msk | I2C0_CONSET_STA_Msk;
     //all rest in isr
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 #if (LPC_I2C_TIMEOUT_MS)
@@ -368,7 +369,7 @@ void lpc_i2c_request(EXO* exo, IPC* ipc)
     I2C_PORT port = (I2C_PORT)ipc->param1;
     if (port >= I2C_COUNT)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if (HAL_ITEM(ipc->cmd) == IPC_OPEN)
@@ -377,7 +378,7 @@ void lpc_i2c_request(EXO* exo, IPC* ipc)
     {
         if (exo->i2c.i2cs[port] == NULL)
         {
-            error(ERROR_NOT_CONFIGURED);
+            kerror(ERROR_NOT_CONFIGURED);
             return;
         }
 #if (LPC_I2C_TIMEOUT_MS)
@@ -404,7 +405,7 @@ void lpc_i2c_request(EXO* exo, IPC* ipc)
             break;
 #endif //LPC_I2C_TIMEOUT_MS
         default:
-            error(ERROR_NOT_SUPPORTED);
+            kerror(ERROR_NOT_SUPPORTED);
             break;
         }
 #if (LPC_I2C_TIMEOUT_MS)

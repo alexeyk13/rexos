@@ -10,7 +10,7 @@
 #include "stm32_power.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/usb.h"
-#include "../../userspace/error.h"
+#include "../kerror.h"
 #include "../kirq.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"

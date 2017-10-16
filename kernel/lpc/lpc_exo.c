@@ -12,6 +12,7 @@
 #include "lpc_power.h"
 #include "../kernel.h"
 #include "../kstdlib.h"
+#include "../kerror.h"
 #include "../../userspace/object.h"
 #include "../../userspace/svc.h"
 
@@ -90,7 +91,7 @@ void exodriver_post(IPC* ipc)
         break;
 #endif //LPC_ETH_DRIVER
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

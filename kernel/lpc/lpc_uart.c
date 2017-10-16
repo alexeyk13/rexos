@@ -12,6 +12,7 @@
 #include "../ksystime.h"
 #include "../kipc.h"
 #include "../kstream.h"
+#include "../kerror.h"
 #include "../../userspace/stream.h"
 #include "lpc_exo_private.h"
 
@@ -223,7 +224,7 @@ static inline void lpc_uart_set_baudrate(EXO* exo, UART_PORT port, IPC* ipc)
     BAUD baudrate;
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     uart_decode_baudrate(ipc, &baudrate);
@@ -334,13 +335,13 @@ static inline void lpc_uart_open(EXO* exo, UART_PORT port, unsigned int mode)
     bool ok;
     if (exo->uart.uarts[port] != NULL)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     exo->uart.uarts[port] = kmalloc(sizeof(UART));
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_OUT_OF_MEMORY);
+        kerror(ERROR_OUT_OF_MEMORY);
         return;
     }
     exo->uart.uarts[port]->error = ERROR_OK;
@@ -412,7 +413,7 @@ static void lpc_uart_flush(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
 #ifdef LPC11U6x
@@ -465,7 +466,7 @@ static inline void lpc_uart_close(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     //disable interrupts
@@ -512,13 +513,13 @@ static inline HANDLE lpc_uart_get_tx_stream(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return INVALID_HANDLE;
     }
 #if (UART_IO_MODE_SUPPORT)
     if (exo->uart.uarts[port]->io_mode)
     {
-        error(ERROR_INVALID_MODE);
+        kerror(ERROR_INVALID_MODE);
         return INVALID_HANDLE;
     }
 #endif //UART_IO_MODE_SUPPORT
@@ -529,13 +530,13 @@ static inline HANDLE lpc_uart_get_rx_stream(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return INVALID_HANDLE;
     }
 #if (UART_IO_MODE_SUPPORT)
     if (exo->uart.uarts[port]->io_mode)
     {
-        error(ERROR_INVALID_MODE);
+        kerror(ERROR_INVALID_MODE);
         return INVALID_HANDLE;
     }
 #endif //UART_IO_MODE_SUPPORT
@@ -546,7 +547,7 @@ static inline uint16_t lpc_uart_get_last_error(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return ERROR_OK;
     }
     return exo->uart.uarts[port]->error;
@@ -556,7 +557,7 @@ static inline void lpc_uart_clear_error(EXO* exo, UART_PORT port)
 {
     if (exo->uart.uarts[port] == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     exo->uart.uarts[port]->error = ERROR_OK;
@@ -589,17 +590,17 @@ static inline void lpc_uart_io_read(EXO* exo, UART_PORT port, IPC* ipc)
     IO* io;
     if (uart == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (!uart->io_mode)
     {
-        error(ERROR_INVALID_STATE);
+        kerror(ERROR_INVALID_STATE);
         return;
     }
     if (uart->i.rx_io)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     io = (IO*)ipc->param2;
@@ -609,7 +610,7 @@ static inline void lpc_uart_io_read(EXO* exo, UART_PORT port, IPC* ipc)
     uart->i.rx_io = io;
     __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
     ksystime_soft_timer_start_ms(uart->i.rx_timer, uart->i.rx_char_timeout);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void lpc_uart_io_write(EXO* exo, UART_PORT port, IPC* ipc)
@@ -618,17 +619,17 @@ static inline void lpc_uart_io_write(EXO* exo, UART_PORT port, IPC* ipc)
     IO* io;
     if (uart == NULL)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (!uart->io_mode)
     {
-        error(ERROR_INVALID_STATE);
+        kerror(ERROR_INVALID_STATE);
         return;
     }
     if (uart->i.tx_io)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     io = (IO*)ipc->param2;
@@ -650,7 +651,7 @@ static inline void lpc_uart_io_write(EXO* exo, UART_PORT port, IPC* ipc)
     else
 #endif
         __USART_REGS[port]->IER |= USART0_IER_THREIE_Msk;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void lpc_uart_io_read_timeout(EXO* exo, UART_PORT port)
@@ -724,7 +725,7 @@ void lpc_uart_request(EXO* exo, IPC* ipc)
     UART_PORT port = ipc->param1;
     if (port >= UARTS_COUNT)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -772,7 +773,7 @@ void lpc_uart_request(EXO* exo, IPC* ipc)
         break;
 #endif //UART_IO_MODE_SUPPORT
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

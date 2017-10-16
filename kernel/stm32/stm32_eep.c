@@ -10,6 +10,7 @@
 #include "../../userspace/io.h"
 #include "../../userspace/stm32/stm32_driver.h"
 #include "string.h"
+#include "../kerror.h"
 
 #define PEKEY1                          0x89ABCDEF
 #define PEKEY2                          0x02030405

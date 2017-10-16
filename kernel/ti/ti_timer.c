@@ -12,6 +12,7 @@
 #include "../kirq.h"
 #include "../dbg.h"
 #include "../ksystime.h"
+#include "../kerror.h"
 
 #define S1_US                                       1000000
 
@@ -73,7 +74,7 @@ static void ti_timer_start(EXO* exo, TIMER timer, TIMER_VALUE_TYPE value_type, u
     case TIMER_VALUE_HZ:
         if (value == 0 || value > S1_US)
         {
-            error(ERROR_INVALID_PARAMS);
+            kerror(ERROR_INVALID_PARAMS);
             return;
         }
         TIMER_REG[timer]->TAILR = TIMER_REG[timer]->TAV = exo->timer.core_clock / value - 1;
@@ -87,7 +88,7 @@ static void ti_timer_start(EXO* exo, TIMER timer, TIMER_VALUE_TYPE value_type, u
         TIMER_REG[timer]->TAILR = TIMER_REG[timer]->TAV = value - 1;
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         return;
     }
     TIMER_REG[timer]->CTL |= GPT_CTL_TAEN;
@@ -103,7 +104,7 @@ void ti_timer_request(EXO* exo, IPC* ipc)
     TIMER timer = (TIMER)ipc->param1;
     if (timer >= TIMER_MAX)
     {
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         return;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -121,7 +122,7 @@ void ti_timer_request(EXO* exo, IPC* ipc)
         ti_timer_stop(timer);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }
 

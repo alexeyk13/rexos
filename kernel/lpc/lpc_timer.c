@@ -10,6 +10,7 @@
 #include "lpc_config.h"
 #include "../ksystime.h"
 #include "../kirq.h"
+#include "../kerror.h"
 #include "../../userspace/systime.h"
 
 #define S1_US                                       1000000
@@ -144,7 +145,7 @@ void lpc_timer_start(EXO* exo, TIMER timer, TIMER_VALUE_TYPE value_type, unsigne
     {
         if (value_type != TIMER_VALUE_CLK)
         {
-            error(ERROR_NOT_SUPPORTED);
+            kerror(ERROR_NOT_SUPPORTED);
             return;
         }
         //set value for channel
@@ -175,7 +176,7 @@ void lpc_timer_start(EXO* exo, TIMER timer, TIMER_VALUE_TYPE value_type, unsigne
         lpc_timer_start_master_clk(exo, timer, 1, value);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }
 
@@ -187,7 +188,7 @@ static inline void lpc_timer_setup_channel(EXO* exo, TIMER timer, int channel, T
     {
         if (type != TIMER_CHANNEL_PWM)
         {
-            error(ERROR_NOT_SUPPORTED);
+            kerror(ERROR_NOT_SUPPORTED);
             return;
         }
 
@@ -235,7 +236,7 @@ static inline void lpc_timer_setup_channel(EXO* exo, TIMER timer, int channel, T
         break;
 #endif //LPC11Uxx
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }
 
@@ -317,7 +318,7 @@ bool lpc_timer_request(EXO* exo, IPC* ipc)
     TIMER timer = (TIMER)ipc->param1;
     if (timer >= TIMER_MAX)
     {
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         return true;
     }
     switch (HAL_ITEM(ipc->cmd))
@@ -338,7 +339,7 @@ bool lpc_timer_request(EXO* exo, IPC* ipc)
         lpc_timer_setup_channel(exo, timer, TIMER_CHANNEL_VALUE(ipc->param2), TIMER_CHANNEL_TYPE_VALUE(ipc->param2), ipc->param3);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
     return true;
 }

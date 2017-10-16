@@ -10,6 +10,7 @@
 #include "../../userspace/usb.h"
 #include "../kirq.h"
 #include "../kipc.h"
+#include "../kerror.h"
 #include "../../userspace/stm32/stm32_driver.h"
 #include "stm32_power.h"
 #include <string.h>

@@ -15,6 +15,7 @@
 #include <string.h>
 #include "stm32_exo_private.h"
 #include "../wavegen.h"
+#include "../kerror.h"
 
 #if (DAC_BOFF)
 #define DAC_CR_ON                                                           3

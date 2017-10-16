@@ -14,6 +14,7 @@
 #include "ti_uart.h"
 #include "ti_timer.h"
 #include "ti_rf.h"
+#include "../kerror.h"
 
 void exodriver_post(IPC* ipc)
 {
@@ -42,7 +43,7 @@ void exodriver_post(IPC* ipc)
         break;
 #endif //TI_RF
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
 }

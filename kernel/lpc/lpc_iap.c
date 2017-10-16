@@ -6,7 +6,7 @@
 
 #include "lpc_iap.h"
 #include "../../userspace/lpc/lpc.h"
-#include "../../userspace/error.h"
+#include "../kerror.h"
 #include "../../userspace/process.h"
 
 #ifdef LPC18xx
@@ -33,26 +33,26 @@ bool lpc_iap(LPC_IAP_TYPE* params, unsigned int cmd)
     switch (params->resp[0])
     {
     case IAP_RESULT_INVALID_COMMAND:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     case IAP_RESULT_SECTOR_NOT_BLANK:
     case IAP_RESULT_SECTOR_NOT_PREPARED_FOR_WRITE:
-        error(ERROR_INVALID_STATE);
+        kerror(ERROR_INVALID_STATE);
         break;
     case IAP_RESULT_COMPARE_ERROR:
-        error(ERROR_CORRUPTED);
+        kerror(ERROR_CORRUPTED);
         break;
     case IAP_RESULT_BUSY:
-        error(ERROR_BUSY);
+        kerror(ERROR_BUSY);
         break;
     case IAP_RESULT_CODE_READ_PROTECTION:
-        error(ERROR_ACCESS_DENIED);
+        kerror(ERROR_ACCESS_DENIED);
         break;
     case IAP_RESULT_USER_CODE_CHECKSUM:
-        error(ERROR_CRC);
+        kerror(ERROR_CRC);
         break;
     default:
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
     }
     return false;
 }

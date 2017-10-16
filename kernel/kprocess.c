@@ -499,16 +499,3 @@ void kprocess_info()
     enable_interrupts();
 }
 #endif //KERNEL_PROFILING
-
-int kget_last_error()
-{
-    return __KERNEL->kerror;
-}
-
-void kerror(int kerror)
-{
-    __disable_irq();
-    __KERNEL->kerror = kerror;
-    __enable_irq();
-}
-

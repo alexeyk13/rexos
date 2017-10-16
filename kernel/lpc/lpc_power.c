@@ -7,6 +7,7 @@
 #include "lpc_power.h"
 #include "lpc_exo_private.h"
 #include "sys_config.h"
+#include "../kerror.h"
 
 #define IRC_VALUE                               12000000
 
@@ -286,7 +287,7 @@ static unsigned int lpc_get_source_clock(unsigned int source)
         return lpc_get_source_clock(CGU_IDIVx_CTRL[(source - CGU_CLK_IDIVA) >> CGU_CLK_CLK_SEL_POS] & CGU_IDIVx_CTRL_CLK_SEL_Msk) /
                 (((CGU_IDIVx_CTRL[(source - CGU_CLK_IDIVA) >> CGU_CLK_CLK_SEL_POS] & CGU_IDIVx_CTRL_IDIV_Msk) >> CGU_IDIVx_CTRL_IDIV_Pos) + 1);
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         return 0;
 
     }
@@ -343,7 +344,7 @@ static inline void lpc_power_set_mode(EXO* exo, POWER_MODE mode)
         lpc_power_lo(exo);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }
 #endif //(POWER_MANAGEMENT)
@@ -368,7 +369,7 @@ unsigned int lpc_power_get_clock_inside(POWER_CLOCK_TYPE clock_type)
     case POWER_CORE_CLOCK:
         return lpc_power_get_core_clock_inside();
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         return 0;
     }
 }
@@ -400,7 +401,7 @@ void lpc_power_request(EXO* exo, IPC* ipc)
         break;
 #endif //POWER_MANAGEMENT
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }
 

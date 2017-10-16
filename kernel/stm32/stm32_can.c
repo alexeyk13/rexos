@@ -7,7 +7,7 @@
 #include "stm32_can.h"
 #include "stm32_power.h"
 #include "../../userspace/sys.h"
-#include "error.h"
+#include "../kerror.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/stream.h"

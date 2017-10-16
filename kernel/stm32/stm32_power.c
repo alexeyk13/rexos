@@ -10,6 +10,7 @@
 #include "stm32_timer.h"
 #include "stm32_config.h"
 #include "sys_config.h"
+#include "../kerror.h"
 
 #if defined(STM32F1)
 #define MAX_APB2                             72000000

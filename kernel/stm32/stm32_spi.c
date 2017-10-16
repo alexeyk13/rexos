@@ -7,6 +7,7 @@
 #include "stm32_spi.h"
 #include "stm32_exo_private.h"
 #include "../kstdlib.h"
+#include "../kerror.h"
 #include "../../userspace/stdio.h"
 #include "../kirq.h"
 #include "../../userspace/stm32/stm32_driver.h"

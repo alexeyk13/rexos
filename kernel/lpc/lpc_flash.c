@@ -9,6 +9,7 @@
 #include "../../userspace/storage.h"
 #include "../../userspace/stdio.h"
 #include "../kipc.h"
+#include "../kerror.h"
 #include "lpc_iap.h"
 #include <string.h>
 
@@ -40,7 +41,7 @@ static bool lpc_flash_decode_addr_block(unsigned int addr, FLASH_ADDR_BLOCK_TYPE
 {
     if ((addr % FLASH_PAGE_SIZE) || (size % FLASH_PAGE_SIZE))
     {
-        error(ERROR_INVALID_ALIGN);
+        kerror(ERROR_INVALID_ALIGN);
         return false;
     }
     addr_block->first_page = addr + LPC_FLASH_USER_CODE_SIZE;
@@ -55,7 +56,7 @@ static bool lpc_flash_decode_addr_block(unsigned int addr, FLASH_ADDR_BLOCK_TYPE
     }
     else
     {
-        error(ERROR_OUT_OF_RANGE);
+        kerror(ERROR_OUT_OF_RANGE);
         return false;
     }
     //first 8 sectors are 8KB
@@ -82,7 +83,7 @@ static bool lpc_flash_prepare_sector(FLASH_ADDR_BLOCK_TYPE* addr_block, LPC_IAP_
     iap->req[3] = addr_block->bank;
     if (!lpc_iap(iap, IAP_CMD_PREPARE_SECTORS_FOR_WRITE))
     {
-        error(ERROR_HARDWARE);
+        kerror(ERROR_HARDWARE);
         return false;
     }
     return true;
@@ -112,7 +113,7 @@ static bool lpc_flash_erase_block(FLASH_ADDR_BLOCK_TYPE* addr_block, unsigned in
     iap.req[3] = clock_khz;
     if (!lpc_iap(&iap, IAP_CMD_ERASE_PAGE))
     {
-        error(ERROR_HARDWARE);
+        kerror(ERROR_HARDWARE);
         return false;
     }
     return true;
@@ -139,7 +140,7 @@ static bool lpc_flash_write_block(FLASH_ADDR_BLOCK_TYPE* addr_block, void* buf, 
         iap.req[4] = clock_khz;
         if (!lpc_iap(&iap, IAP_CMD_COPY_RAM_TO_FLASH))
         {
-            error(ERROR_HARDWARE);
+            kerror(ERROR_HARDWARE);
             return false;
         }
     }
@@ -150,7 +151,7 @@ static inline void lpc_flash_flush(EXO* exo)
 {
     if (!exo->flash.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
 }
@@ -160,12 +161,12 @@ static inline void lpc_flash_open(EXO* exo, HANDLE user)
     LPC_IAP_TYPE iap;
     if (exo->flash.active)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
 
     lpc_iap(&iap, IAP_CMD_INIT);
-    error(ERROR_OK);
+    kerror(ERROR_OK);
 
     exo->flash.user = user;
     exo->flash.active = true;
@@ -175,7 +176,7 @@ static inline void lpc_flash_close(EXO* exo)
 {
     if (!exo->flash.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     exo->flash.active = false;
@@ -189,12 +190,12 @@ static inline void lpc_flash_read(EXO* exo, HANDLE process, HANDLE user, IO* io,
     io_pop(io, sizeof(STORAGE_STACK));
     if (!exo->flash.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if ((user != exo->flash.user) || (size == 0) || (size % FLASH_PAGE_SIZE))
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if ((exo->flash.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
@@ -211,7 +212,7 @@ static inline void lpc_flash_read(EXO* exo, HANDLE process, HANDLE user, IO* io,
         io_data_append(io, (void*)addr_block.first_page, addr_block.size);
     }
     kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, IPC_READ), user, (unsigned int)io, io->data_size);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void lpc_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned int size)
@@ -225,14 +226,14 @@ static inline void lpc_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* io
     io_pop(io, sizeof(STORAGE_STACK));
     if (!exo->flash.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if ((stack->flags & STORAGE_MASK_MODE) == STORAGE_FLAG_ERASE_ONLY)
         size *= FLASH_PAGE_SIZE;
     if ((user != exo->flash.user) || (size == 0) || (size % FLASH_PAGE_SIZE))
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if ((exo->flash.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
@@ -279,12 +280,12 @@ static inline void lpc_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* io
         sha1_final(&sha1, hash_out);
         if (memcmp(hash_in, hash_out, SHA1_BLOCK_SIZE) != 0)
         {
-            error(ERROR_CRC);
+            kerror(ERROR_CRC);
             return;
         }
     }
     kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, IPC_WRITE), user, (unsigned int)io, io->data_size);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void lpc_flash_get_media_descriptor(EXO* exo, HANDLE process, HANDLE user, IO* io)
@@ -293,12 +294,12 @@ static inline void lpc_flash_get_media_descriptor(EXO* exo, HANDLE process, HAND
     LPC_IAP_TYPE iap;
     if (!exo->flash.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (user != exo->flash.user)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     media = io_data(io);
@@ -313,18 +314,18 @@ static inline void lpc_flash_get_media_descriptor(EXO* exo, HANDLE process, HAND
 
     io->data_size = sizeof(STORAGE_MEDIA_DESCRIPTOR) + 32 + 1;
     kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, STORAGE_GET_MEDIA_DESCRIPTOR), exo->flash.user, (unsigned int)io, io->data_size);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void lpc_flash_request_notify_activity(EXO* exo, HANDLE process)
 {
     if (exo->flash.activity != INVALID_HANDLE)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     exo->flash.activity = process;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 void lpc_flash_request(EXO* exo, IPC* ipc)
@@ -353,7 +354,7 @@ void lpc_flash_request(EXO* exo, IPC* ipc)
         lpc_flash_request_notify_activity(exo, ipc->process);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }
 

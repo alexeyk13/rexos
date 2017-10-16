@@ -9,6 +9,7 @@
 #include "stm32_exo_private.h"
 #include "sys_config.h"
 #include "../kernel.h"
+#include "../kerror.h"
 
 #if defined (STM32F1)
 #define ADC_TSTAB                                                   11

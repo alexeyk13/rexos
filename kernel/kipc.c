@@ -10,7 +10,7 @@
 #include "kprocess.h"
 #include "kheap.h"
 #include "kprocess_private.h"
-#include "../userspace/error.h"
+#include "kerror.h"
 #include "../userspace/rb.h"
 #include "../userspace/core/core.h"
 #include "kernel.h"

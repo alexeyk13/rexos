@@ -10,6 +10,7 @@
 #include "../../userspace/stdio.h"
 #include "../kipc.h"
 #include "../kstdlib.h"
+#include "../kerror.h"
 #include <string.h>
 
 #if defined(STM32F1)

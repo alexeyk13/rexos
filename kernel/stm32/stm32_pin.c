@@ -9,6 +9,7 @@
 #include "stm32_exo_private.h"
 #include "sys_config.h"
 #include <string.h>
+#include "../kerror.h"
 
 //ALL STM32 has ports A, B, C
 #ifndef GPIOD

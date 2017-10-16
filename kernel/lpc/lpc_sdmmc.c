@@ -10,6 +10,7 @@
 #include "lpc_power.h"
 #include "../kirq.h"
 #include "../kipc.h"
+#include "../kerror.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/lpc/lpc_driver.h"
 #include "../../userspace/storage.h"
@@ -136,7 +137,7 @@ void sdmmcs_set_bus_width(void* param, int width)
         LPC_SDMMC->CTYPE = SDMMC_CTYPE_CARD_WIDTH1;
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }
 
@@ -257,7 +258,7 @@ static inline void lpc_sdmmc_open(EXO* exo, HANDLE user)
 {
     if (exo->sdmmc.active)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     //enable SDIO bus interface to PLL1
@@ -310,7 +311,7 @@ static inline void lpc_sdmmc_close(EXO* exo)
 {
     if (!exo->sdmmc.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     //disable interrupts
@@ -376,17 +377,17 @@ static inline void lpc_sdmmc_io(EXO* exo, HANDLE process, HANDLE user, IO* io, u
     io_pop(io, sizeof(STORAGE_STACK));
     if (!exo->sdmmc.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (exo->sdmmc.state != SDMMC_STATE_IDLE)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     if ((user != exo->sdmmc.user) || (size == 0))
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     //erase
@@ -397,14 +398,14 @@ static inline void lpc_sdmmc_io(EXO* exo, HANDLE process, HANDLE user, IO* io, u
     }
     if (size % exo->sdmmc.sdmmcs.sector_size)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     count = size / exo->sdmmc.sdmmcs.sector_size;
     exo->sdmmc.total = size;
     if (exo->sdmmc.total > LPC_SDMMC_TOTAL_SIZE)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     if ((exo->sdmmc.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
@@ -422,7 +423,7 @@ static inline void lpc_sdmmc_io(EXO* exo, HANDLE process, HANDLE user, IO* io, u
         io->data_size = 0;
         exo->sdmmc.state = SDMMC_STATE_READ;
         if (sdmmcs_read(&exo->sdmmc.sdmmcs, stack->sector, count))
-            error(ERROR_SYNC);
+            kerror(ERROR_SYNC);
     }
     else
     {
@@ -431,7 +432,7 @@ static inline void lpc_sdmmc_io(EXO* exo, HANDLE process, HANDLE user, IO* io, u
         case STORAGE_FLAG_WRITE:
             exo->sdmmc.state = SDMMC_STATE_WRITE;
             if (sdmmcs_write(&exo->sdmmc.sdmmcs, stack->sector, count))
-                error(ERROR_SYNC);
+                kerror(ERROR_SYNC);
             break;
         default:
             //verify/verify write
@@ -444,15 +445,15 @@ static inline void lpc_sdmmc_io(EXO* exo, HANDLE process, HANDLE user, IO* io, u
             case STORAGE_FLAG_VERIFY:
                 exo->sdmmc.state = SDMMC_STATE_VERIFY;
                 if (sdmmcs_read(&exo->sdmmc.sdmmcs, stack->sector, count))
-                    error(ERROR_SYNC);
+                    kerror(ERROR_SYNC);
                 break;
             case (STORAGE_FLAG_VERIFY | STORAGE_FLAG_WRITE):
                 exo->sdmmc.state = SDMMC_STATE_WRITE_VERIFY;
                 if (sdmmcs_write(&exo->sdmmc.sdmmcs, stack->sector, count))
-                    error(ERROR_SYNC);
+                    kerror(ERROR_SYNC);
                 break;
             default:
-                error(ERROR_NOT_SUPPORTED);
+                kerror(ERROR_NOT_SUPPORTED);
                 return;
             }
         }
@@ -498,12 +499,12 @@ static inline void lpc_sdmmc_get_media_descriptor(EXO* exo, HANDLE process, HAND
     STORAGE_MEDIA_DESCRIPTOR* media;
     if (!exo->sdmmc.active)
     {
-        error(ERROR_NOT_CONFIGURED);
+        kerror(ERROR_NOT_CONFIGURED);
         return;
     }
     if (user != exo->sdmmc.user)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
     media = io_data(io);
@@ -514,18 +515,18 @@ static inline void lpc_sdmmc_get_media_descriptor(EXO* exo, HANDLE process, HAND
     sprintf(STORAGE_MEDIA_SERIAL(media), "%08X", exo->sdmmc.sdmmcs.serial);
     io->data_size = sizeof(STORAGE_MEDIA_DESCRIPTOR) + 8 + 1;
     kipc_post_exo(process, HAL_IO_CMD(HAL_SDMMC, STORAGE_GET_MEDIA_DESCRIPTOR), exo->sdmmc.user, (unsigned int)io, io->data_size);
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void lpc_sdmmc_request_notify_activity(EXO* exo, HANDLE process)
 {
     if (exo->sdmmc.activity != INVALID_HANDLE)
     {
-        error(ERROR_ALREADY_CONFIGURED);
+        kerror(ERROR_ALREADY_CONFIGURED);
         return;
     }
     exo->sdmmc.activity = process;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 void lpc_sdmmc_request(EXO* exo, IPC* ipc)
@@ -557,6 +558,6 @@ void lpc_sdmmc_request(EXO* exo, IPC* ipc)
         lpc_sdmmc_request_notify_activity(exo, ipc->process);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }

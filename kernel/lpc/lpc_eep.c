@@ -10,6 +10,7 @@
 #include "../../userspace/io.h"
 #include "lpc_power.h"
 #include "lpc_iap.h"
+#include "../kerror.h"
 
 #ifdef LPC18xx
 
@@ -27,7 +28,7 @@ static inline void lpc_eep_read(EXO* exo, IPC* ipc)
 #ifdef LPC18xx
     if (ipc->param1 + ipc->param3 > EEP_SIZE)
     {
-        error(ERROR_OUT_OF_RANGE);
+        kerror(ERROR_OUT_OF_RANGE);
         return;
     }
     io_data_write(io, (void*)(ipc->param1 + EEP_BASE), ipc->param3);
@@ -51,7 +52,7 @@ static inline void lpc_eep_write(EXO* exo, IPC* ipc)
     unsigned int addr, count, processed, cur, i;
     if (ipc->param1 + io->data_size > EEP_SIZE)
     {
-        error(ERROR_OUT_OF_RANGE);
+        kerror(ERROR_OUT_OF_RANGE);
         return;
     }
     for(count = (io->data_size + 3) >> 2, processed = 0, addr = (ipc->param1 + EEP_BASE) & ~3; count; count -= cur, processed += (cur << 2), addr += (cur << 2))
@@ -105,6 +106,6 @@ void lpc_eep_request(EXO* exo, IPC* ipc)
         lpc_eep_write(exo, ipc);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }

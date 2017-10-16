@@ -8,7 +8,7 @@
 #include "ti_exo_private.h"
 #include "ti_config.h"
 #include "../../userspace/ti/ti.h"
-#include "../../userspace/error.h"
+#include "../kerror.h"
 #include "../../userspace/process.h"
 
 unsigned int ti_power_get_core_clock()
@@ -24,7 +24,7 @@ unsigned int ti_power_get_clock(POWER_CLOCK_TYPE clock_type)
     case POWER_CORE_CLOCK:
         return ti_power_get_core_clock();
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         return 0;
     }
 }
@@ -217,7 +217,7 @@ void ti_power_request(EXO* exo, IPC* ipc)
         ipc->param2 = ti_power_get_clock(ipc->param1);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
     }
 }
 

@@ -13,6 +13,7 @@
 #include "../kipc.h"
 #include "../ksystime.h"
 #include "../kernel.h"
+#include "../kerror.h"
 #include "../../userspace/lpc/lpc_driver.h"
 #include "../drv/eth_phy.h"
 #include "lpc_pin.h"
@@ -417,7 +418,7 @@ static inline void lpc_eth_open(EXO* exo, unsigned int phy_addr, ETH_CONN_TYPE c
     //turn phy on
     if (!eth_phy_power_on(exo->eth.phy_addr, conn))
     {
-        error(ERROR_NOT_FOUND);
+        kerror(ERROR_NOT_FOUND);
         lpc_eth_close(exo);
         return;
     }
@@ -430,7 +431,7 @@ static inline void lpc_eth_read(EXO* exo, IPC* ipc)
     IO* io = (IO*)ipc->param2;
     if (!exo->eth.connected)
     {
-        error(ERROR_NOT_ACTIVE);
+        kerror(ERROR_NOT_ACTIVE);
         return;
     }
 #if (ETH_DOUBLE_BUFFERING)
@@ -443,7 +444,7 @@ static inline void lpc_eth_read(EXO* exo, IPC* ipc)
         i = (cur_rx + 1) & 1;
     if (i < 0)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     exo->eth.rx_des[i].buf1 = io_data(io);
@@ -457,7 +458,7 @@ static inline void lpc_eth_read(EXO* exo, IPC* ipc)
 #else
     if (exo->eth.rx != NULL)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     exo->eth.rx_des.buf1 = io_data(io);
@@ -469,7 +470,7 @@ static inline void lpc_eth_read(EXO* exo, IPC* ipc)
 #endif
     //enable and poll DMA. Value is doesn't matter
     LPC_ETHERNET->DMA_REC_POLL_DEMAND = 1;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void lpc_eth_write(EXO* exo, IPC* ipc)
@@ -477,7 +478,7 @@ static inline void lpc_eth_write(EXO* exo, IPC* ipc)
     IO* io = (IO*)ipc->param2;
     if (!exo->eth.connected)
     {
-        error(ERROR_NOT_ACTIVE);
+        kerror(ERROR_NOT_ACTIVE);
         return;
     }
 #if (ETH_DOUBLE_BUFFERING)
@@ -490,7 +491,7 @@ static inline void lpc_eth_write(EXO* exo, IPC* ipc)
         i = (cur_tx + 1) & 1;
     if (i < 0)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     exo->eth.tx_des[i].buf1 = io_data(io);
@@ -504,7 +505,7 @@ static inline void lpc_eth_write(EXO* exo, IPC* ipc)
 #else
     if (exo->eth.tx != NULL)
     {
-        error(ERROR_IN_PROGRESS);
+        kerror(ERROR_IN_PROGRESS);
         return;
     }
     exo->eth.tx_des.buf1 = io_data(io);
@@ -516,7 +517,7 @@ static inline void lpc_eth_write(EXO* exo, IPC* ipc)
 #endif
     //enable and poll DMA. Value is doesn't matter
     LPC_ETHERNET->DMA_TRANS_POLL_DEMAND = 1;
-    error(ERROR_SYNC);
+    kerror(ERROR_SYNC);
 }
 
 static inline void lpc_eth_set_mac(EXO* exo, unsigned int param2, unsigned int param3)
@@ -581,7 +582,7 @@ void lpc_eth_request(EXO* exo, IPC* ipc)
         lpc_eth_get_mac(exo, ipc);
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         break;
     }
     __disable_irq();
