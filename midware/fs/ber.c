@@ -106,6 +106,11 @@ bool ber_read_sectors(VFSS_TYPE* vfss, unsigned long sector, unsigned size)
     for (i = 0; i < size_sectors; i += sectors_to_read)
     {
         lblock = (sector + i) / vfss->ber.volume.block_sectors;
+        if (lblock >= vfss->ber.volume.fs_blocks)
+        {
+            error(ERROR_OUT_OF_RANGE);
+            return false;
+        }
         pblock = vfss->ber.remap_list[lblock];
         pblock_offset = (sector + i) % vfss->ber.volume.block_sectors;
         sectors_to_read = vfss->ber.volume.block_sectors - pblock_offset;
@@ -314,6 +319,11 @@ bool ber_write_sectors(VFSS_TYPE* vfss, unsigned long sector, unsigned size)
     for (i = 0; i < size_sectors; i += sectors_to_write)
     {
         lblock = (sector + i) / vfss->ber.volume.block_sectors;
+        if (lblock >= vfss->ber.volume.fs_blocks)
+        {
+            error(ERROR_OUT_OF_RANGE);
+            return false;
+        }
         lblock_offset = (sector + i) % vfss->ber.volume.block_sectors;
         sectors_to_write = vfss->ber.volume.block_sectors - lblock_offset;
         if (sectors_to_write > size_sectors - i)
@@ -432,6 +442,48 @@ static void ber_close(VFSS_TYPE* vfss)
     ber_close_internal(vfss);
     ber_trans_clear_buffer(vfss);
     vfss->ber.active = false;
+}
+
+static inline void ber_read(VFSS_TYPE* vfss, IO* io, unsigned int size)
+{
+    unsigned int sector, chunk_size;
+    STORAGE_STACK* stack = io_stack(io);
+    io_pop(io, sizeof(STORAGE_STACK));
+    if (size % FAT_SECTOR_SIZE)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    for (io->data_size = 0, sector = stack->sector; io->data_size < size; sector += chunk_size / FAT_SECTOR_SIZE)
+    {
+        chunk_size = (size - io->data_size);
+        if (chunk_size > vfss->ber.block_size)
+            chunk_size = vfss->ber.block_size;
+        if (!ber_read_sectors(vfss, sector, chunk_size))
+            return;
+        io_data_append(io, vfss_get_buf(vfss), chunk_size);
+    }
+}
+
+static inline void ber_write(VFSS_TYPE* vfss, IO* io)
+{
+    unsigned int sector, chunk_size, offset;
+    STORAGE_STACK* stack = io_stack(io);
+    io_pop(io, sizeof(STORAGE_STACK));
+    if (io->data_size % FAT_SECTOR_SIZE)
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    for (offset = 0, sector = stack->sector; offset < io->data_size; sector += chunk_size / FAT_SECTOR_SIZE)
+    {
+        chunk_size = (io->data_size - offset);
+        if (chunk_size > vfss->ber.block_size)
+            chunk_size = vfss->ber.block_size;
+        memcpy(vfss_get_buf(vfss), (uint8_t*)io_data(io) + offset, chunk_size);
+        if (!ber_write_sectors(vfss, sector, chunk_size))
+            return;
+    }
 }
 
 static inline void ber_format(VFSS_TYPE* vfss, IO* io)
@@ -573,6 +625,12 @@ void ber_request(VFSS_TYPE *vfss, IPC* ipc)
         break;
     case IPC_CLOSE:
         ber_close(vfss);
+        break;
+    case IPC_READ:
+        ber_read(vfss, (IO*)ipc->param2, ipc->param3);
+        break;
+    case IPC_WRITE:
+        ber_write(vfss, (IO*)ipc->param2);
         break;
     case VFS_FORMAT:
         ber_format(vfss, (IO*)ipc->param2);
