@@ -393,9 +393,8 @@ static inline uint32_t co_sdo_save_od(CO* co, CO_OD_ENTRY* entry, uint32_t data)
     if (data != SDO_SAVE_MAGIC)
         return SDO_ERROR_STORE;
     size = co_od_size(co->od)*sizeof(CO_OD_ENTRY);
-    if (get_size(co->device, HAL_REQ(HAL_CANOPEN, IPC_CO_SAVE_OD), 0, CO_OD_SUBINDEX((entry->idx)) , size) != 0)
-        return SDO_ERROR_ACCESS_FAIL;
-    else return 0;
+    ipc_post_inline(co->device, HAL_CMD(HAL_CANOPEN, IPC_CO_SAVE_OD), 0, CO_OD_SUBINDEX((entry->idx)) , size);
+    return 0;
 }
 
 static inline uint32_t co_sdo_comm_changed(CO* co, CO_OD_ENTRY* entry, uint32_t data)
@@ -409,10 +408,9 @@ static inline uint32_t co_sdo_comm_changed(CO* co, CO_OD_ENTRY* entry, uint32_t 
     case CO_OD_INDEX_SAVE_OD:
         return co_sdo_save_od(co, entry, data);
     case CO_OD_INDEX_RESTORE_OD:
-        if (get_size(co->device, HAL_REQ(HAL_CANOPEN, IPC_CO_RESTORE_OD), 0, CO_OD_SUBINDEX((entry->idx)), 0) != 0)
-            return SDO_ERROR_ACCESS_FAIL;
-        else
-            return SDO_ERROR_OK;
+
+        ipc_post_inline(co->device, HAL_CMD(HAL_CANOPEN, IPC_CO_RESTORE_OD), 0, CO_OD_SUBINDEX((entry->idx)), 0);
+        return SDO_ERROR_OK;
     }
 
     switch (entry->idx)
@@ -577,6 +575,8 @@ static inline void co_fault(CO* co, uint32_t error_code)
         else
             entry->data = 0;
     }
+    if (co->co_state != Operational)
+        return;
     co->out_msg.id = SYNC + co->id;
     co->out_msg.data.lo = error_code;
     co->out_msg.data.hi = 0;

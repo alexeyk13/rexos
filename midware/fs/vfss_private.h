@@ -9,10 +9,16 @@
 
 #include "vfss.h"
 #include "ber.h"
-#include "fat16.h"
 #include "../../userspace/vfs.h"
 #include "../../userspace/io.h"
 #include "sys_config.h"
+
+#if (VFS_SFS)
+    #include "sfs.h"
+#else
+    #include "fat16.h"
+#endif  // VFS_SFS
+
 
 typedef struct _VFSS_TYPE {
     IO* io;
@@ -22,7 +28,11 @@ typedef struct _VFSS_TYPE {
 #if (VFS_BER)
     BER_TYPE ber;
 #endif //VFS_BER
+#if (VFS_SFS)
+    SFS_TYPE sfs;
+#else
     FAT16_TYPE fat16;
+#endif  // VFS_SFS
 } VFSS_TYPE;
 
 
