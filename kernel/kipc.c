@@ -117,7 +117,6 @@ void kipc_post(HANDLE sender, IPC* ipc)
     if (ipc->process == KERNEL_HANDLE)
     {
         int old_kerror = kget_last_error();
- //       error(ERROR_OK);
         ipc->process = sender;
         exodriver_post(ipc);
         ipc->process = KERNEL_HANDLE;

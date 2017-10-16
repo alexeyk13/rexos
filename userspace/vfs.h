@@ -16,9 +16,9 @@
 
 #define VFS_ROOT                                            0
 
-#define VFS_VOLUME_HANDLE                                   0xffffffff
-#define VFS_BER_HANDLE                                      0xfffffffe
-#define VFS_FS_HANDLE                                       0xfffffffd
+#define VFS_VOLUME_HANDLE                                   0xffffffef
+#define VFS_BER_HANDLE                                      0xffffffee
+#define VFS_FS_HANDLE                                       0xffffffed
 
 #define VFS_ATTR_FOLDER                                     (1 << 0)
 #define VFS_ATTR_HIDDEN                                     (1 << 1)

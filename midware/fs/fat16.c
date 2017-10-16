@@ -1479,7 +1479,7 @@ static inline void fat16_format(VFSS_TYPE* vfss, IO* io, HANDLE process)
     if (fat16_write_file_entry(vfss, &fi))
         return;
 
-    io_complete(process, HAL_IO_CMD(HAL_VFS, VFS_FORMAT), 0, io);
+    io_complete(process, HAL_IO_CMD(HAL_VFS, VFS_FORMAT), VFS_FS_HANDLE, io);
     error(ERROR_SYNC);
 }
 
