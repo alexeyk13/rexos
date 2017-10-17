@@ -82,6 +82,7 @@
 
 //----------------------------- CCIDD class -------------------------------------------
 #define USBD_CCID_REMOVABLE_CARD                            0
+#define USBD_CCID_WTX_TIMEOUT_MS                            1000
 
 #define USBD_CCID_DEBUG_ERRORS                              0
 #define USBD_CCID_DEBUG_REQUESTS                            0

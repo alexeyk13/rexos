@@ -52,7 +52,6 @@ static void ccidd_rx(USBD* usbd, CCIDD* ccidd)
     usbd_usb_ep_read(usbd, ccidd->data_ep, ccidd->io, ccidd->data_ep_size);
 }
 
-#if (USBD_CCID_REMOVABLE_CARD)
 static void ccidd_notify_slot_change(USBD* usbd, CCIDD* ccidd)
 {
     CCID_NOTIFY_SLOT_CHANGE* notify;
@@ -78,7 +77,6 @@ static void ccidd_notify_slot_change(USBD* usbd, CCIDD* ccidd)
         ccidd->status_busy = true;
     }
 }
-#endif // USBD_CCID_REMOVABLE_CARD
 
 static inline uint8_t ccidd_slot_status_register(CCIDD* ccidd, unsigned int command_status)
 {
@@ -248,9 +246,7 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
                 usbd_register_endpoint(usbd, ccidd->iface, ccidd->status_ep);
                 ccidd->status_busy = false;
                 usbd_usb_ep_open(usbd, USB_EP_IN | ccidd->status_ep, USB_EP_INTERRUPT, status_ep_size);
-#if (USBD_CCID_REMOVABLE_CARD)
                 ccidd_notify_slot_change(usbd, ccidd);
-#endif // USBD_CCID_REMOVABLE_CARD
             }
         }
     }
@@ -291,9 +287,7 @@ void ccidd_class_resume(USBD* usbd, void* param)
 {
     CCIDD* ccidd = (CCIDD*)param;
     ccidd_rx(usbd, ccidd);
-#if (USBD_CCID_REMOVABLE_CARD)
     ccidd_notify_slot_change(usbd, ccidd);
-#endif //USBD_CCID_REMOVABLE_CARD
 }
 
 int ccidd_class_setup(USBD* usbd, void* param, SETUP* setup, IO* io)
