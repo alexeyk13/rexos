@@ -9,7 +9,6 @@
 #include "stm32_timer.h"
 #include "stm32_pin.h"
 #include "stm32_power.h"
-#include "../../userspace/object.h"
 #include "stm32_rtc.h"
 #include "stm32_wdt.h"
 #include "stm32_uart.h"
@@ -17,9 +16,8 @@
 #include "stm32_adc.h"
 #include "stm32_dac.h"
 #include "stm32_eep.h"
-#if (STM32_I2C_DRIVER)
+#include "stm32_eth.h"
 #include "stm32_i2c.h"
-#endif //STM32_I2C_DRIVER
 #ifdef STM32F10X_CL
 #include "stm32_otg.h"
 #else
@@ -108,6 +106,11 @@ void exodriver_post(IPC* ipc)
 #endif //STM32F10X_CL
         break;
 #endif //STM32_USB_DRIVER
+#if (STM32_ETH_DRIVER)
+        case HAL_ETH:
+        stm32_eth_request(__KERNEL->exo, ipc);
+        break;
+#endif //STM32_ETH_DRIVER
     default:
         kerror(ERROR_NOT_SUPPORTED);
         break;
@@ -162,5 +165,8 @@ void exodriver_init()
     stm32_usb_init(__KERNEL->exo);
 #endif //STM32F10X_CL
 #endif //STM32_USB_DRIVER
+#if (STM32_ETH_DRIVER)
+    stm32_eth_init(__KERNEL->exo);
+#endif //STM32_ETH_DRIVER
 
 }

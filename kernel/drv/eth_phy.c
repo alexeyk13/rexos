@@ -5,11 +5,11 @@
 */
 
 #include "eth_phy.h"
-#include "../userspace/systime.h"
-#include "../userspace/process.h"
+#include "../../userspace/systime.h"
+#include "../../userspace/process.h"
 #include "sys_config.h"
-#include "../userspace/core/core.h"
-#include "../kernel/kernel.h"
+#include "../../userspace/core/core.h"
+#include "../kernel.h"
 
 #define ETH_WAIT_QUANT_MS                   10
 
@@ -83,11 +83,7 @@ ETH_CONN_TYPE eth_phy_get_conn_status(uint8_t phy_addr)
     for (i = 0; ((sta & ETH_STATUS_AUTO_NEGOTIATION_COMPLETE) == 0) && (i < (ETH_AUTO_NEGOTIATION_TIME / ETH_WAIT_QUANT_MS)); ++i)
     {
         sta = eth_phy_read(phy_addr, ETH_PHY_REG_STATUS);
-#ifdef EXODRIVERS
         exodriver_delay_us(ETH_WAIT_QUANT_MS * 1000);
-#else
-        sleep_ms(ETH_WAIT_QUANT_MS);
-#endif //EXODRIVERS
     }
     //auto negotiation failure
     anlpar = eth_phy_read(phy_addr, ETH_PHY_REG_ANLPAR);

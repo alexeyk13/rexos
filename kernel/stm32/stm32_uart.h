@@ -24,7 +24,6 @@
 typedef struct {
     HANDLE tx_stream, tx_handle, rx_stream, rx_handle;
     uint16_t tx_size, tx_total, rx_free;
-//    uint16_t tx_total, tx_chunk_pos, tx_chunk_size, rx_free,/* */   tx_size;
     char tx_buf[UART_BUF_SIZE];
 } UART_STREAM;
 

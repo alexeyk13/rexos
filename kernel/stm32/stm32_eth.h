@@ -11,11 +11,11 @@
     STM32 Ethernet driver.
 */
 
-#include "../../userspace/process.h"
 #include "../../userspace/eth.h"
 #include "../../userspace/io.h"
 #include <stdint.h>
 #include "sys_config.h"
+#include "stm32_exo.h"
 
 #pragma pack(push, 1)
 
@@ -115,7 +115,10 @@ typedef struct {
     IO* rx;
 #endif
     ETH_CONN_TYPE conn;
-    HANDLE tcpip, timer;
+    unsigned int cc;
+    HANDLE timer;
+    bool timer_pending;
+    HANDLE tcpip;
     bool connected;
     MAC mac;
     uint8_t phy_addr;
@@ -123,5 +126,8 @@ typedef struct {
     uint8_t cur_rx, cur_tx;
 #endif
 } ETH_DRV;
+
+void stm32_eth_init(EXO* exo);
+void stm32_eth_request(EXO* exo, IPC* ipc);
 
 #endif // STM32_ETH_H

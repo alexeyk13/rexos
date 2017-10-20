@@ -17,6 +17,7 @@
 #include "stm32_dac.h"
 #include "stm32_adc.h"
 #include "stm32_flash.h"
+#include "stm32_eth.h"
 #if (STM32_I2C_DRIVER)
     #include "stm32_i2c.h"
 #endif //STM32_I2C_DRIVER
@@ -57,6 +58,9 @@ typedef struct _EXO {
 #if (STM32_USB_DRIVER)
     USB_DRV usb;
 #endif //STM32_USB_DRIVER
+#if (STM32_ETH_DRIVER)
+    ETH_DRV eth;
+#endif //STM32_ETH_DRIVER
 }EXO;
 
 #endif // STM32_EXO_PRIVATE_H

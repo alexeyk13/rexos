@@ -18,6 +18,7 @@
 #define STM32_RTC_DRIVER                        0
 #define STM32_USB_DRIVER                        1
 #define STM32_CAN_DRIVER                        0
+#define STM32_ETH_DRIVER                        0
 //------------------------------ CORE ------------------------------------------------
 //disable only for power saving if no EXTI or remap is used
 #define SYSCFG_ENABLED                          1
@@ -94,8 +95,6 @@
 //------------------------------- WDT ------------------------------------------------
 //if set by STM32 Option Bits, WDT is started by hardware on power-up
 #define HARDWARE_WATCHDOG                       0
-//------------------------------- ETH -----------------------------------------------
-#define STM32_ETH_PROCESS_SIZE                  512
 //------------------------------ FLASH -----------------------------------------------
 //protect user code if VFS is allocated on flash. Must be sector aligned
 #define STM32_FLASH_USER_CODE_SIZE              (32 * 1024)

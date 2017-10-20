@@ -46,12 +46,11 @@ void net_init(APP* app)
     pin_enable(ETH_COL, STM32_GPIO_MODE_INPUT_FLOAT, false);
     pin_enable(ETH_CRS_WKUP, STM32_GPIO_MODE_INPUT_FLOAT, false);
 
-    process_create(&__STM32_ETH);
-    eth_set_mac(object_get(SYS_OBJ_ETH), 0, &__MAC);
+    eth_set_mac(KERNEL_HANDLE, 0, &__MAC);
 
     app->net.tcpip = tcpip_create(TCPIP_PROCESS_SIZE, TCPIP_PROCESS_PRIORITY, ETH_PHY_ADDRESS);
     ip_set(app->net.tcpip, &__IP);
-    tcpip_open(app->net.tcpip, object_get(SYS_OBJ_ETH), ETH_PHY_ADDRESS, ETH_AUTO);
+    tcpip_open(app->net.tcpip, KERNEL_HANDLE, ETH_PHY_ADDRESS, ETH_AUTO);
 
     app->net.io = io_create(504);
 }

@@ -9,7 +9,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "../userspace/eth.h"
+#include "../../userspace/eth.h"
 
 /*
     Ethernet phy interface
