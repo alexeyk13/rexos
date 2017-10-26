@@ -69,6 +69,9 @@ static const uint8_t __FAT16_BOOT[FAT_SECTOR_SIZE] = {
                                                             0x61, 0x6E, 0x79, 0x20, 0x6B, 0x65, 0x79, 0x20, 0x74, 0x6F, 0x20, 0x72, 0x65, 0x73, 0x74, 0x61,
                                                             0x72, 0x74, 0x0D, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xAC, 0xCB, 0xD8, 0x55, 0xAA};
 
+
+static int fat16_get_free(VFSS_TYPE* vfss);
+
 static void fat16_now(struct tm* ts)
 {
     TIME t;
@@ -816,6 +819,13 @@ static bool fat16_create_file_entry(VFSS_TYPE* vfss, FAT16_FILE_INFO* fi, char* 
         error(ERROR_INVALID_PARAMS);
         return false;
     }
+
+    if ((fat16_get_free(vfss)/vfss->fat16.cluster_size) < 2)
+    {
+        error(ERROR_FULL);
+        return false;
+    }
+
     for (i = 0; i < 11; ++i)
         name83[i] = ' ';
     if (strlen(name) > 8)
@@ -1214,6 +1224,25 @@ static inline void fat16_read_file(VFSS_TYPE* vfss, HANDLE h, IO* io, unsigned i
     error(ERROR_SYNC);
 }
 
+static uint32_t  fat16_size_to_clusters(VFSS_TYPE* vfss, uint32_t size)
+{
+    uint32_t res = size / vfss->fat16.cluster_size;
+    if(size % vfss->fat16.cluster_size)
+        res++;
+    return res;
+}
+
+static bool fat16_is_enouth_space(VFSS_TYPE* vfss, uint32_t curr_pos, uint32_t curr_size, uint32_t size)
+{
+    uint32_t curr_clusters =fat16_size_to_clusters(vfss, curr_size);
+    uint32_t need_clusters =fat16_size_to_clusters(vfss, curr_pos + size);
+    if(curr_clusters >=need_clusters)
+        return true;
+    if((need_clusters - curr_clusters ) > (fat16_get_free(vfss) / vfss->fat16.cluster_size))
+            return false;
+    return true;
+}
+
 static inline void fat16_write_file(VFSS_TYPE* vfss, HANDLE h, IO* io, HANDLE process)
 {
     FAT16_FILE_HANDLE_TYPE* f;
@@ -1230,6 +1259,13 @@ static inline void fat16_write_file(VFSS_TYPE* vfss, HANDLE h, IO* io, HANDLE pr
         return;
     }
     data = io_data(io);
+
+    if(!fat16_is_enouth_space(vfss, f->data.pos, f->size, io->data_size))
+    {
+        error(ERROR_FULL);
+        return;
+    }
+
     buf = vfss_get_buf(vfss);
     for (size = io->data_size; size; size -= chunk)
     {
