@@ -156,6 +156,7 @@ static uint16_t ber_find_best(VFSS_TYPE* vfss)
 #if (VFS_BER_DEBUG_ERRORS)
         printf("BER: no free blocks\n");
 #endif //VFS_BER_DEBUG_ERRORS
+        ber_rollback_trans(vfss);
         error(ERROR_FULL);
     }
     return best_pblock;
