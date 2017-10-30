@@ -50,7 +50,8 @@ unavailable, another HPET timer can be used for RTC emulation
   * SD/MMC host stack
   * uCanOpen stack
   * FAT16 file system
-  * Block error rate layer
+  * SFS - small file system (commercial license)
+  * Block error rate layer with transactioning support
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -79,8 +80,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * TI CC26x0: generic, UART, RTC, WDT, Radio BLE (alpha)
 - Other drivers:
   * МЭЛТ mt12864j LCD display
-- Commercial license drivers (not included in opensource release):
-  * NXP Kinetis MK22: generic, UART, RTC, WDT, I2C, USB, flash
+  * NXP Kinetis MK22: generic, UART, RTC, WDT, I2C, USB, flash (commercial license)
 
 Cortex-M3 features:
 ------------------
@@ -94,6 +94,12 @@ ARM7 features:
 
 History
 =======
+0.5.8
+- BER power-safe transaction support
+- SFS - file system for internal flash (commercial license)
+- CCID fix windows card presence
+- STM32 ETH integrated in driver space
+
 0.5.7
 - STM32 drivers are now exodrivers. System is now fully exodrivers based
 - STM32 F1 flash driver
