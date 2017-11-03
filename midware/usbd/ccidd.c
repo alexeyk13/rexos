@@ -120,7 +120,7 @@ static void ccidd_send_wtx(USBD* usbd, CCIDD* ccidd, uint8_t seq, uint8_t timeou
 {
     io_reset(ccidd->wtx_io);
     CCID_SLOT_STATUS* msg = io_data(ccidd->wtx_io);
-    msg->bMessageType = RDR_TO_PC_SLOT_STATUS;
+    msg->bMessageType = RDR_TO_PC_DATA_BLOCK;
     msg->dwLength = 0;
     msg->bSlot = 0;
     msg->bSeq = seq;
@@ -529,7 +529,7 @@ static inline void ccidd_card_wtx(USBD* usbd, CCIDD* ccidd)
 #if (USBD_CCID_DEBUG_REQUESTS)
     printf("CCIDD: WTX\n");
 #endif //USBD_CCID_DEBUG_REQUESTS
-    ccidd_send_wtx(usbd, ccidd, ccidd->seq, 0x10);
+    ccidd_send_wtx(usbd, ccidd, ccidd->seq, USBD_CCID_WTX_BWT_MP);
     timer_start_ms(ccidd->wtx_timer, USBD_CCID_WTX_TIMEOUT_MS);
 }
 #endif // USBD_CCID_WTX_TIMEOUT_MS
