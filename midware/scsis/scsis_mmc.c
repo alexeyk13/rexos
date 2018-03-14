@@ -232,3 +232,31 @@ void scsis_mmc_get_event_status_notification(SCSIS* scsis, uint8_t* req)
     scsis->state = SCSIS_STATE_COMPLETE;
     scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
 }
+
+void scsis_mmc_read_format_capacity(SCSIS* scsis, uint8_t* req)
+{
+    if (!scsis_get_media(scsis))
+        return;
+    uint32_t prom;
+    uint8_t* ptr = io_data(scsis->io);
+    *ptr++ = 0;
+    *ptr++ = 0;
+    *ptr++ = 0;
+    *ptr++ = 8;
+    prom =  scsis->media->num_sectors;
+    *ptr++ = prom >> 24;
+    *ptr++ = prom >> 16;
+    *ptr++ = prom >> 8;
+    *ptr++ = prom;
+
+    *ptr++ = 0x02;
+
+    prom =  scsis->media->sector_size;
+    *ptr++ = prom >> 16;
+    *ptr++ = prom >> 8;
+    *ptr++ = prom;
+
+    scsis->io->data_size = 12;
+    scsis->state = SCSIS_STATE_COMPLETE;
+    scsis_cb_host(scsis, SCSIS_RESPONSE_WRITE, scsis->io->data_size);
+}

@@ -203,6 +203,9 @@ void scsis_request_cmd(SCSIS* scsis, IO* io, uint8_t* req)
     case SCSI_MMC_CMD_GET_EVENT_STATUS_NOTIFICATION:
         scsis_mmc_get_event_status_notification(scsis, req);
         break;
+    case SCSI_MMC_CMD_READ_FORMAT_CAPACITY:
+        scsis_mmc_read_format_capacity(scsis, req);
+        break;
 #endif //SCSI_MMC
     default:
 #if (SCSI_DEBUG_ERRORS)

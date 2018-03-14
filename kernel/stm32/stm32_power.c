@@ -632,12 +632,12 @@ static inline void stm32_power_down()
 #endif //STM32_RTC_DRIVER
 
     //sleep deep
-    SCB->SCR |= (1 << 2);
+    SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 #if (STANDBY_WKUP)
-    PWR->CSR |= STANDBY_WKUP;
+    PWR->CSR |= PWR_CSR_EWUP;
 #endif //STANDBY_WKUP
-    PWR->CR |= PWR_CR_PDDS;
     PWR->CR |= PWR_CR_CWUF;
+    PWR->CR |= PWR_CR_PDDS;
     __WFI();
 }
 

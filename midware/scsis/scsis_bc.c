@@ -583,6 +583,15 @@ static void scsis_bc_mode_sense_add_caching_page(SCSIS* scsis)
     scsis->io->data_size += 20;
 }
 
+static void scsis_bc_mode_sense_exeption_control(SCSIS* scsis)
+{
+    uint8_t* data = io_data(scsis->io) + scsis->io->data_size;
+    memset(data, 0, 12);
+    data[0] = MODE_SENSE_PSP_INFORMATION_EXCEPTION_CONTROL >> 8;
+    data[1] = 0x0a;
+    scsis->io->data_size += 12;
+}
+
 bool scsis_bc_mode_sense_add_page(SCSIS* scsis, unsigned int psp)
 {
     bool res = false;
@@ -594,6 +603,11 @@ bool scsis_bc_mode_sense_add_page(SCSIS* scsis, unsigned int psp)
         scsis_bc_mode_sense_add_caching_page(scsis);
         res = true;
         break;
+    case MODE_SENSE_PSP_INFORMATION_EXCEPTION_CONTROL:
+        scsis_bc_mode_sense_exeption_control(scsis);
+        res = true;
+        break;
+
     default:
         scsis_fail(scsis, SENSE_KEY_ILLEGAL_REQUEST, ASCQ_INVALID_FIELD_IN_CDB);
         break;
