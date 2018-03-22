@@ -30,6 +30,10 @@ typedef struct {
 typedef struct {
     IO* tx_io;
     IO* rx_io;
+#if (UART_DOUBLE_BUFFERING)
+    IO* rx2_io;
+    unsigned int rx2_max;
+#endif //
     unsigned int rx_max, tx_processed;
     HANDLE tx_process, rx_process, rx_timer;
     unsigned int rx_char_timeout, rx_interleaved_timeout;

@@ -35,7 +35,10 @@ void web_server_close(HANDLE web_server)
 HANDLE web_server_create_node(HANDLE web_server, HANDLE parent, const char* name, unsigned int flags)
 {
     HANDLE res;
-    IO* io = io_create(strlen(name) + 1);
+    uint32_t len = strlen(name) + 1;
+    if(len < sizeof(HANDLE))
+        len = sizeof(HANDLE);
+    IO* io = io_create(len);
     if (io == NULL)
         return INVALID_HANDLE;
     strcpy(io_data(io), name);
@@ -105,7 +108,7 @@ void web_server_set_param(HANDLE web_server, HANDLE session, IO* io, unsigned in
     unsigned int param_len, value_len;
     param_len = strlen(param) + 1;
     value_len = strlen(value) + 1;
-    if (param_len + value_len < size_max)
+    if (param_len + value_len > size_max)
     {
         error(ERROR_IO_BUFFER_TOO_SMALL);
         return;

@@ -212,7 +212,9 @@ static inline void webs_open_session(WEBS* webs, HANDLE conn)
 #if (WEBS_DEBUG_SESSION)
     tcp_get_remote_addr(webs->tcpip, conn, &session->remote_addr);
     printf("WEBS: new session from ");
+#if (APP_USB)
     ip_print(&session->remote_addr);
+#endif    //APP_USB
     printf("\n");
 #endif //WEBS_DEBUG_SESSION
 
@@ -227,7 +229,9 @@ static inline void webs_close_session(WEBS* webs, WEBS_SESSION* session)
 {
 #if (WEBS_DEBUG_SESSION)
     printf("WEBS: closed session from ");
+#if (APP_USB)
     ip_print(&session->remote_addr);
+#endif    //APP_USB
     printf("\n");
 #endif //WEBS_DEBUG_SESSION
 
@@ -692,6 +696,9 @@ static inline void webs_session_rx(WEBS* webs, WEBS_SESSION* session, int size)
     if (size < 0)
     {
         //any error will cause connection termination
+#if (WEBS_DEBUG_ERRORS)
+        printf("WEBS:error %d\n", size);
+#endif //WEBS_DEBUG_ERRORS
         webs_close_session(webs, session);
         return;
     }
