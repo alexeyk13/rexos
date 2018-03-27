@@ -350,7 +350,7 @@ static inline void ccidd_xfer_block(USBD* usbd, CCIDD* ccidd)
     printf("CCIDD: Xfer block to slot%d, size: %d\n", msg->bSlot, msg->dwLength);
 #endif //USBD_CCID_DEBUG_REQUESTS
 #if (USBD_CCID_DEBUG_IO)
-    usbd_dump(io_data(ccidd->io) + sizeof(CCID_MESSAGE), msg->dwLength, "CCIDD C-APDU");
+    usbd_dump(io_data(ccidd->io) + sizeof(CCID_MESSAGE), msg->dwLength, "CCIDD C-BLOCK");
 #endif
 
     if(ccidd->slot_status == CCID_SLOT_STATUS_ICC_PRESENT_AND_ACTIVE)
@@ -358,7 +358,7 @@ static inline void ccidd_xfer_block(USBD* usbd, CCIDD* ccidd)
 #if (USBD_CCID_WTX_TIMEOUT_MS)
         timer_start_ms(ccidd->wtx_timer, USBD_CCID_WTX_TIMEOUT_MS);
 #endif
-        ccidd_user_request(usbd, ccidd, USB_CCID_APDU, msg->msg_specific[0]);
+        ccidd_user_request(usbd, ccidd, USB_CCID_BLOCK, msg->msg_specific[0]);
     }
     else
         ccidd_send_data_block(usbd, ccidd, CCID_SLOT_ERROR_XFR_OVERRUN, CCID_SLOT_STATUS_COMMAND_FAIL);
@@ -567,7 +567,7 @@ static inline void ccidd_data_block_response(USBD* usbd, CCIDD* ccidd, int param
         return;
     }
 #if (USBD_CCID_DEBUG_IO)
-    usbd_dump(io_data(ccidd->io) + sizeof(CCID_MESSAGE), ccidd->io->data_size - sizeof(CCID_MESSAGE), "CCIDD R-APDU");
+    usbd_dump(io_data(ccidd->io) + sizeof(CCID_MESSAGE), ccidd->io->data_size - sizeof(CCID_MESSAGE), "CCIDD R-BLOCK");
 #endif
     ccidd_send_data_block(usbd, ccidd, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR);
 }
@@ -622,7 +622,7 @@ static inline void ccidd_user_response(USBD* usbd, CCIDD* ccidd, IPC* ipc)
     case USB_CCID_POWER_ON:
         ccidd_power_on_response(usbd, ccidd, ipc->param3);
         break;
-    case USB_CCID_APDU:
+    case USB_CCID_BLOCK:
 #if (USBD_CCID_WTX_TIMEOUT_MS)
         timer_stop(ccidd->wtx_timer, USBD_IFACE(ccidd->iface, 0), HAL_USBD_IFACE);
 #endif // USBD_CCID_WTX_ENABLE
@@ -662,7 +662,7 @@ void ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
         case USB_CCID_GET_PARAMS:
         case USB_CCID_SET_PARAMS:
         case USB_CCID_RESET_PARAMS:
-        case USB_CCID_APDU:
+        case USB_CCID_BLOCK:
             ccidd_user_response(usbd, ccidd, ipc);
             break;
         default:

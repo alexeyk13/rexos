@@ -140,8 +140,8 @@ typedef struct {
 #define CCID_FEATURE_AUTO_VOLTAGE                       0x00000008
 #define CCID_FEATURE_AUTO_CLOCK                         0x00000010
 #define CCID_FEATURE_AUTO_BAUD                          0x00000020
-#define CCID_FEATURE_AUTO_PPS                           0x00000040
-#define CCID_FEATURE_AUTO_PPS_ACTIVE                    0x00000080
+#define CCID_FEATURE_AUTO_PPS_PROPRIETARY               0x00000040
+#define CCID_FEATURE_AUTO_PPS                           0x00000080
 #define CCID_FEATURE_AUTO_IFCD                          0x00000400
 #define CCID_FEATURE_CAN_STOP                           0x00000100
 
@@ -225,7 +225,7 @@ typedef struct {
 
 typedef enum {
     //requests from host
-    USB_CCID_APDU = IPC_USER,
+    USB_CCID_BLOCK = IPC_USER,
     USB_CCID_POWER_ON,
     USB_CCID_POWER_OFF,
     USB_CCID_GET_PARAMS,
