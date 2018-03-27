@@ -280,6 +280,19 @@ TIME* stm32_rtc_get(TIME* time)
 #endif
 }
 
+void stm32_rtc_set_alarm_sec(uint32_t delta_sec)
+{
+    uint32_t value;
+    enter_configuration();
+
+    value = RTC->CNTL | (RTC->CNTH << 16);
+    value += delta_sec;
+    RTC->ALRH = (uint16_t)(value >> 16ul);
+    RTC->ALRL = (uint16_t)(value & 0xffff);
+
+    leave_configuration();
+}
+
 void stm32_rtc_set(TIME* time)
 {
     enter_configuration();
@@ -321,6 +334,9 @@ void stm32_rtc_request(IPC* ipc)
         time.ms = ipc->param2;
         stm32_rtc_set(&time);
         break;
+    case RTC_SET_ALARM_SEC:
+        stm32_rtc_set_alarm_sec(ipc->param1);
+
     default:
         kerror(ERROR_NOT_SUPPORTED);
         break;

@@ -17,5 +17,6 @@
 void scsis_mmc_read_toc(SCSIS* scsis, uint8_t* req);
 void scsis_mmc_get_configuration(SCSIS* scsis, uint8_t* req);
 void scsis_mmc_get_event_status_notification(SCSIS* scsis, uint8_t* req);
+void scsis_mmc_read_format_capacity(SCSIS* scsis, uint8_t* req);
 
 #endif // SCSIS_MMC_H

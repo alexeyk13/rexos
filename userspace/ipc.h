@@ -72,6 +72,7 @@ typedef enum {
     //bluetooth host/controller
     HAL_BLUETOOTH,
     HAL_CANOPEN,
+    HAL_WIFI,
     //application level
     HAL_APP
 } HAL;

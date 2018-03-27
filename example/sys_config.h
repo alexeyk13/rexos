@@ -82,7 +82,11 @@
 
 //----------------------------- CCIDD class -------------------------------------------
 #define USBD_CCID_REMOVABLE_CARD                            0
-#define USBD_CCID_WTX_TIMEOUT_MS                            1000
+// CCID Time Extension request period in ms. Set to 0 to disable
+#define USBD_CCID_WTX_TIMEOUT_MS                            2000
+// Multiplier sending in Time Extension ccid request. Parse ATR and see BWT formula from CCID Rev 1.1. Page 7 of 123 to count
+#define USBD_CCID_WTX_BWT_MP                                0x10
+
 
 #define USBD_CCID_DEBUG_ERRORS                              0
 #define USBD_CCID_DEBUG_REQUESTS                            0
