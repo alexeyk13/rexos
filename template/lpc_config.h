@@ -78,4 +78,8 @@
 //MII/RMII
 #define LPC_ETH_MII                         0
 
+//-------------------------------------- FLASH ------------------------------------------------
+//protect user code if VFS is allocated on flash. Must be page-aligned (512)
+#define LPC_FLASH_USER_CODE_SIZE            (128 * 1024)
+
 #endif //LPC_CONFIG_H

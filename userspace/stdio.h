@@ -51,14 +51,6 @@ void printf(const char *const fmt, ...);
 */
 
 /**
-    \brief format string, using \ref SVC_PRINTD as handler
-    \param fmt: format (see global description)
-    \param ...: list of arguments
-    \retval none
-*/
-void printd(const char *const fmt, ...);
-
-/**
     \brief format string, using \ref SVC_PRINTD as handler. ISR version
     \param fmt: format (see global description)
     \param ...: list of arguments

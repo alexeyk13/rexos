@@ -233,13 +233,13 @@ static void lpc_otg_on_isr(int vector, void* param)
         {
             if (__USB_REGS[port]->ENDPTCOMPLETE & EP_BIT(i))
             {
-                lpc_otg_out(port, exo, i);
                 __USB_REGS[port]->ENDPTCOMPLETE = EP_BIT(i);
+                lpc_otg_out(port, exo, i);
             }
             if (__USB_REGS[port]->ENDPTCOMPLETE & EP_BIT(USB_EP_IN | i))
             {
-                lpc_otg_in(port, exo, i);
                 __USB_REGS[port]->ENDPTCOMPLETE = EP_BIT(USB_EP_IN | i);
+                lpc_otg_in(port, exo, i);
             }
         }
         //Only for EP0
@@ -357,6 +357,7 @@ static void lpc_otg_io(USB_PORT_TYPE port, EXO* exo, IPC* ipc, bool read)
 {
     unsigned int i, size;
     unsigned int num = USB_NUM(ipc->param1);
+
     DTD* dtd;
     DQH* dqh;
     EP* ep = ep_data(port, exo, num);

@@ -41,9 +41,6 @@ typedef enum {
 
 typedef struct _USBD {
     HANDLE user;
-#ifndef EXODRIVERS
-    HANDLE usb;
-#endif //EXODRIVERS
     USB_PORT_TYPE port;
     IO* io;
     //SETUP state machine
@@ -179,7 +176,6 @@ bool usbd_unregister_endpoint(USBD* usbd, unsigned int iface, unsigned int ep_nu
     return true;
 }
 
-#ifdef EXODRIVERS
 void usbd_usb_ep_open(USBD* usbd, unsigned int num, USB_EP_TYPE type, unsigned int size)
 {
     ipc_post_exo(HAL_CMD(HAL_USB, IPC_OPEN), USB_HANDLE(usbd->port, num), type, size);
@@ -219,48 +215,6 @@ static void usbd_usb_sync(USBD* usbd)
 {
     ipc_post_exo(HAL_CMD(HAL_USB, IPC_SYNC), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), 0, 0);
 }
-#else
-
-void usbd_usb_ep_open(USBD* usbd, unsigned int num, USB_EP_TYPE type, unsigned int size)
-{
-    ack(usbd->usb, HAL_REQ(HAL_USB, IPC_OPEN), USB_HANDLE(usbd->port, num), type, size);
-}
-
-void usbd_usb_ep_close(USBD* usbd, unsigned int num)
-{
-    ack(usbd->usb, HAL_REQ(HAL_USB, IPC_CLOSE), USB_HANDLE(usbd->port, num), 0, 0);
-}
-
-void usbd_usb_ep_flush(USBD* usbd, unsigned int num)
-{
-    ack(usbd->usb, HAL_REQ(HAL_USB, IPC_FLUSH), USB_HANDLE(usbd->port, num), 0, 0);
-}
-
-void usbd_usb_ep_set_stall(USBD* usbd, unsigned int num)
-{
-    ack(usbd->usb, HAL_REQ(HAL_USB, USB_EP_SET_STALL), USB_HANDLE(usbd->port, num), 0, 0);
-}
-
-void usbd_usb_ep_clear_stall(USBD* usbd, unsigned int num)
-{
-    ack(usbd->usb, HAL_REQ(HAL_USB, USB_EP_CLEAR_STALL), USB_HANDLE(usbd->port, num), 0, 0);
-}
-
-void usbd_usb_ep_write(USBD* usbd, unsigned int ep_num, IO* io)
-{
-    io_write(usbd->usb, HAL_IO_REQ(HAL_USB, IPC_WRITE), USB_HANDLE(usbd->port, USB_EP_IN | ep_num), io);
-}
-
-void usbd_usb_ep_read(USBD* usbd, unsigned int ep_num, IO* io, unsigned int size)
-{
-    io_read(usbd->usb, HAL_IO_REQ(HAL_USB, IPC_READ), USB_HANDLE(usbd->port, ep_num), io, size);
-}
-
-static void usbd_usb_sync(USBD* usbd)
-{
-    ipc_post_inline(usbd->usb, HAL_CMD(HAL_USB, IPC_SYNC), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), 0, 0);
-}
-#endif //EXODRIVERS
 
 static int usbd_get_descriptor_index(USBD* usbd, unsigned int type, unsigned int index, unsigned int lang)
 {
@@ -468,11 +422,7 @@ static inline void usbd_open(USBD* usbd, USB_PORT_TYPE port)
     usbd->ep0_size = 0;
     usbd->configuration = 0;
     usbd->port = port;
-#ifdef EXODRIVERS
     ipc_post_exo(HAL_CMD(HAL_USB, IPC_OPEN), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), 0, 0);
-#else
-    ack(usbd->usb, HAL_REQ(HAL_USB, IPC_OPEN), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), 0, 0);
-#endif //EXODRIVERS
 }
 
 static inline void usbd_close(USBD* usbd)
@@ -490,11 +440,7 @@ static inline void usbd_close(USBD* usbd)
         usbd_usb_ep_close(usbd, USB_EP_IN | 0);
         usbd->ep0_size = 0;
     }
-#ifdef EXODRIVERS
     ipc_post_exo(HAL_CMD(HAL_USB, IPC_CLOSE), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), 0, 0);
-#else
-    ack(usbd->usb, HAL_REQ(HAL_USB, IPC_CLOSE), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), 0, 0);
-#endif //EXODRIVERS
 
     io_destroy(usbd->io);
     usbd->io = NULL;
@@ -619,11 +565,7 @@ static inline int usbd_device_set_feature(USBD* usbd)
         printf("USB: device set feature TEST_MODE\n");
 #endif
         usbd->test_mode = usbd->setup.wIndex >> 16;
-#ifdef EXODRIVERS
         ipc_post_exo(HAL_CMD(HAL_USB, USB_SET_TEST_MODE), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), usbd->test_mode, 0);
-#else
-        ack(usbd->usb, HAL_REQ(HAL_USB, USB_SET_TEST_MODE), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), usbd->test_mode, 0);
-#endif //EXODRIVERS
         res = 0;
         break;
 #endif //USB_TEST_MODE_SUPPORT
@@ -656,11 +598,7 @@ static inline int usbd_set_address(USBD* usbd)
 #if (USBD_DEBUG_REQUESTS)
     printf("USB set ADDRESS %#X\n", usbd->setup.wValue);
 #endif
-#ifdef EXODRIVERS
     ipc_post_exo(HAL_CMD(HAL_USB, USB_SET_ADDRESS), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), usbd->setup.wValue, 0);
-#else
-    ack(usbd->usb, HAL_REQ(HAL_USB, USB_SET_ADDRESS), USB_HANDLE(usbd->port, USB_HANDLE_DEVICE), usbd->setup.wValue, 0);
-#endif //EXODRIVERS
     switch (usbd->state)
     {
     case USBD_STATE_DEFAULT:
@@ -833,11 +771,7 @@ static inline int usbd_endpoint_get_status(USBD* usbd)
     printf("USB: get endpoint status\n");
 #endif
     uint16_t status = 0;
-#ifdef EXODRIVERS
     if (get_exo(HAL_REQ(HAL_USB, USB_EP_IS_STALL), USB_HANDLE(usbd->port, usbd->setup.wIndex), 0, 0))
-#else
-    if (get(usbd->usb, HAL_REQ(HAL_USB, USB_EP_IS_STALL), USB_HANDLE(usbd->port, usbd->setup.wIndex), 0, 0))
-#endif //EXODRIVERS
         status |= 1 << 0;
     return io_data_write(usbd->io, &status, sizeof(uint16_t));
 }
@@ -1142,9 +1076,6 @@ static inline void usbd_init(USBD* usbd)
 {
     int i;
     usbd->user = INVALID_HANDLE;
-#ifndef EXODRIVERS
-    usbd->usb = object_get(SYS_OBJ_CORE);
-#endif //EXODRIVERS
     usbd->io = NULL;
     usbd->suspended = false;
     array_create(&usbd->ifaces, sizeof(USBD_IFACE_ENTRY), 1);

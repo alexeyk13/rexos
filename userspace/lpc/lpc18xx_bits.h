@@ -1354,20 +1354,20 @@
 /******************************************************************************/
 
 typedef struct {                                /*!< (@ 0x4000e000) EEPROM Structure                */
-  uint32_t CMD;                                 /*!< (@ 0x4000e000) command register                */
-  uint32_t reserved1;
-  uint32_t RWSTATE;                             /*!< (@ 0x4000e008) read wait state register        */
-  uint32_t AUTOPROG;                            /*!< (@ 0x4000e00c) auto programming register       */
-  uint32_t WSTATE;                              /*!< (@ 0x4000e010) wait state register             */
-  uint32_t CLKDIV;                              /*!< (@ 0x4000e014) clock divider register          */
-  uint32_t PWRDWN;                              /*!< (@ 0x4000e018) power-down register             */
-  uint32_t reserved2[1007];
-  uint32_t INTENCLR;                            /*!< (@ 0x4000efd8) interrupt enable clear register */
-  uint32_t INTENSET;                            /*!< (@ 0x4000efdc) interrupt enable set register   */
-  uint32_t INTSTAT;                             /*!< (@ 0x4000efe0) interrupt status register       */
-  uint32_t INTEN;                               /*!< (@ 0x4000efe4) interrupt enable register       */
-  uint32_t INTSTATCLR;                          /*!< (@ 0x4000efe8) interrupt status clear register */
-  uint32_t INTSTATSET;                          /*!< (@ 0x4000efec) interrupt status set register   */
+  __IO uint32_t CMD;                            /*!< (@ 0x4000e000) command register                */
+  __I uint32_t reserved1;
+  __IO uint32_t RWSTATE;                        /*!< (@ 0x4000e008) read wait state register        */
+  __IO uint32_t AUTOPROG;                       /*!< (@ 0x4000e00c) auto programming register       */
+  __IO uint32_t WSTATE;                         /*!< (@ 0x4000e010) wait state register             */
+  __IO uint32_t CLKDIV;                         /*!< (@ 0x4000e014) clock divider register          */
+  __IO uint32_t PWRDWN;                         /*!< (@ 0x4000e018) power-down register             */
+  __I uint32_t reserved2[1007];
+  __O uint32_t INTENCLR;                        /*!< (@ 0x4000efd8) interrupt enable clear register */
+  __O uint32_t INTENSET;                        /*!< (@ 0x4000efdc) interrupt enable set register   */
+  __I uint32_t INTSTAT;                         /*!< (@ 0x4000efe0) interrupt status register       */
+  __I uint32_t INTEN;                           /*!< (@ 0x4000efe4) interrupt enable register       */
+  __O uint32_t INTSTATCLR;                      /*!< (@ 0x4000efe8) interrupt status clear register */
+  __O uint32_t INTSTATSET;                      /*!< (@ 0x4000efec) interrupt status set register   */
 } LPC_EEPROM_Type;
 
 #define LPC_EEPROM_BASE                         0x4000e000

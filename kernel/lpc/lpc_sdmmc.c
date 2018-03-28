@@ -50,7 +50,7 @@ static void lpc_sdmmc_error(EXO* exo, int error)
 
 void lpc_sdmmc_on_isr(int vector, void* param)
 {
-    EXO* exo = (CORE*)param;
+    EXO* exo = (EXO*)param;
     if (LPC_SDMMC->IDSTS & SDMMC_IDSTS_NIS_Msk)
     {
         switch (exo->sdmmc.state)
@@ -281,7 +281,7 @@ static inline void lpc_sdmmc_open(EXO* exo, HANDLE user)
     if (!sdmmcs_open(&exo->sdmmc.sdmmcs))
         return;
     //it's critical to call malloc here, because of align
-    exo->sdmmc.descr = malloc(LPC_SDMMC_DESCR_COUNT * sizeof(LPC_SDMMC_DESCR));
+    exo->sdmmc.descr = kmalloc(LPC_SDMMC_DESCR_COUNT * sizeof(LPC_SDMMC_DESCR));
     LPC_SDMMC->DBADDR = (unsigned int)(&(exo->sdmmc.descr[0]));
     LPC_SDMMC->BLKSIZ = exo->sdmmc.sdmmcs.sector_size;
 
@@ -293,7 +293,7 @@ static inline void lpc_sdmmc_open(EXO* exo, HANDLE user)
     LPC_SDMMC->CTRL |= SDMMC_CTRL_USE_INTERNAL_DMAC_Msk;
 
     //setup interrupt vector
-    kirq_register(KERNEL_HANDLE, SDIO_IRQn, lpc_sdmmc_on_isr, (void*)core);
+    kirq_register(KERNEL_HANDLE, SDIO_IRQn, lpc_sdmmc_on_isr, (void*)exo);
     NVIC_EnableIRQ(SDIO_IRQn);
     NVIC_SetPriority(SDIO_IRQn, 3);
 
@@ -317,7 +317,7 @@ static inline void lpc_sdmmc_close(EXO* exo)
     //disable interrupts
     NVIC_DisableIRQ(SDIO_IRQn);
 
-    lpc_sdmmc_flush(core);
+    lpc_sdmmc_flush(exo);
     sdmmcs_reset(&exo->sdmmc.sdmmcs);
 
     kirq_unregister(KERNEL_HANDLE, SDIO_IRQn);
@@ -416,7 +416,7 @@ static inline void lpc_sdmmc_io(EXO* exo, HANDLE process, HANDLE user, IO* io, u
     exo->sdmmc.io = io;
     exo->sdmmc.process = process;
 
-    lpc_sdmmc_prepare_descriptors(core);
+    lpc_sdmmc_prepare_descriptors(exo);
 
     if (read)
     {
@@ -473,7 +473,7 @@ static inline void lpc_sdmmc_verify(EXO* exo)
     if (exo->sdmmc.state == SDMMC_STATE_WRITE_VERIFY)
     {
         exo->sdmmc.state = SDMMC_STATE_VERIFY;
-        lpc_sdmmc_prepare_descriptors(core);
+        lpc_sdmmc_prepare_descriptors(exo);
         if (sdmmcs_read(&exo->sdmmc.sdmmcs, exo->sdmmc.sector, exo->sdmmc.total / exo->sdmmc.sdmmcs.sector_size))
             return;
     }
@@ -537,7 +537,7 @@ void lpc_sdmmc_request(EXO* exo, IPC* ipc)
         lpc_sdmmc_open(exo, (HANDLE)ipc->param1);
         break;
     case IPC_CLOSE:
-        lpc_sdmmc_close(core);
+        lpc_sdmmc_close(exo);
         break;
     case IPC_READ:
         lpc_sdmmc_io(exo, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3, true);
@@ -546,10 +546,10 @@ void lpc_sdmmc_request(EXO* exo, IPC* ipc)
         lpc_sdmmc_io(exo, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3, false);
         break;
     case IPC_FLUSH:
-        lpc_sdmmc_flush(core);
+        lpc_sdmmc_flush(exo);
         break;
     case LPC_SDMMC_VERIFY:
-        lpc_sdmmc_verify(core);
+        lpc_sdmmc_verify(exo);
         break;
     case STORAGE_GET_MEDIA_DESCRIPTOR:
         lpc_sdmmc_get_media_descriptor(exo, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2);

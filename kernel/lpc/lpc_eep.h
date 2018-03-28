@@ -9,7 +9,6 @@
 
 #include "lpc_exo.h"
 
-void lpc_eep_init(EXO* exo);
 void lpc_eep_request(EXO* exo, IPC* ipc);
 
 #endif // LPC_EEP_H

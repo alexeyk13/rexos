@@ -358,6 +358,10 @@ static inline void ccidd_xfer_block(USBD* usbd, CCIDD* ccidd)
 #if (USBD_CCID_WTX_TIMEOUT_MS)
         timer_start_ms(ccidd->wtx_timer, USBD_CCID_WTX_TIMEOUT_MS);
 #endif
+
+#if (USBD_CCID_WINHOST_COMPOSITE)
+        sleep_ms(10);
+#endif //USBD_CCID_WINHOST_COMPOSITE
         ccidd_user_request(usbd, ccidd, USB_CCID_BLOCK, msg->msg_specific[0]);
     }
     else

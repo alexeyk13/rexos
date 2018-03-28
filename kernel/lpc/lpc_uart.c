@@ -642,7 +642,7 @@ static inline void lpc_uart_io_write(EXO* exo, UART_PORT port, IPC* ipc)
     else
 #endif
         __USART_REGS[port]->THR = ((uint8_t*)io_data(io))[0];
-    //this will enable isr processing, if printd/printk was called during setup
+    //this will enable isr processing, if printk was called during setup
     uart->i.tx_io = io;
     //start
 #ifdef LPC11U6x

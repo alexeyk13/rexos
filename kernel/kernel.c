@@ -239,9 +239,6 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         kernel_setup_dbg((STDOUT)param1, (void*)param2);
         break;
 #endif //EXODRIVERS
-    case SVC_PRINTD:
-        __KERNEL->stdout((const char*)param1, param2, __KERNEL->stdout_param);
-        break;
 #if (KERNEL_PROFILING)
     case SVC_TEST:
         //do nothing

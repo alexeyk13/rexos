@@ -77,7 +77,6 @@ typedef enum {
 
     SVC_ADD_POOL,
     SVC_SETUP_DBG,
-    SVC_PRINTD,
     SVC_TEST
 }SVC;
 
