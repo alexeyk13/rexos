@@ -182,6 +182,16 @@ static void lpc_otg_err(USB_PORT_TYPE port, EXO* exo, int num)
 }
 #endif //USB_DEBUG_ERRORS
 
+static bool ep_fully_complete(port, num)
+{
+    DQH* dqh = ep_dqh(port, num);
+    if (dqh->next != (void*)USB0_DQH_NEXT_T_Msk)
+        return false;
+    if (dqh->cur->size_flags & USB0_DTD_SIZE_FLAGS_ACTIVE_Msk)
+        return false;
+    return true;
+}
+
 static void lpc_otg_on_isr(int vector, void* param)
 {
     int i;
@@ -218,25 +228,26 @@ static void lpc_otg_on_isr(int vector, void* param)
 
     if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_UI_Msk)
     {
+        __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_UI_Msk;
 #if (USB_DEBUG_ERRORS)
         if (__USB_REGS[port]->USBSTS_D & USB0_USBSTS_D_UEI_Msk)
         {
+            __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_UEI_Msk;
             for (i = 0; i < USB_EP_COUNT_MAX; ++i )
             {
                 lpc_otg_err(port, exo, i);
                 lpc_otg_err(port, exo, USB_EP_IN | i);
             }
-            __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_UEI_Msk;
         }
 #endif //USB_DEBUG_ERRORS
         for (i = 0; __USB_REGS[port]->ENDPTCOMPLETE && (i < USB_EP_COUNT_MAX); ++i )
         {
-            if (__USB_REGS[port]->ENDPTCOMPLETE & EP_BIT(i))
+            if ((__USB_REGS[port]->ENDPTCOMPLETE & EP_BIT(i)) && ep_fully_complete(port, i))
             {
                 __USB_REGS[port]->ENDPTCOMPLETE = EP_BIT(i);
                 lpc_otg_out(port, exo, i);
             }
-            if (__USB_REGS[port]->ENDPTCOMPLETE & EP_BIT(USB_EP_IN | i))
+            if ((__USB_REGS[port]->ENDPTCOMPLETE & EP_BIT(USB_EP_IN | i)) && ep_fully_complete(port, USB_EP_IN | i))
             {
                 __USB_REGS[port]->ENDPTCOMPLETE = EP_BIT(USB_EP_IN | i);
                 lpc_otg_in(port, exo, i);
@@ -248,7 +259,6 @@ static void lpc_otg_on_isr(int vector, void* param)
             lpc_otg_setup(port, exo);
             __USB_REGS[port]->ENDPTSETUPSTAT = (1 << 0);
         }
-        __USB_REGS[port]->USBSTS_D = USB0_USBSTS_D_UI_Msk;
     }
 
 #if (USB_DEBUG_ERRORS)
@@ -361,6 +371,7 @@ static void lpc_otg_io(USB_PORT_TYPE port, EXO* exo, IPC* ipc, bool read)
     DTD* dtd;
     DQH* dqh;
     EP* ep = ep_data(port, exo, num);
+
     if (ep == NULL)
     {
         kerror(ERROR_NOT_CONFIGURED);
@@ -371,10 +382,12 @@ static void lpc_otg_io(USB_PORT_TYPE port, EXO* exo, IPC* ipc, bool read)
         kerror(ERROR_IN_PROGRESS);
         return;
     }
+
     if (read)
         size = exo->otg.otg[port]->read_size[USB_EP_NUM(num)] = ipc->param3;
     else
         size = ((IO*)ipc->param2)->data_size;
+
     if (size > USB_DTD_CHUNK * USB_DTD_COUNT)
     {
         kerror(ERROR_INVALID_PARAMS);
@@ -526,6 +539,9 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, EXO* exo, HANDLE devi
 #if (USB_DEBUG_ERRORS)
     __USB_REGS[port]->USBINTR_D |= USB0_USBINTR_D_UEE_Msk | USB0_USBINTR_D_SEE_Msk;
 #endif
+
+    //test
+///    __USB_REGS[port]->USBMODE_D |= 1 << 4;
 
     //start
     __USB_REGS[port]->USBCMD_D |= USB0_USBCMD_D_RS_Msk;

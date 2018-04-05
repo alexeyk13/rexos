@@ -89,9 +89,6 @@
 #define USBD_CCID_DEBUG_ERRORS                              1
 #define USBD_CCID_DEBUG_REQUESTS                            0
 #define USBD_CCID_DEBUG_IO                                  0
-
-//turn on in case of win host with composite device
-#define USBD_CCID_WINHOST_COMPOSITE                         1
 //------------------------------ MSCD class -------------------------------------------
 #define USBD_MSC_DEBUG_ERRORS                               1
 #define USBD_MSC_DEBUG_REQUESTS                             0
