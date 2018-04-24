@@ -58,6 +58,11 @@ void uart_set_baudrate(int num, BAUD* baudrate)
     ipc_post(&ipc);
 }
 
+void uart_set_comm_timeouts(int num, unsigned int char_timeout_us, unsigned int interleaved_timeout_us)
+{
+    get_exo(HAL_REQ(HAL_UART, IPC_UART_SET_COMM_TIMEOUTS), num, char_timeout_us, interleaved_timeout_us);
+}
+
 void uart_flush(int num)
 {
     ipc_post_exo(HAL_CMD(HAL_UART, IPC_FLUSH), num, 0, 0);

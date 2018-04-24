@@ -64,7 +64,7 @@ static bool lpc_uart_rx_isr(EXO* exo, UART_PORT port, uint8_t c)
                 res = false;
             }
             else
-                timer_istart_ms(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
+                timer_istart_us(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
         }
     }
     else
@@ -324,8 +324,8 @@ static inline bool lpc_uart_open_io(EXO* exo, UART_PORT port)
     UART_IO* i = &(exo->uart.uarts[port]->i);
     i->tx_io = i->rx_io = NULL;
     i->rx_timer = ksystime_soft_timer_create(KERNEL_HANDLE, port, HAL_UART);
-    i->rx_char_timeout = UART_CHAR_TIMEOUT_MS;
-    i->rx_interleaved_timeout = UART_INTERLEAVED_TIMEOUT_MS;
+    i->rx_char_timeout = UART_CHAR_TIMEOUT_US;
+    i->rx_interleaved_timeout = UART_INTERLEAVED_TIMEOUT_US;
     return i->rx_timer != INVALID_HANDLE;
 }
 #endif //UART_IO_MODE_SUPPORT
@@ -609,7 +609,7 @@ static inline void lpc_uart_io_read(EXO* exo, UART_PORT port, IPC* ipc)
     io->data_size = 0;
     uart->i.rx_io = io;
     __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
-    ksystime_soft_timer_start_ms(uart->i.rx_timer, uart->i.rx_char_timeout);
+    ksystime_soft_timer_start_us(uart->i.rx_timer, uart->i.rx_char_timeout);
     kerror(ERROR_SYNC);
 }
 
@@ -642,7 +642,7 @@ static inline void lpc_uart_io_write(EXO* exo, UART_PORT port, IPC* ipc)
     else
 #endif
         __USART_REGS[port]->THR = ((uint8_t*)io_data(io))[0];
-    //this will enable isr processing, if printk was called during setup
+    //this will enable isr processing, if printd/printk was called during setup
     uart->i.tx_io = io;
     //start
 #ifdef LPC11U6x

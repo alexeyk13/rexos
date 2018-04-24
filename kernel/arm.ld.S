@@ -40,6 +40,10 @@ SECTIONS
     {
       *(.fini*);
     } >FLASH
+    .heap :
+    {
+      *(.heap*);
+    } >FLASH
     _end = . ;
 	PROVIDE(__END = .);
 }

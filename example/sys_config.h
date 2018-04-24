@@ -26,9 +26,9 @@
 //------------------------------- UART -----------------------------------------------
 //disable for some memory saving if not blocking IO is required
 #define UART_IO_MODE_SUPPORT                                0
-//values for IO mode
-#define UART_CHAR_TIMEOUT_MS                                10000
-#define UART_INTERLEAVED_TIMEOUT_MS                         4
+//default values for IO mode
+#define UART_CHAR_TIMEOUT_US                                10000000
+#define UART_INTERLEAVED_TIMEOUT_US                         10000
 //size of every uart internal buf. Increasing this you will get less irq ans ipc calls, but faster processing
 #define UART_BUF_SIZE                                       16
 //generally UART is used as stdout/stdio, so fine-tuning is required only on hi load

@@ -27,6 +27,7 @@ typedef enum {
     IPC_UART_GET_LAST_ERROR,
     IPC_UART_CLEAR_ERROR,
     IPC_UART_SETUP_PRINTK,
+    IPC_UART_SET_COMM_TIMEOUTS,
     IPC_UART_MAX,
 } UART_IPCS;
 
@@ -48,6 +49,7 @@ void uart_setup_stdin(int num);
 bool uart_open(int num, unsigned int mode);
 void uart_close(int num);
 void uart_set_baudrate(int num, BAUD* baudrate);
+void uart_set_comm_timeouts(int num, unsigned int char_timeout_us, unsigned int interleaved_timeout_us);
 void uart_flush(int num);
 
 #endif // UART_H
