@@ -1,3 +1,9 @@
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2018, Alexey Kramarenko
+    All rights reserved.
+*/
+
 #include "ccidd.h"
 #include "../../userspace/ccid.h"
 #include "../../userspace/usb.h"
@@ -29,6 +35,7 @@ typedef struct {
 
 static void ccidd_destroy(CCIDD* ccidd)
 {
+
     io_destroy(ccidd->main_io);
     io_destroy(ccidd->txd_io);
     io_destroy(ccidd->status_io);
@@ -345,6 +352,7 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
             }
         }
     }
+
 }
 
 void ccidd_class_reset(USBD* usbd, void* param)
@@ -359,6 +367,9 @@ void ccidd_class_reset(USBD* usbd, void* param)
         usbd_usb_ep_close(usbd, USB_EP_IN | ccidd->status_ep);
         usbd_unregister_endpoint(usbd, ccidd->iface, ccidd->status_ep);
     }
+
+    if (ccidd->user_io)
+        usbd_io_user(usbd, ccidd->iface, 0, HAL_IO_CMD(HAL_USBD_IFACE, IPC_READ), ccidd->user_io, ERROR_IO_CANCELLED);
 
     usbd_unregister_interface(usbd, ccidd->iface, &__CCIDD_CLASS);
     ccidd_destroy(ccidd);
@@ -378,6 +389,12 @@ void ccidd_class_suspend(USBD* usbd, void* param)
         ccidd->status_pending = false;
     }
     ccidd->tx_busy = ccidd->tx_pending = false;
+
+    if (ccidd->user_io)
+    {
+        usbd_io_user(usbd, ccidd->iface, 0, HAL_IO_CMD(HAL_USBD_IFACE, IPC_READ), ccidd->user_io, ERROR_IO_CANCELLED);
+        ccidd->user_io = NULL;
+    }
 }
 
 void ccidd_class_resume(USBD* usbd, void* param)

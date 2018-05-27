@@ -7,6 +7,7 @@
 #include "stm32_dac.h"
 #include "stm32_power.h"
 #include "stm32_timer.h"
+#include "../kexo.h"
 #include "../kirq.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"
@@ -210,7 +211,7 @@ static void stm32_dac_flush(EXO* exo, int num)
     exo->dac.channels[num].io = NULL;
     __enable_irq();
     if (io != NULL)
-        io_complete_ex_exo(exo->dac.channels[num].process, HAL_IO_CMD(HAL_DAC, IPC_WRITE), num, io, ERROR_IO_CANCELLED);
+        kexo_io_ex(exo->dac.channels[num].process, HAL_IO_CMD(HAL_DAC, IPC_WRITE), num, io, ERROR_IO_CANCELLED);
 }
 #endif //DAC_STREAM
 

@@ -12,6 +12,7 @@
 #include "../../userspace/usb.h"
 #include "../kerror.h"
 #include "../kirq.h"
+#include "../kexo.h"
 #include "../../userspace/object.h"
 #include "../../userspace/stdlib.h"
 #include "../../userspace/power.h"
@@ -51,7 +52,7 @@ bool stm32_otg_ep_flush(EXO* exo, int num)
     }
     if (ep->io != NULL)
     {
-        io_complete_ex_exo(exo->usb.device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
+        kexo_io_ex(exo->usb.device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), num, ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
         ep_reg_data(num)->CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_SNAK;
     }

@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -204,11 +204,19 @@ void usbd_usb_ep_clear_stall(USBD* usbd, unsigned int num)
 void usbd_usb_ep_write(USBD* usbd, unsigned int ep_num, IO* io)
 {
     io_write_exo(HAL_IO_REQ(HAL_USB, IPC_WRITE), USB_HANDLE(usbd->port, USB_EP_IN | ep_num), io);
+#if (USBD_DEBUG_ERRORS)
+    if (get_last_error() == ERROR_ACCESS_DENIED)
+        printf("Warning: IO locked for USB EP%#02X (write)\n", USB_EP_IN | ep_num);
+#endif //USBD_DEBUG_ERRORS
 }
 
 void usbd_usb_ep_read(USBD* usbd, unsigned int ep_num, IO* io, unsigned int size)
 {
     io_read_exo(HAL_IO_REQ(HAL_USB, IPC_READ), USB_HANDLE(usbd->port, ep_num), io, size);
+#if (USBD_DEBUG_ERRORS)
+    if (get_last_error() == ERROR_ACCESS_DENIED)
+        printf("Warning: IO locked for USB EP%#02X (read)\n", ep_num);
+#endif //USBD_DEBUG_ERRORS
 }
 
 static void usbd_usb_sync(USBD* usbd)

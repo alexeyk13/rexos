@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -8,6 +8,8 @@
 #include "ipc.h"
 #include <string.h>
 #include "io.h"
+#include "error.h"
+#include "process.h"
 
 bool eep_seek(unsigned int addr)
 {

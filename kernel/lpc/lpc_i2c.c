@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -9,7 +9,7 @@
 #include "lpc_exo_private.h"
 #include "lpc_power.h"
 #include "../kstdlib.h"
-#include "../kipc.h"
+#include "../kexo.h"
 #include "../kirq.h"
 #include "../ksystime.h"
 #include "../kerror.h"
@@ -353,7 +353,7 @@ static inline void lpc_i2c_timeout(EXO* exo, I2C_PORT port)
     i2c->io_mode = I2C_IO_MODE_IDLE;
     __enable_irq();
     __I2C_REGS[port]->CONSET = I2C0_CONSET_STO_Msk;
-    kipc_post_exo(i2c->process, HAL_IO_CMD(HAL_I2C, (io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, (unsigned int)i2c->io, ERROR_TIMEOUT);
+    kexo_io_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, ERROR_TIMEOUT);
 }
 #endif
 

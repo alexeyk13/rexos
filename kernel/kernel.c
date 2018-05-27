@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -15,14 +15,13 @@
 #include "kobject.h"
 #include "ksystime.h"
 #include "kstdlib.h"
-#include "kheap.h"
 
 #include "../userspace/error.h"
 #include "../userspace/core/core.h"
 #include "../lib/lib_lib.h"
 #include <string.h>
 
-const char* const __KERNEL_NAME=                                                      "RExOS 0.5.8";
+const char* const __KERNEL_NAME=                                                      "RExOS 0.5.9";
 
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {
@@ -214,22 +213,6 @@ void svc(unsigned int num, unsigned int param1, unsigned int param2, unsigned in
         CHECK_ADDRESS(process, (HANDLE*)param2, sizeof(HANDLE));
         *((HANDLE*)param2) = kobject_get(param1);
         break;
-#if (KERNEL_HEAP)
-    case SVC_HEAP_CREATE:
-        CHECK_ADDRESS(process, (HANDLE*)param1, sizeof(HANDLE));
-        *((HANDLE*)param1) = kheap_create(param2);
-        break;
-    case SVC_HEAP_DESTROY:
-        kheap_destroy((HANDLE)param1);
-        break;
-    case SVC_HEAP_MALLOC:
-        CHECK_ADDRESS(process, (void**)param1, sizeof(void**));
-        *((void**)(param1)) = kheap_malloc((HANDLE)param2, param3);
-        break;
-    case SVC_HEAP_FREE:
-        kheap_free((void*)param1);
-        break;
-#endif //KERNEL_HEAP
     //other - dbg, stdout/in
     case SVC_ADD_POOL:
         kstdlib_add_pool(param1, param2);

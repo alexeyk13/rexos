@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -396,16 +396,25 @@ static inline void mscd_driver_event(USBD* usbd, MSCD* mscd, IPC* ipc)
 void mscd_class_request(USBD* usbd, void* param, IPC* ipc)
 {
     MSCD* mscd = (MSCD*)param;
+    unsigned int lun;
     switch (HAL_GROUP(ipc->cmd))
     {
     case HAL_USB:
         mscd_driver_event(usbd, mscd, ipc);
         break;
     default:
-        if (USBD_IFACE_ITEM(ipc->param1) == mscd->io_owner)
-            scsis_request(MSCD_SCSI(mscd)[mscd->io_owner], ipc);
-        else
-            mscd_release_io(mscd);
+        lun = USBD_IFACE_ITEM(ipc->param1);
+        if (lun >= mscd->lun_count)
+        {
+            error(ERROR_OUT_OF_RANGE);
+            return;
+        }
+        if (MSCD_SCSI(mscd)[lun] == NULL)
+        {
+            error(ERROR_NOT_CONFIGURED);
+            return;
+        }
+        scsis_request(MSCD_SCSI(mscd)[lun], ipc);
     }
 }
 

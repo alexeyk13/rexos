@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -61,6 +61,7 @@ void scsis_destroy(SCSIS* scsis)
 void scsis_init(SCSIS* scsis)
 {
     scsis_error_init(scsis);
+    scsis_reset(scsis);
 #if (SCSI_MMC)
     scsis->media_status_changed = false;
 #endif //SCSI_MMC

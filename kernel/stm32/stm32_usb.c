@@ -9,7 +9,7 @@
 #include "../../userspace/sys.h"
 #include "../../userspace/usb.h"
 #include "../kirq.h"
-#include "../kipc.h"
+#include "../kexo.h"
 #include "../kerror.h"
 #include "../../userspace/stm32/stm32_driver.h"
 #include "stm32_power.h"
@@ -107,7 +107,7 @@ bool stm32_usb_ep_flush(EXO* exo, unsigned int num)
         ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_NAK);
     if (ep->io != NULL)
     {
-        io_complete_ex_exo(exo->usb.device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), USB_HANDLE(USB_0, num), ep->io, ERROR_IO_CANCELLED);
+        kexo_io_ex(exo->usb.device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), USB_HANDLE(USB_0, num), ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
     }
     ep->io_active = false;

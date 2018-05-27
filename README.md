@@ -14,7 +14,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Very thin kernel. 
 - Independent library level, accessible both from kernel and userspace
 - Independent system and drivers in userspace
-- Syncronization: ipc, stream, io, heap
+- Syncronization: ipc, stream, io
 - Soft timers
 - Embedded dynamic memory manager, for every process.
 - Safe and MPU ready. All supervisor-specific calls are wrapped around 
@@ -94,6 +94,16 @@ ARM7 features:
 
 History
 =======
+
+0.5.9
+- uart timeouts in US
+- configurable comm timeouts
+- CCID major refactoring, clock/rate support
+- fix LPC otg memory leak
+- fix MSCD multiple lun removable detection
+- removed heap module
+- kernel IO debug
+
 0.5.8
 - BER power-safe transaction support
 - SFS - file system for internal flash (commercial license)

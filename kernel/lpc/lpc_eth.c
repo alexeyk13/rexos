@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -10,7 +10,7 @@
 #include "../../userspace/stdio.h"
 #include "../../userspace/ipc.h"
 #include "../kirq.h"
-#include "../kipc.h"
+#include "../kexo.h"
 #include "../ksystime.h"
 #include "../kernel.h"
 #include "../kerror.h"
@@ -159,7 +159,7 @@ static void lpc_eth_flush(EXO* exo)
         exo->eth.rx[i] = NULL;
         __enable_irq();
         if (io != NULL)
-            kipc_post_exo(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), exo->eth.phy_addr, (unsigned int)io, ERROR_IO_CANCELLED);
+            kexo_io_ex(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
 
         __disable_irq();
         exo->eth.tx_des[i].ctl = ETH_TDES0_TCH | ETH_TDES0_IC;;
@@ -167,7 +167,7 @@ static void lpc_eth_flush(EXO* exo)
         exo->eth.tx[i] = NULL;
         __enable_irq();
         if (io != NULL)
-            kipc_post_exo(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), exo->eth.phy_addr, (unsigned int)io, ERROR_IO_CANCELLED);
+            kexo_io_ex(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
     }
     exo->eth.cur_rx = (LPC_ETHERNET->DMA_CURHOST_REC_BUF == (unsigned int)(&exo->eth.rx_des[0]) ? 0 : 1);
     exo->eth.cur_tx = (LPC_ETHERNET->DMA_CURHOST_TRANS_BUF == (unsigned int)(&exo->eth.tx_des[0]) ? 0 : 1);
@@ -177,14 +177,14 @@ static void lpc_eth_flush(EXO* exo)
     exo->eth.rx = NULL;
     __enable_irq();
     if (io != NULL)
-        kipc_post_exo(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), exo->eth.phy_addr, (unsigned int)io, ERROR_IO_CANCELLED);
+        kexo_io_ex(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
 
     __disable_irq();
     io = exo->eth.tx;
     exo->eth.tx = NULL;
     __enable_irq();
     if (io != NULL)
-        kipc_post_exo(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), exo->eth.phy_addr, (unsigned int)io, ERROR_IO_CANCELLED);
+        kexo_io_ex(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
 #endif
 }
 
@@ -196,7 +196,7 @@ static void lpc_eth_conn_check(EXO* exo)
     {
         exo->eth.conn = new_conn;
         exo->eth.connected = ((exo->eth.conn != ETH_NO_LINK) && (exo->eth.conn != ETH_REMOTE_FAULT));
-        kipc_post_exo(exo->eth.tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), exo->eth.phy_addr, exo->eth.conn, 0);
+        kexo_post(exo->eth.tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), exo->eth.phy_addr, exo->eth.conn, 0);
         if (exo->eth.connected)
         {
             //set speed and duplex

@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -9,7 +9,7 @@
 #include "lpc_exo_private.h"
 #include "lpc_power.h"
 #include "../kirq.h"
-#include "../kipc.h"
+#include "../kexo.h"
 #include "../kerror.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/lpc/lpc_driver.h"
@@ -250,7 +250,7 @@ static void lpc_sdmmc_flush(EXO* exo)
     if (state != SDMMC_STATE_IDLE)
     {
         sdmmcs_stop(&exo->sdmmc.sdmmcs);
-        kipc_post_exo(process, HAL_IO_CMD(HAL_SDMMC, state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), exo->sdmmc.user, (unsigned int)io, ERROR_IO_CANCELLED);
+        kexo_io_ex(process, HAL_IO_CMD(HAL_SDMMC, state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), exo->sdmmc.user, io, ERROR_IO_CANCELLED);
     }
 }
 
@@ -410,7 +410,7 @@ static inline void lpc_sdmmc_io(EXO* exo, HANDLE process, HANDLE user, IO* io, u
     }
     if ((exo->sdmmc.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
     {
-        kipc_post_exo(exo->sdmmc.activity, HAL_CMD(HAL_SDMMC, STORAGE_NOTIFY_ACTIVITY), exo->sdmmc.user, read ? 0 : STORAGE_FLAG_WRITE, 0);
+        kexo_post(exo->sdmmc.activity, HAL_CMD(HAL_SDMMC, STORAGE_NOTIFY_ACTIVITY), exo->sdmmc.user, read ? 0 : STORAGE_FLAG_WRITE, 0);
         exo->sdmmc.activity = INVALID_HANDLE;
     }
     exo->sdmmc.io = io;
@@ -481,14 +481,14 @@ static inline void lpc_sdmmc_verify(EXO* exo)
     {
         if (memcmp(exo->sdmmc.hash, hash_in, SHA1_BLOCK_SIZE) == 0)
         {
-            kipc_post_exo(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), exo->sdmmc.user, (unsigned int)exo->sdmmc.io, exo->sdmmc.io->data_size);
+            kexo_io(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), exo->sdmmc.user, exo->sdmmc.io);
             exo->sdmmc.io = NULL;
             exo->sdmmc.process = INVALID_HANDLE;
             exo->sdmmc.state = SDMMC_STATE_IDLE;
             return;
         }
     }
-    kipc_post_exo(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), exo->sdmmc.user, (unsigned int)exo->sdmmc.io, get_last_error());
+    kexo_io_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), exo->sdmmc.user, exo->sdmmc.io, get_last_error());
     exo->sdmmc.io = NULL;
     exo->sdmmc.process = INVALID_HANDLE;
     exo->sdmmc.state = SDMMC_STATE_IDLE;
@@ -514,7 +514,7 @@ static inline void lpc_sdmmc_get_media_descriptor(EXO* exo, HANDLE process, HAND
     media->sector_size = exo->sdmmc.sdmmcs.sector_size;
     sprintf(STORAGE_MEDIA_SERIAL(media), "%08X", exo->sdmmc.sdmmcs.serial);
     io->data_size = sizeof(STORAGE_MEDIA_DESCRIPTOR) + 8 + 1;
-    kipc_post_exo(process, HAL_IO_CMD(HAL_SDMMC, STORAGE_GET_MEDIA_DESCRIPTOR), exo->sdmmc.user, (unsigned int)io, io->data_size);
+    kexo_io(process, HAL_IO_CMD(HAL_SDMMC, STORAGE_GET_MEDIA_DESCRIPTOR), exo->sdmmc.user, io);
     kerror(ERROR_SYNC);
 }
 

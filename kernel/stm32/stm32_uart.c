@@ -11,6 +11,7 @@
 #include "../kstdlib.h"
 #include "../kstream.h"
 #include "../kirq.h"
+#include "../kexo.h"
 #include <string.h>
 #include "stm32_exo_private.h"
 
@@ -349,9 +350,9 @@ static void stm32_uart_flush_internal(EXO* exo, UART_PORT port)
         exo->uart.uarts[port]->i.tx_io = NULL;
         __enable_irq();
         if (rx_io)
-            io_complete_ex_exo(exo->uart.uarts[port]->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, rx_io, ERROR_IO_CANCELLED);
+            kexo_io_ex(exo->uart.uarts[port]->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, rx_io, ERROR_IO_CANCELLED);
         if (tx_io)
-            io_complete_ex_exo(exo->uart.uarts[port]->i.tx_process, HAL_IO_CMD(HAL_UART, IPC_WRITE), port, tx_io, ERROR_IO_CANCELLED);
+            kexo_io_ex(exo->uart.uarts[port]->i.tx_process, HAL_IO_CMD(HAL_UART, IPC_WRITE), port, tx_io, ERROR_IO_CANCELLED);
         timer_stop(exo->uart.uarts[port]->i.rx_timer, port, HAL_UART);
     }
     else
@@ -681,10 +682,10 @@ static inline void stm32_uart_io_read_timeout(EXO* exo, UART_PORT port)
     if (io)
     {
         if (io->data_size)
-            io_complete(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io);
+            kexo_io(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io);
         else
             //no data? timeout
-            io_complete_ex_exo(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io, ERROR_TIMEOUT);
+            kexo_io_ex(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io, ERROR_TIMEOUT);
     }
 }
 #endif //UART_IO_MODE_SUPPORT

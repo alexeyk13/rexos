@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -69,11 +69,6 @@ typedef enum {
 
     SVC_OBJECT_SET,
     SVC_OBJECT_GET,
-
-    SVC_HEAP_CREATE,
-    SVC_HEAP_DESTROY,
-    SVC_HEAP_MALLOC,
-    SVC_HEAP_FREE,
 
     SVC_ADD_POOL,
     SVC_SETUP_DBG,

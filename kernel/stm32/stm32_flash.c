@@ -8,7 +8,7 @@
 #include "stm32_exo_private.h"
 #include "../../userspace/storage.h"
 #include "../../userspace/stdio.h"
-#include "../kipc.h"
+#include "../kexo.h"
 #include "../kstdlib.h"
 #include "../kerror.h"
 #include <string.h>
@@ -110,7 +110,7 @@ static inline void stm32_flash_read(EXO* exo, HANDLE process, HANDLE user, IO* i
     }
     if ((exo->flash.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
     {
-        kipc_post_exo(exo->flash.activity, HAL_CMD(HAL_FLASH, STORAGE_NOTIFY_ACTIVITY), exo->flash.user, 0, 0);
+        kexo_post(exo->flash.activity, HAL_CMD(HAL_FLASH, STORAGE_NOTIFY_ACTIVITY), exo->flash.user, 0, 0);
         exo->flash.activity = INVALID_HANDLE;
     }
 
@@ -119,7 +119,7 @@ static inline void stm32_flash_read(EXO* exo, HANDLE process, HANDLE user, IO* i
     io->data_size = 0;
     io_data_append(io, (void*)base_addr, size);
 
-    kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, IPC_READ), user, (unsigned int)io, io->data_size);
+    kexo_io(process, HAL_IO_CMD(HAL_FLASH, IPC_READ), user, io);
     kerror(ERROR_SYNC);
 }
 
@@ -189,7 +189,7 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
     }
     if ((exo->flash.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
     {
-        kipc_post_exo(exo->flash.activity, HAL_CMD(HAL_FLASH, STORAGE_NOTIFY_ACTIVITY), exo->flash.user, STORAGE_FLAG_WRITE, 0);
+        kexo_post(exo->flash.activity, HAL_CMD(HAL_FLASH, STORAGE_NOTIFY_ACTIVITY), exo->flash.user, STORAGE_FLAG_WRITE, 0);
         exo->flash.activity = INVALID_HANDLE;
     }
 
@@ -243,7 +243,7 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
         return;
     }
     io_show(io);
-    kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, IPC_WRITE), user, (unsigned int)io, io->data_size);
+    kexo_io(process, HAL_IO_CMD(HAL_FLASH, IPC_WRITE), user, io);
     kerror(ERROR_SYNC);
 }
 
@@ -269,7 +269,7 @@ static inline void stm32_flash_get_media_descriptor(EXO* exo, HANDLE process, HA
     sprintf(STORAGE_MEDIA_SERIAL(media), "%08X%08X%08X", uuid[0], uuid[1], uuid[2]);
 
     io->data_size = sizeof(STORAGE_MEDIA_DESCRIPTOR) + 6 * 4 + 1;
-    kipc_post_exo(process, HAL_IO_CMD(HAL_FLASH, STORAGE_GET_MEDIA_DESCRIPTOR), exo->flash.user, (unsigned int)io, io->data_size);
+    kexo_io(process, HAL_IO_CMD(HAL_FLASH, STORAGE_GET_MEDIA_DESCRIPTOR), exo->flash.user, io);
     kerror(ERROR_SYNC);
 }
 

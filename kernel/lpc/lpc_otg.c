@@ -1,12 +1,13 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
 #include "lpc_otg.h"
 #include "lpc_exo_private.h"
 #include "../kirq.h"
+#include "../kexo.h"
 #include "../kstdlib.h"
 #include "../kerror.h"
 #include "../../userspace/stdio.h"
@@ -293,7 +294,7 @@ static bool lpc_otg_ep_flush(USB_PORT_TYPE port, EXO* exo, int num)
     EP_CTRL(port)[USB_EP_NUM(num)] |= USB0_ENDPTCTRL_R_Msk << ((num & USB_EP_IN) ? 16 : 0);
     if (ep->io != NULL)
     {
-        iio_complete_ex(exo->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), USB_HANDLE(port, num), ep->io, ERROR_IO_CANCELLED);
+        kexo_io_ex(exo->otg.otg[port]->device, HAL_IO_CMD(HAL_USB, (num & USB_EP_IN) ? IPC_WRITE : IPC_READ), USB_HANDLE(port, num), ep->io, ERROR_IO_CANCELLED);
         ep->io = NULL;
     }
     return true;
@@ -539,9 +540,6 @@ static inline void lpc_otg_open_device(USB_PORT_TYPE port, EXO* exo, HANDLE devi
 #if (USB_DEBUG_ERRORS)
     __USB_REGS[port]->USBINTR_D |= USB0_USBINTR_D_UEE_Msk | USB0_USBINTR_D_SEE_Msk;
 #endif
-
-    //test
-///    __USB_REGS[port]->USBMODE_D |= 1 << 4;
 
     //start
     __USB_REGS[port]->USBCMD_D |= USB0_USBCMD_D_RS_Msk;
