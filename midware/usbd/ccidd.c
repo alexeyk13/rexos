@@ -86,6 +86,7 @@ static void ccidd_notify_slot_change(USBD* usbd, CCIDD* ccidd)
         usbd_usb_ep_write(usbd, USB_EP_IN | ccidd->status_ep, ccidd->status_io);
         ccidd->status_busy = true;
     }
+
 }
 
 #if (USBD_CCID_DEBUG_REQUESTS)
@@ -288,8 +289,8 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
                     {
                         ccidd->data_ep = USB_EP_NUM(ep->bEndpointAddress);
                         ccidd->data_ep_size = ep->wMaxPacketSize;
-                        ccidd->main_io = io_create((ccid_descriptor->dwMaxCCIDMessageLength - 1) & ~(ccidd->data_ep_size - 1));
-                        ccidd->txd_io = io_create((ccid_descriptor->dwMaxCCIDMessageLength + ccidd->data_ep_size - 1) & ~(ccidd->data_ep_size - 1));
+                        ccidd->main_io = io_create(ccidd->data_ep_size >= 512 ? 512 : ((ccid_descriptor->dwMaxCCIDMessageLength - 1) & ~(ccidd->data_ep_size - 1)));
+                        ccidd->txd_io = io_create(ccidd->data_ep_size >= 512 ? 512 : ((ccid_descriptor->dwMaxCCIDMessageLength + ccidd->data_ep_size - 1) & ~(ccidd->data_ep_size - 1)));
                     }
                     break;
                 case USB_EP_BM_ATTRIBUTES_INTERRUPT:
@@ -506,8 +507,8 @@ static inline void ccidd_reset_params(USBD* usbd, CCIDD* ccidd)
 
 static inline void ccidd_set_data_rate_and_clock(USBD* usbd, CCIDD* ccidd)
 {
-    CCID_MSG_RATE_CLOCK* rate_clock = io_data(ccidd->main_io);
 #if (USBD_CCID_DEBUG_REQUESTS)
+    CCID_MSG_RATE_CLOCK* rate_clock = io_data(ccidd->main_io);
     printf("PC_to_RDR_SetDataRateAndClockFrequency %d KHz, %d BPS\n", rate_clock->dwClockFrequency, rate_clock->dwDataRate);
 #endif //USBD_CCID_DEBUG_REQUESTS
     io_data_write(ccidd->user_io, (uint8_t*)io_data(ccidd->main_io) + sizeof(CCID_MSG), ccidd->data_ep_size - sizeof(CCID_MSG));
@@ -651,7 +652,7 @@ static inline void ccidd_card_inserted(USBD* usbd, CCIDD* ccidd)
     }
 }
 
-static inline void ccidd_card_removed(USBD* usbd, CCIDD* ccidd)
+static inline void ccidd_card_removed(USBD* usbd, CCIDD* ccidd)app_ccid_rate_clock
 {
     if (ccidd->slot_status != CCID_SLOT_STATUS_ICC_NOT_PRESENT)
     {
