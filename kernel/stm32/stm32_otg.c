@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -24,11 +24,6 @@
 #define ALIGN(var)                                          (((var) + (ALIGN_SIZE - 1)) & ~(ALIGN_SIZE - 1))
 
 #define USB_TX_EP0_FIFO_SIZE                                64
-
-typedef enum {
-    STM32_USB_FIFO_RX = USB_HAL_MAX,
-    STM32_USB_FIFO_TX
-}STM32_USB_IPCS;
 
 #define GET_CORE_CLOCK          stm32_power_get_clock_inside(exo, POWER_CORE_CLOCK)
 
@@ -113,41 +108,15 @@ static void stm32_otg_rx_prepare(EXO* exo, unsigned int ep_num)
     OTG_FS_DEVICE->OUTEP[ep_num].CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_EPENA | OTG_FS_DEVICE_ENDPOINT_CTL_CNAK;
 }
 
-static inline void stm32_otg_rx(EXO* exo)
+void memcpy4(void* dst, void* src, int size)
 {
-    IPC ipc;
-    unsigned int sta = OTG_FS_GENERAL->RXSTSP;
-    unsigned int pktsts = sta & OTG_FS_GENERAL_RXSTSR_PKTSTS;
-    int bcnt = (sta & OTG_FS_GENERAL_RXSTSR_BCNT) >> OTG_FS_GENERAL_RXSTSR_BCNT_POS;
-    unsigned int ep_num = (sta & OTG_FS_GENERAL_RXSTSR_EPNUM) >> OTG_FS_GENERAL_RXSTSR_EPNUM_POS;
-    EP* ep = exo->usb.out[ep_num];
-
-    if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_RX)
-    {
-        //ignore all data on setup packet
-        ipc.process = exo->usb.device;
-        ipc.cmd = HAL_CMD(HAL_USB, USB_SETUP);
-        ipc.param1 = USB_HANDLE(USB_0, 0);
-        ipc.param2 = ((uint32_t*)(OTG_FS_FIFO_BASE + ep_num * 0x1000))[0];
-        ipc.param3 = ((uint32_t*)(OTG_FS_FIFO_BASE + ep_num * 0x1000))[1];
-        ipc_post(&ipc);
-    }
-    else if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_OUT_RX)
-    {
-        memcpy(io_data(ep->io) + ep->io->data_size, (void*)(OTG_FS_FIFO_BASE + ep_num * 0x1000), ALIGN(bcnt));
-        ep->io->data_size += bcnt;
-
-        if (ep->io->data_size >= ep->size || bcnt < ep->size)
-        {
-            iio_complete(exo->usb.device, HAL_IO_CMD(HAL_USB, IPC_READ), ep_num, ep->io);
-            ep->io_active = false;
-            ep->io = NULL;
-        }
-        else
-            stm32_otg_rx_prepare(exo, ep_num);
-    }
-    OTG_FS_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_RXFLVLM;
+    int* dst1 = dst;
+    int* src1 = src;
+    size = ALIGN(size) /4;
+    while(size--)
+        *dst1++ = *src1++;
 }
+
 
 static inline void stm32_otg_tx(EXO* exo, int num)
 {
@@ -159,7 +128,7 @@ static inline void stm32_otg_tx(EXO* exo, int num)
     OTG_FS_DEVICE->INEP[USB_EP_NUM(num)].TSIZ = (1 << OTG_FS_DEVICE_ENDPOINT_TSIZ_PKTCNT_POS) | (size << OTG_FS_DEVICE_ENDPOINT_TSIZ_XFRSIZ_POS);
     OTG_FS_DEVICE->INEP[USB_EP_NUM(num)].CTL |= OTG_FS_DEVICE_ENDPOINT_CTL_EPENA | OTG_FS_DEVICE_ENDPOINT_CTL_CNAK;
 
-    memcpy((void*)(OTG_FS_FIFO_BASE + USB_EP_NUM(num) * 0x1000), io_data(ep->io) +  ep->size, ALIGN(size));
+    memcpy4((void*)(OTG_FS_FIFO_BASE + USB_EP_NUM(num) * 0x1000), io_data(ep->io) +  ep->size, size);
     ep->size += size;
 }
 
@@ -181,9 +150,49 @@ static inline void usb_enumdne(EXO* exo)
     ipc_ipost(&ipc);
 }
 
-void usb_on_isr(int vector, void* param)
+//------------------------------------------------------------------------
+static inline void stm32_otg_on_isr_rx(EXO* exo)
 {
     IPC ipc;
+    unsigned int sta = OTG_FS_GENERAL->RXSTSP;
+    unsigned int pktsts = sta & OTG_FS_GENERAL_RXSTSR_PKTSTS;
+    int bcnt = (sta & OTG_FS_GENERAL_RXSTSR_BCNT) >> OTG_FS_GENERAL_RXSTSR_BCNT_POS;
+    unsigned int ep_num = (sta & OTG_FS_GENERAL_RXSTSR_EPNUM) >> OTG_FS_GENERAL_RXSTSR_EPNUM_POS;
+    EP* ep = exo->usb.out[ep_num];
+    if (pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_RX)
+    {
+//ignore all data on setup packet
+        exo->usb.setup_lo = ((uint32_t*)(OTG_FS_FIFO_BASE + ep_num * 0x1000))[0];
+        exo->usb.setup_hi = ((uint32_t*)(OTG_FS_FIFO_BASE + ep_num * 0x1000))[1];
+    }
+    else  if ((pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_DONE))
+    {
+        ipc.process = exo->usb.device;
+        ipc.cmd = HAL_CMD(HAL_USB, USB_SETUP);
+        ipc.param1 = USB_HANDLE(USB_0, 0);
+        ipc.param2 = exo->usb.setup_lo;
+        ipc.param3 = exo->usb.setup_hi;
+        ipc_ipost(&ipc);
+    }
+    else  if ((pktsts == OTG_FS_GENERAL_RXSTSR_PKTSTS_OUT_RX) && bcnt)
+    {
+        memcpy4(io_data(ep->io) + ep->io->data_size, (void*)(OTG_FS_FIFO_BASE + ep_num * 0x1000), bcnt);
+        ep->io->data_size += bcnt;
+
+        if (ep->io->data_size >= ep->size || bcnt < ep->mps )
+        {
+          iio_complete(exo->usb.device, HAL_IO_CMD(HAL_USB, IPC_READ), ep_num, ep->io);
+            ep->io_active = false;
+            ep->io = NULL;
+        }
+        else
+            stm32_otg_rx_prepare(exo, ep_num);
+    }
+    OTG_FS_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_RXFLVLM;
+}
+
+void usb_on_isr(int vector, void* param)
+{
     int i;
     EXO* exo = param;
     unsigned int sta = OTG_FS_GENERAL->INTSTS;
@@ -193,10 +202,7 @@ void usb_on_isr(int vector, void* param)
     {
         //mask interrupts, will be umasked by process after FIFO read
         OTG_FS_GENERAL->INTMSK &= ~OTG_FS_GENERAL_INTMSK_RXFLVLM;
-        ipc.process = process_iget_current();
-        ipc.cmd = HAL_CMD(HAL_USB, STM32_USB_FIFO_RX);
-        ipc.param1 = USB_HANDLE_DEVICE;
-        ipc_ipost(&ipc);
+        stm32_otg_on_isr_rx(exo);
         return;
     }
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
@@ -210,12 +216,7 @@ void usb_on_isr(int vector, void* param)
                 exo->usb.in[i]->io = NULL;
             }
             else
-            {
-                ipc.process = process_iget_current();
-                ipc.cmd = HAL_CMD(HAL_USB, STM32_USB_FIFO_TX);
-                ipc.param1 = USB_EP_IN | i;
-                ipc_ipost(&ipc);
-            }
+                stm32_otg_tx(exo,  USB_EP_IN | i);
             return;
         }
     //rarely called
@@ -236,6 +237,7 @@ void usb_on_isr(int vector, void* param)
         usb_wakeup(exo);
         OTG_FS_GENERAL->INTSTS |= OTG_FS_GENERAL_INTSTS_WKUPINT | OTG_FS_GENERAL_INTSTS_USBSUSP;
     }
+    OTG_FS_GENERAL->OTGINT  = 0xFFFFFF;// clear other request
 }
 
 void stm32_otg_open_device(EXO* exo, HANDLE device)
@@ -450,11 +452,13 @@ static bool stm32_usb_io_prepare(EXO* exo, IPC* ipc)
     EP* ep = ep_data(exo, ipc->param1);
     if (ep == NULL)
     {
+        printk("ep==null");
         kerror(ERROR_NOT_CONFIGURED);
         return false;
     }
     if (ep->io_active)
     {
+        printk("ep->io_active");
         kerror(ERROR_IN_PROGRESS);
         return false;
     }
@@ -467,6 +471,7 @@ static inline void stm32_otg_read(EXO* exo, IPC* ipc)
 {
     unsigned int ep_num = USB_EP_NUM(ipc->param1);
     EP* ep = exo->usb.out[ep_num];
+    __disable_irq();
     if (stm32_usb_io_prepare(exo, ipc))
     {
         ep->io->data_size = 0;
@@ -474,6 +479,7 @@ static inline void stm32_otg_read(EXO* exo, IPC* ipc)
         ep->io_active = true;
         stm32_otg_rx_prepare(exo, ep_num);
     }
+    __enable_irq();
 }
 
 static inline void stm32_otg_write(EXO* exo, IPC* ipc)
@@ -523,9 +529,6 @@ static inline void stm32_otg_device_request(EXO* exo, IPC* ipc)
     case USB_SET_ADDRESS:
         stm32_otg_set_address(ipc->param2);
         break;
-    case STM32_USB_FIFO_RX:
-        stm32_otg_rx(exo);
-        break;
 #if (USB_TEST_MODE_SUPPORT)
     case USB_SET_TEST_MODE:
         stm32_otg_set_test_mode(exo, ipc->param2);
@@ -570,10 +573,6 @@ static void stm32_otg_ep_request(EXO* exo, IPC* ipc)
         break;
     case IPC_WRITE:
         stm32_otg_write(exo, ipc);
-        break;
-    case STM32_USB_FIFO_TX:
-        stm32_otg_tx(exo, ipc->param1);
-        //message from isr, no response
         break;
     default:
         kerror(ERROR_NOT_SUPPORTED);

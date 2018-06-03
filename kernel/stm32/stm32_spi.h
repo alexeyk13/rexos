@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -16,6 +16,9 @@
 typedef struct  {
     HANDLE process;
     unsigned int cs_pin;
+    bool io_mode;
+    IO* io;
+    uint32_t cnt;
 } SPI;
 
 typedef struct  {

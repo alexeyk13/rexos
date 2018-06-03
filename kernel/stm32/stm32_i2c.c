@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -8,9 +8,10 @@
 #include "stm32_exo_private.h"
 #include "../kstdlib.h"
 #include "../kirq.h"
-#include "../kheap.h"
+#include "../kexo.h"
 #include "../karray.h"
 #include "../kerror.h"
+#include "../ksystime.h"
 #include "../../userspace/stm32/stm32_driver.h"
 
 #include "stm32_pin.h"
@@ -19,6 +20,9 @@
 #include <stdbool.h>
 
 typedef I2C_TypeDef* I2C_TypeDef_P;
+
+#define STM_I2C_TIMEOUT_MS                                          1000
+
 #ifdef STM32F1
 #if (I2C_COUNT > 1)
 static const I2C_TypeDef_P __I2C_REGS[] =                             {I2C1, I2C2};
@@ -149,7 +153,6 @@ static inline void stm32_i2c_set_register(EXO* exo, IPC* ipc)
     else
         regs_add(i2c, io, ipc->param3);
 }
-
 #ifdef STM32F1
 static void stm32_i2c_end_rx_slave(I2C* i2c, I2C_PORT port, int error)
 {
@@ -172,6 +175,9 @@ static void stm32_i2c_end_rx_slave(I2C* i2c, I2C_PORT port, int error)
 
 static inline void stm32_i2c_end_rx(I2C* i2c, I2C_PORT port)
 {
+#if (I2C_TIMEOUT)
+    ksystime_soft_timer_stop(i2c->timer);
+#endif //I2C_TIMEOUT
     iio_complete(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_READ), port, i2c->io);
     i2c->io_mode = I2C_IO_MODE_IDLE;
     i2c->io = NULL;
@@ -212,8 +218,11 @@ static void stm32_i2c_on_error_isr(I2C* i2c, I2C_PORT port, int error, uint32_t 
         __I2C_REGS[port]->SR1 = 0;
         error = ERROR_HARDWARE;
     }
-
-    iio_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (i2c->io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, error);
+#if (I2C_TIMEOUT)
+    ksystime_soft_timer_stop(i2c->timer);
+#endif //I2C_TIMEOUT
+    if(i2c->io != NULL)
+        iio_complete_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (i2c->io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, i2c->io, error);
     i2c->io_mode = I2C_IO_MODE_IDLE;
 }
 
@@ -319,6 +328,9 @@ static inline void stm32_i2c_on_tx_isr(I2C* i2c, I2C_PORT port, uint32_t sr)
         if (i2c->size >= i2c->io->data_size)
         {
             __I2C_REGS[port]->CR1 |= I2C_CR1_STOP;
+#if (I2C_TIMEOUT)
+            ksystime_soft_timer_stop(i2c->timer);
+#endif //I2C_TIMEOUT
             iio_complete(i2c->process, HAL_IO_CMD(HAL_I2C, IPC_WRITE), port, i2c->io);
             i2c->io_mode = I2C_IO_MODE_IDLE;
         }
@@ -419,7 +431,9 @@ static inline bool clear_busy(EXO* exo, I2C* i2c, I2C_PORT port)
     ccr = __I2C_REGS[port]->CCR;
     trise = __I2C_REGS[port]->TRISE;
     oar1 = __I2C_REGS[port]->OAR1;
-
+#if (I2C_DEBUG)
+      printk("I2C: try to clear BUSY\n");
+#endif // I2C_DEBUG
     __I2C_REGS[port]->CR1 &= ~I2C_CR1_PE;
     stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_CLOSE), i2c->pin_scl, 0, 0);
     stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_CLOSE), i2c->pin_sda, 0, 0);
@@ -449,11 +463,6 @@ static inline bool clear_busy(EXO* exo, I2C* i2c, I2C_PORT port)
     __I2C_REGS[port]->CR1 |= I2C_CR1_PE;
     if (i2c->io_mode == I2C_IO_MODE_SLAVE)
         __I2C_REGS[port]->CR1 |= I2C_CR1_ACK;
-#if (I2C_DEBUG)
-      printk("I2C: try to clear BUSY\n");
-#endif // I2C_DEBUG
-
-
     return true;
 }
 
@@ -689,6 +698,10 @@ void stm32_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int spe
         return;
     }
     i2c = kmalloc(sizeof(I2C));
+#if (I2C_TIMEOUT)
+    i2c->timer = ksystime_soft_timer_create(KERNEL_HANDLE, port, HAL_I2C);
+#endif // I2C_TIMEOUT
+
     exo->i2c.i2cs[port] = i2c;
     if (i2c == NULL)
     {
@@ -706,6 +719,9 @@ void stm32_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int spe
     i2c->pin_sda = (mode & STM32F1_I2C_SDA_Msk) >> STM32F1_I2C_SDA_Pos;
     stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_OPEN), i2c->pin_scl, STM32_GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_10MHZ, true);
     stm32_pin_request_inside(exo, HAL_CMD(HAL_PIN, IPC_OPEN), i2c->pin_sda, STM32_GPIO_MODE_OUTPUT_AF_OPEN_DRAIN_10MHZ, true);
+ //   __I2C_REGS[port]->CR1 |= I2C_CR1_SWRST;
+ //   __I2C_REGS[port]->CR1 &= ~I2C_CR1_SWRST;
+
     uint32_t arb1_freq = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB1);
     __I2C_REGS[port]->CR2 = I2C_CR2_ITBUFEN | I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | (arb1_freq / 1000000);
     if (speed <= I2C_NORMAL_CLOCK)
@@ -732,7 +748,7 @@ void stm32_i2c_open(EXO* exo, I2C_PORT port, unsigned int mode, unsigned int spe
     }
 
     if (__I2C_REGS[port]->SR2 & I2C_SR2_BUSY)
-    clear_busy(exo, i2c, port);
+        clear_busy(exo, i2c, port);
 
     kirq_register(KERNEL_HANDLE, __I2C_ERROR_VECTORS[port], stm32_i2c_on_isr, (void*)exo);
     NVIC_EnableIRQ(__I2C_ERROR_VECTORS[port]);
@@ -774,6 +790,9 @@ void stm32_i2c_close(EXO* exo, I2C_PORT port)
     kirq_unregister(KERNEL_HANDLE, __I2C_VECTORS[port]);
     __I2C_REGS[port]->CR1 &= ~I2C_CR1_PE;
     RCC->APB1ENR &= ~(1 << __I2C_POWER_PINS[port]);
+#if (I2C_TIMEOUT)
+    ksystime_soft_timer_destroy(i2c->timer);
+#endif // I2C_TIMEOUT
 
     regs_free(i2c);
     kfree(i2c);
@@ -805,6 +824,9 @@ static void stm32_i2c_io(EXO* exo, IPC* ipc, bool read)
         kerror(ERROR_SYNC);
         return;
     }
+#if (I2C_TIMEOUT)
+    ksystime_soft_timer_start_ms(i2c->timer, STM_I2C_TIMEOUT_MS);
+#endif // I2C_TIMEOUT
 
     if (read)
     {
@@ -856,6 +878,23 @@ static void stm32_i2c_io(EXO* exo, IPC* ipc, bool read)
 
     kerror(ERROR_SYNC);
 }
+#if (I2C_TIMEOUT)
+static inline void stm32_i2c_timeout(EXO* exo, I2C_PORT port)
+{
+    I2C_IO_MODE io_mode;
+    I2C* i2c = exo->i2c.i2cs[port];
+    __disable_irq();
+    io_mode = i2c->io_mode;
+    i2c->io_mode = I2C_IO_MODE_IDLE;
+    __enable_irq();
+#if (I2C_DEBUG)
+      printk("I2C: timeout\n");
+#endif // I2C_DEBUG
+    clear_busy(exo, i2c, port);
+    kexo_io_ex(i2c->process, HAL_IO_CMD(HAL_I2C, (io_mode == I2C_IO_MODE_TX) ? IPC_WRITE : IPC_READ), port, (unsigned int)i2c->io, ERROR_TIMEOUT);
+    i2c->io = NULL;
+}
+#endif // I2C_TIMEOUT
 
 void stm32_i2c_request(EXO* exo, IPC* ipc)
 {
@@ -882,6 +921,12 @@ void stm32_i2c_request(EXO* exo, IPC* ipc)
     case I2C_SET_REGISTER:
         stm32_i2c_set_register(exo, ipc);
         break;
+#if (I2C_TIMEOUT)
+        case IPC_TIMEOUT:
+            stm32_i2c_timeout(exo, port);
+            break;
+#endif //I2C_TIMEOUT
+
     default:
         kerror(ERROR_NOT_SUPPORTED);
         break;
