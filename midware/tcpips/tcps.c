@@ -417,6 +417,7 @@ static void tcps_destroy_tcb(TCPIPS* tcpips, HANDLE tcb_handle)
 #if (TCP_DEBUG_FLOW)
     printf("%s -> 0\n", __TCP_STATES[tcb->state]);
 #endif //TCP_DEBUG_FLOW
+    timer_stop(tcb->timer, tcb_handle, HAL_TCP);
     timer_destroy(tcb->timer);
     tcps_rx_flush(tcpips, tcb_handle);
     if (tcb->tx)
@@ -1356,13 +1357,13 @@ static inline void tcps_read(TCPIPS* tcpips, HANDLE tcb_handle, IO* io)
         error(ERROR_IN_PROGRESS);
         return;
     }
+    io_reset(io);
     switch (tcb->state)
     {
     case TCP_STATE_ESTABLISHED:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
         timer_stop(tcb->timer, tcb_handle, HAL_TCP);
-        io->data_size = 0;
         tcp_stack = io_push(io, sizeof(TCP_STACK));
         tcp_stack->flags = 0;
         tcp_stack->urg_len = 0;
