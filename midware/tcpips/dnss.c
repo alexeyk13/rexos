@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -112,7 +112,7 @@ bool dnss_rx(TCPIPS* tcpips, IO* io, IP* src)
         return true;
     }
 
-    if ((type == HTONS(DNS_TYPE_A)) && dns_cmp(hdr->name, tcpips->dnss.name))
+    if ((type == HTONS(DNS_TYPE_A)) && (dns_cmp(hdr->name, tcpips->dnss.name) || dns_cmp(hdr->name, tcpips->dnss.name_www)))
     {
         ans->type = HTONS(DNS_CLASS_IN);
         ans->ttl = HTONL(32);
@@ -135,6 +135,7 @@ void dnss_request(TCPIPS* tcpips, IPC* ipc)
         if (strlen(name) > 63)
             name[63] = 0;
         strcpy(tcpips->dnss.name, name);
+        sprintf(tcpips->dnss.name_www, "www.%s",name);
     }
 
 }

@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -55,6 +55,7 @@ typedef struct {
 
 typedef struct {
     char name[64];
+    char name_www[64];
 } _DNSS;
 
 void dnss_init(TCPIPS* tcpips);
