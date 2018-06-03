@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2018, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -9,13 +9,15 @@
 #include "../../userspace/sys.h"
 #include "../kerror.h"
 #include "../kstdlib.h"
-#include "../ksystime.h"
 #include "../kstream.h"
 #include "../kirq.h"
 #include "../kexo.h"
 #include <string.h>
 #include "stm32_exo_private.h"
-#include "sys_config.h"
+
+typedef enum {
+    IPC_UART_ISR_RX = IPC_UART_MAX
+} STM32_UART_IPCS;
 
 typedef USART_TypeDef* USART_TypeDef_P;
 
@@ -143,23 +145,10 @@ static inline void stm32_uart_on_rx_isr(EXO* exo, UART_PORT port, uint8_t c)
             if (uart->i.rx_io->data_size >= uart->i.rx_max)
             {
                 iio_complete(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, uart->i.rx_io);
-#if (UART_DOUBLE_BUFFERING)
-                if(uart->i.rx2_io)
-                {
-                    uart->i.rx_io = uart->i.rx2_io;
-                    uart->i.rx_max = uart->i.rx2_max;
-                    uart->i.rx2_io = NULL;
-                    timer_istart_us(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
-                }else
-#endif // UART_DOUBLE_BUFFERING
-                {
-                    uart->i.rx_io = NULL;
-                }
+                uart->i.rx_io = NULL;
             }
             else
                 timer_istart_us(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
-        }else{
-            exo->uart.uarts[port]->error = ERROR_CHAR_LOSS;
         }
     }
     else
@@ -362,16 +351,9 @@ static void stm32_uart_flush_internal(EXO* exo, UART_PORT port)
         __enable_irq();
         if (rx_io)
             kexo_io_ex(exo->uart.uarts[port]->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, rx_io, ERROR_IO_CANCELLED);
-#if (UART_DOUBLE_BUFFERING)
-        rx_io = exo->uart.uarts[port]->i.rx2_io;
-        exo->uart.uarts[port]->i.rx2_io = NULL;
-        if (rx_io)
-            kexo_io_ex(exo->uart.uarts[port]->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, rx_io, ERROR_IO_CANCELLED);
-#endif // UART_DOUBLE_BUFFERING
-
         if (tx_io)
             kexo_io_ex(exo->uart.uarts[port]->i.tx_process, HAL_IO_CMD(HAL_UART, IPC_WRITE), port, tx_io, ERROR_IO_CANCELLED);
-        ksystime_soft_timer_stop(exo->uart.uarts[port]->i.rx_timer);
+        timer_stop(exo->uart.uarts[port]->i.rx_timer, port, HAL_UART);
     }
     else
 #endif //UART_IO_MODE_SUPPORT
@@ -395,7 +377,7 @@ static void stm32_uart_destroy(EXO* exo, UART_PORT port)
 #if (UART_IO_MODE_SUPPORT)
     if (exo->uart.uarts[port]->io_mode)
     {
-        ksystime_soft_timer_destroy(exo->uart.uarts[port]->i.rx_timer);
+        timer_destroy(exo->uart.uarts[port]->i.rx_timer);
     }
     else
 #endif //UART_IO_MODE_SUPPORT
@@ -449,12 +431,7 @@ static inline bool stm32_uart_open_stream(UART* uart, UART_PORT port, unsigned i
 static inline bool stm32_uart_open_io(UART* uart, UART_PORT port)
 {
     uart->i.tx_io = uart->i.rx_io = NULL;
-#if (UART_DOUBLE_BUFFERING)
-    uart->i.rx2_io = NULL;
-#endif // UART_DOUBLE_BUFFERING
-
-    uart->i.rx_timer = ksystime_soft_timer_create(KERNEL_HANDLE, port, HAL_UART);
-
+    uart->i.rx_timer = timer_create(port, HAL_UART);
     uart->i.rx_char_timeout = UART_CHAR_TIMEOUT_US;
     uart->i.rx_interleaved_timeout = UART_INTERLEAVED_TIMEOUT_US;
     if (uart->i.rx_timer != INVALID_HANDLE)
@@ -513,11 +490,7 @@ static inline void stm32_uart_open(EXO* exo, UART_PORT port, unsigned int mode)
         {
             kirq_register(KERNEL_HANDLE, UART_VECTORS[UART_3], stm32_uart_on_isr, (void*)exo);
             NVIC_EnableIRQ(UART_VECTORS[UART_3]);
-#if defined(UART_IRQ_PRIORITY)
-            NVIC_SetPriority(UART_VECTORS[port], UART_IRQ_PRIORITY);
-#else
-            NVIC_SetPriority(UART_VECTORS[port], 13);
-#endif // UART_IRQ_PRIORITY
+            NVIC_SetPriority(UART_VECTORS[UART_3], 13);
         }
     }
     else
@@ -525,11 +498,7 @@ static inline void stm32_uart_open(EXO* exo, UART_PORT port, unsigned int mode)
     {
         kirq_register(KERNEL_HANDLE, UART_VECTORS[port], stm32_uart_on_isr, (void*)exo);
         NVIC_EnableIRQ(UART_VECTORS[port]);
-#if defined(UART_IRQ_PRIORITY)
-        NVIC_SetPriority(UART_VECTORS[port], UART_IRQ_PRIORITY);
-#else
         NVIC_SetPriority(UART_VECTORS[port], 13);
-#endif // UART_IRQ_PRIORITY
     }
 }
 
@@ -617,6 +586,7 @@ static inline void stm32_uart_setup_printk(EXO* exo, UART_PORT port)
 {
     //setup kernel printk dbg
     kernel_setup_dbg(uart_write_kernel, (void*)port);
+//    setup_dbg(uart_write_kernel, (void*)port);
 }
 
 void stm32_uart_write(EXO* exo, UART_PORT port, unsigned int total)
@@ -625,6 +595,19 @@ void stm32_uart_write(EXO* exo, UART_PORT port, unsigned int total)
     uart->s.tx_total = uart->s.tx_size = kstream_read_no_block(uart->s.tx_handle, uart->s.tx_buf, UART_BUF_SIZE);
     //start transaction
     UART_REGS[port]->CR1 |= USART_CR1_TE | USART_CR1_TXEIE;
+}
+
+static inline void stm32_uart_read(EXO* exo, UART_PORT port, char c)
+{
+    //caching calls to svc
+    if (exo->uart.uarts[port]->s.rx_free == 0)
+        (exo->uart.uarts[port]->s.rx_free = kstream_get_free(exo->uart.uarts[port]->s.rx_stream));
+    //if stream is full, char will be discarded
+    if (exo->uart.uarts[port]->s.rx_free)
+    {
+        kstream_write(KERNEL_HANDLE, exo->uart.uarts[port]->s.rx_handle, &c, 1);
+        exo->uart.uarts[port]->s.rx_free--;
+    }
 }
 
 #if (UART_IO_MODE_SUPPORT)
@@ -642,33 +625,17 @@ static inline void stm32_uart_io_read(EXO* exo, UART_PORT port, IPC* ipc)
         kerror(ERROR_INVALID_STATE);
         return;
     }
-#if (UART_DOUBLE_BUFFERING)
-    if (uart->i.rx2_io)
-#else
     if (uart->i.rx_io)
-#endif // UART_DOUBLE_BUFFERING
     {
         kerror(ERROR_IN_PROGRESS);
         return;
     }
     io = (IO*)ipc->param2;
     uart->i.rx_process = ipc->process;
+    uart->i.rx_max = ipc->param3;
     io->data_size = 0;
-#if (UART_DOUBLE_BUFFERING)
-    __disable_irq();
-    if (uart->i.rx_io)
-    {
-        uart->i.rx2_max = ipc->param3;
-        uart->i.rx2_io = io;
-        __enable_irq();
-    }else
-#endif // UART_DOUBLE_BUFFERING
-    {
-        __enable_irq();
-        uart->i.rx_max = ipc->param3;
-        ksystime_soft_timer_start_us(uart->i.rx_timer, uart->i.rx_char_timeout);
-        uart->i.rx_io = io;
-    }
+    timer_start_us(uart->i.rx_timer, uart->i.rx_char_timeout);
+    uart->i.rx_io = io;
     kerror(ERROR_SYNC);
 }
 
@@ -700,44 +667,17 @@ static inline void stm32_uart_io_write(EXO* exo, UART_PORT port, IPC* ipc)
     kerror(ERROR_SYNC);
 }
 
-static inline void stm32_uart_set_timeouts(EXO* exo, UART_PORT port, uint32_t char_timeout_us, uint32_t interleaved_timeout_us)
-{
-    UART* uart = exo->uart.uarts[port];
-    if (uart == NULL)
-    {
-        kerror(ERROR_NOT_CONFIGURED);
-        return;
-    }
-    if (!uart->io_mode)
-    {
-        kerror(ERROR_INVALID_STATE);
-        return;
-    }
-    uart->i.rx_char_timeout = char_timeout_us;
-    uart->i.rx_interleaved_timeout = interleaved_timeout_us;
-}
-
 static inline void stm32_uart_io_read_timeout(EXO* exo, UART_PORT port)
 {
     IO* io = NULL;
     UART* uart = exo->uart.uarts[port];
-    ksystime_soft_timer_stop(uart->i.rx_timer);
+    timer_stop(uart->i.rx_timer, port, HAL_UART);
     __disable_irq();
     if (uart->i.rx_io)
     {
         io = uart->i.rx_io;
         uart->i.rx_io = NULL;
     }
-#if (UART_DOUBLE_BUFFERING)
-    if (uart->i.rx2_io)
-    {
-        uart->i.rx_io = uart->i.rx2_io;
-        uart->i.rx_max = uart->i.rx2_max;
-        uart->i.rx2_io = NULL;
-        __enable_irq();
-        timer_istart_us(uart->i.rx_timer, uart->i.rx_char_timeout);
-    }
-#endif // UART_DOUBLE_BUFFERING
     __enable_irq();
     if (io)
     {
@@ -791,6 +731,10 @@ void stm32_uart_request(EXO* exo, IPC* ipc)
         stm32_uart_write(exo, port, ipc->param3);
         //message from kernel, no response
         break;
+    case IPC_UART_ISR_RX:
+        stm32_uart_read(exo, port, ipc->param3);
+        //message from ISR, no response
+        break;
 #if (UART_IO_MODE_SUPPORT)
     case IPC_READ:
         stm32_uart_io_read(exo, port, ipc);
@@ -800,9 +744,6 @@ void stm32_uart_request(EXO* exo, IPC* ipc)
         break;
     case IPC_TIMEOUT:
         stm32_uart_io_read_timeout(exo, port);
-        break;
-    case IPC_UART_SET_COMM_TIMEOUTS:
-        stm32_uart_set_timeouts(exo, port, ipc->param2, ipc->param3);
         break;
 #endif //UART_IO_MODE_SUPPORT
     default:

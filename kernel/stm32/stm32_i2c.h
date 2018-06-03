@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2018, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -12,8 +12,6 @@
 #include "../../userspace/i2c.h"
 #include "../../userspace/process.h"
 #include "../../userspace/array.h"
-#include "sys_config.h"
-
 #include <stdbool.h>
 
 typedef struct {
@@ -42,10 +40,6 @@ typedef struct  {
     I2C_IO_MODE io_mode;
     I2C_STATE state;
     unsigned int size;
-#if (I2C_TIMEOUT)
-    HANDLE timer;
-#endif // I2C_TIMEOUT
-
 #ifdef STM32F1
     uint32_t pin_scl;
     uint32_t pin_sda;
