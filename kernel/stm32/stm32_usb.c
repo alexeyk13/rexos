@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2018, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -298,7 +298,6 @@ void stm32_usb_on_isr(int vector, void* param)
     {
         printk("USB: packet memory overflow\n");
         USB->ISTR &= ~USB_ISTR_PMAOVR;
-    }
 #endif
 }
 

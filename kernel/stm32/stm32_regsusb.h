@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2018, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -1165,8 +1165,8 @@ typedef struct {
 #define  OTG_FS_GENERAL_RXSTSR_PKTSTS_OUT_RX                    (uint32_t)(2ul << 17ul)    //Device: OUT data packet received
 #define  OTG_FS_GENERAL_RXSTSR_PKTSTS_IN_DONE                   (uint32_t)(3ul << 17ul)    //Host: IN transfer complete
 #define  OTG_FS_GENERAL_RXSTSR_PKTSTS_OUT_DONE                  (uint32_t)(3ul << 17ul)    //Device: OUT transfer complete
-#define  OTG_FS_GENERAL_RXSTSR_PKTSTS_DATA_ERROR                (uint32_t)(4ul << 17ul)    //Host: Data toggle error
-#define  OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_DONE                (uint32_t)(4ul << 17ul)    //Device: SETUP transfer complete
+#define  OTG_FS_GENERAL_RXSTSR_PKTSTS_DATA_ERROR                (uint32_t)(5ul << 17ul)    //Host: Data toggle error
+#define  OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_DONE                (uint32_t)(5ul << 17ul)    //Device: SETUP transfer complete
 #define  OTG_FS_GENERAL_RXSTSR_PKTSTS_SETUP_RX                  (uint32_t)(6ul << 17ul)    //Device: SETUP received
 #define  OTG_FS_GENERAL_RXSTSR_PKTSTS_HALTED                    (uint32_t)(7ul << 17ul)    //Host: Channel halted
 

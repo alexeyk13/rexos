@@ -66,7 +66,7 @@ struct tm* gmtime(TIME* time, struct tm* ts)
     //decode month
     ts->tm_mon = val / 31;
     //fine-tune date
-    while (ts->tm_mon < 10 && __YDAY[is_leap][ts->tm_mon + 1] <= val)
+    while (ts->tm_mon < 10 && __YDAY[is_leap][ts->tm_mon + 1] < val)
         ++ts->tm_mon;
     val -= __YDAY[is_leap][ts->tm_mon++];
     ts->tm_mday = val + 1;

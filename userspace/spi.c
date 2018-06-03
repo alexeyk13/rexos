@@ -17,7 +17,6 @@ bool spi_open(int port,  SPI_MODE* mode)
     if(mode->order == SPI_LSBFIRST) prom |= SPI_LSBFIRST_MSK;
     if(mode->cpol) prom |= SPI_CPOL_MSK;
     if(mode->cpha) prom |= SPI_CPHA_MSK;
-    if(mode->io_mode) prom |= SPI_IO_MODE;
     return get_handle_exo(HAL_REQ(HAL_SPI, IPC_OPEN), port, prom, mode->cs_pin) != INVALID_HANDLE;
 }
 

@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2018, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -25,8 +25,6 @@ typedef struct {
   HANDLE device;
   EP* out[USB_EP_COUNT_MAX];
   EP* in[USB_EP_COUNT_MAX];
-  uint32_t setup_lo;
-  uint32_t setup_hi;
 } USB_DRV;
 
 

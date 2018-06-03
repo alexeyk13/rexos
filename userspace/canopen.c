@@ -1,8 +1,8 @@
 /*
-    RExOS - embedded RTOS
-    Copyright (c) 2011-2018, Alexey Kramarenko
-    All rights reserved.
-*/
+ RExOS - embedded RTOS
+ Copyright (c) 2011-2018, Alexey Kramarenko
+ All rights reserved.
+ */
 
 #include "sys_config.h"
 #include "object.h"
