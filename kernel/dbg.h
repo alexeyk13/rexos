@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -22,7 +22,6 @@
 #define MAGIC_STREAM                                   0xf4eb741c
 #define MAGIC_STREAM_HANDLE                            0x250b73c2
 #define MAGIC_KIO                                      0x890f6c75
-#define MAGIC_HEAP                                     0xd0cc6e26
 
 #define MAGIC_UNINITIALIZED                            0xcdcdcdcd
 #define MAGIC_UNINITIALIZED_BYTE                       0xcd

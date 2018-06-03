@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -9,7 +9,7 @@
 #include "lpc_exo_private.h"
 #include "lpc_power.h"
 #include "../kirq.h"
-#include "../kipc.h"
+#include "../kexo.h"
 #include "../kerror.h"
 #include "../../userspace/stdio.h"
 #include "../../userspace/lpc/lpc_driver.h"
@@ -50,7 +50,7 @@ static void lpc_sdmmc_error(EXO* exo, int error)
 
 void lpc_sdmmc_on_isr(int vector, void* param)
 {
-    EXO* exo = (CORE*)param;
+    EXO* exo = (EXO*)param;
     if (LPC_SDMMC->IDSTS & SDMMC_IDSTS_NIS_Msk)
     {
         switch (exo->sdmmc.state)
@@ -250,7 +250,7 @@ static void lpc_sdmmc_flush(EXO* exo)
     if (state != SDMMC_STATE_IDLE)
     {
         sdmmcs_stop(&exo->sdmmc.sdmmcs);
-        kipc_post_exo(process, HAL_IO_CMD(HAL_SDMMC, state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), exo->sdmmc.user, (unsigned int)io, ERROR_IO_CANCELLED);
+        kexo_io_ex(process, HAL_IO_CMD(HAL_SDMMC, state == SDMMC_STATE_READ ? IPC_READ : IPC_WRITE), exo->sdmmc.user, io, ERROR_IO_CANCELLED);
     }
 }
 
@@ -281,7 +281,7 @@ static inline void lpc_sdmmc_open(EXO* exo, HANDLE user)
     if (!sdmmcs_open(&exo->sdmmc.sdmmcs))
         return;
     //it's critical to call malloc here, because of align
-    exo->sdmmc.descr = malloc(LPC_SDMMC_DESCR_COUNT * sizeof(LPC_SDMMC_DESCR));
+    exo->sdmmc.descr = kmalloc(LPC_SDMMC_DESCR_COUNT * sizeof(LPC_SDMMC_DESCR));
     LPC_SDMMC->DBADDR = (unsigned int)(&(exo->sdmmc.descr[0]));
     LPC_SDMMC->BLKSIZ = exo->sdmmc.sdmmcs.sector_size;
 
@@ -293,7 +293,7 @@ static inline void lpc_sdmmc_open(EXO* exo, HANDLE user)
     LPC_SDMMC->CTRL |= SDMMC_CTRL_USE_INTERNAL_DMAC_Msk;
 
     //setup interrupt vector
-    kirq_register(KERNEL_HANDLE, SDIO_IRQn, lpc_sdmmc_on_isr, (void*)core);
+    kirq_register(KERNEL_HANDLE, SDIO_IRQn, lpc_sdmmc_on_isr, (void*)exo);
     NVIC_EnableIRQ(SDIO_IRQn);
     NVIC_SetPriority(SDIO_IRQn, 3);
 
@@ -317,7 +317,7 @@ static inline void lpc_sdmmc_close(EXO* exo)
     //disable interrupts
     NVIC_DisableIRQ(SDIO_IRQn);
 
-    lpc_sdmmc_flush(core);
+    lpc_sdmmc_flush(exo);
     sdmmcs_reset(&exo->sdmmc.sdmmcs);
 
     kirq_unregister(KERNEL_HANDLE, SDIO_IRQn);
@@ -410,13 +410,13 @@ static inline void lpc_sdmmc_io(EXO* exo, HANDLE process, HANDLE user, IO* io, u
     }
     if ((exo->sdmmc.activity != INVALID_HANDLE) && !(stack->flags & STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST))
     {
-        kipc_post_exo(exo->sdmmc.activity, HAL_CMD(HAL_SDMMC, STORAGE_NOTIFY_ACTIVITY), exo->sdmmc.user, read ? 0 : STORAGE_FLAG_WRITE, 0);
+        kexo_post(exo->sdmmc.activity, HAL_CMD(HAL_SDMMC, STORAGE_NOTIFY_ACTIVITY), exo->sdmmc.user, read ? 0 : STORAGE_FLAG_WRITE, 0);
         exo->sdmmc.activity = INVALID_HANDLE;
     }
     exo->sdmmc.io = io;
     exo->sdmmc.process = process;
 
-    lpc_sdmmc_prepare_descriptors(core);
+    lpc_sdmmc_prepare_descriptors(exo);
 
     if (read)
     {
@@ -473,7 +473,7 @@ static inline void lpc_sdmmc_verify(EXO* exo)
     if (exo->sdmmc.state == SDMMC_STATE_WRITE_VERIFY)
     {
         exo->sdmmc.state = SDMMC_STATE_VERIFY;
-        lpc_sdmmc_prepare_descriptors(core);
+        lpc_sdmmc_prepare_descriptors(exo);
         if (sdmmcs_read(&exo->sdmmc.sdmmcs, exo->sdmmc.sector, exo->sdmmc.total / exo->sdmmc.sdmmcs.sector_size))
             return;
     }
@@ -481,14 +481,14 @@ static inline void lpc_sdmmc_verify(EXO* exo)
     {
         if (memcmp(exo->sdmmc.hash, hash_in, SHA1_BLOCK_SIZE) == 0)
         {
-            kipc_post_exo(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), exo->sdmmc.user, (unsigned int)exo->sdmmc.io, exo->sdmmc.io->data_size);
+            kexo_io(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), exo->sdmmc.user, exo->sdmmc.io);
             exo->sdmmc.io = NULL;
             exo->sdmmc.process = INVALID_HANDLE;
             exo->sdmmc.state = SDMMC_STATE_IDLE;
             return;
         }
     }
-    kipc_post_exo(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), exo->sdmmc.user, (unsigned int)exo->sdmmc.io, get_last_error());
+    kexo_io_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, IPC_WRITE), exo->sdmmc.user, exo->sdmmc.io, get_last_error());
     exo->sdmmc.io = NULL;
     exo->sdmmc.process = INVALID_HANDLE;
     exo->sdmmc.state = SDMMC_STATE_IDLE;
@@ -514,7 +514,7 @@ static inline void lpc_sdmmc_get_media_descriptor(EXO* exo, HANDLE process, HAND
     media->sector_size = exo->sdmmc.sdmmcs.sector_size;
     sprintf(STORAGE_MEDIA_SERIAL(media), "%08X", exo->sdmmc.sdmmcs.serial);
     io->data_size = sizeof(STORAGE_MEDIA_DESCRIPTOR) + 8 + 1;
-    kipc_post_exo(process, HAL_IO_CMD(HAL_SDMMC, STORAGE_GET_MEDIA_DESCRIPTOR), exo->sdmmc.user, (unsigned int)io, io->data_size);
+    kexo_io(process, HAL_IO_CMD(HAL_SDMMC, STORAGE_GET_MEDIA_DESCRIPTOR), exo->sdmmc.user, io);
     kerror(ERROR_SYNC);
 }
 
@@ -537,7 +537,7 @@ void lpc_sdmmc_request(EXO* exo, IPC* ipc)
         lpc_sdmmc_open(exo, (HANDLE)ipc->param1);
         break;
     case IPC_CLOSE:
-        lpc_sdmmc_close(core);
+        lpc_sdmmc_close(exo);
         break;
     case IPC_READ:
         lpc_sdmmc_io(exo, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3, true);
@@ -546,10 +546,10 @@ void lpc_sdmmc_request(EXO* exo, IPC* ipc)
         lpc_sdmmc_io(exo, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2, ipc->param3, false);
         break;
     case IPC_FLUSH:
-        lpc_sdmmc_flush(core);
+        lpc_sdmmc_flush(exo);
         break;
     case LPC_SDMMC_VERIFY:
-        lpc_sdmmc_verify(core);
+        lpc_sdmmc_verify(exo);
         break;
     case STORAGE_GET_MEDIA_DESCRIPTOR:
         lpc_sdmmc_get_media_descriptor(exo, ipc->process, (HANDLE)ipc->param1, (IO*)ipc->param2);

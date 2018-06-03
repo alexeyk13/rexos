@@ -31,10 +31,9 @@
 #define KERNEL_IPC_COUNT                            7
 //enable this only if you have problems with IPC oferflow.
 #define KERNEL_IPC_DEBUG                            1
+//Enable on io security errors
+#define KERNEL_IO_DEBUG                             1
 //maximum number of global handles. Must be at least 1
 #define KERNEL_OBJECTS_COUNT                        5
-//enable multi-process safe dynamic heap. Required for most of high-level stacks (BLE, TCP/IP, etc)
-//disable to save few bytes
-#define KERNEL_HEAP                                 1
 
 #endif // KERNEL_CONFIG_H

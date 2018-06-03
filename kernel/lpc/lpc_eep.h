@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -9,7 +9,6 @@
 
 #include "lpc_exo.h"
 
-void lpc_eep_init(EXO* exo);
 void lpc_eep_request(EXO* exo, IPC* ipc);
 
 #endif // LPC_EEP_H

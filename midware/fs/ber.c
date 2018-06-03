@@ -584,10 +584,14 @@ static inline void ber_start_trans(VFSS_TYPE* vfss)
     if(array_create(&vfss->ber.trans_buffer, sizeof(BER_TRANS_ENTRY), BER_TRANSACTION_INCREMENT) == NULL)
         error(ERROR_OUT_OF_MEMORY);
 }
+
 static inline void ber_commit_trans(VFSS_TYPE* vfss)
 {
     if(vfss->ber.trans_buffer == NULL)
+    {
+        error(ERROR_INVALID_STATE);
         return;
+    }
     if(array_size(vfss->ber.trans_buffer))
     {
         if(!ber_update_superblock(vfss))
@@ -600,13 +604,16 @@ static void ber_rollback_trans(VFSS_TYPE* vfss)
 {
     uint32_t block_sectors;
     if(vfss->ber.trans_buffer == NULL)
+    {
+        error(ERROR_INVALID_STATE);
         return;
+    }
     if(array_size(vfss->ber.trans_buffer) == 0)
     {
         ber_trans_clear_buffer(vfss);
         return;
     }
-    block_sectors =  vfss->ber.block_size / FAT_SECTOR_SIZE;
+    block_sectors = vfss->ber.block_size / FAT_SECTOR_SIZE;
     ber_close(vfss);
     ber_open(vfss, block_sectors);
 }

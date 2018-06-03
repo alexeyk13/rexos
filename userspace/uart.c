@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -56,6 +56,11 @@ void uart_set_baudrate(int num, BAUD* baudrate)
     ipc.param1 = num;
     ipc.process = KERNEL_HANDLE;
     ipc_post(&ipc);
+}
+
+void uart_set_comm_timeouts(int num, unsigned int char_timeout_us, unsigned int interleaved_timeout_us)
+{
+    get_exo(HAL_REQ(HAL_UART, IPC_UART_SET_COMM_TIMEOUTS), num, char_timeout_us, interleaved_timeout_us);
 }
 
 void uart_flush(int num)

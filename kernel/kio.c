@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -54,6 +54,12 @@ bool kio_send(HANDLE process, IO* io, HANDLE receiver)
     CHECK_MAGIC(kio, MAGIC_KIO);
     if (process != kio->granted)
     {
+#if (KERNEL_IO_DEBUG)
+        printk("IO access denied: %#08x\n", kio->io);
+        printk("granted: %s\n", kprocess_name(kio->granted));
+        printk("caller: %s\n", kprocess_name(process));
+        printk("receiver: %s\n", kprocess_name(receiver));
+#endif //KERNEL_IO_DEBUG
         error(ERROR_ACCESS_DENIED);
         return false;
     }
@@ -77,6 +83,7 @@ void kio_destroy(IO *io)
 
     if (kio->owner != kprocess_get_current())
     {
+        printk("acd1!\n: %#08x\n", kio->io);
         error(ERROR_ACCESS_DENIED);
         return;
     }

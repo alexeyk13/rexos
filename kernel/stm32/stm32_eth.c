@@ -7,7 +7,7 @@
 #include "stm32_eth.h"
 #include "stm32_config.h"
 #include "../../userspace/stdio.h"
-#include "../kipc.h"
+#include "../kexo.h"
 #include "../kirq.h"
 #include "../kerror.h"
 #include "../ksystime.h"
@@ -56,7 +56,7 @@ static void stm32_eth_flush(EXO* exo)
         exo->eth.rx[i] = NULL;
         __enable_irq();
         if (io != NULL)
-            io_complete_ex_exo(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
+            kexo_io_ex(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
 
         __disable_irq();
         exo->eth.tx_des[i].ctl = 0;
@@ -64,7 +64,7 @@ static void stm32_eth_flush(EXO* exo)
         exo->eth.tx[i] = NULL;
         __enable_irq();
         if (io != NULL)
-            io_complete_ex_exo(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
+            kexo_io_ex(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
     }
     exo->eth.cur_rx = (ETH->DMACHRDR == (unsigned int)(&exo->eth.rx_des[0]) ? 0 : 1);
     exo->eth.cur_tx = (ETH->DMACHTDR == (unsigned int)(&exo->eth.tx_des[0]) ? 0 : 1);
@@ -74,14 +74,14 @@ static void stm32_eth_flush(EXO* exo)
     exo->eth.rx = NULL;
     __enable_irq();
     if (io != NULL)
-        io_complete_ex_exo(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
+        kexo_io_ex(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_READ), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
 
     __disable_irq();
     io = exo->eth.tx;
     exo->eth.tx = NULL;
     __enable_irq();
     if (io != NULL)
-        io_complete_ex_exo(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
+        kexo_io_ex(exo->eth.tcpip, HAL_IO_CMD(HAL_ETH, IPC_WRITE), exo->eth.phy_addr, io, ERROR_IO_CANCELLED);
 #endif
 }
 
@@ -93,7 +93,7 @@ static void stm32_eth_conn_check(EXO* exo)
     {
         exo->eth.conn = new_conn;
         exo->eth.connected = ((exo->eth.conn != ETH_NO_LINK) && (exo->eth.conn != ETH_REMOTE_FAULT));
-        kipc_post_exo(exo->eth.tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), 0, exo->eth.conn, 0);
+        kexo_post(exo->eth.tcpip, HAL_CMD(HAL_ETH, ETH_NOTIFY_LINK_CHANGED), 0, exo->eth.conn, 0);
         if (exo->eth.connected)
         {
             //set speed and duplex

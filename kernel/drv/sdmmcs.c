@@ -5,12 +5,11 @@
 */
 
 #include "sdmmcs.h"
-#include "../userspace/stdio.h"
-#include "../userspace/types.h"
-#include "../userspace/process.h"
-#include "../userspace/error.h"
-#include "../userspace/core/core.h"
-#include "../kernel/kernel.h"
+#include "../../userspace/stdio.h"
+#include "../../userspace/types.h"
+#include "../../userspace/process.h"
+#include "../kerror.h"
+#include "../kernel.h"
 #include "sys_config.h"
 #include <string.h>
 
@@ -116,9 +115,9 @@ bool sdmmcs_reset(SDMMCS* sdmmcs)
     if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_GO_IDLE_STATE, 0, NULL, SDMMC_NO_RESPONSE))
     {
 #if (SDMMC_DEBUG)
-        printd("SDMMC: Hardware failure\n");
+        printk("SDMMC: Hardware failure\n");
 #endif //SDMMC_DEBUG
-        error(ERROR_HARDWARE);
+        kerror(ERROR_HARDWARE);
         return false;
     }
     return true;
@@ -133,17 +132,17 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
         if ((resp & IF_COND_VOLTAGE_3_3V) == 0)
         {
 #if (SDMMC_DEBUG)
-            printd("SDMMC: Unsupported voltage\n");
+            printk("SDMMC: Unsupported voltage\n");
 #endif //SDMMC_DEBUG
-            error(ERROR_HARDWARE);
+            kerror(ERROR_HARDWARE);
             return false;
         }
         if ((resp & IF_COND_CHECK_PATTERN_MASK) != IF_COND_CHECK_PATTERN)
         {
 #if (SDMMC_DEBUG)
-            printd("SDMMC: Pattern failure. Unsupported or broken card\n");
+            printk("SDMMC: Pattern failure. Unsupported or broken card\n");
 #endif //SDMMC_DEBUG
-            error(ERROR_HARDWARE);
+            kerror(ERROR_HARDWARE);
             return false;
         }
         v2 = true;
@@ -157,9 +156,9 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
         if (!sdmmcs_acmd(sdmmcs, SDMMC_ACMD_SD_SEND_OP_COND, query, &resp, SDMMC_RESPONSE_R3))
         {
 #if (SDMMC_DEBUG)
-            printd("SDMMC: Not SD card or no card\n");
+            printk("SDMMC: Not SD card or no card\n");
 #endif //SDMMC_DEBUG
-            error(ERROR_NOT_FOUND);
+            kerror(ERROR_NOT_FOUND);
             return false;
         }
         if (resp & OP_COND_BUSY)
@@ -168,35 +167,31 @@ static inline bool sdmmcs_card_init(SDMMCS* sdmmcs)
             {
                 sdmmcs->card_type = SDMMC_CARD_HD;
 #if (SDMMC_DEBUG)
-                printd("SDMMC: Found HC/XC card\n");
+                printk("SDMMC: Found HC/XC card\n");
 #endif //SDMMC_DEBUG
             }
             else if (v2)
             {
                 sdmmcs->card_type = SDMMC_CARD_SD_V2;
 #if (SDMMC_DEBUG)
-                printd("SDMMC: Found SD v.2 card\n");
+                printk("SDMMC: Found SD v.2 card\n");
 #endif //SDMMC_DEBUG
             }
             else
             {
                 sdmmcs->card_type = SDMMC_CARD_SD_V1;
 #if (SDMMC_DEBUG)
-                printd("SDMMC: Found SD v.1 card\n");
+                printk("SDMMC: Found SD v.1 card\n");
 #endif //SDMMC_DEBUG
             }
             return true;
         }
-#ifdef EXODRIVERS
         exodriver_delay_us(1 * 1000);
-#else
-        sleep_ms(1);
-#endif //EXODRIVERS
     }
 #if (SDMMC_DEBUG)
-    printd("SDMMC: Card init timeout\n");
+    printk("SDMMC: Card init timeout\n");
 #endif //SDMMC_DEBUG
-    error(ERROR_TIMEOUT);
+    kerror(ERROR_TIMEOUT);
     return false;
 }
 
@@ -205,28 +200,28 @@ static inline bool sdmmcs_card_address(SDMMCS* sdmmcs)
     CID cid;
     if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_ALL_SEND_CID, 0, &cid, SDMMC_RESPONSE_R2))
     {
-        error(ERROR_HARDWARE);
+        kerror(ERROR_HARDWARE);
         return false;
     }
 
 #if (SDMMC_DEBUG)
-    printd("SDMMC CID:\n");
-    printd("MID: %#02x\n", cid.mid);
-    printd("OID: %c%c\n", cid.oid[1],  cid.oid[0]);
-    printd("PNM: %c%c%c%c%c\n", cid.pnm[4], cid.pnm[3], cid.pnm[2], cid.pnm[1], cid.pnm[0]);
-    printd("PRV: %x.%x\n", cid.prv >> 4, cid.prv & 0xf);
-    printd("PSN: %08x\n", cid.psn);
-    printd("MDT: %d,%d\n", cid.mdt & 0xf, ((cid.mdt >> 4) & 0xff) + 2000);
+    printk("SDMMC CID:\n");
+    printk("MID: %#02x\n", cid.mid);
+    printk("OID: %c%c\n", cid.oid[1],  cid.oid[0]);
+    printk("PNM: %c%c%c%c%c\n", cid.pnm[4], cid.pnm[3], cid.pnm[2], cid.pnm[1], cid.pnm[0]);
+    printk("PRV: %x.%x\n", cid.prv >> 4, cid.prv & 0xf);
+    printk("PSN: %08x\n", cid.psn);
+    printk("MDT: %d,%d\n", cid.mdt & 0xf, ((cid.mdt >> 4) & 0xff) + 2000);
 #endif //SDMMC_DEBUG
 
     sdmmcs->serial = cid.psn;
     if (!sdmmcs_cmd_r6(sdmmcs, SDMMC_CMD_SEND_RELATIVE_ADDR, 0))
     {
-        error(ERROR_HARDWARE);
+        kerror(ERROR_HARDWARE);
         return false;
     }
 #if (SDMMC_DEBUG)
-    printd("SDMMC RCA: %04X\n", sdmmcs->rca);
+    printk("SDMMC RCA: %04X\n", sdmmcs->rca);
 #endif //SDMMC_DEBUG
 
     return true;
@@ -242,13 +237,13 @@ static inline bool sdmmcs_card_read_csd(SDMMCS* sdmmcs)
 #endif //SDMMC_DEBUG
     if (!sdmmcs_cmd(sdmmcs, SDMMC_CMD_SEND_CSD, ARG_RCA(sdmmcs), csd, SDMMC_RESPONSE_R2))
     {
-        error(ERROR_HARDWARE);
+        kerror(ERROR_HARDWARE);
         return false;
     }
     if ((csd[15] >> 6) == 0x01)
     {
 #if (SDMMC_DEBUG)
-        printd("SDMMC: CSD v2\n");
+        printk("SDMMC: CSD v2\n");
 #endif //SDMMC_DEBUG
         sdmmcs->sector_size = 512;
         c_size = ((((uint32_t)csd[8]) & 0x3f) << 16) | (((uint32_t)csd[7]) << 8) | (((uint32_t)csd[6]) << 0);
@@ -257,7 +252,7 @@ static inline bool sdmmcs_card_read_csd(SDMMCS* sdmmcs)
     else
     {
 #if (SDMMC_DEBUG)
-        printd("SDMMC: CSD v1\n");
+        printk("SDMMC: CSD v1\n");
 #endif //SDMMC_DEBUG
         c_size = ((((uint32_t)csd[9]) & 0x03) << 10) | (((uint32_t)csd[8]) << 2) | (((uint32_t)csd[7]) >> 6);
         mult = (((uint32_t)csd[5]) >> 7) | ((((uint32_t)csd[6]) & 0x03) << 1);
@@ -279,7 +274,7 @@ static inline bool sdmmcs_card_read_csd(SDMMCS* sdmmcs)
         sdmmcs->max_clock = 200000000;
         break;
     default:
-        error(ERROR_NOT_SUPPORTED);
+        kerror(ERROR_NOT_SUPPORTED);
         return false;
     }
     if (csd[1] & 0x30)
@@ -299,10 +294,10 @@ static inline bool sdmmcs_card_read_csd(SDMMCS* sdmmcs)
             c = 'T';
         }
     }
-    printd("Capacity: %d.%d%cB\n", capacity / 10, capacity % 10, c);
-    printd("Max clock: %dMHz\n", sdmmcs->max_clock / 1000000);
+    printk("Capacity: %d.%d%cB\n", capacity / 10, capacity % 10, c);
+    printk("Max clock: %dMHz\n", sdmmcs->max_clock / 1000000);
     if (sdmmcs->write_protected)
-        printd("Data is write protected\n");
+        printk("Data is write protected\n");
 #endif //SDMMC_DEBUG
     return true;
 }
@@ -312,9 +307,9 @@ static inline bool sdmmcs_card_select(SDMMCS* sdmmcs)
     if (!sdmmcs_cmd_r1b(sdmmcs, SDMMC_CMD_SELECT_DESELECT_CARD, ARG_RCA(sdmmcs)))
     {
 #if (SDMMC_DEBUG)
-        printd("SDMMC: card selection failure\n");
+        printk("SDMMC: card selection failure\n");
 #endif //SDMMC_DEBUG
-        error(ERROR_HARDWARE);
+        kerror(ERROR_HARDWARE);
         return false;
     }
 
@@ -334,20 +329,20 @@ static void sdmmcs_set_r1_error(SDMMCS* sdmmcs)
 {
     if (sdmmcs->r1 & SDMMC_R1_CARD_ECC_FAILED)
     {
-        error(ERROR_CRC);
+        kerror(ERROR_CRC);
         return;
     }
     if (sdmmcs->r1 & SDMMC_R1_FATAL_ERROR)
     {
-        error(ERROR_HARDWARE);
+        kerror(ERROR_HARDWARE);
         return;
     }
     if (sdmmcs->r1 & SDMMC_R1_APP_ERROR)
     {
-        error(ERROR_INVALID_PARAMS);
+        kerror(ERROR_INVALID_PARAMS);
         return;
     }
-    error(ERROR_TIMEOUT);
+    kerror(ERROR_TIMEOUT);
 }
 
 static bool sdmmcs_wait_for_ready(SDMMCS* sdmmcs)
@@ -363,13 +358,9 @@ static bool sdmmcs_wait_for_ready(SDMMCS* sdmmcs)
             if ((sdmmcs->r1 & SDMMC_R1_CURRENT_STATE_MSK) == SDMMC_R1_STATE_TRAN)
                 return true;
         }
-#ifdef EXODRIVERS
         exodriver_delay_us(100);
-#else
-        sleep_us(100);
-#endif //EXODRIVERS
     }
-    error(ERROR_TIMEOUT);
+    kerror(ERROR_TIMEOUT);
     return false;
 }
 

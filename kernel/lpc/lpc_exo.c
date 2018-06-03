@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -146,11 +146,6 @@ void exodriver_init()
     lpc_otg_init(__KERNEL->exo);
 #endif //LPC11Uxx
 #endif //LPC_USB_DRIVER
-#if (LPC_EEPROM_DRIVER)
-#ifdef LPC18xx
-    lpc_eep_init(__KERNEL->exo);
-#endif //LPC18xx
-#endif //LPC_EEPROM_DRIVER
 #if (LPC_FLASH_DRIVER)
     lpc_flash_init(__KERNEL->exo);
 #endif //LPC_FLASH_DRIVER

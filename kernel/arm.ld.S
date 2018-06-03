@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -39,6 +39,10 @@ SECTIONS
     .fini :
     {
       *(.fini*);
+    } >FLASH
+    .heap :
+    {
+      *(.heap*);
     } >FLASH
     _end = . ;
 	PROVIDE(__END = .);

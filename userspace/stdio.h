@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -49,14 +49,6 @@ void printf(const char *const fmt, ...);
     \param ...: list of arguments
     \retval none
 */
-
-/**
-    \brief format string, using \ref SVC_PRINTD as handler
-    \param fmt: format (see global description)
-    \param ...: list of arguments
-    \retval none
-*/
-void printd(const char *const fmt, ...);
 
 /**
     \brief format string, using \ref SVC_PRINTD as handler. ISR version

@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include "usb.h"
+#include "io.h"
 
 #pragma pack(push, 1)
 
@@ -140,8 +141,8 @@ typedef struct {
 #define CCID_FEATURE_AUTO_VOLTAGE                       0x00000008
 #define CCID_FEATURE_AUTO_CLOCK                         0x00000010
 #define CCID_FEATURE_AUTO_BAUD                          0x00000020
-#define CCID_FEATURE_AUTO_PPS                           0x00000040
-#define CCID_FEATURE_AUTO_PPS_ACTIVE                    0x00000080
+#define CCID_FEATURE_AUTO_PPS_PROPRIETARY               0x00000040
+#define CCID_FEATURE_AUTO_PPS                           0x00000080
 #define CCID_FEATURE_AUTO_IFCD                          0x00000400
 #define CCID_FEATURE_CAN_STOP                           0x00000100
 
@@ -159,7 +160,16 @@ typedef struct {
     uint8_t bSlot;
     uint8_t bSeq;
     uint8_t msg_specific[3];
-} CCID_MESSAGE;
+} CCID_MSG;
+
+typedef struct {
+    uint8_t bMessageType;
+    uint32_t dwLength;
+    uint8_t bSlot;
+    uint8_t bSeq;
+    uint8_t bPowerSelect;
+    uint8_t abRFU[2];
+} CCID_MSG_POWER_ON;
 
 typedef struct {
     uint8_t bMessageType;
@@ -174,7 +184,16 @@ typedef struct {
     uint8_t bStatus;
     uint8_t bError;
     uint8_t bClockStatus;
-} CCID_SLOT_STATUS;
+} CCID_MSG_SLOT_STATUS;
+
+typedef struct {
+    uint8_t bMessageType;
+    uint32_t dwLength;
+    uint8_t bSlot;
+    uint8_t bSeq;
+    uint8_t bBWI;
+    uint16_t wLevelParam;
+} CCID_MSG_XFER_BLOCK;
 
 typedef struct {
     uint8_t bMessageType;
@@ -184,7 +203,16 @@ typedef struct {
     uint8_t bStatus;
     uint8_t bError;
     uint8_t bChainParameter;
-} CCID_DATA_BLOCK;
+} CCID_MSG_DATA_BLOCK;
+
+typedef struct {
+    uint8_t bMessageType;
+    uint32_t dwLength;
+    uint8_t bSlot;
+    uint8_t bSeq;
+    uint8_t bProtocolNum;
+    uint8_t abRFU[2];
+} CCID_MSG_SET_PARAMS;
 
 typedef struct {
     uint8_t bMessageType;
@@ -194,7 +222,19 @@ typedef struct {
     uint8_t bStatus;
     uint8_t bError;
     uint8_t bProtocolNum;
-} CCID_PARAMS;
+} CCID_MSG_PARAMS;
+
+typedef struct {
+    uint8_t bMessageType;
+    uint32_t dwLength;
+    uint8_t bSlot;
+    uint8_t bSeq;
+    uint8_t bStatus;
+    uint8_t bError;
+    uint8_t bRFU;
+    uint32_t dwClockFrequency;
+    uint32_t dwDataRate;
+} CCID_MSG_RATE_CLOCK;
 
 //CCID bulk out
 #define PC_TO_RDR_ICC_POWER_ON                          0x62
@@ -225,12 +265,12 @@ typedef struct {
 
 typedef enum {
     //requests from host
-    USB_CCID_APDU = IPC_USER,
-    USB_CCID_POWER_ON,
+    USB_CCID_POWER_ON = IPC_USER,
     USB_CCID_POWER_OFF,
     USB_CCID_GET_PARAMS,
     USB_CCID_SET_PARAMS,
     USB_CCID_RESET_PARAMS,
+    USB_CCID_SET_RATE_CLOCK,
     //announce from card
     USB_CCID_CARD_INSERTED,
     USB_CCID_CARD_REMOVED
@@ -251,6 +291,7 @@ typedef enum {
 #define CCID_SLOT_ERROR_PIN_TIMEOUT                     0xf0
 #define CCID_SLOT_ERROR_PIN_CANCELLED                   0xef
 #define CCID_SLOT_ERROR_SLOT_BUSY                       0xe0
+#define CCID_SLOT_ERROR_POWER_SELECT                    0x07
 #define CCID_SLOT_ERROR_CMD_NOT_SUPPORTED               0x00
 
 #define CCID_SLOT_ICC_STATE_CHANGED                     (1 << 1)
@@ -313,7 +354,21 @@ typedef enum {
     CCID_T_MAX
 } CCID_PROTOCOL;
 
+typedef struct {
+    uint32_t dwClockFrequency;
+    uint32_t dwDataRate;
+} CCID_RATE_CLOCK;
+
+#define CCID_POWER_SELECT_AUTO                          0x0
+#define CCID_POWER_SELECT_5V                            0x1
+#define CCID_POWER_SELECT_3V                            0x2
+#define CCID_POWER_SELECT_1_8V                          0x3
+
 #pragma pack(pop)
+
+void ccid_give_buffer(HANDLE usbd, unsigned int iface, unsigned int slot, IO* io);
+void ccid_respond(HANDLE usbd, unsigned int cmd, unsigned int iface, unsigned int slot, IO* io);
+void ccid_respond_ex(HANDLE usbd, unsigned int cmd, unsigned int iface, unsigned int slot, IO* io, int param);
 
 #endif // CCID_H
 

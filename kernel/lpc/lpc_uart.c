@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -10,7 +10,7 @@
 #include "../kirq.h"
 #include "../kstdlib.h"
 #include "../ksystime.h"
-#include "../kipc.h"
+#include "../kexo.h"
 #include "../kstream.h"
 #include "../kerror.h"
 #include "../../userspace/stream.h"
@@ -64,7 +64,7 @@ static bool lpc_uart_rx_isr(EXO* exo, UART_PORT port, uint8_t c)
                 res = false;
             }
             else
-                timer_istart_ms(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
+                timer_istart_us(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
         }
     }
     else
@@ -324,8 +324,8 @@ static inline bool lpc_uart_open_io(EXO* exo, UART_PORT port)
     UART_IO* i = &(exo->uart.uarts[port]->i);
     i->tx_io = i->rx_io = NULL;
     i->rx_timer = ksystime_soft_timer_create(KERNEL_HANDLE, port, HAL_UART);
-    i->rx_char_timeout = UART_CHAR_TIMEOUT_MS;
-    i->rx_interleaved_timeout = UART_INTERLEAVED_TIMEOUT_MS;
+    i->rx_char_timeout = UART_CHAR_TIMEOUT_US;
+    i->rx_interleaved_timeout = UART_INTERLEAVED_TIMEOUT_US;
     return i->rx_timer != INVALID_HANDLE;
 }
 #endif //UART_IO_MODE_SUPPORT
@@ -439,9 +439,9 @@ static void lpc_uart_flush(EXO* exo, UART_PORT port)
         exo->uart.uarts[port]->i.tx_io = NULL;
         __enable_irq();
         if (rx_io)
-            kipc_post_exo(exo->uart.uarts[port]->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, (unsigned int)rx_io, ERROR_IO_CANCELLED);
+            kexo_io_ex(exo->uart.uarts[port]->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, rx_io, ERROR_IO_CANCELLED);
         if (tx_io)
-            kipc_post_exo(exo->uart.uarts[port]->i.tx_process, HAL_IO_CMD(HAL_UART, IPC_WRITE), port, (unsigned int)tx_io, ERROR_IO_CANCELLED);
+            kexo_io_ex(exo->uart.uarts[port]->i.tx_process, HAL_IO_CMD(HAL_UART, IPC_WRITE), port, tx_io, ERROR_IO_CANCELLED);
         ksystime_soft_timer_stop(exo->uart.uarts[port]->i.rx_timer);
         __USART_REGS[port]->IER &= ~USART0_IER_RBRIE_Msk;
     }
@@ -609,7 +609,7 @@ static inline void lpc_uart_io_read(EXO* exo, UART_PORT port, IPC* ipc)
     io->data_size = 0;
     uart->i.rx_io = io;
     __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
-    ksystime_soft_timer_start_ms(uart->i.rx_timer, uart->i.rx_char_timeout);
+    ksystime_soft_timer_start_us(uart->i.rx_timer, uart->i.rx_char_timeout);
     kerror(ERROR_SYNC);
 }
 
@@ -669,10 +669,10 @@ static inline void lpc_uart_io_read_timeout(EXO* exo, UART_PORT port)
     if (io)
     {
         if (io->data_size)
-            kipc_post_exo(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, (unsigned int)io, io->data_size);
+            kexo_io(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io);
         else
             //no data? timeout
-            kipc_post_exo(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, (unsigned int)io, ERROR_TIMEOUT);
+            kexo_io_ex(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io, ERROR_TIMEOUT);
     }
 }
 #endif //UART_IO_MODE_SUPPORT

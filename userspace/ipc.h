@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -80,7 +80,6 @@ typedef enum {
 //ipc contains IO in param2
 #define HAL_MODE                                            (3 << 30)
 #define HAL_IO_MODE                                         (1ul << 30)
-#define HAL_HEAP_MODE                                       (2ul << 30)
 //response required
 #define HAL_REQ_FLAG                                        (1ul << 15)
 
@@ -91,9 +90,6 @@ typedef enum {
 
 #define HAL_IO_CMD(group, item)                             ((((group) & 0x3fff) << 16) | ((item) & 0x7fff) | HAL_IO_MODE)
 #define HAL_IO_REQ(group, item)                             ((((group) & 0x3fff) << 16) | ((item) & 0x7fff) | HAL_IO_MODE | HAL_REQ_FLAG)
-
-#define HAL_HEAP_CMD(group, item)                           ((((group) & 0x3fff) << 16) | ((item) & 0x7fff) | HAL_HEAP_MODE)
-#define HAL_HEAP_REQ(group, item)                           ((((group) & 0x3fff) << 16) | ((item) & 0x7fff) | HAL_HEAP_MODE | HAL_REQ_FLAG)
 
 #define ANY_CMD                                             0xffffffff
 

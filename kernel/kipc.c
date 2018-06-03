@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -8,7 +8,6 @@
 #include "kipc.h"
 #include "kio.h"
 #include "kprocess.h"
-#include "kheap.h"
 #include "kprocess_private.h"
 #include "kerror.h"
 #include "../userspace/rb.h"
@@ -52,11 +51,6 @@ static bool kipc_send(HANDLE sender, HANDLE receiver, unsigned int cmd, void* pa
     case HAL_IO_MODE:
         res = kio_send(sender, param, receiver);
         break;
-#if (KERNEL_HEAP)
-    case HAL_HEAP_MODE:
-        kheap_send(param, receiver);
-        break;
-#endif //KERNEL_HEAP
     default:
         break;
     }
@@ -146,17 +140,6 @@ void kipc_post(HANDLE sender, IPC* ipc)
     }
     enable_interrupts();
     kipc_post_internal(sender, ipc->process, ipc->cmd, ipc->param1, ipc->param2, ipc->param3);
-}
-
-void kipc_post_exo(HANDLE process, unsigned int cmd, unsigned int param1, unsigned int param2, unsigned int param3)
-{
-    IPC ipc;
-    ipc.cmd = cmd;
-    ipc.param1 = param1;
-    ipc.param2 = param2;
-    ipc.param3 = param3;
-    ipc.process = process;
-    kipc_post(KERNEL_HANDLE, &ipc);
 }
 
 void kipc_wait(HANDLE process, HANDLE wait_process, unsigned int cmd, unsigned int param1)
