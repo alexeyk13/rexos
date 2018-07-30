@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2015, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -15,15 +15,14 @@
 //make sure, you know what are you doing, before change
 #define SYS_OBJ_STDOUT                                      0
 #define SYS_OBJ_CORE                                        1
-#define SYS_OBJ_ETH                                         2
 
 #define SYS_OBJ_ADC                                         INVALID_HANDLE
 #define SYS_OBJ_DAC                                         INVALID_HANDLE
 #define SYS_OBJ_STDIN                                       INVALID_HANDLE
-
+#define SYS_OBJ_ETH                                         INVALID_HANDLE
 //------------------------------ POWER -----------------------------------------------
 //depends on hardware implementation
-#define POWER_MANAGEMENT                                    1
+#define POWER_MANAGEMENT                                    0
 //------------------------------- UART -----------------------------------------------
 //disable for some memory saving if not blocking IO is required
 #define UART_IO_MODE_SUPPORT                                1
@@ -35,10 +34,12 @@
 #define UART_BUF_SIZE                                       16
 //generally UART is used as stdout/stdio, so fine-tuning is required only on hi load
 #define UART_STREAM_SIZE                                    32
+//low-level debug. Turn on only in case of IO problems
+#define UART_DEBUG_ERRORS                                   1
 //-------------------------------- USB -----------------------------------------------
-#define USB_EP_COUNT_MAX                                    5
+#define USB_EP_COUNT_MAX                                    6
 //low-level USB debug. Turn on only in case of IO problems
-#define USB_DEBUG_ERRORS                                    0
+#define USB_DEBUG_ERRORS                                    1
 #define USB_TEST_MODE_SUPPORT                               0
 
 //----------------------------- USB device--------------------------------------------
@@ -55,7 +56,7 @@
 #define USBD_IO_SIZE                                        256
 
 #define USBD_CDC_ACM_CLASS                                  0
-#define USBD_RNDIS_CLASS                                    1
+#define USBD_RNDIS_CLASS                                    0
 #define USBD_HID_KBD_CLASS                                  0
 #define USBD_CCID_CLASS                                     1
 #define USBD_MSC_CLASS                                      0
@@ -83,12 +84,12 @@
 #define USBD_HID_DEBUG_IO                                   1
 
 //----------------------------- CCIDD class -------------------------------------------
-#define USBD_CCID_REMOVABLE_CARD                            0
-#define USBD_CCID_WTX_TIMEOUT_MS                            1000
+#define USBD_CCID_REMOVABLE_CARD                            1
 
 #define USBD_CCID_DEBUG_ERRORS                              1
 #define USBD_CCID_DEBUG_REQUESTS                            0
 #define USBD_CCID_DEBUG_IO                                  0
+
 //------------------------------ MSCD class -------------------------------------------
 #define USBD_MSC_DEBUG_ERRORS                               1
 #define USBD_MSC_DEBUG_REQUESTS                             0
@@ -140,8 +141,8 @@
 #define TCPIP_MAC_DEBUG                                     0
 
 //----------------------------- TCP/IP ARP --------------------------------------------
-#define ARP_DEBUG                                           0
-#define ARP_DEBUG_FLOW                                      0
+#define ARP_DEBUG                                           1
+#define ARP_DEBUG_FLOW                                      1
 
 #define ARP_CACHE_SIZE_MAX                                  10
 //in seconds
@@ -172,17 +173,9 @@
 #define ICMP_ECHO                                           1
 
 //----------------------------- TCP/IP UDP --------------------------------------------
-#define UDP                                                 1
-//required for DHCP
-#define UDP_BROADCAST                                       1
-#define DNSS                                                1
-#define DHCPS                                               1
-
-
+#define UDP                                                 0
 #define UDP_DEBUG                                           0
 #define UDP_DEBUG_FLOW                                      0
-#define DNSS_DEBUG                                          1
-#define DHCPS_DEBUG                                         1
 
 //----------------------------- TCP/IP TCP --------------------------------------------
 #define TCP_DEBUG                                           1
@@ -195,47 +188,37 @@
 #define TCP_DEBUG_FLOW                                      0
 #define TCP_DEBUG_PACKETS                                   0
 
-//----------------------------- web server---------------------------------------------
-#define WEBS_DEBUG_ERRORS                                   1
-#define WEBS_DEBUG_SESSION                                  1
-#define WEBS_DEBUG_REQUESTS                                 1
-#define WEBS_DEBUG_FLOW                                     0
+//---------------------------- HTTP server---------------------------------------------
+#define HS_PROCESS_SIZE                                     900
+#define HS_PROCESS_PRIORITY                                 161
 
-#define WEBS_MAX_SESSIONS                                   2
-//0 means close connection immediatly
-#define WEBS_SESSION_TIMEOUT_S                              3
-
-//Each session internal IO size. Smaller may require more often requests
-//to TCP/IP stack, bigger consumes more memory. Default to MSS.
-#define WEBS_IO_SIZE                                        1460
-//Maximum request size. If request is bigger, it will be responded with "payload too large"
-#define WEBS_MAX_PAYLOAD                                    8192
+#define HS_DEBUG                                            0
+#define HS_DEBUG_HEAD                                       0
+//URL and header must fit completely in IO. Default to MSS
+#define HS_IO_SIZE                                          1460
 
 //---------------------------- TLS server---------------------------------------------
 //cryptography can take much space.
 #define TLS_PROCESS_SIZE                                    3048
 #define TLS_PROCESS_PRIORITY                                160
 
+#define TLS_DEBUG                                           1
 #define TLS_DEBUG_REQUESTS                                  1
-#define TLS_DEBUG_ERRORS                                    1
+#define TLS_DEBUG_FLOW                                      0
 //DON'T FORGET TO REMOVE IN PRODUCTION!!!
 #define TLS_DEBUG_SECRETS                                   0
 #define TLS_IO_SIZE                                         1460
-
-//at least one must be selected
-#define TLS_RSA_WITH_AES_128_CBC_SHA_CIPHER_SUITE           1
-#define TLS_RSA_WITH_AES_128_CBC_SHA256_CIPHER_SUITE        1
 //--------------------------------- SDMMC ---------------------------------------------
 #define SDMMC_DEBUG                                         1
 
 //---------------------------------- VFS ----------------------------------------------
-#define VFS_DEBUG_INFO                                      1
+#define VFS_DEBUG_INFO                                      0
 #define VFS_DEBUG_ERRORS                                    1
 #define VFS_MAX_FILE_PATH                                   256
 #define VFS_MAX_HANDLES                                     5
 //enable BER support
 #define VFS_BER                                             1
-#define VFS_BER_DEBUG_INFO                                  1
+#define VFS_BER_DEBUG_INFO                                  0
 #define VFS_BER_DEBUG_ERRORS                                1
 
 //align data sectors by cluster start offset (recommended to enable for flash storage)

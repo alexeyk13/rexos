@@ -1,9 +1,3 @@
-/*
-    RExOS - embedded RTOS
-    Copyright (c) 2011-2018, Alexey Kramarenko
-    All rights reserved.
-*/
-
 #include "ccidd.h"
 #include "../../userspace/ccid.h"
 #include "../../userspace/usb.h"
@@ -35,7 +29,6 @@ typedef struct {
 
 static void ccidd_destroy(CCIDD* ccidd)
 {
-
     io_destroy(ccidd->main_io);
     io_destroy(ccidd->txd_io);
     io_destroy(ccidd->status_io);
@@ -93,7 +86,6 @@ static void ccidd_notify_slot_change(USBD* usbd, CCIDD* ccidd)
         usbd_usb_ep_write(usbd, USB_EP_IN | ccidd->status_ep, ccidd->status_io);
         ccidd->status_busy = true;
     }
-
 }
 
 #if (USBD_CCID_DEBUG_REQUESTS)
@@ -296,8 +288,8 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
                     {
                         ccidd->data_ep = USB_EP_NUM(ep->bEndpointAddress);
                         ccidd->data_ep_size = ep->wMaxPacketSize;
-                        ccidd->main_io = io_create(ccidd->data_ep_size >= 512 ? 512 : ((ccid_descriptor->dwMaxCCIDMessageLength - 1) & ~(ccidd->data_ep_size - 1)));
-                        ccidd->txd_io = io_create(ccidd->data_ep_size >= 512 ? 512 : ((ccid_descriptor->dwMaxCCIDMessageLength + ccidd->data_ep_size - 1) & ~(ccidd->data_ep_size - 1)));
+                        ccidd->main_io = io_create((ccid_descriptor->dwMaxCCIDMessageLength - 1) & ~(ccidd->data_ep_size - 1));
+                        ccidd->txd_io = io_create((ccid_descriptor->dwMaxCCIDMessageLength + ccidd->data_ep_size - 1) & ~(ccidd->data_ep_size - 1));
                     }
                     break;
                 case USB_EP_BM_ATTRIBUTES_INTERRUPT:
@@ -352,7 +344,6 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
             }
         }
     }
-
 }
 
 void ccidd_class_reset(USBD* usbd, void* param)
@@ -367,9 +358,6 @@ void ccidd_class_reset(USBD* usbd, void* param)
         usbd_usb_ep_close(usbd, USB_EP_IN | ccidd->status_ep);
         usbd_unregister_endpoint(usbd, ccidd->iface, ccidd->status_ep);
     }
-
-    if (ccidd->user_io)
-        usbd_io_user(usbd, ccidd->iface, 0, HAL_IO_CMD(HAL_USBD_IFACE, IPC_READ), ccidd->user_io, ERROR_IO_CANCELLED);
 
     usbd_unregister_interface(usbd, ccidd->iface, &__CCIDD_CLASS);
     ccidd_destroy(ccidd);
@@ -389,12 +377,6 @@ void ccidd_class_suspend(USBD* usbd, void* param)
         ccidd->status_pending = false;
     }
     ccidd->tx_busy = ccidd->tx_pending = false;
-
-    if (ccidd->user_io)
-    {
-        usbd_io_user(usbd, ccidd->iface, 0, HAL_IO_CMD(HAL_USBD_IFACE, IPC_READ), ccidd->user_io, ERROR_IO_CANCELLED);
-        ccidd->user_io = NULL;
-    }
 }
 
 void ccidd_class_resume(USBD* usbd, void* param)
@@ -623,6 +605,7 @@ static inline void ccidd_rxc(USBD* usbd, CCIDD* ccidd)
     case CCIDD_STATE_RXD:
         io_data_append(ccidd->user_io, io_data(ccidd->main_io), ccidd->main_io->data_size);
         ccidd_xfer_block_process(usbd, ccidd);
+        ccidd_rx(usbd, ccidd);
         break;
     default:
 #if (USBD_CCID_DEBUG_ERRORS)
@@ -669,7 +652,7 @@ static inline void ccidd_card_inserted(USBD* usbd, CCIDD* ccidd)
     }
 }
 
-static inline void ccidd_card_removed(USBD* usbd, CCIDD* ccidd)app_ccid_rate_clock
+static inline void ccidd_card_removed(USBD* usbd, CCIDD* ccidd)
 {
     if (ccidd->slot_status != CCID_SLOT_STATUS_ICC_NOT_PRESENT)
     {

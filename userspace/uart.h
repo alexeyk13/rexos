@@ -51,5 +51,7 @@ void uart_close(int num);
 void uart_set_baudrate(int num, BAUD* baudrate);
 void uart_set_comm_timeouts(int num, unsigned int char_timeout_us, unsigned int interleaved_timeout_us);
 void uart_flush(int num);
+int uart_get_last_error(int num);
+void uart_clear_error(int num);
 
 #endif // UART_H

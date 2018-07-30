@@ -67,3 +67,13 @@ void uart_flush(int num)
 {
     ipc_post_exo(HAL_CMD(HAL_UART, IPC_FLUSH), num, 0, 0);
 }
+
+int uart_get_last_error(int num)
+{
+    return (int)get_exo(HAL_REQ(HAL_UART, IPC_UART_GET_LAST_ERROR), num, 0, 0);
+}
+
+void uart_clear_error(int num)
+{
+    get_exo(HAL_REQ(HAL_UART, IPC_UART_CLEAR_ERROR), num, 0, 0);
+}
