@@ -134,10 +134,10 @@ static void ccidd_tx_data_block_ex(USBD* usbd, CCIDD* ccidd, uint8_t seq, uint8_
     {
         msg->dwLength = data_io->data_size;
         memcpy((uint8_t*)io_data(io) + sizeof(CCID_MSG), io_data(data_io), data_io->data_size);
-        io->data_size = data_io->data_size + sizeof(CCID_MSG);
     }
     else
         msg->dwLength = 0;
+    io->data_size = msg->dwLength + sizeof(CCID_MSG);
     msg->bSlot = 0;
     msg->bSeq = seq;
     msg->bStatus = ccidd_gen_status(ccidd, status);
@@ -167,10 +167,10 @@ static void ccidd_tx_params_ex(USBD* usbd, CCIDD* ccidd, uint8_t error, uint8_t 
     {
         msg->dwLength = data_io->data_size;
         memcpy((uint8_t*)io_data(io) + sizeof(CCID_MSG), io_data(data_io), data_io->data_size);
-        io->data_size = data_io->data_size + sizeof(CCID_MSG);
     }
     else
         msg->dwLength = 0;
+    io->data_size = msg->dwLength + sizeof(CCID_MSG);
     msg->bMessageType = RDR_TO_PC_PARAMETERS;
     msg->bSlot = 0;
     msg->bSeq = seq;
