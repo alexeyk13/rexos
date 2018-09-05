@@ -9,6 +9,7 @@
 #include "kprocess.h"
 #include <string.h>
 #include "../userspace/process.h"
+#include "../userspace/error.h"
 #include "../lib/lib_lib.h"
 #include "../userspace/stdlib.h"
 #include "../userspace/svc.h"
@@ -49,6 +50,8 @@ void* kmalloc_internal(size_t size)
         res = ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&kpool_at(idx)->pool, size, idx == 0 ? get_sp() : (void*)(kpool->base + kpool->size));
         if (res)
             return res;
+        else if (idx)
+            error(ERROR_OK);
     }
     return NULL;
 }
@@ -84,12 +87,14 @@ void* krealloc_internal(void* ptr, size_t size)
             continue;
         kpool = kpool_at(idx);
         res = ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_malloc(&kpool_at(idx)->pool, size, idx == 0 ? get_sp() : (void*)(kpool->base + kpool->size));
-        if (res != NULL)
+        if (res)
         {
             memcpy(res, ptr, ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_slot_size(&kpool->pool, ptr));
             ((const LIB_STD*)__GLOBAL->lib[LIB_ID_STD])->pool_free(&kpool_at(idx_cur)->pool, ptr);
             return res;
         }
+        else if (idx)
+            error(ERROR_OK);
     }
     return NULL;
 }
