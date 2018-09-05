@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -125,6 +125,14 @@ static const unsigned int __CODE_SIZE[] =             {2, 7, 8, 27, 6};
 
 #define HTTP_STATUS_LINE_SIZE                   15
 
+static inline void web_free_req(WEBS_SESSION* session)
+{
+    if(session->req == NULL)
+        return;
+    free(session->req);
+    session->req = NULL;
+}
+
 static inline void webs_init(WEBS* webs)
 {
     webs->process = INVALID_HANDLE;
@@ -151,8 +159,7 @@ static const char* webs_get_response_text(WEB_RESPONSE code)
 
 static void webs_session_reset(WEBS_SESSION* session)
 {
-    free(session->req);
-    session->req = NULL;
+    web_free_req(session);
     session->req_size = session->header_size = session->data_size = 0;
     session->state = WEBS_SESSION_STATE_IDLE;
 }
@@ -188,9 +195,10 @@ static inline WEBS_SESSION* webs_create_session(WEBS* webs)
     return session;
 }
 
+
 static void webs_destroy_session(WEBS* webs, WEBS_SESSION* session)
 {
-    free(session->req);
+    web_free_req(session);
 #if (WEBS_SESSION_TIMEOUT_S)
     timer_stop(session->timer, session->self, HAL_WEBS);
     timer_destroy(session->timer);
@@ -295,7 +303,7 @@ static void webs_send_response(WEBS* webs, WEBS_SESSION* session, WEB_RESPONSE c
     status_line_size = HTTP_STATUS_LINE_SIZE + strlen(webs_get_response_text(code));
     webs_generate_params(session, data_size);
     header_size = status_line_size + session->io->data_size + 2;
-    free(session->req);
+    web_free_req(session);
     session->req = malloc(header_size + data_size);
 
     if (session->req == NULL)
@@ -324,6 +332,7 @@ static void webs_send_response(WEBS* webs, WEBS_SESSION* session, WEB_RESPONSE c
 #endif //WEBS_DEBUG_FLOW
 
 #if (WEBS_SESSION_TIMEOUT_S)
+    timer_stop(session->timer, session->self, HAL_WEBS);
     timer_start_ms(session->timer, WEBS_SESSION_TIMEOUT_S * 1000);
 #endif //WEBS_SESSION_TIMEOUT_S
 

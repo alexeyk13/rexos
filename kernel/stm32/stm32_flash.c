@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -24,11 +24,17 @@
 #endif
 
 #define FLASH_SECTOR_SIZE                     0x200
+
+#if defined (STM32F10X_CL)
+#define FLASH_PAGE_SIZE                      (2048)
+#else
 #define FLASH_PAGE_SIZE                      (1024)
+#endif
+
 #define FLASH_PAGE_MASK                      (~(FLASH_PAGE_SIZE-1))
 //#define FLASH_SECTORS_IN_PAGE                ( FLASH_PAGE_SIZE/FLASH_SECTOR_SIZE)
 
-#define FLASH_SECTOR_COUNT                   (*((uint16_t*)(FLASH_SIZE_BASE))*1024ul/FLASH_SECTOR_SIZE)
+#define FLASH_SECTOR_COUNT                   (*((uint16_t*)(FLASH_SIZE_BASE))*FLASH_PAGE_SIZE/FLASH_SECTOR_SIZE)
 
 typedef struct {
     unsigned int first_page, last_page;
