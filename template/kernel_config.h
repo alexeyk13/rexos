@@ -31,6 +31,8 @@
 #define KERNEL_IPC_COUNT                            7
 //enable this only if you have problems with IPC oferflow.
 #define KERNEL_IPC_DEBUG                            1
+//Allows to debug critical kernel errors, but decreases perfomance
+#define KERNEL_SVC_DEBUG                            0
 //Enable on io security errors
 #define KERNEL_IO_DEBUG                             1
 //maximum number of global handles. Must be at least 1

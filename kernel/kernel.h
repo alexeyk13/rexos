@@ -1,6 +1,6 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2018, Alexey Kramarenko
+    Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
 */
 
@@ -73,6 +73,10 @@ typedef struct {
 #if (KERNEL_PROCESS_STAT)
     KPROCESS* wait_processes;
 #endif //(KERNEL_PROCESS_STAT)
+#if (KERNEL_SVC_DEBUG)
+    unsigned int num, param1, param2, param3;
+    HANDLE call_process;
+#endif //KERNEL_SVC_DEBUG
     //----------------------- printk support ---------------------------
     STDOUT stdout;
     void* stdout_param;
