@@ -81,6 +81,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Other drivers:
   * МЭЛТ mt12864j LCD display
   * NXP Kinetis MK22: generic, UART, RTC, WDT, I2C, USB, flash (commercial license)
+  * ESP8266
 
 Cortex-M3 features:
 ------------------
@@ -94,6 +95,11 @@ ARM7 features:
 
 History
 =======
+0.6.0
+- ESP8266 driver
+- fix multi-pool allocation error
+- SVC calls trace for deep kernel debugging
+
 
 0.5.9
 - uart timeouts in US
