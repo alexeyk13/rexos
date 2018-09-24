@@ -32,7 +32,7 @@
 #include "kernel_config.h"
 
 #ifndef KERNEL_GLOBAL_SIZE
-//shit, but assembler safe
+//hack, but assembler safe
 #define KERNEL_GLOBAL_SIZE                                  12
 #endif
 

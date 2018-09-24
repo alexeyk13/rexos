@@ -964,7 +964,7 @@ static inline int rndisd_send_encapsulated_command(USBD* usbd, RNDISD* rndisd, I
             break;
         }
         rndisd->notify_busy = true;
-        //Fucking Microsoft doesn't use SETUP, they made own interface
+        //Microsoft doesn't use SETUP, they made own interface
         switch (msg->message_type)
         {
         case REMOTE_NDIS_INITIALIZE_MSG:
