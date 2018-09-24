@@ -890,7 +890,7 @@
 
 #if defined(STM32)
 
-//fucking morons in ST forgot to check if variable is already defined
+//ST forgot to check if variable is already defined
 #undef SRAM_BASE
 #undef FLASH_BASE
 

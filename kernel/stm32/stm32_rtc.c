@@ -265,7 +265,6 @@ TIME* stm32_rtc_get(TIME* time)
     time->day = value / SEC_IN_DAY + EPOCH_DATE;
     return time;
 #else
-    //fucking shit
     struct tm ts;
     ts.tm_sec = ((RTC->TR >> 4) & 7) * 10 + (RTC->TR & 0xf);
     ts.tm_min = ((RTC->TR >> 12) & 7) * 10 + ((RTC->TR >> 8) & 0xf);
@@ -305,7 +304,6 @@ void stm32_rtc_set(TIME* time)
     RTC->CNTL = (uint16_t)(value & 0xffff);
 
 #else
-    //fucking shit
     struct tm ts;
     gmtime(time, &ts);
     ts.tm_year -= 2000;
