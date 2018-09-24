@@ -160,7 +160,7 @@ static void ccidd_tx_data_block(USBD* usbd, CCIDD* ccidd)
     ccidd->state = CCIDD_STATE_TXD;
 }
 
-static void ccidd_tx_params_ex(USBD* usbd, CCIDD* ccidd, uint8_t error, uint8_t seq, uint8_t status, CCID_PROTOCOL protocol, IO* io, IO* data_io)
+static void ccidd_tx_params_ex(USBD* usbd, CCIDD* ccidd, uint8_t seq, uint8_t error, uint8_t status, CCID_PROTOCOL protocol, IO* io, IO* data_io)
 {
     CCID_MSG_PARAMS* msg = io_data(io);
     if (data_io)
