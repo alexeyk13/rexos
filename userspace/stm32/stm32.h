@@ -651,6 +651,7 @@
 #define STM32F407
 //192K
 #define SRAM_SIZE           0x30000
+#define I2C_COUNT           3
 #endif
 
 #if defined(STM32F411CC) || defined(STM32F411CE) || defined(STM32F411RC) || defined(STM32F411RE) || defined(STM32F411VC) || defined(STM32F411VE)
