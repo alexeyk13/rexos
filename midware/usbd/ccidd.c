@@ -352,6 +352,12 @@ void ccidd_class_reset(USBD* usbd, void* param)
 
     usbd_usb_ep_close(usbd, ccidd->data_ep);
     usbd_usb_ep_close(usbd, USB_EP_IN | ccidd->data_ep);
+    if (ccidd->user_io)
+    {
+        usbd_io_user(usbd, ccidd->iface, 0, HAL_IO_CMD(HAL_USBD_IFACE, IPC_READ), ccidd->user_io, ERROR_IO_CANCELLED);
+        ccidd->user_io = NULL;
+    }
+
     usbd_unregister_endpoint(usbd, ccidd->iface, ccidd->data_ep);
     if (ccidd->status_ep)
     {
@@ -368,6 +374,13 @@ void ccidd_class_suspend(USBD* usbd, void* param)
     CCIDD* ccidd = (CCIDD*)param;
     usbd_usb_ep_flush(usbd, ccidd->data_ep);
     usbd_usb_ep_flush(usbd, USB_EP_IN | ccidd->data_ep);
+
+    if (ccidd->user_io)
+    {
+        usbd_io_user(usbd, ccidd->iface, 0, HAL_IO_CMD(HAL_USBD_IFACE, IPC_READ), ccidd->user_io, ERROR_IO_CANCELLED);
+        ccidd->user_io = NULL;
+    }
+
     ccidd->state = CCIDD_STATE_IDLE;
     ccidd->aborting = false;
     if (ccidd->status_ep && ccidd->status_busy)
