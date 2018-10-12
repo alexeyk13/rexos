@@ -17,7 +17,7 @@
 #include "stm32_config.h"
 #include "sys_config.h"
 
-#ifndef RTC_EXTI_LINE
+#if defined(STM32L0) || defined(STM32L1)
 #define RTC_EXTI_LINE                               20
 #endif
 
@@ -39,9 +39,11 @@ void stm32_rtc_isr(int vector, void* param)
     RTC->CRL = 0;
 #else
     RTC->ISR &= ~RTC_ISR_WUTF;
-    EXTI->PR |= (1 << RTC_EXTI_LINE);
 #endif
 
+#if defined(STM32L0) || defined(STM32L1)
+    EXTI->PR |= (1 << RTC_EXTI_LINE);
+#endif
     ksystime_second_pulse();
 }
 
@@ -107,7 +109,6 @@ static void enter_configuration()
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     RTC->CRL |= RTC_CRL_CNF;
 #else
-    stm32_disable_write_protection();
     RTC->ISR |= RTC_ISR_INIT;
     while ((RTC->ISR & RTC_ISR_INITF) == 0) {}
 #endif
@@ -120,7 +121,6 @@ static void leave_configuration()
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
 #else
     RTC->ISR &= ~RTC_ISR_INIT;
-    stm32_enable_write_protection();
 #endif
 }
 
@@ -220,7 +220,7 @@ static inline void stm32_rtc_enable_second_pulse()
    RTC->CRH |= RTC_CRH_SECIE;
 #else
 
-#if defined(STM32L0) || defined(STM32L1) || defined(STM32F0)
+#if defined(STM32L0) || defined(STM32L1)
    // EXTI line 20 is connected to the RTC Wakeup event
    EXTI->IMR |= (1 << RTC_EXTI_LINE);
    EXTI->RTSR |= (1 << RTC_EXTI_LINE);
@@ -247,7 +247,6 @@ void stm32_rtc_init()
     {
         stm32_rtc_on();
         stm32_rtc_configure();
-        stm32_disable_write_protection();
     }
 
     stm32_rtc_enable_second_pulse();
