@@ -284,7 +284,7 @@ static inline bool stm32_power_pll_on(STM32_CLOCK_SOURCE_TYPE src)
     return true;
 }
 
-static inline int get_pll_clock()
+static inline int stm32_power_get_pll_clock()
 {
     int pllsrc = HSI_VALUE;
 #if (HSE_VALUE)

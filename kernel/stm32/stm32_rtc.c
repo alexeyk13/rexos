@@ -280,6 +280,7 @@ TIME* stm32_rtc_get(TIME* time)
 #endif
 }
 
+#if defined(STM32F1)
 void stm32_rtc_set_alarm_sec(uint32_t delta_sec)
 {
     uint32_t value;
@@ -292,6 +293,8 @@ void stm32_rtc_set_alarm_sec(uint32_t delta_sec)
 
     leave_configuration();
 }
+#endif //STM32F1
+
 
 void stm32_rtc_set(TIME* time)
 {
@@ -334,9 +337,10 @@ void stm32_rtc_request(IPC* ipc)
         time.ms = ipc->param2;
         stm32_rtc_set(&time);
         break;
+#if defined(STM32F1)
     case RTC_SET_ALARM_SEC:
         stm32_rtc_set_alarm_sec(ipc->param1);
-
+#endif //STM32F1
     default:
         kerror(ERROR_NOT_SUPPORTED);
         break;

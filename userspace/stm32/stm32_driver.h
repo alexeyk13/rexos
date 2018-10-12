@@ -314,7 +314,6 @@ typedef enum {
     STM32_ADC15,
 #ifdef STM32L0
     STM32_ADC_VLCD,
-    STM32_ADC_VREF,
 #endif //STM32L0
     STM32_ADC_TEMP,
     STM32_ADC_VREF,
