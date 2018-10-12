@@ -38,7 +38,7 @@ static inline void stm32_adc_open_device(EXO* exo)
     //start self-calibration
     ADC1->CR2 |= ADC_CR2_CAL;
     while(ADC1->CR2 & ADC_CR2_CAL) {}
-#elif defined STM32L0
+#elif (defined STM32L0) || (defined STM32F0)
 #if (STM32_ADC_ASYNCRONOUS_CLOCK)
     RCC->CR |= RCC_CR_HSION;
     while ((RCC->CR & RCC_CR_HSIRDY) == 0) {}
@@ -117,7 +117,7 @@ static inline void stm32_adc_close_device(EXO* exo)
     //turn ADC off
 #ifdef STM32F1
     ADC1->CR2 &= ~ADC_CR2_ADON;
-#elif defined STM32L0
+#elif (defined STM32L0) || (defined STM32F0)
 #if (STM32_ADC_ASYNCRONOUS_CLOCK)
     RCC->CR &= ~RCC_CR_HSION;
 #endif //STM32_ADC_ASYNCRONOUS_CLOCK
@@ -180,7 +180,7 @@ static int stm32_adc_get(EXO* exo, STM32_ADC_CHANNEL channel, unsigned int sampl
     while ((ADC1->SR & ADC_SR_EOC) == 0) {}
 
     return ADC1->DR;
-#elif defined STM32L0
+#elif (defined STM32L0) || (defined STM32F0)
     ADC1->SMPR = samplerate;
     ADC1->CHSELR = 1 << channel;
     ADC1->CR |= ADC_CR_ADSTART;
