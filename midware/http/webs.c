@@ -763,7 +763,7 @@ static inline void webs_session_rx(WEBS* webs, WEBS_SESSION* session, int size)
     //Make sure all data received
     if (session->data_size == 0)
         session->data_size = web_get_int_param(session->req + session->status_line_size, session->header_size, "content-length");
-    if (session->data_size + session->header_size < session->req_size)
+    if (session->data_size + session->header_size > session->req_size)
     {
         tcp_read(webs->tcpip, session->conn, session->io, WEBS_IO_SIZE);
         return;
