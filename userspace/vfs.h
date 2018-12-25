@@ -46,6 +46,7 @@ typedef enum {
     VFS_START_TRANSACTION,
     VFS_COMMIT_TRANSACTION,
     VFS_ROLLBACK_TRANSACTION,
+    VFS_DEFRAG,
     VFS_STAT
 } VFS_IPCS;
 
@@ -77,6 +78,18 @@ typedef struct {
     char name[VFS_MAX_FILE_PATH + 1];
 } VFS_OPEN_TYPE;
 
+#if (VFS_BER2)
+typedef struct {
+    unsigned int block_size;         // in bytes
+    unsigned int sectors_per_block;
+} VFS_BER_FORMAT_TYPE;
+
+typedef struct {
+    unsigned int free_blocks, bad_blocks, outdated_sectors, actual_sectors;
+    unsigned int sector_size, total_sectors;
+} VFS_BER_STAT_TYPE;
+#else
+
 typedef struct {
     unsigned int block_sectors, fs_blocks;
 } VFS_BER_FORMAT_TYPE;
@@ -84,6 +97,7 @@ typedef struct {
 typedef struct {
     unsigned int crc_blocks, bad_blocks, crc_errors_count;
 } VFS_BER_STAT_TYPE;
+#endif //BER2
 
 typedef struct {
     unsigned int root_entries;
@@ -103,6 +117,10 @@ bool vfs_open_ber(VFS_RECORD_TYPE* vfs_record, unsigned int block_sectors);
 void vfs_close_ber(VFS_RECORD_TYPE* vfs_record);
 bool vfs_format_ber(VFS_RECORD_TYPE* vfs_record, VFS_BER_FORMAT_TYPE* format);
 bool vfs_ber_get_stat(VFS_RECORD_TYPE* vfs_record, VFS_BER_STAT_TYPE* stat);
+bool vfs_ber_read_sectors(VFS_RECORD_TYPE* vfs_record, IO* io, uint32_t sector, uint32_t sectors);
+bool vfs_ber_write_sectors(VFS_RECORD_TYPE* vfs_record, IO* io, uint32_t sector, uint32_t transaction_flag);
+bool vfs_ber_defrag(VFS_RECORD_TYPE* vfs_record);
+
 
 bool vfs_ber_start_transaction(VFS_RECORD_TYPE* vfs_record);
 bool vfs_ber_commit_transaction(VFS_RECORD_TYPE* vfs_record);

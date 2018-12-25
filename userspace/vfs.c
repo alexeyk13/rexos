@@ -69,6 +69,27 @@ bool vfs_format_ber(VFS_RECORD_TYPE* vfs_record, VFS_BER_FORMAT_TYPE* format)
     return io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, VFS_FORMAT), VFS_BER_HANDLE, vfs_record->io) >= 0;
 }
 
+bool vfs_ber_read_sectors(VFS_RECORD_TYPE* vfs_record, IO* io, uint32_t sector, uint32_t sectors)
+{
+    STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
+    stack->sector = sector;
+    return io_read_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, IPC_READ), VFS_BER_HANDLE, io, sectors);
+}
+
+bool vfs_ber_write_sectors(VFS_RECORD_TYPE* vfs_record, IO* io, uint32_t sector, uint32_t transaction_flag)
+{
+    STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
+    stack->sector = sector;
+    stack->flags = transaction_flag;
+    return io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, IPC_WRITE), VFS_BER_HANDLE, io);
+}
+
+bool vfs_ber_defrag(VFS_RECORD_TYPE* vfs_record)
+{
+    return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, VFS_DEFRAG), VFS_BER_HANDLE, 0, 0) >= 0;
+}
+
+
 bool vfs_ber_get_stat(VFS_RECORD_TYPE* vfs_record, VFS_BER_STAT_TYPE* stat)
 {
     memset(stat, 0x00, sizeof(VFS_BER_STAT_TYPE));

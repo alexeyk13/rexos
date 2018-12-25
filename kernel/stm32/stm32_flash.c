@@ -50,13 +50,21 @@ void stm32_flash_init(EXO* exo)
     exo->flash.activity = INVALID_HANDLE;
 }
 
-static bool check_range(uint32_t sector, uint32_t size)
+static bool check_range(uint32_t sector, uint32_t size, uint32_t flags)
 {
-    if((size == 0) || (size & (FLASH_SECTOR_SIZE - 1)))
-        return false;
-    if((sector + size/FLASH_SECTOR_SIZE) > FLASH_SECTOR_COUNT)
-        return false;
-    return true;
+    if(flags & STORAGE_OFFSET_INSTED_SECTOR)
+    {
+        if(size == 0 || ((sector + size)/FLASH_SECTOR_SIZE) > FLASH_SECTOR_COUNT)
+            return false;
+        return true;
+    }else{
+        if((size == 0) || (size & (FLASH_SECTOR_SIZE - 1)))
+            return false;
+        if((sector + size/FLASH_SECTOR_SIZE) > FLASH_SECTOR_COUNT)
+            return false;
+        return true;
+
+    }
 }
 
 static inline void stm32_flash_flush(EXO* exo)
@@ -109,7 +117,7 @@ static inline void stm32_flash_read(EXO* exo, HANDLE process, HANDLE user, IO* i
         kerror(ERROR_NOT_CONFIGURED);
         return;
     }
-    if ((user != exo->flash.user) || !check_range(stack->sector, size))
+    if ((user != exo->flash.user) || !check_range(stack->sector, size, stack->flags))
     {
         kerror(ERROR_INVALID_PARAMS);
         return;
@@ -120,7 +128,10 @@ static inline void stm32_flash_read(EXO* exo, HANDLE process, HANDLE user, IO* i
         exo->flash.activity = INVALID_HANDLE;
     }
 
-    base_addr = stack->sector * FLASH_SECTOR_SIZE + FLASH_BASE + STM32_FLASH_USER_CODE_SIZE;
+    if(stack->flags & STORAGE_OFFSET_INSTED_SECTOR)
+        base_addr = stack->sector + FLASH_BASE + STM32_FLASH_USER_CODE_SIZE;
+    else
+        base_addr = stack->sector * FLASH_SECTOR_SIZE + FLASH_BASE + STM32_FLASH_USER_CODE_SIZE;
 
     io->data_size = 0;
     io_data_append(io, (void*)base_addr, size);
@@ -188,7 +199,7 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
         kerror(ERROR_NOT_CONFIGURED);
         return;
     }
-    if ((user != exo->flash.user) || !check_range(stack->sector, size))
+    if ((user != exo->flash.user) || !check_range(stack->sector, size, stack->flags))
     {
         kerror(ERROR_INVALID_PARAMS);
         return;
@@ -198,6 +209,37 @@ static inline void stm32_flash_write(EXO* exo, HANDLE process, HANDLE user, IO* 
         kexo_post(exo->flash.activity, HAL_CMD(HAL_FLASH, STORAGE_NOTIFY_ACTIVITY), exo->flash.user, STORAGE_FLAG_WRITE, 0);
         exo->flash.activity = INVALID_HANDLE;
     }
+
+    if ((stack->flags & STORAGE_MASK_MODE) == STORAGE_FLAG_ERASE_ONLY)
+    {
+        size /=FLASH_PAGE_SIZE;
+        for(int i = 0; i < size; i++)
+        {
+            addr = stack->sector * FLASH_SECTOR_SIZE + FLASH_BASE + STM32_FLASH_USER_CODE_SIZE + i * FLASH_PAGE_SIZE;
+            page_addr = addr & FLASH_PAGE_MASK;
+            erase_page(page_addr);
+        }
+
+        kexo_io(process, HAL_IO_CMD(HAL_FLASH, IPC_WRITE), user, io);
+        kerror(ERROR_SYNC);
+        return;
+    }
+
+    if(stack->flags & STORAGE_OFFSET_INSTED_SECTOR)
+    {
+
+        flash_block_write(stack->sector + FLASH_BASE + STM32_FLASH_USER_CODE_SIZE, io_data(io), size, &verify);
+        io_show(io);
+        if (!verify)
+        {
+            kerror(ERROR_CRC);
+            return;
+        }
+        kexo_io(process, HAL_IO_CMD(HAL_FLASH, IPC_WRITE), user, io);
+        kerror(ERROR_SYNC);
+        return;
+    }
+
 
     addr = stack->sector * FLASH_SECTOR_SIZE + FLASH_BASE + STM32_FLASH_USER_CODE_SIZE;
     //just to ignore warnings

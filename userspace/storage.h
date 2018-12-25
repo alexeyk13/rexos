@@ -13,6 +13,11 @@
 #define STORAGE_FLAG_ERASE_ONLY                                         0x0
 #define STORAGE_FLAG_WRITE                                              (1 << 0)
 #define STORAGE_FLAG_VERIFY                                             (1 << 1)
+#define STORAGE_OFFSET_INSTED_SECTOR                                    (1 << 2)
+
+#define STORAGE_START_TRANSACTION                                       (1 << 3)
+#define STORAGE_COMMIT_TRANSACTION                                      (1 << 4)
+#define STORAGE_NO_TRANSACTION                                          0
 
 #define STORAGE_FLAG_IGNORE_ACTIVITY_ON_REQUEST                         (1 << 31)
 #define STORAGE_MASK_MODE                                               0x7fffffff

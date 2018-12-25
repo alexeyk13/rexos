@@ -15,6 +15,30 @@
 #include "../../userspace/ipc.h"
 #include "../../userspace/array.h"
 
+
+#if  (VFS_BER2)
+typedef struct {
+//    uint32_t min_idx;
+    uint16_t free;
+    uint16_t outdated;
+} BER2_BLOCK_INFO;
+
+typedef struct {
+    ARRAY* trans_buffer;
+    uint16_t* remap_list;
+    BER2_BLOCK_INFO* block_info;
+    uint32_t curr_idx;
+    uint32_t curr_block;
+    uint32_t bad_blocks;
+    uint32_t free_blocks;
+    bool is_transaction, req_transaction, req_end_transaction;
+
+    unsigned int total_blocks, total_sectors, block_size, sectors_per_block, sector_size;
+    IO* io;
+    bool active;
+} BER_TYPE;
+
+#else
 typedef struct {
     VFS_BER_FORMAT_TYPE volume;
     ARRAY* trans_buffer;
@@ -25,6 +49,8 @@ typedef struct {
     IO* io;
     bool active;
 } BER_TYPE;
+
+#endif
 
 unsigned int ber_get_volume_sectors(VFSS_TYPE *vfss);
 
