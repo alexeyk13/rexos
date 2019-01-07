@@ -15,7 +15,6 @@
 #include "../../userspace/ipc.h"
 #include "../../userspace/array.h"
 
-
 #if  (VFS_BER2)
 typedef struct {
 //    uint32_t min_idx;
@@ -25,6 +24,8 @@ typedef struct {
 
 typedef struct {
     ARRAY* trans_buffer;
+    uint8_t* cash_buffer;
+    uint16_t cash_lsector;
     uint16_t* remap_list;
     BER2_BLOCK_INFO* block_info;
     uint32_t curr_idx;
@@ -59,5 +60,11 @@ bool ber_write_sectors(VFSS_TYPE* vfss, unsigned long sector, unsigned size);
 
 void ber_init(VFSS_TYPE *vfss);
 void ber_request(VFSS_TYPE *vfss, IPC* ipc);
+
+//only for ber2
+unsigned int ber_get_sector_size(VFSS_TYPE* vfss);
+void ber_defrag(VFSS_TYPE* vfss);
+void ber_delete_sector(VFSS_TYPE* vfss, uint32_t lsector);
+
 
 #endif // BER_H

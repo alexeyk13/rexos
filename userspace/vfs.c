@@ -52,6 +52,12 @@ void vfs_close_volume(VFS_RECORD_TYPE* vfs_record)
     ack(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_CLOSE), VFS_VOLUME_HANDLE, 0, 0);
 }
 
+void vfs_defrag(VFS_RECORD_TYPE* vfs_record)
+{
+    ack(vfs_record->vfs, HAL_REQ(HAL_VFS, VFS_DEFRAG), VFS_VOLUME_HANDLE, 0, 0);
+
+}
+
 bool vfs_open_ber(VFS_RECORD_TYPE* vfs_record, unsigned int block_sectors)
 {
     return get_size(vfs_record->vfs, HAL_REQ(HAL_VFS, IPC_OPEN), VFS_BER_HANDLE, block_sectors, 0) >= 0;
@@ -76,11 +82,10 @@ bool vfs_ber_read_sectors(VFS_RECORD_TYPE* vfs_record, IO* io, uint32_t sector, 
     return io_read_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, IPC_READ), VFS_BER_HANDLE, io, sectors);
 }
 
-bool vfs_ber_write_sectors(VFS_RECORD_TYPE* vfs_record, IO* io, uint32_t sector, uint32_t transaction_flag)
+bool vfs_ber_write_sectors(VFS_RECORD_TYPE* vfs_record, IO* io, uint32_t sector)
 {
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
-    stack->flags = transaction_flag;
     return io_write_sync(vfs_record->vfs, HAL_IO_REQ(HAL_VFS, IPC_WRITE), VFS_BER_HANDLE, io);
 }
 
