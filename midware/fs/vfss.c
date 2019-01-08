@@ -134,11 +134,14 @@ static inline void vfss_init(VFSS_TYPE* vfss)
 #if (VFS_BER)
     ber_init(vfss);
 #endif //VFS_BER
+
+#if (VFS_NO_FS == 0)
 #if (VFS_SFS)
     sfs_init(vfss);
 #else
     fat16_init(vfss);
 #endif  // VFS_SFS
+#endif // VFS_NO_FS
 }
 
 void vfss_request(VFSS_TYPE *vfss, IPC* ipc)
@@ -167,11 +170,14 @@ void vfss_request(VFSS_TYPE *vfss, IPC* ipc)
     }
 #endif //VFS_BER
     //forward to fs
+#if (VFS_NO_FS == 0)
 #if (VFS_SFS)
     sfs_request(vfss, ipc);
 #else
+
     fat16_request(vfss, ipc);
 #endif  // VFS_SFS
+#endif // VFS_NO_FS
 }
 
 void vfss()
