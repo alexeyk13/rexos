@@ -212,26 +212,20 @@
 #define SDMMC_DEBUG                                         1
 
 //---------------------------------- VFS ----------------------------------------------
-#define VFS_DEBUG_INFO                                      0
+#define VFS_DEBUG_INFO                                      1
 #define VFS_DEBUG_ERRORS                                    1
 #define VFS_MAX_FILE_PATH                                   256
 #define VFS_MAX_HANDLES                                     5
 //enable BER support
 #define VFS_BER                                             1
+//BER revision v2
+#define VFS_BER2                                            1
 #define VFS_BER_DEBUG_INFO                                  0
-#define VFS_BER_DEBUG_ERRORS                                1
-
-#define VFS_BER_DEBUG_TEST                                  0
-
-#define VFS_NO_FS                                           1           // 0 - filesystem SFS or FAT16
-#define VFS_BER2                                            1           // 0 - BER 1 - BER2
-
-
-//#define FLASH_SECTORS_COUNT                              16           //BER sectors for fs
-//#define FS_BLOCK_SECTORS                                  2           //BER sectors per ber block
-#define BER_BLOCKS_COUNT                                    8           //BER2 total ber blocks include header block
-#define BER_BLOCK_SIZE                                      (1024 * 2)  //BER2
-#define BER_SECTORS_PER_BLOCK                               8           //BER2
+#define VFS_BER_DEBUG_ERRORS                                0
+//RAW BER sectors only
+#define VFS_NO_FS                                           0
+//SFS/FAT16
+#define VFS_SFS                                             1
 
 
 //align data sectors by cluster start offset (recommended to enable for flash storage)
