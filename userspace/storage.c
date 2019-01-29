@@ -46,6 +46,7 @@ void storage_read(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int sec
 {
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
+    stack->flags = 0;
     io_read(process, HAL_IO_REQ(hal, IPC_READ), user, io, size);
 }
 
@@ -53,6 +54,7 @@ bool storage_read_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned in
 {
     STORAGE_STACK* stack = io_push(io, sizeof(STORAGE_STACK));
     stack->sector = sector;
+    stack->flags = 0;
     return (io_read_sync(process, HAL_IO_REQ(hal, IPC_READ), user, io, size) == size);
 }
 
