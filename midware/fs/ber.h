@@ -30,6 +30,7 @@ typedef struct {
     BER2_BLOCK_INFO* block_info;
     uint32_t curr_idx;
     uint32_t curr_block;
+    uint32_t next_block;
     uint32_t bad_blocks;
     uint32_t free_blocks;
     bool is_transaction, req_transaction, req_end_transaction;
