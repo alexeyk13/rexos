@@ -2,6 +2,8 @@
     RExOS - embedded RTOS
     Copyright (c) 2011-2017, Alexey Kramarenko
     All rights reserved.
+
+    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
 */
 
 #include "ti_power.h"

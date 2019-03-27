@@ -9,6 +9,8 @@
 *
 * Copyright(C) 2011, NXP Semiconductor
 * All rights reserved.
+
+    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
 *
 ***********************************************************************
 * Software that is described herein is for illustrative purposes only

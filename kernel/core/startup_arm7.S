@@ -2,6 +2,8 @@
     RExOS - embedded RTOS
     Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
+
+    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
 */
 
 //if you've got error in this line, than this file is compiled wrong

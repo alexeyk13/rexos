@@ -7,6 +7,8 @@
  *
  * @note
  * Copyright (C) 2009-2010 ARM Limited. All rights reserved.
+
+    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
  *
  * @par
  * ARM Limited (ARM) is supplying this software for use with Cortex-M 

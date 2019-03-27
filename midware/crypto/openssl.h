@@ -1,6 +1,8 @@
 /* crypto/aes/aes.h */
 /* ====================================================================
  * Copyright (c) 1998-2002 The OpenSSL Project.  All rights reserved.
+
+    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,6 +52,8 @@
  */
 /* ====================================================================
  * Copyright (c) 2008 The OpenSSL Project. All rights reserved.
+
+    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
  *
  * Rights for redistribution and usage in source and binary
  * forms are granted according to the OpenSSL license.

@@ -1,7 +1,9 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2018, Alexey Kramarenko
+    Copyright (c) 2011-2019, RExOS team
     All rights reserved.
+
+    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
 */
 
 #ifndef DAC_H

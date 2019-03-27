@@ -1,7 +1,9 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2017, Alexey Kramarenko
+    Copyright (c) 2011-2019, RExOS team
     All rights reserved.
+
+    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
 */
 
 #include "kernel.h"
@@ -21,7 +23,7 @@
 #include "../lib/lib_lib.h"
 #include <string.h>
 
-const char* const __KERNEL_NAME=                                                      "RExOS 0.6.0";
+const char* const __KERNEL_NAME=                                                      "RExOS 0.6.1";
 
 void stdout_stub(const char *const buf, unsigned int size, void* param)
 {

@@ -1,5 +1,7 @@
 /* ----------------------------------------------------------------------
 * Copyright (C) 2010-2014 ARM Limited. All rights reserved.
+
+    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
 *
 * $Date:        19. March 2015
 * $Revision: 	V.1.4.5

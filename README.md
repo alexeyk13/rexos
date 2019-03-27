@@ -95,6 +95,11 @@ ARM7 features:
 
 History
 =======
+0.6.1
+- SFS is now non 2^n aligned (commercial license)
+- BER v2 is up to 6 time more fast, than BER v1 (commercial license)
+- MK22 flash driver rewritten for small blocks access (commercial license)
+
 0.6.0
 - ESP8266 driver
 - fix multi-pool allocation error

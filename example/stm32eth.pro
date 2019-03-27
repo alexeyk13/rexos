@@ -152,7 +152,108 @@ HEADERS += ../../rexos/userspace/core/stm32.h \
     ../../rexos/userspace/udp.h \
     ../../rexos/userspace/so.h \
     ../../rexos/midware/tcpips/tcps.h \
-    ../../rexos/userspace/tcp.h
+    ../../rexos/userspace/tcp.h \
+    stm32_config.h \
+    sys_config.h \
+    usb_desc.h \
+    net.h \
+    app_private.h \
+    app.h \
+    comm.h \
+    config.h \
+    kernel_config.h \
+    ../kernel/arm.ld.S \
+    ../kernel/dbg.h \
+    ../kernel/karray.h \
+    ../kernel/kernel.h \
+    ../kernel/kerror.h \
+    ../kernel/kexo.h \
+    ../kernel/kio.h \
+    ../kernel/kipc.h \
+    ../kernel/kirq.h \
+    ../kernel/kobject.h \
+    ../kernel/kprocess_private.h \
+    ../kernel/kprocess.h \
+    ../kernel/kso.h \
+    ../kernel/kstdlib.h \
+    ../kernel/kstream.h \
+    ../kernel/ksystime.h \
+    ../kernel/drv/eth_phy.h \
+    ../kernel/drv/sdmmcs.h \
+    ../kernel/drv/wavegen.h \
+    ../kernel/stm32/stm32_adc.h \
+    ../kernel/stm32/stm32_can.h \
+    ../kernel/stm32/stm32_dac.h \
+    ../kernel/stm32/stm32_eep.h \
+    ../kernel/stm32/stm32_eth.h \
+    ../kernel/stm32/stm32_exo_private.h \
+    ../kernel/stm32/stm32_exo.h \
+    ../kernel/stm32/stm32_flash.h \
+    ../kernel/stm32/stm32_i2c.h \
+    ../kernel/stm32/stm32_otg.h \
+    ../kernel/stm32/stm32_pin.h \
+    ../kernel/stm32/stm32_power.h \
+    ../kernel/stm32/stm32_regsusb.h \
+    ../kernel/stm32/stm32_rtc.h \
+    ../kernel/stm32/stm32_spi.h \
+    ../kernel/stm32/stm32_timer.h \
+    ../kernel/stm32/stm32_uart.h \
+    ../kernel/stm32/stm32_usb.h \
+    ../kernel/stm32/stm32_wdt.h \
+    ../lib/lib_array.h \
+    ../lib/lib_lib.h \
+    ../lib/lib_so.h \
+    ../lib/lib_std.h \
+    ../lib/lib_stdio.h \
+    ../lib/lib_systime.h \
+    ../lib/pool.h \
+    ../lib/printf.h \
+    ../midware/crypto/aes.h \
+    ../midware/crypto/hmac.h \
+    ../midware/crypto/openssl.h \
+    ../midware/crypto/pkcs.h \
+    ../midware/crypto/sha1.h \
+    ../midware/crypto/sha256.h \
+    ../midware/fs/ber.h \
+    ../midware/fs/fat16.h \
+    ../midware/fs/vfss_private.h \
+    ../midware/fs/vfss.h \
+    ../midware/scsis/scsis_bc.h \
+    ../midware/scsis/scsis_mmc.h \
+    ../midware/scsis/scsis_pc.h \
+    ../midware/scsis/scsis_private.h \
+    ../midware/scsis/scsis_sat.h \
+    ../midware/scsis/scsis.h \
+    ../midware/tcpips/arps.h \
+    ../midware/tcpips/dhcps.h \
+    ../midware/tcpips/dnss.h \
+    ../midware/tcpips/icmps.h \
+    ../midware/tcpips/ips.h \
+    ../midware/tcpips/macs.h \
+    ../midware/tcpips/routes.h \
+    ../midware/tcpips/tcpips_private.h \
+    ../midware/tcpips/tcpips.h \
+    ../midware/tcpips/tcps.h \
+    ../midware/tcpips/udps.h \
+    ../midware/usbd/ccidd.h \
+    ../midware/usbd/cdc_acmd.h \
+    ../midware/usbd/hidd_kbd.h \
+    ../midware/usbd/mscd.h \
+    ../midware/usbd/rndisd.h \
+    ../midware/usbd/usbd.h \
+    ../template/kernel_config.h \
+    ../template/lpc_config.h \
+    ../template/mt_config.h \
+    ../template/stm32_config.h \
+    ../template/sys_config.h \
+    ../template/ti_config.h \
+    ../userspace/core/core.h \
+    ../userspace/lpc/lpc_driver.h \
+    ../userspace/lpc/lpc.h \
+    ../userspace/lpc/lpc11uxx_bits.h \
+    ../userspace/lpc/lpc18xx_bits.h \
+    ../userspace/ti/ti_driver.h \
+    ../userspace/ti/ti.h
 SOURCES += \
 	 ../../rexos/kernel/core/kcortexm.c \
 	 ../../rexos/kernel/asm_defines.c \
@@ -264,8 +365,94 @@ SOURCES += \
     ../../rexos/userspace/udp.c \
     ../../rexos/userspace/so.c \
     ../../rexos/midware/tcpips/tcps.c \
-    ../../rexos/userspace/tcp.c
+    ../../rexos/userspace/tcp.c \
+    app.c \
+    comm.c \
+    net.c \
+    ../kernel/dbg.c \
+    ../kernel/karray.c \
+    ../kernel/kernel.c \
+    ../kernel/kerror.c \
+    ../kernel/kexo.c \
+    ../kernel/kio.c \
+    ../kernel/kipc.c \
+    ../kernel/kirq.c \
+    ../kernel/kobject.c \
+    ../kernel/kprocess.c \
+    ../kernel/kso.c \
+    ../kernel/kstdlib.c \
+    ../kernel/kstream.c \
+    ../kernel/ksystime.c \
+    ../kernel/drv/eth_phy.c \
+    ../kernel/drv/sdmmcs.c \
+    ../kernel/drv/wavegen.c \
+    ../kernel/stm32/stm32_adc.c \
+    ../kernel/stm32/stm32_can.c \
+    ../kernel/stm32/stm32_dac.c \
+    ../kernel/stm32/stm32_eep.c \
+    ../kernel/stm32/stm32_eth.c \
+    ../kernel/stm32/stm32_exo.c \
+    ../kernel/stm32/stm32_flash.c \
+    ../kernel/stm32/stm32_i2c.c \
+    ../kernel/stm32/stm32_otg.c \
+    ../kernel/stm32/stm32_pin.c \
+    ../kernel/stm32/stm32_power.c \
+    ../kernel/stm32/stm32_rtc.c \
+    ../kernel/stm32/stm32_spi.c \
+    ../kernel/stm32/stm32_timer.c \
+    ../kernel/stm32/stm32_uart.c \
+    ../kernel/stm32/stm32_usb.c \
+    ../kernel/stm32/stm32_wdt.c \
+    ../lib/lib_array.c \
+    ../lib/lib_lib.c \
+    ../lib/lib_so.c \
+    ../lib/lib_std.c \
+    ../lib/lib_stdio.c \
+    ../lib/lib_systime.c \
+    ../lib/pool.c \
+    ../lib/printf.c \
+    ../midware/crypto/aes_cbc.c \
+    ../midware/crypto/aes_core.c \
+    ../midware/crypto/cbc128.c \
+    ../midware/crypto/hmac.c \
+    ../midware/crypto/pkcs.c \
+    ../midware/crypto/sha1.c \
+    ../midware/crypto/sha256.c \
+    ../midware/fs/ber.c \
+    ../midware/fs/fat16.c \
+    ../midware/fs/vfss.c \
+    ../midware/scsis/scsis_bc.c \
+    ../midware/scsis/scsis_mmc.c \
+    ../midware/scsis/scsis_pc.c \
+    ../midware/scsis/scsis_private.c \
+    ../midware/scsis/scsis_sat.c \
+    ../midware/scsis/scsis.c \
+    ../midware/tcpips/arps.c \
+    ../midware/tcpips/dhcps.c \
+    ../midware/tcpips/dnss.c \
+    ../midware/tcpips/icmps.c \
+    ../midware/tcpips/ips.c \
+    ../midware/tcpips/macs.c \
+    ../midware/tcpips/routes.c \
+    ../midware/tcpips/tcpips.c \
+    ../midware/tcpips/tcps.c \
+    ../midware/tcpips/udps.c \
+    ../midware/usbd/ccidd.c \
+    ../midware/usbd/cdc_acmd.c \
+    ../midware/usbd/hidd_kbd.c \
+    ../midware/usbd/mscd.c \
+    ../midware/usbd/rndisd.c \
+    ../midware/usbd/usbd.c
 OTHER_FILES += Makefile \
 	 ../../rexos/kernel/core/startup_cortexm.S \
 	 ../../rexos/kernel/arm.ld.S \
 	 ../../rexos/userspace/core/cortexm.S
+
+SUBDIRS += \
+    stm32eth.pro
+
+DISTFILES += \
+    stm32eth.pro.user \
+    stm32f1.cfg \
+    ../userspace/core/arm7.S \
+    ../userspace/core/cortexm.S
