@@ -20,6 +20,8 @@ bool spi_open(int port,  SPI_MODE* mode)
     if(mode->cpol) prom |= SPI_CPOL_MSK;
     if(mode->cpha) prom |= SPI_CPHA_MSK;
     if(mode->io_mode) prom |= SPI_IO_MODE;
+    if(mode->baudrate_mbps) prom |= (mode->baudrate_mbps) << 12;//bits 11-18
+    if(mode->ctrl_cs) prom |= SPI_CTRL_CS;
     return get_handle_exo(HAL_REQ(HAL_SPI, IPC_OPEN), port, prom, mode->cs_pin) != INVALID_HANDLE;
 }
 
