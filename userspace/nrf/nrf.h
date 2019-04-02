@@ -1,14 +1,10 @@
-/* Copyright (c) 2009 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
- */
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2019, RExOS team
+    All rights reserved.
+
+    author: RJ (jam_roma@yahoo.com)
+*/
 
 
 #ifndef NRF_H
@@ -50,6 +46,7 @@
 #define RTC_COUNT               2
 #define TIMERS_COUNT            3
 #define SOFTWARE_IRQ_COUNT      6
+#define GPIO_COUNT              32
 
 #define IRQ_VECTORS_COUNT       32
 #endif // NRF5122xxAA || NRF5122xxAB || NRF5122xxAC
@@ -63,6 +60,7 @@
 #ifndef CORTEX_M0
 #define CORTEX_M0
 
+#define EXODRIVERS
 #ifndef FLASH_BASE
 #define FLASH_BASE                0x00000000
 #endif
@@ -76,7 +74,7 @@
 #undef SRAM_BASE
 #undef FLASH_BASE
 
-#include "nrf51_config.h"
+#include "nrf_config.h"
 
 #include "nrf51.h"
 #include "nrf51_bitfields.h"
