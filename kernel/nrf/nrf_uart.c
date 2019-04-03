@@ -75,6 +75,9 @@ static inline void nrf_uart_set_baudrate(EXO* exo, UART_PORT port, IPC* ipc)
             UART_REGS[port]->BAUDRATE = (UART_BAUDRATE_BAUDRATE_Baud9600 << UART_BAUDRATE_BAUDRATE_Pos);
             break;
     }
+
+    if('N' != baudrate.parity)
+        UART_REGS[port]->CONFIG |= UART_CONFIG_PARITY_Msk;
 }
 
 static inline void nrf_uart_setup_printk(EXO* exo, UART_PORT port)

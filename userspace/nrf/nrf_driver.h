@@ -40,12 +40,26 @@ typedef enum {
     PIN_SENSE_HIGH      = GPIO_PIN_CNF_SENSE_High,    ///<  Pin sense high level.
 } PIN_SENSE;
 //-------------------------------------------------- TIMER -------------------------------------------------------------------
+#define TIMER_CHANNEL_INVALID                        0xff
+
+#define TIMER_MODE_CHANNEL_POS                       16
+#define TIMER_MODE_CHANNEL_MASK                      (0xf << TIMER_MODE_CHANNEL_POS)
+
 #if defined(NRF51)
 typedef enum {
     TIMER_0 = 0,
     TIMER_1,
     TIMER_2,
+    TIMER_MAX
 } TIMER_NUM;
+
+typedef enum {
+    TIMER_CC0 = 0,
+    TIMER_CC1,
+    TIMER_CC2,
+    TIMER_CC3,
+} TIMER_CC;
+
 #endif // NRF51
 
 //-------------------------------------------------- UART -------------------------------------------------------------------

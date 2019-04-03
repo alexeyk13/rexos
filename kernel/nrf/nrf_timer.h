@@ -16,10 +16,12 @@
 #include "nrf_exo.h"
 #include "../../userspace/gpio.h"
 #include "../../userspace/htimer.h"
+#include "../../userspace/nrf/nrf_driver.h"
 
 typedef struct {
     //timer specific
-    int hpet_uspsc;
+    unsigned int hpet_start;
+    uint8_t main_channel[TIMER_MAX];
 } TIMER_DRV;
 
 void nrf_timer_init(EXO* exo);
