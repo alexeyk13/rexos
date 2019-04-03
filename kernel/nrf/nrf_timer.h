@@ -19,9 +19,9 @@
 #include "../../userspace/nrf/nrf_driver.h"
 
 typedef struct {
-    //timer specific
     unsigned int hpet_start;
-    uint8_t main_channel[TIMER_MAX];
+    //cached value
+    unsigned int core_clock, core_clock_us;
 } TIMER_DRV;
 
 void nrf_timer_init(EXO* exo);

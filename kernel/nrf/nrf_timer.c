@@ -15,7 +15,7 @@
 #include "../kirq.h"
 #include <string.h>
 
-#define S1_US                                       1000000
+#define S1_US                                      1000000
 
 typedef NRF_TIMER_Type*                            NRF_TIMER_Type_P;
 
@@ -24,10 +24,34 @@ const int TIMER_VECTORS[TIMERS_COUNT]           =  {TIMER0_IRQn,   TIMER1_IRQn, 
 const NRF_TIMER_Type_P TIMER_REGS[TIMERS_COUNT] =  {NRF_TIMER0, NRF_TIMER1, NRF_TIMER2};
 #endif // NRF51
 
+void nrf_timer_second_isr(int vector, void* param)
+{
+    if((TIMER_REGS[SECOND_TIMER]->EVENTS_COMPARE[SECOND_CHANNEL] != 0) &&
+            ((TIMER_REGS[SECOND_TIMER]->INTENSET & (TIMER_INTENSET_COMPARE0_Msk << SECOND_CHANNEL)) != 0))
+    {
+        // clear compare register
+        TIMER_REGS[SECOND_TIMER]->EVENTS_COMPARE[SECOND_CHANNEL] = 0;
+        // clear interrupt pending register
+        TIMER_REGS[SECOND_TIMER]->TASKS_CLEAR = 1;
+        ksystime_second_pulse();
+    }
+}
+
+void nrf_timer_hpet_isr(int vector, void* param)
+{
+    if((TIMER_REGS[HPET_TIMER]->EVENTS_COMPARE[HPET_CHANNEL] != 0) &&
+            ((TIMER_REGS[HPET_TIMER]->INTENSET & (TIMER_INTENSET_COMPARE0_Msk << HPET_CHANNEL)) != 0))
+    {
+        // clear compare register
+        TIMER_REGS[HPET_TIMER]->EVENTS_COMPARE[HPET_CHANNEL] = 0;
+        // clear interrupt pending register
+        TIMER_REGS[HPET_TIMER]->TASKS_CLEAR = 1;
+        ksystime_hpet_timeout();
+    }
+}
+
 void nrf_timer_open(EXO* exo, TIMER_NUM num, unsigned int flags)
 {
-    unsigned int channel = (flags & TIMER_MODE_CHANNEL_MASK) >> TIMER_MODE_CHANNEL_POS;
-    exo->timer.main_channel[num] = channel;
     //power up
     //TIMER_REGS[num]->POWER          = 1;
 
@@ -66,11 +90,6 @@ void nrf_timer_close(EXO* exo, TIMER_NUM num)
     TIMER_REGS[num]->TASKS_SHUTDOWN = 1;
 }
 
-static unsigned int nrf_timer_get_clock(EXO* exo)
-{
-    return nrf_power_get_clock_inside(exo);
-}
-
 static void nrf_timer_setup_clk(EXO* exo, TIMER_NUM num, uint8_t cc_num, unsigned int psc,  unsigned int clk)
 {
     // set prescaler
@@ -81,7 +100,7 @@ static void nrf_timer_setup_clk(EXO* exo, TIMER_NUM num, uint8_t cc_num, unsigne
 
 static void nrf_timer_setup_us(EXO* exo, TIMER_NUM num, uint8_t cc_num, unsigned int us)
 {
-    uint32_t freq = nrf_timer_get_clock(exo);
+    uint32_t freq = exo->timer.core_clock;
     uint32_t n = 0;
     // Get freq in MHz
     freq /= 1000000;
@@ -121,43 +140,17 @@ void nrf_timer_stop(TIMER_NUM num)
     TIMER_REGS[num]->TASKS_CLEAR = 1;
 }
 
-void nrf_timer_isr(int vector, void* param)
-{
-    if((TIMER_REGS[SECOND_TIMER]->EVENTS_COMPARE[HPET_CHANNEL] != 0) &&
-            ((TIMER_REGS[SECOND_TIMER]->INTENSET & (TIMER_INTENSET_COMPARE0_Msk << HPET_CHANNEL)) != 0))
-    {
-        // clear compare register
-        TIMER_REGS[SECOND_TIMER]->EVENTS_COMPARE[HPET_CHANNEL] = 0;
-        // clear interrupt pending register
-        TIMER_REGS[SECOND_TIMER]->TASKS_CLEAR = 1;
-        ksystime_hpet_timeout();
-    }
-    if((TIMER_REGS[SECOND_TIMER]->EVENTS_COMPARE[SECOND_CHANNEL] != 0) &&
-            ((TIMER_REGS[SECOND_TIMER]->INTENSET & (TIMER_INTENSET_COMPARE0_Msk << SECOND_CHANNEL)) != 0))
-    {
-        // clear compare register
-        TIMER_REGS[SECOND_TIMER]->EVENTS_COMPARE[SECOND_CHANNEL] = 0;
-        // clear interrupt pending register
-        TIMER_REGS[SECOND_TIMER]->TASKS_CLEAR = 1;
-        ksystime_second_pulse();
-    }
-
-}
-
 void hpet_start(unsigned int value, void* param)
 {
     EXO* exo = (EXO*)param;
     //find near prescaller
-    exo->timer.hpet_start = TIMER_REGS[SECOND_TIMER]->CC[HPET_CHANNEL];
-    //don't need to start in free-run mode, second pulse will go faster anyway
-    if (value < S1_US)
-        nrf_timer_start(exo, SECOND_TIMER, HPET_CHANNEL, TIMER_VALUE_US, value);
+    exo->timer.hpet_start = TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL];
+    nrf_timer_start(exo, HPET_TIMER, HPET_CHANNEL, TIMER_VALUE_US, value);
 }
 
 void hpet_stop(void* param)
 {
-    EXO* exo = (EXO*)param;
-    nrf_timer_stop(SECOND_TIMER);
+    nrf_timer_stop(HPET_TIMER);
 }
 
 unsigned int hpet_elapsed(void* param)
@@ -165,24 +158,27 @@ unsigned int hpet_elapsed(void* param)
     EXO* exo = (EXO*)param;
     unsigned int tc = 0;
     // capture data
-    tc = TIMER_REGS[SECOND_TIMER]->CC[HPET_CHANNEL];
+    tc = TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL];
     // return elapsed data
-    unsigned int value = (exo->timer.hpet_start < tc) ? tc - exo->timer.hpet_start : TIMER_REGS[SECOND_TIMER]->CC[HPET_CHANNEL] + 1 - exo->timer.hpet_start + tc;
+    unsigned int value = (exo->timer.hpet_start < tc) ? tc - exo->timer.hpet_start : TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL] + 1 - exo->timer.hpet_start + tc;
     return value;
 }
 
 void nrf_timer_init(EXO* exo)
 {
-    int i = 0;
-    for (i = 0; i < TIMER_MAX; ++i)
-        exo->timer.main_channel[i] = TIMER_CHANNEL_INVALID;
+    CB_SVC_TIMER cb_svc_timer;
+    exo->timer.core_clock = nrf_power_get_clock_inside(exo);
+    exo->timer.core_clock_us = exo->timer.core_clock / S1_US;
+    exo->timer.hpet_start = 0;
 
     //setup second tick timer
-    kirq_register(KERNEL_HANDLE, TIMER_VECTORS[SECOND_TIMER], nrf_timer_isr, (void*)exo);
-    nrf_timer_open(exo, SECOND_TIMER, TIMER_IRQ_ENABLE | (SECOND_CHANNEL << TIMER_MODE_CHANNEL_POS) | (13 << TIMER_IRQ_PRIORITY_POS));
-    nrf_timer_start(exo, SECOND_TIMER, SECOND_CHANNEL, TIMER_VALUE_US, 1);
+    kirq_register(KERNEL_HANDLE, TIMER_VECTORS[SECOND_TIMER], nrf_timer_second_isr, (void*)exo);
+    nrf_timer_open(exo, SECOND_TIMER, TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
+    nrf_timer_start(exo, SECOND_TIMER, SECOND_CHANNEL, TIMER_VALUE_HZ, 1);
 
-    CB_SVC_TIMER cb_svc_timer;
+    kirq_register(KERNEL_HANDLE, TIMER_VECTORS[HPET_TIMER], nrf_timer_hpet_isr, (void*)exo);
+    nrf_timer_open(exo, HPET_TIMER, TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
+
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
@@ -191,5 +187,23 @@ void nrf_timer_init(EXO* exo)
 
 void nrf_timer_request(EXO* exo, IPC* ipc)
 {
+    // TODO: get timer
 
+    switch (HAL_ITEM(ipc->cmd))
+    {
+    case IPC_OPEN:
+        //nrf_timer_open(exo, timer, ipc->param2);
+        break;
+    case IPC_CLOSE:
+        //nrf_timer_close(exo, timer);
+        break;
+    case TIMER_START:
+        //nrf_timer_start(exo, timer, ipc->param2, ipc->param3);
+        break;
+    case TIMER_STOP:
+//        nrf_timer_stop(timer);
+        break;
+    default:
+        kerror(ERROR_NOT_SUPPORTED);
+    }
 }
