@@ -42,9 +42,9 @@ typedef enum {
 //-------------------------------------------------- TIMER -------------------------------------------------------------------
 #if defined(NRF51)
 typedef enum {
-    TIMER_1 = 0,
+    TIMER_0 = 0,
+    TIMER_1,
     TIMER_2,
-    TIMER_3,
 } TIMER_NUM;
 #endif // NRF51
 

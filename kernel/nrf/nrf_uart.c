@@ -57,20 +57,22 @@ static inline void nrf_uart_set_baudrate(EXO* exo, UART_PORT port, IPC* ipc)
 {
     BAUD baudrate;
     unsigned int clock, stop;
+
     if (exo->uart.uarts[port] == NULL)
     {
         kerror(ERROR_NOT_CONFIGURED);
         return;
     }
+
     uart_decode_baudrate(ipc, &baudrate);
 
     switch(baudrate.baud)
     {
         case 115200:
-            NRF_UART0->BAUDRATE = (UART_BAUDRATE_BAUDRATE_Baud115200 << UART_BAUDRATE_BAUDRATE_Pos);
+            UART_REGS[port]->BAUDRATE = (UART_BAUDRATE_BAUDRATE_Baud115200 << UART_BAUDRATE_BAUDRATE_Pos);
             break;
         default:
-            NRF_UART0->BAUDRATE = (UART_BAUDRATE_BAUDRATE_Baud9600 << UART_BAUDRATE_BAUDRATE_Pos);
+            UART_REGS[port]->BAUDRATE = (UART_BAUDRATE_BAUDRATE_Baud9600 << UART_BAUDRATE_BAUDRATE_Pos);
             break;
     }
 }
@@ -79,6 +81,74 @@ static inline void nrf_uart_setup_printk(EXO* exo, UART_PORT port)
 {
     //setup kernel printk dbg
     kernel_setup_dbg(uart_write_kernel, (void*)port);
+}
+
+static inline void nrf_uart_open(EXO* exo, UART_PORT port, unsigned int mode)
+{
+//    bool ok;
+    if (exo->uart.uarts[port] != NULL)
+    {
+        kerror(ERROR_ALREADY_CONFIGURED);
+        return;
+    }
+
+    exo->uart.uarts[port] = kmalloc(sizeof(UART));
+    if (exo->uart.uarts[port] == NULL)
+    {
+        kerror(ERROR_OUT_OF_MEMORY);
+        return;
+    }
+
+    exo->uart.uarts[port]->error = ERROR_OK;
+    exo->uart.uarts[port]->io_mode = ((mode & UART_MODE) == UART_MODE_IO);
+
+    // TODO: IO mode later
+//    if (exo->uart.uarts[port]->io_mode)
+//    {
+//#if (UART_IO_MODE_SUPPORT)
+//        ok = lpc_uart_open_io(exo, port);
+//#else
+//        ok = false;
+//#endif //UART_IO_MODE_SUPPORT
+//    }
+//    else
+//        ok = lpc_uart_open_stream(exo, port, mode);
+//    if (!ok)
+//    {
+//        lpc_uart_destroy(exo, port);
+//        return;
+//    }
+
+    //power up
+
+    // set TX_PIN
+    UART_REGS[port]->PSELTXD = P9; // TODO: temporary UART pin define
+//    NRF_UART0->PSELRXD = UART_RX_PIN;
+
+    UART_REGS[port]->ENABLE = (UART_ENABLE_ENABLE_Enabled << UART_ENABLE_ENABLE_Pos);
+    UART_REGS[port]->EVENTS_RXDRDY = 0;
+
+    // Enable UART RX interrupt only
+    //NRF_UART0->INTENSET = (UART_INTENSET_RXDRDY_Set << UART_INTENSET_RXDRDY_Pos);
+
+    // Start reception and transmission
+    UART_REGS[port]->TASKS_STARTTX = 1;
+}
+
+static inline void nrf_uart_close(EXO* exo, UART_PORT port)
+{
+    if (exo->uart.uarts[port] == NULL)
+    {
+        kerror(ERROR_NOT_CONFIGURED);
+        return;
+    }
+    //disable interrupts
+    NVIC_DisableIRQ(UART_VECTORS[port]);
+    kirq_unregister(KERNEL_HANDLE, UART_VECTORS[port]);
+
+    // uart destroy
+    kfree(exo->uart.uarts[port]);
+    exo->uart.uarts[port] = NULL;
 }
 
 void nrf_uart_request(EXO* exo, IPC* ipc)
@@ -92,6 +162,7 @@ void nrf_uart_request(EXO* exo, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
+        nrf_uart_open(exo, port, ipc->param2);
         break;
     case IPC_CLOSE:
         break;
@@ -134,9 +205,4 @@ void nrf_uart_init(EXO* exo)
     int i;
     for (i = 0; i < UARTS_COUNT; ++i)
         exo->uart.uarts[i] = NULL;
-#if defined(STM32F0) && (UARTS_COUNT > 3)
-    exo->uart.isr3_cnt = 0;
-#endif
 }
-
-
