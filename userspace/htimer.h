@@ -34,7 +34,8 @@ typedef enum {
 typedef enum {
     TIMER_VALUE_HZ = 0,
     TIMER_VALUE_US,
-    TIMER_VALUE_CLK
+    TIMER_VALUE_CLK,
+    TIMER_VALUE_DISABLE
 } TIMER_VALUE_TYPE;
 
 //not all modes may be supported by hardware

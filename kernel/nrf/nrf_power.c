@@ -36,8 +36,8 @@ static inline void hfclk_start()
     /* Clear the event and the pending interrupt */
     NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
 
-    NVIC_ClearPendingIRQ(POWER_CLOCK_IRQn);
-    NRF_CLOCK->INTENSET = 0;
+//    NVIC_ClearPendingIRQ(POWER_CLOCK_IRQn);
+//    NRF_CLOCK->INTENSET = 0;
 }
 
 static inline void hfclk_stop()

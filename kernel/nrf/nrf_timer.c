@@ -24,28 +24,14 @@ const int TIMER_VECTORS[TIMERS_COUNT]           =  {TIMER0_IRQn,   TIMER1_IRQn, 
 const NRF_TIMER_Type_P TIMER_REGS[TIMERS_COUNT] =  {NRF_TIMER0, NRF_TIMER1, NRF_TIMER2};
 #endif // NRF51
 
-void nrf_timer_second_isr(int vector, void* param)
-{
-    if((TIMER_REGS[SECOND_TIMER]->EVENTS_COMPARE[SECOND_CHANNEL] != 0) &&
-            ((TIMER_REGS[SECOND_TIMER]->INTENSET & (TIMER_INTENSET_COMPARE0_Msk << SECOND_CHANNEL)) != 0))
-    {
-        // clear compare register
-        TIMER_REGS[SECOND_TIMER]->EVENTS_COMPARE[SECOND_CHANNEL] = 0;
-        // clear interrupt pending register
-        TIMER_REGS[SECOND_TIMER]->TASKS_CLEAR = 1;
-        ksystime_second_pulse();
-    }
-}
+#if (NRF_TIMER_DRIVER)
 
 void nrf_timer_hpet_isr(int vector, void* param)
 {
-    if((TIMER_REGS[HPET_TIMER]->EVENTS_COMPARE[HPET_CHANNEL] != 0) &&
-            ((TIMER_REGS[HPET_TIMER]->INTENSET & (TIMER_INTENSET_COMPARE0_Msk << HPET_CHANNEL)) != 0))
+    if(TIMER_REGS[HPET_TIMER]->EVENTS_COMPARE[HPET_CHANNEL] != 0)
     {
         // clear compare register
         TIMER_REGS[HPET_TIMER]->EVENTS_COMPARE[HPET_CHANNEL] = 0;
-        // clear interrupt pending register
-        TIMER_REGS[HPET_TIMER]->TASKS_CLEAR = 1;
         ksystime_hpet_timeout();
     }
 }
@@ -54,7 +40,6 @@ void nrf_timer_open(EXO* exo, TIMER_NUM num, unsigned int flags)
 {
     //power up
     //TIMER_REGS[num]->POWER          = 1;
-
     TIMER_REGS[num]->TASKS_STOP     = 1;
 
     if(TIMER_0 == num)
@@ -71,27 +56,29 @@ void nrf_timer_open(EXO* exo, TIMER_NUM num, unsigned int flags)
     // enable IRQ
     if (flags & TIMER_IRQ_ENABLE)
     {
-        TIMER_REGS[num]->INTENSET |= TIMER_INTENSET_COMPARE0_Set;
-
         NVIC_EnableIRQ(TIMER_VECTORS[num]);
         NVIC_SetPriority(TIMER_VECTORS[num], TIMER_IRQ_PRIORITY_VALUE(flags));
     }
+    // kepp flags for next
+    exo->timer.flags[num] = flags;
 }
 
 void nrf_timer_close(EXO* exo, TIMER_NUM num)
 {
     //disable timer
     TIMER_REGS[num]->TASKS_STOP = 1;
-
     //disable IRQ
     NVIC_DisableIRQ(TIMER_VECTORS[num]);
-
     //power down
     TIMER_REGS[num]->TASKS_SHUTDOWN = 1;
 }
 
 static void nrf_timer_setup_clk(EXO* exo, TIMER_NUM num, uint8_t cc_num, unsigned int psc,  unsigned int clk)
 {
+    // enable interrupt
+    if(exo->timer.flags[num] & TIMER_IRQ_ENABLE)
+        TIMER_REGS[num]->INTENSET |= ((TIMER_INTENSET_COMPARE0_Set << cc_num) << TIMER_INTENSET_COMPARE0_Pos);
+
     // set prescaler
     TIMER_REGS[num]->PRESCALER = psc;
     // set clock
@@ -100,21 +87,25 @@ static void nrf_timer_setup_clk(EXO* exo, TIMER_NUM num, uint8_t cc_num, unsigne
 
 static void nrf_timer_setup_us(EXO* exo, TIMER_NUM num, uint8_t cc_num, unsigned int us)
 {
-    uint32_t freq = exo->timer.core_clock;
+    uint32_t freq = exo->timer.core_clock_us;
     uint32_t n = 0;
-    // Get freq in MHz
-    freq /= 1000000;
     // count prescaler
     while(freq >>= 1)
         ++n;
     nrf_timer_setup_clk(exo, num, cc_num, n, us);
 }
 
-void nrf_timer_start(EXO* exo, TIMER_NUM num, uint8_t cc_num, TIMER_VALUE_TYPE value_type, unsigned int value)
+void nrf_timer_disable_channel(EXO* exo, TIMER_NUM num, uint8_t cc_num)
 {
-    // clear the task first to be usable for later.
-    TIMER_REGS[num]->TASKS_CLEAR = 1;
+    // disable channel
+    TIMER_REGS[num]->CC[cc_num] = 0;
+    // disable irq
+    if(exo->timer.flags[num] & TIMER_IRQ_ENABLE)
+        TIMER_REGS[num]->INTENSET &= ~((TIMER_INTENSET_COMPARE0_Set << cc_num) << TIMER_INTENSET_COMPARE0_Pos);
+}
 
+void nrf_timer_setup_channel(EXO* exo, TIMER_NUM num, uint8_t cc_num, TIMER_VALUE_TYPE value_type, unsigned int value)
+{
     switch (value_type)
     {
     case TIMER_VALUE_HZ:
@@ -123,11 +114,21 @@ void nrf_timer_start(EXO* exo, TIMER_NUM num, uint8_t cc_num, TIMER_VALUE_TYPE v
     case TIMER_VALUE_US:
         nrf_timer_setup_us(exo, num, cc_num, value);
         break;
-    default:
+    case TIMER_VALUE_CLK:
         nrf_timer_setup_clk(exo, num, cc_num, 1, value);
         break;
+    default:
+        nrf_timer_disable_channel(exo, num, cc_num);
+        break;
     }
+}
 
+void nrf_timer_start(EXO* exo, TIMER_NUM num, uint8_t cc_num, TIMER_VALUE_TYPE value_type, unsigned int value)
+{
+    // setup channel
+    nrf_timer_setup_channel(exo, num, cc_num, value_type, value);
+    // clear timer counter
+    TIMER_REGS[num]->TASKS_CLEAR = 1;
     // start timer
     TIMER_REGS[num]->TASKS_START = 1;
 }
@@ -136,32 +137,28 @@ void nrf_timer_stop(TIMER_NUM num)
 {
     // disable timer
     TIMER_REGS[num]->TASKS_STOP = 1;
-    // clear interrupt pending register
-    TIMER_REGS[num]->TASKS_CLEAR = 1;
+    // disable IRQ
 }
 
 void hpet_start(unsigned int value, void* param)
 {
     EXO* exo = (EXO*)param;
     //find near prescaller
-    exo->timer.hpet_start = TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL];
-    nrf_timer_start(exo, HPET_TIMER, HPET_CHANNEL, TIMER_VALUE_US, value);
+    //don't need to start in free-run mode, second pulse will go faster anyway
+    if (value < S1_US)
+        nrf_timer_start(exo, HPET_TIMER, HPET_CHANNEL, TIMER_VALUE_US, value);
 }
 
 void hpet_stop(void* param)
 {
     nrf_timer_stop(HPET_TIMER);
+    TIMER_REGS[HPET_TIMER]->INTENSET &= ~((TIMER_INTENSET_COMPARE0_Set << HPET_CHANNEL) << TIMER_INTENSET_COMPARE0_Pos);
 }
 
 unsigned int hpet_elapsed(void* param)
 {
     EXO* exo = (EXO*)param;
-    unsigned int tc = 0;
-    // capture data
-    tc = TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL];
-    // return elapsed data
-    unsigned int value = (exo->timer.hpet_start < tc) ? tc - exo->timer.hpet_start : TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL] + 1 - exo->timer.hpet_start + tc;
-    return value;
+    return TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL];
 }
 
 void nrf_timer_init(EXO* exo)
@@ -169,16 +166,9 @@ void nrf_timer_init(EXO* exo)
     CB_SVC_TIMER cb_svc_timer;
     exo->timer.core_clock = nrf_power_get_clock_inside(exo);
     exo->timer.core_clock_us = exo->timer.core_clock / S1_US;
-    exo->timer.hpet_start = 0;
-
-    //setup second tick timer
-    kirq_register(KERNEL_HANDLE, TIMER_VECTORS[SECOND_TIMER], nrf_timer_second_isr, (void*)exo);
-    nrf_timer_open(exo, SECOND_TIMER, TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
-    nrf_timer_start(exo, SECOND_TIMER, SECOND_CHANNEL, TIMER_VALUE_HZ, 1);
 
     kirq_register(KERNEL_HANDLE, TIMER_VECTORS[HPET_TIMER], nrf_timer_hpet_isr, (void*)exo);
     nrf_timer_open(exo, HPET_TIMER, TIMER_IRQ_ENABLE | (13 << TIMER_IRQ_PRIORITY_POS));
-
     cb_svc_timer.start = hpet_start;
     cb_svc_timer.stop = hpet_stop;
     cb_svc_timer.elapsed = hpet_elapsed;
@@ -207,3 +197,5 @@ void nrf_timer_request(EXO* exo, IPC* ipc)
         kerror(ERROR_NOT_SUPPORTED);
     }
 }
+
+#endif // NRF_TIMER_DRIVER

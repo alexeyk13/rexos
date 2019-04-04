@@ -19,7 +19,7 @@
 #include "../../userspace/nrf/nrf_driver.h"
 
 typedef struct {
-    unsigned int hpet_start;
+    unsigned int flags[TIMER_MAX];
     //cached value
     unsigned int core_clock, core_clock_us;
 } TIMER_DRV;

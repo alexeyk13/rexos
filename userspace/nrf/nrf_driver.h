@@ -58,6 +58,7 @@ typedef enum {
     TIMER_CC1,
     TIMER_CC2,
     TIMER_CC3,
+    TIMER_CC_MAX
 } TIMER_CC;
 
 #endif // NRF51
@@ -67,6 +68,23 @@ typedef enum {
 typedef enum {
     UART_0 = 0,
 } UART_PORT;
+#endif // NRF51
+
+//---------------------------------------------------- RTC ------------------------------------------------------------------
+#if defined(NRF51)
+typedef enum {
+    RTC_0 = 0,
+    RTC_1,
+    RTC_MAX
+} RTC_NUM;
+
+typedef enum {
+    RTC_CC0 = 0,
+    RTC_CC1,
+    RTC_CC2,
+    RTC_CC3,
+} RTC_CC;
+
 #endif // NRF51
 
 #endif /* _NRF51_NRF_DRIVER_H_ */

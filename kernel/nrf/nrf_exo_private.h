@@ -27,10 +27,15 @@
 #if (NRF_WDT_DRIVER)
 #include "nrf_wdt.h"
 #endif // NRF_WDT_DRIVER
+#if (NRF_RTC_DRIVER)
+#include "nrf_rtc.h"
+#endif // NRF_UART_DRIVER
 
 typedef struct _EXO {
     GPIO_DRV gpio;
+#if (NRF_TIMER_DRIVER)
     TIMER_DRV timer;
+#endif // NRF_TIMER_DRIVER
 //    POWER_DRV power;
 #if (NRF_UART_DRIVER)
     UART_DRV uart;
@@ -47,6 +52,9 @@ typedef struct _EXO {
 #if (NRF_RADIO_DRIVER)
     RADIO_DRV radio;
 #endif // NRF_RADIO_DRIVER
+#if (NRF_RTC_DRIVER)
+    RTC_DRV rtc;
+#endif // NRF_RTC_DRIVER
 }EXO;
 
 

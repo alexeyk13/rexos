@@ -31,12 +31,14 @@ void exodriver_post(IPC* ipc)
     case HAL_PIN:
         nrf_pin_request(__KERNEL->exo, ipc);
         break;
+#if (NRF_TIMER_DRIVER)
     case HAL_TIMER:
-//        nrf_timer_request(__KERNEL->exo, ipc);
+        nrf_timer_request(__KERNEL->exo, ipc);
         break;
+#endif // NRF_TIMER_DRIVER
 #if (NRF_RTC_DRIVER)
     case HAL_RTC:
-        //nrf_rtc_request(ipc);
+        nrf_rtc_request(__KERNEL->exo, ipc);
         break;
 #endif // NRF_RTC_DRIVER
 #if (NRF_WDT_DRIVER)
@@ -77,6 +79,7 @@ void exodriver_init()
 
     nrf_power_init(__KERNEL->exo);
     nrf_pin_init(__KERNEL->exo);
+    nrf_rtc_init(__KERNEL->exo);
     nrf_timer_init(__KERNEL->exo);
 
 #if (NRF_UART_DRIVER)
