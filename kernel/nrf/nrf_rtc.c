@@ -24,15 +24,17 @@ const NRF_RTC_Type_P RTC_REGS[RTC_COUNT]    =  {NRF_RTC0, NRF_RTC1};
 
 #define RTC_PRESCALER               ((LFCLK/32768) - 1)
 
+#if (NRF_RTC_DRIVER)
+
 void rtc_isr(int vector, void* param)
 {
     EXO* exo = (EXO*)param;
-    if(RTC_REGS[SECOND_RTC]->EVENTS_COMPARE[SECOND_CHANNEL] != 0)
+    if(RTC_REGS[SECOND_RTC]->EVENTS_COMPARE[SECOND_RTC_CHANNEL] != 0)
     {
         // clear event flag
         RTC_REGS[SECOND_RTC]->EVENTS_COMPARE[0] = 0;
         // set nex shot
-        RTC_REGS[SECOND_RTC]->CC[SECOND_CHANNEL] += exo->rtc.clock_freq;
+        RTC_REGS[SECOND_RTC]->CC[SECOND_RTC_CHANNEL] += exo->rtc.clock_freq;
         // system second pulse
         ksystime_second_pulse();
     }
@@ -95,11 +97,13 @@ void nrf_rtc_init(EXO* exo)
     exo->rtc.clock_freq = LFCLK;
     // init second timer
     kirq_register(KERNEL_HANDLE, RTC_VECTORS[SECOND_RTC], rtc_isr, (void*)exo);
-    nrf_rtc_open(exo, SECOND_RTC, SECOND_CHANNEL);
-    nrf_rtc_start_channel(exo, SECOND_RTC, SECOND_CHANNEL, RTC_IRQ_ENABLE, RTC_CC_TYPE_SEC, 1);
+    nrf_rtc_open(exo, SECOND_RTC, SECOND_RTC_CHANNEL);
+    nrf_rtc_start_channel(exo, SECOND_RTC, SECOND_RTC_CHANNEL, RTC_IRQ_ENABLE, RTC_CC_TYPE_SEC, 1);
 }
 
 void nrf_rtc_request(EXO* exo, IPC* ipc)
 {
 
 }
+
+#endif // NRF_RTC_DRIVER

@@ -21,7 +21,8 @@
 typedef struct {
     unsigned int flags[TIMER_MAX];
     //cached value
-    unsigned int core_clock, core_clock_us;
+    unsigned int hpet_start;
+    unsigned int core_clock, hpet_uspsc, psc;
 } TIMER_DRV;
 
 void nrf_timer_init(EXO* exo);

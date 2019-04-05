@@ -79,9 +79,10 @@ void exodriver_init()
 
     nrf_power_init(__KERNEL->exo);
     nrf_pin_init(__KERNEL->exo);
-    nrf_rtc_init(__KERNEL->exo);
     nrf_timer_init(__KERNEL->exo);
-
+#if (NRF_RTC_DRIVER)
+    nrf_rtc_init(__KERNEL->exo);
+#endif // NRF_RTC_DRIVER
 #if (NRF_UART_DRIVER)
     nrf_uart_init(__KERNEL->exo);
 #endif //NRF_UART_DRIVER

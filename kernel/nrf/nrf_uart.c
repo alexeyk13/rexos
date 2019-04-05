@@ -56,8 +56,6 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
 static inline void nrf_uart_set_baudrate(EXO* exo, UART_PORT port, IPC* ipc)
 {
     BAUD baudrate;
-    unsigned int clock, stop;
-
     if (exo->uart.uarts[port] == NULL)
     {
         kerror(ERROR_NOT_CONFIGURED);
