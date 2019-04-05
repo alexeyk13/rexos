@@ -40,7 +40,7 @@ void nrf_timer_isr(int vector, void* param)
         ksystime_hpet_timeout();
     }
 
-#if !(NRF_RTC_DRIVER)
+#if !(KERNEL_SECOND_RTC)
     if((TIMER_REGS[HPET_TIMER]->EVENTS_COMPARE[SECOND_CHANNEL] != 0) &&
          ((TIMER_REGS[HPET_TIMER]->INTENSET & (TIMER_INTENSET_COMPARE0_Msk << SECOND_CHANNEL)) != 0))
     {
@@ -51,7 +51,7 @@ void nrf_timer_isr(int vector, void* param)
         // system second pulse
         ksystime_second_pulse();
     }
-#endif // NRF_RTC_DRIVER
+#endif // KERNEL_SECOND_RTC
 }
 
 void nrf_timer_open(EXO* exo, TIMER_NUM num, unsigned int flags)
@@ -142,7 +142,7 @@ void nrf_timer_stop(TIMER_NUM num)
 void hpet_start(unsigned int value, void* param)
 {
     EXO* exo = (EXO*)param;
-#if !(NRF_RTC_DRIVER)
+#if !(KERNEL_SECOND_RTC)
     // cache value of cc
     unsigned int val =  TIMER_REGS[HPET_TIMER]->CC[SECOND_CHANNEL];
     // get actual counter
@@ -154,7 +154,7 @@ void hpet_start(unsigned int value, void* param)
 #else
     TIMER_REGS[HPET_TIMER]->TASKS_CAPTURE[HPET_CHANNEL] = 1;
     exo->timer.hpet_start = TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL];
-#endif // NRF_RTC_DRIVER
+#endif // KERNEL_SECOND_RTC
     //don't need to start in free-run mode, second pulse will go faster anyway
     if(value < S1_US)
         nrf_timer_enable_channel(exo, HPET_TIMER, HPET_CHANNEL, TIMER_VALUE_CLK, exo->timer.hpet_start + value);
@@ -196,10 +196,10 @@ void nrf_timer_init(EXO* exo)
     cb_svc_timer.elapsed = hpet_elapsed;
     ksystime_hpet_setup(&cb_svc_timer, exo);
 
-#if !(NRF_RTC_DRIVER)
+#if !(KERNEL_SECOND_RTC)
     // setup second counter
     nrf_timer_enable_channel(exo, HPET_TIMER, SECOND_CHANNEL, TIMER_VALUE_US, S1_US);
-#endif // NRF_RTC_DRIVER
+#endif // KERNEL_SECOND_RTC
 }
 
 void nrf_timer_request(EXO* exo, IPC* ipc)

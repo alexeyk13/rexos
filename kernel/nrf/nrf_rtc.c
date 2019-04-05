@@ -116,7 +116,7 @@ void nrf_rtc_init(EXO* exo)
 #if (KERNEL_SECOND_RTC)
     kirq_register(KERNEL_HANDLE, RTC_VECTORS[SECOND_RTC], rtc_isr, (void*)exo);
     nrf_rtc_stop_channel(exo, SECOND_RTC, SECOND_RTC_CHANNEL);
-    nrf_rtc_open(exo, SECOND_RTC, SECOND_RTC_CHANNEL);
+    nrf_rtc_open(exo, SECOND_RTC);
     nrf_rtc_start_channel(exo, SECOND_RTC, SECOND_RTC_CHANNEL, RTC_IRQ_ENABLE, RTC_CC_TYPE_SEC, 1);
 #endif // KERNEL_SECOND_RTC
 }
@@ -147,13 +147,13 @@ void nrf_rtc_request(EXO* exo, IPC* ipc)
     {
     case IPC_OPEN:
         if (ipc->param1 == RTC_HANDLE_DEVICE)
-            nrf_rtc_open(exo, (RTC_NUM)ipc->param2, (RTC_CC)ipc->param3);
+            nrf_rtc_open(exo, (RTC_NUM)ipc->param2);
         else
             nrf_rtc_start_channel(exo, ipc->param2, 0, 0, 0, 0); // TODO: rtc start channel
         break;
     case IPC_CLOSE:
         if (ipc->param1 == RTC_HANDLE_DEVICE)
-            nrf_rtc_close(exo, ipc->param1);
+            nrf_rtc_close(exo, (RTC_NUM)ipc->param2);
         else
             nrf_rtc_stop_channel(exo, ipc->param2, 0); // TODO: rtc stop channel
         break;
