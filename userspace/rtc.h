@@ -13,11 +13,12 @@
 #include "time.h"
 #include "ipc.h"
 
+#define RTC_HANDLE_DEVICE                                   0xffff
+
 typedef enum {
     RTC_GET = IPC_USER,                                     //!< Get RTC value
     RTC_SET,                                                //!< Set RTC valu
     RTC_SET_ALARM_SEC,                                      //
-
     RTC_HAL_MAX
 } RTC_IPCS;
 
