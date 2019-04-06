@@ -81,6 +81,13 @@ static inline void lfclk_stop()
     NRF_CLOCK->TASKS_LFCLKSTOP = 1;
 }
 
+#if (NRF_DECODE_RESET)
+static inline void decode_reset_reason(EXO* exo)
+{
+    exo->power.reset_reason = NRF_POWER->RESETREAS;
+}
+#endif // NRF_DECODE_RESET
+
 void nrf_power_init(EXO* exo)
 {
     hfclk_start();
@@ -88,6 +95,10 @@ void nrf_power_init(EXO* exo)
 #if (LFCLK)
     lfclk_start();
 #endif // LFCLK
+
+#if (NRF_DECODE_RESET)
+    decode_reset_reason(exo);
+#endif //STM32_DECODE_RESET
 }
 
 int get_core_clock_internal()
@@ -118,6 +129,18 @@ void nrf_power_request(EXO* exo, IPC* ipc)
     case POWER_GET_CLOCK:
         ipc->param2 = get_core_clock_internal(ipc->param1);
         break;
+#if (NRF_DECODE_RESET)
+    case NRF_POWER_GET_RESET_REASON:
+        ipc->param2 = exo->power.reset_reason;
+        break;
+#endif //STM32_DECODE_RESET
+
+#if (POWER_MANAGEMENT)
+    case POWER_SET_MODE:
+        //no return
+        //nrf_power_set_mode(exo, ipc->param1);
+        break;
+#endif //POWER_MANAGEMENT
     default:
         kerror(ERROR_NOT_SUPPORTED);
     }

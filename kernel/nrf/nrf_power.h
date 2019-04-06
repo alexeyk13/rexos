@@ -11,7 +11,14 @@
 
 #include "nrf_exo.h"
 #include "../../userspace/nrf/nrf.h"
+#include "../../userspace/nrf/nrf_driver.h"
 #include "../../userspace/power.h"
+
+typedef struct {
+#if (NRF_DECODE_RESET)
+    RESET_REASON reset_reason;
+#endif //STM32_DECODE_RESET
+} POWER_DRV;
 
 void nrf_power_init(EXO* exo);
 void nrf_power_request(EXO* exo, IPC* ipc);

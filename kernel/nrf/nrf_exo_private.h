@@ -36,7 +36,7 @@ typedef struct _EXO {
 #if (NRF_TIMER_DRIVER)
     TIMER_DRV timer;
 #endif // NRF_TIMER_DRIVER
-//    POWER_DRV power;
+    POWER_DRV power;
 #if (NRF_UART_DRIVER)
     UART_DRV uart;
 #endif //NRF_UART_DRIVER
