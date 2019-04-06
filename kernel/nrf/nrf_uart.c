@@ -50,11 +50,12 @@ static inline bool nrf_uart_on_tx_isr(EXO* exo, UART_PORT port)
             //nothing more, listen
             if (uart->s.tx_size == 0)
             {
+                UART_REGS[port]->INTENSET &= ~UART_INTENSET_TXDRDY_Msk;
                 stream_ilisten(uart->s.tx_stream, port, HAL_UART);
                 return false;
             }
         }
-        //TXC(port, uart->s.tx_buf[uart->s.tx_total - uart->s.tx_size--]);
+        UART_REGS[port]->TXD = uart->s.tx_buf[uart->s.tx_total - uart->s.tx_size--];
         return  true;
     }
     return false;
@@ -107,14 +108,30 @@ void nrf_uart_on_isr(int vector, void* param)
 {
     //find port by vector
     UART_PORT port = UART_0;
-    uint8_t c = 0;
     EXO* exo = (EXO*)param;
     uint32_t sr = UART_REGS[port]->ERRORSRC;
+    // tx
+    if (UART_REGS[port]->EVENTS_TXDRDY != 0)
+    {
+        // clear UART TX event flag
+        UART_REGS[port]->EVENTS_TXDRDY = 0;
+        nrf_uart_on_tx_isr(exo, port);
+    }
+
+    if (UART_REGS[port]->EVENTS_CTS || UART_REGS[port]->EVENTS_NCTS)
+    {
+        UART_REGS[port]->EVENTS_CTS = 0;
+        UART_REGS[port]->EVENTS_NCTS = 0;
+    }
+
+    if(UART_REGS[port]->EVENTS_RXTO != 0)
+        UART_REGS[port]->EVENTS_RXTO = 0;
+
     //decode error, if any
     if (UART_REGS[port]->EVENTS_ERROR != 0)
     {
         // clear UART ERROR event flag
-        NRF_UART0->EVENTS_ERROR = 0;
+        UART_REGS[port]->EVENTS_ERROR = 0;
         if(sr & UART_ERRORSRC_BREAK_Msk)
             exo->uart.uarts[port]->error = ERROR_COMM_BREAK;
         else if(sr & UART_ERRORSRC_OVERRUN_Msk)
@@ -125,19 +142,11 @@ void nrf_uart_on_isr(int vector, void* param)
             exo->uart.uarts[port]->error = ERROR_INVALID_PARITY;
     }
     // rx
-    if (NRF_UART0->EVENTS_RXDRDY != 0)
+    if (UART_REGS[port]->EVENTS_RXDRDY != 0)
     {
         // clear UART RX event flag
-        NRF_UART0->EVENTS_RXDRDY = 0;
-        nrf_uart_on_rx_isr(exo, port, c);
-    }
-
-    // tx
-    if (NRF_UART0->EVENTS_TXDRDY != 0)
-    {
-        // clear UART TX event flag
-        NRF_UART0->EVENTS_TXDRDY = 0;
-        nrf_uart_on_tx_isr(exo, port);
+        UART_REGS[port]->EVENTS_RXDRDY = 0;
+        nrf_uart_on_rx_isr(exo, port, UART_REGS[port]->RXD);
     }
 }
 
@@ -281,8 +290,10 @@ static void nrf_uart_destroy(EXO* exo, UART_PORT port)
     exo->uart.uarts[port] = NULL;
 
     // disable uart
-    // TODO:
-
+    UART_REGS[port]->ENABLE       = (UART_ENABLE_ENABLE_Disabled << UART_ENABLE_ENABLE_Pos);
+    UART_REGS[port]->TASKS_STOPTX = 1;
+    UART_REGS[port]->TASKS_STOPRX = 1;
+    UART_REGS[port]->TASKS_SUSPEND = 1;
 }
 
 static inline void nrf_uart_open(EXO* exo, UART_PORT port, unsigned int mode)
@@ -326,17 +337,34 @@ static inline void nrf_uart_open(EXO* exo, UART_PORT port, unsigned int mode)
     // set TX_PIN
     UART_REGS[port]->PSELTXD = P9; // TODO: temporary UART pin define
 //    NRF_UART0->PSELRXD = UART_RX_PIN;
+    // diconnected pin
+    UART_REGS[port]->PSELRTS       = 0xFFFFFFFF;
+    UART_REGS[port]->PSELCTS       = 0xFFFFFFFF;
 
-    UART_REGS[port]->ENABLE = (UART_ENABLE_ENABLE_Enabled << UART_ENABLE_ENABLE_Pos);
+    UART_REGS[port]->EVENTS_CTS = 0;
+    UART_REGS[port]->EVENTS_NCTS = 0;
+
     UART_REGS[port]->EVENTS_RXDRDY = 0;
 
     // Enable UART RX interrupt only
     //NRF_UART0->INTENSET = (UART_INTENSET_RXDRDY_Set << UART_INTENSET_RXDRDY_Pos);
 
-    // Start reception and transmission
+    // disable flow contorl
+    UART_REGS[port]->CONFIG   = (UART_CONFIG_HWFC_Enabled << UART_CONFIG_HWFC_Pos);
+    UART_REGS[port]->INTENCLR |= UART_INTENCLR_CTS_Msk | UART_INTENCLR_RXDRDY_Msk;
+
+    UART_REGS[port]->ENABLE = (UART_ENABLE_ENABLE_Enabled << UART_ENABLE_ENABLE_Pos);
+    // start transmission
     UART_REGS[port]->TASKS_STARTTX = 1;
+    // start reception
+//    UART_REGS[port]->TASKS_STARTRX = 1;
+
+    NRF_UART0->INTENCLR = 0xffffffffUL;
+    NRF_UART0->INTENSET = (UART_INTENSET_ERROR_Set << UART_INTENSET_ERROR_Pos);
 
     kirq_register(KERNEL_HANDLE, UART_VECTORS[port], nrf_uart_on_isr, (void*)exo);
+
+    NVIC_ClearPendingIRQ(UART_VECTORS[port]);
     NVIC_EnableIRQ(UART_VECTORS[port]);
 #if defined(UART_IRQ_PRIORITY)
     NVIC_SetPriority(UART_VECTORS[port], UART_IRQ_PRIORITY);
@@ -378,6 +406,7 @@ static inline HANDLE nrf_uart_get_tx_stream(EXO* exo, UART_PORT port)
         kerror(ERROR_NOT_CONFIGURED);
         return INVALID_HANDLE;
     }
+
     return exo->uart.uarts[port]->s.tx_stream;
 }
 
@@ -421,8 +450,11 @@ void nrf_uart_write(EXO* exo, UART_PORT port, unsigned int total)
 {
     UART* uart = exo->uart.uarts[port];
     uart->s.tx_total = uart->s.tx_size = kstream_read_no_block(uart->s.tx_handle, uart->s.tx_buf, UART_BUF_SIZE);
-    //start transaction
-    //UART_REGS[port]->CR1 |= USART_CR1_TE | USART_CR1_TXEIE;
+    // enable TRANSMIT and TXEMPTY IRQ
+    UART_REGS[port]->INTENSET |= UART_INTENSET_TXDRDY_Msk;
+    // send first byte
+    UART_REGS[port]->TXD = uart->s.tx_buf[uart->s.tx_total - uart->s.tx_size--];
+
 }
 
 void nrf_uart_request(EXO* exo, IPC* ipc)
