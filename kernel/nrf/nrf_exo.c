@@ -66,6 +66,11 @@ void exodriver_post(IPC* ipc)
         nrf_flash_request(__KERNEL->exo, ipc);
         break;
 #endif //NRF_FLASH_DRIVER
+#if (NRF_RF_DRIVER)
+    case HAL_RF:
+        nrf_rf_request(__KERNEL->exo, ipc);
+        break;
+#endif // NRF_RF_DRIVER
     default:
         kerror(ERROR_NOT_SUPPORTED);
         break;
@@ -89,4 +94,7 @@ void exodriver_init()
 #if (NRF_FLASH_DRIVER)
     nrf_flash_init(__KERNEL->exo);
 #endif //LPC_FLASH_DRIVER
+#if (NRF_RF_DRIVER)
+    nrf_rf_init(__KERNEL->exo);
+#endif // NRF_RF_DRIVER
 }
