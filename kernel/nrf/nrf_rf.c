@@ -10,6 +10,7 @@
 #include "nrf_power.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/nrf/radio.h"
+#include "../../userspace/nrf/radio_config.h"
 #include "../kerror.h"
 #include "../kstdlib.h"
 #include "../ksystime.h"
@@ -303,6 +304,12 @@ static void nrf_rf_timeout(EXO* exo)
     exo->rf.io = NULL;
 }
 
+static void nrf_rf_set_channel(EXO* exo, uint8_t channel)
+{
+    // Set frequency = 2400 + FREQUENCY (MHz) channel
+    NRF_RADIO->FREQUENCY = channel;
+}
+
 static void nrf_rf_advertise_listen(EXO* exo, HANDLE user, IO* io, unsigned int max_size)
 {
     RADIO_STACK* stack = io_data(io);
@@ -380,8 +387,9 @@ static void nrf_rf_advertise_listen(EXO* exo, HANDLE user, IO* io, unsigned int 
 
    memset(exo->rf.pdu, 0xEE, MAX_PDU_SIZE);
 
-   /* Set the initial freq to obsvr as channel 37 */
-   NRF_RADIO->FREQUENCY = 80;//ADV_CHANNEL[3];
+   /* Set the initial freq to obsvr as channel 39 */
+   // Frequency = 2400 + FREQUENCY (MHz)
+   NRF_RADIO->FREQUENCY = RADIO_BLE_ADV_CHANNEL_39;
 
    /* Configure the shorts for observing
     * READY event and START task
@@ -423,6 +431,9 @@ void nrf_rf_request(EXO* exo, IPC* ipc)
         break;
     case IPC_TIMEOUT:
         nrf_rf_timeout(exo);
+        break;
+    case RADIO_SET_CHANNEL:
+        nrf_rf_set_channel(exo, ipc->param1);
         break;
     case RADIO_ADVERTISE_LISTEN:
         nrf_rf_advertise_listen(exo, ipc->process, (IO*)ipc->param2, ipc->param3);

@@ -10,14 +10,16 @@
 #define _NRF_RADIO_H_
 
 #include "nrf_driver.h"
+#include "radio_config.h"
 
 typedef enum {
     RADIO_ADVERTISE_LISTEN = IPC_USER,
+    RADIO_SET_CHANNEL,
     RADIO_START,
     RADIO_STOP,
     RADIO_TX,
     RADIO_RX,
-} ADC_IPCS;
+} RADIO_IPCS;
 
 typedef struct {
     uint8_t flags;
@@ -35,7 +37,10 @@ void radio_rx();
 void radio_tx_sync();
 void radio_rx_sync();
 
-bool radio_get_advertise(unsigned int max_size, uint8_t flags, unsigned int timeout_ms);
+void radio_set_channel(uint8_t channel);
+
+//bool radio_listen_adv_channel(uint8_t channel, uint8_t flags, unsigned int timeout_ms);
+bool radio_listen_adv_channel(unsigned int max_size, uint8_t flags, unsigned int timeout_ms);
 
 
 #endif /* _NRF_RADIO_H_ */
