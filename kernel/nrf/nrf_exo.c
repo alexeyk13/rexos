@@ -13,7 +13,6 @@
 #include "../kstdlib.h"
 #include "../kerror.h"
 
-
 void exodriver_delay_us(unsigned int us)
 {
     unsigned int i;

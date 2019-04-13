@@ -27,6 +27,9 @@
 #if (NRF_WDT_DRIVER)
 #include "nrf_wdt.h"
 #endif // NRF_WDT_DRIVER
+#if (NRF_FLASH_DRIVER)
+#include "nrf_flash.h"
+#endif // NRF_FLASH_DRIVER
 #if (NRF_RTC_DRIVER)
 #include "nrf_rtc.h"
 #endif // NRF_UART_DRIVER
