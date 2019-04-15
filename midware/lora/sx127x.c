@@ -681,7 +681,7 @@ static inline int8_t get_tx_output_power_dbm(LORA* lora)
         {
             /*  Pout=Pmax-(15-OutputPower)
                 Pmax=10.8+0.6*MaxPower [dBm] */
-            pmax_dbm = (108 + 6 * sx1276_get_max_power(lora)) / 10;
+            pmax_dbm = (108 + 6 * get_max_power_sx1276(lora)) / 10;
             pout_dbm = pmax_dbm - (15-output_power);
         }
     }
