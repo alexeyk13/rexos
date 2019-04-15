@@ -171,9 +171,10 @@ void stm32_spi_close(EXO* exo, SPI_PORT port)
     else
         RCC->APB1ENR &= ~(1 << __SPI_POWER_PINS[port]);
 
+    if (spi->io_mode)
+        kirq_unregister(KERNEL_HANDLE, __SPI_VECTORS[port]);
     kfree(spi);
     exo->spi.spis[port] = NULL;
-    //kirq_unregister(KERNEL_HANDLE, __SPI_VECTORS[port]);
 }
 
 static uint16_t stm32_spi_write_word(SPI_PORT port, uint16_t data)

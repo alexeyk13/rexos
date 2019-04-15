@@ -29,7 +29,7 @@ typedef struct _LORA {
     HANDLE           timer_txrx_timeout;
     HANDLE           timer_poll_timeout;
     LORA_CONFIG      config;
-    //private chip specific config variables
+    //private chip specific variables
     void*            sys_vars;
     LORA_SPI         spi;
     LORA_STATUS      status;
