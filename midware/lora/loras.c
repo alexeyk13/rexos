@@ -16,613 +16,495 @@
 #include "spi.h"
 #include "loras_private.h"
 #include "../userspace/gpio.h"
-#include "pin.h"
 #include "power.h"
 
 #include <string.h>
 
-#if defined (LORA_SX127X) || defined (LORA_SX126X)
-
-#include "sx12xx_config.h"
-
-/* SPI command formats: 
-   SX127X: address (1 byte) + data 
-   SX126X: command (1 byte) + extra_data (N bytes) + data
-   NOTE  : extra_data can be: reg address (2 bytes), NOP (1 byte), offset (1 byte), etc */
-#define LORA_SPI_EXTRA_BYTES_MAX      (20) //should be enough
-#define LORA_SPI_IO_SIZE              (LORA_SPI_EXTRA_BYTES_MAX+LORA_MAX_PAYLOAD_LEN)
-
-#if defined (LORA_SX127X)
-void sx127x_open (LORA* lora);
-void sx127x_close(LORA* lora);
-void sx127x_tx_async (LORA* lora, IO* io);
-void sx127x_rx_async (LORA* lora, IO* io); 
-void sx127x_tx_async_wait (LORA* lora);
-void sx127x_rx_async_wait (LORA* lora);
-void sx127x_set_error(LORA* lora, LORA_ERROR error);
-uint32_t sx127x_get_stat(LORA* lora, LORA_STAT_SEL lora_stat_sel);
-#elif defined (LORA_SX126X)
-void sx126x_open (LORA* lora);
-void sx126x_close(LORA* lora);
-void sx126x_tx_async (LORA* lora, IO* io);
-void sx126x_rx_async (LORA* lora, IO* io); 
-void sx126x_tx_async_wait (LORA* lora);
-void sx126x_rx_async_wait (LORA* lora);
-void sx126x_set_error(LORA* lora, LORA_ERROR error);
-uint32_t sx126x_get_stat(LORA* lora, LORA_STAT_SEL lora_stat_sel);
-#endif
-
-uint32_t lora_get_stat(LORA* lora, LORA_STAT_SEL lora_stat_sel)
-{
-#if defined (LORA_SX127X)
-    return sx127x_get_stat(lora, lora_stat_sel);
-#elif defined (LORA_SX126X)
-    return sx126x_get_stat(lora, lora_stat_sel);
-#endif
-    return 0;
-}
-
 #if (LORA_DEBUG)
-uint32_t lora_get_uptime_ms()
+static uint32_t loras_get_uptime_ms()
 {
     SYSTIME uptime;
     uint32_t ms_passed;
     get_uptime(&uptime);
     ms_passed = (uptime.sec * 1000) + (uptime.usec / 1000);
-    return ms_passed;     
+    return ms_passed;
 }
 #endif
 
-void lora_set_error(LORA* lora, LORA_ERROR error)
+static void loras_get_stats(LORA* lora, IO* io_stats_tx, IO* io_stats_rx)
 {
-    switch(error)
+    LORA_STATS_TX *stats_tx;
+    LORA_STATS_RX *stats_rx;
+
+    if (io_stats_tx)
     {
-    case LORA_ERROR_NONE:                                                       break;
-    case LORA_ERROR_RX_TRANSFER_ABORTED:  /*++lora->stats.xxx;*/                break;
-    case LORA_ERROR_TX_TIMEOUT:             ++lora->stats.tx_timeout_num;       break;
-    case LORA_ERROR_RX_TIMEOUT:             ++lora->stats.rx_timeout_num;       break;
-    case LORA_ERROR_PAYLOAD_CRC_INCORRECT:  ++lora->stats.crc_err_num;          break;
-    case LORA_ERROR_CANNOT_READ_FIFO:     /*++lora->stats.xxx;*/                break;
-    case LORA_ERROR_INTERNAL:             /*++lora->stats.xxx;*/                break;
-    case LORA_ERROR_CONFIG:               /*++lora->stats.xxx;*/                break;
-#if defined (LORA_SX127X)
-    case LORA_ERROR_NO_CRC_ON_THE_PAYLOAD:/*++lora->stats.xxx;*/                break;
-#endif
-    default:;
+        stats_tx = (LORA_STATS_TX*)io_data(io_stats_tx);
+        stats_tx->pkt_time_on_air_ms      = (uint32_t)loras_hw_get_stat(lora, PKT_TIME_ON_AIR_MS);
+        stats_tx->timeout_num             = lora->stats_tx.timeout_num;
+        stats_tx->output_power_dbm        = (  int8_t)loras_hw_get_stat(lora, TX_OUTPUT_POWER_DBM);
     }
-    lora->error  = error;
+    if (io_stats_rx)
+    {
+        stats_rx = (LORA_STATS_RX*)io_data(io_stats_rx);
+        stats_rx->pkt_time_on_air_ms      = (uint32_t)loras_hw_get_stat(lora, PKT_TIME_ON_AIR_MS);
+        stats_rx->timeout_num             = lora->stats_rx.timeout_num;
+        stats_rx->crc_err_num             = lora->stats_rx.crc_err_num;
+        stats_rx->rssi_cur_dbm            = ( int16_t)loras_hw_get_stat(lora, RX_RSSI_CUR_DBM);
+        stats_rx->rssi_last_pkt_rcvd_dbm  = ( int16_t)loras_hw_get_stat(lora, RX_RSSI_LAST_PKT_RCVD_DBM);
+        stats_rx->snr_last_pkt_rcvd_db    = (  int8_t)loras_hw_get_stat(lora, RX_SNR_LAST_PKT_RCVD_DB);
+        stats_rx->rf_freq_error_hz        = ( int32_t)loras_hw_get_stat(lora, RX_RF_FREQ_ERROR_HZ);
+    }
+}
+
+static void loras_clear_stats(LORA* lora)
+{
+    memset(&lora->stats_tx, 0, sizeof(LORA_STATS_TX));
+    memset(&lora->stats_rx, 0, sizeof(LORA_STATS_RX));
+}
+
+static bool loras_spi_open(LORA* lora)
+{
+    SPI_MODE mode;
+    LORA_CONFIG *config = &lora->config;
+    mode.cs_pin        = config->spi_cs_pin;
+    mode.cpha          = 0;
+    mode.cpol          = 0;
+    mode.size          = 8;
+    mode.io_mode       = 1;
+    mode.order         = SPI_MSBFIRST;
+    lora->spi.port     = config->spi_port;
+#if defined(STM32)
+    SPI_SPEED speed;
+    unsigned int bus_clock, div;
+    bus_clock = power_get_clock(POWER_BUS_CLOCK);
+    bool found = false;
+    for (speed = SPI_DIV_2; speed <= SPI_DIV_256; ++speed)
+    {
+        div = (1 << (speed+1));
+        if ((bus_clock / div) <= (LORA_SCK_FREQUENCY_MHZ * 1000000))
+        {
+            found = true;
+            break;
+        }
+    }
+    if (!found) return false;
+    mode.speed = speed;
+#elif defined (MK22)
+    mode.baudrate_mbps = LORA_SCK_FREQUENCY_MHZ;
+    //todo: if io mode then control cs externally (iio_complete will notify os that spi transfer is competed)
+    //note: ctrl_cs can be removed (if need)
+    //mode.ctrl_cs       = !mode.io_mode;
+#else
+#error unsupported
+#endif
+    spi_open(lora->spi.port, &mode);
+    return true;
+}
+
+static void loras_spi_close(LORA* lora)
+{
+    spi_close(lora->spi.port);
+}
+
+static void loras_clear_vars(LORA* lora)
+{
+    lora->io = NULL;
+    lora->rxcont_mode_started = false;
+    lora->busy_pin_state_invalid = false;
+    lora->opened = false;
     lora->status = LORA_STATUS_TRANSFER_COMPLETED;
-#if defined (LORA_SX127X)
-    sx127x_set_error(lora, error);
-#elif defined (LORA_SX126X)
-    sx126x_set_error(lora, error);
-#endif
+    loras_clear_stats(lora);
 }
 
-#if (LORA_DEBUG)
-void lora_set_intern_error(LORA* lora, const char* file, const uint32_t line, uint32_t argc, ...)
+static void loras_close(LORA* lora)
 {
-    va_list va;
-    uint32_t arg, i;
-    printf("[loras] [internal error] %s:%u now_ms:%u", file, line, lora_get_uptime_ms());
-    va_start(va, argc);
-    for (i = 0; i < argc; ++i)
-    {
-        arg = va_arg(va, uint32_t);
-        printf(" 0x%x", arg);
-    }
-    printf("\n");
-    va_end(va);
-    lora_set_error(lora, LORA_ERROR_INTERNAL);
-    while(1);
-} 
-void lora_set_config_error(LORA* lora, const char* file, const uint32_t line, uint32_t argc, ...)
-{
-    va_list va;
-    uint32_t arg, i;
-    printf("[loras] [config error] %s:%u now_ms:%u", file, line, lora_get_uptime_ms());
-    va_start(va, argc);
-    for (i = 0; i < argc; ++i)
-    {
-        arg = va_arg(va, uint32_t);
-        printf(" 0x%x", arg);
-    }
-    printf("\n");
-    va_end(va);
-    lora_set_error(lora, LORA_ERROR_CONFIG);
-    while(1);
+    timer_stop(lora->timer_poll_timeout, 0, HAL_LORA);
+    timer_stop(lora->timer_txrx_timeout, 0, HAL_LORA);
+    loras_hw_close(lora);
+    loras_spi_close(lora);
+    loras_clear_vars(lora);
 }
-#endif
 
-static void lora_timer_txrx_timeout(LORA* lora)
+static void loras_open(LORA* lora, HANDLE process, IO* io_config)
 {
-#if (LORA_DEBUG)
-    if (lora->status != LORA_STATUS_TRANSFER_IN_PROGRESS)
+    LORA_CONFIG* config = &lora->config;
+    if (!(io_config && process != INVALID_HANDLE))
     {
-        lora_set_intern_error(lora, __FILE__, __LINE__, 1, lora->status);//EXTRA_STATUS_CHECK
+        error(ERROR_INVALID_PARAMS);
         return;
     }
-#endif
+    lora->process = process;
+    memcpy(config, io_data(io_config), sizeof(LORA_CONFIG));
 
-    //stop calling lora_timer_poll_timeout
-    timer_stop(lora->timer_poll_timeout, 0, HAL_LORA);
-    lora->timer_poll_timeout_stopped = true;
-
-    switch (lora->req)
+    if (!loras_spi_open(lora))
     {
-    case LORA_REQ_SEND: lora_set_error(lora, LORA_ERROR_TX_TIMEOUT); break;
-    case LORA_REQ_RECV: lora_set_error(lora, LORA_ERROR_RX_TIMEOUT); break;
-    default:
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+
+    loras_clear_vars(lora);
+
+    if (!loras_hw_open(lora))
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+    lora->opened = true;
+
 #if (LORA_DEBUG)
-        lora_set_intern_error(lora, __FILE__, __LINE__, 1, lora->req);
+    printf("[loras] [info] open completed\n");
 #endif
-        error(ERROR_NOT_SUPPORTED);
+}
+
+static bool loras_payload_length_valid(LORA* lora)
+{
+    uint8_t payload_length = lora->io->data_size;
+
+    if (lora->tx || LORA_IMPLICIT_HEADER_MODE_ON)
+    {
+        /* A 0 value is not permitted */
+        if (!(payload_length >= 1 && payload_length <= LORA_MAX_PAYLOAD_LEN))
+            return false;
+    }
+    else if (!LORA_IMPLICIT_HEADER_MODE_ON)
+    {
+        /* A 0 value is permitted (payload_length will be obtained from the header) */
+        if (!(payload_length >= 0 && payload_length <= LORA_MAX_PAYLOAD_LEN))
+            return false;
+    }
+    return true;
+}
+
+static bool loras_autoset_txrx_timeout_ms(LORA* lora)
+{
+    uint32_t toa_cur, toa_max, toa, aux;
+    /* NOTE 1: Set reasonable timeout values
+       NOTE 2: Usually LORA_POLL_TIMEOUT_MS < pkt_time_on_air_ms < tx_timeout_ms/rx_timeout_ms
+               Example                10 ms              1200 ms         5000 ms       5000 ms */
+    toa_cur = (uint32_t)loras_hw_get_stat(lora, PKT_TIME_ON_AIR_MS);
+    toa_max = (uint32_t)loras_hw_get_stat(lora, PKT_TIME_ON_AIR_MAX_MS);
+    if (!(toa_cur > 0 && toa_max > 0 && toa_cur > LORA_POLL_TIMEOUT_MS && toa_max >= toa_cur))
+    {
+        return false;
+    }
+    /* TX:      pl is     known before tx_async => get time_on_air_ms     (based on pl)
+       RX (ih): pl is     known before rx_async => get time_on_air_ms     (based on pl)
+       RX (eh): pl is not known before rx_async => get time_on_air_max_ms (based on pl_max) */
+    if (lora->tx)
+    {
+        toa = toa_cur;
+        aux = (toa * LORA_AUTO_TIMEOUT_ADDITIVE_PERCENTAGE) / 100;
+        /* chip     timer type    min value    max value
+           sx127x   external      1 ms         max value supported by timer_start_ms
+           sx126x   internal      1 ms         262000 ms */
+        //note: tx_timeout_ms will be auto trimmed (if need) then
+        lora->tx_timeout_ms = toa + (aux ? aux : 1);
+    }
+    else
+    {
+        toa = LORA_IMPLICIT_HEADER_MODE_ON ? toa_cur : toa_max;
+        aux = (toa * LORA_AUTO_TIMEOUT_ADDITIVE_PERCENTAGE) / 100;
+        /* == LORA_SINGLE_RECEPTION ================================================
+           chip     timer type    min value    max value
+           sx127x   internal      3 ms [1]     8392   ms [2]
+           sx126x   internal      1 ms         262000 ms
+           sx127x notes:
+             - rx_timeout_ms will be auto-converted to rx_timeout_symb (4..1023 symbols)
+             - min/max values depend on bw (125/250/500 kHz) and sf (6..12)
+           [1] min value calculated for min bw (125 kHz) and min sf (6)  => leads to 4    symbols
+           [2] max value calculated for max bw (500 kHz) and max sf (12) => leads to 1023 symbols
+           == LORA_CONTINUOUS_RECEPTION ============================================
+           chip     timer type    min value    max value
+           sx127x   external      1 ms         max value supported by timer_start_ms
+           sx126x   external      1 ms         max value supported by timer_start_ms */
+        //note: rx_timeout_ms will be auto trimmed (if need) then
+        lora->rx_timeout_ms = toa + (aux ? aux : 1);
+    }
+    return true;
+}
+
+static void loras_fatal(LORA* lora)
+{
+    error(ERROR_INTERNAL);
+    loras_close(lora);
+}
+
+static void loras_txrx_async(LORA* lora, IO* io)
+{
+    int32_t timeout_ms;
+#if (LORA_DEBUG)
+    int last_error;
+#endif
+    //save io (will be used in get_payload_length)
+    lora->io = io;
+
+    if (!loras_payload_length_valid(lora))
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+
+    if (!loras_autoset_txrx_timeout_ms(lora))
+    {
+        error(ERROR_INVALID_PARAMS);
+        return;
+    }
+
+    if (lora->tx)
+    {
+        loras_hw_tx_async(lora, io);
+        timeout_ms = (uint32_t)loras_hw_get_stat(lora, PKT_TIME_ON_AIR_MS);
+    }
+    else
+    {
+        loras_hw_rx_async(lora, io);
+        timeout_ms = LORA_POLL_TIMEOUT_MS;
+    }
+
+    last_error = get_last_error();
+    if (last_error != ERROR_OK)
+    {
+        loras_fatal(lora);
+#if (LORA_DEBUG)
+        printf("[loras] [fatal error] unexpected error %d => server closed\n", last_error);
+#endif
+        return;
+    }
+
+    timer_start_ms(lora->timer_poll_timeout, timeout_ms);
+#if (LORA_DEBUG)
+    lora->transfer_in_progress_ms = loras_get_uptime_ms();
+    lora->polls_cnt = 0;
+#endif
+}
+
+static void loras_tx_async(LORA* lora, IO* io)
+{
+    lora->tx = true;
+    loras_txrx_async(lora, io);
+}
+
+static void loras_rx_async(LORA* lora, IO* io)
+{
+    lora->tx = false;
+    loras_txrx_async(lora, io);
+}
+
+static void loras_timer_txrx_timeout(LORA* lora)
+{
+    if (lora->status != LORA_STATUS_TRANSFER_IN_PROGRESS)
+    {
+        loras_fatal(lora);
+#if (LORA_DEBUG)
+        printf("[loras] [fatal error] unexpected status %d => server closed\n", lora->status);
+#endif
         return;
     }
 #if (LORA_DEBUG)
     printf("[loras] [info] timer_txrx_timeout expired -> transfer completed\n");
 #endif
-    ipc_post_inline(lora->process, HAL_CMD(HAL_LORA, LORA_TRANSFER_COMPLETED), lora->error, 0, 0);
-}
-
-static void lora_clear_stats_s(LORA* lora)
-{
-    memset(&lora->stats, 0, sizeof(LORA_STATS));
-}
-
-static bool lora_usr_config_valid(LORA* lora)
-{
-    LORA_USR_CONFIG *usr_config = &lora->usr_config;
-
-    if (!(usr_config->txrx == LORA_TX || usr_config->txrx == LORA_RX))
-        return false;
-
-#if defined (LORA_SX127X) || defined (LORA_SX126X)
-    if (!(usr_config->txrx == LORA_TX || usr_config->txrx == LORA_RX))
-        return false;
-    if (!(usr_config->recv_mode == LORA_SINGLE_RECEPTION || 
-          usr_config->recv_mode == LORA_CONTINUOUS_RECEPTION))
-        return false;
-    if (!(usr_config->implicit_header_mode_on == 0 || usr_config->implicit_header_mode_on == 1))
-        return false;
-#if defined (LORA_SX127X)
-    if (usr_config->chip == LORA_CHIP_SX1272 &&
-       !(usr_config->rf_carrier_frequency_mhz >= 860 && usr_config->rf_carrier_frequency_mhz <= 1020))
-        return false;
-    else if (usr_config->chip == LORA_CHIP_SX1276 &&
-            !(usr_config->rf_carrier_frequency_mhz >= 137 && usr_config->rf_carrier_frequency_mhz <= 175) &&
-            !(usr_config->rf_carrier_frequency_mhz >= 410 && usr_config->rf_carrier_frequency_mhz <= 525) &&
-            !(usr_config->rf_carrier_frequency_mhz >= 862 && usr_config->rf_carrier_frequency_mhz <= 1020))
-        return false;
-#elif defined (LORA_SX126X)
-    if (!(usr_config->rf_carrier_frequency_mhz >= 430 && usr_config->rf_carrier_frequency_mhz <= 440) &&
-        !(usr_config->rf_carrier_frequency_mhz >= 470 && usr_config->rf_carrier_frequency_mhz <= 510) &&
-        !(usr_config->rf_carrier_frequency_mhz >= 779 && usr_config->rf_carrier_frequency_mhz <= 787) &&
-        !(usr_config->rf_carrier_frequency_mhz >= 863 && usr_config->rf_carrier_frequency_mhz <= 870) &&
-        !(usr_config->rf_carrier_frequency_mhz >= 902 && usr_config->rf_carrier_frequency_mhz <= 928))
-        return false; 
-#endif
- 
-#if defined (LORA_SX127X)
-    if (!(usr_config->spreading_factor >= 6 && usr_config->spreading_factor <= 12))
-        return false;
-#elif defined (LORA_SX126X)
-    if (!(usr_config->spreading_factor >= 5 && usr_config->spreading_factor <= 12))
-        return false;
-#endif
-
-#if defined (LORA_SX127X)
-    if (!(usr_config->tx_timeout_ms >= 1 && usr_config->tx_timeout_ms <= 0xFFFFFFFF))
-        return false;
-#elif defined (LORA_SX126X)
-    if (!(usr_config->tx_timeout_ms >= 1 && usr_config->tx_timeout_ms <= 262000))
-        return false;
-#endif
-
-    if (usr_config->recv_mode == LORA_SINGLE_RECEPTION)
-    {
-#if defined (LORA_SX127X)
-        if (!(usr_config->rx_timeout_ms >= 3 && usr_config->rx_timeout_ms <= 8392))
-            return false;
-#elif defined (LORA_SX126X)
-        if (!(usr_config->rx_timeout_ms >= 1 && usr_config->rx_timeout_ms <= 262000))
-            return false;
-#endif
-    }
-    if (usr_config->recv_mode == LORA_CONTINUOUS_RECEPTION)
-    {
-#if defined (LORA_SX127X)
-        if (!(usr_config->rx_timeout_ms >= 1 && usr_config->rx_timeout_ms <= 0xFFFFFFFF))
-            return false;
-#elif defined (LORA_SX126X)
-        if (!(usr_config->rx_timeout_ms >= 1 && usr_config->rx_timeout_ms <= 262000))
-            return false;
-#endif
-    }
-
-    if (usr_config->txrx == LORA_TX && !(usr_config->payload_length <= usr_config->max_payload_length))
-        return false;
-    else if (usr_config->txrx == LORA_RX &&
-            ((usr_config->implicit_header_mode_on==1 && !(usr_config->payload_length != 0)) || 
-             (usr_config->implicit_header_mode_on==0 && !(usr_config->payload_length <= usr_config->max_payload_length))))
-        return false;
-
-    if (!(usr_config->max_payload_length >= 1 && usr_config->max_payload_length <= LORA_MAX_PAYLOAD_LEN))
-        return false;
-
-#if defined (LORA_SX127X)
-    if (usr_config->chip == LORA_CHIP_SX1272 &&
-       !(usr_config->signal_bandwidth >= 0 && usr_config->signal_bandwidth <= 2))
-        return false;
-    else if (usr_config->chip == LORA_CHIP_SX1276 &&
-            !(usr_config->signal_bandwidth >= 0 && usr_config->signal_bandwidth <= 9))
-        return false;
-#elif defined (LORA_SX126X)
-        if (!(usr_config->signal_bandwidth >= 0 && usr_config->signal_bandwidth <= 6) && 
-            !(usr_config->signal_bandwidth >= 8 && usr_config->signal_bandwidth <= 10))
-            return false;
-#endif
-    if (!(usr_config->enable_high_power_pa == 0 || usr_config->enable_high_power_pa == 1))
-        return false;
-#endif
-    return true;
-}
-
-static void lora_open_s(LORA* lora, HANDLE process, IO* io_config)
-{
-    SPI_MODE mode;
-    LORA_USR_CONFIG* usr_config = &lora->usr_config;
-    uint32_t toa_ms;
-
-    if (!io_config)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return; 
-    }
-    memcpy(usr_config, io_data(io_config), sizeof(LORA_USR_CONFIG));
-
-    if (!lora_usr_config_valid(lora))
-    {
-#if (LORA_DEBUG)
-        lora_set_config_error(lora, __FILE__, __LINE__, 0);
-#endif
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
-
-    if (!sx12xx_config(lora))
-    {
-#if (LORA_DEBUG)
-        lora_set_config_error(lora, __FILE__, __LINE__, 0);
-#endif
-        error(ERROR_NOT_CONFIGURED);
-        return;
-    }
-
-    mode.cs_pin        = usr_config->spi_cs_pin;
-    mode.cpha          = 0;
-    mode.cpol          = 0;
-    mode.size          = 8;     
-    mode.io_mode       = 1;
-    mode.order         = SPI_MSBFIRST;
-    lora->spi.port     = usr_config->spi_port;
-#if defined(STM32)
-    SPI_SPEED speed;
-    unsigned int bus_clock, div;
-    bus_clock = power_get_clock(POWER_BUS_CLOCK);
-    for (speed = SPI_DIV_2; speed <= SPI_DIV_256; ++speed)
-    {
-        div = (1 << (speed+1));
-        if ((bus_clock / div) <= (usr_config->spi_baudrate_mbps * 1000000))
-            break;
-    }
-    mode.speed         = speed;
-#elif defined (MK22)
-    mode.baudrate_mbps = usr_config->spi_baudrate_mbps;
-    // if io mode then control cs externally (iio_complete will notify os that spi transfer is competed)
-    // note: ctrl_cs can be removed (if need)
-    //mode.ctrl_cs       = !mode.io_mode;  
-#endif
-    spi_open(lora->spi.port, &mode);
-
-    lora->process = process;
-    lora->rxcont_mode_started = false;
-    lora->io_rx = 0;
-    lora_clear_stats_s(lora);
-
-    lora->tx_on = false;
-    lora->rx_on = false;
-    if (usr_config->txrx == LORA_TX || usr_config->txrx == LORA_TXRX) lora->tx_on = true;    
-    if (usr_config->txrx == LORA_RX || usr_config->txrx == LORA_TXRX) lora->rx_on = true;
-
-#if defined (LORA_SX126X)
-    /* The BUSY control line is used to indicate the status of the internal 
-       state machine. When the BUSY line is held low, it indicates that the 
-       internal state machine is in idle mode and that the radio is ready to 
-       accept a command from the host controller. */
-    gpio_enable_pin(usr_config->busy_pin, GPIO_MODE_IN_PULLDOWN);
-    gpio_reset_pin(usr_config->busy_pin); 
-    pin_enable(usr_config->busy_pin, usr_config->busy_pin_mode, false);
-#endif
-    
-#if defined (LORA_SX127X)
-    sx127x_open(lora);
-#elif defined (LORA_SX126X)
-    sx126x_open(lora);
-#endif
-
-    /* NOTE 1: Set reasonable timeout values
-       NOTE 2: Usually LORA_POLL_TIMEOUT_MS < pkt_time_on_air_ms < tx_timeout_ms/rx_timeout_ms 
-               Example                10 ms              1200 ms         5000 ms       5000 ms */
-    toa_ms = (uint32_t)lora_get_stat(lora, PKT_TIME_ON_AIR_MS);
-    if (!(LORA_POLL_TIMEOUT_MS < toa_ms && toa_ms < usr_config->tx_timeout_ms && 
-                                           toa_ms < usr_config->rx_timeout_ms))
-    {
-#if (LORA_DEBUG)
-        lora_set_config_error(lora, __FILE__, __LINE__, 1, toa_ms);
-#endif
-		error(ERROR_NOT_CONFIGURED);
-        return;
-    }
-
-#if (LORA_DEBUG) && (LORA_DEBUG_INFO)
-    /* [implicit_header_mode_on] ImplicitHeaderModeOn:
-            0 - Explicit Header mode
-            1 - Implicit Header mode */
-    if (usr_config->txrx == LORA_TX)
-        printf("[loras] [info] init completed: TX in %s header mode\n",
-            usr_config->implicit_header_mode_on == 1? "IMPLICIT" : "EXPLICIT");
-    else if (usr_config->txrx == LORA_RX)
-        printf("[loras] [info] init completed: RX in %s header mode with %s reception\n",
-            usr_config->implicit_header_mode_on == 1? "IMPLICIT" : "EXPLICIT", 
-            usr_config->recv_mode == LORA_CONTINUOUS_RECEPTION ? "CONTINUOUS" : "SINGLE");        
-    else if (usr_config->txrx == LORA_TXRX)
-        printf("[loras] [info] init completed: TX-RX in %s header mode with %s reception\n",
-            usr_config->implicit_header_mode_on == 1? "IMPLICIT" : "EXPLICIT", 
-            usr_config->recv_mode == LORA_CONTINUOUS_RECEPTION ? "CONTINUOUS" : "SINGLE"); 
-#endif
-
-    lora->error  = LORA_ERROR_NONE;
-    lora->req    = LORA_REQ_NONE;
-    lora->status = LORA_STATUS_TRANSFER_COMPLETED;
-    ipc_post_inline(lora->process, HAL_CMD(HAL_LORA, LORA_IDLE), (unsigned int)lora->error, 0, 0);
-}
-
-static void lora_close_s(LORA* lora)
-{
-    //stop calling lora_timer_poll_timeout
     timer_stop(lora->timer_poll_timeout, 0, HAL_LORA);
-    lora->timer_poll_timeout_stopped = true;
-
-    timer_stop(lora->timer_txrx_timeout, 0, HAL_LORA);
-
-#if defined (LORA_SX127X)
-    sx127x_close(lora);
-#elif defined (LORA_SX126X)
-    sx126x_close(lora);
+    if (lora->tx || !LORA_CONTINUOUS_RECEPTION_ON)
+        loras_hw_sleep(lora);
+#if (LORA_DO_ERROR_COUNTING)
+    lora->tx ? ++lora->stats_tx.timeout_num : ++lora->stats_rx.timeout_num;
 #endif
-
-    spi_close(lora->spi.port);
-#if defined (LORA_SX126X)
-    LORA_USR_CONFIG* usr_config = &lora->usr_config;
-    /* The BUSY control line is used to indicate the status of the internal 
-       state machine. When the BUSY line is held low, it indicates that the 
-       internal state machine is in idle mode and that the radio is ready to 
-       accept a command from the host controller. */
-    gpio_disable_pin(usr_config->busy_pin);
-    pin_disable(usr_config->busy_pin);
-#endif
+    lora->status = LORA_STATUS_TRANSFER_COMPLETED;
+    ipc_post_inline(lora->process, HAL_CMD(HAL_LORA, LORA_TRANSFER_COMPLETED), 0, 0, ERROR_TIMEOUT);
 }
 
-static inline void lora_txrx_async_s(LORA* lora, IO* io, bool is_tx)
+static void loras_timer_poll_timeout(LORA* lora)
 {
-    int32_t timeout_ms;
-
-#if defined (LORA_SX127X)
-    (is_tx ? sx127x_tx_async : sx127x_rx_async)(lora, io);
-#elif defined (LORA_SX126X)
-    (is_tx ? sx126x_tx_async : sx126x_rx_async)(lora, io);
-#endif
-
-    if (is_tx)
-    {
-        lora->req = LORA_REQ_SEND;
-        timeout_ms = (uint32_t)lora_get_stat(lora, PKT_TIME_ON_AIR_MS);
-    }
-    else
-    {
-        lora->req = LORA_REQ_RECV;
-        timeout_ms = LORA_POLL_TIMEOUT_MS; 
-    }
-
-    timer_start_ms(lora->timer_poll_timeout, timeout_ms);
-    lora->timer_poll_timeout_stopped = false;
+    int last_error;
 #if (LORA_DEBUG)
-    lora->transfer_in_progress_ms = lora_get_uptime_ms();
-    lora->polls_cnt = 0;
-#endif
-}
-
-static inline void lora_tx_async_s(LORA* lora, IO* io)
-{
-    lora_txrx_async_s(lora, io, true);
-}
-
-static inline void lora_rx_async_s(LORA* lora, IO* io)
-{
-    lora_txrx_async_s(lora, io, false);
-}
-
-static inline void lora_timer_poll_timeout(LORA* lora)
-{
-#if (LORA_DEBUG)
+    uint32_t duration_ms;
     ++lora->polls_cnt;
 #endif
 
-#if (LORA_DEBUG)
-    //todo: os timers issue
-    if (lora->timer_poll_timeout_stopped || lora->status != LORA_STATUS_TRANSFER_IN_PROGRESS)
+    if (lora->status != LORA_STATUS_TRANSFER_IN_PROGRESS)
     {
-        lora_set_intern_error(lora, __FILE__, __LINE__, 1, lora->status);//EXTRA_STATUS_CHECK
+        loras_fatal(lora);
+#if (LORA_DEBUG)
+        printf("[loras] [fatal error] unexpected status %d => server closed\n", lora->status);
+#endif
+        return;
+    }
+
+    (lora->tx ? loras_hw_tx_async_wait : loras_hw_rx_async_wait)(lora);
+
+    last_error = get_last_error();
+
+#if (LORA_DEBUG)
+    //check for internal unexpected errors (ex. ERROR_INVALID_STATE -- chip is in invalid state)
+    if (!(last_error >= ERROR_OK || last_error == ERROR_TIMEOUT))
+    {
+        loras_fatal(lora);
+        printf("[loras] [fatal error] unexpected error %d => server closed\n", last_error);
         return;
     }
 #endif
 
-#if defined (LORA_SX127X)
-    if      (lora->tx_on && lora->req == LORA_REQ_SEND) sx127x_tx_async_wait(lora);
-    else if (lora->rx_on && lora->req == LORA_REQ_RECV) sx127x_rx_async_wait(lora);
-#elif defined (LORA_SX126X)  
-    if      (lora->tx_on && lora->req == LORA_REQ_SEND) sx126x_tx_async_wait(lora);
-    else if (lora->rx_on && lora->req == LORA_REQ_RECV) sx126x_rx_async_wait(lora);
-#endif 
-
-    if (lora->status == LORA_STATUS_TRANSFER_IN_PROGRESS) 
+    switch (lora->status)
     {
+    case LORA_STATUS_TRANSFER_IN_PROGRESS:
         timer_start_ms(lora->timer_poll_timeout, LORA_POLL_TIMEOUT_MS);
-        ipc_post_inline(lora->process, HAL_CMD(HAL_LORA, LORA_TRANSFER_IN_PROGRESS), 0, 0, 0);
-    }
-    else if (lora->status == LORA_STATUS_TRANSFER_COMPLETED)
-    {
+        //note: do not check if last_error == ERROR_OK (should be)
+        ipc_post_inline(lora->process, HAL_CMD(HAL_LORA, LORA_TRANSFER_IN_PROGRESS), 0, 0, last_error);
+        break;
+    case LORA_STATUS_TRANSFER_COMPLETED:
         timer_stop(lora->timer_txrx_timeout, 0, HAL_LORA);
 #if (LORA_DEBUG)
-        uint32_t duration_ms = lora_get_uptime_ms() - lora->transfer_in_progress_ms;
+        duration_ms = loras_get_uptime_ms() - lora->transfer_in_progress_ms;
         printf("[loras] [info] poll completed duration_ms:%u polls_cnt:%u\n", duration_ms, lora->polls_cnt);
 #endif
-        ipc_post_inline(lora->process, HAL_CMD(HAL_LORA, LORA_TRANSFER_COMPLETED), lora->error, 0, 0);
+        ipc_post_inline(lora->process, HAL_CMD(HAL_LORA, LORA_TRANSFER_COMPLETED), 0, 0, last_error);
+        break;
+    default:
+        error(ERROR_NOT_SUPPORTED);
+        break;
     }
 }
 
-static inline void lora_get_stats_s(LORA* lora, LORA_STATS *stats)
+static void loras_abort_rx_transfer(LORA* lora)
 {
-    if (lora->tx_on || lora->rx_on)
-    {
-        stats->pkt_time_on_air_ms      = (uint32_t)lora_get_stat(lora, PKT_TIME_ON_AIR_MS);
-    }
-    if (lora->tx_on)
-    {
-        stats->tx_timeout_num          = lora->stats.tx_timeout_num;
-        stats->tx_output_power_dbm     = (  int8_t)lora_get_stat(lora, TX_OUTPUT_POWER_DBM);
-    }
-    if (lora->rx_on) 
-    {
-        stats->rx_timeout_num          = lora->stats.rx_timeout_num;
-        stats->crc_err_num             = lora->stats.crc_err_num;
-        stats->rssi_cur_dbm            = ( int16_t)lora_get_stat(lora, RSSI_CUR_DBM);
-        stats->rssi_last_pkt_rcvd_dbm  = ( int16_t)lora_get_stat(lora, RSSI_LAST_PKT_RCVD_DBM);
-        stats->snr_last_pkt_rcvd_db    = (  int8_t)lora_get_stat(lora, SNR_LAST_PKT_RCVD_DB);
-        stats->rf_freq_error_hz        = ( int32_t)lora_get_stat(lora, RF_FREQ_ERROR_HZ);
-    }   
+    timer_stop(lora->timer_txrx_timeout, 0, HAL_LORA);
+    timer_stop(lora->timer_poll_timeout, 0, HAL_LORA);
+    if (!LORA_CONTINUOUS_RECEPTION_ON)
+        loras_hw_sleep(lora);
+    lora->status = LORA_STATUS_TRANSFER_COMPLETED;
 }
 
-static void lora_abort_rx_transfer_s(LORA* lora)
+static bool loras_request_check_pre(LORA* lora, IPC* ipc)
 {
-    if (lora->rx_on && lora->status == LORA_STATUS_TRANSFER_IN_PROGRESS )
+    if (!lora->opened && (HAL_ITEM(ipc->cmd) != IPC_OPEN))
     {
-        timer_stop(lora->timer_txrx_timeout, 0, HAL_LORA);
-        timer_stop(lora->timer_poll_timeout, 0, HAL_LORA);
-        lora->timer_poll_timeout_stopped = true;
-        lora_set_error(lora, LORA_ERROR_RX_TRANSFER_ABORTED);
-        ipc_post_inline(lora->process, HAL_CMD(HAL_LORA, LORA_TRANSFER_COMPLETED), lora->error, 0, 0);
-    }
-}
-
-static void lora_request(LORA* lora, IPC* ipc)
-{
-    if (lora->status == LORA_STATUS_TRANSFER_IN_PROGRESS)
-    {
-        switch (HAL_ITEM(ipc->cmd))
-        {
-        case IPC_TIMEOUT:
-        case LORA_ABORT_RX_TRANSFER:
-            break;
-        default:
-#if (LORA_DEBUG)
-            printf("[loras] [api usage error] new req while transfer in progress (req discarded)\n");
-#endif
-            return;
-        }        
+        error(ERROR_NOT_CONFIGURED);
+        return false;
     }
 
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        lora_open_s(lora, ipc->process, (IO*)ipc->param1);
+        if (lora->opened)
+        {
+            error(ERROR_ALREADY_CONFIGURED);
+            return false;
+        }
         break;
     case IPC_CLOSE:
-        lora_close_s(lora);
+        //tbd
         break;
     case IPC_WRITE:
-        lora_tx_async_s(lora, (IO*)ipc->param1);
-        break;
     case IPC_READ:
-        lora_rx_async_s(lora, (IO*)ipc->param1);
-        break;   
     case LORA_GET_STATS:
-        lora_get_stats_s(lora, (LORA_STATS*)ipc->param1);
-        break;  
     case LORA_CLEAR_STATS:
-        lora_clear_stats_s(lora);
-        break;  
-    case LORA_ABORT_RX_TRANSFER:
-        lora_abort_rx_transfer_s(lora);
-        break;  
+        if (lora->status == LORA_STATUS_TRANSFER_IN_PROGRESS)
+        {
+            error(ERROR_INVALID_STATE);
+            return false;
+        }
+        break;
+    case IPC_CANCEL_IO:
+        break;
     case IPC_TIMEOUT:
         switch (ipc->param1)
         {
-        case LORA_TIMER_TXRX_TIMEOUT_ID: 
-            lora_timer_txrx_timeout(lora);
-            break;
-        case LORA_TIMER_POLL_TIMEOUT_ID: 
-            lora_timer_poll_timeout(lora);
+        case LORA_TIMER_TXRX_TIMEOUT_ID:
+        //todo: os timers issue
+        case LORA_TIMER_POLL_TIMEOUT_ID:
+            if (lora->status != LORA_STATUS_TRANSFER_IN_PROGRESS)
+            {
+                error(ERROR_INVALID_STATE);
+                return false;
+            }
             break;
         default:
-            error (ERROR_NOT_SUPPORTED);
+            error(ERROR_NOT_SUPPORTED);
             break;
         }
         break;
     default:
-        error (ERROR_NOT_SUPPORTED);
+        error(ERROR_NOT_SUPPORTED);
         break;
     }
+    return true;
 }
-#if 0
-static void spi_request(LORA* lora, IPC* ipc)
+
+static bool loras_request_check_post(LORA* lora, IPC* ipc)
 {
+    if (LORA_CHIP == SX1261 && lora->busy_pin_state_invalid)
+    {
+        //todo: who should reboot the server: server itself (auto reboot) or app??
+        error(ERROR_HARDWARE);
+        return false;
+    }
+    return true;
+}
+
+static void loras_request(LORA* lora, IPC* ipc)
+{
+    if (!loras_request_check_pre(lora, ipc))
+    {
+        return;
+    }
+
     switch (HAL_ITEM(ipc->cmd))
     {
-    case IPC_READ:
-#if (LORA_DEBUG)
-        printf("%s\n", "spi_request: IPC_READ");
-#endif
+    case IPC_OPEN:
+        loras_open(lora, ipc->process, (IO*)ipc->param1);
+        break;
+    case IPC_CLOSE:
+        loras_close(lora);
         break;
     case IPC_WRITE:
-#if (LORA_DEBUG)
-        printf("%s\n", "spi_request: IPC_WRITE");
-#endif
+        loras_tx_async(lora, (IO*)ipc->param1);
+        break;
+    case IPC_READ:
+        loras_rx_async(lora, (IO*)ipc->param1);
+        break;
+    case LORA_GET_STATS:
+        loras_get_stats(lora, (IO*)ipc->param1, (IO*)ipc->param2);
+        break;
+    case LORA_CLEAR_STATS:
+        loras_clear_stats(lora);
+        break;
+    case IPC_CANCEL_IO:
+        loras_abort_rx_transfer(lora);
+        break;
+    case IPC_TIMEOUT:
+        switch (ipc->param1)
+        {
+        case LORA_TIMER_TXRX_TIMEOUT_ID:
+            loras_timer_txrx_timeout(lora);
+            break;
+        case LORA_TIMER_POLL_TIMEOUT_ID:
+            loras_timer_poll_timeout(lora);
+            break;
+        default:
+            error(ERROR_NOT_SUPPORTED);
+            break;
+        }
         break;
     default:
-        error (ERROR_NOT_SUPPORTED);
+        error(ERROR_NOT_SUPPORTED);
         break;
     }
+
+    if (!loras_request_check_post(lora, ipc))
+    {
+        return;
+    }
 }
-#endif
+
 static void init(LORA* lora)
 {
     memset(lora, 0, sizeof(LORA));
     lora->spi.io = io_create(LORA_SPI_IO_SIZE);
     lora->timer_txrx_timeout = timer_create(LORA_TIMER_TXRX_TIMEOUT_ID, HAL_LORA);
     lora->timer_poll_timeout = timer_create(LORA_TIMER_POLL_TIMEOUT_ID, HAL_LORA);
-    lora->por_reset_completed = false;
+    lora->opened = false;
+    lora->sys_vars = NULL;
 }
-
-#else // #if defined (LORA_SX127X) || defined (LORA_SX126X)
-
-static void init(LORA* lora)
-{
-    memset(lora, 0, sizeof(LORA));
-}
-
-#endif
 
 void loras_main()
 {
@@ -639,16 +521,10 @@ void loras_main()
         switch (HAL_GROUP(ipc.cmd))
         {
         case HAL_LORA:
-#if defined (LORA_SX127X) || defined (LORA_SX126X)
-            lora_request(&lora, &ipc);
-#endif
+            loras_request(&lora, &ipc);
             break;
-        //todo: do we need to receive and process HAL_SPI reqs (ex. from iio_complete)??
-        //case HAL_SPI:
-        //    spi_request(&lora, &ipc);
-        //    break;
         default:
-            error (ERROR_NOT_SUPPORTED);
+            error(ERROR_NOT_SUPPORTED);
             break;
         }
         ipc_write(&ipc);

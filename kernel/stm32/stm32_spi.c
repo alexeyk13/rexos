@@ -21,10 +21,12 @@ typedef SPI_TypeDef* SPI_TypeDef_P;
 typedef DMA_Channel_TypeDef* DMA_Channel_TypeDef_P;
 #if (SPI_COUNT > 1)
 static const SPI_TypeDef_P         __SPI_REGS[] =                        {SPI1, SPI2};
+#if (SPI_DMA)
 static const DMA_Channel_TypeDef_P __SPI_DMA_TX_REGS[] =                 {DMA1_Channel3, DMA1_Channel5};
 static const DMA_Channel_TypeDef_P __SPI_DMA_RX_REGS[] =                 {DMA1_Channel2, DMA1_Channel4};
 
 static const uint8_t __SPI_DMA_RX_VECTORS[] =                           {12, 14};
+#endif
 static const uint8_t __SPI_VECTORS[] =                                  {35, 36};
 static const uint8_t __SPI_POWER_PINS[] =                               {12, 14};// APB2ENR, APB1ENR
 #else
@@ -171,6 +173,7 @@ void stm32_spi_close(EXO* exo, SPI_PORT port)
 
     kfree(spi);
     exo->spi.spis[port] = NULL;
+    //kirq_unregister(KERNEL_HANDLE, __SPI_VECTORS[port]);
 }
 
 static uint16_t stm32_spi_write_word(SPI_PORT port, uint16_t data)
