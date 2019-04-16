@@ -405,6 +405,11 @@ static bool loras_request_check_pre(LORA* lora, IPC* ipc)
         }
         break;
     case IPC_CANCEL_IO:
+        if (lora->status != LORA_STATUS_TRANSFER_IN_PROGRESS)
+        {
+            error(ERROR_INVALID_STATE);
+            return false;
+        }
         break;
     case IPC_TIMEOUT:
         switch (ipc->param1)
