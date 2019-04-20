@@ -35,6 +35,8 @@ typedef struct {
     bool io_mode;
     SPI_ORDER order;
     SPI_SPEED speed;
+    uint8_t baudrate_mbps;
+    bool ctrl_cs;   // set/reset cs pin inside the spi driver
 }SPI_MODE;
 
 #define SPI_IO_MODE               ( 1 << 31)
@@ -42,6 +44,7 @@ typedef struct {
 #define SPI_LSBFIRST_MSK          ( 1 << 30)
 #define SPI_CPOL_MSK              ( 1 << 29)
 #define SPI_CPHA_MSK              ( 1 << 28)
+#define SPI_CTRL_CS               ( 1 << 27)
 
 
 
@@ -52,7 +55,7 @@ bool spi_send(uint32_t port, uint32_t size, uint16_t* data, uint32_t cs_pin);
 #define spi_read(port, io, size)              io_read_exo(HAL_IO_REQ(HAL_SPI, IPC_READ), (port), (io), (size))
 #define spi_read_sync(port, io, size)         io_read_sync_exo(HAL_IO_REQ(HAL_SPI, IPC_READ), (port), (io), (size))
 #define spi_write(port, io, size)             io_write_exo(HAL_IO_REQ(HAL_SPI, IPC_WRITE), (port) | SPI_IO_MODE, (io), (size))
-#define spi_write_sync(port, io, size)        io_write_sync_exo(HAL_IO_REQ(HAL_SPI, IPC_WRITE), (port) | SPI_IO_MODE, (io), (size))
+#define spi_write_sync(port, io)              io_write_sync_exo(HAL_IO_REQ(HAL_SPI, IPC_WRITE), (port) | SPI_IO_MODE, (io))
 
 
 #endif // SPI_H
