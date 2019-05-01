@@ -41,7 +41,7 @@ void exodriver_post(IPC* ipc)
         break;
 #endif // NRF_RTC_DRIVER
 #if (NRF_WDT_DRIVER)
-        case HAL_WDT:
+    case HAL_WDT:
         nrf_wdt_request(ipc);
         break;
 #endif //NRF_WDT_DRIVER
@@ -80,6 +80,31 @@ void exodriver_init()
 {
     //ISR disabled at this point
     __KERNEL->exo = kmalloc(sizeof(EXO));
+
+#if (NRF_SRAM_POWER_CONFIG)
+#if (NRF_RAM1_ENABLE)
+    kstdlib_add_pool(SRAM_BASE + SRAM_SIZE, SRAM_SIZE
+#if (NRF_RAM2_ENABLE)
+            + SRAM_SIZE
+#endif // NRF_RAM2_ENABLE
+#if (NRF_RAM3_ENABLE)
+            + SRAM_SIZE
+#endif // NRF_RAM3_ENABLE
+#if (NRF_RAM4_ENABLE)
+            + SRAM_SIZE
+#endif // NRF_RAM3_ENABLE
+#if (NRF_RAM5_ENABLE)
+            + SRAM_SIZE
+#endif // NRF_RAM3_ENABLE
+#if (NRF_RAM6_ENABLE)
+            + SRAM_SIZE
+#endif // NRF_RAM3_ENABLE
+#if (NRF_RAM7_ENABLE)
+            + SRAM_SIZE
+#endif // NRF_RAM3_ENABLE
+            );
+#endif // NRF_RAM1_ENABLE
+#endif // NRF_SRAM_POWER_CONFIG
 
     nrf_power_init(__KERNEL->exo);
     nrf_pin_init(__KERNEL->exo);

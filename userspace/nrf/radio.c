@@ -101,21 +101,15 @@ static void radio_debug_adv_common(IO* io)
 
 extern void radio_main();
 
-void radio_open(RADIO_MODE mode)
-{
-    ack(KERNEL_HANDLE, HAL_REQ(HAL_RF, IPC_OPEN), mode, 0, 0);
-}
+//void radio_close()
+//{
+//    ack(KERNEL_HANDLE, HAL_REQ(HAL_RF, IPC_CLOSE), 0, 0, 0);
+//}
 
-void radio_close()
+HANDLE radio_create(char* process_name, uint32_t process_size, uint32_t priority)
 {
-    ack(KERNEL_HANDLE, HAL_REQ(HAL_RF, IPC_CLOSE), 0, 0, 0);
-}
-
-HANDLE radio_create(uint32_t process_size, uint32_t priority)
-{
-    char name[] = "RADIO";
     REX rex;
-    rex.name = name;
+    rex.name = process_name;
     rex.size = process_size;
     rex.priority = priority;
     rex.flags = PROCESS_FLAGS_ACTIVE;
@@ -123,39 +117,63 @@ HANDLE radio_create(uint32_t process_size, uint32_t priority)
     return process_create(&rex);
 }
 
-void radio_start()
+HANDLE radio_open(char* process_name, RADIO_MODE mode)
 {
-    ack(KERNEL_HANDLE, HAL_REQ(HAL_RF, RADIO_START), 0, 0, 0);
+    HANDLE handle = radio_create(process_name, RADIO_PROCESS_SIZE, RADIO_PROCESS_PRIORITY);
+    if(INVALID_HANDLE == handle)
+        return handle;
+
+    ack(handle, HAL_REQ(HAL_RF, IPC_OPEN), mode, 0, 0);
+    return handle;
 }
 
-void radio_stop()
+HANDLE ble_open()
 {
-    ack(KERNEL_HANDLE, HAL_REQ(HAL_RF, RADIO_STOP), 0, 0, 0);
+    return radio_open("BLE stack", RADIO_MODE_BLE_1Mbit);
 }
 
-void radio_tx()
+//void radio_start()
+//{
+//    ack(KERNEL_HANDLE, HAL_REQ(HAL_RF, RADIO_START), 0, 0, 0);
+//}
+//
+//void radio_stop()
+//{
+//    ack(KERNEL_HANDLE, HAL_REQ(HAL_RF, RADIO_STOP), 0, 0, 0);
+//}
+//
+//void radio_tx()
+//{
+//
+//}
+//
+//void radio_rx()
+//{
+//
+//}
+//void radio_tx_sync()
+//{
+//
+//}
+//
+//void radio_rx_sync()
+//{
+//
+//}
+//
+//void radio_set_channel(uint8_t channel)
+//{
+//    ack(KERNEL_HANDLE, HAL_REQ(HAL_RF, RADIO_SET_CHANNEL), channel, 0, 0);
+//}
+
+bool radio_send_adv(uint8_t channel, uint8_t* adv_data, unsigned int data_size)
 {
-
-}
-
-void radio_rx()
-{
-
-}
-
-void radio_tx_sync()
-{
-
-}
-
-void radio_rx_sync()
-{
-
-}
-
-void radio_set_channel(uint8_t channel)
-{
-    ack(KERNEL_HANDLE, HAL_REQ(HAL_RF, RADIO_SET_CHANNEL), channel, 0, 0);
+    IO* io = io_create(data_size);
+    if(io == NULL)
+        return false;
+    io_write_sync_exo(HAL_IO_REQ(HAL_RF, RADIO_SEND_ADV_DATA), 0, io);
+    io_destroy(io);
+    return true;
 }
 
 bool radio_listen_adv_channel(unsigned int max_size, uint8_t flags, unsigned int timeout_ms)

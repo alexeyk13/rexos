@@ -335,7 +335,7 @@ static inline void nrf_uart_open(EXO* exo, UART_PORT port, unsigned int mode)
     //power up
 
     // set TX_PIN
-    UART_REGS[port]->PSELTXD = P9; // TODO: temporary UART pin define
+    UART_REGS[port]->PSELTXD = DBG_CONSOLE_TX_PIN; // TODO: temporary UART pin define
 //    NRF_UART0->PSELRXD = UART_RX_PIN;
     // diconnected pin
     UART_REGS[port]->PSELRTS       = 0xFFFFFFFF;

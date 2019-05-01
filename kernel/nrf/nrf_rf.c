@@ -10,6 +10,7 @@
 #include "nrf_power.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/nrf/radio.h"
+#include "../../userspace/nrf/nrf_driver.h"
 #include "../../userspace/nrf/radio_config.h"
 #include "../kerror.h"
 #include "../kstdlib.h"
@@ -21,18 +22,52 @@
 #include "nrf_exo_private.h"
 #include "sys_config.h"
 
+
+static const uint8_t template_adv_packet[] = {
+        0x42, // ADV_NONCONN_IND
+        0x14, // LENGTH
+//        0x00,
+        0xF0, // MAC
+        0x4C,
+        0x16,
+        0x48,
+        0xF0,
+        0xEA,
+        0x02, // COMMON DATA
+        0x01,
+        0x06,
+        0x07, // NAME LENGTH
+        0x09, // type name
+        'R',
+        'J',
+        'T',
+        'E',
+        'S',
+        'T',
+        0x55, // CRC
+        0x55,
+        0x55
+};
+
+static const uint8_t rsp[] = {
+        0x44,
+        0x06,
+//        0x00,
+        //------------------------------
+        0xF0, // MAC
+        0x4C,
+        0x16,
+        0x48,
+        0xF0,
+        0xEA,
+        //------------------------------
+        0x55, // CRC
+        0x55,
+        0x55
+};
+
 /** Return 2^n, used for setting nth bit as 1*/
 #define SET_BIT(n)      (1UL << n)
-
-static inline void print_packet(EXO* exo)
-{
-    int i = 0;
-    uint32_t pkt_size = exo->rf.pdu[1] + 2; // length + header
-
-    for(i = 0; i < pkt_size; i++)
-        printk("%02X ", exo->rf.pdu[i]);
-    printk("\n");
-}
 
 static inline void collect_packet(EXO* exo)
 {
@@ -74,178 +109,6 @@ void nrf_rf_init(EXO* exo)
 
 }
 
-static void adv_seg_print(uint8_t * ptr, uint32_t len){
-    uint32_t index = 0;
-    while (index < len) {
-        uint32_t seg_len = ptr[index];
-        index++;
-
-        switch (ptr[index]) {
-            case 0: printk("Type Zero is undefined, Error.");
-                break;
-            case TYPE_FLAGS:
-                printk("Flags:");
-                break;
-            case TYPE_NAME_SHORT:
-            case TYPE_NAME:
-                printk("Name:");
-                break;
-            case TYPE_UUID128:
-            case TYPE_UUID128_INC:
-            case TYPE_UUID32:
-            case TYPE_UUID32_INC:
-            case TYPE_UUID16:
-            case TYPE_UUID16_INC:
-                printk("UUIDs:");
-                break;
-            case TYPE_TRANSMITPOWER:
-                printk("Transmit Power:");
-                break;
-            case TYPE_CONNINTERVAL:
-                printk("Connect Interval:");
-                break;
-            case TYPE_SERVICE_SOLICITATION16:
-            case TYPE_SERVICE_SOLICITATION128:
-                printk("Service Solicited:");
-                break;
-            case TYPE_SERVICEDATA:
-                printk("Service Data:");
-                break;
-            case TYPE_MANUFACTURER_SPECIFIC:
-                printk("Manufacturer Specific Data:");
-                break;
-            case TYPE_APPEARANCE:
-                printk("Appearance:");
-                break;
-            default:
-                printk("Unknown type:%02X",ptr[index]);
-        }
-
-         switch (ptr[index]) {
-            case 0: break;
-            case TYPE_TRANSMITPOWER:
-                printk("%d|",(int)ptr[index+1]);
-                break;
-            case TYPE_NAME_SHORT:
-            case TYPE_NAME:
-                printk("%.*s|",(int) seg_len-1,ptr+index+1);
-                break;
-            case TYPE_SERVICEDATA:
-                printk("UUID:0x%02X%02X|",ptr[index+2],ptr[index+1]);
-                printk("Data:");
-                for(uint32_t i = 3; i<seg_len; i++){
-                    printk("%02X ",ptr[index+i]);
-                }
-                printk("|");
-                break;
-            case TYPE_UUID128:
-            case TYPE_UUID128_INC:
-            case TYPE_UUID32:
-            case TYPE_UUID32_INC:
-            case TYPE_UUID16:
-            case TYPE_UUID16_INC:
-                printk("UUID:");
-                for(uint32_t i = seg_len-1; i>0; i--){
-                    printk("%02X",ptr[index+i]);
-                }
-                printk("|");
-                break;
-            case TYPE_MANUFACTURER_SPECIFIC:
-            case TYPE_CONNINTERVAL:
-            /** \todo Display flag information based on the following bits\n
-             *  0 LE Limited Discoverable Mode\n
-             *  1 LE General Discoverable Mode\n
-             *  2 BR/EDR Not Supported\n
-             *  3 Simultaneous LE and BR/EDR to Same Device is Capable (Controller)\n
-             *  4 Simultaneous LE and BR/EDR to Same Device is Capable (Host)\n
-             *  5..7 Reserved
-             */
-            case TYPE_FLAGS:
-            case TYPE_SERVICE_SOLICITATION16:
-            case TYPE_SERVICE_SOLICITATION128:
-            case TYPE_APPEARANCE:
-            default:
-                for(uint32_t i = 1; i<seg_len; i++){
-                    printk("%02X",ptr[index+i]);
-                }
-                printk("|");
-         }
-
-        index += seg_len;
-    }
-}
-
-static void print_collected(uint8_t * packet_to_print)
-{
-    printk("Channel:%d | ", packet_to_print[MAX_PDU_SIZE+4] & 0x7F);
-    printk("RSSI:%d|", (int) packet_to_print[MAX_PDU_SIZE+5]);
-    printk("CRC:%s|", (packet_to_print[MAX_PDU_SIZE+4]&0x80) ? "Y" : "N");
-
-    /*  0000        ADV_IND
-        0001        ADV_DIRECT_IND
-        0010        ADV_NONCONN_IND
-        0011        SCAN_REQ
-        0100        SCAN_RSP
-        0101        CONNECT_REQ
-        0110        ADV_SCAN_IND
-        0111-1111   Reserved    */
-//  printk("Type:P%d ",(int) (packet_to_print[0]) & 0xF);
-    printk("Type:");
-    switch((packet_to_print[0]) & 0xF){
-        case TYPE_ADV_IND: printk("ADV_IND|");
-                break;
-        case TYPE_ADV_DIRECT_IND: printk("ADV_DIRECT_IND|");
-                break;
-        case TYPE_ADV_NONCONN_IND: printk("ADV_NONCONN_IND|");
-                break;
-        case TYPE_SCAN_REQ: printk("SCAN_REQ|");
-                break;
-        case TYPE_SCAN_RSP: printk("SCAN_RSP|");
-                break;
-        case TYPE_CONNECT_REQ: printk("CONNECT_REQ|");
-                break;
-        case TYPE_ADV_SCAN_IND: printk("ADV_SCAN_IND|");
-                break;
-        default:printk("Reserved|");
-    }
-
-    /* 1: Random Tx address, 0: Public Tx address */
-    printk("TxAdrs:%s|",(int) (packet_to_print[0] & 0x40)?"Random":"Public");
-    /* 1: Random Rx address, 0: Public Rx address */
-    printk("RxAdrs:%s|",(int) (packet_to_print[0] & 0x80)?"Random":"Public");
-    /*  Length of the data packet */
-    printk("Len:%d|",(int) packet_to_print[1] & 0x3F);
-
-    uint8_t i;
-    uint8_t f = packet_to_print[1] + 2;
-    printk("Adrs:");
-    for(i = 7; i>2; i--){
-        printk("%02X:", packet_to_print[i]);
-    }printk("%02X", packet_to_print[2]);
-    printk("\n");
-
-    if(packet_to_print[MAX_PDU_SIZE+4]&0x80){
-        printk("Packet:");
-        for (i = 0; i < f; i++) {
-            printk("%02X ", packet_to_print[i]);
-        }
-        printk("\n");
-        uint32_t type_temp = (packet_to_print[0] & 0x7);
-        switch(type_temp){
-            case TYPE_ADV_IND:
-            case TYPE_ADV_NONCONN_IND:
-            case TYPE_SCAN_RSP:
-            case TYPE_ADV_SCAN_IND:
-                adv_seg_print(packet_to_print+8,f-8);
-                printk("\n");
-                break;
-            default: break;
-        }
-    }else{
-        printk("Data corrupted. CRC check failed.\n");
-    }
-}
-
 static void nrf_rf_start(EXO* exo)
 {
 
@@ -256,7 +119,7 @@ static void nrf_rf_stop(EXO* exo)
 
 }
 
-static inline void nrf_rf_open(EXO* exo)
+static inline void nrf_rf_open(EXO* exo, RADIO_MODE mode)
 {
     exo->rf.io = NULL;
     exo->rf.max_size = 0;
@@ -273,20 +136,23 @@ static inline void nrf_rf_open(EXO* exo)
     NRF_RADIO->POWER = 0;
     NRF_RADIO->POWER = 1;
 
-    /* set RADIO mode to Bluetooth Low Energy. */
-    NRF_RADIO->MODE = RADIO_MODE_MODE_Ble_1Mbit << RADIO_MODE_MODE_Pos;
+    if(RADIO_MODE_BLE_1Mbit == mode)
+    {
+        /* set RADIO mode to Bluetooth Low Energy. */
+        NRF_RADIO->MODE = RADIO_MODE_MODE_Ble_1Mbit << RADIO_MODE_MODE_Pos;
 
-    /* copy the BLE override registers from FICR */
-    NRF_RADIO->OVERRIDE0 =  NRF_FICR->BLE_1MBIT[0];
-    NRF_RADIO->OVERRIDE1 =  NRF_FICR->BLE_1MBIT[1];
-    NRF_RADIO->OVERRIDE2 =  NRF_FICR->BLE_1MBIT[2];
-    NRF_RADIO->OVERRIDE3 =  NRF_FICR->BLE_1MBIT[3];
-    NRF_RADIO->OVERRIDE4 =  NRF_FICR->BLE_1MBIT[4];
+        /* copy the BLE override registers from FICR */
+        NRF_RADIO->OVERRIDE0 =  NRF_FICR->BLE_1MBIT[0];
+        NRF_RADIO->OVERRIDE1 =  NRF_FICR->BLE_1MBIT[1];
+        NRF_RADIO->OVERRIDE2 =  NRF_FICR->BLE_1MBIT[2];
+        NRF_RADIO->OVERRIDE3 =  NRF_FICR->BLE_1MBIT[3];
+        NRF_RADIO->OVERRIDE4 =  NRF_FICR->BLE_1MBIT[4];
+    }
 
-    kirq_register(KERNEL_HANDLE, RADIO_IRQn, nrf_rf_irq, (void*)exo);
+//    kirq_register(KERNEL_HANDLE, RADIO_IRQn, nrf_rf_irq, (void*)exo);
     // Enable Interrupt for RADIO in the core.
-    NVIC_SetPriority(RADIO_IRQn, 2);
-    NVIC_EnableIRQ(RADIO_IRQn);
+//    NVIC_SetPriority(RADIO_IRQn, 2);
+//    NVIC_EnableIRQ(RADIO_IRQn);
 }
 
 static void nrf_rf_close(EXO* exo)
@@ -419,12 +285,132 @@ static void nrf_rf_advertise_listen(EXO* exo, HANDLE user, IO* io, unsigned int 
    kerror(ERROR_SYNC);
 }
 
+static void nrf_rf_send_adv(EXO* exo, IO* io)
+{
+    printk("Send advertising data\n");
+    /* Enable power to RADIO */
+    NRF_RADIO->POWER = 1;
+    /* Set radio transmit power to 0dBm */
+    NRF_RADIO->TXPOWER = (RADIO_TXPOWER_TXPOWER_0dBm << RADIO_TXPOWER_TXPOWER_Pos);
+
+    /* Set radio mode to 1Mbit/s Bluetooth Low Energy */
+    NRF_RADIO->MODE = (RADIO_MODE_MODE_Ble_1Mbit << RADIO_MODE_MODE_Pos);
+    // Frequency = 2400 + FREQUENCY (MHz)
+    NRF_RADIO->FREQUENCY = RADIO_BLE_ADV_CHANNEL_39;
+
+    uint32_t temp = NRF_RADIO->FREQUENCY;
+    NRF_RADIO->DATAWHITEIV = (temp == 2) ? 37 : ((temp == 26) ? 38 : 39);
+
+    /* Configure Access Address according to the BLE standard */
+    NRF_RADIO->PREFIX0 = 0x8e;
+    NRF_RADIO->BASE0 = 0x89bed600;
+
+    /* Use logical address 0 (prefix0 + base0) = 0x8E89BED6 when transmitting and receiving */
+    NRF_RADIO->TXADDRESS = 0x00;
+    NRF_RADIO->RXADDRESSES = 0x01;
+
+    /* PCNF-> Packet Configuration.
+     * We now need to configure the sizes S0, S1 and length field to match the
+     * datapacket format of the advertisement packets.
+     */
+    NRF_RADIO->PCNF0 = (
+      (((1UL) << RADIO_PCNF0_S0LEN_Pos) & RADIO_PCNF0_S0LEN_Msk) |  /* Length of S0 field in bytes 0-1.    */
+      (((2UL) << RADIO_PCNF0_S1LEN_Pos) & RADIO_PCNF0_S1LEN_Msk) |  /* Length of S1 field in bits 0-8.     */
+      (((6UL) << RADIO_PCNF0_LFLEN_Pos) & RADIO_PCNF0_LFLEN_Msk)    /* Length of length field in bits 0-8. */
+      );
+
+    /* Packet configuration */
+    NRF_RADIO->PCNF1 = (
+      (((37UL) << RADIO_PCNF1_MAXLEN_Pos) & RADIO_PCNF1_MAXLEN_Msk)   |                      /* Maximum length of payload in bytes [0-255] */
+      (((0UL) << RADIO_PCNF1_STATLEN_Pos) & RADIO_PCNF1_STATLEN_Msk)   |                      /* Expand the payload with N bytes in addition to LENGTH [0-255] */
+      (((3UL) << RADIO_PCNF1_BALEN_Pos) & RADIO_PCNF1_BALEN_Msk)       |                      /* Base address length in number of bytes. */
+      (((RADIO_PCNF1_ENDIAN_Little) << RADIO_PCNF1_ENDIAN_Pos) & RADIO_PCNF1_ENDIAN_Msk) |  /* Endianess of the S0, LENGTH, S1 and PAYLOAD fields. */
+      (((1UL) << RADIO_PCNF1_WHITEEN_Pos) & RADIO_PCNF1_WHITEEN_Msk)                         /* Enable packet whitening */
+    );
+
+    /* CRC config */
+    NRF_RADIO->CRCCNF  = (RADIO_CRCCNF_LEN_Three << RADIO_CRCCNF_LEN_Pos) |
+                         (RADIO_CRCCNF_SKIP_ADDR_Skip << RADIO_CRCCNF_SKIP_ADDR_Skip); /* Skip Address when computing CRC */
+    NRF_RADIO->CRCINIT = 0x555555;                                                  /* Initial value of CRC */
+    NRF_RADIO->CRCPOLY = 0x00065B;                                                  /* CRC polynomial function */
+
+    /* Clear events */
+    NRF_RADIO->EVENTS_DISABLED = 0;
+    NRF_RADIO->EVENTS_END = 0;
+    NRF_RADIO->EVENTS_READY = 0;
+    NRF_RADIO->EVENTS_ADDRESS = 0;
+  //-------------------------------------
+  //-------------------------------------
+    NRF_RADIO->PACKETPTR = (unsigned int)template_adv_packet;
+
+    NRF_RADIO->EVENTS_READY = 0U;
+    NRF_RADIO->TASKS_TXEN   = 1;                                            // Enable radio and wait for ready.
+    while (NRF_RADIO->EVENTS_READY == 0U){}
+
+    NRF_RADIO->TASKS_START = 1U;
+    NRF_RADIO->EVENTS_END  = 0U;                                        // Start transmission.
+    while (NRF_RADIO->EVENTS_END == 0U){}                       // Wait for end of the transmission packet.
+
+    NRF_RADIO->EVENTS_DISABLED = 0U;
+    NRF_RADIO->TASKS_DISABLE   = 1U;                                    // Disable the radio.
+    while (NRF_RADIO->EVENTS_DISABLED == 0U){}
+
+
+    /* Set the pointer to write the incoming packet. */
+    NRF_RADIO->PACKETPTR = (uint32_t) exo->rf.pdu;
+
+    NRF_RADIO->EVENTS_READY = 0U;                                   //
+    NRF_RADIO->TASKS_RXEN   = 1U;                                       // Enable radio.
+    while(NRF_RADIO->EVENTS_READY == 0U) {}                     // Wait for an event to be ready.
+
+    NRF_RADIO->EVENTS_END  = 0U;                                //
+    NRF_RADIO->TASKS_START = 1U;                                // Start listening and wait for address received event.
+
+    while(NRF_RADIO->EVENTS_END != 0U);
+
+    NRF_RADIO->EVENTS_END = 0U;
+
+    if(NRF_RADIO->CRCSTATUS == 1U)
+    {
+        //------------------------------------------------------------------------
+        //------------------------------------------------------------------------
+        if((exo->rf.pdu[0] & 0x0F) == 0x03)
+        {
+            NRF_RADIO->EVENTS_DISABLED = 0U;
+            NRF_RADIO->TASKS_DISABLE   = 1U;                                // Disable the radio.
+            while (NRF_RADIO->EVENTS_DISABLED == 0U){}
+
+            //DataOutRSP();
+            NRF_RADIO->PACKETPTR = (uint32_t)rsp;
+
+            NRF_RADIO->EVENTS_READY = 0U;
+            NRF_RADIO->TASKS_TXEN   = 1;                                            // Enable radio and wait for ready.
+            while (NRF_RADIO->EVENTS_READY == 0U){}
+
+            NRF_RADIO->TASKS_START = 1U;
+            NRF_RADIO->EVENTS_END  = 0U;                                        // Start transmission.
+            while (NRF_RADIO->EVENTS_END == 0U){}                       // Wait for end of the transmission packet.
+        }
+        //------------------------------------------------------------------------
+        //------------------------------------------------------------------------
+        if((exo->rf.pdu[0] & 0x0F) == 0x05)
+        {
+            printk("1\n");
+        }
+    }
+
+    NRF_RADIO->EVENTS_DISABLED = 0U;
+    NRF_RADIO->TASKS_DISABLE   = 1U;            // Disable the radio.
+    while (NRF_RADIO->EVENTS_DISABLED == 0U){}
+
+}
+
 void nrf_rf_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        nrf_rf_open(exo);
+        nrf_rf_open(exo, ipc->param1);
         break;
     case IPC_CLOSE:
         nrf_rf_close(exo);
@@ -437,6 +423,9 @@ void nrf_rf_request(EXO* exo, IPC* ipc)
         break;
     case RADIO_ADVERTISE_LISTEN:
         nrf_rf_advertise_listen(exo, ipc->process, (IO*)ipc->param2, ipc->param3);
+        break;
+    case RADIO_SEND_ADV_DATA:
+        nrf_rf_send_adv(exo, (IO*)ipc->param2);
         break;
     case RADIO_START:
         nrf_rf_start(exo);

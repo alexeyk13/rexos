@@ -87,9 +87,11 @@ void poll_key(KEY* key)
 static inline void pinboard_poll(PINBOARD* pinboard)
 {
     int i;
+
     for (i = 0; i < array_size(pinboard->pins); ++i)
         poll_key(KEY_GET(pinboard->pins, i));
     timer_start_ms(pinboard->timer, PINBOARD_POLL_TIME_MS);
+    printf("poll\n");
 }
 
 static inline void pinboard_open(PINBOARD* pinboard, unsigned int pin, unsigned int mode, unsigned int long_ms, HANDLE process)
@@ -178,6 +180,8 @@ void pinboard()
     IPC ipc;
     PINBOARD pinboard;
     pinboard_init(&pinboard);
+
+    open_stdout();
 
     for (;;)
     {

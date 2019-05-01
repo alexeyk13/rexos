@@ -61,7 +61,7 @@ static inline void flash_write_word(uint32_t * address, uint32_t value)
     }
 }
 
-static inline void flash_io()
+static inline void flash_io(EXO* exo, IPC* ipc)
 {
 
 }
@@ -87,10 +87,10 @@ void nrf_flash_request(EXO* exo, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
         case IPC_READ:
-            flash_io();
+            flash_io(exo, ipc);
             break;
         case IPC_WRITE:
-            flash_io();
+            flash_io(exo, ipc);
             break;
         case FLASH_GET_PAGE_SIZE:
             ipc->param3 = flash_page_size();

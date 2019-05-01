@@ -99,6 +99,62 @@ void nrf_power_init(EXO* exo)
 #if (NRF_DECODE_RESET)
     decode_reset_reason(exo);
 #endif //STM32_DECODE_RESET
+
+
+    /* periph power */
+#if !(NRF_ADC_DRIVER)
+    NRF_ADC->POWER = 0;
+#endif // NRF_ADC_DRIVER
+#if !(NRF_WDT_DRIVER)
+    NRF_WDT->POWER = 0;
+#endif // NRF_WDT_DRIVER
+#if !(NRF_SPI_DRIVER)
+    NRF_SPI0->POWER = 0;
+    NRF_SPI1->POWER = 0;
+#endif // NRF_SPI_DRIVER
+#if !(NRF_RTC_DRIVER)
+    NRF_RTC0->POWER = 0;
+    NRF_RTC1->POWER = 0;
+#endif // NRF_RTC_DRIVER
+
+
+    /* SRAM power config */
+#if (NRF_SRAM_POWER_CONFIG)
+#if (NRF52)
+#if !(NRF_RAM7_ENABLE)
+#endif // NRF_RAM7_ENABLE
+#if !(NRF_RAM6_ENABLE)
+#endif // NRF_RAM6_ENABLE
+#if !(NRF_RAM5_ENABLE)
+#endif // NRF_RAM5_ENABLE
+#if !(NRF_RAM4_ENABLE)
+#endif // NRF_RAM4_ENABLE
+#if !(NRF_RAM3_ENABLE)
+#endif // NRF_RAM3_ENABLE
+#if !(NRF_RAM2_ENABLE)
+#endif // NRF_RAM2_ENABLE
+#if !(NRF_RAM1_ENABLE)
+#endif // NRF_RAM1_ENABLE
+#endif // NRF52
+
+#if (NRF_RAM1_ENABLE)
+    NRF_POWER->RAMON |= POWER_RAMON_ONRAM1_Msk;
+#else
+    NRF_POWER->RAMON &= ~(POWER_RAMON_ONRAM1_Msk);
+#endif // NRF_RAM1_ENABLE
+
+#if (NRF_SRAM_RETENTION_ENABLE)
+    /* keep retention during system OFF */
+    NRF_POWER->RAMON |= POWER_RAMON_OFFRAM0_Msk;
+#if (NRF_RAM1_ENABLE)
+    NRF_POWER->RAMON |= POWER_RAMON_OFFRAM1_Msk;
+#endif // NRF_RAM1_ENABLE
+#else
+    /* do not keep retention during system OFF */
+    NRF_POWER->RAMON &= ~(POWER_RAMON_OFFRAM0_Msk);
+    NRF_POWER->RAMON &= ~(POWER_RAMON_OFFRAM1_Msk);
+#endif // NRF_SRAM_RETENTION_ENABLE
+#endif // NRF_SRAM_POWER_CONFIG
 }
 
 int get_core_clock_internal()
@@ -122,6 +178,23 @@ int get_core_clock_internal()
     return HFCLK_RC_FREQ;
 }
 
+#if (POWER_MANAGEMENT)
+static inline void nrf_power_set_mode(EXO* exo, POWER_MODE mode)
+{
+    switch(mode)
+    {
+        case POWER_MODE_STOP:
+            /* Enter system OFF. */
+            /* Typycal consumption 60.8 uA without SRAM retention */
+            /* After wakeup the chip will be reset */
+            /* Code execution will run from the scratch */
+            NRF_POWER->SYSTEMOFF = 1;
+            break;
+        default:
+            kerror(ERROR_NOT_SUPPORTED);
+    }
+}
+#endif // POWER_MANAGEMENT
 void nrf_power_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -138,7 +211,7 @@ void nrf_power_request(EXO* exo, IPC* ipc)
 #if (POWER_MANAGEMENT)
     case POWER_SET_MODE:
         //no return
-        //nrf_power_set_mode(exo, ipc->param1);
+        nrf_power_set_mode(exo, ipc->param1);
         break;
 #endif //POWER_MANAGEMENT
     default:

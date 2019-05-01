@@ -10,6 +10,8 @@
 #ifndef NRF_H
 #define NRF_H
 
+#include "nrf_config.h"
+
 #if defined(NRF51822QFAA) || defined(NRF51822CEAA)
 #define NRF5122xxAA
 #endif // NRF51822QFAA || NRF51822CEAA
@@ -38,7 +40,14 @@
 #if defined (NRF5122xxAC)
 #define SRAM_SIZE               0x8000
 #else
+
+#if (NRF_SRAM_POWER_CONFIG)
+#define SRAM_SIZE               0x2000
+#define SRAM_PART_COUNT         2
+#define SRAM_TOTAL_SIZE         0x4000
+#else
 #define SRAM_SIZE               0x4000
+#endif // NRF_SRAM_POWER_CONFIG
 #endif // NRF5122xxAC
 
 #define UARTS_COUNT             1
@@ -73,8 +82,6 @@
 
 #undef SRAM_BASE
 #undef FLASH_BASE
-
-#include "nrf_config.h"
 
 #include "nrf51.h"
 #include "nrf51_bitfields.h"

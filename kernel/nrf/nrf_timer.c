@@ -204,21 +204,29 @@ void nrf_timer_init(EXO* exo)
 
 void nrf_timer_request(EXO* exo, IPC* ipc)
 {
-    // TODO: get timer
+    TIMER_NUM num = (TIMER_NUM)ipc->param1;
+    if (num >= TIMERS_COUNT)
+    {
+        kerror(ERROR_INVALID_PARAMS);
+        return;
+    }
 
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_OPEN:
-        //nrf_timer_open(exo, timer, ipc->param2);
+        nrf_timer_open(exo, num, ipc->param2);
         break;
     case IPC_CLOSE:
-        //nrf_timer_close(exo, timer);
+        nrf_timer_close(exo, num);
         break;
     case TIMER_START:
-        //nrf_timer_start(exo, timer, ipc->param2, ipc->param3);
+        nrf_timer_start(exo, num);
         break;
     case TIMER_STOP:
-//        nrf_timer_stop(timer);
+        nrf_timer_stop(num);
+        break;
+    case TIMER_SETUP_CHANNEL:
+        nrf_timer_enable_channel(exo, num, TIMER_CHANNEL_VALUE(ipc->param2), TIMER_CHANNEL_TYPE_VALUE(ipc->param2), ipc->param3);
         break;
     default:
         kerror(ERROR_NOT_SUPPORTED);

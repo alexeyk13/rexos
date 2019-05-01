@@ -15,17 +15,18 @@
 // -------------------------------- SETTINGS -----------------------------------
 #define RADIO_BLE_PKT_ADDR_SIZE             6
 
-#define RADIO_PROCESS_SIZE                  2048
-#define RADIO_PROCESS_PRIORITY              140
+#define RADIO_PROCESS_SIZE                  1024
+#define RADIO_PROCESS_PRIORITY              201
 
 #define RADIO_DEBUG                         1
 
 #if (RADIO_DEBUG)
+#define RADIO_DEBUG_INFO                    1
 #define RADIO_DEBUG_ERRORS                  0
 #define RADIO_DEBUG_REQUESTS                0
 #define RADIO_DEBUG_IO                      0
 
-#define RADIO_DEBUG_ADV_RAW                 0
+#define RADIO_DEBUG_ADV_RAW                 1
 #define RADIO_DEBUG_ADV_COMMON              1
 #define RADIO_DEBUG_ADV_DATA                1
 #endif // RADIO_DEBUG
