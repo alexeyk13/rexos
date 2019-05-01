@@ -49,6 +49,8 @@ void nrf_timer_isr(int vector, void* param)
         // set nex shot
         TIMER_REGS[HPET_TIMER]->CC[SECOND_CHANNEL] += S1_US;
         // system second pulse
+
+        TIMER_REGS[HPET_TIMER]->TASKS_CAPTURE[HPET_CHANNEL] = 1;
         ksystime_second_pulse();
     }
 #endif // KERNEL_SECOND_RTC
@@ -147,6 +149,7 @@ void hpet_start(unsigned int value, void* param)
     unsigned int val =  TIMER_REGS[HPET_TIMER]->CC[SECOND_CHANNEL];
     // get actual counter
     TIMER_REGS[HPET_TIMER]->TASKS_CAPTURE[SECOND_CHANNEL] = 1;
+    TIMER_REGS[HPET_TIMER]->TASKS_CAPTURE[HPET_CHANNEL] = 1;
     // cache actual counter
     exo->timer.hpet_start = TIMER_REGS[HPET_TIMER]->CC[SECOND_CHANNEL];
     // set cached value back
@@ -168,11 +171,15 @@ void hpet_stop(void* param)
 unsigned int hpet_elapsed(void* param)
 {
     EXO* exo = (EXO*)param;
-    // capture timer value
+    /* cache timer value */
+    unsigned int cache_val = TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL];
+    unsigned int tc = 0;
+    /* extract actual value */
     TIMER_REGS[HPET_TIMER]->TASKS_CAPTURE[HPET_CHANNEL] = 1;
-    unsigned int tc = TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL];
-    unsigned int value = (exo->timer.hpet_start < tc ? tc - exo->timer.hpet_start : max_timer_value[TIMER_REGS[HPET_TIMER]->BITMODE] + 1 - exo->timer.hpet_start + tc);
-    return value;
+    tc = TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL];
+    // set cached value back
+    TIMER_REGS[HPET_TIMER]->CC[HPET_CHANNEL] = cache_val;
+    return (exo->timer.hpet_start < tc ? tc - exo->timer.hpet_start : max_timer_value[TIMER_REGS[HPET_TIMER]->BITMODE] + 1 - exo->timer.hpet_start + tc);
 }
 
 void nrf_timer_init(EXO* exo)
