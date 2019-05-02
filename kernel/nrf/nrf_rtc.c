@@ -121,23 +121,21 @@ void nrf_rtc_init(EXO* exo)
 #endif // KERNEL_SECOND_RTC
 }
 
-TIME* nrf_rtc_get(TIME* time)
+TIME* nrf_rtc_get(RTC_NUM num, uint8_t ch, TIME* time)
 {
-    struct tm ts;
-    ts.tm_sec = 0;
-    ts.tm_min = 0;
-    ts.tm_hour = 0;
-    ts.tm_msec = 0;
-
-    ts.tm_mday = 0;
-    ts.tm_mon = 0;
-    ts.tm_year = 0;
-    return mktime(&ts, time);
+    unsigned long value = RTC_REGS[num]->CC[ch];
+    time->ms = (value % SEC_IN_DAY) * 1000;
+    time->day = value / SEC_IN_DAY + EPOCH_DATE;
+    return time;
 }
 
-void nrf_rtc_set(TIME* time)
+void nrf_rtc_set(RTC_NUM num, uint8_t ch, TIME* time)
 {
-    // TODO ...
+    unsigned long value = 0;
+    if (time->day >= EPOCH_DATE)
+        value = (time->day - EPOCH_DATE) * SEC_IN_DAY;
+    value += time->ms / 1000;
+    RTC_REGS[num]->CC[ch] = value;
 }
 
 void nrf_rtc_request(EXO* exo, IPC* ipc)
@@ -149,24 +147,22 @@ void nrf_rtc_request(EXO* exo, IPC* ipc)
         if (ipc->param1 == RTC_HANDLE_DEVICE)
             nrf_rtc_open(exo, (RTC_NUM)ipc->param2);
         else
-            nrf_rtc_start_channel(exo, ipc->param2, 0, 0, 0, 0); // TODO: rtc start channel
+            nrf_rtc_start_channel(exo, ipc->param2, ipc->param3, 0, 0, 0); // TODO: rtc start channel
         break;
     case IPC_CLOSE:
         if (ipc->param1 == RTC_HANDLE_DEVICE)
             nrf_rtc_close(exo, (RTC_NUM)ipc->param2);
         else
-            nrf_rtc_stop_channel(exo, ipc->param2, 0); // TODO: rtc stop channel
+            nrf_rtc_stop_channel(exo, ipc->param2, ipc->param3); // TODO: rtc stop channel
         break;
         break;
     case RTC_GET:
-        nrf_rtc_get(&time);
+        nrf_rtc_get((RTC_NUM)ipc->param2, ipc->param3, &time);
         ipc->param1 = (unsigned int)time.day;
         ipc->param2 = (unsigned int)time.ms;
         break;
     case RTC_SET:
-        time.day = ipc->param1;
-        time.ms = ipc->param2;
-        nrf_rtc_set(&time);
+        nrf_rtc_set((RTC_NUM)ipc->param2, ipc->param3, (TIME*)ipc->param1);
         break;
     default:
         kerror(ERROR_NOT_SUPPORTED);

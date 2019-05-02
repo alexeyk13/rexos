@@ -70,6 +70,11 @@ void exodriver_post(IPC* ipc)
         nrf_rf_request(__KERNEL->exo, ipc);
         break;
 #endif // NRF_RF_DRIVER
+#if (NRF_RNG_DRIVER)
+    case HAL_RNG:
+        nrf_rng_request(__KERNEL->exo, ipc);
+        break;
+#endif // NRF_RNG_DRIVER
     default:
         kerror(ERROR_NOT_SUPPORTED);
         break;
@@ -121,4 +126,7 @@ void exodriver_init()
 #if (NRF_RF_DRIVER)
     nrf_rf_init(__KERNEL->exo);
 #endif // NRF_RF_DRIVER
+#if (NRF_RNG_DRIVER)
+    nrf_rng_init(__KERNEL->exo);
+#endif // NRF_RNG_DRIVER
 }

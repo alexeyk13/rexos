@@ -120,7 +120,15 @@ void nrf_power_init(EXO* exo)
 
     /* SRAM power config */
 #if (NRF_SRAM_POWER_CONFIG)
-#if (NRF52)
+#if defined(NRF51)
+#if (NRF_RAM1_ENABLE)
+    NRF_POWER->RAMON |= POWER_RAMON_ONRAM1_Msk;
+#else
+    NRF_POWER->RAMON &= ~(POWER_RAMON_ONRAM1_Msk);
+#endif // NRF_RAM1_ENABLE
+#endif // NRF51
+
+#if defined(NRF52)
 #if !(NRF_RAM7_ENABLE)
 #endif // NRF_RAM7_ENABLE
 #if !(NRF_RAM6_ENABLE)
@@ -136,17 +144,12 @@ void nrf_power_init(EXO* exo)
 #if !(NRF_RAM1_ENABLE)
 #endif // NRF_RAM1_ENABLE
 #endif // NRF52
-
-#if (NRF_RAM1_ENABLE)
-    NRF_POWER->RAMON |= POWER_RAMON_ONRAM1_Msk;
-#else
-    NRF_POWER->RAMON &= ~(POWER_RAMON_ONRAM1_Msk);
-#endif // NRF_RAM1_ENABLE
+#endif // NRF_SRAM_POWER_CONFIG
 
 #if (NRF_SRAM_RETENTION_ENABLE)
     /* keep retention during system OFF */
     NRF_POWER->RAMON |= POWER_RAMON_OFFRAM0_Msk;
-#if (NRF_RAM1_ENABLE)
+#if (!(NRF_SRAM_POWER_CONFIG) || (NRF_RAM1_ENABLE))
     NRF_POWER->RAMON |= POWER_RAMON_OFFRAM1_Msk;
 #endif // NRF_RAM1_ENABLE
 #else
@@ -154,7 +157,6 @@ void nrf_power_init(EXO* exo)
     NRF_POWER->RAMON &= ~(POWER_RAMON_OFFRAM0_Msk);
     NRF_POWER->RAMON &= ~(POWER_RAMON_OFFRAM1_Msk);
 #endif // NRF_SRAM_RETENTION_ENABLE
-#endif // NRF_SRAM_POWER_CONFIG
 }
 
 int get_core_clock_internal()
