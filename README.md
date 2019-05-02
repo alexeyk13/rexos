@@ -50,8 +50,10 @@ unavailable, another HPET timer can be used for RTC emulation
   * SD/MMC host stack
   * uCanOpen stack
   * FAT16 file system
-  * SFS - small file system (commercial license)
+  * SFS / SFS v2 - small file system (commercial license)
   * Block error rate layer with transactioning support
+  * BER v2 (commercial license)
+  * LoRa stack
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -82,6 +84,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * МЭЛТ mt12864j LCD display
   * NXP Kinetis MK22: generic, UART, RTC, WDT, I2C, USB, flash (commercial license)
   * ESP8266
+  * RF: SX1261, SX1271, SX1272
 
 Cortex-M3 features:
 ------------------
@@ -95,6 +98,10 @@ ARM7 features:
 
 History
 =======
+0.6.2
+- LoRa device stack
+- drivers for sx1261, 127x
+
 0.6.1
 - SFS is now non 2^n aligned (commercial license)
 - BER v2 is up to 6 time more fast, than BER v1 (commercial license)

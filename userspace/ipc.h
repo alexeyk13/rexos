@@ -75,6 +75,7 @@ typedef enum {
     HAL_BLUETOOTH,
     HAL_CANOPEN,
     HAL_WIFI,
+    HAL_LORA,
     //application level
     HAL_APP
 } HAL;
