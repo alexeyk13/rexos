@@ -31,6 +31,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * single-linked list, double linked list, ring buffer, 
   * rand
   * cryptography: AES, AES-CBC, SHA1, SHA256, HMAC-SHA1, HMAC-SHA256
+  * crc
 - Device stacks:
   * USB device stack with USB composite and vendor requests support
   * USB device CDC ACM class
@@ -53,6 +54,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * SFS / SFS v2 - small file system (commercial license)
   * Block error rate layer with transactioning support
   * BER v2 (commercial license)
+  * Log file systm
   * LoRa stack
 - Error handling:
   * each process has own error processing
@@ -98,6 +100,10 @@ ARM7 features:
 
 History
 =======
+0.6.3
+- added Log File System (LFS) with flash retantion
+- crc library
+
 0.6.2
 - LoRa device stack
 - drivers for sx1261, 127x
