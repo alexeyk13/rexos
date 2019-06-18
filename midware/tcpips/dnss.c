@@ -2,8 +2,6 @@
     RExOS - embedded RTOS
     Copyright (c) 2011-2019, RExOS team
     All rights reserved.
-
-    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
 */
 
 #include "dnss.h"
@@ -18,6 +16,31 @@ static const char server_name[] = {3, 'R', 'e', 'x', 2, 'O', 'S', 0};
 void dnss_init(TCPIPS* tcpips)
 {
     memset(tcpips->dnss.name, 0, 64);
+}
+
+static int dns_to_strcmp(uint8_t* dns_ptr, char* name)
+{
+    int len = 0;
+    int chunk = *dns_ptr++;
+    while (len < DNS_MAX_NAME_LEN && chunk)
+    {
+        *name++ = *dns_ptr++;
+        len++;
+        if(--chunk == 0)
+        {
+            *name++ = '.';
+            len++;
+            chunk = *dns_ptr++;
+        }
+    }
+    if(len)
+    {
+        len++;
+        name--;
+    }
+    *name = 0;
+    return len;
+
 }
 
 static bool dns_cmp(uint8_t* dns_ptr, const char* name)
@@ -82,22 +105,32 @@ bool dnss_rx(TCPIPS* tcpips, IO* io, IP* src)
 {
     DNS_HEADER* hdr;
     DNS_ANSWER* ans;
+    void * ptr;
+    uint16_t type;
+
+    char name[DNS_MAX_NAME_LEN];
 
     if (io->data_size < (sizeof(DNS_HEADER) + 5))
         return false;
-    hdr = io_data(io);
+    ptr = io_data(io);
+    hdr = ptr;
     if (hdr->qdcount != HTONS(1))
         return false;
     if (hdr->ancount != HTONS(0))
         return false;
     hdr->flags |= HTONS(DNS_FLAG_RESPONSE|DNS_FLAG_REQ_AVALIBLE);
     hdr->ancount = HTONS(1);
-    uint16_t type = *(uint16_t*)((uint8_t*)hdr + io->data_size - 4);
-    ans = (DNS_ANSWER*)((uint8_t*)hdr + io->data_size);
+    hdr->nscount = HTONS(0);
+    hdr->arcount = HTONS(0);
+    ptr = hdr->name;
+    ptr += dns_to_strcmp(ptr, name);
+    type = *(uint16_t*)ptr;
+    ptr+=4;
+    ans = ptr;
     ans->compress = HTONS(0xC00C);
     ans->class = HTONS(DNS_CLASS_IN);
 #if (DNSS_DEBUG)
-    printf("DNSS: request type %d \n", HTONS(type));
+    printf("DNSS: request type %d name:%s\n", HTONS(type), name);
 #endif
 
     if (type == HTONS(DNS_TYPE_PTR))
@@ -109,8 +142,7 @@ bool dnss_rx(TCPIPS* tcpips, IO* io, IP* src)
         ans->len = HTONS(sizeof(server_name));
         memcpy(&ans->ip, server_name, sizeof(server_name));
 
-        io->data_size += sizeof(DNS_ANSWER) + sizeof(server_name) - sizeof(IP);
-
+        io->data_size = (ptr - io_data(io)) + sizeof(DNS_ANSWER) + sizeof(server_name) - sizeof(IP);
         return true;
     }
 
@@ -120,11 +152,16 @@ bool dnss_rx(TCPIPS* tcpips, IO* io, IP* src)
         ans->ttl = HTONL(32);
         ans->len = HTONS(sizeof(IP));
         ans->ip = tcpips->ips.ip.u32.ip;
-        io->data_size += sizeof(DNS_ANSWER);
+        io->data_size = (ptr - io_data(io)) + sizeof(DNS_ANSWER);
+#if (DNSS_DEBUG)
+    printf("DNSS: match!\n");
+#endif
+
     } else
     {
         hdr->ancount = HTONS(0);
         hdr->flags |= HTONS(DNS_ERROR_REFUSED);
+        io->data_size = (ptr - io_data(io));
     }
     return true;
 }
@@ -139,5 +176,4 @@ void dnss_request(TCPIPS* tcpips, IPC* ipc)
         strcpy(tcpips->dnss.name, name);
         sprintf(tcpips->dnss.name_www, "www.%s",name);
     }
-
 }

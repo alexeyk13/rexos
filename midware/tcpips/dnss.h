@@ -1,9 +1,7 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2019, RExOS team
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
-
-    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
 */
 
 #ifndef DNSS_H
@@ -17,6 +15,7 @@
 #include <string.h>
 
 #define DNS_PORT               53
+#define DNS_MAX_NAME_LEN       64
 
 #define DNS_TYPE_A              1
 #define DNS_TYPE_PTR            12
@@ -39,16 +38,17 @@
 typedef struct {
     uint8_t id_be[2];
     uint16_t flags;
-    uint16_t qdcount;
-    uint16_t ancount;
-    uint16_t nscount;
-    uint16_t arcount;
+    uint16_t qdcount; // number of entries in the question section
+    uint16_t ancount; // number of resource records in the answer section
+    uint16_t nscount; // number of name server resource records in the authority records section.
+    uint16_t arcount; // number of resource records in the additional records section.
     uint8_t name[0];
 } DNS_HEADER;
 
 typedef struct {
     uint16_t compress;
-    uint16_t type;uint16_t class;
+    uint16_t type;
+    uint16_t class;
     uint32_t ttl;
     uint16_t len;
     uint32_t ip;
@@ -56,8 +56,8 @@ typedef struct {
 #pragma pack(pop)
 
 typedef struct {
-    char name[64];
-    char name_www[64];
+    char name[DNS_MAX_NAME_LEN];
+    char name_www[DNS_MAX_NAME_LEN];
 } _DNSS;
 
 void dnss_init(TCPIPS* tcpips);
