@@ -149,10 +149,10 @@ static inline void nrf_rf_open(EXO* exo, RADIO_MODE mode)
         NRF_RADIO->OVERRIDE4 =  NRF_FICR->BLE_1MBIT[4];
     }
 
-//    kirq_register(KERNEL_HANDLE, RADIO_IRQn, nrf_rf_irq, (void*)exo);
+    kirq_register(KERNEL_HANDLE, RADIO_IRQn, nrf_rf_irq, (void*)exo);
     // Enable Interrupt for RADIO in the core.
-//    NVIC_SetPriority(RADIO_IRQn, 2);
-//    NVIC_EnableIRQ(RADIO_IRQn);
+    NVIC_SetPriority(RADIO_IRQn, 2);
+    NVIC_EnableIRQ(RADIO_IRQn);
 }
 
 static void nrf_rf_close(EXO* exo)

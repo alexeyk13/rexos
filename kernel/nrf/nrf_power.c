@@ -192,6 +192,14 @@ static inline void nrf_power_set_mode(EXO* exo, POWER_MODE mode)
             /* Code execution will run from the scratch */
             NRF_POWER->SYSTEMOFF = 1;
             break;
+        case POWER_MODE_STANDY:
+            /* Enter Low Power mode */
+            /* Typycal consumption 60.8 uA without SRAM retention */
+            // Enter System ON sleep mode
+            __WFE();
+            __SEV();
+            __WFE();
+            break;
         default:
             kerror(ERROR_NOT_SUPPORTED);
     }

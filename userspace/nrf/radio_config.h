@@ -26,7 +26,7 @@
 #define RADIO_DEBUG_REQUESTS                0
 #define RADIO_DEBUG_IO                      0
 
-#define RADIO_DEBUG_ADV_RAW                 1
+#define RADIO_DEBUG_ADV_RAW                 0
 #define RADIO_DEBUG_ADV_COMMON              1
 #define RADIO_DEBUG_ADV_DATA                1
 #endif // RADIO_DEBUG

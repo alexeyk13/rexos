@@ -75,6 +75,11 @@ void exodriver_post(IPC* ipc)
         nrf_rng_request(__KERNEL->exo, ipc);
         break;
 #endif // NRF_RNG_DRIVER
+#if (NRF_TEMP_DRIVER)
+    case HAL_TEMP:
+        nrf_temp_request(__KERNEL->exo, ipc);
+        break;
+#endif // NRF_TEMP_DRIVER
     default:
         kerror(ERROR_NOT_SUPPORTED);
         break;
@@ -111,6 +116,9 @@ void exodriver_init()
 #endif // NRF_RAM1_ENABLE
 #endif // NRF_SRAM_POWER_CONFIG
 
+#if (NRF_WDT_DRIVER)
+    nrf_wdt_pre_init();
+#endif // NRF_WDT_DRIVER
     nrf_power_init(__KERNEL->exo);
     nrf_pin_init(__KERNEL->exo);
     nrf_timer_init(__KERNEL->exo);

@@ -39,6 +39,9 @@
 #if (NRF_RNG_DRIVER)
 #include "nrf_rng.h"
 #endif // NRF_RNG_DRIVER
+#if (NRF_TEMP_DRIVER)
+#include "nrf_temp.h"
+#endif // NRF_TEMP_DRIVER
 
 typedef struct _EXO {
     GPIO_DRV gpio;
