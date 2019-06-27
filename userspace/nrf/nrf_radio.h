@@ -10,7 +10,7 @@
 #define _NRF_RADIO_H_
 
 #include "nrf_driver.h"
-#include "radio_config.h"
+#include "nrf_radio_config.h"
 
 typedef enum {
     RADIO_ADVERTISE_LISTEN = IPC_USER,

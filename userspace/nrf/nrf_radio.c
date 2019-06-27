@@ -8,8 +8,8 @@
 
 #include "sys_config.h"
 #include "object.h"
-#include "radio.h"
-#include "radio_config.h"
+#include "nrf_radio.h"
+#include "nrf_radio_config.h"
 #include "stdio.h"
 #include "io.h"
 #include <string.h>

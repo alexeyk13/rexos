@@ -10,7 +10,7 @@
 #define _RF_RFD_H_
 
 #include "../../userspace/nrf/nrf_driver.h"
-#include "../../userspace/nrf/radio_config.h"
+#include "../../userspace/nrf/nrf_radio_config.h"
 #include "../../userspace/core/core.h"
 
 typedef struct {
