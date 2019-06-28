@@ -32,12 +32,11 @@ static inline void rfd_open(RFD* rfd, RADIO_MODE mode)
 
 #if (RADIO_DEBUG_INFO)
     printf("Radio mode: %d\n", mode);
-    printf("Device MAC addr: ");
+    printf("MAC: ");
     for(uint8_t i = 0; i < 6; i++)
         printf("%02X ", rfd->mac_addr[i]);
     printf("\n");
 #endif // RADIO_DEBUG_INFO
-
     ipc_post_exo(HAL_CMD(HAL_RF, IPC_OPEN), mode, 0, 0);
 }
 

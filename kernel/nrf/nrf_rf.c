@@ -10,6 +10,7 @@
 #include "nrf_power.h"
 #include "../../userspace/sys.h"
 #include "../../userspace/nrf/nrf_radio.h"
+#include "../../userspace/nrf/nrf_ble.h"
 #include "../../userspace/nrf/nrf_driver.h"
 #include "../kerror.h"
 #include "../kstdlib.h"
@@ -165,7 +166,7 @@ static void nrf_rf_timeout(EXO* exo)
     NRF_RADIO->EVENTS_DISABLED = 0;
     NRF_RADIO->TASKS_STOP = 1;
 
-    iio_complete(exo->rf.process, HAL_IO_CMD(HAL_RF, RADIO_ADVERTISE_LISTEN), 0, exo->rf.io);
+    iio_complete(exo->rf.process, HAL_IO_CMD(HAL_RF, BLE_ADVERTISE_LISTEN), 0, exo->rf.io);
     exo->rf.io = NULL;
 }
 
@@ -254,7 +255,7 @@ static void nrf_rf_advertise_listen(EXO* exo, HANDLE user, IO* io, unsigned int 
 
    /* Set the initial freq to obsvr as channel 39 */
    // Frequency = 2400 + FREQUENCY (MHz)
-   NRF_RADIO->FREQUENCY = RADIO_BLE_ADV_CHANNEL_39;
+   NRF_RADIO->FREQUENCY = BLE_ADV_CHANNEL_39;
 
    /* Configure the shorts for observing
     * READY event and START task
@@ -295,7 +296,7 @@ static void nrf_rf_send_adv(EXO* exo, IO* io)
     /* Set radio mode to 1Mbit/s Bluetooth Low Energy */
     NRF_RADIO->MODE = (RADIO_MODE_MODE_Ble_1Mbit << RADIO_MODE_MODE_Pos);
     // Frequency = 2400 + FREQUENCY (MHz)
-    NRF_RADIO->FREQUENCY = RADIO_BLE_ADV_CHANNEL_39;
+    NRF_RADIO->FREQUENCY = BLE_ADV_CHANNEL_39;
 
     uint32_t temp = NRF_RADIO->FREQUENCY;
     NRF_RADIO->DATAWHITEIV = (temp == 2) ? 37 : ((temp == 26) ? 38 : 39);
@@ -420,10 +421,10 @@ void nrf_rf_request(EXO* exo, IPC* ipc)
     case RADIO_SET_CHANNEL:
         nrf_rf_set_channel(exo, ipc->param1);
         break;
-    case RADIO_ADVERTISE_LISTEN:
+    case BLE_ADVERTISE_LISTEN:
         nrf_rf_advertise_listen(exo, ipc->process, (IO*)ipc->param2, ipc->param3);
         break;
-    case RADIO_SEND_ADV_DATA:
+    case BLE_SEND_ADV_DATA:
         nrf_rf_send_adv(exo, (IO*)ipc->param2);
         break;
     case RADIO_START:

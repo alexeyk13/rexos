@@ -15,7 +15,10 @@
 #include "../../userspace/flash.h"
 
 typedef struct {
-    //
+    bool active;
+    HANDLE user, activity;
+    unsigned int offset;
+    uint8_t* page;
 } FLASH_DRV;
 
 void nrf_flash_init(EXO* exo);
