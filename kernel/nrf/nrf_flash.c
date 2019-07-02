@@ -119,13 +119,13 @@ static inline void nrf_flash_page_read(EXO* exo, unsigned int offs, IO* io, unsi
         return;
     }
 
-    if ((offs + size) > flash_page_size())
+    if ((offs + size) > flash_total_size())
     {
         kerror(ERROR_OUT_OF_RANGE);
         return;
     }
 
-    io_data_append(io, (void*)exo->flash.offset + offs, size);
+    io_data_append(io, (void*)offs, size);
 }
 
 static inline bool nrf_flash_page_erase(EXO* exo, unsigned int offs)
@@ -145,7 +145,7 @@ static inline bool nrf_flash_page_erase(EXO* exo, unsigned int offs)
     }
 
     /* erase page */
-    flash_erase_page(exo->flash.offset + offs);
+    flash_erase_page(offs);
     return true;
 }
 
@@ -166,7 +166,7 @@ static inline void nrf_flash_page_write(EXO* exo, unsigned int offs, uint8_t* bu
         return;
     }
 
-    if(exo->flash.offset + offs > flash_total_size())
+    if(offs > flash_total_size())
     {
         kerror(ERROR_OUT_OF_RANGE);
         return;
@@ -181,16 +181,11 @@ static inline void nrf_flash_page_write(EXO* exo, unsigned int offs, uint8_t* bu
 
     /* write new data by words */
     for(i = 0; i < page_size / sizeof(uint32_t); i++, offs += sizeof(uint32_t))
-        flash_write_word(exo->flash.offset + offs, *((uint32_t*)(exo->flash.page + (i * sizeof(uint32_t)))));
+        flash_write_word(offs, *((uint32_t*)(exo->flash.page + (i * sizeof(uint32_t)))));
 }
 
 static inline void nrf_flash_read(EXO* exo,  HANDLE user, IO* io, unsigned int size)
 {
-    /* TODO: temporary not supported */
-    kerror(ERROR_NOT_SUPPORTED);
-    return;
-    /* */
-
     unsigned int base_addr;
     STORAGE_STACK* stack = io_stack(io);
     io_pop(io, sizeof(STORAGE_STACK));
@@ -224,11 +219,6 @@ static inline void nrf_flash_read(EXO* exo,  HANDLE user, IO* io, unsigned int s
 
 static inline void nrf_flash_write(EXO* exo, HANDLE user, IO* io, unsigned int size)
 {
-    /* TODO: temporary not supported */
-    kerror(ERROR_NOT_SUPPORTED);
-    return;
-    /* */
-
     unsigned int page_size = flash_page_size();
     unsigned int base_addr, i, start_addr, sector_start_addr, data_size_cur;
     void* buf;
