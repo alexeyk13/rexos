@@ -97,6 +97,7 @@ typedef struct {
 } FAT16_TYPE;
 
 void fat16_init(VFSS_TYPE* vfss);
+void fat16_deinit(VFSS_TYPE* vfss);
 void fat16_request(VFSS_TYPE* vfss, IPC* ipc);
 
 #endif // FAT16_H

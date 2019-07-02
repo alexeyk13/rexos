@@ -109,6 +109,7 @@ typedef struct {
 } VFS_FAT_FORMAT_TYPE;
 
 HANDLE vfs_create(unsigned int process_size, unsigned int priority);
+void vfs_destroy(HANDLE process);
 bool vfs_record_create(HANDLE vfs, VFS_RECORD_TYPE* vfs_record);
 void vfs_record_destroy(VFS_RECORD_TYPE* vfs_record);
 
