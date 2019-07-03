@@ -34,6 +34,11 @@ __STATIC_INLINE void adc_open()
     ipc_post_exo(HAL_REQ(HAL_ADC, IPC_OPEN), ADC_HANDLE_DEVICE, 0, 0);
 }
 
+__STATIC_INLINE void adc_close()
+{
+    ipc_post_exo(HAL_REQ(HAL_ADC, IPC_CLOSE), ADC_HANDLE_DEVICE, 0, 0);
+}
+
 __STATIC_INLINE void adc_open_channel(uint32_t channel)
 {
     ipc_post_exo(HAL_REQ(HAL_ADC, IPC_OPEN), channel, 0, 0);

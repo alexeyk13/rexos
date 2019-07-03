@@ -125,6 +125,9 @@ void exodriver_init()
 #if (NRF_RTC_DRIVER)
     nrf_rtc_init(__KERNEL->exo);
 #endif // NRF_RTC_DRIVER
+#if (NRF_ADC_DRIVER)
+    nrf_adc_init(__KERNEL->exo);
+#endif // NRF_ADC_DRIVER
 #if (NRF_UART_DRIVER)
     nrf_uart_init(__KERNEL->exo);
 #endif //NRF_UART_DRIVER

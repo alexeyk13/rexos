@@ -13,7 +13,29 @@
 #include "../object.h"
 #include "../power.h"
 
-//-------------------------------------------------- POWER -------------------------------------------------------------------
+//---------------------------------- ADC ---------------------------------------
+typedef enum {
+    NRF_ADC_AIN0 = 0,
+    NRF_ADC_AIN1,
+    NRF_ADC_AIN2,
+    NRF_ADC_AIN3,
+    NRF_ADC_AIN4,
+    NRF_ADC_AIN5,
+    NRF_ADC_AIN6,
+    NRF_ADC_AIN7
+} NRF_ADC_AIN;
+
+typedef enum {
+    NRF_ADC_INPUT_P0_26 = 0,
+    NRF_ADC_INPUT_P0_27,
+    NRF_ADC_INPUT_P0_01,
+    NRF_ADC_INPUT_P0_02,
+    NRF_ADC_INPUT_P0_03,
+    NRF_ADC_INPUT_P0_04,
+    NRF_ADC_INPUT_P0_05,
+    NRF_ADC_INPUT_P0_06
+} NRF_ADC_AINPUT;
+//--------------------------------- POWER --------------------------------------
 typedef enum {
     //if enabled
    NRF_POWER_GET_RESET_REASON = POWER_MAX
@@ -29,7 +51,7 @@ typedef enum {
     RESET_REASON_LPCOMP,
     RESET_REASON_DEBUG_INTERFACE_MODE,
 } RESET_REASON;
-//-------------------------------------------------- GPIO --------------------------------------------------------------------
+//---------------------------------- GPIO --------------------------------------
 typedef enum {
     P0 = 0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15,
     P16, P17, P18, P19, P20, P21, P22, P23, P24, P25, P26, P27, P28, P29, P30,
@@ -54,7 +76,7 @@ typedef enum {
     PIN_SENSE_LOW       = GPIO_PIN_CNF_SENSE_Low,      ///<  Pin sense low level.
     PIN_SENSE_HIGH      = GPIO_PIN_CNF_SENSE_High,    ///<  Pin sense high level.
 } PIN_SENSE;
-//-------------------------------------------------- TIMER -------------------------------------------------------------------
+//---------------------------------- TIMER -------------------------------------
 #define TIMER_CHANNEL_INVALID                        0xff
 
 #define TIMER_MODE_CHANNEL_POS                       16
@@ -78,14 +100,14 @@ typedef enum {
 
 #endif // NRF51
 
-//-------------------------------------------------- UART -------------------------------------------------------------------
+//------------------------------------ UART ------------------------------------
 #if defined(NRF51)
 typedef enum {
     UART_0 = 0,
 } UART_PORT;
 #endif // NRF51
 
-//---------------------------------------------------- RTC ------------------------------------------------------------------
+//------------------------------------ RTC -------------------------------------
 #if defined(NRF51)
 typedef enum {
     RTC_0 = 0,
@@ -100,7 +122,7 @@ typedef enum {
     RTC_CC3,
 } RTC_CC;
 
-// --------------------------------------------------- RADIO ----------------------------------------------------------------
+// ----------------------------------- RADIO -----------------------------------
 
 typedef enum {
     RADIO_MODE_RF_1Mbit = 0,
