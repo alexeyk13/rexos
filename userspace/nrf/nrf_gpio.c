@@ -38,12 +38,12 @@ void gpio_disable_pin(unsigned int pin)
 
 void gpio_set_pin(unsigned int pin)
 {
-    NRF_GPIO->OUTSET |= (1 << pin);
+    NRF_GPIO->OUTSET = (1 << pin);
 }
 
 void gpio_reset_pin(unsigned int pin)
 {
-    NRF_GPIO->OUTCLR |= (1 << pin);
+    NRF_GPIO->OUTCLR = (1 << pin);
 }
 
 bool gpio_get_pin(unsigned int pin)
