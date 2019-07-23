@@ -222,8 +222,6 @@ static unsigned int fat16_strspcpy(char* dst, char* src, unsigned int dst_size, 
 void fat16_init(VFSS_TYPE* vfss)
 {
     vfss->fat16.active = false;
-    so_create(&vfss->fat16.finds, sizeof(FAT16_FILE_INFO), 1);
-    so_create(&vfss->fat16.file_handles, sizeof(FAT16_FILE_HANDLE_TYPE), 1);
 }
 
 void fat16_deinit(VFSS_TYPE* vfss)
@@ -983,6 +981,8 @@ static inline void fat16_mount(VFSS_TYPE* vfss)
         error(ERROR_ALREADY_CONFIGURED);
         return;
     }
+    so_create(&vfss->fat16.finds, sizeof(FAT16_FILE_INFO), 1);
+    so_create(&vfss->fat16.file_handles, sizeof(FAT16_FILE_HANDLE_TYPE), 1);
     if (fat16_parse_boot(vfss))
         vfss->fat16.active = true;
 }
@@ -996,6 +996,8 @@ static void fat16_unmount(VFSS_TYPE* vfss)
     //2. free file_handles
     while((handle = so_first(&vfss->fat16.file_handles)) != INVALID_HANDLE)
         fat16_close_file(vfss, handle);
+    so_destroy(&vfss->fat16.finds);
+    so_destroy(&vfss->fat16.file_handles);
     vfss->fat16.active = false;
 }
 
