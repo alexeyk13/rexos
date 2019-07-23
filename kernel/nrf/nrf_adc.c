@@ -17,7 +17,7 @@
 
 static int nrf_adc_get(EXO* exo, NRF_ADC_AIN ain, unsigned int samplerate)
 {
-    if (exo->adc.active)
+    if (!exo->adc.active)
     {
         kerror(ERROR_NOT_CONFIGURED);
         return 0;
