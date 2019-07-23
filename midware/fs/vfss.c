@@ -118,7 +118,6 @@ static inline void vfss_open_volume(VFSS_TYPE* vfss, IO* io)
         error(ERROR_INVALID_PARAMS);
         return;
     }
-
 #if (VFS_DEBUG_INFO) || (VFS_DEBUG_ERRORS)
     open_stdout();
 #endif //(VFS_DEBUG_INFO) || (VFS_DEBUG_ERRORS)
@@ -153,25 +152,6 @@ static inline void vfss_init(VFSS_TYPE* vfss)
     fat16_init(vfss);
 #endif  // VFS_SFS
 #endif // VFS_NO_FS
-}
-
-static inline void vfss_close_volume(VFSS_TYPE* vfss)
-{
-    vfss->volume.process = INVALID_HANDLE;
-    io_destroy(vfss->io);
-
-#if (VFS_NO_FS == 0)
-#if (VFS_SFS)
-    sfs_deinit(vfss);
-#else
-    fat16_deinit(vfss);
-#endif  // VFS_SFS
-#endif // VFS_NO_FS
-}
-
-static inline void vfss_init(VFSS_TYPE* vfss)
-{
-    vfss->volume.process = INVALID_HANDLE;
 }
 
 void vfss_request(VFSS_TYPE *vfss, IPC* ipc)
@@ -223,4 +203,3 @@ void vfss()
         ipc_write(&ipc);
     }
 }
-

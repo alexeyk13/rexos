@@ -224,13 +224,6 @@ void fat16_init(VFSS_TYPE* vfss)
     vfss->fat16.active = false;
 }
 
-void fat16_deinit(VFSS_TYPE* vfss)
-{
-    vfss->fat16.active = false;
-    so_destroy(&vfss->fat16.finds);
-    so_destroy(&vfss->fat16.file_handles);
-}
-
 static bool fat16_parse_boot(VFSS_TYPE* vfss)
 {
     FAT_BOOT_SECTOR_BPB_TYPE* bpb;
