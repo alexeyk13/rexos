@@ -105,9 +105,9 @@ static inline void pinboard_open(PINBOARD* pinboard, unsigned int pin, unsigned 
     if (mode & PINBOARD_FLAG_PULL)
     {
         if (mode & PINBOARD_FLAG_INVERTED)
-            gpio_enable_pin(pin, GPIO_MODE_IN_PULLDOWN);
-        else
             gpio_enable_pin(pin, GPIO_MODE_IN_PULLUP);
+        else
+            gpio_enable_pin(pin, GPIO_MODE_IN_PULLDOWN);
     }
     else
         gpio_enable_pin(pin, GPIO_MODE_IN_FLOAT);
