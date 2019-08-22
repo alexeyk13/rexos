@@ -104,10 +104,17 @@ static inline void pinboard_open(PINBOARD* pinboard, unsigned int pin, unsigned 
         return;
     if (mode & PINBOARD_FLAG_PULL)
     {
+#if (PINBOARD_HIGH_LOW_ACTIVE)
         if (mode & PINBOARD_FLAG_INVERTED)
             gpio_enable_pin(pin, GPIO_MODE_IN_PULLUP);
         else
             gpio_enable_pin(pin, GPIO_MODE_IN_PULLDOWN);
+#else
+        if (mode & PINBOARD_FLAG_INVERTED)
+            gpio_enable_pin(pin, GPIO_MODE_IN_PULLDOWN);
+        else
+            gpio_enable_pin(pin, GPIO_MODE_IN_PULLUP);
+#endif // PINBOARD_HIGH_LOW_ACTIVE
     }
     else
         gpio_enable_pin(pin, GPIO_MODE_IN_FLOAT);
