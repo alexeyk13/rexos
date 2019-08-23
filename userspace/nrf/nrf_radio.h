@@ -42,7 +42,8 @@ void radio_start(IO* io);
 //void radio_tx();
 //void radio_rx();
 bool radio_tx_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int timeout_ms);
-bool radio_rx_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int size, unsigned int timeout_ms);
+bool radio_rx_size_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int size, unsigned int timeout_ms);
+int radio_rx_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int timeout_ms);
 void radio_set_channel(uint8_t channel);
 void radio_set_tx_power(uint8_t tx_power_dBm);
 

@@ -50,8 +50,8 @@ HANDLE radio_open(char* process_name, RADIO_MODE mode)
 
 void radio_start(IO* io)
 {
-    RADIO_STACK* stack = io_push(io, sizeof(RADIO_STACK));
-    io_read_sync(KERNEL_HANDLE, HAL_IO_REQ(HAL_RF, IPC_WRITE), 0, io, 0);
+//    RADIO_STACK* stack = io_push(io, sizeof(RADIO_STACK));
+//    io_read_sync(KERNEL_HANDLE, HAL_IO_REQ(HAL_RF, IPC_WRITE), 0, io, 0);
 //    io_read_sync(KERNEL_HANDLE, HAL_IO_REQ(HAL_RF, RADIO_START), 0, io, 0);
 }
 
@@ -86,7 +86,7 @@ bool radio_tx_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int ti
     return radio_tx_sync_internal(hal, process, user, io, io->data_size, timeout_ms, flags);
 }
 
-bool radio_rx_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int size, unsigned int timeout_ms)
+bool radio_rx_size_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int size, unsigned int timeout_ms)
 {
     RADIO_STACK* stack = io_push(io, sizeof(RADIO_STACK));
     stack->flags = RADIO_FLAG_EMPTY;
@@ -94,6 +94,16 @@ bool radio_rx_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int si
         stack->flags |= RADIO_FLAG_TIMEOUT;
     stack->timeout_ms = timeout_ms;
     return (io_read_sync(process, HAL_IO_REQ(hal, IPC_READ), user, io, size) == size);
+}
+
+int radio_rx_sync(HAL hal, HANDLE process, HANDLE user, IO* io, unsigned int timeout_ms)
+{
+    RADIO_STACK* stack = io_push(io, sizeof(RADIO_STACK));
+    stack->flags = RADIO_FLAG_EMPTY;
+    if(timeout_ms)
+        stack->flags |= RADIO_FLAG_TIMEOUT;
+    stack->timeout_ms = timeout_ms;
+    return io_write_sync(process, HAL_IO_REQ(hal, IPC_READ), user, io);
 }
 
 void radio_set_channel(uint8_t channel)

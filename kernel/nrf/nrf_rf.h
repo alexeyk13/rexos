@@ -11,6 +11,7 @@
 
 #include "../../userspace/ipc.h"
 #include "../../userspace/io.h"
+#include "../../userspace/nrf/nrf_driver.h"
 #include "sys_config.h"
 #include "nrf_exo.h"
 #include <stdbool.h>
@@ -69,6 +70,7 @@ typedef struct {
     HANDLE process, timer;
     unsigned int max_size;
     bool active;
+    RADIO_MODE mode;
     RADIO_STATE state;
     /* temporary for BLE demo */
     uint8_t pdu[40];
