@@ -12,16 +12,16 @@
 #include <stdint.h>
 
 // -------------------------------- SETTINGS -----------------------------------
-#define RADIO_PROCESS_SIZE                  1024
-#define RADIO_PROCESS_PRIORITY              201
+#define RADIO_PROCESS_SIZE                      1024
+#define RADIO_PROCESS_PRIORITY                  201
 
-#define RADIO_DEBUG                         1
+#define RADIO_DEBUG                             1
 
 #if (RADIO_DEBUG)
-#define RADIO_DEBUG_INFO                    1
-#define RADIO_DEBUG_ERRORS                  0
-#define RADIO_DEBUG_REQUESTS                0
-#define RADIO_DEBUG_IO                      0
+#define RADIO_DEBUG_INFO                        1
+#define RADIO_DEBUG_ERRORS                      0
+#define RADIO_DEBUG_REQUESTS                    0
+#define RADIO_DEBUG_IO                          0
 #endif // RADIO_DEBUG
 // -----------------------------------------------------------------------------
 // Radio output power settings

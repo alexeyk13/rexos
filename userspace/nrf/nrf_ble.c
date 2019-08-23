@@ -124,7 +124,7 @@ bool ble_listen_adv_channel(unsigned int max_size, uint8_t flags, unsigned int t
         return false;
     RADIO_STACK* stack = io_data(io);
     stack->flags = flags;
-    stack->timeout = timeout_ms;
+    stack->timeout_ms = timeout_ms;
     // send IO to receive data
     io_read_sync_exo(HAL_IO_REQ(HAL_RF, BLE_ADVERTISE_LISTEN), 0, io, max_size);
     // print data
