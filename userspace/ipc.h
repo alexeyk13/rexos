@@ -53,6 +53,8 @@ typedef enum {
     HAL_RF,
     HAL_CAN,
     HAL_SPI,
+    HAL_RNG,
+    HAL_TEMP,
     //device stacks
     HAL_USBD,
     HAL_USBD_IFACE,

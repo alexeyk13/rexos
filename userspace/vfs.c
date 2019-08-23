@@ -23,7 +23,11 @@ HANDLE vfs_create(unsigned int process_size, unsigned int priority)
     rex.flags = PROCESS_FLAGS_ACTIVE;
     rex.fn = vfss;
     return process_create(&rex);
+}
 
+void vfs_destroy(HANDLE process)
+{
+    process_destroy(process);
 }
 
 bool vfs_record_create(HANDLE vfs, VFS_RECORD_TYPE *vfs_record)

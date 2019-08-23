@@ -16,7 +16,7 @@ typedef enum {
     POWER_MODE_LOW,
     POWER_MODE_ULTRA_LOW,
     POWER_MODE_STOP,
-    POWER_MODE_STANDY
+    POWER_MODE_STANDY,
 } POWER_MODE;
 
 typedef enum {

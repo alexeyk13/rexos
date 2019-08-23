@@ -87,6 +87,7 @@ void poll_key(KEY* key)
 static inline void pinboard_poll(PINBOARD* pinboard)
 {
     int i;
+
     for (i = 0; i < array_size(pinboard->pins); ++i)
         poll_key(KEY_GET(pinboard->pins, i));
     timer_start_ms(pinboard->timer, PINBOARD_POLL_TIME_MS);
@@ -103,10 +104,17 @@ static inline void pinboard_open(PINBOARD* pinboard, unsigned int pin, unsigned 
         return;
     if (mode & PINBOARD_FLAG_PULL)
     {
+#if (PINBOARD_HIGH_LOW_ACTIVE)
+        if (mode & PINBOARD_FLAG_INVERTED)
+            gpio_enable_pin(pin, GPIO_MODE_IN_PULLUP);
+        else
+            gpio_enable_pin(pin, GPIO_MODE_IN_PULLDOWN);
+#else
         if (mode & PINBOARD_FLAG_INVERTED)
             gpio_enable_pin(pin, GPIO_MODE_IN_PULLDOWN);
         else
             gpio_enable_pin(pin, GPIO_MODE_IN_PULLUP);
+#endif // PINBOARD_HIGH_LOW_ACTIVE
     }
     else
         gpio_enable_pin(pin, GPIO_MODE_IN_FLOAT);

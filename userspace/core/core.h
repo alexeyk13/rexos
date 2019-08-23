@@ -16,6 +16,8 @@
 #include "../stm32/stm32.h"
 #include "../lpc/lpc.h"
 #include "../ti/ti.h"
+#include "../nrf/nrf.h"
+
 #ifdef REXOSP
 #include "rexosp.h"
 #endif //REXOSP
