@@ -123,6 +123,7 @@ typedef enum {
 } RTC_CC;
 
 // ----------------------------------- RADIO -----------------------------------
+#define NRF_MAX_PACKET_LENGTH                   254
 
 typedef enum {
     RADIO_MODE_RF_1Mbit = 0,

@@ -15,7 +15,7 @@
 #if (RADIO_DEBUG)
 #define BLE_DEBUG_ADV_RAW                   0
 #define BLE_DEBUG_ADV_COMMON                1
-#define BLE_DEBUG_ADV_DATA                  1
+#define BLE_DEBUG_ADV_DATA                  0
 #endif // RADIO_DEBUG
 // ============================= SETTINGS =====================================
 

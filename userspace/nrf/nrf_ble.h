@@ -19,7 +19,7 @@ void ble_close();
 
 // send advertise packet
 bool ble_send_adv(uint8_t channel, uint8_t* adv_data, unsigned int data_size);
-bool ble_listen_adv_channel(unsigned int max_size, uint8_t flags, unsigned int timeout_ms);
+//bool ble_listen_adv_channel(unsigned int max_size, uint8_t flags, unsigned int timeout_ms);
 
 
 /* debug */

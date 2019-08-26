@@ -41,6 +41,8 @@ static void ble_debug_adv_data(uint8_t* data, unsigned int size)
     printf("========================\n");
 
 }
+#endif // BLE_DEBUG_ADV_DATA
+
 void ble_debug_adv_common(IO* io)
 {
     unsigned int size = 0;
@@ -55,7 +57,7 @@ void ble_debug_adv_common(IO* io)
 #endif // BLE_DEBUG_ADV_RAW
     // parse data in IO
 #if (BLE_DEBUG_ADV_COMMON)
-    printf("ADV Channel Captured \n");
+//    printf("ADV Channel Captured \n");
     while(size < io->data_size)
     {
         // First byte - type
@@ -94,7 +96,6 @@ void ble_debug_adv_common(IO* io)
     }
 #endif // BLE_DEBUG_ADV_COMMON
 }
-#endif // BLE_DEBUG_ADV_DATA
 
 HANDLE ble_open()
 {
@@ -116,22 +117,22 @@ bool ble_send_adv(uint8_t channel, uint8_t* adv_data, unsigned int data_size)
     return true;
 }
 
-bool ble_listen_adv_channel(unsigned int max_size, uint8_t flags, unsigned int timeout_ms)
-{
-    // Create IO
-    IO* io = io_create(sizeof(RADIO_STACK) + max_size);
-    if(io == NULL)
-        return false;
-    RADIO_STACK* stack = io_data(io);
-    stack->flags = flags;
-    stack->timeout_ms = timeout_ms;
-    // send IO to receive data
-//    io_read_sync_exo(HAL_IO_REQ(HAL_RF, BLE_ADVERTISE_LISTEN), 0, io, max_size);
-    // print data
-#if (BLE_DEBUG_ADV_COMMON)
-    ble_debug_adv_common(io);
-#endif // RADIO_DEBUG_ADV_COMMON
-    // destory IO
-    io_destroy(io);
-    return true;
-}
+//bool ble_listen_adv_channel(unsigned int max_size, uint8_t flags, unsigned int timeout_ms)
+//{
+//    // Create IO
+//    IO* io = io_create(sizeof(RADIO_STACK) + max_size);
+//    if(io == NULL)
+//        return false;
+//    RADIO_STACK* stack = io_data(io);
+//    stack->flags = flags;
+//    stack->timeout_ms = timeout_ms;
+//    // send IO to receive data
+////    io_read_sync_exo(HAL_IO_REQ(HAL_RF, BLE_ADVERTISE_LISTEN), 0, io, max_size);
+//    // print data
+//#if (BLE_DEBUG_ADV_COMMON)
+//    ble_debug_adv_common(io);
+//#endif // RADIO_DEBUG_ADV_COMMON
+//    // destory IO
+//    io_destroy(io);
+//    return true;
+//}

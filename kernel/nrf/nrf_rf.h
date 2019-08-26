@@ -62,7 +62,8 @@ typedef enum {
 typedef enum {
     RADIO_STATE_IDLE = 0,
     RADIO_STATE_TX,
-    RADIO_STATE_RX
+    RADIO_STATE_RX,
+    RADIO_STATE_RX_DATA
 } RADIO_STATE;
 
 typedef struct {
@@ -73,9 +74,8 @@ typedef struct {
     RADIO_MODE mode;
     RADIO_STATE state;
     /* temporary for BLE demo */
-    uint8_t pdu[40];
+    uint8_t pdu[NRF_MAX_PACKET_LENGTH];
     uint32_t rssi;
-    uint8_t packets[LOGGER_NUMBER][MAX_PDU_SIZE+8];
 } RADIO_DRV;
 
 void nrf_rf_init(EXO* exo);

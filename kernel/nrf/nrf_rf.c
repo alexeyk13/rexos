@@ -22,12 +22,9 @@
 #include "nrf_exo_private.h"
 #include "sys_config.h"
 
-#define NRF_MAX_PACKET_LENGTH                   254
-
 static const uint8_t template_adv_packet[] = {
         0x42, // ADV_NONCONN_IND
         0x14, // LENGTH
-//        0x00,
         0xF0, // MAC
         0x4C,
         0x16,
@@ -70,30 +67,22 @@ static const uint8_t rsp[] = {
 /** Return 2^n, used for setting nth bit as 1*/
 #define SET_BIT(n)      (1UL << n)
 
-static inline void collect_packet(EXO* exo)
+static inline void nrf_rf_flush_events()
 {
-    uint8_t pkt_size = exo->rf.pdu[1] + 2;
-    /* Collect a max of LOGGER_NUMBER packets, otherwise reduce observer window */
-    if(exo->rf.io->data_size + pkt_size < exo->rf.max_size)
-    {
-        io_data_append(exo->rf.io, exo->rf.pdu, pkt_size);
-        io_data_append(exo->rf.io, &(exo->rf.rssi), sizeof(uint32_t));
-
-//        exo->rf.packets[exo->rf.packet_count][MAX_PDU_SIZE] = NRF_RADIO->DATAWHITEIV - 64;  //6th bit is always 1
-//
-//        if(NRF_RADIO->CRCSTATUS == 1)
-//        {
-//            exo->rf.packets[exo->rf.packet_count][MAX_PDU_SIZE] |= 0x80;
-//        }
-    }
+    NRF_RADIO->EVENTS_READY = 0;
+    NRF_RADIO->EVENTS_ADDRESS = 0;
+    NRF_RADIO->EVENTS_PAYLOAD = 0;
+    NRF_RADIO->EVENTS_END = 0;
+    NRF_RADIO->EVENTS_DISABLED = 0;
+    NRF_RADIO->EVENTS_DEVMATCH = 0;
+    NRF_RADIO->EVENTS_DEVMISS = 0;
+    NRF_RADIO->EVENTS_RSSIEND = 0;
 }
 
 static inline void nrf_rf_irq(int vector, void* param)
 {
     EXO* exo = (EXO*)param;
-
-//    printk("--> i\n");
-
+    uint8_t pkt_size = 0;
     /* disable timer */
     ksystime_soft_timer_stop(exo->rf.timer);
 
@@ -102,30 +91,38 @@ static inline void nrf_rf_irq(int vector, void* param)
     {
         case RADIO_STATE_RX:
         {
-            if((NRF_RADIO->EVENTS_END == 1) && (NRF_RADIO->INTENSET & RADIO_INTENSET_END_Msk))
-                NRF_RADIO->EVENTS_END = 0;
-            /* save data size to io */
-            /* pkt_size is second byte plus 2 preamble */
-            exo->rf.io->data_size = ((uint8_t*)io_data(exo->rf.io))[1] + 2;
-
             if((NRF_RADIO->EVENTS_RSSIEND == 1) && (NRF_RADIO->INTENSET & RADIO_INTENSET_RSSIEND_Msk))
             {
-                NRF_RADIO->EVENTS_RSSIEND = 0;
                 NRF_RADIO->TASKS_RSSISTOP = 1;
                 exo->rf.rssi = (NRF_RADIO->RSSISAMPLE);
-                io_data_append(exo->rf.io, &exo->rf.rssi, sizeof(uint32_t));
+                exo->rf.state = RADIO_STATE_RX_DATA;
             }
+            break;
         }
-        // follow down
+        case RADIO_STATE_RX_DATA:
+        {
+            if(!((NRF_RADIO->EVENTS_END == 1) && (NRF_RADIO->INTENSET & RADIO_INTENSET_END_Msk)))
+                break;
+
+            /* save data size to io */
+            pkt_size = exo->rf.pdu[1] + 2;
+            /* pkt_size is second byte plus 2 preamble */
+            if(exo->rf.io->data_size + pkt_size < io_get_free(exo->rf.io))
+            {
+                io_data_append(exo->rf.io, exo->rf.pdu, pkt_size);
+                io_data_append(exo->rf.io, &(exo->rf.rssi), sizeof(uint32_t));
+            }
+            // follow down
+        }
         case RADIO_STATE_TX:
             /* disable task */
             NRF_RADIO->TASKS_DISABLE = 1;
             /* send reply back */
             iio_complete(exo->rf.process,
-                         HAL_IO_CMD(HAL_RF, (exo->rf.state == RADIO_STATE_RX) ? IPC_READ : IPC_WRITE),
-                         0,
-                         exo->rf.io);
+                            HAL_IO_CMD(HAL_RF, (exo->rf.state == RADIO_STATE_TX)? IPC_WRITE : IPC_READ),
+                            0, exo->rf.io);
 
+            /* flush data */
             exo->rf.io = NULL;
             exo->rf.process = INVALID_HANDLE;
             exo->rf.state = RADIO_STATE_IDLE;
@@ -134,37 +131,42 @@ static inline void nrf_rf_irq(int vector, void* param)
             break;
     }
 
-//    printk("<-- i\n");
+    nrf_rf_flush_events();
 }
 
 void nrf_rf_init(EXO* exo)
 {
     exo->rf.active = false;
+    exo->rf.timer = INVALID_HANDLE;
     exo->rf.io = NULL;
     exo->rf.process = INVALID_HANDLE;
-    exo->rf.timer = INVALID_HANDLE;
     exo->rf.max_size = 0;
     exo->rf.state = RADIO_STATE_IDLE;
 }
 
-static void nrf_rf_start(EXO* exo, HANDLE process, IO* io)
+static void nrf_rf_start(EXO* exo)
 {
-//    printk("rf start\n");
-    ksystime_soft_timer_start_ms(exo->rf.timer, 3000);
-    exo->rf.process = process;
-    exo->rf.io = io;
-    kerror(ERROR_SYNC);
+    exo->rf.io = NULL;
+    exo->rf.process = INVALID_HANDLE;
+    exo->rf.max_size = 0;
+    exo->rf.state = RADIO_STATE_IDLE;
+    /* disable IRQ */
+    NVIC_EnableIRQ(RADIO_IRQn);
 }
 
 static void nrf_rf_stop(EXO* exo)
 {
-
+    /* disable IRQ */
+    NVIC_DisableIRQ(RADIO_IRQn);
+    /* disable and stop */
+    NRF_RADIO->TASKS_DISABLE = 1;
+    NRF_RADIO->TASKS_STOP = 1;
+    /* flush events */
+    nrf_rf_flush_events();
 }
 
 static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
 {
-//    printk("rf mode: %d\n", mode);
-
     /* set same mode */
     if(exo->rf.mode == mode)
         return;
@@ -226,6 +228,7 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
             NRF_RADIO->OVERRIDE3 =  NRF_FICR->BLE_1MBIT[3];
             NRF_RADIO->OVERRIDE4 =  NRF_FICR->BLE_1MBIT[4];
 
+            // start observe
             /* Set access address to 0x8E89BED6. This is the access address to be used
             * when send packets in obsvrertise channels.
             *
@@ -243,51 +246,118 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
            NRF_RADIO->PREFIX0      = 0x0000008E;
            NRF_RADIO->RXADDRESSES  = 0x00000001;
 
+           /* Enable data whitening. */
+           NRF_RADIO->PCNF1 |= RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos;
+
+           /* Set maximum PAYLOAD size. */
+           NRF_RADIO->PCNF1 |= MAX_PDU_SIZE << RADIO_PCNF1_MAXLEN_Pos;
+
            /* Configure CRC.
-               *
-               * First, we set the length of CRC field to 3 bytes long and ignore the
-               * access address in the CRC calculation.
-               *
-               * Then we set CRC initial value to 0x555555.
-               *
-               * The last step is to set the CRC polynomial to
-               * x^24 + x^10 + x^9 + x^6 + x^4 + x^3 + x + 1.
-               */
+            *
+            * First, we set the length of CRC field to 3 bytes long and ignore the
+            * access address in the CRC calculation.
+            *
+            * Then we set CRC initial value to 0x555555.
+            *
+            * The last step is to set the CRC polynomial to
+            * x^24 + x^10 + x^9 + x^6 + x^4 + x^3 + x + 1.
+            */
            NRF_RADIO->CRCCNF =     RADIO_CRCCNF_LEN_Three << RADIO_CRCCNF_LEN_Pos |
-                                  RADIO_CRCCNF_SKIP_ADDR_Skip
-                                                  << RADIO_CRCCNF_SKIP_ADDR_Pos;
+                                   RADIO_CRCCNF_SKIP_ADDR_Skip
+                                                   << RADIO_CRCCNF_SKIP_ADDR_Pos;
            NRF_RADIO->CRCINIT =    0x555555UL;
            NRF_RADIO->CRCPOLY =    SET_BIT(24) | SET_BIT(10) | SET_BIT(9) |
-                                      SET_BIT(6) | SET_BIT(4) | SET_BIT(3) |
-                                      SET_BIT(1) | SET_BIT(0);
+                                   SET_BIT(6) | SET_BIT(4) | SET_BIT(3) |
+                                   SET_BIT(1) | SET_BIT(0);
 
-            /* Configure header size.
-               *
-               * The Advertise has the following format:
-               * RxAdd(1b) | TxAdd(1b) | RFU(2b) | PDU Type(4b) | RFU(2b) | Length(6b)
-               *
-               * And the nRF51822 RADIO packet has the following format
-               * (directly editable fields):
-               * S0 (0/1 bytes) | LENGTH ([0, 8] bits) | S1 ([0, 8] bits)
-               *
-               * We can match those fields with the Link Layer fields:
-               * S0 (1 byte)      --> PDU Type(4bits)|RFU(2bits)|TxAdd(1bit)|RxAdd(1bit)
-               * LENGTH (6 bits)  --> Length(6bits)
-               * S1 (0 bits)      --> S1(0bits)
-               */
+           /* Configure header size.
+            *
+            * The Advertise has the following format:
+            * RxAdd(1b) | TxAdd(1b) | RFU(2b) | PDU Type(4b) | RFU(2b) | Length(6b)
+            *
+            * And the nRF51822 RADIO packet has the following format
+            * (directly editable fields):
+            * S0 (0/1 bytes) | LENGTH ([0, 8] bits) | S1 ([0, 8] bits)
+            *
+            * We can match those fields with the Link Layer fields:
+            * S0 (1 byte)      --> PDU Type(4bits)|RFU(2bits)|TxAdd(1bit)|RxAdd(1bit)
+            * LENGTH (6 bits)  --> Length(6bits)
+            * S1 (0 bits)      --> S1(0bits)
+            */
            NRF_RADIO->PCNF0 |= (1 << RADIO_PCNF0_S0LEN_Pos) |  /* 1 byte */
-                                  (8 << RADIO_PCNF0_LFLEN_Pos) |  /* 6 bits */
-                                  (0 << RADIO_PCNF0_S1LEN_Pos);   /* 2 bits */
+                               (8 << RADIO_PCNF0_LFLEN_Pos) |  /* 6 bits */
+                               (0 << RADIO_PCNF0_S1LEN_Pos);   /* 2 bits */
 
-            /* Configure the shorts for observing
-             * READY event and START task
-             * ADDRESS event and RSSISTART task
-             * END event and START task
-                 * */
+            // start observe
+            /* Set access address to 0x8E89BED6. This is the access address to be used
+            * when send packets in obsvrertise channels.
+            *
+            * Since the access address is 4 bytes long and the prefix is 1 byte long,
+            * we first set the base address length to be 3 bytes long.
+            *
+            * Then we split the full access address in:
+            * 1. Prefix0:  0x0000008E (LSB -> Logic address 0)
+            * 2. Base0:    0x89BED600 (3 MSB)
+            *
+            * At last, we enable reception for this address.
+            */
+           NRF_RADIO->PCNF1        |= 3UL << RADIO_PCNF1_BALEN_Pos;
+           NRF_RADIO->BASE0        = 0x89BED600;
+           NRF_RADIO->PREFIX0      = 0x0000008E;
+           NRF_RADIO->RXADDRESSES  = 0x00000001;
+
+           /* Enable data whitening. */
+           NRF_RADIO->PCNF1 |= RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos;
+
+           /* Set maximum PAYLOAD size. */
+           NRF_RADIO->PCNF1 |= MAX_PDU_SIZE << RADIO_PCNF1_MAXLEN_Pos;
+
+           /* Configure CRC.
+            *
+            * First, we set the length of CRC field to 3 bytes long and ignore the
+            * access address in the CRC calculation.
+            *
+            * Then we set CRC initial value to 0x555555.
+            *
+            * The last step is to set the CRC polynomial to
+            * x^24 + x^10 + x^9 + x^6 + x^4 + x^3 + x + 1.
+            */
+           NRF_RADIO->CRCCNF =     RADIO_CRCCNF_LEN_Three << RADIO_CRCCNF_LEN_Pos |
+                                   RADIO_CRCCNF_SKIP_ADDR_Skip
+                                                   << RADIO_CRCCNF_SKIP_ADDR_Pos;
+           NRF_RADIO->CRCINIT =    0x555555UL;
+           NRF_RADIO->CRCPOLY =    SET_BIT(24) | SET_BIT(10) | SET_BIT(9) |
+                                   SET_BIT(6) | SET_BIT(4) | SET_BIT(3) |
+                                   SET_BIT(1) | SET_BIT(0);
+
+           /* Configure header size.
+            *
+            * The Advertise has the following format:
+            * RxAdd(1b) | TxAdd(1b) | RFU(2b) | PDU Type(4b) | RFU(2b) | Length(6b)
+            *
+            * And the nRF51822 RADIO packet has the following format
+            * (directly editable fields):
+            * S0 (0/1 bytes) | LENGTH ([0, 8] bits) | S1 ([0, 8] bits)
+            *
+            * We can match those fields with the Link Layer fields:
+            * S0 (1 byte)      --> PDU Type(4bits)|RFU(2bits)|TxAdd(1bit)|RxAdd(1bit)
+            * LENGTH (6 bits)  --> Length(6bits)
+            * S1 (0 bits)      --> S1(0bits)
+            */
+           NRF_RADIO->PCNF0 |= (1 << RADIO_PCNF0_S0LEN_Pos) |  /* 1 byte */
+                               (8 << RADIO_PCNF0_LFLEN_Pos) |  /* 6 bits */
+                               (0 << RADIO_PCNF0_S1LEN_Pos);   /* 2 bits */
+
+           /* Configure the shorts for observing
+            * READY event and START task
+            * ADDRESS event and RSSISTART task
+            * END event and START task
+            * */
 
            NRF_RADIO->SHORTS = RADIO_SHORTS_READY_START_Msk |
-                                    RADIO_SHORTS_ADDRESS_RSSISTART_Msk |
-                                    RADIO_SHORTS_END_START_Msk;
+                               RADIO_SHORTS_ADDRESS_RSSISTART_Msk |
+                               RADIO_SHORTS_END_START_Msk;
+
             break;
         default:
             kerror(ERROR_NOT_SUPPORTED);
@@ -316,6 +386,7 @@ static inline void nrf_rf_open(EXO* exo, RADIO_MODE mode)
     }
 
     /* RADIO peripheral power control ON */
+    NRF_RADIO->POWER = 0;
     NRF_RADIO->POWER = 1;
 
     /* Set radio transmit power to default 0dBm */
@@ -324,30 +395,37 @@ static inline void nrf_rf_open(EXO* exo, RADIO_MODE mode)
     /* setup mode */
     nrf_rf_setup_mode(exo, mode);
 
+    /* Set the pointer to write the incoming packet. */
+    NRF_RADIO->PACKETPTR = (uint32_t) exo->rf.pdu;
+
+    exo->rf.active = true;
+
     /* setup IRQ */
     kirq_register(KERNEL_HANDLE, RADIO_IRQn, nrf_rf_irq, (void*)exo);
     // Enable Interrupt for RADIO in the core.
     NVIC_SetPriority(RADIO_IRQn, 2);
 
-    exo->rf.active = true;
-
-    // TODO: remove me
-//    printk("rf open complete\n");
+    nrf_rf_start(exo);
 }
 
 static void nrf_rf_close(EXO* exo)
 {
-//    printk("rf close\n");
+    if(!exo->rf.active)
+    {
+        kerror(ERROR_NOT_CONFIGURED);
+            return;
+    }
+    /* inregister IRQ */
+    kirq_unregister(KERNEL_HANDLE, RADIO_IRQn);
+
+    ksystime_soft_timer_destroy(exo->rf.timer);
+    nrf_rf_init(exo);
 }
 
 static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned int size, bool rx)
 {
     RADIO_STACK* stack = io_stack(io);
     io_pop(io, sizeof(RADIO_STACK));
-
-    // TODO:
-//    printk("nrf rf io\n");
-//    printk("    %s, size %d\n", (rx)? "RX" : "TX", size);
 
     if(!exo->rf.active)
     {
@@ -356,31 +434,13 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
     }
 
     exo->rf.io = io;
+    exo->rf.max_size = io_get_free(io);
     exo->rf.process = process;
-
-    /* flush events */
-    NRF_RADIO->EVENTS_READY = 0;
-
-    /* prepare pkt data */
-    NRF_RADIO->PACKETPTR = (uint32_t)io_data(io);
 
     if(RADIO_MODE_BLE_1Mbit == exo->rf.mode)
     {
         /* set data whiteng for BLE depending on channel */
         NRF_RADIO->DATAWHITEIV = (NRF_RADIO->FREQUENCY == 2) ? 37 : ((NRF_RADIO->FREQUENCY == 26) ? 38 : 39);
-    }
-
-    if(rx)
-    {
-        exo->rf.state = RADIO_STATE_RX;
-        /* Before the RADIO is able to receive a packet, it must first ramp-up in RX mode */
-        NRF_RADIO->TASKS_RXEN = 1;
-    }
-    else
-    {
-        exo->rf.state = RADIO_STATE_TX;
-        /* Before the RADIO is able to transmit a packet, it must first ramp-up in TX mode */
-        NRF_RADIO->TASKS_TXEN = 1;
     }
 
     if(!(RADIO_MODE_BLE_1Mbit == exo->rf.mode))
@@ -394,19 +454,29 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
     }
 
     /* enable interrupt */
-    NRF_RADIO->INTENSET = RADIO_INTENSET_RSSIEND_Msk |
-                          RADIO_INTENSET_END_Msk;
+    NRF_RADIO->INTENSET = RADIO_INTENSET_END_Msk |
+                          RADIO_INTENSET_RSSIEND_Msk ;
 
-    /* flush events end */
-    NRF_RADIO->EVENTS_END  = 0;
-
-    /* enable IRQ */
-    NVIC_EnableIRQ(RADIO_IRQn);
 
     /* setup timeout */
     if(stack->flags & RADIO_FLAG_TIMEOUT)
         ksystime_soft_timer_start_ms(exo->rf.timer, stack->timeout_ms);
 
+    /* flush events end */
+    nrf_rf_flush_events();
+
+    if(rx)
+    {
+        exo->rf.state = RADIO_STATE_RX;
+        /* Before the RADIO is able to receive a packet, it must first ramp-up in RX mode */
+        NRF_RADIO->TASKS_RXEN = 1;
+    }
+    else
+    {
+        exo->rf.state = RADIO_STATE_TX;
+        /* Before the RADIO is able to transmit a packet, it must first ramp-up in TX mode */
+        NRF_RADIO->TASKS_TXEN = 1;
+    }
     /* Start rx or tx */
     NRF_RADIO->TASKS_START = 1;
     /* wait events in irq */
@@ -415,23 +485,16 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
 
 static void nrf_rf_timeout(EXO* exo)
 {
-    printk("rf to, state %X\n", exo->rf.state);
-    /* timeout occured */
-    NVIC_DisableIRQ(RADIO_IRQn);
-    /* disable and stop */
-    NRF_RADIO->TASKS_DISABLE = 1;
-    NRF_RADIO->TASKS_STOP = 1;
-    /* flush events */
-    NRF_RADIO->EVENTS_DISABLED = 0;
-    NRF_RADIO->EVENTS_READY = 0;
+    /* stop irq and all current job */
+    nrf_rf_stop(exo);
 
+    /* send timeout reply back */
     iio_complete_ex(exo->rf.process,
-                    HAL_IO_CMD(HAL_RF, (exo->rf.state == RADIO_STATE_RX) ? IPC_READ : IPC_WRITE),
-                    0, exo->rf.io, ERROR_TIMEOUT);
+                HAL_IO_CMD(HAL_RF, (exo->rf.state == RADIO_STATE_RX) ? IPC_READ : IPC_WRITE),
+                0, exo->rf.io, ERROR_TIMEOUT);
 
-    exo->rf.io = NULL;
-    exo->rf.process = INVALID_HANDLE;
-    exo->rf.state = RADIO_STATE_IDLE;
+    /* start irq, flush data */
+    nrf_rf_start(exo);
 }
 
 static void nrf_rf_set_channel(EXO* exo, uint8_t channel)
@@ -463,47 +526,36 @@ static void nrf_rf_advertise_listen(EXO* exo, HANDLE user, IO* io, unsigned int 
     RADIO_STACK* stack = io_data(io);
     io_hide(io, sizeof(RADIO_STACK));
 
+    printk("rf adv listen\n");
+
     exo->rf.process = user;
     exo->rf.io = io;
     exo->rf.max_size = max_size;
 
-//    if(stack->timeout)
-//        ksystime_soft_timer_start_ms(exo->rf.timer, stack->timeout);
-
-   /* Set the pointer to write the incoming packet. */
-   NRF_RADIO->PACKETPTR = (uint32_t) exo->rf.pdu;
-
-   memset(exo->rf.pdu, 0xEE, MAX_PDU_SIZE);
-
-   /* Set the initial freq to obsvr as channel 39 */
-   // Frequency = 2400 + FREQUENCY (MHz)
-   NRF_RADIO->FREQUENCY = BLE_ADV_CHANNEL_39;
-
-   /* Configure the shorts for observing
-    * READY event and START task
-    * ADDRESS event and RSSISTART task
-    * END event and START task
-    * */
-
-   NRF_RADIO->SHORTS = RADIO_SHORTS_READY_START_Msk |
-                       RADIO_SHORTS_ADDRESS_RSSISTART_Msk |
-                       RADIO_SHORTS_END_START_Msk;
+    if(stack->timeout_ms)
+    {
+        printk("set to, %d\n", stack->timeout_ms);
+        ksystime_soft_timer_start_ms(exo->rf.timer, stack->timeout_ms);
+    }
 
    NRF_RADIO->INTENSET = RADIO_INTENSET_DISABLED_Msk |
                          RADIO_INTENSET_RSSIEND_Msk |
                          RADIO_INTENSET_END_Msk;
 
 
-//    /* Set the pointer to write the incoming packet. */
-   NRF_RADIO->PACKETPTR = (uint32_t) exo->rf.pdu;
-
    uint32_t temp = NRF_RADIO->FREQUENCY;
    NRF_RADIO->DATAWHITEIV = (temp == 2) ? 37 : ((temp == 26) ? 38 : 39);
+
+   /* enable IRQ */
+   NVIC_EnableIRQ(RADIO_IRQn);
+
+//   exo->rf.state = RADIO_STATE_BLE_ADV;
 
    NRF_RADIO->EVENTS_READY = 0;
    NRF_RADIO->TASKS_RXEN = 1;
    NRF_RADIO->TASKS_START = 1;
 
+   /* rest in irq */
    kerror(ERROR_SYNC);
 }
 
@@ -657,7 +709,7 @@ void nrf_rf_request(EXO* exo, IPC* ipc)
 //        nrf_rf_send_adv(exo, (IO*)ipc->param2);
 //        break;
     case RADIO_START:
-        nrf_rf_start(exo, ipc->process, (IO*)ipc->param2);
+        nrf_rf_start(exo);
         break;
     case RADIO_STOP:
         nrf_rf_stop(exo);
