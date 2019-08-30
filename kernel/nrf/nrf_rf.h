@@ -73,9 +73,9 @@ typedef struct {
     bool active;
     RADIO_MODE mode;
     RADIO_STATE state;
-    /* temporary for BLE demo */
+    /* packet data for optimization */
+    uint32_t addr, rssi;
     uint8_t pdu[NRF_MAX_PACKET_LENGTH];
-    uint32_t rssi;
 } RADIO_DRV;
 
 void nrf_rf_init(EXO* exo);
