@@ -22,48 +22,6 @@
 #include "nrf_exo_private.h"
 #include "sys_config.h"
 
-static const uint8_t template_adv_packet[] = {
-        0x42, // ADV_NONCONN_IND
-        0x14, // LENGTH
-        0xF0, // MAC
-        0x4C,
-        0x16,
-        0x48,
-        0xF0,
-        0xEA,
-        0x02, // COMMON DATA
-        0x01,
-        0x06,
-        0x07, // NAME LENGTH
-        0x09, // type name
-        'R',
-        'J',
-        'T',
-        'E',
-        'S',
-        'T',
-        0x55, // CRC
-        0x55,
-        0x55
-};
-
-static const uint8_t rsp[] = {
-        0x44,
-        0x06,
-//        0x00,
-        //------------------------------
-        0xF0, // MAC
-        0x4C,
-        0x16,
-        0x48,
-        0xF0,
-        0xEA,
-        //------------------------------
-        0x55, // CRC
-        0x55,
-        0x55
-};
-
 /** Return 2^n, used for setting nth bit as 1*/
 #define SET_BIT(n)      (1UL << n)
 
@@ -252,12 +210,12 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
             break;
         case RADIO_MODE_RF_1Mbit:
             // TODO:
-            printk("not implemented\n");
+//            printk("not implemented\n");
             kerror(ERROR_NOT_SUPPORTED);
             break;
         case RADIO_MODE_RF_2Mbit:
             // TODO:
-            printk("not implemented\n");
+//            printk("not implemented\n");
             kerror(ERROR_NOT_SUPPORTED);
             break;
         case RADIO_MODE_BLE_1Mbit:
@@ -350,8 +308,6 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
 
 static inline void nrf_rf_open(EXO* exo, RADIO_MODE mode)
 {
-    // TODO: remove me
-//    printk("rf open\n");
     /* already configured */
     if(exo->rf.active)
     {
@@ -408,10 +364,6 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
 {
     RADIO_STACK* stack = io_stack(io);
     io_pop(io, sizeof(RADIO_STACK));
-
-    // TODO:
-//    printk("nrf rf io\n");
-//    printk("    %s, size %d\n", (rx)? "RX" : "TX", size);
 
     if(!exo->rf.active)
     {
@@ -515,165 +467,6 @@ static inline void nrf_rf_set_address(EXO* exo, unsigned int address)
     NRF_RADIO->RXADDRESSES = address;
 }
 
-#if (0)
-static void nrf_rf_advertise_listen(EXO* exo, HANDLE user, IO* io, unsigned int max_size)
-{
-    RADIO_STACK* stack = io_data(io);
-    io_hide(io, sizeof(RADIO_STACK));
-
-    printk("rf adv listen\n");
-
-    exo->rf.process = user;
-    exo->rf.io = io;
-    exo->rf.max_size = max_size;
-
-    if(stack->timeout_ms)
-    {
-        printk("set to, %d\n", stack->timeout_ms);
-        ksystime_soft_timer_start_ms(exo->rf.timer, stack->timeout_ms);
-    }
-
-   NRF_RADIO->INTENSET = RADIO_INTENSET_DISABLED_Msk |
-                         RADIO_INTENSET_RSSIEND_Msk |
-                         RADIO_INTENSET_END_Msk;
-
-
-   uint32_t temp = NRF_RADIO->FREQUENCY;
-   NRF_RADIO->DATAWHITEIV = (temp == 2) ? 37 : ((temp == 26) ? 38 : 39);
-
-   /* enable IRQ */
-   NVIC_EnableIRQ(RADIO_IRQn);
-
-//   exo->rf.state = RADIO_STATE_BLE_ADV;
-
-   NRF_RADIO->EVENTS_READY = 0;
-   NRF_RADIO->TASKS_RXEN = 1;
-   NRF_RADIO->TASKS_START = 1;
-
-   /* rest in irq */
-   kerror(ERROR_SYNC);
-}
-
-static void nrf_rf_send_adv(EXO* exo, IO* io)
-{
-    printk("Send advertising data\n");
-    /* Enable power to RADIO */
-    NRF_RADIO->POWER = 1;
-    /* Set radio transmit power to 0dBm */
-    NRF_RADIO->TXPOWER = (RADIO_TXPOWER_TXPOWER_0dBm << RADIO_TXPOWER_TXPOWER_Pos);
-
-    /* Set radio mode to 1Mbit/s Bluetooth Low Energy */
-    NRF_RADIO->MODE = (RADIO_MODE_MODE_Ble_1Mbit << RADIO_MODE_MODE_Pos);
-    // Frequency = 2400 + FREQUENCY (MHz)
-    NRF_RADIO->FREQUENCY = BLE_ADV_CHANNEL_39;
-
-    uint32_t temp = NRF_RADIO->FREQUENCY;
-    NRF_RADIO->DATAWHITEIV = (temp == 2) ? 37 : ((temp == 26) ? 38 : 39);
-
-    /* Configure Access Address according to the BLE standard */
-    NRF_RADIO->PREFIX0 = 0x8e;
-    NRF_RADIO->BASE0 = 0x89bed600;
-
-    /* Use logical address 0 (prefix0 + base0) = 0x8E89BED6 when transmitting and receiving */
-    NRF_RADIO->TXADDRESS = 0x00;
-    NRF_RADIO->RXADDRESSES = 0x01;
-
-    /* PCNF-> Packet Configuration.
-     * We now need to configure the sizes S0, S1 and length field to match the
-     * datapacket format of the advertisement packets.
-     */
-    NRF_RADIO->PCNF0 = (
-      (((1UL) << RADIO_PCNF0_S0LEN_Pos) & RADIO_PCNF0_S0LEN_Msk) |  /* Length of S0 field in bytes 0-1.    */
-      (((2UL) << RADIO_PCNF0_S1LEN_Pos) & RADIO_PCNF0_S1LEN_Msk) |  /* Length of S1 field in bits 0-8.     */
-      (((6UL) << RADIO_PCNF0_LFLEN_Pos) & RADIO_PCNF0_LFLEN_Msk)    /* Length of length field in bits 0-8. */
-      );
-
-    /* Packet configuration */
-    NRF_RADIO->PCNF1 = (
-      (((37UL) << RADIO_PCNF1_MAXLEN_Pos) & RADIO_PCNF1_MAXLEN_Msk)   |                      /* Maximum length of payload in bytes [0-255] */
-      (((0UL) << RADIO_PCNF1_STATLEN_Pos) & RADIO_PCNF1_STATLEN_Msk)   |                      /* Expand the payload with N bytes in addition to LENGTH [0-255] */
-      (((3UL) << RADIO_PCNF1_BALEN_Pos) & RADIO_PCNF1_BALEN_Msk)       |                      /* Base address length in number of bytes. */
-      (((RADIO_PCNF1_ENDIAN_Little) << RADIO_PCNF1_ENDIAN_Pos) & RADIO_PCNF1_ENDIAN_Msk) |  /* Endianess of the S0, LENGTH, S1 and PAYLOAD fields. */
-      (((1UL) << RADIO_PCNF1_WHITEEN_Pos) & RADIO_PCNF1_WHITEEN_Msk)                         /* Enable packet whitening */
-    );
-
-    /* CRC config */
-    NRF_RADIO->CRCCNF  = (RADIO_CRCCNF_LEN_Three << RADIO_CRCCNF_LEN_Pos) |
-                         (RADIO_CRCCNF_SKIP_ADDR_Skip << RADIO_CRCCNF_SKIP_ADDR_Skip); /* Skip Address when computing CRC */
-    NRF_RADIO->CRCINIT = 0x555555;                                                  /* Initial value of CRC */
-    NRF_RADIO->CRCPOLY = 0x00065B;                                                  /* CRC polynomial function */
-
-    /* Clear events */
-    NRF_RADIO->EVENTS_DISABLED = 0;
-    NRF_RADIO->EVENTS_END = 0;
-    NRF_RADIO->EVENTS_READY = 0;
-    NRF_RADIO->EVENTS_ADDRESS = 0;
-  //-------------------------------------
-  //-------------------------------------
-    NRF_RADIO->PACKETPTR = (unsigned int)template_adv_packet;
-
-    NRF_RADIO->EVENTS_READY = 0U;
-    NRF_RADIO->TASKS_TXEN   = 1;                                            // Enable radio and wait for ready.
-    while (NRF_RADIO->EVENTS_READY == 0U){}
-
-    NRF_RADIO->TASKS_START = 1U;
-    NRF_RADIO->EVENTS_END  = 0U;                                        // Start transmission.
-    while (NRF_RADIO->EVENTS_END == 0U){}                       // Wait for end of the transmission packet.
-
-    NRF_RADIO->EVENTS_DISABLED = 0U;
-    NRF_RADIO->TASKS_DISABLE   = 1U;                                    // Disable the radio.
-    while (NRF_RADIO->EVENTS_DISABLED == 0U){}
-
-
-    /* Set the pointer to write the incoming packet. */
-    NRF_RADIO->PACKETPTR = (uint32_t) exo->rf.pdu;
-
-    NRF_RADIO->EVENTS_READY = 0U;                                   //
-    NRF_RADIO->TASKS_RXEN   = 1U;                                       // Enable radio.
-    while(NRF_RADIO->EVENTS_READY == 0U) {}                     // Wait for an event to be ready.
-
-    NRF_RADIO->EVENTS_END  = 0U;                                //
-    NRF_RADIO->TASKS_START = 1U;                                // Start listening and wait for address received event.
-
-    while(NRF_RADIO->EVENTS_END != 0U);
-
-    NRF_RADIO->EVENTS_END = 0U;
-
-    if(NRF_RADIO->CRCSTATUS == 1U)
-    {
-        //------------------------------------------------------------------------
-        //------------------------------------------------------------------------
-        if((exo->rf.pdu[0] & 0x0F) == 0x03)
-        {
-            NRF_RADIO->EVENTS_DISABLED = 0U;
-            NRF_RADIO->TASKS_DISABLE   = 1U;                                // Disable the radio.
-            while (NRF_RADIO->EVENTS_DISABLED == 0U){}
-
-            //DataOutRSP();
-            NRF_RADIO->PACKETPTR = (uint32_t)rsp;
-
-            NRF_RADIO->EVENTS_READY = 0U;
-            NRF_RADIO->TASKS_TXEN   = 1;                                            // Enable radio and wait for ready.
-            while (NRF_RADIO->EVENTS_READY == 0U){}
-
-            NRF_RADIO->TASKS_START = 1U;
-            NRF_RADIO->EVENTS_END  = 0U;                                        // Start transmission.
-            while (NRF_RADIO->EVENTS_END == 0U){}                       // Wait for end of the transmission packet.
-        }
-        //------------------------------------------------------------------------
-        //------------------------------------------------------------------------
-        if((exo->rf.pdu[0] & 0x0F) == 0x05)
-        {
-            printk("1\n");
-        }
-    }
-
-    NRF_RADIO->EVENTS_DISABLED = 0U;
-    NRF_RADIO->TASKS_DISABLE   = 1U;            // Disable the radio.
-    while (NRF_RADIO->EVENTS_DISABLED == 0U){}
-}
-#endif //
-
 void nrf_rf_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -700,12 +493,6 @@ void nrf_rf_request(EXO* exo, IPC* ipc)
     case RADIO_SET_ADDRESS:
         nrf_rf_set_address(exo, ipc->param1);
         break;
-//    case BLE_ADVERTISE_LISTEN:
-//        nrf_rf_advertise_listen(exo, ipc->process, (IO*)ipc->param2, ipc->param3);
-//        break;
-//    case BLE_SEND_ADV_DATA:
-//        nrf_rf_send_adv(exo, (IO*)ipc->param2);
-//        break;
     case RADIO_START:
         nrf_rf_start(exo);
         break;
@@ -713,7 +500,6 @@ void nrf_rf_request(EXO* exo, IPC* ipc)
         nrf_rf_stop(exo);
         break;
     default:
-        printk("not supported\n");
         kerror(ERROR_NOT_SUPPORTED);
         break;
     }
