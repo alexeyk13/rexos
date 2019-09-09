@@ -11,13 +11,13 @@
 
 #include "../../userspace/ipc.h"
 #include "../../userspace/io.h"
+#include "../../userspace/nrf/nrf_driver.h"
 #include "sys_config.h"
 #include "nrf_exo.h"
 #include <stdbool.h>
 
-#define MAX_PDU_SIZE        40
-#define LOGGER_NUMBER       20
-
+#define MAX_PDU_SIZE                    40
+#define LOGGER_NUMBER                   20
 
 /** @anchor adv-seg-type
  *  @name Advertisement segment types
@@ -54,14 +54,28 @@
 #define TYPE_ADV_SCAN_IND       6
 /** @} */
 
+typedef enum {
+    RADIO_IO_MODE_RX = 0,
+    RADIO_IO_MODE_TX
+} RADIO_IO_MODE;
+
+typedef enum {
+    RADIO_STATE_IDLE = 0,
+    RADIO_STATE_TX,
+    RADIO_STATE_RX,
+    RADIO_STATE_RX_DATA
+} RADIO_STATE;
+
 typedef struct {
-    HANDLE process, timer;
     IO* io;
+    HANDLE process, timer;
     unsigned int max_size;
-    //
-    uint8_t pdu[40];
-    uint32_t rssi;
-    uint8_t packets[LOGGER_NUMBER][MAX_PDU_SIZE+8];
+    bool active;
+    RADIO_MODE mode;
+    RADIO_STATE state;
+    /* packet data for optimization */
+    uint32_t addr, rssi;
+    uint8_t pdu[NRF_MAX_PACKET_LENGTH];
 } RADIO_DRV;
 
 void nrf_rf_init(EXO* exo);
