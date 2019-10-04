@@ -263,6 +263,7 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
            NRF_RADIO->PCNF1        |= 3UL << RADIO_PCNF1_BALEN_Pos;
            NRF_RADIO->BASE0        = 0x89BED600;
            NRF_RADIO->PREFIX0      = 0x0000008E;
+           NRF_RADIO->TXADDRESS    = 0x00000000;
            NRF_RADIO->RXADDRESSES  = 0x00000001;
 
            /* Enable data whitening. */
@@ -371,6 +372,13 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
         return;
     }
 
+    /* if tx ovesize packets */
+    if(!rx && (io->data_size > NRF_MAX_PACKET_LENGTH))
+    {
+        kerror(ERROR_INVALID_LENGTH);
+        return;
+    }
+
     exo->rf.io = io;
     exo->rf.max_size = io_get_free(io);
     exo->rf.process = process;
@@ -408,11 +416,15 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
     }
     else
     {
+        /* copy data from io to pdu */
+        memcpy(exo->rf.pdu, io_data(exo->rf.io), exo->rf.io->data_size);
         /* change state */
         exo->rf.state = RADIO_STATE_TX;
         /* Before the RADIO is able to transmit a packet, it must first ramp-up in TX mode */
         NRF_RADIO->TASKS_TXEN = 1;
     }
+
+
     /* Start rx or tx */
     NRF_RADIO->TASKS_START = 1;
     /* wait events in irq */
