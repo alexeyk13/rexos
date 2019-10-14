@@ -146,7 +146,10 @@ typedef enum {
     RADIO_MODE_RF_1Mbit = 0,
     RADIO_MODE_RF_2Mbit,
     RADIO_MODE_RF_250Kbit,
-    RADIO_MODE_BLE_1Mbit
+    RADIO_MODE_BLE_1Mbit,
+#if defined(NRF52)
+    RADIO_MODE_BLE_2Mbit
+#endif //
 } RADIO_MODE;
 
 #endif /* _NRF51_NRF_DRIVER_H_ */

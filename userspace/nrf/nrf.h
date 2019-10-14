@@ -112,6 +112,8 @@
 #include "nrf51_bitfields.h"
 #include "nrf51_deprecated.h"
 #elif defined(NRF52)
+
+#include "nrf51_to_nrf52.h"
 #include "nrf52.h"
 #include "nrf52.h"
 #include "nrf52_bitfields.h"

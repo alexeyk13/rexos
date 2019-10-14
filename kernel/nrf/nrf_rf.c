@@ -222,13 +222,14 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
             /* set RADIO mode to Bluetooth Low Energy. */
             NRF_RADIO->MODE = RADIO_MODE_MODE_Ble_1Mbit << RADIO_MODE_MODE_Pos;
 
+#if defined(NRF51)
             /* copy the BLE override registers from FICR */
             NRF_RADIO->OVERRIDE0 =  NRF_FICR->BLE_1MBIT[0];
             NRF_RADIO->OVERRIDE1 =  NRF_FICR->BLE_1MBIT[1];
             NRF_RADIO->OVERRIDE2 =  NRF_FICR->BLE_1MBIT[2];
             NRF_RADIO->OVERRIDE3 =  NRF_FICR->BLE_1MBIT[3];
             NRF_RADIO->OVERRIDE4 =  NRF_FICR->BLE_1MBIT[4];
-
+#endif // NRF51
            /* Configure header size.
             *
             * The Advertise has the following format:
@@ -247,6 +248,10 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
                                (8 << RADIO_PCNF0_LFLEN_Pos) |  /* 6 bits */
                                (0 << RADIO_PCNF0_S1LEN_Pos);   /* 0 bits */
 
+#if defined(NRF52)
+           NRF_RADIO->PCNF0 |= (0 << RADIO_PCNF0_S1INCL_Pos); /* always include S1 field */
+           NRF_RADIO->PCNF0 |= (RADIO_PCNF0_PLEN_8bit << RADIO_PCNF0_PLEN_Pos);
+#endif // NRF52
             // start observe
             /* Set access address to 0x8E89BED6. This is the access address to be used
             * when send packets in obsvrertise channels.
@@ -305,6 +310,11 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
        NRF_RADIO->SHORTS = RADIO_SHORTS_READY_START_Msk |
                            RADIO_SHORTS_ADDRESS_RSSISTART_Msk |
                            RADIO_SHORTS_END_START_Msk;
+
+#if defined (NRF52)
+       NRF_RADIO->MODECNF0 = (RADIO_MODECNF0_RU_Default << RADIO_MODECNF0_RU_Pos) | \
+                               (RADIO_MODECNF0_DTX_B0 << RADIO_MODECNF0_DTX_Pos);
+#endif // NRF52
 }
 
 static inline void nrf_rf_open(EXO* exo, RADIO_MODE mode)
@@ -328,8 +338,8 @@ static inline void nrf_rf_open(EXO* exo, RADIO_MODE mode)
     NRF_RADIO->POWER = 0;
     NRF_RADIO->POWER = 1;
 
-    /* Set radio transmit power to default 0dBm */
-    NRF_RADIO->TXPOWER = (RADIO_TXPOWER_TXPOWER_0dBm << RADIO_TXPOWER_TXPOWER_Pos);
+    /* Set radio transmit power to default -20dBm */
+    NRF_RADIO->TXPOWER = (RADIO_TXPOWER_TXPOWER_Neg20dBm << RADIO_TXPOWER_TXPOWER_Pos);
 
     /* setup mode */
     nrf_rf_setup_mode(exo, mode);
