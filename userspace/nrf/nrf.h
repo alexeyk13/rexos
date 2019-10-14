@@ -62,11 +62,11 @@
 #endif // NRF5122xxAA || NRF5122xxAB || NRF5122xxAC
 
 //---------------------------------------------------------------------------- NRF 52 ----------------------------------------------------------------------------------------------------------
-#if defined(NRF52823QFAA)
-#define NRF5232xxAA
-#endif // NRF52823QFAA
+#if defined(NRF52832QFAA)
+#define NRF52832xxAA
+#endif // NRF52832QFAA
 
-#if defined(NRF5232xxAA)
+#if defined(NRF52832xxAA)
 #define NRF52
 //512K
 #define FLASH_SIZE              0x80000
@@ -81,7 +81,7 @@
 #define GPIO_COUNT              32
 
 #define IRQ_VECTORS_COUNT       37
-#endif // NRF5232xxAA
+#endif // NRF52832xxAA
 
 #if defined(NRF51)
 #ifndef CORTEX_M0
