@@ -12,7 +12,13 @@
 #include "../kerror.h"
 
 /* Internal RC generator frequency */
+#if defined(NRF51)
 #define HFCLK_RC_FREQ                       16000000
+#elif defined (NRF52)
+// FIXME: clock configuration and clock cpu value returning
+#define HFCLK_RC_FREQ                       16000000
+#endif // NRF52
+
 
 static inline void hfclk_start()
 {
@@ -100,7 +106,7 @@ void nrf_power_init(EXO* exo)
     decode_reset_reason(exo);
 #endif //STM32_DECODE_RESET
 
-
+#if defined(NRF51)
     /* periph power */
 #if !(NRF_ADC_DRIVER)
     NRF_ADC->POWER = 0;
@@ -116,7 +122,7 @@ void nrf_power_init(EXO* exo)
     NRF_RTC0->POWER = 0;
     NRF_RTC1->POWER = 0;
 #endif // NRF_RTC_DRIVER
-
+#endif // NRF51
 
     /* SRAM power config */
 #if (NRF_SRAM_POWER_CONFIG)

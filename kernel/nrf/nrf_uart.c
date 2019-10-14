@@ -21,10 +21,12 @@
 
 typedef NRF_UART_Type*      NRF_UART_Type_P;
 
-#if defined(NRF51)
+#if defined(NRF52)
+#define UART0_IRQn                                      UARTE0_UART0_IRQn
+#endif // NRF52
+
 static const unsigned int UART_VECTORS[UARTS_COUNT] = {UART0_IRQn};
 static const NRF_UART_Type_P UART_REGS[UARTS_COUNT] = {NRF_UART0};
-#endif // NRF51
 
 static inline bool nrf_uart_on_tx_isr(EXO* exo, UART_PORT port)
 {

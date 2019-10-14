@@ -12,6 +12,10 @@
 #include <string.h>
 #include "../kerror.h"
 
+#if defined(NRF52)
+#define NRF_GPIO                        NRF_P0
+#endif // NRF52
+
 void nrf_pin_init(EXO* exo)
 {
     memset(&exo->gpio, 0, sizeof (GPIO_DRV));

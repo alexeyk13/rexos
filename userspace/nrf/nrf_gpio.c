@@ -11,6 +11,9 @@
 #include "../pin.h"
 #include "nrf_driver.h"
 
+#if defined(NRF52)
+#define NRF_GPIO                    NRF_P0
+#endif // NRF52
 
 void gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
 {
