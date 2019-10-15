@@ -222,13 +222,14 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
             /* set RADIO mode to Bluetooth Low Energy. */
             NRF_RADIO->MODE = RADIO_MODE_MODE_Ble_1Mbit << RADIO_MODE_MODE_Pos;
 
+#if defined(NRF51)
             /* copy the BLE override registers from FICR */
             NRF_RADIO->OVERRIDE0 =  NRF_FICR->BLE_1MBIT[0];
             NRF_RADIO->OVERRIDE1 =  NRF_FICR->BLE_1MBIT[1];
             NRF_RADIO->OVERRIDE2 =  NRF_FICR->BLE_1MBIT[2];
             NRF_RADIO->OVERRIDE3 =  NRF_FICR->BLE_1MBIT[3];
             NRF_RADIO->OVERRIDE4 =  NRF_FICR->BLE_1MBIT[4];
-
+#endif // NRF51
            /* Configure header size.
             *
             * The Advertise has the following format:
@@ -247,6 +248,10 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
                                (8 << RADIO_PCNF0_LFLEN_Pos) |  /* 6 bits */
                                (0 << RADIO_PCNF0_S1LEN_Pos);   /* 0 bits */
 
+#if defined(NRF52)
+           NRF_RADIO->PCNF0 |= (0 << RADIO_PCNF0_S1INCL_Pos); /* always include S1 field */
+           NRF_RADIO->PCNF0 |= (RADIO_PCNF0_PLEN_8bit << RADIO_PCNF0_PLEN_Pos);
+#endif // NRF52
             // start observe
             /* Set access address to 0x8E89BED6. This is the access address to be used
             * when send packets in obsvrertise channels.
@@ -263,6 +268,7 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
            NRF_RADIO->PCNF1        |= 3UL << RADIO_PCNF1_BALEN_Pos;
            NRF_RADIO->BASE0        = 0x89BED600;
            NRF_RADIO->PREFIX0      = 0x0000008E;
+           NRF_RADIO->TXADDRESS    = 0x00000000;
            NRF_RADIO->RXADDRESSES  = 0x00000001;
 
            /* Enable data whitening. */
@@ -285,7 +291,9 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
                                    RADIO_CRCCNF_SKIP_ADDR_Skip
                                                    << RADIO_CRCCNF_SKIP_ADDR_Pos;
            NRF_RADIO->CRCINIT =    0x555555UL;
-           NRF_RADIO->CRCPOLY =    SET_BIT(24) | SET_BIT(10) | SET_BIT(9) |
+
+           /* HINT: there is no bit 24 in CRCPOLY register, just set the others */
+           NRF_RADIO->CRCPOLY =    SET_BIT(10) | SET_BIT(9) |
                                    SET_BIT(6) | SET_BIT(4) | SET_BIT(3) |
                                    SET_BIT(1) | SET_BIT(0);
 
@@ -298,12 +306,17 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
        /* Configure the shorts for observing
         * READY event and START task
         * ADDRESS event and RSSISTART task
-        * END event and START task
+        * END event and DISABLE task
         * */
 
        NRF_RADIO->SHORTS = RADIO_SHORTS_READY_START_Msk |
                            RADIO_SHORTS_ADDRESS_RSSISTART_Msk |
-                           RADIO_SHORTS_END_START_Msk;
+                           RADIO_SHORTS_END_DISABLE_Msk;
+
+#if defined (NRF52)
+       NRF_RADIO->MODECNF0 = (RADIO_MODECNF0_RU_Default << RADIO_MODECNF0_RU_Pos) | \
+                               (RADIO_MODECNF0_DTX_B0 << RADIO_MODECNF0_DTX_Pos);
+#endif // NRF52
 }
 
 static inline void nrf_rf_open(EXO* exo, RADIO_MODE mode)
@@ -327,8 +340,8 @@ static inline void nrf_rf_open(EXO* exo, RADIO_MODE mode)
     NRF_RADIO->POWER = 0;
     NRF_RADIO->POWER = 1;
 
-    /* Set radio transmit power to default 0dBm */
-    NRF_RADIO->TXPOWER = (RADIO_TXPOWER_TXPOWER_0dBm << RADIO_TXPOWER_TXPOWER_Pos);
+    /* Set radio transmit power to default -20dBm */
+    NRF_RADIO->TXPOWER = (RADIO_TXPOWER_TXPOWER_Neg20dBm << RADIO_TXPOWER_TXPOWER_Pos);
 
     /* setup mode */
     nrf_rf_setup_mode(exo, mode);
@@ -371,6 +384,13 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
         return;
     }
 
+    /* if tx ovesize packets */
+    if(!rx && (io->data_size > NRF_MAX_PACKET_LENGTH))
+    {
+        kerror(ERROR_INVALID_LENGTH);
+        return;
+    }
+
     exo->rf.io = io;
     exo->rf.max_size = io_get_free(io);
     exo->rf.process = process;
@@ -390,8 +410,6 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
         NRF_RADIO->INTENSET |= RADIO_INTENSET_ADDRESS_Msk;
     }
 
-
-
     /* setup timeout */
     if(stack->flags & RADIO_FLAG_TIMEOUT)
         ksystime_soft_timer_start_ms(exo->rf.timer, stack->timeout_ms);
@@ -408,13 +426,14 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
     }
     else
     {
+        /* copy data from io to pdu */
+        memcpy(exo->rf.pdu, io_data(exo->rf.io), exo->rf.io->data_size);
         /* change state */
         exo->rf.state = RADIO_STATE_TX;
         /* Before the RADIO is able to transmit a packet, it must first ramp-up in TX mode */
         NRF_RADIO->TASKS_TXEN = 1;
     }
-    /* Start rx or tx */
-    NRF_RADIO->TASKS_START = 1;
+    /* Do not switch task start here, because we have shortcut for this */
     /* wait events in irq */
     kerror(ERROR_SYNC);
 }

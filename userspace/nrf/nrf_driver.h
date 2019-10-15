@@ -82,11 +82,15 @@ typedef enum {
 #define TIMER_MODE_CHANNEL_POS                       16
 #define TIMER_MODE_CHANNEL_MASK                      (0xf << TIMER_MODE_CHANNEL_POS)
 
-#if defined(NRF51)
+#if defined(NRF51) || defined(NRF52)
 typedef enum {
     TIMER_0 = 0,
     TIMER_1,
     TIMER_2,
+#if defined(NRF52)
+    TIMER_3,
+    TIMER_4,
+#endif // NRF52
     TIMER_MAX
 } TIMER_NUM;
 
@@ -95,23 +99,29 @@ typedef enum {
     TIMER_CC1,
     TIMER_CC2,
     TIMER_CC3,
+#if defined(NRF52)
+    TIMER_CC4, /* TIMER3 TIMER4 only */
+    TIMER_CC5, /* TIMER3 TIMER4 only */
+#endif // NRF52
     TIMER_CC_MAX
 } TIMER_CC;
-
-#endif // NRF51
+#endif // NRF51 || NRF52
 
 //------------------------------------ UART ------------------------------------
-#if defined(NRF51)
+#if defined(NRF51) || defined(NRF52)
 typedef enum {
     UART_0 = 0,
 } UART_PORT;
 #endif // NRF51
 
 //------------------------------------ RTC -------------------------------------
-#if defined(NRF51)
+#if defined(NRF51) || defined(NRF52)
 typedef enum {
     RTC_0 = 0,
     RTC_1,
+#if defined(NRF52)
+    RTC_2,
+#endif // NRF52
     RTC_MAX
 } RTC_NUM;
 
@@ -122,15 +132,24 @@ typedef enum {
     RTC_CC3,
 } RTC_CC;
 
+#endif // NRF51 || NRF52
+
 // ----------------------------------- RADIO -----------------------------------
+#if defined(NRF51)
 #define NRF_MAX_PACKET_LENGTH                   254
+#endif // NRF51
+#if defined(NRF52)
+#define NRF_MAX_PACKET_LENGTH                   258
+#endif // NRF52
 
 typedef enum {
     RADIO_MODE_RF_1Mbit = 0,
     RADIO_MODE_RF_2Mbit,
     RADIO_MODE_RF_250Kbit,
-    RADIO_MODE_BLE_1Mbit
+    RADIO_MODE_BLE_1Mbit,
+#if defined(NRF52)
+    RADIO_MODE_BLE_2Mbit
+#endif //
 } RADIO_MODE;
-#endif // NRF51
 
 #endif /* _NRF51_NRF_DRIVER_H_ */

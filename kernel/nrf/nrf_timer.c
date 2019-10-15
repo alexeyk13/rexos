@@ -23,13 +23,17 @@ typedef NRF_TIMER_Type*                            NRF_TIMER_Type_P;
 const int TIMER_VECTORS[TIMERS_COUNT]           =  {TIMER0_IRQn,   TIMER1_IRQn,   TIMER2_IRQn};
 const NRF_TIMER_Type_P TIMER_REGS[TIMERS_COUNT] =  {NRF_TIMER0, NRF_TIMER1, NRF_TIMER2};
 
+#endif // NRF51
+
+#if defined(NRF52)
+const int TIMER_VECTORS[TIMERS_COUNT]           = {TIMER0_IRQn, TIMER1_IRQn, TIMER2_IRQn, TIMER3_IRQn, TIMER4_IRQn };
+const NRF_TIMER_Type_P TIMER_REGS[TIMERS_COUNT] = {NRF_TIMER0, NRF_TIMER1, NRF_TIMER2, NRF_TIMER3, NRF_TIMER4};
+#endif // NRF52
+
 //                                                    16 Bit       8 Bit       24 Bit      32 Bits
 const unsigned int max_timer_value[4]           =  {0x0000FFFF, 0x000000FF, 0x10000000, 0xFFFFFFFF};
 
-#endif // NRF51
-
 #if (NRF_TIMER_DRIVER)
-
 void nrf_timer_isr(int vector, void* param)
 {
     if((TIMER_REGS[HPET_TIMER]->EVENTS_COMPARE[HPET_CHANNEL] != 0) &&
@@ -61,7 +65,9 @@ void nrf_timer_open(EXO* exo, TIMER_NUM num, unsigned int flags)
     // keep flags for channel enable/disable
     exo->timer.flags[num] = flags;
     // power up
+#if defined(NRF51)
     TIMER_REGS[num]->POWER = 1;
+#endif // NRF51
     TIMER_REGS[num]->TASKS_STOP = 1;
     // clear timer counter
     TIMER_REGS[num]->TASKS_CLEAR = 1;
