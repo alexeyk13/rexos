@@ -291,7 +291,9 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
                                    RADIO_CRCCNF_SKIP_ADDR_Skip
                                                    << RADIO_CRCCNF_SKIP_ADDR_Pos;
            NRF_RADIO->CRCINIT =    0x555555UL;
-           NRF_RADIO->CRCPOLY =    SET_BIT(24) | SET_BIT(10) | SET_BIT(9) |
+
+           /* HINT: there is no bit 24 in CRCPOLY register, just set the others */
+           NRF_RADIO->CRCPOLY =    SET_BIT(10) | SET_BIT(9) |
                                    SET_BIT(6) | SET_BIT(4) | SET_BIT(3) |
                                    SET_BIT(1) | SET_BIT(0);
 
@@ -304,12 +306,12 @@ static inline void nrf_rf_setup_mode(EXO* exo, RADIO_MODE mode)
        /* Configure the shorts for observing
         * READY event and START task
         * ADDRESS event and RSSISTART task
-        * END event and START task
+        * END event and DISABLE task
         * */
 
        NRF_RADIO->SHORTS = RADIO_SHORTS_READY_START_Msk |
                            RADIO_SHORTS_ADDRESS_RSSISTART_Msk |
-                           RADIO_SHORTS_END_START_Msk;
+                           RADIO_SHORTS_END_DISABLE_Msk;
 
 #if defined (NRF52)
        NRF_RADIO->MODECNF0 = (RADIO_MODECNF0_RU_Default << RADIO_MODECNF0_RU_Pos) | \
@@ -408,8 +410,6 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
         NRF_RADIO->INTENSET |= RADIO_INTENSET_ADDRESS_Msk;
     }
 
-
-
     /* setup timeout */
     if(stack->flags & RADIO_FLAG_TIMEOUT)
         ksystime_soft_timer_start_ms(exo->rf.timer, stack->timeout_ms);
@@ -433,10 +433,7 @@ static void nrf_rf_io(EXO* exo, HANDLE process, HANDLE user, IO* io, unsigned in
         /* Before the RADIO is able to transmit a packet, it must first ramp-up in TX mode */
         NRF_RADIO->TASKS_TXEN = 1;
     }
-
-
-    /* Start rx or tx */
-    NRF_RADIO->TASKS_START = 1;
+    /* Do not switch task start here, because we have shortcut for this */
     /* wait events in irq */
     kerror(ERROR_SYNC);
 }
