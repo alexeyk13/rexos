@@ -71,6 +71,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * cortex-m0
   * cortex-m3
   * cortex-m4
+  * cortex-m7
   * ARM7
 - MCU Drivers:
   * ST STM32F0: generic, UART, RTC, WDT, SPI, I2C, USB, CAN
@@ -79,12 +80,15 @@ unavailable, another HPET timer can be used for RTC emulation
   * ST STM32F4: generic, UART, RTC, WDT, USB
   * ST STM32L0: generic, UART, RTC, WDT, EEPROM, ADC, DAC, USB
   * ST STM32L1: generic, UART, RTC, WDT, I2C, USB
+  * ST STM32H7: generic, UART, RTC
   * NXP LPC11Uxx: generic, UART, EEPROM, USB, flash
   * NXP LPC18xx: generic, UART, USB, ETH, SD/MMC, flash
+  * NXP Kinetis K22: generic, UART, RTC, WDT, I2C, USB, flash (commercial license)
+  * NXP Kinetis K32W: generic, UART, USB, flash, ADC, Radio BLE (alpha) (commercial license)
   * TI CC26x0: generic, UART, RTC, WDT, Radio BLE (alpha)
+  * NRF51, NRF52: generic, UART, RTC, Radio BLE (alpha)
 - Other drivers:
   * МЭЛТ mt12864j LCD display
-  * NXP Kinetis MK22: generic, UART, RTC, WDT, I2C, USB, flash (commercial license)
   * ESP8266
   * RF: SX1261, SX1271, SX1272
 
@@ -100,6 +104,11 @@ ARM7 features:
 
 History
 =======
+0.6.4
+- STM32H7 support
+- NRF51, NRF52 support
+- Kinetis K32W support
+
 0.6.3
 - added Log File System (LFS) with flash retantion
 - crc library
