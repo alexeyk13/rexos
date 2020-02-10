@@ -119,6 +119,22 @@ void gpio_set_data_out(unsigned int port, unsigned int mask);
 */
 void gpio_set_data_in(unsigned int port, unsigned int mask);
 
+/**
+    \brief set port direction
+    \param port: port number, hardware specific
+    \param dir: 1 - output? 0 - input, assuming no more than 32 bits in port
+    \retval none
+*/
+void gpio_set_direction(unsigned int port, unsigned int dir);
+/**
+    \brief set/reset bits in out port
+    \param port: port number, hardware specific
+    \param data: port value, assuming no more than 32 bits in port
+    \retval none
+*/
+void gpio_set_port(unsigned int port, unsigned int data);
+
+
 /** \} */ // end of gpio group
 
 #endif // GPIO_H
