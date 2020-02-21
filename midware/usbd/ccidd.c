@@ -439,7 +439,8 @@ static inline void ccidd_power_off(USBD* usbd, CCIDD* ccidd)
     if (ccidd->slot_status == CCID_SLOT_STATUS_ICC_PRESENT_AND_ACTIVE)
         ccidd->slot_status = CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE;
     ccidd_tx_slot_status(usbd, ccidd);
-    usbd_post_user(usbd, ccidd->iface, 0, HAL_CMD(HAL_USBD_IFACE, USB_CCID_POWER_OFF), 0, 0);
+    usbd_call_user(usbd, ccidd->iface, 0, HAL_REQ(HAL_USBD_IFACE, USB_CCID_POWER_OFF), 0, 0);
+
 }
 
 static inline void ccidd_get_slot_status(USBD* usbd, CCIDD* ccidd)

@@ -1,9 +1,7 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2019, RExOS team
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
-
-    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
 */
 
 #include "usbd.h"
@@ -124,6 +122,19 @@ void usbd_post_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned i
     ipc.param2 = param2;
     ipc.param3 = param3;
     ipc_post(&ipc);
+}
+
+void usbd_call_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned int cmd, unsigned int param2, unsigned int param3)
+{
+    if (usbd->user == INVALID_HANDLE)
+        return;
+    IPC ipc;
+    ipc.cmd = cmd;
+    ipc.process = usbd->user;
+    ipc.param1 = USBD_IFACE(iface, num);
+    ipc.param2 = param2;
+    ipc.param3 = param3;
+    call(&ipc);
 }
 
 void usbd_io_user(USBD* usbd, unsigned int iface, unsigned int num, unsigned int cmd, IO* io, unsigned int param3)
