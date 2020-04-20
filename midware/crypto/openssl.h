@@ -50,8 +50,6 @@
  */
 /* ====================================================================
  * Copyright (c) 2008 The OpenSSL Project. All rights reserved.
-
-    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
  *
  * Rights for redistribution and usage in source and binary
  * forms are granted according to the OpenSSL license.
