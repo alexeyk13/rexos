@@ -1,7 +1,5 @@
 /* ====================================================================
  * Copyright (c) 2008 The OpenSSL Project.  All rights reserved.
-
-    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
