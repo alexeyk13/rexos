@@ -74,10 +74,14 @@ void nrf_timer_open(EXO* exo, TIMER_NUM num, unsigned int flags)
     // timer mode
     TIMER_REGS[num]->MODE = TIMER_MODE_MODE_Timer;
     // set bitmode
+#if defined(NRF51)
     if(TIMER_0 == num)
         TIMER_REGS[num]->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
     else
         TIMER_REGS[num]->BITMODE = TIMER_BITMODE_BITMODE_16Bit;
+#else
+        TIMER_REGS[num]->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
+#endif // NRF51
     // set prescaler
     TIMER_REGS[num]->PRESCALER = exo->timer.psc;
 
@@ -213,6 +217,9 @@ void nrf_timer_init(EXO* exo)
     // setup second counter
     nrf_timer_enable_channel(exo, HPET_TIMER, SECOND_CHANNEL, TIMER_VALUE_US, S1_US);
 #endif // KERNEL_SECOND_RTC
+#if(NRF_PWM_DRIVER)
+    nrf_pwm_init(exo);
+#endif // NRF_PWM_DRIVER
 }
 
 void nrf_timer_request(EXO* exo, IPC* ipc)
@@ -220,7 +227,11 @@ void nrf_timer_request(EXO* exo, IPC* ipc)
     TIMER_NUM num = (TIMER_NUM)ipc->param1;
     if (num >= TIMERS_COUNT)
     {
+#if(NRF_PWM_DRIVER)
+        nrf_pwm_request(exo, ipc);
+#else
         kerror(ERROR_INVALID_PARAMS);
+#endif // NRF_PWM_DRIVER
         return;
     }
 

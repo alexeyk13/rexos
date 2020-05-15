@@ -12,33 +12,45 @@
 #include <string.h>
 #include "../kerror.h"
 
+typedef volatile uint32_t* REG_PTR;
+
+static const  REG_PTR PIN_PERIF_TBL[]={
+        &NRF_UART0->PSELRXD, &NRF_UART0->PSELTXD, &NRF_UART0->PSELRTS, &NRF_UART0->PSELCTS,
+        &NRF_SPIM0->PSEL.SCK, &NRF_SPIM0->PSEL.MOSI, &NRF_SPIM0->PSEL.MISO,
+        &NRF_SPIM1->PSEL.SCK, &NRF_SPIM1->PSEL.MOSI, &NRF_SPIM1->PSEL.MISO,
+        &NRF_SPIM2->PSEL.SCK, &NRF_SPIM2->PSEL.MOSI, &NRF_SPIM2->PSEL.MISO,
+
+        &NRF_PWM0->PSEL.OUT[0], &NRF_PWM0->PSEL.OUT[1], &NRF_PWM0->PSEL.OUT[2], &NRF_PWM0->PSEL.OUT[3],
+        &NRF_PWM1->PSEL.OUT[0], &NRF_PWM1->PSEL.OUT[1], &NRF_PWM1->PSEL.OUT[2], &NRF_PWM1->PSEL.OUT[3],
+        &NRF_PWM2->PSEL.OUT[0], &NRF_PWM2->PSEL.OUT[1], &NRF_PWM2->PSEL.OUT[2], &NRF_PWM2->PSEL.OUT[3],
+
+};
+
+#define PIN_PERIF_TBL_LEN   (sizeof(PIN_PERIF_TBL)/sizeof(uint32_t*))
+
 void nrf_pin_init(EXO* exo)
 {
     memset(&exo->gpio, 0, sizeof (GPIO_DRV));
 }
 
-void nrf_gpio_enable_pin(GPIO_DRV* gpio, PIN pin, PIN_MODE mode, PIN_PULL pull)
+void nrf_gpio_enable_pin(GPIO_DRV* gpio, PIN pin, PIN_MODE mode, uint32_t mode2)
 {
+    switch (mode)
+    {
+    case PIN_MODE_GENERAL:
+        NRF_GPIO->PIN_CNF[pin] = mode2;
+        break;
+    case PIN_MODE_PERIF:
+        if(mode2 < PIN_PERIF_TBL_LEN)
+            *(PIN_PERIF_TBL[mode2]) = pin;
+        else
+            return;
+        break;
+    default:
+        return;
+    }
+
     gpio->used_pins[pin]++;
-
-    NRF_GPIO->PIN_CNF[pin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos) | \
-                            (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)  | \
-                            (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos) | \
-                            (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos);
-
-    /* set up pull up config */
-    NRF_GPIO->PIN_CNF[pin] |= (pull << GPIO_PIN_CNF_PULL_Pos);
-
-    if(PIN_MODE_INPUT == mode)
-    {
-        NRF_GPIO->DIRSET &= ~(1 << pin);
-        NRF_GPIO->PIN_CNF[pin] |= (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
-    }
-    else
-    {
-        NRF_GPIO->DIRSET |= (1 << pin);
-        NRF_GPIO->PIN_CNF[pin] |= (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
-    }
 }
 
 void nrf_gpio_disable_pin(GPIO_DRV* gpio, PIN pin)

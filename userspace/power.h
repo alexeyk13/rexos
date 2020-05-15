@@ -22,6 +22,8 @@ typedef enum {
 typedef enum {
     POWER_SET_MODE = IPC_USER,
     POWER_GET_CLOCK,
+    POWER_GET_RESET_REASON,
+    POWER_SWO_OPEN,
     POWER_MAX
 } POWER_IPCS;
 

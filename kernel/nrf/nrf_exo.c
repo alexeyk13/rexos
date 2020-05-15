@@ -24,6 +24,11 @@ void exodriver_post(IPC* ipc)
 {
     switch (HAL_GROUP(ipc->cmd))
     {
+#if (NRF_BLE_CONTROLLER_DRIVER)
+    case HAL_BLE_CONTR:
+        nrf_ble_request(__KERNEL->exo, ipc);
+        break;
+#endif // NRF_BLE_CONTROLLER_DRIVER
     case HAL_POWER:
         nrf_power_request(__KERNEL->exo, ipc);
         break;
@@ -137,6 +142,9 @@ void exodriver_init()
 #if (NRF_RF_DRIVER)
     nrf_rf_init(__KERNEL->exo);
 #endif // NRF_RF_DRIVER
+#if (NRF_BLE_CONTROLLER_DRIVER)
+    nrf_ble_init(__KERNEL->exo);
+#endif // NRF_BLE_CONTROLLER_DRIVER
 #if (NRF_RNG_DRIVER)
     nrf_rng_init(__KERNEL->exo);
 #endif // NRF_RNG_DRIVER

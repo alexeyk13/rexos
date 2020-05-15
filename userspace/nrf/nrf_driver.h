@@ -37,11 +37,6 @@ typedef enum {
 } NRF_ADC_AINPUT;
 //--------------------------------- POWER --------------------------------------
 typedef enum {
-    //if enabled
-   NRF_POWER_GET_RESET_REASON = POWER_MAX
-} NRF_POWER_IPCS;
-
-typedef enum {
     RESET_REASON_UNKNOWN = 0,
     RESET_REASON_PIN_RST,
     RESET_REASON_WATCHDOG,
@@ -54,35 +49,94 @@ typedef enum {
 //---------------------------------- GPIO --------------------------------------
 typedef enum {
     P0 = 0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15,
-    P16, P17, P18, P19, P20, P21, P22, P23, P24, P25, P26, P27, P28, P29, P30,
+    P16, P17, P18, P19, P20, P21, P22, P23, P24, P25, P26, P27, P28, P29, P30, P31,
     //only for service calls
     PIN_DEFAULT,
     PIN_UNUSED
 } PIN;
 
 typedef enum {
-    PIN_MODE_INPUT,       ///< Input
-    PIN_MODE_OUTPUT       ///< Output
+    PIN_MODE_GENERAL=0,
+    PIN_MODE_PERIF,
+    PIN_MODE_PPI,
 } PIN_MODE;
 
 typedef enum {
-    PIN_PULL_NOPULL    = GPIO_PIN_CNF_PULL_Disabled,     ///<  Pin pullup resistor disabled
-    PIN_PULL_DOWN      = GPIO_PIN_CNF_PULL_Pulldown,   ///<  Pin pulldown resistor enabled
-    PIN_PULL_UP        = GPIO_PIN_CNF_PULL_Pullup,       ///<  Pin pullup resistor enabled
+    PIN_PULL_NOPULL    = GPIO_PIN_CNF_PULL_Disabled,
+    PIN_PULL_DOWN      = GPIO_PIN_CNF_PULL_Pulldown,
+    PIN_PULL_UP        = GPIO_PIN_CNF_PULL_Pullup,
 } PIN_PULL;
 
 typedef enum {
-    PIN_SENSE_NO        = GPIO_PIN_CNF_SENSE_Disabled,   ///<  Pin sense level disabled.
-    PIN_SENSE_LOW       = GPIO_PIN_CNF_SENSE_Low,      ///<  Pin sense low level.
-    PIN_SENSE_HIGH      = GPIO_PIN_CNF_SENSE_High,    ///<  Pin sense high level.
+    PIN_DIR_INPUT      = GPIO_PIN_CNF_DIR_Input,
+    PIN_DIR_OUTPUT     = GPIO_PIN_CNF_DIR_Output,
+} PIN_DIR;
+
+typedef enum {
+    PIN_BUF_CONNECT      = GPIO_PIN_CNF_INPUT_Connect,
+    PIN_BUF_DISCONNECT   = GPIO_PIN_CNF_INPUT_Disconnect,
+} PIN_BUFFER;
+
+typedef enum {
+    PIN_SENSE_NO       = GPIO_PIN_CNF_SENSE_Disabled,   ///<  Pin sense level disabled.
+    PIN_SENSE_LOW      = GPIO_PIN_CNF_SENSE_Low,      ///<  Pin sense low level.
+    PIN_SENSE_HIGH     = GPIO_PIN_CNF_SENSE_High,    ///<  Pin sense high level.
 } PIN_SENSE;
+
+typedef enum {
+    PIN_DRIVE_S0S1  = 0,
+    PIN_DRIVE_H0S1,
+    PIN_DRIVE_S0H1,
+    PIN_DRIVE_H0H1,
+    PIN_DRIVE_D0S1,
+    PIN_DRIVE_D0H1,
+    PIN_DRIVE_S0D1,
+    PIN_DRIVE_H0D1,
+} PIN_DRIVE;
+
+typedef enum {
+    PIN_PERIF_UART_RX = 0,
+    PIN_PERIF_UART_TX,
+    PIN_PERIF_UART_RTS,
+    PIN_PERIF_UART_CTS,
+
+    PIN_PERIF_SPIM0_SCK,
+    PIN_PERIF_SPIM0_MOSI,
+    PIN_PERIF_SPIM0_MISO,
+
+    PIN_PERIF_SPIM1_SCK,
+    PIN_PERIF_SPIM1_MOSI,
+    PIN_PERIF_SPIM1_MISO,
+
+    PIN_PERIF_SPIM2_SCK,
+    PIN_PERIF_SPIM2_MOSI,
+    PIN_PERIF_SPIM2_MISO,
+
+    PIN_PERIF_PWM0_CH0,
+    PIN_PERIF_PWM0_CH1,
+    PIN_PERIF_PWM0_CH2,
+    PIN_PERIF_PWM0_CH3,
+
+    PIN_PERIF_PWM1_CH0,
+    PIN_PERIF_PWM1_CH1,
+    PIN_PERIF_PWM1_CH2,
+    PIN_PERIF_PWM1_CH3,
+
+    PIN_PERIF_PWM2_CH0,
+    PIN_PERIF_PWM2_CH1,
+    PIN_PERIF_PWM2_CH2,
+    PIN_PERIF_PWM2_CH3,
+
+} PIN_PERIF;
+
 //---------------------------------- TIMER -------------------------------------
 #define TIMER_CHANNEL_INVALID                        0xff
 
 #define TIMER_MODE_CHANNEL_POS                       16
 #define TIMER_MODE_CHANNEL_MASK                      (0xf << TIMER_MODE_CHANNEL_POS)
 
-#if defined(NRF51) || defined(NRF52)
+#define PWM_CHANNELS                                 4
+#define PWMS_COUNT                                  (PWM_MAX - PWM_0)
 typedef enum {
     TIMER_0 = 0,
     TIMER_1,
@@ -91,7 +145,11 @@ typedef enum {
     TIMER_3,
     TIMER_4,
 #endif // NRF52
-    TIMER_MAX
+    TIMER_MAX,
+    PWM_0,
+    PWM_1,
+    PWM_2,
+    PWM_MAX,
 } TIMER_NUM;
 
 typedef enum {
@@ -105,17 +163,14 @@ typedef enum {
 #endif // NRF52
     TIMER_CC_MAX
 } TIMER_CC;
-#endif // NRF51 || NRF52
 
 //------------------------------------ UART ------------------------------------
-#if defined(NRF51) || defined(NRF52)
 typedef enum {
     UART_0 = 0,
+    UART_SPI_0,
 } UART_PORT;
-#endif // NRF51
 
 //------------------------------------ RTC -------------------------------------
-#if defined(NRF51) || defined(NRF52)
 typedef enum {
     RTC_0 = 0,
     RTC_1,
@@ -131,8 +186,6 @@ typedef enum {
     RTC_CC2,
     RTC_CC3,
 } RTC_CC;
-
-#endif // NRF51 || NRF52
 
 // ----------------------------------- RADIO -----------------------------------
 #if defined(NRF51)

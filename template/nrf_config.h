@@ -21,6 +21,8 @@
 #define NRF_RNG_DRIVER                          1
 #define NRF_TEMP_DRIVER                         1
 #define NRF_AES_ECB_DRIVER                      0
+#define NRF_BLE_CONTROLLER_DRIVER               0
+#define NRF_PWM_DRIVER                          1
 //------------------------------ CORE ------------------------------------------------
 
 
