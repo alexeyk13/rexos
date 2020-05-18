@@ -56,6 +56,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * BER v2 (commercial license)
   * Log file systm
   * LoRa stack
+  * BLE 4.2 Host Controller (commercial license)
 - Error handling:
   * each process has own error processing
   * kernel panic with memory dump on critical errors. Restart system if configured
@@ -84,7 +85,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * NXP Kinetis K22: generic, UART, RTC, WDT, I2C, USB, flash (commercial license)
   * NXP Kinetis K32W: generic, UART, USB, flash, ADC, Radio BLE (alpha) (commercial license)
   * TI CC26x0: generic, UART, RTC, WDT, Radio BLE (alpha)
-  * NRF51, NRF52: generic, UART, RTC, Radio BLE (alpha)
+  * NRF51, NRF52: generic, UART, RTC, BLE
 - Other drivers:
   * МЭЛТ mt12864j LCD display
   * ESP8266
@@ -102,6 +103,9 @@ ARM7 features:
 
 History
 =======
+0.7.0
+- Fully functional BLE host controller (commercial license)
+
 0.6.4
 - NRF51, NRF52 support
 - Kinetis K32W support
