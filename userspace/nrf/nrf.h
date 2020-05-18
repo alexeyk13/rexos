@@ -12,6 +12,9 @@
 
 #include "nrf_config.h"
 
+#ifndef NRF52832QFAA
+#define NRF52832QFAA
+#endif
 //---------------------------------------------------------------------------- NRF 51 ----------------------------------------------------------------------------------------------------------
 #if defined(NRF51822QFAA) || defined(NRF51822CEAA)
 #define NRF5122xxAA
@@ -71,7 +74,7 @@
 //512K
 #define FLASH_SIZE              0x80000
 //64K
-#define SRAM_SIZE               0x4000
+#define SRAM_SIZE               0x10000
 
 #define UARTS_COUNT             1
 #define SPI_COUNT               3

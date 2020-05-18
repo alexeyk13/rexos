@@ -15,7 +15,8 @@
 typedef enum {
     TIMER_START = IPC_USER,
     TIMER_STOP,
-    TIMER_SETUP_CHANNEL
+    TIMER_SETUP_CHANNEL,
+    TIMER_SET_DUTY,
 } TIMER_IPCS;
 
 //bit 0. Ext clock
@@ -35,6 +36,8 @@ typedef enum {
     TIMER_VALUE_HZ = 0,
     TIMER_VALUE_US,
     TIMER_VALUE_CLK,
+    TIMER_VALUE_DUTY_PROMILLE,  // 500 - duty cycle=0.5
+    TIMER_VALUE_DUTY_PERCENT,
     TIMER_VALUE_DISABLE
 } TIMER_VALUE_TYPE;
 
@@ -45,18 +48,24 @@ typedef enum {
     TIMER_CHANNEL_INPUT_FALLING,
     TIMER_CHANNEL_INPUT_RISING_FALLING,
     TIMER_CHANNEL_PWM,
+    TIMER_CHANNEL_PWM_INVERSE_POLARITY,
     TIMER_CHANNEL_DISABLE
 } TIMER_CHANNEL_TYPE;
 
 //bits 0..7 channel
 #define TIMER_CHANNEL_POS                       0
-#define TIMER_CHANNEL_MASK                      (0xff << 0)
-#define TIMER_CHANNEL_VALUE(raw)                (((raw) >> 0) & 0xff)
+#define TIMER_CHANNEL_MASK                      (0xff << TIMER_CHANNEL_POS)
+#define TIMER_CHANNEL_VALUE(raw)                (((raw) >> TIMER_CHANNEL_POS) & 0xff)
 //bits 8..15
 #define TIMER_CHANNEL_TYPE_POS                  8
-#define TIMER_CHANNEL_TYPE_MASK                 (0xff << 8)
-#define TIMER_CHANNEL_TYPE_VALUE(raw)           (((raw) >> 8) & 0xff)
-//bits 16..31 user specific
+#define TIMER_CHANNEL_TYPE_MASK                 (0xff << TIMER_CHANNEL_TYPE_POS)
+#define TIMER_CHANNEL_TYPE_VALUE(raw)           (((raw) >> TIMER_CHANNEL_TYPE_POS) & 0xff)
+//bits 16..24
+#define TIMER_VAUE_TYPE_POS                     16
+#define TIMER_VAUE_TYPE_MASK                    (0xff << TIMER_VAUE_TYPE_POS)
+#define TIMER_VAUE_TYPE_VALUE(raw)              (((raw) >> TIMER_VAUE_TYPE_POS) & 0xff)
+//bits 25..31 user specific
+
 
 /** \addtogroup HTIMER HTIMER
     hardware timer
@@ -105,6 +114,8 @@ void htimer_stop(int num);
     \retval none
 */
 void htimer_setup_channel(int num, int channel, TIMER_CHANNEL_TYPE type, unsigned int value);
+
+void htimer_set_channel_duty(int num, int channel, TIMER_VALUE_TYPE type, unsigned int value);
 
 /** \} */ // end of htimer group
 

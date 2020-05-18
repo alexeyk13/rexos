@@ -20,16 +20,16 @@ void gpio_enable_pin(unsigned int pin, GPIO_MODE mode)
     switch (mode)
     {
         case GPIO_MODE_OUT:
-            pin_enable(pin, PIN_MODE_OUTPUT, PIN_PULL_NOPULL);
+            pin_enable(pin, PIN_MODE_GENERAL, PIN_DIR_OUTPUT | PIN_DRIVE_S0S1 | PIN_PULL_NOPULL| PIN_BUF_CONNECT);
             break;
         case GPIO_MODE_IN_FLOAT:
-            pin_enable(pin, PIN_MODE_INPUT, PIN_PULL_NOPULL);
+            pin_enable(pin, PIN_MODE_GENERAL, PIN_DIR_INPUT | PIN_DRIVE_S0S1 | PIN_PULL_NOPULL| PIN_BUF_CONNECT);
             break;
         case GPIO_MODE_IN_PULLUP:
-            pin_enable(pin, PIN_MODE_INPUT, PIN_PULL_UP);
+            pin_enable(pin, PIN_MODE_GENERAL, PIN_DIR_INPUT | PIN_DRIVE_S0S1 | PIN_PULL_UP | PIN_BUF_CONNECT);
             break;
         case GPIO_MODE_IN_PULLDOWN:
-            pin_enable(pin, PIN_MODE_INPUT, PIN_PULL_DOWN);
+            pin_enable(pin, PIN_MODE_GENERAL, PIN_DIR_INPUT | PIN_DRIVE_S0S1 | PIN_PULL_DOWN | PIN_BUF_CONNECT);
             break;
     }
 }

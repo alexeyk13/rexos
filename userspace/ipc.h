@@ -73,8 +73,13 @@ typedef enum {
     HAL_PINBOARD,
     //virtual file system
     HAL_VFS,
+    //ring buffer storage
+    HAL_RBS,
     //bluetooth host/controller
-    HAL_BLUETOOTH,
+    HAL_BLE_HOST,
+    HAL_BLE_GATT,
+    HAL_BLE_CONTR,
+    HAL_BLE_ADV,
     HAL_CANOPEN,
     HAL_WIFI,
     HAL_LORA,

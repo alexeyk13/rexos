@@ -12,70 +12,53 @@
 #include "../../userspace/ipc.h"
 #include "../../userspace/io.h"
 #include "../../userspace/nrf/nrf_driver.h"
+#include "../../userspace/nrf/nrf_radio.h"
 #include "sys_config.h"
 #include "nrf_exo.h"
 #include <stdbool.h>
 
-#define MAX_PDU_SIZE                    40
-#define LOGGER_NUMBER                   20
-
-/** @anchor adv-seg-type
- *  @name Advertisement segment types
- *  @{
- */
-#define TYPE_FLAGS                      0x1
-#define TYPE_UUID16_INC                 0x2
-#define TYPE_UUID16                     0x3
-#define TYPE_UUID32_INC                 0x4
-#define TYPE_UUID32                     0x5
-#define TYPE_UUID128_INC                0x6
-#define TYPE_UUID128                    0x7
-#define TYPE_NAME_SHORT                 0x8
-#define TYPE_NAME                       0x9
-#define TYPE_TRANSMITPOWER              0xA
-#define TYPE_CONNINTERVAL               0x12
-#define TYPE_SERVICE_SOLICITATION16     0x14
-#define TYPE_SERVICE_SOLICITATION128    0x15
-#define TYPE_SERVICEDATA                0x16
-#define TYPE_APPEARANCE                 0x19
-#define TYPE_MANUFACTURER_SPECIFIC      0xFF
-/** @} */
-
-/** @anchor adv-packet-type
- *  @name Advertisement packet types
- *  @{
- */
-#define TYPE_ADV_IND            0
-#define TYPE_ADV_DIRECT_IND     1
-#define TYPE_ADV_NONCONN_IND    2
-#define TYPE_SCAN_REQ           3
-#define TYPE_SCAN_RSP           4
-#define TYPE_CONNECT_REQ        5
-#define TYPE_ADV_SCAN_IND       6
-/** @} */
-
-typedef enum {
-    RADIO_IO_MODE_RX = 0,
-    RADIO_IO_MODE_TX
-} RADIO_IO_MODE;
+#define REC_PDU_BUFFER_LEN              5
 
 typedef enum {
     RADIO_STATE_IDLE = 0,
     RADIO_STATE_TX,
     RADIO_STATE_RX,
-    RADIO_STATE_RX_DATA
 } RADIO_STATE;
 
+#pragma pack(push,1)
 typedef struct {
-    IO* io;
-    HANDLE process, timer;
-    unsigned int max_size;
-    bool active;
-    RADIO_MODE mode;
+    BLE_ADV_PKT pkt;
+    int8_t rssi;
+    uint8_t ch;
+} BLE_ADV_REC_PDU;
+#pragma pack(pop)
+
+typedef struct {
+    uint32_t channel;
+    uint16_t id;
+} RADIO_DATA;
+
+typedef struct {
     RADIO_STATE state;
-    /* packet data for optimization */
-    uint32_t addr, rssi;
-    uint8_t pdu[NRF_MAX_PACKET_LENGTH];
+    HANDLE process, timer;
+    bool active;
+    bool is_rx;
+    RADIO_DATA curr;
+    RADIO_DATA next;
+//    BLE_MAC mac;
+
+    // RX data
+    void* param;
+    IO* rx_io;
+    unsigned int max_size;
+    uint32_t rx_head;
+    uint32_t rx_tail;
+    BLE_ADV_REC_PDU rx_buf[REC_PDU_BUFFER_LEN];
+
+    // TX data
+    IO* tx_io;
+    uint32_t tx_handle;
+    BLE_ADV_PKT tx_pdu;
 } RADIO_DRV;
 
 void nrf_rf_init(EXO* exo);

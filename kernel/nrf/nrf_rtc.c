@@ -23,6 +23,9 @@ typedef NRF_RTC_Type*                            NRF_RTC_Type_P;
 #if defined(NRF51)
 const int RTC_VECTORS[RTC_COUNT]          =  {RTC0_IRQn,   RTC1_IRQn};
 const NRF_RTC_Type_P RTC_REGS[RTC_COUNT]    =  {NRF_RTC0, NRF_RTC1};
+#elif  defined(NRF52)
+const int RTC_VECTORS[RTC_COUNT]          =  {RTC0_IRQn,   RTC1_IRQn,   RTC2_IRQn};
+const NRF_RTC_Type_P RTC_REGS[RTC_COUNT]    =  {NRF_RTC0, NRF_RTC1, NRF_RTC2};
 #endif // NRF51
 
 #define RTC_PRESCALER               ((LFCLK/32768) - 1)
@@ -48,7 +51,9 @@ void rtc_isr(int vector, void* param)
 static void nrf_rtc_open(EXO* exo, RTC_NUM num)
 {
     // stop all tasks
+#if defined(NRF51)
     RTC_REGS[num]->POWER = 1;
+#endif
     RTC_REGS[num]->TASKS_STOP = 1;
 
     // set prescaler to a TICK of RTC_FREQUENCY

@@ -211,6 +211,15 @@ static inline void nrf_power_set_mode(EXO* exo, POWER_MODE mode)
     }
 }
 #endif // POWER_MANAGEMENT
+
+static inline void nrf_power_swo_open()
+{
+    NRF_CLOCK->TRACECONFIG = (CLOCK_TRACECONFIG_TRACEPORTSPEED_16MHz << CLOCK_TRACECONFIG_TRACEPORTSPEED_Pos) |
+                             (CLOCK_TRACECONFIG_TRACEMUX_Serial << CLOCK_TRACECONFIG_TRACEMUX_Pos);
+    ITM->TCR |= 1;
+    ITM->TER |= 1;
+}
+
 void nrf_power_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -219,7 +228,7 @@ void nrf_power_request(EXO* exo, IPC* ipc)
         ipc->param2 = get_core_clock_internal(ipc->param1);
         break;
 #if (NRF_DECODE_RESET)
-    case NRF_POWER_GET_RESET_REASON:
+    case POWER_GET_RESET_REASON:
         ipc->param2 = exo->power.reset_reason;
         break;
 #endif //STM32_DECODE_RESET
@@ -230,6 +239,9 @@ void nrf_power_request(EXO* exo, IPC* ipc)
         nrf_power_set_mode(exo, ipc->param1);
         break;
 #endif //POWER_MANAGEMENT
+    case POWER_SWO_OPEN:
+        nrf_power_swo_open();
+        break;
     default:
         kerror(ERROR_NOT_SUPPORTED);
     }

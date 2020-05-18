@@ -42,14 +42,25 @@ typedef struct {
 typedef struct {
     uint16_t error;
     bool io_mode;
+#if (UART_IO_MODE_SUPPORT)
     union {
         UART_STREAM s;
         UART_IO i;
     };
+#else
+    UART_STREAM s;
+#endif //UART_IO_MODE_SUPPORT
 } UART;
 
+#define UART_SPI_BUF_SIZE   (2*UART_BUF_SIZE +1)
 typedef struct {
-    UART* uarts[UARTS_COUNT];
+    uint8_t buf[UART_SPI_BUF_SIZE];
+    UART_STREAM s;
+} UART_SPI;
+
+typedef struct {
+    uint8_t* spi_buf;
+    UART* uarts[UARTS_COUNT + 1];
 } UART_DRV;
 
 void nrf_uart_init(EXO* exo);

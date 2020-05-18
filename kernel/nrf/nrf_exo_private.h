@@ -36,6 +36,9 @@
 #if (NRF_RF_DRIVER)
 #include "nrf_rf.h"
 #endif // NRF_RF_DRIVER
+#if (NRF_BLE_CONTROLLER_DRIVER)
+#include "nrf_ble_contr_private.h"
+#endif // NRF_BLE_CONTROLLER_DRIVER
 #if (NRF_RNG_DRIVER)
 #include "nrf_rng.h"
 #endif // NRF_RNG_DRIVER
@@ -70,6 +73,9 @@ typedef struct _EXO {
 #if (NRF_RF_DRIVER)
     RADIO_DRV rf;
 #endif // NRF_RF_DRIVER
+#if (NRF_BLE_CONTROLLER_DRIVER)
+    BLE_CONTR_DRV rf;
+#endif // NRF_BLE_CONTROLLER_DRIVER
 #if (NRF_RNG_DRIVER)
     RNG_DRV rng;
 #endif // nrf_rng_irq
