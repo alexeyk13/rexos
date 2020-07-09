@@ -89,7 +89,7 @@ unavailable, another HPET timer can be used for RTC emulation
 - Other drivers:
   * МЭЛТ mt12864j LCD display
   * ESP8266
-  * RF: SX1261, SX1271, SX1272
+  * RF: SX1261, SX1272, SX1273, SX1276, SX1277
 
 Cortex-M3 features:
 ------------------
