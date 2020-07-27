@@ -10,11 +10,6 @@
 #ifndef NRF_H
 #define NRF_H
 
-#include "nrf_config.h"
-
-#ifndef NRF52832QFAA
-#define NRF52832QFAA
-#endif
 //---------------------------------------------------------------------------- NRF 51 ----------------------------------------------------------------------------------------------------------
 #if defined(NRF51822QFAA) || defined(NRF51822CEAA)
 #define NRF5122xxAA
@@ -71,6 +66,7 @@
 
 #if defined(NRF52832xxAA)
 #define NRF52
+
 //512K
 #define FLASH_SIZE              0x80000
 //64K
@@ -99,6 +95,7 @@
 #endif // NRF52
 
 #if defined(NRF51) || defined(NRF52)
+
 #define EXODRIVERS
 #ifndef FLASH_BASE
 #define FLASH_BASE                0x00000000
@@ -106,10 +103,9 @@
 
 #if !defined(LDS) && !defined(__ASSEMBLER__)
 
-/* Family selection for main includes. NRF51 must be selected. */
+#include "nrf_config.h"
+
 #if defined(NRF51)
-#undef SRAM_BASE
-#undef FLASH_BASE
 
 #include "nrf51.h"
 #include "nrf51_bitfields.h"
@@ -120,8 +116,6 @@
 #include "nrf52.h"
 #include "nrf52.h"
 #include "nrf52_bitfields.h"
-#else
-#error "Device family not defined."
 #endif /* NRF51 */
 
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)
