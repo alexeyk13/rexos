@@ -13,10 +13,11 @@
 
 #define IRC_VALUE                               12000000
 
+#ifdef LPC11Uxx
 static unsigned int const __FCLKANA[] =         {0000000, 0600000, 1050000, 1400000, 1750000, 2100000, 2400000, 2700000,
                                                  3000000, 3250000, 3500000, 3750000, 4000000, 4200000, 4400000, 4600000};
 
-#ifdef LPC11Uxx
+
 static inline void lpc_setup_clock()
 {
     int i;
