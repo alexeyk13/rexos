@@ -14,8 +14,16 @@
 #include "../../userspace/uart.h"
 #include "../../userspace/io.h"
 #include "../../userspace/rb.h"
-#include "lpc_config.h"
+#include "../../../lpc_config.h"
 #include "lpc_exo.h"
+
+#if !defined(UART_ENABLE_DMA)
+#define UART_ENABLE_DMA            0
+#endif
+#if (UART_ENABLE_DMA)
+#include "lpc_dma.h"
+#endif
+
 
 typedef struct {
     HANDLE tx_stream, tx_handle, rx_stream, rx_handle;
@@ -29,6 +37,9 @@ typedef struct {
     unsigned int rx_max, tx_processed;
     HANDLE tx_process, rx_process, rx_timer;
     unsigned int rx_char_timeout, rx_interleaved_timeout;
+#if (UART_ENABLE_DMA)
+    uint32_t dma_mode;
+#endif
 } UART_IO;
 
 typedef struct {

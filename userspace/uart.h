@@ -35,10 +35,14 @@ typedef enum {
 
 #define UART_RX_STREAM                          (1 << 0)
 #define UART_TX_STREAM                          (1 << 1)
+
 #define UART_MODE                               (3 << 2)
 #define UART_MODE_STREAM                        (0 << 2)
 #define UART_MODE_IO                            (1 << 2)
 #define UART_MODE_ISO7816                       (2 << 2)
+
+#define UART_DMA_RX_MODE                        (1 << 4)
+#define UART_DMA_TX_MODE                        (1 << 5)
 
 //used internally by driver
 void uart_encode_baudrate(BAUD* baudrate, IPC* ipc);
