@@ -38,6 +38,13 @@ static const uint8_t __UART_VECTORS[] =                         {21};
 typedef LPC_USART_Type* LPC_USART_Type_P;
 static const LPC_USART_Type_P __USART_REGS[UARTS_COUNT] =       {LPC_USART};
 #else //LPC18xx
+#if (UART_ENABLE_DMA)
+static const uint32_t DMA_PERIF_NUM_TX[UARTS_COUNT] =      {1, 3, 5, 7};
+static const uint32_t DMA_PERIF_MUX_TX[UARTS_COUNT] =      {1, 1, 1, 1};
+static const uint32_t DMA_PERIF_NUM_RX[UARTS_COUNT] =      {2, 4, 6, 8};
+static const uint32_t DMA_PERIF_MUX_RX[UARTS_COUNT] =      {1, 1, 1, 1};
+#endif // UART_ENABLE_DMA
+
 static const uint8_t __UART_VECTORS[UARTS_COUNT] =              {24, 25, 26, 27};
 
 typedef LPC_USARTn_Type* LPC_USARTn_Type_P;
@@ -125,6 +132,7 @@ void lpc_uart_on_isr(int vector, void* param)
     unsigned int lsr;
     int i;
     uint8_t c;
+    uint32_t iir;
     bool more;
     UART_PORT port = UART_0;
     EXO* exo = (EXO*)param;
@@ -136,8 +144,17 @@ void lpc_uart_on_isr(int vector, void* param)
                 break;
             }
     UART* uart = exo->uart.uarts[port];
+    iir = __USART_REGS[port]->IIR;
 
-    switch (__USART_REGS[port]->IIR & USART0_IIR_INTID_Msk)
+#if(UART_ENABLE_DMA)
+        if((uart->i.dma_mode & UART_DMA_RX_MODE) && (iir & USART0_IIR_INTSTATUS_Msk))
+        {
+            timer_istop(uart->i.rx_timer);
+            timer_istart_us(uart->i.rx_timer, uart->i.rx_interleaved_timeout);
+            return;
+        }
+#endif // UART_ENABLE_DMA
+    switch (iir & USART0_IIR_INTID_Msk)
     {
     case USART0_IIR_INTID_RLS:
         //decode error, if any
@@ -151,19 +168,46 @@ void lpc_uart_on_isr(int vector, void* param)
         if (lsr & USART0_LSR_BI_Msk)
             uart->error = ERROR_COMM_BREAK;
         break;
+    case USART0_IIR_INTID_CTI:
     case USART0_IIR_INTID_RDA:
+#if(UART_ENABLE_DMA)
+        if(uart->i.dma_mode & UART_DMA_RX_MODE)
+        {
+            __USART_REGS[port]->IER &= ~USART0_IER_RBRIE_Msk;
+            timer_istop(uart->i.rx_timer);
+            if(uart->i.rx_io)
+            {
+                uart->i.rx_io->data_size = uart->i.rx_max - dma_get_transfer_size(DMA_UART_RX_CHANNEL);
+                iio_complete(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, uart->i.rx_io);
+                uart->i.rx_io = NULL;
+            }
+        }else
+#endif // UART_ENABLE_DMA
+        {
         //need more data?
         if (!lpc_uart_rx_isr(exo, port, __USART_REGS[port]->RBR))
             __USART_REGS[port]->IER &= ~USART0_IER_RBRIE_Msk;
+        }
         break;
     case USART0_IIR_INTID_THRE:
-        //transmit more
-        more = true;
-        while ((__USART_REGS[port]->LSR & USART0_LSR_THRE_Msk) && (more = lpc_uart_tx_isr(exo, port, &c)))
+#if(UART_ENABLE_DMA)
+
+        if(uart->i.dma_mode & UART_DMA_TX_MODE)
+        {
+           iio_complete(uart->i.tx_process, HAL_IO_CMD(HAL_UART, IPC_WRITE), port, uart->i.tx_io);
+            uart->i.tx_io = NULL;
+            //__USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
+        }else
+#endif // UART_ENABLE_DMA
+        {
+            //transmit more
+            more = true;
+            while((__USART_REGS[port]->LSR & USART0_LSR_THRE_Msk) && (more = lpc_uart_tx_isr(exo, port, &c)))
                 __USART_REGS[port]->THR = c;
-        //no more? mask interrupt
-        if (!more)
-            __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
+            //no more? mask interrupt
+            if(!more)
+                __USART_REGS[port]->IER &= ~USART0_IER_THREIE_Msk;
+        }
         break;
     }
 }
@@ -387,7 +431,43 @@ static inline void lpc_uart_open(EXO* exo, UART_PORT port, unsigned int mode)
 #endif
     {
          //enable FIFO
+#if(UART_ENABLE_DMA)
+        mode = mode & (UART_DMA_RX_MODE | UART_DMA_TX_MODE);
+        exo->uart.uarts[port]->i.dma_mode = mode;
+        if(mode)
+        {
+            DMA_CH_DESC desc;
+            dma_open();
+            desc.width = DMA_WIDTH_BYTE;
+            desc.burst = DMA_BURST_1;
+
+            if(mode & UART_DMA_RX_MODE)
+            {
+                desc.dir = DMA_PERIF_TO_MEM;
+                desc.perif_addr = (uint32_t)&(__USART_REGS[port]->RBR);
+                desc.perif_ch = DMA_PERIF_NUM_RX[port];
+                desc.perif_mux = DMA_PERIF_MUX_RX[port];
+                dma_set_channel(DMA_UART_RX_CHANNEL, &desc);
+                __USART_REGS[port]->FCR = USART0_FCR_FIFOEN_Msk | USART0_FCR_TXFIFORES_Msk
+                                | USART0_FCR_RXFIFORES_Msk | USART0_FCR_DMAMODE_Msk | (3 << USART0_FCR_RXTRIGLVL_Pos);
+            }
+            if(mode & UART_DMA_TX_MODE)
+            {
+                desc.dir = DMA_MEM_TO_PERIF;
+                desc.perif_addr = (uint32_t)&(__USART_REGS[port]->THR);
+                desc.perif_ch = DMA_PERIF_NUM_TX[port];
+                desc.perif_mux = DMA_PERIF_MUX_TX[port];
+                dma_set_channel(DMA_UART_TX_CHANNEL, &desc);
+                __USART_REGS[port]->FCR = USART0_FCR_FIFOEN_Msk | USART0_FCR_TXFIFORES_Msk
+                                | USART0_FCR_RXFIFORES_Msk | USART0_FCR_DMAMODE_Msk | (3 << USART0_FCR_RXTRIGLVL_Pos);
+
+            }
+        }else
+#endif ///UART_DMA
+        {
         __USART_REGS[port]->FCR = USART0_FCR_FIFOEN_Msk | USART0_FCR_TXFIFORES_Msk | USART0_FCR_RXFIFORES_Msk;
+        }
+
     }
 
     //enable interrupts
@@ -610,7 +690,13 @@ static inline void lpc_uart_io_read(EXO* exo, UART_PORT port, IPC* ipc)
     uart->i.rx_max = ipc->param3;
     io->data_size = 0;
     uart->i.rx_io = io;
-    __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
+#if(UART_ENABLE_DMA)
+     if(uart->i.dma_mode & UART_DMA_RX_MODE)
+     {
+         dma_enable_perif_channel(DMA_UART_RX_CHANNEL, io_data(io), ipc->param3);
+     }
+#endif // UART_ENABLE_DMA
+     __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
     ksystime_soft_timer_start_us(uart->i.rx_timer, uart->i.rx_char_timeout);
     kerror(ERROR_SYNC);
 }
@@ -643,8 +729,17 @@ static inline void lpc_uart_io_write(EXO* exo, UART_PORT port, IPC* ipc)
         __USART1_REGS[port - 1]->TXDAT = ((uint8_t*)io_data(io))[0];
     else
 #endif
+#if(UART_ENABLE_DMA)
+     if(uart->i.dma_mode & UART_DMA_TX_MODE)
+     {
+         __USART_REGS[port]->IER |= USART0_IER_THREIE_Msk;
+         dma_enable_perif_channel(DMA_UART_TX_CHANNEL, io_data(io), io->data_size);
+     }else
+#endif // UART_ENABLE_DMA
+    {
         __USART_REGS[port]->THR = ((uint8_t*)io_data(io))[0];
     //this will enable isr processing, if printd/printk was called during setup
+    }
     uart->i.tx_io = io;
     //start
 #ifdef LPC11U6x
@@ -670,6 +765,13 @@ static inline void lpc_uart_io_read_timeout(EXO* exo, UART_PORT port)
     __enable_irq();
     if (io)
     {
+#if(UART_ENABLE_DMA)
+     if(uart->i.dma_mode & UART_DMA_RX_MODE)
+     {
+         dma_disable_channel(DMA_UART_RX_CHANNEL);
+         io->data_size = uart->i.rx_max - dma_get_transfer_size(DMA_UART_RX_CHANNEL);
+     }
+#endif // UART_ENABLE_DMA
         if (io->data_size)
             kexo_io(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, io);
         else

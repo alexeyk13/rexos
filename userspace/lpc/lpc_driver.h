@@ -211,4 +211,52 @@ typedef enum {
     UART_MAX
 }UART_PORT;
 
+//------------------------------------------------- DMA ---------------------------------------------------------------------
+typedef struct {
+    __IO uint32_t SRCADDR;                  /*!< (@ 0x40002100) DMA Channel Source Address Register */
+    __IO uint32_t DESTADDR;                 /*!< (@ 0x40002104) DMA Channel Destination Address Register */
+    __IO uint32_t LLI;                      /*!< (@ 0x40002108) DMA Channel Linked List Item Register */
+    __IO uint32_t CONTROL;                  /*!< (@ 0x4000210C) DMA Channel Control Register */
+    __IO uint32_t CONFIG;                   /*!< (@ 0x40002110) DMA Channel Configuration Register */
+    __I  uint32_t RESERVED1[3];
+}LPC_GPDMA_CH_Type;
+
+typedef LPC_GPDMA_CH_Type  LPC_GPDMA_CH_ARR[];
+#define LPC_GPDMA_CH    ((LPC_GPDMA_CH_ARR          *) &LPC_GPDMA->C0SRCADDR)
+
+
+typedef enum {
+    DMA_MEM_TO_MEM = 0,
+    DMA_MEM_TO_PERIF,
+    DMA_PERIF_TO_MEM,
+    DMA_PERIF_TO_PREIF,
+} DMA_DIRECTION;
+
+typedef enum {
+    DMA_BURST_1 = 0,
+    DMA_BURST_4,
+    DMA_BURST_8,
+    DMA_BURST_16,
+    DMA_BURST_32,
+    DMA_BURST_64,
+    DMA_BURST_128,
+    DMA_BURST_256,
+} DMA_BURST_SIZE;
+
+typedef enum {
+    DMA_WIDTH_BYTE = 0,
+    DMA_BURST_HALFWORD,
+    DMA_BURST_WORD,
+} DMA_WIDTH;
+
+typedef struct {
+    DMA_DIRECTION dir;
+    DMA_BURST_SIZE burst;
+    DMA_WIDTH width;
+    uint32_t perif_addr;
+    uint32_t perif_ch;
+    uint32_t perif_mux;
+}DMA_CH_DESC;
+
+
 #endif // LPC_DRIVER_H
