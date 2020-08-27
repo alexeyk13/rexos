@@ -691,13 +691,14 @@ static inline void lpc_uart_io_read(EXO* exo, UART_PORT port, IPC* ipc)
     io->data_size = 0;
     uart->i.rx_io = io;
 #if(UART_ENABLE_DMA)
-     if(uart->i.dma_mode & UART_DMA_RX_MODE)
-     {
-         dma_enable_perif_channel(DMA_UART_RX_CHANNEL, io_data(io), ipc->param3);
-     }
+    if(uart->i.dma_mode & UART_DMA_RX_MODE)
+    {
+        dma_enable_perif_channel(DMA_UART_RX_CHANNEL, io_data(io), ipc->param3);
+    }
 #endif // UART_ENABLE_DMA
-     __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
-    ksystime_soft_timer_start_us(uart->i.rx_timer, uart->i.rx_char_timeout);
+    __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
+    if (uart->i.rx_char_timeout)
+        ksystime_soft_timer_start_us(uart->i.rx_timer, uart->i.rx_char_timeout);
     kerror(ERROR_SYNC);
 }
 

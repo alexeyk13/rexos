@@ -315,6 +315,7 @@ static void lpc_eth_close(EXO* exo)
 
     //destroy timer
     ksystime_soft_timer_destroy(exo->eth.timer);
+    exo->eth.timeout = false;
     exo->eth.timer = INVALID_HANDLE;
 
     LPC_CGU->BASE_PHY_TX_CLK = CGU_BASE_PHY_TX_CLK_PD_Msk;
@@ -331,7 +332,6 @@ static inline void lpc_eth_open(EXO* exo, unsigned int phy_addr, ETH_CONN_TYPE c
     unsigned int clock;
 
     exo->eth.timer = ksystime_soft_timer_create(KERNEL_HANDLE, 0, HAL_ETH);
-    exo->eth.timeout = false;
     if (exo->eth.timer == INVALID_HANDLE)
         return;
     exo->eth.tcpip = tcpip;
@@ -547,6 +547,7 @@ void lpc_eth_init(EXO* exo)
     exo->eth.rx = exo->eth.tx = NULL;
 #endif
     exo->eth.processing = 0;
+    exo->eth.timeout = false;
 }
 
 void lpc_eth_request(EXO* exo, IPC* ipc)
