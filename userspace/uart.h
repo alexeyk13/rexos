@@ -48,16 +48,19 @@ typedef enum {
 void uart_encode_baudrate(BAUD* baudrate, IPC* ipc);
 void uart_decode_baudrate(IPC* ipc, BAUD* baudrate);
 //dbg related
-void uart_setup_printk(int num);
-void uart_setup_stdout(int num);
-void uart_setup_stdin(int num);
+#define uart_setup_printk(num)                                                                              ipc_post_exo(HAL_CMD(HAL_UART, IPC_UART_SETUP_PRINTK), (num), 0, 0)
+#define uart_setup_stdout(num)                                                                              object_set(SYS_OBJ_STDOUT, get_handle_exo(HAL_REQ(HAL_UART, IPC_GET_TX_STREAM), (num), 0, 0))
+#define uart_setup_stdin(num)                                                                               object_set(SYS_OBJ_STDIN, get_handle_exo(HAL_REQ(HAL_UART, IPC_GET_RX_STREAM), (num), 0, 0))
 
-bool uart_open(int num, unsigned int mode);
-void uart_close(int num);
+#define uart_open(num, mode)                                                                                get_handle_exo(HAL_REQ(HAL_UART, IPC_OPEN), (num), (mode), 0)
+#define uart_close(num)                                                                                     ipc_post_exo(HAL_CMD(HAL_UART, IPC_CLOSE), (num), 0, 0)
 void uart_set_baudrate(int num, BAUD* baudrate);
-void uart_set_comm_timeouts(int num, unsigned int char_timeout_us, unsigned int interleaved_timeout_us);
-void uart_flush(int num);
-int uart_get_last_error(int num);
-void uart_clear_error(int num);
+#define uart_set_comm_timeouts(num, char_timeout_us, interleaved_timeout_us)                                get_exo(HAL_REQ(HAL_UART, IPC_UART_SET_COMM_TIMEOUTS), (num), (char_timeout_us), (interleaved_timeout_us))
+#define uart_flush(num)                                                                                     ipc_post_exo(HAL_CMD(HAL_UART, IPC_FLUSH), (num), 0, 0)
+#define uart_get_last_error(num)                                                                            ((int)get_exo(HAL_REQ(HAL_UART, IPC_UART_GET_LAST_ERROR), (num), 0, 0))
+#define uart_clear_error(num)                                                                               get_exo(HAL_REQ(HAL_UART, IPC_UART_CLEAR_ERROR), (num), 0, 0)
+
+#define uart_tx(num, io)                                                                                    io_write_exo(HAL_IO_REQ(HAL_UART, IPC_WRITE), (num), (io));
+#define uart_rx(num, io, size)                                                                              io_read_exo(HAL_IO_REQ(HAL_UART, IPC_READ), (num), (io), (size));
 
 #endif // UART_H

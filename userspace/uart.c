@@ -25,31 +25,6 @@ void uart_decode_baudrate(IPC* ipc, BAUD* baudrate)
     baudrate->stop_bits = (ipc->param3) & 0xff;
 }
 
-void uart_setup_printk(int num)
-{
-    ipc_post_exo(HAL_CMD(HAL_UART, IPC_UART_SETUP_PRINTK), num, 0, 0);
-}
-
-void uart_setup_stdout(int num)
-{
-    object_set(SYS_OBJ_STDOUT, get_handle_exo(HAL_REQ(HAL_UART, IPC_GET_TX_STREAM), num, 0, 0));
-}
-
-void uart_setup_stdin(int num)
-{
-    object_set(SYS_OBJ_STDIN, get_handle_exo(HAL_REQ(HAL_UART, IPC_GET_RX_STREAM), num, 0, 0));
-}
-
-bool uart_open(int num, unsigned int mode)
-{
-    return get_handle_exo(HAL_REQ(HAL_UART, IPC_OPEN), num, mode, 0) != INVALID_HANDLE;
-}
-
-void uart_close(int num)
-{
-    ipc_post_exo(HAL_CMD(HAL_UART, IPC_CLOSE), num, 0, 0);
-}
-
 void uart_set_baudrate(int num, BAUD* baudrate)
 {
     IPC ipc;
@@ -58,24 +33,4 @@ void uart_set_baudrate(int num, BAUD* baudrate)
     ipc.param1 = num;
     ipc.process = KERNEL_HANDLE;
     ipc_post(&ipc);
-}
-
-void uart_set_comm_timeouts(int num, unsigned int char_timeout_us, unsigned int interleaved_timeout_us)
-{
-    get_exo(HAL_REQ(HAL_UART, IPC_UART_SET_COMM_TIMEOUTS), num, char_timeout_us, interleaved_timeout_us);
-}
-
-void uart_flush(int num)
-{
-    ipc_post_exo(HAL_CMD(HAL_UART, IPC_FLUSH), num, 0, 0);
-}
-
-int uart_get_last_error(int num)
-{
-    return (int)get_exo(HAL_REQ(HAL_UART, IPC_UART_GET_LAST_ERROR), num, 0, 0);
-}
-
-void uart_clear_error(int num)
-{
-    get_exo(HAL_REQ(HAL_UART, IPC_UART_CLEAR_ERROR), num, 0, 0);
 }
