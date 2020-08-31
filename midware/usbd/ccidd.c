@@ -506,7 +506,7 @@ static inline void ccidd_set_params(USBD* usbd, CCIDD* ccidd)
 #if (USBD_CCID_DEBUG_IO)
     usbd_dump((uint8_t*)io_data(ccidd->main_io) + sizeof(CCID_MSG), msg->dwLength, "CCIDD Parameters");
 #endif
-    io_data_write(ccidd->user_io, (uint8_t*)io_data(ccidd->main_io) + sizeof(CCID_MSG), ccidd->data_ep_size - sizeof(CCID_MSG));
+    io_data_write(ccidd->user_io, (uint8_t*)io_data(ccidd->main_io) + sizeof(CCID_MSG), msg->dwLength);
     ccidd_user_request(usbd, ccidd, USB_CCID_SET_PARAMS, msg->bProtocolNum);
 }
 
@@ -524,7 +524,7 @@ static inline void ccidd_set_data_rate_and_clock(USBD* usbd, CCIDD* ccidd)
     CCID_MSG_RATE_CLOCK* rate_clock = io_data(ccidd->main_io);
     printf("PC_to_RDR_SetDataRateAndClockFrequency %d KHz, %d BPS\n", rate_clock->dwClockFrequency, rate_clock->dwDataRate);
 #endif //USBD_CCID_DEBUG_REQUESTS
-    io_data_write(ccidd->user_io, (uint8_t*)io_data(ccidd->main_io) + sizeof(CCID_MSG), ccidd->data_ep_size - sizeof(CCID_MSG));
+    io_data_write(ccidd->user_io, (uint8_t*)io_data(ccidd->main_io) + sizeof(CCID_MSG), rate_clock->dwLength);
     ccidd_user_request(usbd, ccidd, USB_CCID_SET_RATE_CLOCK, 0);
 }
 
