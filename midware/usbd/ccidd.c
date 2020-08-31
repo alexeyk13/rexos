@@ -288,7 +288,7 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
                     {
                         ccidd->data_ep = USB_EP_NUM(ep->bEndpointAddress);
                         ccidd->data_ep_size = ep->wMaxPacketSize;
-                        ccidd->main_io = io_create((ccid_descriptor->dwMaxCCIDMessageLength - 1) & ~(ccidd->data_ep_size - 1));
+                        ccidd->main_io = io_create((ccid_descriptor->dwMaxCCIDMessageLength + ccidd->data_ep_size - 1) & ~(ccidd->data_ep_size - 1));
                         ccidd->txd_io = io_create((ccid_descriptor->dwMaxCCIDMessageLength + ccidd->data_ep_size - 1) & ~(ccidd->data_ep_size - 1));
                     }
                     break;
@@ -440,7 +440,6 @@ static inline void ccidd_power_off(USBD* usbd, CCIDD* ccidd)
         ccidd->slot_status = CCID_SLOT_STATUS_ICC_PRESENT_AND_INACTIVE;
     ccidd_tx_slot_status(usbd, ccidd);
     usbd_call_user(usbd, ccidd->iface, 0, HAL_REQ(HAL_USBD_IFACE, USB_CCID_POWER_OFF), 0, 0);
-
 }
 
 static inline void ccidd_get_slot_status(USBD* usbd, CCIDD* ccidd)
@@ -620,6 +619,9 @@ static inline void ccidd_rxc(USBD* usbd, CCIDD* ccidd)
         io_data_append(ccidd->user_io, io_data(ccidd->main_io), ccidd->main_io->data_size);
         ccidd_xfer_block_process(usbd, ccidd);
         ccidd_rx(usbd, ccidd);
+        break;
+    case CCIDD_STATE_REQUEST:
+        ccidd_tx_slot_status_ex(usbd, ccidd, msg->bSeq, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR, ccidd->main_io);
         break;
     default:
 #if (USBD_CCID_DEBUG_ERRORS)

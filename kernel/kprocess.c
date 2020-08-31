@@ -254,7 +254,16 @@ unsigned int kprocess_get_priority(HANDLE p)
 const char* kprocess_name(HANDLE p)
 {
     KPROCESS* process = (KPROCESS*)p;
-    return process->process->name;
+    switch (p) {
+    case INVALID_HANDLE:
+        return "invalid";
+    case ANY_HANDLE:
+        return "any";
+    case KERNEL_HANDLE:
+        return "kernel";
+    default:
+        return process->process->name;
+    }
 }
 
 void kprocess_destroy(HANDLE p)
