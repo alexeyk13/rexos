@@ -24,7 +24,7 @@ typedef struct {
     IO* status_io;
     CCIDD_STATE state;
     uint16_t data_ep_size;
-    uint8_t data_ep, status_ep, iface, msg_type, seq, abort_seq, status_busy, status_pending, slot_status, aborting, tx_busy, tx_pending, bBWI;
+    uint8_t data_ep, status_ep, iface, msg_type, seq, abort_seq, status_busy, status_pending, slot_status, aborting, tx_busy, tx_pending, rx_pending, bBWI;
 } CCIDD;
 
 static void ccidd_destroy(CCIDD* ccidd)
@@ -276,7 +276,7 @@ void ccidd_class_configured(USBD* usbd, USB_CONFIGURATION_DESCRIPTOR* cfg)
 
             ccidd->data_ep = ccidd->status_ep = 0;
             ccidd->user_io = ccidd->status_io = ccidd->main_io = ccidd->txd_io = NULL;
-            ccidd->tx_busy = ccidd->tx_pending = false;
+            ccidd->tx_busy = ccidd->tx_pending = ccidd->rx_pending = false;
             status_ep_size = 0;
             for (ep = (USB_ENDPOINT_DESCRIPTOR*)usb_interface_get_first_descriptor(cfg, iface, USB_ENDPOINT_DESCRIPTOR_TYPE); ep != NULL;
                  ep = (USB_ENDPOINT_DESCRIPTOR*)usb_interface_get_next_descriptor(cfg, (USB_GENERIC_DESCRIPTOR*)ep, USB_ENDPOINT_DESCRIPTOR_TYPE))
@@ -623,7 +623,7 @@ static inline void ccidd_rxc(USBD* usbd, CCIDD* ccidd)
         break;
     default:
 #if (USBD_CCID_DEBUG_ERRORS)
-        printf("CCIDD: slot busy\n");
+        printf("CCIDD: slot busy, state: %d\n", ccidd->state);
 #endif //USBD_CCID_DEBUG_ERRORS
         ccidd_tx_error(usbd, ccidd, CCID_SLOT_ERROR_SLOT_BUSY, true, msg->bMessageType, msg->bSeq);
     }
@@ -644,6 +644,11 @@ static void ccidd_txc(USBD* usbd, CCIDD* ccidd)
         //follow down
     case CCIDD_STATE_TXD_ZLP:
         ccidd->state = CCIDD_STATE_IDLE;
+        if (ccidd->rx_pending)
+        {
+            ccidd->rx_pending = false;
+            ccidd_rxc(usbd, ccidd);
+        }
         break;
     default:
         ccidd->state = CCIDD_STATE_IDLE;
@@ -687,6 +692,11 @@ static inline void ccidd_driver_event(USBD* usbd, CCIDD* ccidd, IPC* ipc)
     switch (HAL_ITEM(ipc->cmd))
     {
     case IPC_READ:
+        if (ccidd->state == CCIDD_STATE_TXD || ccidd->state == CCIDD_STATE_TXD_ZLP)
+        {
+            ccidd->rx_pending = true;
+            return;
+        }
         ccidd_rxc(usbd, ccidd);
         break;
     case IPC_WRITE:
