@@ -173,6 +173,7 @@ void lpc_uart_on_isr(int vector, void* param)
 #if(UART_ENABLE_DMA)
         if(uart->i.dma_mode & UART_DMA_RX_MODE)
         {
+            dma_disable_channel(DMA_UART_RX_CHANNEL);
             __USART_REGS[port]->IER &= ~USART0_IER_RBRIE_Msk;
             timer_istop(uart->i.rx_timer);
             if(uart->i.rx_io)
@@ -514,6 +515,16 @@ static void lpc_uart_flush(EXO* exo, UART_PORT port)
     {
         IO* rx_io;
         IO* tx_io;
+#if(UART_ENABLE_DMA)
+        uint32_t mode = exo->uart.uarts[port]->i.dma_mode;
+        if(mode & (UART_DMA_RX_MODE | UART_DMA_TX_MODE))
+        {
+            __USART_REGS[port]->FCR = USART0_FCR_FIFOEN_Msk | USART0_FCR_TXFIFORES_Msk
+                            | USART0_FCR_RXFIFORES_Msk | USART0_FCR_DMAMODE_Msk | (3 << USART0_FCR_RXTRIGLVL_Pos);
+            dma_disable_channel(DMA_UART_RX_CHANNEL);
+            dma_disable_channel(DMA_UART_TX_CHANNEL);
+        }
+#endif // UART_ENABLE_DMA
         __disable_irq();
         rx_io = exo->uart.uarts[port]->i.rx_io;
         exo->uart.uarts[port]->i.rx_io = NULL;
@@ -694,6 +705,8 @@ static inline void lpc_uart_io_read(EXO* exo, UART_PORT port, IPC* ipc)
     if(uart->i.dma_mode & UART_DMA_RX_MODE)
     {
         dma_enable_perif_channel(DMA_UART_RX_CHANNEL, io_data(io), ipc->param3);
+            __USART_REGS[port]->RBR;
+            __USART_REGS[port]->RBR;
     }
 #endif // UART_ENABLE_DMA
     __USART_REGS[port]->IER |= USART0_IER_RBRIE_Msk;
