@@ -15,6 +15,7 @@ typedef enum {
     CCIDD_STATE_NO_BUFFER,
     CCIDD_STATE_RXD,
     CCIDD_STATE_REQUEST,
+    CCIDD_STATE_WTX,
     CCIDD_STATE_TXD,
     CCIDD_STATE_TXD_ZLP
 } CCIDD_STATE;
@@ -219,6 +220,17 @@ static void ccidd_tx_rate_clock(USBD* usbd, CCIDD* ccidd, unsigned int khz, unsi
 {
     ccidd_tx_rate_clock_ex(usbd, ccidd, ccidd->seq, 0, CCID_SLOT_STATUS_COMMAND_NO_ERROR, ccidd->txd_io, khz, bps);
     ccidd->state = CCIDD_STATE_TXD;
+}
+
+static inline void ccidd_tx_wtx(USBD* usbd, CCIDD* ccidd)
+{
+    if (ccidd->state != CCIDD_STATE_REQUEST)
+    {
+        error(ERROR_INVALID_STATE);
+        return;
+    }
+    ccidd_tx_slot_status_ex(usbd, ccidd, ccidd->seq, 0, CCID_SLOT_STATUS_COMMAND_TIME_EXTENSION, ccidd->txd_io);
+    ccidd->state = CCIDD_STATE_WTX;
 }
 
 static inline void ccidd_tx_error(USBD* usbd, CCIDD* ccidd, uint8_t error, bool use_main, uint8_t msg_type, uint8_t seq)
@@ -652,6 +664,9 @@ static void ccidd_txc(USBD* usbd, CCIDD* ccidd)
             ccidd_rxc(usbd, ccidd);
         }
         break;
+    case CCIDD_STATE_WTX:
+        ccidd->state = CCIDD_STATE_REQUEST;
+        break;
     default:
         ccidd->state = CCIDD_STATE_IDLE;
 #if (USBD_CCID_DEBUG_ERRORS)
@@ -784,6 +799,9 @@ static inline void ccidd_user_response(USBD* usbd, CCIDD* ccidd, IPC* ipc)
     case USB_CCID_SET_RATE_CLOCK:
         ccidd_tx_rate_clock(usbd, ccidd, ((CCID_RATE_CLOCK*)io_data(ccidd->user_io))->dwClockFrequency, ((CCID_RATE_CLOCK*)io_data(ccidd->user_io))->dwDataRate);
         break;
+    case USB_CCID_WTX:
+        ccidd_tx_wtx(usbd, ccidd);
+        break;
     }
 }
 
@@ -821,6 +839,7 @@ void ccidd_class_request(USBD* usbd, void* param, IPC* ipc)
         case USB_CCID_SET_PARAMS:
         case USB_CCID_RESET_PARAMS:
         case USB_CCID_SET_RATE_CLOCK:
+        case USB_CCID_WTX:
         case IPC_WRITE:
             ccidd_user_response(usbd, ccidd, ipc);
             break;
