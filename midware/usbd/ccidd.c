@@ -519,8 +519,8 @@ static inline void ccidd_reset_params(USBD* usbd, CCIDD* ccidd)
 
 static inline void ccidd_set_data_rate_and_clock(USBD* usbd, CCIDD* ccidd)
 {
-#if (USBD_CCID_DEBUG_REQUESTS)
     CCID_MSG_RATE_CLOCK* rate_clock = io_data(ccidd->main_io);
+#if (USBD_CCID_DEBUG_REQUESTS)
     printf("PC_to_RDR_SetDataRateAndClockFrequency %d KHz, %d BPS\n", rate_clock->dwClockFrequency, rate_clock->dwDataRate);
 #endif //USBD_CCID_DEBUG_REQUESTS
     io_data_write(ccidd->user_io, (uint8_t*)io_data(ccidd->main_io) + sizeof(CCID_MSG), rate_clock->dwLength);
