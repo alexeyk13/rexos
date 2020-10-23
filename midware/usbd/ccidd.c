@@ -229,7 +229,7 @@ static inline void ccidd_tx_wtx(USBD* usbd, CCIDD* ccidd)
         error(ERROR_INVALID_STATE);
         return;
     }
-    ccidd_tx_slot_status_ex(usbd, ccidd, ccidd->seq, 0, CCID_SLOT_STATUS_COMMAND_TIME_EXTENSION, ccidd->txd_io);
+    ccidd_tx_slot_status_ex(usbd, ccidd, ccidd->seq, 1, CCID_SLOT_STATUS_COMMAND_TIME_EXTENSION, ccidd->txd_io);
     ccidd->state = CCIDD_STATE_WTX;
 }
 
