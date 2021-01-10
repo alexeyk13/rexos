@@ -867,6 +867,40 @@
 #define IRQ_VECTORS_COUNT   45
 #endif
 
+//---------------------------------------------------------------------------- STM32 H7 ----------------------------------------------------------------------------------------------------------
+#if defined(STM32H742VI) || defined(STM32H742ZI) || defined(STM32H742AI) || defined(STM32H742II) || defined(STM32H742BI) || defined(STM32H742XI)
+#define STM32H742xx
+#endif
+
+#if defined(STM32H743VI) || defined(STM32H743ZI) || defined(STM32H743AI) || defined(STM32H743II) || defined(STM32H743BI) || defined(STM32H743XI)
+#define STM32H743xx
+#endif
+
+#if defined(STM32H742xx) || defined(STM32H743xx)
+#define STM32H7
+#define STM32
+#ifndef CORTEX_M7
+#define CORTEX_M7
+#endif
+
+#define IRQ_VECTORS_COUNT   192
+#define SRAM_BASE          0x24000000 // D1_AXISRAM_BASE
+#define SRAM_SIZE          0x40000
+
+#define GPIO_COUNT          11
+#define TIM_COUNT           10
+#define UARTS_COUNT         8
+#define I2C_COUNT           4
+#define SPI_COUNT           6
+#define CAN_COUNT           1
+
+
+#endif
+
+
+
+
+
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4) || defined(STM32L1)
 #define STM32
@@ -894,7 +928,6 @@
 #if defined(STM32)
 
 //fucking morons in ST forgot to check if variable is already defined
-#undef SRAM_BASE
 #undef FLASH_BASE
 
 #include "stm32_config.h"
@@ -911,6 +944,8 @@
 #include "stm32l0xx.h"
 #elif defined(STM32L1)
 #include "stm32l1xx.h"
+#elif defined(STM32H7)
+#include "stm32h7xx.h"
 #endif
 
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)

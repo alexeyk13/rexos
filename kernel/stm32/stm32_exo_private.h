@@ -20,13 +20,14 @@
 #include "stm32_adc.h"
 #include "stm32_flash.h"
 #include "stm32_eth.h"
+#include "stm32_sdmmc.h"
 #if (STM32_I2C_DRIVER)
     #include "stm32_i2c.h"
 #endif //STM32_I2C_DRIVER
 #if (STM32_SPI_DRIVER)
     #include "stm32_spi.h"
 #endif //STM32_SPI_DRIVER
-#ifdef STM32F10X_CL
+#if defined(STM32F10X_CL) || defined(STM32H7)
 #include "stm32_otg.h"
 #else
 #include "stm32_usb.h"
@@ -63,6 +64,10 @@ typedef struct _EXO {
 #if (STM32_ETH_DRIVER)
     ETH_DRV eth;
 #endif //STM32_ETH_DRIVER
+#if (STM32_SDMMC_DRIVER)
+    SDMMC_DRV sdmmc;
+#endif //STM32_SDMMC_DRIVER
+
 }EXO;
 
 #endif // STM32_EXO_PRIVATE_H

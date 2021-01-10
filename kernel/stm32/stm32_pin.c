@@ -46,6 +46,10 @@ const GPIO_TypeDef_P GPIO[8] =                                  {GPIOA, GPIOB, G
 const GPIO_TypeDef_P GPIO[4] =                                  {GPIOA, GPIOB, GPIOC, GPIOD};
 static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {0, 1, 2, 3};
 #define GPIO_POWER_PORT                                         RCC->AHBENR
+#elif defined(STM32H7)
+const GPIO_TypeDef_P GPIO[GPIO_COUNT] =                         {GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF, GPIOG, GPIOH, GPIOI, GPIOJ, GPIOK};
+static const unsigned int GPIO_POWER_PINS[GPIO_COUNT] =         {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+#define GPIO_POWER_PORT                                         RCC->AHB4ENR
 #endif
 
 #if defined(STM32F1)
@@ -97,6 +101,13 @@ void stm32_gpio_enable_pin(GPIO_DRV* gpio, PIN pin, unsigned int mode, AF af)
     GPIO_SET_PUPD(pin, (mode >> 5) & 3);
     GPIO_AFR_SET(pin, af);
 }
+#endif
+
+#if defined(STM32H7)
+#define RTSR  RTSR1
+#define FTSR  FTSR1
+#define IMR   IMR1
+#define EMR   EMR1
 #endif
 
 void stm32_gpio_enable_exti(GPIO_DRV* gpio, PIN pin, unsigned int flags)
