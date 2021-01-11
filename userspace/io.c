@@ -12,6 +12,19 @@
 #include "error.h"
 #include <string.h>
 
+#include "core.h"
+
+
+static inline uint32_t io_get_sys_size(IO* io)
+{
+#if !defined(IO_DATA_ALIGN) || (IO_DATA_ALIGN <= 4)
+    return sizeof(IO);
+#else
+    uint32_t addr = (uint32_t)io;
+    return (((addr + sizeof(IO)) + IO_DATA_ALIGN - 3) & ~(IO_DATA_ALIGN - 1)) - addr;
+#endif
+}
+
 void* io_data(IO* io)
 {
     return (void*)((unsigned int)io + io->data_offset);
@@ -71,7 +84,7 @@ unsigned int io_data_append(IO* io, const void* data, unsigned int size)
 void io_reset(IO* io)
 {
     io->data_size = io->stack_size = 0;
-    io->data_offset = sizeof(IO);
+    io->data_offset = io_get_sys_size(io);
 }
 
 void io_hide(IO* io, unsigned int size)
@@ -84,8 +97,9 @@ void io_hide(IO* io, unsigned int size)
 
 void io_unhide(IO* io, unsigned int size)
 {
-    if (size > io->data_offset - sizeof(IO))
-        size = io->data_offset - sizeof(IO);
+    uint32_t sys_size = io_get_sys_size(io);
+    if (size > io->data_offset - sys_size)
+        size = io->data_offset - sys_size;
     if (size)
     {
         io->data_offset -= size;
@@ -95,12 +109,15 @@ void io_unhide(IO* io, unsigned int size)
 
 void io_show(IO* io)
 {
-    io_unhide(io, io->data_offset - sizeof(IO));
+    io_unhide(io, io->data_offset - io_get_sys_size(io));
 }
 
 IO* io_create(unsigned int size)
 {
     IO* io;
+#if defined(IO_DATA_ALIGN) || (IO_DATA_ALIGN > 4)
+    size += IO_DATA_ALIGN - 4;
+#endif
     svc_call(SVC_IO_CREATE, (unsigned int)&io, size, 0);
     if (io)
         io_reset(io);
