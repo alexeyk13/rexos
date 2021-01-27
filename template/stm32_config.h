@@ -21,11 +21,13 @@
 #define STM32_USB_DRIVER                        1
 #define STM32_CAN_DRIVER                        0
 #define STM32_ETH_DRIVER                        0
+#define STM32_SDMMC_DRIVER                      0
 //------------------------------ CORE ------------------------------------------------
 //disable only for power saving if no EXTI or remap is used
 #define SYSCFG_ENABLED                          1
 //stupid F1 series only. Remap mask. See datasheet
 #define STM32F1_MAPR                            (AFIO_MAPR_USART2_REMAP)
+#define IO_DATA_ALIGN                           4  // 32 for stm32H7 if use DMA
 //------------------------------- UART -----------------------------------------------
 //in any half duplex mode
 #define STM32_UART_DISABLE_ECHO                 0
@@ -52,12 +54,36 @@
 #define PLL2_DIV                                0
 #define PLL2_MUL                                0
 
-//STM32F2, STM32F4
-#define PLL_M                                   0
-#define PLL_N                                   0
+//STM32F2, STM32F4, STM32H7    PLL clk = (PLL_N + 1) * ((clock source)/PLL_M) / ( PLL_P + 1)
+#define PLL_M                                   1 // 2M <= ((clock source)/PLL_M) <= 16M
+#define PLL_N                                   59
 #define PLL_P                                   0
+#define PLL_Q                                   9 
+
+//---- only for  STM32H7
+#define PLL2_N                                   49
+#define PLL2_P                                   20
+#define PLL2_Q                                   20
+#define PLL2_R                                   3  // 100M
+
+#define PLL3_N                                   59
+#define PLL3_P                                   0
+#define PLL3_Q                                   9
+#define PLL3_R                                   9
+
+//STM32H7  LDO voltage   0    1    2   3
+//         MAX CLOCK    480  400  300 200
+#define VOS_VALUE                               0  // for rev.Y VOS0 prohibit see errata
+#define EXT_VCORE                               0  // STM32H7: 0 - use internal LDO  1 - external supply
+
+#define USB_CLOCK_SRC                           USB_CLOCK_SRC_PLL1_Q          // 48M for USB FS, 60M for USB HS
+#define SDMMC_CLOCK_SRC                         SDMMC_CLOCK_SRC_PLL2_R        // max 250 MHz
+
 
 #define STANDBY_WKUP                            0
+//------------------------------ SDMMC -----------------------------------------------
+#define STM32_SDMMC_MAX_CLOCK                   10000000
+
 //------------------------------ TIMER -----------------------------------------------
 #define HPET_TIMER                              TIM_14
 //only required if no STM32_RTC_DRIVER is set

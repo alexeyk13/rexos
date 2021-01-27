@@ -41,10 +41,13 @@ static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39, 52, 53,
 static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {4, 17, 18, 19, 20, 5};
 static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USART3, UART4, UART5, USART6};
 
-#elif defined(STM32F4)
+#elif defined(STM32F4) || defined(STM32H7)
 static const unsigned int UART_VECTORS[UARTS_COUNT] =       {37, 38, 39, 52, 53, 71, 82, 83};
 static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {4, 17, 18, 19, 20, 5, 30, 31};
 static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USART3, UART4, UART5, USART6, UART7, UART8};
+#if defined(STM32H7)
+#define APB1ENR APB1LENR
+#endif // STM32H7
 #elif defined(STM32L0)
 static const unsigned int UART_VECTORS[UARTS_COUNT] =       {27, 28};
 static const unsigned int UART_POWER_PINS[UARTS_COUNT] =    {14, 17};
@@ -87,6 +90,18 @@ static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USA
 #define USART_SR_RXNE       USART_ISR_RXNE
 #define SR(port)            (UART_REGS[(port)]->ISR)
 #define TXC(port, c)        (UART_REGS[(port)]->TDR = (c))
+
+#elif defined(STM32H7)
+#define USART_SR_TXE        USART_ISR_TXE_TXFNF
+#define USART_SR_TC         USART_ISR_TC
+#define USART_SR_PE         USART_ISR_PE
+#define USART_SR_FE         USART_ISR_FE
+#define USART_SR_NE         USART_ISR_NE
+#define USART_SR_ORE        USART_ISR_ORE
+#define USART_SR_RXNE       USART_ISR_RXNE_RXFNE
+#define SR(port)            (UART_REGS[(port)]->ISR)
+#define TXC(port, c)        (UART_REGS[(port)]->TDR = (c))
+
 #else
 #define SR(port)            (UART_REGS[(port)]->SR)
 #define TXC(port, c)        (UART_REGS[(port)]->DR = (c))
@@ -212,7 +227,7 @@ void stm32_uart_on_isr(int vector, void* param)
             exo->uart.uarts[port]->error = ERROR_OVERFLOW;
         else
         {
-#if defined(STM32L0) || defined(STM32F0)
+#if defined(STM32L0) || defined(STM32F0) || defined(STM32H7)
             __REG_RC32(UART_REGS[port]->RDR);
 #else
             __REG_RC32(UART_REGS[port]->DR);
@@ -245,7 +260,7 @@ void stm32_uart_on_isr(int vector, void* param)
     //receive data
     if (SR(port) & USART_SR_RXNE)
     {
-#if defined(STM32L0) || defined(STM32F0)
+#if defined(STM32L0) || defined(STM32F0) || defined(STM32H7)
         c = UART_REGS[port]->RDR;
 #else
         c = UART_REGS[port]->DR;
@@ -261,8 +276,8 @@ void uart_write_kernel(const char *const buf, unsigned int size, void* param)
     UART_REGS[(UART_PORT)param]->CR1 |= USART_CR1_TE;
     for(i = 0; i < size; ++i)
     {
-#if defined(STM32L0) || defined(STM32F0)
-        while ((UART_REGS[(UART_PORT)param]->ISR & USART_ISR_TXE) == 0) {}
+#if defined(STM32L0) || defined(STM32F0) || defined(STM32H7)
+        while ((UART_REGS[(UART_PORT)param]->ISR & USART_SR_TXE) == 0) {}
         UART_REGS[(UART_PORT)param]->TDR = buf[i];
 #else
         while ((UART_REGS[(UART_PORT)param]->SR & USART_SR_TXE) == 0) {}

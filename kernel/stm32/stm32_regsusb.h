@@ -170,16 +170,6 @@ typedef struct {
     __IO uint32_t GCCTL;            //0xE00 power and clock gating control register
 } OTG_HS_PC_TypeDef;
 
-#define OTG_HS_BASE                (AHB1PERIPH_BASE + 0x00020000)
-#define OTG_HS_GENERAL_BASE    (OTG_HS_BASE + 0x0000)
-#define OTG_HS_HOST_BASE        (OTG_HS_BASE + 0x0400)
-#define OTG_HS_DEVICE_BASE        (OTG_HS_BASE + 0x0800)
-#define OTG_HS_PC_BASE            (OTG_HS_BASE + 0x0e00)
-
-#define OTG_HS_GENERAL        ((OTG_HS_GENERAL_TypeDef *) OTG_HS_GENERAL_BASE)
-#define OTG_HS_HOST             ((OTG_HS_HOST_TypeDef *) OTG_HS_HOST_BASE)
-#define OTG_HS_DEVICE          ((OTG_HS_DEVICE_TypeDef *) OTG_HS_DEVICE_BASE)
-#define OTG_HS_PC                  ((OTG_HS_PC_TypeDef *) OTG_HS_PC_BASE)
 
 /******************************************************************************/
 /*                         Peripheral Registers_Bits_Definition               */
@@ -1027,7 +1017,20 @@ typedef struct {
     __IO uint32_t GCCTL;        //0xE00 power and clock gating control register
 } OTG_FS_PC_TypeDef;
 
+#if defined(STM32H7)
+#define OTG_FS_BASE                                             USB2_OTG_FS_PERIPH_BASE
+#define OTG_HS_BASE                                             USB1_OTG_HS_PERIPH_BASE
+
+//#define OTG_FS_DEVICE1                                           ((OTG_FS_DEVICE_TypeDef *) OTG_FS_DEVICE_BASE)
+
+#else
 #define OTG_FS_BASE                                             0x50000000
+#define OTG_HS_BASE                                             (AHB1PERIPH_BASE + 0x00020000)
+
+#d//efine OTG_FS_DEVICE                                           ((OTG_FS_DEVICE_TypeDef *) OTG_FS_DEVICE_BASE)
+
+#endif //STM32H7
+
 #define OTG_FS_GENERAL_BASE                                     (OTG_FS_BASE + 0x0000)
 #define OTG_FS_HOST_BASE                                        (OTG_FS_BASE + 0x0400)
 #define OTG_FS_DEVICE_BASE                                      (OTG_FS_BASE + 0x0800)
@@ -1038,6 +1041,18 @@ typedef struct {
 #define OTG_FS_HOST                                             ((OTG_FS_HOST_TypeDef *) OTG_FS_HOST_BASE)
 #define OTG_FS_DEVICE                                           ((OTG_FS_DEVICE_TypeDef *) OTG_FS_DEVICE_BASE)
 #define OTG_FS_PC                                               ((OTG_FS_PC_TypeDef *) OTG_FS_PC_BASE)
+
+
+#define OTG_HS_GENERAL_BASE                                     (OTG_HS_BASE + 0x0000)
+#define OTG_HS_HOST_BASE                                        (OTG_HS_BASE + 0x0400)
+#define OTG_HS_DEVICE_BASE                                      (OTG_HS_BASE + 0x0800)
+#define OTG_HS_PC_BASE                                          (OTG_HS_BASE + 0x0e00)
+#define OTG_HS_FIFO_BASE                                        (OTG_HS_BASE + 0x1000)
+
+#define OTG_HS_GENERAL                                          ((OTG_FS_GENERAL_TypeDef *) OTG_HS_GENERAL_BASE)
+#define OTG_HS_HOST                                             ((OTG_FS_HOST_TypeDef *) OTG_HS_HOST_BASE)
+#define OTG_HS_DEVICE                                           ((OTG_FS_DEVICE_TypeDef *) OTG_HS_DEVICE_BASE)
+#define OTG_HS_PC                                               ((OTG_FS_PC_TypeDef *) OTG_HS_PC_BASE)
 
 /******************************************************************************/
 /*                         Peripheral Registers_Bits_Definition               */
@@ -1077,6 +1092,7 @@ typedef struct {
 #define  OTG_FS_GENERAL_USBCFG_CTXPKT                           (uint32_t)(1ul << 31ul) //Corrupt Tx packet
 #define  OTG_FS_GENERAL_USBCFG_FDMOD                            (uint32_t)(1ul << 30ul) //Forced peripheral mode
 #define  OTG_FS_GENERAL_USBCFG_FHMOD                            (uint32_t)(1ul << 29ul) //Forced host mode
+#define  OTG_FS_GENERAL_USBCFG_FYLPC                            (uint32_t)(1ul << 15ul) //only stm32h7 PHY Low-power clock select
 #define  OTG_FS_GENERAL_USBCFG_TRDT                             (uint32_t)(0xful << 10ul)//USB turn around time
 #define  OTG_FS_GENERAL_USBCFG_HNPCAP                           (uint32_t)(1ul << 9ul)  //HNP-capable
 #define  OTG_FS_GENERAL_USBCFG_SRPCAP                           (uint32_t)(1ul << 8ul)  //SRP-capable
@@ -1237,9 +1253,14 @@ typedef struct {
 #define  OTG_FS_GENERAL_NPTXSTS_NPTXFSAV_POS                    (uint32_t)(0ul)
 
 /**********  Bit definition for OTG_FS_GENERAL_CCFG register  ***************/
+#if defined(STM32H7)
+#define  OTG_FS_GENERAL_CCFG_VBUSBSEN                           (uint32_t)(1ul << 21ul)     //Enable VBus sensing "B" device
+
+#else
 #define  OTG_FS_GENERAL_CCFG_SOFOUTEN                           (uint32_t)(1ul << 20ul)     //SOF output enable
 #define  OTG_FS_GENERAL_CCFG_VBUSBSEN                           (uint32_t)(1ul << 19ul)     //Enable VBus sensing "B" device
 #define  OTG_FS_GENERAL_CCFG_VBUSASEN                           (uint32_t)(1ul << 18ul)     //Enable VBus sensing "A" device
+#endif// STM32H7
 #define  OTG_FS_GENERAL_CCFG_PWRDWN                             (uint32_t)(1ul << 16ul)     //Power down
 
 /*************  Bit definition for OTG_FS_GENERAL_CID register  ***************/

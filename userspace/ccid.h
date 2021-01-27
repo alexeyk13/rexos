@@ -1,9 +1,7 @@
 /*
     RExOS - embedded RTOS
-    Copyright (c) 2011-2019, RExOS team
+    Copyright (c) 2011-2018, Alexey Kramarenko
     All rights reserved.
-
-    author: Alexey E. Kramarenko (alexeyk13@yandex.ru)
 */
 
 #ifndef CCID_H
@@ -273,6 +271,7 @@ typedef enum {
     USB_CCID_SET_PARAMS,
     USB_CCID_RESET_PARAMS,
     USB_CCID_SET_RATE_CLOCK,
+    USB_CCID_WTX,
     //announce from card
     USB_CCID_CARD_INSERTED,
     USB_CCID_CARD_REMOVED

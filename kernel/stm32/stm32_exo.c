@@ -20,7 +20,7 @@
 #include "stm32_eep.h"
 #include "stm32_eth.h"
 #include "stm32_i2c.h"
-#ifdef STM32F10X_CL
+#if defined(STM32F10X_CL) || defined(STM32H7)
 #include "stm32_otg.h"
 #else
 #include "stm32_usb.h"
@@ -101,7 +101,7 @@ void exodriver_post(IPC* ipc)
 #endif //STM32_I2C_DRIVER
 #if (STM32_USB_DRIVER)
     case HAL_USB:
-#ifdef STM32F10X_CL
+#if defined(STM32F10X_CL) || defined(STM32H7)
         stm32_otg_request(__KERNEL->exo, ipc);
 #else
         stm32_usb_request(__KERNEL->exo, ipc);
@@ -113,6 +113,12 @@ void exodriver_post(IPC* ipc)
         stm32_eth_request(__KERNEL->exo, ipc);
         break;
 #endif //STM32_ETH_DRIVER
+#if (STM32_SDMMC_DRIVER)
+    case HAL_SDMMC:
+        stm32_sdmmc_request(__KERNEL->exo, ipc);
+        break;
+#endif //STM32_SDMMC_DRIVER
+
     default:
         kerror(ERROR_NOT_SUPPORTED);
         break;
@@ -161,7 +167,7 @@ void exodriver_init()
     stm32_i2c_init(__KERNEL->exo);
 #endif //STM32_I2C_DRIVER
 #if (STM32_USB_DRIVER)
-#ifdef STM32F10X_CL
+#if defined(STM32F10X_CL) || defined(STM32H7)
     stm32_otg_init(__KERNEL->exo);
 #else
     stm32_usb_init(__KERNEL->exo);
@@ -170,5 +176,8 @@ void exodriver_init()
 #if (STM32_ETH_DRIVER)
     stm32_eth_init(__KERNEL->exo);
 #endif //STM32_ETH_DRIVER
+#if (STM32_SDMMC_DRIVER)
+    stm32_sdmmc_init(__KERNEL->exo);
+#endif //STM32_SDMMC_DRIVER
 
 }

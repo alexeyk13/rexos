@@ -35,7 +35,16 @@ typedef enum {
 typedef enum {
     STM32_CLOCK_APB1 = POWER_CLOCK_MAX,
     STM32_CLOCK_APB2,
-    STM32_CLOCK_ADC
+    STM32_CLOCK_ADC,
+#if defined(STM32H7)
+    STM32_CLOCK_PLL1_Q,
+    STM32_CLOCK_PLL2_P,
+    STM32_CLOCK_PLL2_Q,
+    STM32_CLOCK_PLL2_R,
+    STM32_CLOCK_PLL3_P,
+    STM32_CLOCK_PLL3_Q,
+    STM32_CLOCK_PLL3_R,
+#endif // STM32H7
 } STM32_POWER_CLOCKS;
 
 typedef enum {
@@ -63,6 +72,23 @@ typedef enum {
     RESET_REASON_WAKEUP,
     RESET_REASON_OPTION_BYTES
 } RESET_REASON;
+
+#if defined(STM32H7)
+typedef enum {
+    STM32_PLL_OUT_P,
+    STM32_PLL_OUT_Q,
+    STM32_PLL_OUT_R,
+}STM32_PLL_OUT;
+
+#define USB_CLOCK_SRC_PLL1_Q                    (1 << RCC_D2CCIP2R_USBSEL_Pos)
+#define USB_CLOCK_SRC_PLL3_Q                    (2 << RCC_D2CCIP2R_USBSEL_Pos)
+#define USB_CLOCK_SRC_HSI48                     (3 << RCC_D2CCIP2R_USBSEL_Pos)
+
+#define SDMMC_CLOCK_SRC_PLL1_Q                  (0 << RCC_D1CCIPR_SDMMCSEL_Pos)
+#define SDMMC_CLOCK_SRC_PLL2_R                  (1 << RCC_D1CCIPR_SDMMCSEL_Pos)
+
+#endif // STM32H7
+
 
 //------------------------------------------------- GPIO ---------------------------------------------------------------------
 
@@ -123,7 +149,7 @@ typedef enum {
 }STM32_GPIO_MODE;
 
 #elif defined(STM32F0) || defined(STM32F2) || defined(STM32F4) || defined(STM32L0) \
-    || defined(STM32L1)
+        || defined(STM32L1) || defined(STM32H7)
 
 #define STM32_GPIO_MODE_INPUT                   (0x0 << 0)
 #define STM32_GPIO_MODE_OUTPUT                  (0x1 << 0)

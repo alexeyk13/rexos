@@ -23,6 +23,10 @@ void stm32_power_init(EXO* exo);
 void stm32_power_request(EXO* exo, IPC* ipc);
 int get_core_clock_internal();
 
+#if defined(STM32H7)
+void stm32_power_pll2_on();
+void stm32_power_pll3_on();
+#endif //STM32H7
 
 __STATIC_INLINE unsigned int stm32_power_get_clock_inside(EXO* exo, STM32_POWER_CLOCKS type)
 {
