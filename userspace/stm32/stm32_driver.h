@@ -9,13 +9,10 @@
 #ifndef STM32_DRIVER_H
 #define STM32_DRIVER_H
 
+#include "stm32.h"
+#include "stm32_config.h"
 #include "../adc.h"
 #include "../power.h"
-#include "sys_config.h"
-#include "../object.h"
-#include "../ipc.h"
-
-extern const REX __STM32_ETH;
 
 //-------------------------------------------------- POWER ---------------------------------------------------------------------
 
@@ -29,7 +26,10 @@ extern const REX __STM32_ETH;
 
 typedef enum {
     //if enabled
-    STM32_POWER_GET_RESET_REASON = POWER_MAX
+    STM32_POWER_GET_RESET_REASON = POWER_MAX,
+#if defined(STM32H7)
+    STM32_POWER_SET_MCO,
+#endif
 } STM32_POWER_IPCS;
 
 typedef enum {
@@ -80,12 +80,47 @@ typedef enum {
     STM32_PLL_OUT_R,
 }STM32_PLL_OUT;
 
+typedef enum {
+    MCO1_CLOCK_SRC_HSI = 0,
+    MCO1_CLOCK_SRC_LSE,
+    MCO1_CLOCK_SRC_HSE,
+    MCO1_CLOCK_SRC_PLL1_Q,
+    MCO1_CLOCK_SRC_HSI48,
+
+    MCO2_CLOCK_SRC_CORE = 0 | 0x80,
+    MCO2_CLOCK_SRC_PLL2_P,
+    MCO2_CLOCK_SRC_HSE,
+    MCO2_CLOCK_SRC_PLL1_P,
+    MCO2_CLOCK_SRC_CSI,
+    MCO2_CLOCK_SRC_LSI,
+}MCO_CLOCK_SRC;
+
+typedef enum {
+    MCO_CLOCK_DISABLE = 0,
+    MCO_CLOCK_DIV_1,
+    MCO_CLOCK_DIV_2,
+    MCO_CLOCK_DIV_3,
+    MCO_CLOCK_DIV_4,
+    MCO_CLOCK_DIV_5,
+    MCO_CLOCK_DIV_6,
+    MCO_CLOCK_DIV_7,
+    MCO_CLOCK_DIV_8,
+    MCO_CLOCK_DIV_9,
+    MCO_CLOCK_DIV_10,
+}MCO_CLOCK_DIV;
+
+
 #define USB_CLOCK_SRC_PLL1_Q                    (1 << RCC_D2CCIP2R_USBSEL_Pos)
 #define USB_CLOCK_SRC_PLL3_Q                    (2 << RCC_D2CCIP2R_USBSEL_Pos)
 #define USB_CLOCK_SRC_HSI48                     (3 << RCC_D2CCIP2R_USBSEL_Pos)
 
 #define SDMMC_CLOCK_SRC_PLL1_Q                  (0 << RCC_D1CCIPR_SDMMCSEL_Pos)
 #define SDMMC_CLOCK_SRC_PLL2_R                  (1 << RCC_D1CCIPR_SDMMCSEL_Pos)
+
+#define SDMMC_RECEIVE_CLK_INT                   0
+#define SDMMC_RECEIVE_CLK_CKIN                  1
+#define SDMMC_RECEIVE_CLK_TUNED                 2
+
 
 #endif // STM32H7
 
@@ -167,7 +202,7 @@ typedef enum {
 #else
 #define GPIO_SPEED_LOW                          (0x0 << 3)
 #define GPIO_SPEED_MEDIUM                       (0x1 << 3)
-#if defined(STM32F2) || defined(STM32F4)
+#if defined(STM32F2) || defined(STM32F4) || defined(STM32H7)
 #define GPIO_SPEED_FAST                         (0x2 << 3)
 #endif //defined(STM32F2) || defined(STM32F4) || defined(STM32L0)
 #define GPIO_SPEED_HIGH                         (0x3 << 3)
@@ -272,7 +307,7 @@ typedef enum {
     TIM_CHANNEL1 = 0,
     TIM_CHANNEL2,
     TIM_CHANNEL3,
-    TIM_CHANNEL4
+    TIM_CHANNEL4,
 } TIMER_CHANNEL;
 
 #define STM32_TIMER_DMA_ENABLE                          (1 << 16)

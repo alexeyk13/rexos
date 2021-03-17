@@ -28,7 +28,7 @@ void storage_get_media_descriptor(HAL hal, HANDLE process, HANDLE user, IO* io)
 
 void storage_request_notify_state_change(HAL hal, HANDLE process, HANDLE user)
 {
-    ipc_post_inline(process, HAL_REQ(hal, STORAGE_NOTIFY_STATE_CHANGE), user, 0, 0);
+    ipc_post_inline(process, HAL_CMD(hal, STORAGE_NOTIFY_STATE_CHANGE), user, 0, 0);
 }
 
 void storage_cancel_notify_state_change(HAL hal, HANDLE process, HANDLE user)

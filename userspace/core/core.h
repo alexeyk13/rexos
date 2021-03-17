@@ -22,7 +22,7 @@
 #include "rexosp.h"
 #endif //REXOSP
 
-#if defined(CORTEX_M3) || defined(CORTEX_M0) || defined(CORTEX_M4)
+#if defined(CORTEX_M3) || defined(CORTEX_M0) || defined(CORTEX_M4) || defined(CORTEX_M7)
 #ifndef CORTEX_M
 #define CORTEX_M
 #endif //CORTEX_M

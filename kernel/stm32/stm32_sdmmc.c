@@ -82,8 +82,6 @@ static inline void stm32_sdmmc_on_cmd_isr(EXO* exo, uint32_t sta)
         exo->sdmmc.state = SDMMC_STATE_DATA;
 
     }else{
-        iio_complete_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, SDMMC_CMD), 0, exo->sdmmc.io, 0);
-        exo->sdmmc.state = SDMMC_STATE_IDLE;
 
         if(resp_type == SDMMC_RESPONSE_R2)
         {
@@ -92,9 +90,19 @@ static inline void stm32_sdmmc_on_cmd_isr(EXO* exo, uint32_t sta)
             stack->resp[2] = SD_REG->RESP2;
             stack->resp[3] = SD_REG->RESP1;
         }
-        iio_complete_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, SDMMC_CMD), 0, exo->sdmmc.io, 0);
+        iio_complete_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, SDMMC_CMD), exo->sdmmc.user, exo->sdmmc.io, 0);
         exo->sdmmc.state = SDMMC_STATE_IDLE;
     }
+}
+
+static inline void stm32_sdmmc_v_switch_isr(EXO* exo, uint32_t sta)
+{
+    SD_REG->MASK &= ~SDMMC_MASK_VSWENDIE;
+    SD_REG->POWER &= ~(SDMMC_POWER_VSWITCH | SDMMC_POWER_VSWITCHEN);
+    SD_REG->ICR = SDMMC_ICR_VSWENDC;
+    exo->sdmmc.state = SDMMC_STATE_IDLE;
+
+    ipc_ipost_inline(exo->sdmmc.process, HAL_CMD(HAL_SDMMC, SDMMC_V_SWITCH), exo->sdmmc.user, 0, sta & SDMMC_STA_BUSYD0);
 }
 
 static inline void stm32_sdmmc_on_cmd_data_isr(EXO* exo, uint32_t sta)
@@ -109,23 +117,39 @@ static inline void stm32_sdmmc_on_cmd_data_isr(EXO* exo, uint32_t sta)
     }
     if((sta & SDMMC_STA_CCRCFAIL) || (resp & SDMMC_R1_COM_CRC_ERROR))
     {
-        SD_REG->CMD |= SDMMC_CMD_CPSMEN; // repeat command
-        return;
+#if(STM32_SDMMC_DEBUG)
+        printk("SDMMC32: repeat cmd sta:%x\n", sta);
+#endif // STM32_SDMMC_DEBUG
+        if(++exo->sdmmc.rep_cnt < 4)
+        {
+            SD_REG->CMD |= SDMMC_CMD_CPSMEN; // repeat command
+            return;
+        }
+        err = ERROR_CRC;
     }
+#if(STM32_SDMMC_DEBUG)
+        printk("SDMMC32: error cmd sta:%x\n", sta);
+#endif // STM32_SDMMC_DEBUG
     err = ERROR_HARDWARE;
     if( sta & SDMMC_STA_CTIMEOUT)
         err = ERROR_TIMEOUT;
 
     exo->sdmmc.state = SDMMC_STATE_IDLE;
-    iio_complete_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, exo->sdmmc.data_ipc), 0, exo->sdmmc.io, err);
+    SD_REG->MASK = 0;
+    iio_complete_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, exo->sdmmc.data_ipc), exo->sdmmc.user, exo->sdmmc.io, err);
 }
 
 static inline void stm32_sdmmc_on_io_complete_isr(EXO* exo, int res)
 {
-    iio_complete_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, exo->sdmmc.data_ipc), 0, exo->sdmmc.io, (uint32_t)res);
+    iio_complete_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, exo->sdmmc.data_ipc), exo->sdmmc.user, exo->sdmmc.io, (uint32_t)res);
     exo->sdmmc.state = SDMMC_STATE_IDLE;
+    SD_REG->MASK = 0;
     exo->sdmmc.io = NULL;
     exo->sdmmc.process = INVALID_HANDLE;
+#if (STM32_SDMMC_PWR_SAVING)
+    SD_REG->CLKCR |= SDMMC_CLKCR_PWRSAV;
+#endif // STM32_SDMMC_PWR_SAVING
+
 }
 
 
@@ -147,6 +171,9 @@ void stm32_sdmmc_on_isr(int vector, void* param)
                 exo->sdmmc.io->data_size = exo->sdmmc.total - SD_REG->DCOUNT;
             res = exo->sdmmc.io->data_size;
         }else{// error
+#if(STM32_SDMMC_DEBUG)
+        printk("SDMMC32: error data sta:%x cnt:%d\n", sta, SD_REG->DCOUNT);
+#endif // STM32_SDMMC_DEBUG
             res = ERROR_HARDWARE;
             if(sta & SDMMC_STA_DCRCFAIL)
                 res = ERROR_CRC;
@@ -155,7 +182,8 @@ void stm32_sdmmc_on_isr(int vector, void* param)
         }
         if(exo->sdmmc.total > 512)
         {
-            SD_REG->CMD = (SDMMC_CMD_STOP_TRANSMISSION & SDMMC_CMD_CMDINDEX_Msk)| SDMMC_CMD_CPSMEN;//SDMMC_WAITRESP_SHORT //SDMMC_CMD_CMDSTOP |
+            SD_REG->MASK = 0;
+            SD_REG->CMD = (SDMMC_CMD_STOP_TRANSMISSION & SDMMC_CMD_CMDINDEX_Msk)| SDMMC_CMD_CPSMEN | SDMMC_CMD_CMDSTOP;//SDMMC_WAITRESP_SHORT
             while(SD_REG->CMD & SDMMC_CMD_CPSMEN);
             SD_REG->ICR = SDMMC_INTMASK_CMD;
         }
@@ -167,7 +195,13 @@ void stm32_sdmmc_on_isr(int vector, void* param)
     case SDMMC_STATE_CMD:
         stm32_sdmmc_on_cmd_isr(exo, sta);
         break;
+    case SDMMC_STATE_V_SWITCH:
+        stm32_sdmmc_v_switch_isr(exo, sta);
+        break;
     default:
+#if(STM32_SDMMC_DEBUG)
+        printk("SDMMC32: unknown state sta:%x icr:%x cmd_reg:%x\n", sta, SD_REG->MASK, SD_REG->CMD);
+#endif // STM32_SDMMC_DEBUG
         SD_REG->ICR = 0xffffffff;
         break;
     }
@@ -217,10 +251,21 @@ static inline uint32_t stm32_sdmmc_set_clock(EXO* exo, unsigned int speed)
 
     SD_REG->DTIMER = speed /4; // timeout 250ms always
     uint32_t div = (clock + speed)/(2* speed);
-    SD_REG->CLKCR = (SD_REG->CLKCR & ~SDMMC_CLKCR_CLKDIV_Msk) | div;
+    if(speed > 50000000)
+        SD_REG->CLKCR = (SD_REG->CLKCR & ~(SDMMC_CLKCR_CLKDIV_Msk | SDMMC_CLKCR_BUSSPEED)) | div;
+    else
+        SD_REG->CLKCR = (SD_REG->CLKCR & ~(SDMMC_CLKCR_CLKDIV_Msk)) | div | SDMMC_CLKCR_BUSSPEED;
     return div ? (clock / (2*div)): clock;
 }
 
+static inline void stm32_sdmmc_v_switch(EXO* exo)
+{
+    exo->sdmmc.state = SDMMC_STATE_V_SWITCH;
+    SD_REG->MASK |= SDMMC_MASK_VSWENDIE;
+    SD_REG->POWER |= SDMMC_POWER_VSWITCH;
+    kerror(ERROR_SYNC);
+
+}
 
 /*
 CMDSENT   Set at the end of the command without response. (CPSM moves from SEND to IDLE)
@@ -247,8 +292,11 @@ static void sdmmcs_init_cmd(EXO* exo, uint8_t cmd, uint32_t arg, SDMMC_RESPONSE_
     case SDMMC_CMD_WRITE_MULTIPLE_BLOCK:
     case SDMMC_CMD_READ_SINGLE_BLOCK:
     case SDMMC_CMD_READ_MULTIPLE_BLOCK:
-
         reg |= SDMMC_CMD_CMDTRANS;
+        break;
+    case SDMMC_CMD_VOLTAGE_SWITCH:
+        SD_REG->POWER |= SDMMC_POWER_VSWITCHEN;
+        break;
     default:
         break;
     }
@@ -315,9 +363,18 @@ static inline void stm32_sdmmc_open(EXO* exo, HANDLE user)
     stm32_power_pll2_on();
 #endif
 
-    SD_REG->CLKCR = SDMMC_CLOCK_SRC;//SDMMC_CLKCR_NEGEDGE;
+    RCC->D1CCIPR = (RCC->D1CCIPR & RCC_D1CCIPR_SDMMCSEL) | SDMMC_CLOCK_SRC;
+    SD_REG->CLKCR =  (STM32_SDMMC_RECEIVE_CLK_SRC << SDMMC_CLKCR_SELCLKRX_Pos);
+#if (STM32_SDMMC_PWR_SAVING)
+    SD_REG->CLKCR |= SDMMC_CLKCR_PWRSAV;
+#endif // STM32_SDMMC_PWR_SAVING
+
     stm32_sdmmc_set_clock(exo, 300000);
+#if (STM32_SDMMC_DIR_INVERSE)
+    SD_REG->POWER = SDMMC_POWER_ON | SDMMC_POWER_DIRPOL;
+#else
     SD_REG->POWER = SDMMC_POWER_ON;
+#endif
     exodriver_delay_us(500); // 74 CLK cycle ??
 
     SD_REG->MASK = 0;
@@ -359,17 +416,27 @@ static void stm32_sdmmc_prepare_io(EXO* exo, bool read, uint32_t block_size_log2
     SD_REG->DLEN = exo->sdmmc.total;
     SD_REG->IDMABASE0 = (uint32_t)io_data(exo->sdmmc.io);
     SD_REG->ICR = 0xffffffff;
-    SD_REG->MASK &= ~(SDMMC_INTMASK_READ | SDMMC_INTMASK_WRITE);
+  //  SD_REG->MASK &= ~(SDMMC_INTMASK_READ | SDMMC_INTMASK_WRITE);
 
 
     reg = (block_size_log2 << SDMMC_DCTRL_DBLOCKSIZE_Pos);
     if(read)
     {
-        SCB_InvalidateDCache_by_Addr(io_data(exo->sdmmc.io), exo->sdmmc.total);
+#if (STM32_DCACHE_ENABLE)
+        if(exo->sdmmc.total > 16*1024)
+            SCB_CleanInvalidateDCache();
+        else
+            SCB_InvalidateDCache_by_Addr(io_data(exo->sdmmc.io), exo->sdmmc.total);
+#endif //STM32_DCACHE_ENABLE
         reg |= SDMMC_DCTRL_DTDIR;
         SD_REG->MASK |= SDMMC_INTMASK_READ;
     }else{
-        SCB_CleanDCache_by_Addr(io_data(exo->sdmmc.io), exo->sdmmc.total);
+#if (STM32_DCACHE_ENABLE)
+        if(exo->sdmmc.total > 16*1024)
+            SCB_CleanDCache();
+        else
+            SCB_CleanDCache_by_Addr(io_data(exo->sdmmc.io), exo->sdmmc.total);
+#endif //STM32_DCACHE_ENABLE
         SD_REG->MASK |= SDMMC_INTMASK_WRITE;
     }
 
@@ -389,6 +456,9 @@ static inline void stm32_sdmmc_io(EXO* exo, HANDLE process, IO* io, unsigned int
         kerror(ERROR_INVALID_PARAMS);
         return;
     }
+#if (STM32_SDMMC_PWR_SAVING)
+    SD_REG->CLKCR &= ~SDMMC_CLKCR_PWRSAV;
+#endif // STM32_SDMMC_PWR_SAVING
 
     count = size / 512;
     exo->sdmmc.total = size;
@@ -417,8 +487,10 @@ static inline void stm32_sdmmc_run_cmd(EXO* exo, IO* io)
 {
     SDMMC_CMD_STACK* cmd = io_stack(io);
     exo->sdmmc.io = io;
+    exo->sdmmc.rep_cnt = 0;
     SD_REG->ICR = 0xffffffff;
-    SD_REG->MASK = SDMMC_INTMASK_CMD;
+    SD_REG->MASK |= SDMMC_INTMASK_CMD;
+    exo->sdmmc.state = SDMMC_STATE_CMD;
     if(cmd->resp_type == SDMMC_RESPONSE_DATA)
     {
         io->data_size = 0;
@@ -429,7 +501,6 @@ static inline void stm32_sdmmc_run_cmd(EXO* exo, IO* io)
         SD_REG->CMD = (cmd->cmd & SDMMC_CMD_CMDINDEX_Msk) | SDMMC_WAITRESP_SHORT | SDMMC_CMD_CMDTRANS| SDMMC_CMD_CPSMEN;
     }else
         sdmmcs_init_cmd(exo, cmd->cmd, cmd->arg, cmd->resp_type);
-    exo->sdmmc.state = SDMMC_STATE_CMD;
 
     kerror(ERROR_SYNC);
 }
@@ -502,6 +573,9 @@ void stm32_sdmmc_request(EXO* exo, IPC* ipc)
         break;
     case SDMMC_SET_CLOCK:
         ipc->param3 = stm32_sdmmc_set_clock(exo, ipc->param3);
+        break;
+    case SDMMC_V_SWITCH:
+        stm32_sdmmc_v_switch(exo);
         break;
 
     default:

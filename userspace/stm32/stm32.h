@@ -876,6 +876,12 @@
 #define STM32H743xx
 #endif
 
+#if defined(STM32H743VG) || defined(STM32H743ZG) || defined(STM32H743AG) || defined(STM32H743IG) || defined(STM32H743BG) || defined(STM32H743XG)
+#define STM32H743xx
+#endif
+
+
+
 #if defined(STM32H742xx) || defined(STM32H743xx)
 #define STM32H7
 #define STM32
@@ -947,6 +953,8 @@
 #elif defined(STM32H7)
 #include "stm32h7xx.h"
 #endif
+
+//#include "stm32_driver.h"
 
 #endif //!defined(LDS) && !defined(__ASSEMBLER__)
 

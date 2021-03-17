@@ -86,6 +86,27 @@ static inline void scsis_pc_vpd_83(SCSIS* scsis)
     strcpy((char*)page + 2, scsis->storage_descriptor->product);
 }
 
+static inline void scsis_pc_vpd_80(SCSIS* scsis)
+{
+    uint8_t* data = io_data(scsis->io);
+    uint8_t* page = data + 4;
+
+#if (SCSI_DEBUG_REQUESTS)
+    printf("SCSI inquiry VPD serial number\n");
+#endif //SCSI_DEBUG_REQUESTS
+    scsis->io->data_size = 4 + 2 + ((strlen(scsis->storage_descriptor->revision) + 4) & ~3);
+    memset(data, 0, scsis->io->data_size);
+
+    data[0] = scsis->storage_descriptor->scsi_device_type & SCSI_PERIPHERAL_DEVICE_TYPE_MASK;
+    data[1] = INQUIRY_VITAL_PAGE_SERIAL_NUM;
+    short2be(data + 2, scsis->io->data_size - 4);
+
+    //ASCII data
+    page[0] = 0x02;
+    page[1] = IVPD_ASSOCIATION_DESIGNATOR_DEVICE | IVPD_DESIGNATOR_TYPE_SCSI_NAME_STRING;
+    strcpy((char*)page + 2, scsis->storage_descriptor->revision);
+}
+
 void scsis_pc_inquiry(SCSIS* scsis, uint8_t* req)
 {
     unsigned int len;
@@ -100,6 +121,9 @@ void scsis_pc_inquiry(SCSIS* scsis, uint8_t* req)
         case INQUIRY_VITAL_PAGE_DEVICE_INFO:
             scsis_pc_vpd_83(scsis);
             break;
+        case INQUIRY_VITAL_PAGE_SERIAL_NUM:
+            scsis_pc_vpd_80(scsis);
+          break;
         default:
 #if (SCSI_DEBUG_REQUESTS)
             printf("SCSI VPD INQUIRY, page: %02xh not supported\n", req[2]);

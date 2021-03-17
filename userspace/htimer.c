@@ -37,6 +37,11 @@ void htimer_setup_channel(int num, int channel, TIMER_CHANNEL_TYPE type, unsigne
     ipc_post_exo(HAL_CMD(HAL_TIMER, TIMER_SETUP_CHANNEL), num, (channel << TIMER_CHANNEL_POS) | (type << TIMER_CHANNEL_TYPE_POS), value);
 }
 
+void htimer_set_channel_duty(int num, int channel, TIMER_VALUE_TYPE type, unsigned int value)
+{
+    ipc_post_exo(HAL_CMD(HAL_TIMER, TIMER_SET_DUTY), num, (channel << TIMER_CHANNEL_POS) | (type << TIMER_VAUE_TYPE_POS), value);
+}
+
 #else
 bool htimer_open(int num, unsigned int flags)
 {

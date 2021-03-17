@@ -796,10 +796,13 @@ typedef struct {
 #define  OTG_HS_DEVICE_VBUSPULSE_VBUSP_POS                (uint32_t)(0ul)
 
 /************  Bit definition for OTG_HS_DEVICE_THRCTL register  ******************/
+#define  OTG_HS_DEVICE_THRCTL_RXTHRLEN_Msk                    (17ul)//Receive threshold length
+#define  OTG_HS_DEVICE_THRCTL_TXTHRLEN_Msk                    (2ul)//Receive threshold length
+
 #define  OTG_HS_DEVICE_THRCTL_ARPEN                            (uint32_t)(1ul << 27ul)        //Arbiter parking enable
-#define  OTG_HS_DEVICE_THRCTL_RXTHRLEN                        (uint32_t)(0x1fful << 17ul)//Receive threshold length
+#define  OTG_HS_DEVICE_THRCTL_RXTHRLEN                        (uint32_t)(0x1fful << OTG_HS_DEVICE_THRCTL_RXTHRLEN_Msk)
 #define  OTG_HS_DEVICE_THRCTL_RXTHREN                        (uint32_t)(1ul << 16ul)        //Receive threshold enable
-#define  OTG_HS_DEVICE_THRCTL_TXTHRLEN                        (uint32_t)(0x1fful << 2ul)    //Transmit threshold length
+#define  OTG_HS_DEVICE_THRCTL_TXTHRLEN                        (uint32_t)(0x1fful << OTG_HS_DEVICE_THRCTL_TXTHRLEN_Msk)
 #define  OTG_HS_DEVICE_THRCTL_ISOTHREN                        (uint32_t)(1ul << 1ul)        //Isochronous IN threshold enable
 #define  OTG_HS_DEVICE_THRCTL_NONISOTHREN                    (uint32_t)(1ul << 0ul)        //Non-isochronous threshold enable
 
@@ -989,7 +992,7 @@ typedef struct {
     __IO uint32_t INT;          //+0x08 interrupt register
     __I  uint32_t RESERVED1;    //+0x0c
     __IO uint32_t TSIZ;         //+0x10 transfer size register
-    __IO uint32_t RESERVED2;    //+0x14
+    __IO uint32_t DMA;            //+0x14 DMA address register
     __IO uint32_t FSTS;         //+0x18 IN endpoint TxFIFO status register
     __I  uint32_t RESERVED3;    //+0x1c
 } OTG_FS_DEVICE_ENDPOINT_TypeDef;
@@ -1006,9 +1009,20 @@ typedef struct {
     __I  uint32_t RESERVED1[2]; //0x820..0x824
     __IO uint32_t VBUSDIS;        //0x828 VBUS discharge time register
     __IO uint32_t VBUSPULSE;    //0x82c VBUS pulsing time register
-    __IO uint32_t RESERVED2;    //0x830
+    __IO uint32_t THRCTL;    //0x830
+
+    __IO uint32_t EIPEMPMSK;    //0x834 IN endpoint FIFO empty interrupt mask register
+    __IO uint32_t EACHINT;        //0x838 each endpoint interrupt register
+    __IO uint32_t EACHINTMSK;    //0x83c each endpoint interrupt mask register
+    __IO uint32_t IEPEACHMSK1;    //0x840 each IN endpoint-1 interrupt register
+    __I  uint32_t RESERVED2[15];//0x844..0x87c
+    __IO uint32_t OEPEACHMSK1;    //0x880 each OUT endpoint-1 interrupt register
+    __I  uint32_t RESERVED3[31];//0x884..0x8fc
+
+/*
     __IO uint32_t EIPEMPMSK;    //0x834 IN endpoint FIFO empty interrupt mask register
     __I  uint32_t RESERVED3[50];//0x838..0x8fc
+*/
     OTG_FS_DEVICE_ENDPOINT_TypeDef INEP[16];//0x900.. 0xafc IN EP configs
     OTG_FS_DEVICE_ENDPOINT_TypeDef OUTEP[16];//0xB00.. 0xcfc OUT EP configs
 } OTG_FS_DEVICE_TypeDef;
@@ -1086,7 +1100,13 @@ typedef struct {
 /**********  Bit definition for OTG_FS_GENERAL_AHBCFG register  ***************/
 #define  OTG_FS_GENERAL_AHBCFG_PTXFELVL                         (uint32_t)(1ul << 8ul)  //Periodic TxFIFO empty level
 #define  OTG_FS_GENERAL_AHBCFG_TXFELVL                          (uint32_t)(1ul << 7ul)  //TxFIFO empty level
+#define  OTG_FS_GENERAL_AHBCFG_DMAEN                            (uint32_t)(1ul << 5ul)  // DMA enabled
 #define  OTG_FS_GENERAL_AHBCFG_GINT                             (uint32_t)(1ul << 0ul)  //Global interrupt mask
+
+#define  OTG_FS_GENERAL_AHBCFG_HBSTLEN_Msk                      (1ul)                   // Burst length/type
+#define  OTG_FS_GENERAL_AHBCFG_HBSTLEN_INCR4                    (3ul << OTG_FS_GENERAL_AHBCFG_HBSTLEN_Msk)  //Bus transactions target 4x 32 bit accesses
+#define  OTG_FS_GENERAL_AHBCFG_HBSTLEN_INCR8                    (5ul << OTG_FS_GENERAL_AHBCFG_HBSTLEN_Msk)  //Bus transactions target 8x 32 bit accesses
+#define  OTG_FS_GENERAL_AHBCFG_HBSTLEN_INCR16                   (7ul << OTG_FS_GENERAL_AHBCFG_HBSTLEN_Msk)  //Bus transactions target 16x 32 bit accesses
 
 /**********  Bit definition for OTG_FS_GENERAL_USBCFG register  ***************/
 #define  OTG_FS_GENERAL_USBCFG_CTXPKT                           (uint32_t)(1ul << 31ul) //Corrupt Tx packet
@@ -1510,6 +1530,7 @@ typedef struct {
 #define  OTG_FS_DEVICE_IEPMSK_XFRCM                             (uint32_t)(1ul << 0ul)        //Transfer completed interrupt mask
 
 /************  Bit definition for OTG_FS_DEVICE_OEPMSK register  ***************/
+#define  OTG_FS_DEVICE_OEPMSK_STSPHSRXM                         (uint32_t)(1ul << 5ul)        //Status phase received for control write mask
 #define  OTG_FS_DEVICE_OEPMSK_OTEPDM                            (uint32_t)(1ul << 4ul)        //OUT token received when endpoint disabled mask
 #define  OTG_FS_DEVICE_OEPMSK_STUPM                             (uint32_t)(1ul << 3ul)        //SETUP phase done mask
 #define  OTG_FS_DEVICE_OEPMSK_EPDM                              (uint32_t)(1ul << 1ul)        //Endpoint disabled interrupt mask
@@ -1644,6 +1665,10 @@ typedef struct {
 #define  OTG_FS_DEVICE_ENDPOINT_CTL_MPSIZ0_8                    (uint32_t)(0x3ul << 0ul)    //EP0 maximum packet size 8 bytes
 
 /************  Bit definition for OTG_FS_DEVICE_ENDPOINT_INT register  *************/
+#define  OTG_FS_DEVICE_ENDPOINT_INT_STPKTRX                      (uint32_t)(1ul << 15ul)  //Setup packet received. only in the Buffer DMA Mode
+#define  OTG_FS_DEVICE_ENDPOINT_INT_NAK                          (uint32_t)(1ul << 13ul)        // NAK is transmitted or received by the device.
+
+#define  OTG_FS_DEVICE_ENDPOINT_INT_TXFIFOUDRN                  (uint32_t)(1ul << 8ul)        //Tx FIFO Underrun
 #define  OTG_FS_DEVICE_ENDPOINT_INT_TXFE                        (uint32_t)(1ul << 7ul)        //Tx FIFO empty
 #define  OTG_FS_DEVICE_ENDPOINT_INT_INEPNE                      (uint32_t)(1ul << 6ul)        //IN: endpoint NAK effective
 #define  OTG_FS_DEVICE_ENDPOINT_INT_B2BSTUP                     (uint32_t)(1ul << 6ul)        //OUT: back-to-back SETUP packets received
