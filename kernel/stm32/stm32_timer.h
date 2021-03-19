@@ -20,7 +20,7 @@
 typedef struct {
     //timer specific
     int hpet_uspsc;
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4) || defined(STM32H7)
     int shared1, shared8;
 #endif //defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
 } TIMER_DRV;

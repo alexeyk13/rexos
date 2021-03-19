@@ -18,6 +18,7 @@ typedef enum {
     SDMMC_CMD_WRITE,
     SDMMC_SET_CLOCK,
     SDMMC_SET_DATA_WIDTH,
+    SDMMC_V_SWITCH,
 } SDMMC_IPCS;
 
 

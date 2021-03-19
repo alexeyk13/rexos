@@ -105,7 +105,7 @@ void stm32_timer_open(EXO* exo, TIMER_NUM num, unsigned int flags)
     if (flags & TIMER_EXT_CLOCK)
         TIMER_REGS[num]->SMCR |= 1 << 14;
 
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4) || defined(STM32H7)
     if (num == TIM_1 || num == TIM_10)
     {
         if (exo->timer.shared1++ == 0)
@@ -143,7 +143,7 @@ void stm32_timer_close(EXO* exo, TIMER_NUM num)
     TIMER_REGS[num]->CR1 &= ~TIM_CR1_CEN;
 
     //disable IRQ
-#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
+#if defined(STM32F1) || defined(STM32F2) || defined(STM32F4) || defined(STM32H7)
     if (num == TIM_1 || num == TIM_10)
     {
         if (--exo->timer.shared1== 0)
@@ -231,9 +231,30 @@ void stm32_timer_stop(TIMER_NUM num)
 }
 
 #if (TIMER_IO)
+static inline void stm32_timer_set_duty(EXO* exo, int num, int channel, TIMER_VALUE_TYPE type, unsigned int value)
+{
+    uint32_t top = TIMER_REGS[num]->ARR;
+    switch(type)
+    {
+    case TIMER_VALUE_DUTY_PERCENT:
+        value *= 10;
+    case TIMER_VALUE_DUTY_PROMILLE:
+        value = value * top;
+        value = value  / 500;
+        value = (value + 1) >> 1;
+        break;
+    default:
+        break;
+    }
+    ((uint32_t*)&(TIMER_REGS[num]->CCR1))[channel] = value;
+}
+
+
 static inline void stm32_timer_setup_channel(int num, int channel, TIMER_CHANNEL_TYPE type, unsigned int value)
 {
     uint16_t ccmr, ccer;
+    TIMER_REGS[num]->BDTR |= TIM_BDTR_MOE;
+
     //disable capture/compare
     TIMER_REGS[num]->CCER &= ~(0xf << (channel * 4));
     if (channel < TIM_CHANNEL3)
@@ -258,12 +279,18 @@ static inline void stm32_timer_setup_channel(int num, int channel, TIMER_CHANNEL
             ccer = (1 << 1) | (1 << 3);
             break;
         case TIMER_CHANNEL_PWM:
+            ccer =  (1 << 0) | (1 << 2) | (1 << 3);
+            ccmr = (6 << 4) | (1 << 3);
+            break;
+        case TIMER_CHANNEL_PWM_INVERSE_POLARITY:
+            ccer =  (1 << 0) | (1 << 2) | (1 << 1);
             ccmr = (6 << 4) | (1 << 3);
             break;
         default:
             break;
         }
-
+        ((uint32_t*)&(TIMER_REGS[num]->CCR1))[channel] = value;
+/*
         switch (channel) {
         case TIM_CHANNEL1:
             TIMER_REGS[num]->CCR1 = value;
@@ -280,11 +307,12 @@ static inline void stm32_timer_setup_channel(int num, int channel, TIMER_CHANNEL
         default:
             break;
         }
+        */
         if (channel < TIM_CHANNEL3)
             TIMER_REGS[num]->CCMR1 |= ccmr << (channel * 8);
         else
             TIMER_REGS[num]->CCMR2 |= ccmr << ((channel - 2) * 8);
-        TIMER_REGS[num]->CCER |= (ccer | (1 << 0)) << (channel * 4);
+        TIMER_REGS[num]->CCER |= (ccer) << (channel * 4);
     }
 }
 #endif //TIMER_IO
@@ -379,6 +407,9 @@ void stm32_timer_request(EXO* exo, IPC* ipc)
 #if (TIMER_IO)
     case TIMER_SETUP_CHANNEL:
         stm32_timer_setup_channel(num, TIMER_CHANNEL_VALUE(ipc->param2), TIMER_CHANNEL_TYPE_VALUE(ipc->param2), ipc->param3);
+        break;
+    case TIMER_SET_DUTY:
+        stm32_timer_set_duty(exo, num, TIMER_CHANNEL_VALUE(ipc->param2), TIMER_VAUE_TYPE_VALUE(ipc->param2), ipc->param3);
         break;
 #endif //TIMER_IO
     default:

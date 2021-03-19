@@ -21,6 +21,7 @@
 #define STM32_USB_DRIVER                        1
 #define STM32_CAN_DRIVER                        0
 #define STM32_ETH_DRIVER                        0
+#define STM32_SPI_DRIVER                        0
 #define STM32_SDMMC_DRIVER                      0
 //------------------------------ CORE ------------------------------------------------
 //disable only for power saving if no EXTI or remap is used
@@ -79,10 +80,14 @@
 #define USB_CLOCK_SRC                           USB_CLOCK_SRC_PLL1_Q          // 48M for USB FS, 60M for USB HS
 #define SDMMC_CLOCK_SRC                         SDMMC_CLOCK_SRC_PLL2_R        // max 250 MHz
 
-
+#define STM32_DCACHE_ENABLE                     1
 #define STANDBY_WKUP                            0
 //------------------------------ SDMMC -----------------------------------------------
-#define STM32_SDMMC_MAX_CLOCK                   10000000
+#define STM32_SDMMC_DEBUG                       1
+#define STM32_SDMMC_PWR_SAVING                  1                           // 1: SDMMC_CK is only enabled when the bus is active
+#define STM32_SDMMC_MAX_CLOCK                   (50 *1000000)
+#define STM32_SDMMC_DIR_INVERSE                 1                           // 1: Voltage transceiver IOs driven as output when direction signal is high.
+#define STM32_SDMMC_RECEIVE_CLK_SRC             SDMMC_RECEIVE_CLK_CKIN
 
 //------------------------------ TIMER -----------------------------------------------
 #define HPET_TIMER                              TIM_14
@@ -118,6 +123,14 @@
 //Full speed: 64 if no isochronous transfers, else  1024
 //High speed(STM32F2+): 64 if no high-speed bulk transfers, 512 in other case. 1024 in case of isochronous or high-speed interrupts
 #define STM32_USB_MPS                           64
+//for STM32H7 use pll1_q_ck or hsi48. RevY use only pll1_q_ck (see errata)
+// if zero you must use proper PLL_Q1 (core clock) / (PLL_Q1) = 48M
+#define STM32_USB_CRYSTALLESS                   0
+// if chip has two usb instance set one 1 if use only one instance simultaneously. Set both defines to 1 increase size and reduce speed.
+#define STM32_USB_OTG_FS                        0
+#define STM32_USB_OTG_HS                        1
+#define STM32_USB_OTG_ULPI                      1
+
 //Sizeof USB process stack. Remember, that process itself requires around 512 bytes
 #define STM32_USB_PROCESS_SIZE                  600
 //------------------------------- WDT ------------------------------------------------

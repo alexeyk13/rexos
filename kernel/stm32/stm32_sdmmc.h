@@ -20,7 +20,8 @@ typedef enum {
     SDMMC_STATE_DATA,
     SDMMC_STATE_DATA_ABORT,
     SDMMC_STATE_VERIFY,
-    SDMMC_STATE_WRITE_VERIFY
+    SDMMC_STATE_WRITE_VERIFY,
+    SDMMC_STATE_V_SWITCH,
 } SDMMC_STATE;
 
 
@@ -32,6 +33,7 @@ typedef struct  {
     uint8_t hash[SHA1_BLOCK_SIZE];
     uint32_t data_ipc;
     bool active;
+    uint32_t rep_cnt;
 } SDMMC_DRV;
 
 void stm32_sdmmc_init(EXO* exo);

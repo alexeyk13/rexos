@@ -89,6 +89,7 @@ static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USA
 #define USART_SR_ORE        USART_ISR_ORE
 #define USART_SR_RXNE       USART_ISR_RXNE
 #define SR(port)            (UART_REGS[(port)]->ISR)
+#define ICR(port)            (UART_REGS[(port)]->ICR)
 #define TXC(port, c)        (UART_REGS[(port)]->TDR = (c))
 
 #elif defined(STM32H7)
@@ -100,11 +101,13 @@ static const USART_TypeDef_P UART_REGS[UARTS_COUNT]=        {USART1, USART2, USA
 #define USART_SR_ORE        USART_ISR_ORE
 #define USART_SR_RXNE       USART_ISR_RXNE_RXFNE
 #define SR(port)            (UART_REGS[(port)]->ISR)
+#define ICR(port)            (UART_REGS[(port)]->ICR)
 #define TXC(port, c)        (UART_REGS[(port)]->TDR = (c))
 
 #else
 #define SR(port)            (UART_REGS[(port)]->SR)
 #define TXC(port, c)        (UART_REGS[(port)]->DR = (c))
+#define ICR(port)            (UART_REGS[(port)]->SR)
 #endif
 
 
@@ -240,6 +243,7 @@ void stm32_uart_on_isr(int vector, void* param)
                 exo->uart.uarts[port]->error = ERROR_LINE_NOISE;
         }
     }
+    ICR(port) = USART_SR_PE | USART_SR_FE | USART_SR_NE | USART_SR_ORE;
 
     //transmit more
     if (UART_REGS[port]->CR1 & USART_CR1_TXEIE)
@@ -255,7 +259,9 @@ void stm32_uart_on_isr(int vector, void* param)
     }
     //transmission completed and no more data. Disable transmitter
     if ((UART_REGS[port]->CR1 & USART_CR1_TCIE) && (SR(port) & USART_SR_TC))
+    {
         UART_REGS[port]->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
+    }
 
     //receive data
     if (SR(port) & USART_SR_RXNE)
@@ -265,7 +271,10 @@ void stm32_uart_on_isr(int vector, void* param)
 #else
         c = UART_REGS[port]->DR;
 #endif
-         stm32_uart_on_rx_isr(exo, port, c);
+#if (UART_ISO7816_MODE_SUPPORT)
+        if((UART_REGS[port]->CR1 & USART_CR1_TE) == 0)
+#endif // UART_ISO7816_MODE_SUPPORT
+            stm32_uart_on_rx_isr(exo, port, c);
     }
 }
 
@@ -301,11 +310,10 @@ static inline void stm32_uart_set_baudrate(EXO* exo, UART_PORT port, IPC* ipc)
     uart_decode_baudrate(ipc, &baudrate);
 
     UART_REGS[port]->CR1 &= ~USART_CR1_UE;
-
     if (baudrate.data_bits == 8 && baudrate.parity != 'N')
 #if defined(STM32L0)
         UART_REGS[port]->CR1 |= USART_CR1_M_0;
-#elif defined(STM32F0)
+#elif defined(STM32F0) || defined(STM32H7)
         UART_REGS[port]->CR1 |= USART_CR1_M0;
 #else
         UART_REGS[port]->CR1 |= USART_CR1_M;
@@ -313,13 +321,13 @@ static inline void stm32_uart_set_baudrate(EXO* exo, UART_PORT port, IPC* ipc)
     else
 #if defined(STM32L0)
         UART_REGS[port]->CR1 &= ~USART_CR1_M_0;
-#elif defined(STM32F0)
+#elif defined(STM32F0) || defined(STM32H7)
         UART_REGS[port]->CR1 &= ~USART_CR1_M0;
 #else
         UART_REGS[port]->CR1 &= ~USART_CR1_M;
 #endif
 
-    if (baudrate.parity != 'N')
+      if (baudrate.parity != 'N')
     {
         UART_REGS[port]->CR1 |= USART_CR1_PCE;
         if (baudrate.parity == 'O')
@@ -354,11 +362,18 @@ static inline void stm32_uart_set_baudrate(EXO* exo, UART_PORT port, IPC* ipc)
         clock = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB2);
     else
         clock = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB1);
-    unsigned int mantissa, fraction;
+    unsigned int mantissa;
+#if defined(STM32H7)
+    mantissa = (2*clock / baudrate.baud);
+    mantissa = (mantissa + 1) >> 1;
+    UART_REGS[port]->BRR = mantissa;
+#else
+    unsigned int fraction;
     mantissa = (25 * clock) / (4 * (baudrate.baud));
     fraction = ((mantissa % 100) * 8 + 25)  / 50;
     mantissa = mantissa / 100;
     UART_REGS[port]->BRR = (mantissa << 4) | fraction;
+#endif//
 
     UART_REGS[port]->CR1 |= USART_CR1_UE | USART_CR1_PEIE;
     UART_REGS[port]->CR3 |= USART_CR3_EIE;
@@ -477,7 +492,7 @@ static inline bool stm32_uart_open_io(UART* uart, UART_PORT port)
     if (uart->i.rx_timer != INVALID_HANDLE)
     {
         //enable receiver
-        UART_REGS[port]->CR1 |= USART_CR1_RXNEIE | USART_CR1_RE;
+        UART_REGS[port]->CR1 = USART_CR1_RXNEIE | USART_CR1_RE;
         return true;
     }
     return false;

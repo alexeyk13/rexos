@@ -1036,7 +1036,9 @@ void stm32_power_init(EXO* exo)
     PWR->CR3 = PWR_CR3_LDOEN;
 #endif// EXT_VCORE
     SCB_EnableICache();
+#if (STM32_DCACHE_ENABLE)
     SCB_EnableDCache();
+#endif //STM32_DCACHE_ENABLE
 
 #endif // STM32H7
 
@@ -1095,6 +1097,23 @@ void stm32_power_init(EXO* exo)
     stm32_power_set_clock_source(STM32_CLOCK_SOURCE_PLL);
 }
 
+static inline void stm32_power_set_mco(uint32_t mco_src, uint32_t mco_div)
+{
+    uint32_t div_pos, src_pos;
+    uint32_t cfg;
+    div_pos = RCC_CFGR_MCO1PRE_Pos;
+    src_pos = RCC_CFGR_MCO1_Pos;
+    if(mco_src > 0x10)
+    {
+        div_pos = RCC_CFGR_MCO2PRE_Pos;
+        src_pos = RCC_CFGR_MCO2_Pos;
+    }
+    cfg = RCC->CFGR & ~((0x0f << div_pos) | (0x07 << src_pos) );
+    cfg |= (mco_div & 0x0f) << div_pos;
+    cfg |= (mco_src & 0x07) << src_pos;
+    RCC->CFGR = cfg;
+}
+
 void stm32_power_request(EXO* exo, IPC* ipc)
 {
     switch (HAL_ITEM(ipc->cmd))
@@ -1107,6 +1126,11 @@ void stm32_power_request(EXO* exo, IPC* ipc)
         ipc->param2 = exo->power.reset_reason;
         break;
 #endif //STM32_DECODE_RESET
+#if defined(STM32H7)
+    case STM32_POWER_SET_MCO:
+        stm32_power_set_mco(ipc->param2, ipc->param3);
+        break;
+#endif
 #if (POWER_MANAGEMENT)
     case POWER_SET_MODE:
         //no return

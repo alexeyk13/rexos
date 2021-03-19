@@ -77,7 +77,7 @@ int_vectors:
     .word  Reset_Handler
     .word  NMI_Handler
     .word  HardFault_Handler
-#if defined(CORTEX_M3) || defined(CORTEX_M4)
+#if defined(CORTEX_M3) || defined(CORTEX_M4) || defined(CORTEX_M7)
     .word  MemManage_Handler
     .word  BusFault_Handler
     .word  UsageFault_Handler
@@ -91,7 +91,7 @@ int_vectors:
     .word  0
     .word  0
     .word  SVC_Handler
-#if defined(CORTEX_M3) || defined(CORTEX_M4)
+#if defined(CORTEX_M3) || defined(CORTEX_M4) || defined(CORTEX_M7)
     .word  DebugMon_Handler
 #else
     .word  0
@@ -111,6 +111,8 @@ int_vectors:
     .cpu cortex-m3
 #elif defined(CORTEX_M4)
     .cpu cortex-m4
+#elif defined(CORTEX_M7)
+    .cpu cortex-m7
 #else
     .cpu cortex-m0
 #endif
@@ -125,7 +127,7 @@ Reset_Handler:
 #endif //STARTUP_HARDWARE_INIT
 
     @setup system and fault handlers priority
-#if defined(CORTEX_M3) || defined(CORTEX_M4)
+#if defined(CORTEX_M3) || defined(CORTEX_M4) || defined(CORTEX_M7)
     ldr   r1, =SHPR1
     ldr   r0, =SHPR1_VALUE
     str   r0, [r1]
@@ -139,7 +141,7 @@ Reset_Handler:
     ldr   r0, =SHPR3_VALUE
     str   r0, [r1]
 
-#if defined(CORTEX_M3) || defined(CORTEX_M4)
+#if defined(CORTEX_M3) || defined(CORTEX_M4) || defined(CORTEX_M7)
     @enable detailed faults
     ldr   r1, =SHCSR
     movs  r2, #7
@@ -153,7 +155,7 @@ Reset_Handler:
     ldr    r0, =0xffffffff
     ldr    r1, =ICPR0
     str    r0, [r1]
-#if defined(CORTEX_M3) || defined(CORTEX_M4)
+#if defined(CORTEX_M3) || defined(CORTEX_M4) || defined(CORTEX_M7)
     str    r0, [r1, #0x4]
     str    r0, [r1, #0x8]
     str    r0, [r1, #0xc]
@@ -216,7 +218,7 @@ HardFault_Handler:
     exception_enter
     b   on_hard_fault
 
-#if defined(CORTEX_M3) || defined(CORTEX_M4)
+#if defined(CORTEX_M3) || defined(CORTEX_M4) || defined(CORTEX_M7)
     .thumb_func
 MemManage_Handler:
     exception_enter
@@ -377,7 +379,7 @@ process_setup_context:
 .endm
 
 weak_vector   NMI_Handler
-#if defined(CORTEX_M3) || defined(CORTEX_M4)
+#if defined(CORTEX_M3) || defined(CORTEX_M4) || defined(CORTEX_M7)
 weak_vector   DebugMon_Handler
 #endif
 weak_vector   SysTick_Handler
