@@ -48,7 +48,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * DHCP server
   * Web Server
   * TLS 1.2 Server (beta)
-  * SD/MMC host stack
+  * SD/MMC host stack with UHS support
   * uCanOpen stack
   * FAT16 file system
   * SFS / SFS v2 - small file system (commercial license)
@@ -80,6 +80,7 @@ unavailable, another HPET timer can be used for RTC emulation
   * ST STM32F4: generic, UART, RTC, WDT, USB
   * ST STM32L0: generic, UART, RTC, WDT, EEPROM, ADC, DAC, USB
   * ST STM32L1: generic, UART, RTC, WDT, I2C, USB
+  * ST STM32H7: generic, UART, RTC, WDT, USB, SD/MMC, flash (commercial license)
   * NXP LPC11Uxx: generic, UART, EEPROM, USB, flash
   * NXP LPC18xx: generic, UART, USB, ETH, SD/MMC, flash
   * NXP Kinetis K22: generic, UART, RTC, WDT, I2C, USB, flash (commercial license)
@@ -103,6 +104,10 @@ ARM7 features:
 
 History
 =======
+0.7.1
+- STM32 H7 support (commercial license)
+- SD UHS with level switching (commercial license)
+
 0.7.0
 - Fully functional BLE host controller (commercial license)
 
