@@ -356,7 +356,8 @@ static inline void stm32_otg_on_isr_tx(EXO* exo, uint32_t num)
 
 static inline void usb_on_isr_reset()
 {
-    for(int i = 0; i < USB_EP_COUNT_MAX; i++)
+    int i;
+    for(i = 0; i < USB_EP_COUNT_MAX; i++)
     {
         _OTG_DEVICE->INEP[i].CTL = OTG_FS_DEVICE_ENDPOINT_CTL_EPDIS | OTG_FS_DEVICE_ENDPOINT_CTL_SNAK;
         _OTG_GENERAL->RSTCTL = OTG_HS_GENERAL_RSTCTL_TXFFLSH | (16 << OTG_HS_GENERAL_RSTCTL_TXFNUM_POS);
@@ -422,6 +423,11 @@ static void usb_on_isr(int vector, void* param)
     _OTG_GENERAL->OTGINT  = 0xFFFFFF;// clear other request
 }
 //------------------------------------------------------------------------
+static void small_delay()
+{
+    int i;
+    for(i = 0; i < 1000; i++) __NOP();
+}
 
 static void stm32_otg_open_device(EXO* exo, HANDLE device)
 {
@@ -451,7 +457,7 @@ static void stm32_otg_open_device(EXO* exo, HANDLE device)
     RCC->AHB1ENR |= RCC_AHB1ENR_USB1OTGHSULPIEN;
 #endif // STM32_USB_OTG_ULPI
 #endif
-    for(int i = 0; i < 1000; i++) __NOP();
+    small_delay();
     trdt = 6;
 
 #else // STM32H7
@@ -505,7 +511,7 @@ static void stm32_otg_open_device(EXO* exo, HANDLE device)
     _OTG_GENERAL->RSTCTL |= OTG_FS_GENERAL_RSTCTL_CSRST;
     while (_OTG_GENERAL->RSTCTL & OTG_FS_GENERAL_RSTCTL_CSRST) {};
     while ((_OTG_GENERAL->RSTCTL & OTG_FS_GENERAL_RSTCTL_AHBIDL) == 0) {}
-    for(int i = 0; i < 10000; i++) __NOP();
+    small_delay();
 
     //refer to programming manual: 1. Setup AHB
     _OTG_GENERAL->AHBCFG = OTG_FS_GENERAL_AHBCFG_GINT;

@@ -21,6 +21,7 @@
 #include "stm32_flash.h"
 #include "stm32_eth.h"
 #include "stm32_sdmmc.h"
+#include "stm32_rng.h"
 #if (STM32_I2C_DRIVER)
     #include "stm32_i2c.h"
 #endif //STM32_I2C_DRIVER
@@ -67,6 +68,9 @@ typedef struct _EXO {
 #if (STM32_SDMMC_DRIVER)
     SDMMC_DRV sdmmc;
 #endif //STM32_SDMMC_DRIVER
+#if (STM32_RNG_DRIVER)
+    RNG_DRV rng;
+#endif //STM32_RNG_DRIVER
 
 }EXO;
 

@@ -22,6 +22,7 @@ typedef enum {
 typedef enum {
     POWER_SET_MODE = IPC_USER,
     POWER_GET_CLOCK,
+    POWER_SET_CLOCK,
     POWER_GET_RESET_REASON,
     POWER_SWO_OPEN,
     POWER_MAX
@@ -36,5 +37,8 @@ typedef enum {
 void power_set_mode(POWER_MODE mode);
 unsigned int power_get_clock(POWER_CLOCK_TYPE clock_type);
 unsigned int power_get_core_clock();
+
+unsigned int power_set_clock(POWER_CLOCK_TYPE clock_type, uint32_t clock);
+unsigned int power_set_core_clock(uint32_t clock);
 
 #endif // POWER_H

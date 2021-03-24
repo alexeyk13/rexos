@@ -423,19 +423,25 @@ static void stm32_sdmmc_prepare_io(EXO* exo, bool read, uint32_t block_size_log2
     if(read)
     {
 #if (STM32_DCACHE_ENABLE)
-        if(exo->sdmmc.total > 16*1024)
-            SCB_CleanInvalidateDCache();
-        else
-            SCB_InvalidateDCache_by_Addr(io_data(exo->sdmmc.io), exo->sdmmc.total);
+        if (SCB->CCR &  SCB_CCR_DC_Msk)
+        {
+            if(exo->sdmmc.total > 16*1024)
+                SCB_CleanInvalidateDCache();
+            else
+                SCB_InvalidateDCache_by_Addr(io_data(exo->sdmmc.io), exo->sdmmc.total);
+        }
 #endif //STM32_DCACHE_ENABLE
         reg |= SDMMC_DCTRL_DTDIR;
         SD_REG->MASK |= SDMMC_INTMASK_READ;
     }else{
 #if (STM32_DCACHE_ENABLE)
-        if(exo->sdmmc.total > 16*1024)
-            SCB_CleanDCache();
-        else
-            SCB_CleanDCache_by_Addr(io_data(exo->sdmmc.io), exo->sdmmc.total);
+        if (SCB->CCR &  SCB_CCR_DC_Msk)
+        {
+            if(exo->sdmmc.total > 16*1024)
+                SCB_CleanDCache();
+            else
+                SCB_CleanDCache_by_Addr(io_data(exo->sdmmc.io), exo->sdmmc.total);
+        }
 #endif //STM32_DCACHE_ENABLE
         SD_REG->MASK |= SDMMC_INTMASK_WRITE;
     }

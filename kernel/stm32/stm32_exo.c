@@ -118,7 +118,11 @@ void exodriver_post(IPC* ipc)
         stm32_sdmmc_request(__KERNEL->exo, ipc);
         break;
 #endif //STM32_SDMMC_DRIVER
-
+#if (STM32_RNG_DRIVER)
+    case HAL_RNG:
+        stm32_rng_request(__KERNEL->exo, ipc);
+        break;
+#endif //STM32_RNG_DRIVER
     default:
         kerror(ERROR_NOT_SUPPORTED);
         break;
@@ -179,5 +183,7 @@ void exodriver_init()
 #if (STM32_SDMMC_DRIVER)
     stm32_sdmmc_init(__KERNEL->exo);
 #endif //STM32_SDMMC_DRIVER
-
+#if (STM32_RNG_DRIVER)
+    stm32_rng_init(__KERNEL->exo);
+#endif //STM32_RNG_DRIVER
 }
