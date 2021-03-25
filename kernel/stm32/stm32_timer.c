@@ -382,6 +382,15 @@ void stm32_timer_init(EXO* exo)
 #endif //STM32_RTC_DRIVER
 }
 
+void stm32_timer_adjust(EXO* exo)
+{
+    exo->timer.hpet_uspsc = stm32_timer_get_clock(exo, HPET_TIMER) / 1000000;
+#if !(STM32_RTC_DRIVER)
+    stm32_timer_setup_hz(exo, SECOND_PULSE_TIMER, 1);
+    TIMER_REGS[SECOND_PULSE_TIMER]->CNT = 0;
+#endif //STM32_RTC_DRIVER
+}
+
 void stm32_timer_request(EXO* exo, IPC* ipc)
 {
     TIMER_NUM num = (TIMER_NUM)ipc->param1;

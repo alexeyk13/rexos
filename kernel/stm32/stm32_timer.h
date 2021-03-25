@@ -27,6 +27,7 @@ typedef struct {
 
 void stm32_timer_init(EXO* exo);
 void stm32_timer_request(EXO* exo, IPC* ipc);
+void stm32_timer_adjust(EXO* exo);
 
 #if (POWER_MANAGEMENT)
 void stm32_timer_pm_event(EXO* exo);

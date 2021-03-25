@@ -117,10 +117,39 @@ typedef enum {
 #define SDMMC_CLOCK_SRC_PLL1_Q                  (0 << RCC_D1CCIPR_SDMMCSEL_Pos)
 #define SDMMC_CLOCK_SRC_PLL2_R                  (1 << RCC_D1CCIPR_SDMMCSEL_Pos)
 
+#define RNG_CLOCK_SRC_HSI48                     (0 << RCC_D2CCIP2R_RNGSEL_Pos)
+#define RNG_CLOCK_SRC_PLL1_Q                    (1 << RCC_D2CCIP2R_RNGSEL_Pos)
+#define RNG_CLOCK_SRC_LSE                       (2 << RCC_D2CCIP2R_RNGSEL_Pos)
+#define RNG_CLOCK_SRC_LSI                       (3 << RCC_D2CCIP2R_RNGSEL_Pos)
+
+#define ADC_CLOCK_SRC_PLL2_P                    (0 << RCC_D3CCIPR_ADCSEL_Pos)
+#define ADC_CLOCK_SRC_PLL3_R                    (1 << RCC_D3CCIPR_ADCSEL_Pos)
+#define ADC_CLOCK_SRC_PERIF                     (2 << RCC_D3CCIPR_ADCSEL_Pos)
+
+#define UART_CLOCK_SRC_ARB                      0
+#define UART_CLOCK_SRC_PLL2_Q                   1
+#define UART_CLOCK_SRC_PLL3_Q                   2
+#define UART_CLOCK_SRC_HSI                      3
+#define UART_CLOCK_SRC_CSI                      4
+#define UART_CLOCK_SRC_LSE                      5
+
+
 #define SDMMC_RECEIVE_CLK_INT                   0
 #define SDMMC_RECEIVE_CLK_CKIN                  1
 #define SDMMC_RECEIVE_CLK_TUNED                 2
 
+
+#define ADC_PRESCALER_1                         0
+#define ADC_PRESCALER_2                         1
+#define ADC_PRESCALER_4                         2
+#define ADC_PRESCALER_8                         3
+#define ADC_PRESCALER_10                        4
+#define ADC_PRESCALER_12                        5
+#define ADC_PRESCALER_16                        6
+#define ADC_PRESCALER_32                        7
+#define ADC_PRESCALER_64                        8
+#define ADC_PRESCALER_128                       9
+#define ADC_PRESCALER_256                       10
 
 #endif // STM32H7
 
@@ -348,7 +377,17 @@ typedef enum {
 }UART_PORT;
 
 //-------------------------------------------------- ADC ----------------------------------------------------------------------
+#if defined(STM32H7)
+#define STM32_ADC_SMPR_1_5                           0
+#define STM32_ADC_SMPR_2_5                           1
+#define STM32_ADC_SMPR_8_5                           2
+#define STM32_ADC_SMPR_16_5                          3
+#define STM32_ADC_SMPR_32_5                          4
+#define STM32_ADC_SMPR_64_5                          5
+#define STM32_ADC_SMPR_387_5                         6
+#define STM32_ADC_SMPR_810_5                         7
 
+#else
 #define STM32_ADC_SMPR_1_5                           0
 #define STM32_ADC_SMPR_7_5                           1
 #define STM32_ADC_SMPR_13_5                          2
@@ -357,7 +396,7 @@ typedef enum {
 #define STM32_ADC_SMPR_55_5                          5
 #define STM32_ADC_SMPR_71_5                          6
 #define STM32_ADC_SMPR_239_5                         7
-
+#endif // STM32H7
 typedef enum {
     STM32_ADC0,
     STM32_ADC1,
@@ -375,18 +414,38 @@ typedef enum {
     STM32_ADC13,
     STM32_ADC14,
     STM32_ADC15,
-#ifdef STM32L0
+#if defined(STM32L0)
     STM32_ADC_VLCD,
 #endif //STM32L0
-    STM32_ADC_TEMP,
+#if  defined(STM32H7)
+    STM32_ADC16,
+    STM32_VBAT_4,
+#endif //STM32L0
+    STM32_ADC_TEMP, // STM32H7 - 18
     STM32_ADC_VREF,
 
     STM32_ADC_MAX
 } STM32_ADC_CHANNEL;
 
+#if defined(STM32H7)
+#define TS_CAL1 ((uint16_t*)0x1FF1E820)
+#define TS_CAL2 ((uint16_t*)0x1FF1E840)
+
+
+__STATIC_INLINE int stm32_adc_temp()
+{
+    int prom =(110 - 30) * (adc_get(STM32_ADC_TEMP, STM32_ADC_SMPR_387_5) - *TS_CAL1);
+    prom = prom / (*TS_CAL2 - *TS_CAL1);
+
+    return prom + 30;
+
+}
+
+#else
 __STATIC_INLINE int stm32_adc_temp(int vref, int res)
 {
     return (V25_MV * 1000l - ADC2uV(adc_get(STM32_ADC_TEMP, STM32_ADC_SMPR_239_5), vref, res)) * 10l / AVG_SLOPE + 25l * 10l;
 }
+#endif // STM32H7
 
 #endif // STM32_DRIVER_H

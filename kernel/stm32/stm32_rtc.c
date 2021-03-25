@@ -20,10 +20,16 @@
 #include "sys_config.h"
 
 #ifndef RTC_EXTI_LINE
+#if defined(STM32H7)
+#define RTC_EXTI_LINE                               19
+#define HSE_DIVIDED_CLK                            1000000
+#else
 #define RTC_EXTI_LINE                               20
+
+#endif //STM32H7
 #endif
 
-#if defined(STM32L1)
+#if defined(STM32L1) || defined(STM32H7)
 #define RTC_IRQ                                     RTC_WKUP_IRQn
 #else
 #define RTC_IRQ                                     RTC_IRQn
@@ -39,44 +45,58 @@ void stm32_rtc_isr(int vector, void* param)
 #if defined(STM32F1)
     while ((RTC->CRL & RTC_CRL_RTOFF) == 0) {}
     RTC->CRL = 0;
+#elif  defined(STM32H7)
+    RTC->ISR &= ~RTC_ISR_WUTF;
+    EXTI->PR1 |= (1 << RTC_EXTI_LINE);
 #else
     RTC->ISR &= ~RTC_ISR_WUTF;
     EXTI->PR |= (1 << RTC_EXTI_LINE);
 #endif
-
     ksystime_second_pulse();
 }
 
 static inline void stm32_backup_on()
 {
+#if defined(STM32H7)
+    RCC->APB4ENR |= RCC_APB4ENR_RTCAPBEN;
+    PWR->CR1 |= PWR_CR1_DBP;
+#else
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     //enable BACKUP interface
     RCC->APB1ENR |= RCC_APB1ENR_BKPEN;
 #endif
-
     PWR->CR |= PWR_CR_DBP;
+#endif // STM32H7
 }
 
 static inline void stm32_backup_off()
 {
+#if defined(STM32H7)
+    PWR->CR1 &= ~PWR_CR1_DBP;
+    RCC->APB4ENR &= ~RCC_APB4ENR_RTCAPBEN;
+#else
     PWR->CR &= ~PWR_CR_DBP;
 
 #if defined(STM32F1) || defined(STM32F2) || defined(STM32F4)
     RCC->APB1ENR &= ~RCC_APB1ENR_BKPEN;
 #endif
+#endif // STM32H7
+
 }
 
 static inline void stm32_disable_write_protection()
 {
-#if defined(STM32L0) || defined(STM32F0) || defined(STM32L1)
+#if defined(STM32L0) || defined(STM32F0) || defined(STM32L1) || defined(STM32H7)
     //HSE as clock source can cause faults on pin reset, so reset backup domain is required
-#if !(LSE_VALUE)
+#if (LSE_VALUE == 0)
 #if defined(STM32L0) || defined(STM32L1)
     RCC->CSR |= RCC_CSR_RTCRST;
     __NOP();
     __NOP();
     __NOP();
     RCC->CSR &= ~RCC_CSR_RTCRST;
+#elif defined(STM32H7)
+
 #else
     RCC->BDCR |= RCC_BDCR_BDRST;
     __NOP();
@@ -95,7 +115,7 @@ static inline void stm32_disable_write_protection()
 
 static inline void stm32_enable_write_protection()
 {
-#if defined(STM32L0) || defined(STM32F0) || defined(STM32L1)
+#if defined(STM32L0) || defined(STM32F0) || defined(STM32L1) || defined(STM32H7)
     __disable_irq();
     RTC->WPR = 0x00;
     RTC->WPR = 0xff;
@@ -128,8 +148,13 @@ static void leave_configuration()
 
 static inline bool stm32_is_backup_domain_reset()
 {
-#if defined(STM32F1) || defined(STM32F0)
+#if defined(STM32F1) || defined(STM32F0) || defined(STM32H7)
+#if (LSE_VALUE == 0)
+    return true;
+#else
     return ((RCC->BDCR & RCC_BDCR_RTCEN) == 0);
+#endif // LSE_VALUE
+
 #else
     return ((RCC->CSR & RCC_CSR_RTCEN) == 0);
 #endif
@@ -156,10 +181,15 @@ static inline void stm32_rtc_on()
         RCC->CSR |= RCC_CSR_RTCEN;
 #endif
 }
-#else
+#else// RTC clock from HSE
 static inline void stm32_rtc_on()
 {
-#if defined(STM32F1) || defined(STM32F0)
+#if defined(STM32H7)
+    // 500kHz
+    RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_RTCPRE_Msk) | ((HSE_VALUE/ HSE_DIVIDED_CLK) << RCC_CFGR_RTCPRE_Pos);
+#endif // STM32H7
+
+#if defined(STM32F1) || defined(STM32F0) || defined(STM32H7)
         //select HSE as clock source
         RCC->BDCR |= (03ul << 8ul);
         //turn on RTC
@@ -222,10 +252,17 @@ static inline void stm32_rtc_enable_second_pulse()
    RTC->CRH |= RTC_CRH_SECIE;
 #else
 
-#if defined(STM32L0) || defined(STM32L1) || defined(STM32F0)
+#if defined(STM32L0) || defined(STM32L1) || defined(STM32F0) || defined(STM32H7)
    // EXTI line 20 is connected to the RTC Wakeup event
+#if defined(STM32H7)
+
+ //  EXTI->EMR1 |= (1 << RTC_EXTI_LINE);
+   EXTI->IMR1 |= (1 << RTC_EXTI_LINE);
+   EXTI->RTSR1 |= (1 << RTC_EXTI_LINE);
+#else
    EXTI->IMR |= (1 << RTC_EXTI_LINE);
    EXTI->RTSR |= (1 << RTC_EXTI_LINE);
+#endif // STM32H7
 
    // Configure the RTC WakeUp Clock source: CK_SPRE (1Hz)
    RTC->CR &= (uint32_t)~RTC_CR_WUCKSEL;

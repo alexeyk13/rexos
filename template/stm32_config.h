@@ -23,6 +23,7 @@
 #define STM32_ETH_DRIVER                        0
 #define STM32_SPI_DRIVER                        0
 #define STM32_SDMMC_DRIVER                      0
+#define STM32_RNG_DRIVER                        0
 //------------------------------ CORE ------------------------------------------------
 //disable only for power saving if no EXTI or remap is used
 #define SYSCFG_ENABLED                          1
@@ -77,8 +78,11 @@
 #define VOS_VALUE                               0  // for rev.Y VOS0 prohibit see errata
 #define EXT_VCORE                               0  // STM32H7: 0 - use internal LDO  1 - external supply
 
-#define USB_CLOCK_SRC                           USB_CLOCK_SRC_PLL1_Q          // 48M for USB FS, 60M for USB HS
-#define SDMMC_CLOCK_SRC                         SDMMC_CLOCK_SRC_PLL2_R        // max 250 MHz
+#define USB_CLOCK_SRC                           USB_CLOCK_SRC_PLL3_Q      // 48M for USB FS, 60M for USB HS
+#define SDMMC_CLOCK_SRC                         SDMMC_CLOCK_SRC_PLL2_R    // max 250 MHz
+#define RNG_CLOCK_SRC                           RNG_CLOCK_SRC_PLL1_Q      // max 250 MHz
+#define ADC_CLOCK_SRC                           ADC_CLOCK_SRC_PLL2_P      // max 80 MHz
+#define UART_CLOCK_SRC                          UART_CLOCK_SRC_PLL2_Q     // max 125 MHz
 
 #define STM32_DCACHE_ENABLE                     1
 #define STANDBY_WKUP                            0

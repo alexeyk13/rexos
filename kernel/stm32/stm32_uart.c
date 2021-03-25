@@ -358,17 +358,28 @@ static inline void stm32_uart_set_baudrate(EXO* exo, UART_PORT port, IPC* ipc)
     UART_REGS[port]->CR2 &= ~(3 << 12);
     UART_REGS[port]->CR2 |= (stop << 12);
 
+    unsigned int mantissa;
+#if defined(STM32H7)
+#if(UART_CLOCK_SRC == UART_CLOCK_SRC_PLL2_Q)
+    clock = stm32_power_get_clock_inside(exo, STM32_CLOCK_PLL2_Q);
+#elif (UART_CLOCK_SRC == UART_CLOCK_SRC_PLL3_Q)
+    clock = stm32_power_get_clock_inside(exo, STM32_CLOCK_PLL3_Q);
+#else
     if (port == UART_1 || port >= UART_6)
         clock = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB2);
     else
         clock = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB1);
-    unsigned int mantissa;
-#if defined(STM32H7)
+#endif
     mantissa = (2*clock / baudrate.baud);
     mantissa = (mantissa + 1) >> 1;
     UART_REGS[port]->BRR = mantissa;
 #else
     unsigned int fraction;
+    if (port == UART_1 || port >= UART_6)
+        clock = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB2);
+    else
+        clock = stm32_power_get_clock_inside(exo, STM32_CLOCK_APB1);
+
     mantissa = (25 * clock) / (4 * (baudrate.baud));
     fraction = ((mantissa % 100) * 8 + 25)  / 50;
     mantissa = mantissa / 100;
@@ -501,6 +512,14 @@ static inline bool stm32_uart_open_io(UART* uart, UART_PORT port)
 
 static inline void stm32_uart_open(EXO* exo, UART_PORT port, unsigned int mode)
 {
+#if defined(STM32H7)
+#if(UART_CLOCK_SRC == UART_CLOCK_SRC_PLL2_Q)
+    stm32_power_pll2_on();
+#elif (UART_CLOCK_SRC == UART_CLOCK_SRC_PLL3_Q)
+    stm32_power_pll3_on();
+#endif
+#endif // STM32H7
+
     bool ok;
     if (exo->uart.uarts[port] != NULL)
     {
@@ -848,6 +867,9 @@ void stm32_uart_init(EXO* exo)
     int i;
     for (i = 0; i < UARTS_COUNT; ++i)
         exo->uart.uarts[i] = NULL;
+#if defined(STM32H7)
+    RCC->D2CCIP2R = (RCC->D2CCIP2R & ~(RCC_D2CCIP2R_USART16SEL_Msk | RCC_D2CCIP2R_USART28SEL_Msk)) | (UART_CLOCK_SRC << RCC_D2CCIP2R_USART16SEL_Pos) | (UART_CLOCK_SRC << RCC_D2CCIP2R_USART28SEL_Pos);
+#endif // STM32H7
 #if defined(STM32F0) && (UARTS_COUNT > 3)
     exo->uart.isr3_cnt = 0;
 #endif
