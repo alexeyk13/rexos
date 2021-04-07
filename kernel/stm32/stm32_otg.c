@@ -40,9 +40,11 @@
 
 typedef OTG_FS_DEVICE_TypeDef* OTG_FS_DEVICE_P;
 typedef OTG_FS_GENERAL_TypeDef* OTG_FS_GENERAL_P;
+typedef OTG_FS_PC_TypeDef* OTG_FS_PC_P;
 
 static const OTG_FS_DEVICE_P __USB_DEVICE[] =   {OTG_FS_DEVICE, OTG_HS_DEVICE};
 static const OTG_FS_GENERAL_P __USB_GENERAL[] =   {OTG_FS_GENERAL, OTG_HS_GENERAL};
+static const OTG_FS_PC_P __USB_PC[] =   {OTG_FS_PC, OTG_HS_PC};
 static const uint32_t __USB_FIFO_BASE[] =   {OTG_FS_FIFO_BASE, OTG_HS_FIFO_BASE};
 
 static const uint32_t __USB_EP_OUT_IRQ[] = {OTG_FS_EP1_OUT_IRQn, OTG_HS_EP1_OUT_IRQn};
@@ -57,6 +59,7 @@ static const uint32_t __USB_IRQ[] =        {OTG_FS_IRQn, OTG_HS_IRQn};
 #define  _OTG_DEVICE     __USB_DEVICE[0]
 #define  _OTG_GENERAL    __USB_GENERAL[0]
 #define  _OTG_FIFO_BASE  __USB_FIFO_BASE[0]
+#define  _OTG_PC         __USB_PC[0]
 
 #define  _OTG_EP_OUT_IRQ __USB_EP_OUT_IRQ[0]
 #define  _OTG_EP_IN_IRQ  __USB_EP_IN_IRQ[0]
@@ -67,6 +70,7 @@ static const uint32_t __USB_IRQ[] =        {OTG_FS_IRQn, OTG_HS_IRQn};
 #define  _OTG_DEVICE  __USB_DEVICE[1]
 #define  _OTG_GENERAL __USB_GENERAL[1]
 #define  _OTG_FIFO_BASE __USB_FIFO_BASE[1]
+#define  _OTG_PC         __USB_PC[1]
 
 #define  _OTG_EP_OUT_IRQ __USB_EP_OUT_IRQ[1]
 #define  _OTG_EP_IN_IRQ  __USB_EP_IN_IRQ[1]
@@ -99,6 +103,34 @@ static inline EP* ep_data(USB_PORT_TYPE port, EXO* exo, int num)
     return (num & USB_EP_IN) ? (exo->usb.in[USB_EP_NUM(num)]) : (exo->usb.out[USB_EP_NUM(num)]);
 }
 
+static inline void usb_reset_all()
+{
+#if defined(STM32H7)
+       _OTG_GENERAL->RSTCTL |= OTG_FS_GENERAL_RSTCTL_CSRST;
+       while (_OTG_GENERAL->RSTCTL & OTG_FS_GENERAL_RSTCTL_CSRST) {};
+       _OTG_GENERAL->AHBCFG = OTG_FS_GENERAL_AHBCFG_GINT;
+
+       _OTG_GENERAL->RXFSIZ = ((STM32_USB_MPS / 4) + 1) * 2 + 10 + 1;
+       _OTG_GENERAL->TX0FSIZ = (0x20  << OTG_FS_GENERAL_TX0FSIZ_TX0FD_POS) | (_OTG_GENERAL->RXFSIZ << OTG_FS_GENERAL_TX0FSIZ_TX0FSA_POS);
+
+       //repeat setup after reset
+   #if (STM32_USB_OTG_ULPI)
+       _OTG_GENERAL->USBCFG =  (1 << 20) |  (0 << 15) | OTG_FS_GENERAL_USBCFG_FDMOD | (9 << OTG_FS_GENERAL_USBCFG_TRDT_POS) | (17 << OTG_FS_GENERAL_USBCFG_TOCAL_POS);
+   #else
+       _OTG_GENERAL->USBCFG = (1 << 15) | OTG_FS_GENERAL_USBCFG_FDMOD | (trdt << OTG_FS_GENERAL_USBCFG_TRDT_POS) | OTG_FS_GENERAL_USBCFG_PHYSEL | (17 << OTG_FS_GENERAL_USBCFG_TOCAL_POS);
+   #endif // STM32_USB_OTG_ULPI
+
+       _OTG_GENERAL->INTMSK = OTG_FS_GENERAL_INTMSK_USBSUSPM | OTG_FS_GENERAL_INTMSK_ENUMDNEM |
+               OTG_FS_GENERAL_INTMSK_IEPM | OTG_FS_GENERAL_INTMSK_RXFLVLM | OTG_FS_GENERAL_INTMSK_USBRSTM ;
+
+       _OTG_GENERAL->CCFG |= OTG_FS_GENERAL_CCFG_VBUSBSEN;
+       _OTG_DEVICE->IEPMSK = OTG_FS_DEVICE_IEPMSK_XFRCM;
+       _OTG_DEVICE->CTL = OTG_FS_DEVICE_CTL_POPRGDNE;
+
+       _OTG_GENERAL->INTMSK |= OTG_FS_GENERAL_INTMSK_OTGM;
+#endif // STM32H7
+}
+
 static bool stm32_otg_ep_flush(USB_PORT_TYPE port, EXO* exo, int num)
 {
     EP* ep = ep_data(port, exo, num);
@@ -117,6 +149,8 @@ static bool stm32_otg_ep_flush(USB_PORT_TYPE port, EXO* exo, int num)
     if(num & USB_EP_IN)
     {
          _OTG_GENERAL->RSTCTL = ((1 << 5) | (USB_EP_NUM(num) << 6));
+        while ((_OTG_GENERAL->RSTCTL & OTG_HS_GENERAL_RSTCTL_TXFFLSH) == OTG_HS_GENERAL_RSTCTL_TXFFLSH);
+
     }
     return true;
 }
@@ -142,6 +176,7 @@ static inline bool stm32_otg_ep_is_stall(USB_PORT_TYPE port, int num)
 
 static inline void usb_suspend(EXO* exo)
 {
+    usb_reset_all();
     IPC ipc;
     _OTG_GENERAL->INTMSK &= ~OTG_FS_GENERAL_INTMSK_USBSUSPM;
     ipc.process = exo->usb.device;
@@ -356,13 +391,7 @@ static inline void stm32_otg_on_isr_tx(EXO* exo, uint32_t num)
 
 static inline void usb_on_isr_reset()
 {
-    int i;
-    for(i = 0; i < USB_EP_COUNT_MAX; i++)
-    {
-        _OTG_DEVICE->INEP[i].CTL = OTG_FS_DEVICE_ENDPOINT_CTL_EPDIS | OTG_FS_DEVICE_ENDPOINT_CTL_SNAK;
-        _OTG_GENERAL->RSTCTL = OTG_HS_GENERAL_RSTCTL_TXFFLSH | (16 << OTG_HS_GENERAL_RSTCTL_TXFNUM_POS);
-         while ((_OTG_GENERAL->RSTCTL & OTG_HS_GENERAL_RSTCTL_TXFFLSH) == OTG_HS_GENERAL_RSTCTL_TXFFLSH);
-    }
+    _OTG_DEVICE->CFG &= OTG_FS_DEVICE_CFG_DAD;
 }
 
 static void usb_on_isr(int vector, void* param)
@@ -413,12 +442,8 @@ static void usb_on_isr(int vector, void* param)
 
     if (sta & OTG_FS_GENERAL_INTSTS_USBRST)
     {
-        if(exo->usb.in[3])
-        {
-        printk("SIZE:%d\n", exo->usb.in[3]->size);
-        }
-        _OTG_GENERAL->INTSTS |= OTG_FS_GENERAL_INTSTS_USBRST;
         usb_on_isr_reset();
+        _OTG_GENERAL->INTSTS |= OTG_FS_GENERAL_INTSTS_USBRST;
     }
     _OTG_GENERAL->OTGINT  = 0xFFFFFF;// clear other request
 }
