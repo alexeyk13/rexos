@@ -47,8 +47,6 @@ static const OTG_FS_GENERAL_P __USB_GENERAL[] =   {OTG_FS_GENERAL, OTG_HS_GENERA
 static const OTG_FS_PC_P __USB_PC[] =   {OTG_FS_PC, OTG_HS_PC};
 static const uint32_t __USB_FIFO_BASE[] =   {OTG_FS_FIFO_BASE, OTG_HS_FIFO_BASE};
 
-static const uint32_t __USB_EP_OUT_IRQ[] = {OTG_FS_EP1_OUT_IRQn, OTG_HS_EP1_OUT_IRQn};
-static const uint32_t __USB_EP_IN_IRQ[] =  {OTG_FS_EP1_IN_IRQn, OTG_HS_EP1_IN_IRQn};
 static const uint32_t __USB_WKUP_IRQ[] =   {OTG_FS_WKUP_IRQn, OTG_HS_WKUP_IRQn};
 static const uint32_t __USB_IRQ[] =        {OTG_FS_IRQn, OTG_HS_IRQn};
 
@@ -61,8 +59,6 @@ static const uint32_t __USB_IRQ[] =        {OTG_FS_IRQn, OTG_HS_IRQn};
 #define  _OTG_FIFO_BASE  __USB_FIFO_BASE[0]
 #define  _OTG_PC         __USB_PC[0]
 
-#define  _OTG_EP_OUT_IRQ __USB_EP_OUT_IRQ[0]
-#define  _OTG_EP_IN_IRQ  __USB_EP_IN_IRQ[0]
 #define  _OTG_WKUP_IRQ   __USB_WKUP_IRQ[0]
 #define  _OTG_IRQ        __USB_IRQ[0]
 
@@ -72,8 +68,6 @@ static const uint32_t __USB_IRQ[] =        {OTG_FS_IRQn, OTG_HS_IRQn};
 #define  _OTG_FIFO_BASE __USB_FIFO_BASE[1]
 #define  _OTG_PC         __USB_PC[1]
 
-#define  _OTG_EP_OUT_IRQ __USB_EP_OUT_IRQ[1]
-#define  _OTG_EP_IN_IRQ  __USB_EP_IN_IRQ[1]
 #define  _OTG_WKUP_IRQ   __USB_WKUP_IRQ[1]
 #define  _OTG_IRQ        __USB_IRQ[1]
 
