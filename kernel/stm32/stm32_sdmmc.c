@@ -74,7 +74,6 @@ static inline void stm32_sdmmc_on_cmd_isr(EXO* exo, uint32_t sta)
     SDMMC_CMD_STACK* stack = io_stack(exo->sdmmc.io);
     SDMMC_RESPONSE_TYPE resp_type = stack->resp_type;
     err = stm32_sdmmc_cmd_err(resp_type, sta);
-    kerror(err);
     SD_REG->ICR = SDMMC_INTMASK_CMD;
     stack->resp[0] = SD_REG->RESP1;
     if(resp_type == SDMMC_RESPONSE_DATA && err == ERROR_OK)
@@ -90,7 +89,7 @@ static inline void stm32_sdmmc_on_cmd_isr(EXO* exo, uint32_t sta)
             stack->resp[2] = SD_REG->RESP2;
             stack->resp[3] = SD_REG->RESP1;
         }
-        iio_complete_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, SDMMC_CMD), exo->sdmmc.user, exo->sdmmc.io, 0);
+        iio_complete_ex(exo->sdmmc.process, HAL_IO_CMD(HAL_SDMMC, SDMMC_CMD), exo->sdmmc.user, exo->sdmmc.io, err);
         exo->sdmmc.state = SDMMC_STATE_IDLE;
     }
 }
