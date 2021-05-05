@@ -26,6 +26,7 @@
 
 static inline void stm32_adc_open_device(EXO* exo)
 {
+    int i;
     if (exo->adc.active)
     {
         kerror(ERROR_ALREADY_CONFIGURED);
@@ -46,7 +47,7 @@ static inline void stm32_adc_open_device(EXO* exo)
     ADC3->CFGR = ADC_CFGR_JQDIS | ADC_CFGR_OVRMOD;
     ADC3_COMMON->CCR = ADC_CCR_TSEN | (ADC_PRESCALER_16 << ADC_CCR_PRESC_Pos) | (0 << ADC_CCR_CKMODE_Pos);
     ADC3->CR = ADC_CR_ADVREGEN | ADC_CR_ADCALLIN | (0 << ADC_CR_BOOST_Pos);
-    for(int i = 0; i < 1000; i++)__NOP();
+    for(i = 0; i < 1000; i++)__NOP();
 
 
     ADC3->CR |= ADC_CR_ADCAL;

@@ -13,6 +13,7 @@
 #include "stm32_config.h"
 #include "../adc.h"
 #include "../power.h"
+#include "../uart.h"
 
 //-------------------------------------------------- POWER ---------------------------------------------------------------------
 
@@ -375,6 +376,11 @@ typedef enum {
     UART_8,
     UART_MAX
 }UART_PORT;
+
+typedef enum {
+    IPC_STM32_UART_SETUP_ISO7816 = IPC_UART_MAX,
+    IPC_STM32_UART_MAX
+} STM32_UART_IPCS;
 
 //-------------------------------------------------- ADC ----------------------------------------------------------------------
 #if defined(STM32H7)

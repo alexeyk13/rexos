@@ -39,6 +39,9 @@ typedef struct {
     unsigned int rx_max, tx_processed;
     HANDLE tx_process, rx_process, rx_timer;
     unsigned int rx_char_timeout, rx_interleaved_timeout;
+#if (UART_ISO7816_MODE_SUPPORT)
+    uint8_t t, crc;
+#endif //UART_ISO7816_MODE_SUPPORT
 } UART_IO;
 
 typedef struct {
