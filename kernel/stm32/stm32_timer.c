@@ -228,6 +228,7 @@ void stm32_timer_stop(TIMER_NUM num)
 {
     TIMER_REGS[num]->CR1 &= ~TIM_CR1_CEN;
     TIMER_REGS[num]->SR &= ~TIM_SR_UIF;
+    NVIC_ClearPendingIRQ(TIMER_VECTORS[num]);
 }
 
 #if (TIMER_IO)

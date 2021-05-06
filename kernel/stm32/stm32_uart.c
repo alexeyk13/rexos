@@ -160,6 +160,12 @@ static inline void stm32_uart_on_rx_isr(EXO* exo, UART_PORT port, uint8_t c)
         {
             ((uint8_t*)io_data(uart->i.rx_io))[uart->i.rx_io->data_size++] = c;
             //max size limit
+#if (UART_ISO7816_MODE_SUPPORT)
+                //on T=1 we know exactly what is received size
+                if ((uart->i.t) && (uart->i.rx_io->data_size == 3))
+                    //NAD PCB LEN <DATA> LRC <CRC>
+                    uart->i.rx_max = ((uint8_t*)io_data(uart->i.rx_io))[2] + 4 + uart->i.crc;
+#endif //UART_ISO7816_MODE_SUPPORT
             if (uart->i.rx_io->data_size >= uart->i.rx_max)
             {
                 iio_complete(uart->i.rx_process, HAL_IO_CMD(HAL_UART, IPC_READ), port, uart->i.rx_io);
@@ -495,6 +501,10 @@ static inline bool stm32_uart_open_io(UART* uart, UART_PORT port)
 #if (UART_DOUBLE_BUFFERING)
     uart->i.rx2_io = NULL;
 #endif // UART_DOUBLE_BUFFERING
+#if (UART_ISO7816_MODE_SUPPORT)
+    uart->i.t = 0;
+    uart->i.crc = 0;
+#endif //ISO7816_MODE_SUPPORT
 
     uart->i.rx_timer = ksystime_soft_timer_create(KERNEL_HANDLE, port, HAL_UART);
 
@@ -772,7 +782,6 @@ static inline void stm32_uart_io_read_timeout(EXO* exo, UART_PORT port)
 {
     IO* io = NULL;
     UART* uart = exo->uart.uarts[port];
-    ksystime_soft_timer_stop(uart->i.rx_timer);
     __disable_irq();
     if (uart->i.rx_io)
     {
@@ -800,6 +809,16 @@ static inline void stm32_uart_io_read_timeout(EXO* exo, UART_PORT port)
     }
 }
 #endif //UART_IO_MODE_SUPPORT
+
+#if (UART_ISO7816_MODE_SUPPORT)
+void stm32_uart_setup_iso7816(EXO* exo, UART_PORT port, unsigned int proto, unsigned int egt, unsigned int crc)
+{
+    UART_IO* ui;
+    ui = &exo->uart.uarts[port]->i;
+    ui->t = proto;
+    ui->crc = crc;
+}
+#endif //UART_ISO7816_MODE_SUPPORT
 
 void stm32_uart_request(EXO* exo, IPC* ipc)
 {
@@ -856,6 +875,11 @@ void stm32_uart_request(EXO* exo, IPC* ipc)
         stm32_uart_set_timeouts(exo, port, ipc->param2, ipc->param3);
         break;
 #endif //UART_IO_MODE_SUPPORT
+#if (UART_ISO7816_MODE_SUPPORT)
+    case IPC_STM32_UART_SETUP_ISO7816:
+        stm32_uart_setup_iso7816(exo, port, ipc->param2 >> 16, ipc->param2 & 0xff, ipc->param3);
+        break;
+#endif //UART_ISO7816_MODE_SUPPORT
     default:
         kerror(ERROR_NOT_SUPPORTED);
         break;
