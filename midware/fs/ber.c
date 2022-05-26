@@ -486,6 +486,7 @@ static inline void ber_write(VFSS_TYPE* vfss, IO* io)
         memcpy(vfss_get_buf(vfss), (uint8_t*)io_data(io) + offset, chunk_size);
         if (!ber_write_sectors(vfss, sector, chunk_size))
             return;
+        offset+=chunk_size;    
     }
 }
 

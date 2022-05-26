@@ -43,7 +43,7 @@ typedef struct {
     HANDLE handle;
     IO* rx;
     IO* tx;
-#if (TLS_DEBUG_REQUESTS)
+#if(TLS_DEBUG_REQUESTS) || (TLS_DEBUG_ERRORS)
     IP remote_addr;
 #endif //TLS_DEBUG_REQUESTS
     unsigned int rx_size, tx_offset;
