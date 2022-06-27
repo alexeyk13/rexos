@@ -267,10 +267,6 @@
 #define STM32F09x
 #endif
 
-#if defined(STM32F030) || defined(STM32F050) || defined(STM32F070) || defined(STM32F090)
-#define STM32F0x0
-#endif
-
 #if defined(STM32F031) || defined(STM32F051) || defined(STM32F071) || defined(STM32F091)
 #define STM32F0x1
 #endif

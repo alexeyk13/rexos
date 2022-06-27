@@ -13,7 +13,7 @@
 #include "cc_macro.h"
 
 #define HTONS(s) ( (((s) << 8)&0xFFFF) | (((s) >> 8)&0xFFFF))
-#define HTONL(l) ( ((l)<<24) |((l)>>24) | (((l)>>8)&0x0000FF00) | (((l)<<8)&0x00FF0000) )
+#define HTONL(l) ( ((l&0xff)<<24) |((l)>>24) | (((l)>>8)&0x0000FF00) | (((l)<<8)&0x00FF0000) )
 
 __STATIC_INLINE unsigned short be2short(const uint8_t* be)
 {

@@ -94,6 +94,7 @@ typedef struct {
     SO finds;
     SO file_handles;
     bool active;
+    bool is_fat12;
 } FAT16_TYPE;
 
 void fat16_init(VFSS_TYPE* vfss);

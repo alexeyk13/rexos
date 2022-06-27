@@ -54,7 +54,7 @@ void uart_decode_baudrate(IPC* ipc, BAUD* baudrate);
 
 #define uart_open(num, mode)                                                                                get_handle_exo(HAL_REQ(HAL_UART, IPC_OPEN), (num), (mode), 0)
 #define uart_close(num)                                                                                     ipc_post_exo(HAL_CMD(HAL_UART, IPC_CLOSE), (num), 0, 0)
-void uart_set_baudrate(int num, BAUD* baudrate);
+uint32_t uart_set_baudrate(int num, BAUD* baudrate);
 #define uart_set_comm_timeouts(num, char_timeout_us, interleaved_timeout_us)                                get_exo(HAL_REQ(HAL_UART, IPC_UART_SET_COMM_TIMEOUTS), (num), (char_timeout_us), (interleaved_timeout_us))
 #define uart_flush(num)                                                                                     ipc_post_exo(HAL_CMD(HAL_UART, IPC_FLUSH), (num), 0, 0)
 #define uart_get_last_error(num)                                                                            ((int)get_exo(HAL_REQ(HAL_UART, IPC_UART_GET_LAST_ERROR), (num), 0, 0))
