@@ -505,9 +505,49 @@ static inline bool stm32_power_pll_on(STM32_CLOCK_SOURCE_TYPE src)
 
 #endif // --------------------------------------
 
+#if (HSE_VALUE)
+static bool stm32_power_hse_on()
+{
+    if ((RCC->CR & RCC_CR_HSEON) == 0)
+    {
+#if defined(STM32L0) && !(LSE_VALUE)
+        RCC->CR &= ~(3 << 20);
+        RCC->CR |= (30 - __builtin_clz(HSE_VALUE / 1000000)) << 20;
+#endif //STM32L0 && !LSE_VALUE
+
+#if (HSE_BYPASS)
+        RCC->CR |= RCC_CR_HSEON | RCC_CR_HSEBYP;
+#else
+        RCC->CR |= RCC_CR_HSEON;
+#endif //HSE_BYPAS
+#if defined(HSE_STARTUP_TIMEOUT)
+        int i;
+        for (i = 0; i < HSE_STARTUP_TIMEOUT; ++i)
+            if (RCC->CR & RCC_CR_HSERDY)
+                return true;
+        return false;
+#else
+        while ((RCC->CR & RCC_CR_HSERDY) == 0) {}
+#endif //HSE_STARTUP_TIMEOUT
+    }
+    return true;
+}
+
+#if (POWER_MANAGEMENT)
+static void stm32_power_hse_off()
+{
+    RCC->CR &= ~RCC_CR_HSEON;
+}
+#endif //POWER_MANAGEMENT
+#endif //HSE_VALUE
+
 int get_core_clock_internal()
 {
-    switch (RCC->CFGR & (3 << RCC_CFGR_SWS_Pos))
+#if defined(STM32H7)
+   switch (RCC->CFGR & RCC_CFGR_SWS_Msk)
+#else
+    switch (RCC->CFGR & RCC_CFGR_SWS)
+#endif //
     {
     case RCC_CFGR_SWS_HSI:
         return HSI_VALUE;
@@ -785,42 +825,6 @@ static void stm32_power_set_clock_source(STM32_CLOCK_SOURCE_TYPE src)
 }
 
 #endif//STM32H7
-
-#if (HSE_VALUE)
-static bool stm32_power_hse_on()
-{
-    if ((RCC->CR & RCC_CR_HSEON) == 0)
-    {
-#if defined(STM32L0) && !(LSE_VALUE)
-        RCC->CR &= ~(3 << 20);
-        RCC->CR |= (30 - __builtin_clz(HSE_VALUE / 1000000)) << 20;
-#endif //STM32L0 && !LSE_VALUE
-
-#if (HSE_BYPASS)
-        RCC->CR |= RCC_CR_HSEON | RCC_CR_HSEBYP;
-#else
-        RCC->CR |= RCC_CR_HSEON;
-#endif //HSE_BYPAS
-#if defined(HSE_STARTUP_TIMEOUT)
-        int i;
-        for (i = 0; i < HSE_STARTUP_TIMEOUT; ++i)
-            if (RCC->CR & RCC_CR_HSERDY)
-                return true;
-        return false;
-#else
-        while ((RCC->CR & RCC_CR_HSERDY) == 0) {}
-#endif //HSE_STARTUP_TIMEOUT
-    }
-    return true;
-}
-
-#if (POWER_MANAGEMENT)
-static void stm32_power_hse_off()
-{
-    RCC->CR &= ~RCC_CR_HSEON;
-}
-#endif //POWER_MANAGEMENT
-#endif //HSE_VALUE
 
 #if (POWER_MANAGEMENT)
 static void stm32_power_pll_off()

@@ -1041,7 +1041,7 @@ typedef struct {
 #define OTG_FS_BASE                                             0x50000000
 #define OTG_HS_BASE                                             (AHB1PERIPH_BASE + 0x00020000)
 
-#d//efine OTG_FS_DEVICE                                           ((OTG_FS_DEVICE_TypeDef *) OTG_FS_DEVICE_BASE)
+//#define OTG_FS_DEVICE                                           ((OTG_FS_DEVICE_TypeDef *) OTG_FS_DEVICE_BASE)
 
 #endif //STM32H7
 
