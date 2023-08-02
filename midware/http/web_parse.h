@@ -19,7 +19,7 @@ extern const char* const __HTTP_URL_HEAD;
 extern const char* const __HTTP_VER;
 
 #define HTTP_METHODS_COUNT                      8
-const char* const __HTTP_METHODS[HTTP_METHODS_COUNT];
+extern const char* const __HTTP_METHODS[HTTP_METHODS_COUNT];
 
 
 typedef enum {

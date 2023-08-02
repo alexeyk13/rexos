@@ -110,9 +110,31 @@ static unsigned long fat16_cluster_to_sector(VFSS_TYPE* vfss, unsigned long clus
     return vfss->fat16.reserved_sectors + vfss->fat16.fat_sectors * vfss->fat16.fat_count + vfss->fat16.root_sectors + (cluster - 2) * vfss->fat16.cluster_sectors;
 }
 
+static unsigned long fat16_get_fat12_value(VFSS_TYPE* vfss, unsigned long cluster)
+{
+    uint32_t offs;
+    uint8_t* fat;
+    uint16_t res;
+    offs = cluster*3/2;
+    fat = vfss_read_sectors(vfss, vfss->fat16.reserved_sectors + (offs / FAT_SECTOR_SIZE), 2 * FAT_SECTOR_SIZE);
+    offs = offs % FAT_SECTOR_SIZE;
+    res = fat[offs] + (fat[offs + 1] << 8);
+    if(cluster & 1)
+        res = res >>4;
+    else
+        res = res& 0xfff;
+
+    if(res > 0xff8)
+        res |= 0xf000;
+    return res;
+}
+
 static unsigned long fat16_get_fat_value(VFSS_TYPE* vfss, unsigned long cluster)
 {
     uint16_t* fat;
+    if(vfss->fat16.is_fat12)
+        return fat16_get_fat12_value(vfss, cluster);
+        
     fat = vfss_read_sectors(vfss, vfss->fat16.reserved_sectors + (cluster / FAT_ENTRIES_IN_SECTOR), FAT_SECTOR_SIZE);
     if (fat == NULL)
         return FAT_CLUSTER_RESERVED;
@@ -133,10 +155,44 @@ static unsigned long fat16_get_fat_next(VFSS_TYPE* vfss, unsigned long cluster)
     return next;
 }
 
+static bool fat16_set_fat12_value(VFSS_TYPE* vfss, unsigned long cluster, unsigned long value)
+{
+    uint32_t offs, i, size, sector;
+    uint8_t* fat;
+    offs = cluster * 3 / 2;
+    size = FAT_SECTOR_SIZE;
+    sector = offs / FAT_SECTOR_SIZE;
+    offs = offs % FAT_SECTOR_SIZE;
+    if(offs == 511) // last cluster in sector
+        size = 2*FAT_SECTOR_SIZE;
+
+    fat = vfss_read_sectors(vfss, vfss->fat16.reserved_sectors + sector, size);
+    if(fat == NULL)
+        return false;
+    if(cluster & 1)
+    {
+        value <<=4;
+        fat[offs+1] = value >>8 ;
+        fat[offs] = fat[offs] | value;
+    }else{
+        fat[offs] = value;
+        fat[offs + 1] = (fat[offs + 1] & 0xf0) | ((value >> 8) & 0xf0);
+    }
+
+    for(i = 0; i < vfss->fat16.fat_count; ++i)
+    {
+        if(!vfss_write_sectors(vfss, vfss->fat16.reserved_sectors + vfss->fat16.fat_sectors * i + sector, size))
+            return false;
+    }
+    return true;
+}
+
 static bool fat16_set_fat_value(VFSS_TYPE* vfss, unsigned long cluster, unsigned long value)
 {
     unsigned int i;
     uint16_t* fat;
+    if(vfss->fat16.is_fat12)
+        return fat16_set_fat12_value(vfss, cluster, value);
     fat = vfss_read_sectors(vfss, vfss->fat16.reserved_sectors + (cluster / FAT_ENTRIES_IN_SECTOR), FAT_SECTOR_SIZE);
     if (fat == NULL)
         return false;
@@ -267,9 +323,21 @@ static bool fat16_parse_boot(VFSS_TYPE* vfss)
     vfss->fat16.clusters_count = (vfss->fat16.sectors_count - (vfss->fat16.reserved_sectors + vfss->fat16.fat_sectors * vfss->fat16.fat_count + vfss->fat16.root_sectors)) / vfss->fat16.cluster_sectors + 2;
     vfss->fat16.cluster_size = vfss->fat16.cluster_sectors * FAT_SECTOR_SIZE;
     vfss_resize_buf(vfss, vfss->fat16.cluster_size);
+    vfss->fat16.is_fat12 = false;
+    if(vfss->fat16.clusters_count < 4078)
+    {
+        vfss->fat16.is_fat12 = true;
+        vfss_resize_buf(vfss, 2 * FAT_SECTOR_SIZE);
+#if(VFS_DEBUG_INFO)
+        printf("FAT16 info: FAT12 found clusters count: %d\n", vfss->fat16.clusters_count);
+    }
+    else
+        printf("FAT16 info:\n");
+#else
+    }        
+#endif   //VFS_DEBUG_INFO
 
 #if (VFS_DEBUG_INFO)
-    printf("FAT16 info:\n");
     printf("cluster size: %d\n", vfss->fat16.cluster_sectors * FAT_SECTOR_SIZE);
     printf("total sectors: %d\n", vfss->fat16.sectors_count);
     printf("serial No: %08X\n", bpb->serial);

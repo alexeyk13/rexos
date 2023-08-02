@@ -25,12 +25,13 @@ void uart_decode_baudrate(IPC* ipc, BAUD* baudrate)
     baudrate->stop_bits = (ipc->param3) & 0xff;
 }
 
-void uart_set_baudrate(int num, BAUD* baudrate)
+uint32_t uart_set_baudrate(int num, BAUD* baudrate)
 {
     IPC ipc;
     uart_encode_baudrate(baudrate, &ipc);
-    ipc.cmd = HAL_CMD(HAL_UART, IPC_UART_SET_BAUDRATE);
+    ipc.cmd = HAL_REQ(HAL_UART, IPC_UART_SET_BAUDRATE);
     ipc.param1 = num;
     ipc.process = KERNEL_HANDLE;
-    ipc_post(&ipc);
+    call(&ipc);
+    return ipc.param3;
 }
