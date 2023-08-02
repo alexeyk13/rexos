@@ -78,7 +78,8 @@ static const uint32_t __USB_IRQ[] =        {OTG_FS_IRQn, OTG_HS_IRQn};
 
 
 #else
-#define  _OTG_IRQ OTG_FS_IRQn
+#define _OTG_DEVICE             OTG_FS_DEVICE
+#define _OTG_IRQ                OTG_FS_IRQn
 #endif //STM32H7
 
 #define ALIGN_SIZE                                          (sizeof(int))
